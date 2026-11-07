@@ -53,6 +53,8 @@ export interface WorkspaceTask {
   projectId?: string
   projectWorkItemId?: string
   projectAttemptNo?: number
+  /** Session Context：任务归属会话（root/子任务继承） */
+  sessionId?: string
   traceId?: string
   /** 显式替代关系:本任务(FAILED/CANCELED 分支)被替代任务覆盖,不再阻塞父任务收口 */
   supersededByTaskId?: string

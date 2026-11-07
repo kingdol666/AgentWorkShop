@@ -37,7 +37,11 @@ const focusComposer = (): void => {
     ref="composerBox"
     class="composer-pane"
   >
-    <workshop-composer :channel-id="channelId" />
+    <!-- sessions 视图自带 session composer/上下文，隐藏全局任务 composer，避免窄屏遮挡 -->
+    <workshop-composer
+      v-if="view !== 'sessions'"
+      :channel-id="channelId"
+    />
 
     <!-- 抽屉 -->
     <workshop-agent-inspector-drawer

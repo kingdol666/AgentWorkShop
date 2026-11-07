@@ -1,0 +1,105 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
+% Compile: latexmk -pdf main.tex
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algpseudocode}
+% Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
+% the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
+% the latexmk -pdf (pdfLaTeX) path is unaffected.
+\usepackage{iftex}
+\ifxetex
+  \DeclareFontFamily{TU}{ptm}{}
+  \DeclareFontShape{TU}{ptm}{m}{n}{<->ptmr8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{n}{<->ptmb8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{it}{<->ptmri8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{it}{<->ptmbi8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sl}{<->ptmro8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sc}{<->ptmr8t}{}
+\fi
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{stfloats}
+\usepackage{placeins}
+\usepackage{url}
+\usepackage{etoolbox}
+\urlstyle{same}
+% Cross-references and citations. The cite package renders IEEE-style citation
+% groups ([14]--[16], [20], [21]) with hyperref support.
+\usepackage{cite}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\hypersetup{bookmarksnumbered=true,
+  pdftitle={Governed Setpoint Writing for Industrial Agents: A Configuration-Driven Runtime and Simulated Evaluation},
+  pdfauthor={},
+  pdfsubject={IEEE Transactions on Industrial Informatics},
+  pdfkeywords={industrial agents, governed setpoint writing, industrial communication, simulation-based evaluation, system integration}}
+
+% Float placement only; IEEEtran margins and body type remain unchanged.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{7}
+\setcounter{dbltopnumber}{1}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.03}
+\renewcommand{\floatpagefraction}{0.72}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.72}
+
+% Tight but conventional float separation; body type and margins are unchanged.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{7pt plus 2pt minus 3pt}
+\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
+
+\newcommand{\system}{the platform}
+% Acknowledgment is omitted from this blinded review copy. See the separate
+% submission-only disclosure draft and confirm its destination with TII.
+
+\begin{document}
+\bstctlcite{IEEEbstctl}
+
+\title{Governed Setpoint Writing for Industrial Agents: A Configuration-Driven Runtime and Simulated Evaluation}
+
+\author{}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Governed Setpoint Writing}
+
+\maketitle
+
+\begin{abstract}
+Industrial agents can propose process changes, but a runtime must resolve each proposal against active production context, identify the intended control point, and enforce route-specific limits before dispatch. We present a configuration-driven runtime that binds production context and directional signal mappings to shared dispatch. Operation handlers perform route-specific authorization and revalidation, and a common write controller applies value guards. The runtime records command outcomes, optional device readbacks, and later process observations separately.
+Across four simulated scenes, 220/220 admissible mapping requests were accepted, 219/219 collected structural-range requests were rejected, and 216/216 available simulator readbacks matched. A mock-driver ablation returned HTTP 400 for six process-window violations with the interlock enabled and HTTP 200 when it was removed. In a preregistered exploratory fixed-horizon comparison of the scripted recipe policy with no-write, 9 of 11 attempts yielded valid pairs; all nine had lower IAE under the script, with per-scene median reductions of 165.2~g\,s, 615.6~mg/L\,s, and 8000.5~HV\,s. Two pairs were invalid because of sampling gaps. A separate three-episode LLM-driven simulator pilot ended canceled and below target in every episode; the local recorder reported two writes per episode. These results are limited to the tested simulator and mock-driver paths. They do not establish general control efficacy, autonomous task success, or physical-plant safety.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Industrial agents, governed setpoint writing, industrial communication,
+simulation-based evaluation, system integration.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/system}
+\input{sections/closedloop}
+\input{sections/modules}
+\input{sections/evaluation}
+\input{sections/discussion}
+
+\section*{Declarations}
+Author contributions are declared in the submission system; no competing
+interests are declared.
+
+\section*{Data Availability}
+Supplementary File~S7 contains run manifests, raw CSVs, per-seed outcomes, guard ablations, and scenario-pilot records. Separate archives preserve the preregistered E6 plan and per-arm trajectories, the E6 pilot, and the three E7 episode records and traces. The E7 archive does not contain the reported server-side journal export. No physical-plant data were collected.
+
+\bibliographystyle{IEEEtran}
+% Balance the reference columns on the final page.
+% Column balancing is deferred to the final production proof.
+\bibliography{resources/refs}
+
+\end{document}
+

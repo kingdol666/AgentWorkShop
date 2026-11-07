@@ -5,6 +5,8 @@
 import { ManagerTasks } from './tasks'
 import type { A2AMessage, Part } from '../../types/a2a'
 import type { ChannelRow } from '../../db/database'
+import { parseJson } from '../../db/database'
+import type { SessionBrief, SessionCatalogItem, SessionHistoryItem } from '../../sessions/context'
 import { AppError } from '../../../../utils/errors'
 import { WORKSHOP_PERMISSION_SCOPE_HEADER, intersectWorkshopPermissionScope, parseWorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
 import { buildMessage } from './helpers'
@@ -79,6 +81,10 @@ export abstract class ManagerA2A extends ManagerTasks {
     requireReply?: boolean
     /** 人类发送者显示名(REST 注入时的时间线归属;进入 x-aw-from-label 元数据) */
     fromLabel?: string
+    /** Session Context：消息归属会话 */
+    sessionId?: string
+    /** 额外受控元数据（服务端调用方盖章；不来自 REST 入参） */
+    metadata?: Record<string, unknown>
   }): Promise<A2AMessage> {
     // 无主消息拦截:发送方必须可追溯(agent 成员或人类显示名),否则拒绝发送
     const hasFromAgent = !!input.fromAgentId && this.deps.repos.channelAgents.findByChannelAgent(input.channelId, input.fromAgentId) != null
@@ -86,9 +92,11 @@ export abstract class ManagerA2A extends ManagerTasks {
       throw new AppError(400, 'NO_SENDER', '消息缺少可追溯发送人(fromAgentId 须为本 channel 成员,或提供 fromLabel 人类显示名)')
     }
     const metadata: Record<string, unknown> = {
+      ...(input.metadata ?? {}),
       'x-aw-target-agent': input.toAgentId,
       'x-aw-msg-priority': 'immediate',
     }
+    if (input.sessionId) metadata['x-aw-session-id'] = input.sessionId
     if (hasFromAgent) metadata['x-aw-from-agent'] = input.fromAgentId
     if (input.fromLabel) metadata['x-aw-from-label'] = input.fromLabel
     if (input.requireReply) metadata['x-aw-require-reply'] = 'true'
@@ -98,6 +106,67 @@ export abstract class ManagerA2A extends ManagerTasks {
       throw new AppError(502, 'DELIVERY_FAILED', `消息未能投递到 ${input.toAgentId} 的信箱,请重试`)
     }
     return message
+  }
+
+  // ===== Session Context 只读面 + Channel session 执行入口 =====
+
+  /** 单 session 的确定性 brief（缓存缺失时惰性构建）。 */
+  getSessionBrief(sessionId: string): SessionBrief | null {
+    return this.getSessionContextService().briefOf(sessionId)
+  }
+
+  /** Channel 会话目录（给 UI/lead；不返回其他 session 原文）。 */
+  listSessionCatalog(channelId: string, limit = 20): SessionCatalogItem[] {
+    this.requireChannelRow(channelId)
+    return this.getSessionContextService().catalog(channelId, limit)
+  }
+
+  /** 有界 session history（messages + tasks）。 */
+  getSessionHistory(sessionId: string, limit = 80): SessionHistoryItem[] {
+    return this.getSessionContextService().history(sessionId, limit)
+  }
+
+  /** Project 的 project/task session 目录。 */
+  listProjectSessionCatalog(projectId: string, limit = 50): SessionCatalogItem[] {
+    return this.getSessionContextService().projectCatalog(projectId, limit)
+  }
+
+  /**
+   * Channel 手工会话的人类消息入口：投给该 session 的 clone 成员（优先基础 lead 的 clone）。
+   * clone 统一 worker 定位，因此这是 peer 回合（不是任务派发）；requireReply 保证回执。
+   */
+  async sendSessionMessage(input: {
+    channelId: string
+    sessionId: string
+    actor: { id: string, role: string }
+    text: string
+  }): Promise<{ messageId: string, toAgentId: string }> {
+    const channel = this.deps.repos.channels.findById(input.channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${input.channelId}`)
+    this.requireWritable(channel.ownerUserId, input.actor, 'channel')
+    const session = this.getSessionContextService()
+    const brief = session.briefOf(input.sessionId)
+    if (!brief || brief.channelId !== input.channelId) {
+      throw new AppError(404, 'NOT_FOUND', `会话不存在或不属于当前 Channel: ${input.sessionId}`)
+    }
+    if (brief.status !== 'active') throw new AppError(409, 'SESSION_CLOSED', '会话已关闭，不能继续发送消息')
+    // 直接读表：与 ChannelSessionRepo 同库；避免 manager 依赖注入面额外引入 repo。
+    const row = this.deps.db.prepare('SELECT member_map_json AS memberMapJson FROM channel_sessions WHERE id = ?').get(input.sessionId) as { memberMapJson: string } | undefined
+    const memberMap = parseJson<Record<string, string>>(row?.memberMapJson ?? '{}', {})
+    const target = (channel.leadAgentId ? memberMap[channel.leadAgentId] : undefined) ?? Object.values(memberMap)[0]
+    if (!target) throw new AppError(409, 'SESSION_NO_MEMBER', '会话没有可投递的成员实例')
+    const targetRow = this.deps.repos.channelAgents.findByChannelAgent(input.channelId, target)
+    if (!targetRow || targetRow.enabled !== 1) throw new AppError(409, 'SESSION_MEMBER_UNAVAILABLE', '会话成员实例不存在或已停用')
+    const message = await this.sendImmediateMessage({
+      channelId: input.channelId,
+      toAgentId: target,
+      fromLabel: `owner:${input.actor.id}`,
+      requireReply: true,
+      sessionId: input.sessionId,
+      parts: [{ text: input.text.trim() }],
+    })
+    session.refresh(input.sessionId)
+    return { messageId: message.messageId, toAgentId: target }
   }
 
   /**

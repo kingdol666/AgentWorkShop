@@ -81,8 +81,8 @@ export class MockAgentImpl implements AgentInterface {
       yield* this.workerScript(request, ctx)
       return
     }
-    // worker/lead: 同事点对点消息 → 按触发器语义回复(实时通信驱动)
-    if (!kind && request.fromAgentId) {
+    // worker/lead: 同事点对点消息（或人类 session 消息，仅有 from-label）→ 按触发器语义回复
+    if (!kind && (request.fromAgentId || typeof request.message.metadata?.['x-aw-from-label'] === 'string')) {
       yield* this.peerScript(request, ctx)
       return
     }
@@ -492,7 +492,14 @@ export class MockAgentImpl implements AgentInterface {
    */
   private async* peerScript(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
     const fromId = request.fromAgentId
-    if (!fromId) return
+    // 人类 session 消息：没有 fromAgentId，但有 x-aw-from-label；走同构的 chatScript
+    // （真实 harness 由 peerTurn 处理，mock 作为确定性替身必须能回执）。
+    if (!fromId) {
+      if (typeof request.message.metadata?.['x-aw-from-label'] === 'string') {
+        yield* this.chatScript(request, ctx)
+      }
+      return
+    }
     const requireReply = request.message.metadata?.['x-aw-require-reply'] === 'true'
     yield { kind: 'status', status: { state: 'WORKING', timestamp: new Date().toISOString() } }
     if (requireReply) {

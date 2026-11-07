@@ -5,6 +5,14 @@ import type { A2AArtifact, A2AMessage, Part } from '../../types/a2a'
 import type { AgentContextStats, AgentStatusView, AgentTaskQueueView, HarnessContinuityView, SupervisionAttemptView, TaskState, WorkspaceTask } from '../../types/task'
 import type { AgentEvent, AgentWorkspace } from '../../agents/agent-interface'
 
+export interface RuntimeSessionContext {
+  id: string
+  block: string
+  summary: string
+  updatedAt: string
+  turnCount: number
+}
+
 export interface TaskEventTask {
   id: string
   title?: string
@@ -112,6 +120,7 @@ export interface TaskEngine {
     projectId?: string | null
     projectWorkItemId?: string | null
     projectAttemptNo?: number | null
+    sessionId?: string | null
     traceId?: string
   }): WorkspaceTask
   createOrGetRoot(input: {
@@ -128,6 +137,7 @@ export interface TaskEngine {
     projectId?: string | null
     projectWorkItemId?: string | null
     projectAttemptNo?: number | null
+    sessionId?: string | null
     traceId?: string
   }): { task: WorkspaceTask, created: boolean }
   rootQueue(channelId: string): { activeRoot: WorkspaceTask | null, queuedRoots: WorkspaceTask[], completedRoots: WorkspaceTask[] }

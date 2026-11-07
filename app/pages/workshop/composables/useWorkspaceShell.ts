@@ -2,10 +2,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch, type ComputedRef } fr
 import { useStorage } from '@vueuse/core'
 import { useRoute } from 'vue-router'
 
-/** 中部视图(P1 三视图 + P2 多通道同屏 + P5 RPG 小镇 + v17 人类群聊) */
-export type CenterView = 'timeline' | 'chat' | 'lanes' | 'board' | 'split' | 'town' | 'inspector'
+/** 中部视图(P1 三视图 + P2 多通道同屏 + P5 RPG 小镇 + v17 人类群聊 + S1 多会话) */
+export type CenterView = 'timeline' | 'chat' | 'lanes' | 'board' | 'split' | 'town' | 'sessions' | 'inspector'
 
-/** 数字快捷键 1-6 直切视图(非输入焦点时;控制台型键盘操作与 ⌘K 面板同一取向) */
+/** 数字快捷键 1-7 直切视图(非输入焦点时;控制台型键盘操作与 ⌘K 面板同一取向) */
 const VIEW_KEYS: Record<string, CenterView> = {
   1: 'timeline',
   2: 'chat',
@@ -13,12 +13,13 @@ const VIEW_KEYS: Record<string, CenterView> = {
   4: 'board',
   5: 'split',
   6: 'town',
+  7: 'sessions',
 }
 /**
- * 深链白名单:?view=chat/lanes/board/split/town 直达指定视图(可分享/收藏;通知跳转即用 view=chat)
+ * 深链白名单:?view=chat/lanes/board/split/town/sessions 直达指定视图(可分享/收藏;通知跳转即用 view=chat)
  * inspector 只在窄屏出现(桌面它是右侧常驻栏),故不进深链白名单
  */
-const VIEW_VALUES = new Set(['timeline', 'chat', 'lanes', 'board', 'split', 'town'])
+const VIEW_VALUES = new Set(['timeline', 'chat', 'lanes', 'board', 'split', 'town', 'sessions'])
 
 /**
  * 控制台外壳层:视口档位(窄屏形态)/ 侧栏折叠与宽度拖拽 / 中部视图切换(含数字快捷键)。
@@ -98,6 +99,7 @@ export function useWorkspaceShell(
       { value: 'board', label: t('wsView.k3ko7a8011') },
       { value: 'split', label: t('wsView.k3xbmo012') },
       { value: 'town', label: t('wsView.k1cz0pbw013') },
+      { value: 'sessions', label: t('wsView.sessions') },
     ]
     // 窄屏「一次一区」:检查器不占侧栏,并入切换条(四区都由同一条承载)
     return narrowUI.value ? [...base, { value: 'inspector', label: t('wsView.inspector') }] : base

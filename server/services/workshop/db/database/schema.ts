@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS messages (
   id            TEXT PRIMARY KEY,
   channel_id    TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
   task_id       TEXT,
+  session_id    TEXT,
   from_agent_id TEXT,
   to_agent_id   TEXT,
   role          TEXT NOT NULL,                -- 'ROLE_USER' | 'ROLE_AGENT'
@@ -90,6 +91,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   project_id     TEXT,
   project_work_item_id TEXT,
   project_attempt_no   INTEGER,
+  session_id      TEXT,
   trace_id       TEXT NOT NULL DEFAULT '',
   -- 显式替代关系:FAILED/CANCELED 分支被 replacement 覆盖后仍保留失败事实,但不再阻塞父任务收口
   superseded_by_task_id TEXT,
@@ -143,6 +145,7 @@ CREATE TABLE IF NOT EXISTS agent_memories (
   content          TEXT NOT NULL,               -- 已 CJK 切分的存储文本
   importance       REAL NOT NULL DEFAULT 0.5,
   task_id          TEXT,
+  session_id       TEXT NOT NULL DEFAULT '',
   dedup_key        TEXT NOT NULL,
   access_count     INTEGER NOT NULL DEFAULT 0,
   last_accessed_at TEXT,
@@ -220,6 +223,33 @@ CREATE TABLE IF NOT EXISTS channel_templates (
   updated_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_channel_templates_owner ON channel_templates(owner_user_id);
+
+-- P2 多会话（plan 2026-11-06-channel-multi-session-runtime-plan.md S1）：
+-- Channel 内的一阶会话实体。每个 session = 从频道基础成员克隆出的独立 agent 实例组
+-- （member_map_json: baseMemberId → cloneInstanceId），拥有独立 AgentRuntime/mailbox/
+-- omp 进程与记忆域（session-scoped），同 member 的会话间并行、会话内串行。
+CREATE TABLE IF NOT EXISTS channel_sessions (
+  id              TEXT PRIMARY KEY,
+  channel_id      TEXT NOT NULL,
+  title           TEXT NOT NULL DEFAULT '',
+  status          TEXT NOT NULL DEFAULT 'active',
+  memory_policy   TEXT NOT NULL DEFAULT 'session',
+  member_map_json TEXT NOT NULL DEFAULT '{}',
+  created_by      TEXT,
+  created_at      TEXT NOT NULL,
+  closed_at       TEXT,
+  -- 项目任务实例（2026-11-07 project 多会话）：任务专属 Channel 的会话行
+  project_id           TEXT,
+  project_work_item_id TEXT,
+  created_by_kind      TEXT NOT NULL DEFAULT 'user',   -- user|project
+  instance_kind        TEXT NOT NULL DEFAULT 'manual', -- manual|task|project
+  summary              TEXT NOT NULL DEFAULT '',
+  brief_json           TEXT NOT NULL DEFAULT '{}',
+  last_active_at       TEXT,
+  generation           INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_channel_sessions_channel
+  ON channel_sessions(channel_id, status);
 -- v11:工具审批历史(S4:HITL 裁决留痕——进程内 pending 之外的持久化,重启可查)
 CREATE TABLE IF NOT EXISTS approval_history (
   id           TEXT PRIMARY KEY,
@@ -448,6 +478,7 @@ CREATE INDEX IF NOT EXISTS idx_channel_members_channel ON channel_members(channe
 CREATE TABLE IF NOT EXISTS chat_messages (
   id                    TEXT PRIMARY KEY,
   channel_id            TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  session_id            TEXT,
   sender_type           TEXT NOT NULL,          -- user | agent | system
   sender_id             TEXT NOT NULL,
   sender_name           TEXT NOT NULL DEFAULT '',
@@ -468,6 +499,7 @@ CREATE TABLE IF NOT EXISTS chat_deliveries (
   id                  TEXT PRIMARY KEY,
   chat_message_id     TEXT NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
   channel_id          TEXT NOT NULL,
+  session_id          TEXT,
   target_agent_id     TEXT NOT NULL,
   mailbox_message_id  TEXT,
   status              TEXT NOT NULL DEFAULT 'pending', -- pending|delivered|consumed|failed|cancelled
@@ -1329,6 +1361,8 @@ CREATE TABLE IF NOT EXISTS project_work_items (
   max_attempts        INTEGER NOT NULL DEFAULT 3,
   deferred_until      TEXT,
   created_by          TEXT NOT NULL DEFAULT 'project_leader',
+  -- 任务专属执行实例（2026-11-07）：派发时创建的 task_instance Channel
+  instance_channel_id TEXT,
   created_at          TEXT NOT NULL,
   updated_at          TEXT NOT NULL,
   closed_at           TEXT,
@@ -1344,6 +1378,7 @@ CREATE TABLE IF NOT EXISTS project_work_item_attempts (
   project_id        TEXT NOT NULL,
   work_item_id      TEXT NOT NULL REFERENCES project_work_items(id) ON DELETE CASCADE,
   attempt_no        INTEGER NOT NULL,
+  session_id        TEXT,
   channel_id        TEXT NOT NULL,
   channel_task_id   TEXT,
   source_key        TEXT NOT NULL,

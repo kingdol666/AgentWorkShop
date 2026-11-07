@@ -25,13 +25,19 @@ function newGate(): Gate {
 
 /** MessageRow → A2AMessage(parts/metadata 反序列化) */
 export function rowToMessage(row: MessageRow): A2AMessage {
+  const metadata = parseJson<Record<string, unknown>>(row.metadataJson, {})
+  // Session Context：session_id 是平台列，metadata 是消息契约；读取时补齐后者，
+  // 保证从历史 mailbox 重放的旧行也能恢复到同一 session。
+  if (row.sessionId && typeof metadata['x-aw-session-id'] !== 'string') {
+    metadata['x-aw-session-id'] = row.sessionId
+  }
   return {
     messageId: row.id,
     contextId: row.channelId,
     taskId: row.taskId ?? undefined,
     role: row.role as 'ROLE_USER' | 'ROLE_AGENT',
     parts: parseJson<Part[]>(row.partsJson, []),
-    metadata: parseJson<Record<string, unknown>>(row.metadataJson, {}),
+    metadata,
   }
 }
 
@@ -66,6 +72,9 @@ export class Mailbox {
       id: message.messageId,
       channelId: message.contextId,
       taskId: message.taskId ?? null,
+      sessionId: typeof message.metadata?.['x-aw-session-id'] === 'string'
+        ? message.metadata['x-aw-session-id']
+        : null,
       fromAgentId: (message.metadata?.['x-aw-from-agent'] as string | undefined) ?? null,
       toAgentId: this.agentId,
       role: message.role,

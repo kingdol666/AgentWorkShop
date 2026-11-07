@@ -18,12 +18,21 @@ export function useWorkspaceChannels() {
   const wsId = computed(() => String(route.params.wsId))
 
   const workspace = computed(() => wsStore.workspaces.find(w => w.id === wsId.value))
+  // 深链作用域(2026-11-07)：?channel=<channelId> 直达指定挂载频道
+  // (项目页「任务会话」跳转即用:任务实例 Channel 挂载到 workspace 后直达其会话视图)
+  const deepLinkChannel = computed(() => {
+    const q = route.query.channel
+    const id = typeof q === 'string' ? q.trim() : ''
+    return id || undefined
+  })
   // 聚焦 channel:activeChannelId 须在挂载清单内(陈旧持久化/竞态下回退首频道),
   // 避免订阅死频道 → 快照永不到达 → 右栏/时间线长时间"空数据"假象
   const channelId = computed(() => {
     const ws = workspace.value
     if (!ws) return undefined
     const ids = ws.channelIds
+    const wanted = deepLinkChannel.value
+    if (wanted && ids.includes(wanted)) return wanted
     const active = ws.activeChannelId
     return active && ids.includes(active) ? active : ids[0]
   })

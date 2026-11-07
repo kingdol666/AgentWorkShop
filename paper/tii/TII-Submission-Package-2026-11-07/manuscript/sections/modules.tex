@@ -1,0 +1,36 @@
+\section{Operation Governance and Evidence}
+\label{sec:modules}
+Section~\ref{sec:design} defines the shared dispatch contract. This section
+focuses on the checks that follow it: scene-specific write admission,
+conditional approval, and the records returned by each route.
+
+\subsection{Scene-Specific Write Admission}
+\label{sec:governed}
+After shared dispatch checks pass, the selected handler applies the limits
+configured for the scene and control node. Authorization and value admission
+are separate checks. The target band describes a desired process outcome; it
+does not define the admissible write interval. A candidate can satisfy every
+write constraint while the measured process value remains outside the target
+band.
+
+For an online node write, the admissible value interval is
+\begin{equation}
+\mathcal{I}^{\mathrm{online}}_n(t)=
+\mathcal{H}_n\cap\mathcal{L}^{\mathrm{base}}_n\cap\mathcal{L}^{\mathrm{prod}}_n(t)\cap\mathcal{L}^{\mathrm{rec}}_n(t),
+\label{eq:admission}
+\end{equation}
+where $\mathcal{H}_n$ is the hard engineering range, and
+$\mathcal{L}^{\mathrm{base}}_n$, $\mathcal{L}^{\mathrm{prod}}_n$, and
+$\mathcal{L}^{\mathrm{rec}}_n$ are the baseline, active-product, and
+active-recipe limits. These numerical bounds are distinct from the scope,
+policy, grant, and binding predicates in Eq.~(\ref{eq:dispatch-contract}).
+Missing optional limits impose no restriction. If the intersection is empty,
+the request is rejected and the excluding layer is identified. Recipe dispatch checks a
+replacement recipe against the hard, baseline, and product limits rather than
+the previous recipe's window; trial overrides are also checked against the
+applicable recipe window. Outside benchmark mode, step, interval, and
+hold-window rules apply to agent- or manual-source writes. Recipe and rollback
+writes follow their own paths. These application-level checks complement, but
+do not replace, equipment interlocks.
+
+\input{sections/mechanisms}

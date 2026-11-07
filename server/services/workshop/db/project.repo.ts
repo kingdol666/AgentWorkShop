@@ -90,6 +90,8 @@ export interface ProjectWorkItemRow {
   maxAttempts: number
   deferredUntil: string | null
   createdBy: string
+  /** 任务专属执行实例 Channel（2026-11-07；派发时创建，任务终态后停用保留审计） */
+  instanceChannelId: string | null
   createdAt: string
   updatedAt: string
   closedAt: string | null
@@ -102,6 +104,7 @@ export interface ProjectAttemptRow {
   workItemId: string
   attemptNo: number
   channelId: string
+  sessionId: string | null
   channelTaskId: string | null
   sourceKey: string
   state: string
@@ -218,8 +221,8 @@ export interface ProjectApprovalRow {
 const PROJECT_COLS = 'id, name, description, objective, success_criteria_json AS successCriteriaJson, status, mode, owner_user_id AS ownerUserId, office_channel_id AS officeChannelId, lead_agent_id AS leadAgentId, plan_version AS planVersion, plan_json AS planJson, plan_approval_required AS planApprovalRequired, auto_dispatch AS autoDispatch, routing_policy AS routingPolicy, config_json AS configJson, deadline_at AS deadlineAt, created_at AS createdAt, updated_at AS updatedAt'
 const PROJECT_CHANNEL_COLS = 'project_id AS projectId, channel_id AS channelId, binding_type AS bindingType, charter, status, added_by AS addedBy, added_at AS addedAt, detached_at AS detachedAt'
 const DELIVERABLE_COLS = 'id, project_id AS projectId, name, description, owner_channel_id AS ownerChannelId, required, acceptance_criteria_json AS acceptanceCriteriaJson, due_at AS dueAt, depends_on_json AS dependsOnJson, status, waiver_reason AS waiverReason, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt'
-const WORK_ITEM_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, title, brief, state, state_reason AS stateReason, priority, weight, depends_on_json AS dependsOnJson, acceptance_json AS acceptanceJson, result_key AS resultKey, current_attempt_id AS currentAttemptId, plan_version AS planVersion, contract_json AS contractJson, exec_budget_minutes AS execBudgetMinutes, trace_id AS traceId, dedupe_key AS dedupeKey, deadline_at AS deadlineAt, rework_count AS reworkCount, accepted_result_id AS acceptedResultId, last_result_status AS lastResultStatus, attempt_count AS attemptCount, max_attempts AS maxAttempts, deferred_until AS deferredUntil, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt, closed_at AS closedAt, close_reason AS closeReason'
-const ATTEMPT_COLS = 'id, project_id AS projectId, work_item_id AS workItemId, attempt_no AS attemptNo, channel_id AS channelId, channel_task_id AS channelTaskId, source_key AS sourceKey, state, blocked_reason AS blockedReason, approval_id AS approvalId, args_digest AS argsDigest, failure_class AS failureClass, retryable, next_retry_at AS nextRetryAt, trace_id AS traceId, created_at AS createdAt, closed_at AS closedAt'
+const WORK_ITEM_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, title, brief, state, state_reason AS stateReason, priority, weight, depends_on_json AS dependsOnJson, acceptance_json AS acceptanceJson, result_key AS resultKey, current_attempt_id AS currentAttemptId, plan_version AS planVersion, contract_json AS contractJson, exec_budget_minutes AS execBudgetMinutes, trace_id AS traceId, dedupe_key AS dedupeKey, deadline_at AS deadlineAt, rework_count AS reworkCount, accepted_result_id AS acceptedResultId, last_result_status AS lastResultStatus, attempt_count AS attemptCount, max_attempts AS maxAttempts, deferred_until AS deferredUntil, created_by AS createdBy, instance_channel_id AS instanceChannelId, created_at AS createdAt, updated_at AS updatedAt, closed_at AS closedAt, close_reason AS closeReason'
+const ATTEMPT_COLS = 'id, project_id AS projectId, work_item_id AS workItemId, attempt_no AS attemptNo, channel_id AS channelId, session_id AS sessionId, channel_task_id AS channelTaskId, source_key AS sourceKey, state, blocked_reason AS blockedReason, approval_id AS approvalId, args_digest AS argsDigest, failure_class AS failureClass, retryable, next_retry_at AS nextRetryAt, trace_id AS traceId, created_at AS createdAt, closed_at AS closedAt'
 const RESULT_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, line_id AS lineId, work_item_id AS workItemId, attempt_no AS attemptNo, result_key AS resultKey, version, title, summary, method, data_window_json AS dataWindowJson, sample_count AS sampleCount, confidence, validity_scope AS validityScope, payload_json AS payloadJson, evidence_json AS evidenceJson, change_summary AS changeSummary, open_questions AS openQuestions, status, submitted_at AS submittedAt, source_task_id AS sourceTaskId, supersedes_id AS supersedesId, author_agent_id AS authorAgentId, author_user_id AS authorUserId, reviewed_by AS reviewedBy, reviewed_at AS reviewedAt, approved_by AS approvedBy, approved_at AS approvedAt, reject_reason AS rejectReason, content_sha256 AS contentSha256, evidence_verified_at AS evidenceVerifiedAt, criteria_check_json AS criteriaCheckJson, technical_verdict_json AS technicalVerdictJson, rework_required AS reworkRequired, trace_id AS traceId, created_at AS createdAt'
 const DECISION_COLS = 'id, project_id AS projectId, seq, source, decision_type AS decisionType, actor_agent_id AS actorAgentId, actor_user_id AS actorUserId, actor_kind AS actorKind, args_json AS argsJson, args_sha256 AS argsSha256, snapshot_sha256 AS snapshotSha256, state, outcome, reason, approval_id AS approvalId, trace_id AS traceId, created_at AS createdAt'
 const EVENT_COLS = 'id, project_id AS projectId, seq, type, event_key AS eventKey, channel_id AS channelId, work_item_id AS workItemId, deliverable_id AS deliverableId, agent_id AS agentId, payload_json AS payloadJson, trace_id AS traceId, consumed_at AS consumedAt, created_at AS createdAt'
@@ -421,13 +424,13 @@ export function createProjectDeliverableRepo(db: DatabaseSync) {
 export type ProjectWorkItemRepo = ReturnType<typeof createProjectWorkItemRepo>
 export function createProjectWorkItemRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO project_work_items (id, project_id, deliverable_id, channel_id, title, brief, state, state_reason, priority, weight, depends_on_json, acceptance_json, result_key, current_attempt_id, plan_version, contract_json, exec_budget_minutes, trace_id, dedupe_key, deadline_at, rework_count, accepted_result_id, last_result_status, attempt_count, max_attempts, deferred_until, created_by, created_at, updated_at, closed_at, close_reason)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO project_work_items (id, project_id, deliverable_id, channel_id, title, brief, state, state_reason, priority, weight, depends_on_json, acceptance_json, result_key, current_attempt_id, plan_version, contract_json, exec_budget_minutes, trace_id, dedupe_key, deadline_at, rework_count, accepted_result_id, last_result_status, attempt_count, max_attempts, deferred_until, created_by, instance_channel_id, created_at, updated_at, closed_at, close_reason)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectById = db.prepare(`SELECT ${WORK_ITEM_COLS} FROM project_work_items WHERE id = ?`)
   const selectByProject = db.prepare(`SELECT ${WORK_ITEM_COLS} FROM project_work_items WHERE project_id = ? ORDER BY created_at ASC`)
   const updateStmt = db.prepare(
-    `UPDATE project_work_items SET deliverable_id = ?, channel_id = ?, title = ?, brief = ?, state = ?, state_reason = ?, priority = ?, weight = ?, depends_on_json = ?, acceptance_json = ?, result_key = ?, current_attempt_id = ?, plan_version = ?, contract_json = ?, exec_budget_minutes = ?, trace_id = ?, dedupe_key = ?, deadline_at = ?, rework_count = ?, accepted_result_id = ?, last_result_status = ?, attempt_count = ?, max_attempts = ?, deferred_until = ?, closed_at = ?, close_reason = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE project_work_items SET deliverable_id = ?, channel_id = ?, title = ?, brief = ?, state = ?, state_reason = ?, priority = ?, weight = ?, depends_on_json = ?, acceptance_json = ?, result_key = ?, current_attempt_id = ?, plan_version = ?, contract_json = ?, exec_budget_minutes = ?, trace_id = ?, dedupe_key = ?, deadline_at = ?, rework_count = ?, accepted_result_id = ?, last_result_status = ?, attempt_count = ?, max_attempts = ?, deferred_until = ?, instance_channel_id = ?, closed_at = ?, close_reason = ?, updated_at = ? WHERE id = ?`,
   )
   const claimDispatch = db.prepare(
     `UPDATE project_work_items SET state = 'DISPATCHING', current_attempt_id = ?, state_reason = NULL,
@@ -486,6 +489,7 @@ export function createProjectWorkItemRepo(db: DatabaseSync) {
         maxAttempts: input.maxAttempts ?? 3,
         deferredUntil: null,
         createdBy: input.createdBy ?? 'project_leader',
+        instanceChannelId: null,
         createdAt: ts,
         updatedAt: ts,
         closedAt: null,
@@ -495,8 +499,8 @@ export function createProjectWorkItemRepo(db: DatabaseSync) {
         row.stateReason, row.priority, row.weight, row.dependsOnJson, row.acceptanceJson, row.resultKey,
         row.currentAttemptId, row.planVersion, row.contractJson, row.execBudgetMinutes, row.traceId,
         row.dedupeKey, row.deadlineAt, row.reworkCount, row.acceptedResultId, row.lastResultStatus,
-        row.attemptCount, row.maxAttempts, row.deferredUntil, row.createdBy, row.createdAt, row.updatedAt,
-        row.closedAt, row.closeReason)
+        row.attemptCount, row.maxAttempts, row.deferredUntil, row.createdBy, row.instanceChannelId,
+        row.createdAt, row.updatedAt, row.closedAt, row.closeReason)
       return row
     },
     findById(id: string): ProjectWorkItemRow | undefined {
@@ -513,7 +517,7 @@ export function createProjectWorkItemRepo(db: DatabaseSync) {
         next.priority, next.weight, next.dependsOnJson, next.acceptanceJson, next.resultKey, next.currentAttemptId,
         next.planVersion, next.contractJson, next.execBudgetMinutes, next.traceId, next.dedupeKey, next.deadlineAt,
         next.reworkCount, next.acceptedResultId, next.lastResultStatus, next.attemptCount, next.maxAttempts,
-        next.deferredUntil, next.closedAt, next.closeReason, next.updatedAt, id)
+        next.deferredUntil, next.instanceChannelId, next.closedAt, next.closeReason, next.updatedAt, id)
       return next
     },
     /**
@@ -530,8 +534,8 @@ export function createProjectWorkItemRepo(db: DatabaseSync) {
 export type ProjectAttemptRepo = ReturnType<typeof createProjectAttemptRepo>
 export function createProjectAttemptRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO project_work_item_attempts (id, project_id, work_item_id, attempt_no, channel_id, channel_task_id, source_key, state, blocked_reason, approval_id, args_digest, failure_class, retryable, next_retry_at, trace_id, created_at, closed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO project_work_item_attempts (id, project_id, work_item_id, attempt_no, channel_id, session_id, channel_task_id, source_key, state, blocked_reason, approval_id, args_digest, failure_class, retryable, next_retry_at, trace_id, created_at, closed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const closeWithFailureStmt = db.prepare(
     `UPDATE project_work_item_attempts SET state = ?, blocked_reason = ?, failure_class = ?, retryable = ?, next_retry_at = ?, closed_at = ?
@@ -549,6 +553,7 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
       workItemId: string
       attemptNo: number
       channelId: string
+      sessionId?: string | null
       sourceKey: string
       traceId?: string
       approvalId?: string | null
@@ -560,6 +565,7 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
         workItemId: input.workItemId,
         attemptNo: input.attemptNo,
         channelId: input.channelId,
+        sessionId: input.sessionId ?? null,
         channelTaskId: null,
         sourceKey: input.sourceKey,
         state: 'DISPATCHING',
@@ -573,7 +579,7 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
         createdAt: now(),
         closedAt: null,
       }
-      insert.run(row.id, row.projectId, row.workItemId, row.attemptNo, row.channelId, row.channelTaskId,
+      insert.run(row.id, row.projectId, row.workItemId, row.attemptNo, row.channelId, row.sessionId, row.channelTaskId,
         row.sourceKey, row.state, row.blockedReason, row.approvalId, row.argsDigest, row.failureClass,
         row.retryable, row.nextRetryAt, row.traceId, row.createdAt, row.closedAt)
       return row
@@ -972,6 +978,11 @@ export function createProjectDecisionRepo(db: DatabaseSync) {
       const result = markAppliedStmt.run('applied', outcome, reason, id)
       return Number(result.changes ?? 0) > 0
     },
+    /** P0-1 提案补偿：应用体执行失败 → applied 回退 proposed（可重放），CAS 同前。 */
+    markApplyFailed(id: string, reason = ''): boolean {
+      const result = db.prepare(`UPDATE project_decisions SET state = 'proposed', outcome = 'apply_failed', reason = ? WHERE id = ? AND state = 'applied'`).run(reason, id)
+      return Number(result.changes ?? 0) > 0
+    },
     append(input: {
       projectId: string
       source: string
@@ -1131,6 +1142,11 @@ export function createProjectApprovalRepo(db: DatabaseSync) {
     consume(id: string): boolean {
       const result = consumeStmt.run(now(), id)
       return Number(result.changes ?? 0) > 0
+    },
+    /** P2 终止语义：全部 pending 决策过期（无论 expires_at——终止不留给未来）。 */
+    expireAllPending(projectId: string, reason = 'PROJECT_TERMINATED'): number {
+      const result = db.prepare(`UPDATE project_approvals SET status = 'expired', decision_reason = ?, decided_at = ? WHERE project_id = ? AND status = 'pending'`).run(reason, now(), projectId)
+      return Number(result.changes ?? 0)
     },
     expire(projectId: string): number {
       const result = expireStmt.run(now(), projectId, now())

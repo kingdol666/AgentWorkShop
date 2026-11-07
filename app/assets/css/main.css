@@ -106,24 +106,25 @@ html.dark {
   --bubble-line: var(--line);
   --bubble-shadow: 0 1px 2px rgb(12 10 9 / 4%);
 
-  /* AI 对话画布(仅 workspace chat 视图消费;工业仪表台其余页面不受影响)
-   * 方向:暖纸阅读面 + 石墨油墨 + 深青信号色;白卡片浮在纸面上,
-   * 不是"通用紫色渐变 AI 落地页"。--chat-* 只在聊天声部使用。 */
-  --chat-canvas: #f7f6f3;
+  /* AI 对话画布(仅 workspace 控制台 + project 页消费;工业仪表台其余页面不受影响)
+   * 方向 2026-11-07「ChatGPT 化」:纯白画布 + 近白暖侧栏 + 石墨正文 + 唯一暖橙强调
+   * (截图实测 #EE7C37/#FBE8DB,见 docs/plans/2026-11-07-chatgpt-console-design.md)。
+   * --chat-* 只在控制台声部使用。 */
+  --chat-canvas: #ffffff;
   --chat-surface: #ffffff;
-  --chat-surface-raised: #fbfaf7;
-  --chat-ink: #1a1a18;
-  --chat-ink-soft: #5f5c55;
-  --chat-ink-faint: #8a857b;
-  --chat-line: #e8e4dc;
-  --chat-line-strong: #d8d2c7;
-  --chat-accent: #0f766e;
-  --chat-accent-strong: #0b5d57;
-  --chat-accent-soft: #e8f4f1;
-  --chat-user-bubble: #efebe4;
-  --chat-user-ink: #24221e;
-  --chat-shadow: 0 18px 50px rgb(41 37 36 / 8%);
-  --chat-glow: radial-gradient(60% 80% at 50% 0%, rgb(15 118 110 / 8%), transparent 70%);
+  --chat-surface-raised: #f9f7f4;
+  --chat-ink: #0d0d0d;
+  --chat-ink-soft: #5d5b55;
+  --chat-ink-faint: #8f8c84;
+  --chat-line: #ececea;
+  --chat-line-strong: #dbd9d4;
+  --chat-accent: #e06a35;
+  --chat-accent-strong: #b9541f;
+  --chat-accent-soft: #fbeee4;
+  --chat-user-bubble: #f3f1ec;
+  --chat-user-ink: #1a1a18;
+  --chat-shadow: 0 18px 50px rgb(12 10 9 / 8%);
+  --chat-glow: none;
 
   /* 身份色(agentId 哈希 → 稳定色相;组件以 --av 注入,白字首字母可达 AA) */
   --av-fallback: #57534e;
@@ -274,22 +275,22 @@ html.dark {
   --bubble-line: var(--line);
   --bubble-shadow: 0 1px 2px rgb(0 0 0 / 32%);
 
-  /* AI 对话画布暗阶:深海军蓝纸面 + 雾白油墨 + 信号绿;与全站暗阶同族 */
-  --chat-canvas: #080c12;
-  --chat-surface: #11161d;
-  --chat-surface-raised: #0d131a;
-  --chat-ink: #e9eef6;
-  --chat-ink-soft: #aeb9c8;
-  --chat-ink-faint: #7c8899;
-  --chat-line: #1d2733;
-  --chat-line-strong: #2b3a4b;
-  --chat-accent: #3fe4ab;
-  --chat-accent-strong: #63ebbc;
-  --chat-accent-soft: rgb(63 228 171 / 12%);
-  --chat-user-bubble: #1a2330;
-  --chat-user-ink: #e9eef6;
+  /* AI 对话画布暗阶(ChatGPT dark 同构):炭黑画布 + 深黑侧栏 + 雾白正文 + 暖橙强调 */
+  --chat-canvas: #212121;
+  --chat-surface: #2f2f2f;
+  --chat-surface-raised: #171717;
+  --chat-ink: #ececec;
+  --chat-ink-soft: #b4b4b4;
+  --chat-ink-faint: #8f8f8f;
+  --chat-line: #2f2f2f;
+  --chat-line-strong: #3d3d3d;
+  --chat-accent: #f19156;
+  --chat-accent-strong: #ffa976;
+  --chat-accent-soft: rgb(241 145 86 / 14%);
+  --chat-user-bubble: #323232;
+  --chat-user-ink: #ececec;
   --chat-shadow: 0 18px 50px rgb(0 0 0 / 40%);
-  --chat-glow: radial-gradient(60% 80% at 50% 0%, rgb(63 228 171 / 7%), transparent 70%);
+  --chat-glow: none;
 
   /* 氛围光斑(暗色收敛为低亮度深色 glow:有纵深、无粉彩 AI 味) */
   --g-mint: #14352c;

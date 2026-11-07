@@ -1,0 +1,37 @@
+\section{Related Work}
+\label{sec:related}
+Table~\ref{tab:related-comparison} summarizes the representative systems discussed below. Because they address different tasks, interfaces, and evaluation units, the comparison is qualitative rather than a ranking or head-to-head benchmark. A more detailed source list is provided in Table~S7-I.
+
+\begin{table*}[!t]
+\centering
+\caption{Representative related work and the scope of its reported evaluation. The studies address different tasks and are not a common benchmark.}
+\label{tab:related-comparison}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.16\textwidth}>{\raggedright\arraybackslash}p{0.40\textwidth}X@{}}
+\toprule
+Study & Main focus & Reported setting \\
+\midrule
+Biskupovic et al.~\cite{biskupovic2025supervision} & Agent-based industrial service selection and reselection & Service adaptability and performance in an industrial cyber--physical system \\
+K\"{o}hle et al.~\cite{koehle2026llmdriven} & Module-specific agents and skill-based manufacturing & Nine simulated production challenges \\
+Graul et al.~\cite{graul2026aas} & Grounded proposals, documented authorization, and PLC validation & Two laboratory proof-of-concept settings \\
+Schall~\cite{schall2026safe} & Process-diagram, supervisory control and data acquisition (SCADA), and procedure-grounded verification & Five simulated scenarios and proposal evaluation \\
+Vyas et al.~\cite{vyas2026detection} & Multi-agent fault-recovery planning with a process-plant twin & Mixing and stirred-tank reactor studies \\
+This work & Scene-bound signal mappings, shared dispatch, and route-specific governance & Simulator and mock-driver probes, scripted missions, and exploratory live-Agent episodes \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\subsection{Industrial Agents and Plant Integration}
+Research on industrial agents covers service selection, control generation, PLC programming, and production tasks. Biskupovic et al. study online service selection and reselection in industrial cyber--physical systems. Xia et al. present a digital-twin-connected automation architecture; related work generates PLC programs or incorporates human instructions into model-predictive control \cite{biskupovic2025supervision,xia2025architecture,xia2025control,liu2026agents4plc,wu2025instructmpc}. Li et al. use structured instructions, retrieval, and iterative verification to generate and check finite-element scripts for Abaqus, evaluating engineering-artifact generation rather than runtime authority over process writes \cite{li2026modsolagent}. Other studies examine language-model agents, manufacturing skills, and natural-language machine interaction \cite{koehle2026llmdriven,lim2025llmenabled,zhao2026shopfloor,hofmann2025nlc,huang2026made}. Vyas et al. pair multi-agent fault-recovery planning with plant-knowledge retrieval and Digital Process Plant Twin studies of mixing and continuous stirred-tank reactors (CSTRs) \cite{vyas2026detection}.
+
+This work is complementary: it focuses on what happens after an agent proposes an operation. The runtime carries scene context and signal mappings to the selected route, then applies that route's checks before dispatch.
+
+\subsection{Industrial Interfaces and Semantic Commissioning}
+Agent-facing interface work includes Model Context Protocol (MCP) adapters for industrial protocols, semantic recipes built from Open Platform Communications Unified Architecture (OPC UA) skills, and tools that bind manufacturing data to a cognitive digital twin \cite{silva2025mcpmanufacturing,koehle2025semanticrecipes,xavier2026industriConnect,liu2026semanticcommissioning}. These systems address capability discovery, protocol access, or commissioning. In this runtime, configuration binds registered drivers to scene-specific read and write nodes; named operations resolve those bindings and pass through the checks for authority and write limits. MCP and a semantic node name are not authorization mechanisms.
+
+\subsection{Governed Operations and Verification}
+Prior work includes plant-facing verification. Graul et al. ground proposals in the Asset Administration Shell and combine documented human authorization with PLC-validated OPC UA Methods \cite{graul2026aas}. Schall checks proposals against piping and instrumentation diagrams, SCADA data, and standard operating procedures; Lin and Chen describe a policy-governed sensor--manufacturing execution system (MES)--enterprise resource planning (ERP) digital thread \cite{schall2026safe,lin2026agentic}. PLCBench evaluates autonomous agents against commercial PLCs using hardware-in-the-loop process simulation \cite{zhou2026plcbench}. The present implementation asks how configured signal bindings, route-specific checks, shared dispatch, and separate command and process records work together at the write boundary. This is a system-integration contribution; the studies use different settings and do not establish comparative safety.
+
+\subsection{Production Context and Outcome Evidence}
+MCP standardizes tool discovery and invocation, while the application remains responsible for operation-specific authority and process constraints \cite{mcp2024}. ISA-88 and ISA-95 define recipe and production-operation concepts \cite{isa88_2010,isa95_2025}. Run-to-run control connects process observations to subsequent decisions; human--automation research examines how responsibility is allocated between people and automation \cite{moyne2000r2r,parasuraman2000model}. These ideas inform the runtime's production context and evidence model. The implementation does not claim conformance to a complete ISA-88/95 information model, and its scripted approval fixture is not a human-factors evaluation.

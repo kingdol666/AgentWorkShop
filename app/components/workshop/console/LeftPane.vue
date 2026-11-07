@@ -1,17 +1,23 @@
 <script setup lang="ts">
 /**
- * 控制台左栏:Channel 会话列表(可滚动)+ 底部实时代理活动条。
+ * 控制台左栏(ChatGPT 侧栏):Channel 会话侧栏(可滚动)+ 底部实时代理活动条。
  * 宽度由页面注入(拖拽分隔条住在页面那一层,宽度状态因此不在此组件);
  * 窄屏时本栏退化成覆盖式抽屉(见文末 @media:绝对定位 + pane-in 动画)。
  */
 defineProps<{
   wsId: string
+  /** 聚焦 channel(透传给侧栏的会话分组;undefined = 未聚焦) */
+  channelId?: string
   leftWidth: number
   /** 窄屏档(≤1023):宽度不再由拖拽决定,改为抽屉定宽 */
   narrow: boolean
 }>()
 
-const emit = defineEmits<{ (e: 'openAgent', target: { channelId: string, agentId: string }): void }>()
+const emit = defineEmits<{
+  (e: 'openAgent', target: { channelId: string, agentId: string }): void
+  (e: 'openPalette'): void
+  (e: 'openSession', sessionId: string): void
+}>()
 </script>
 
 <template>
@@ -20,7 +26,12 @@ const emit = defineEmits<{ (e: 'openAgent', target: { channelId: string, agentId
     :style="{ flexBasis: narrow ? 'auto' : `${leftWidth}px` }"
   >
     <div class="left-scroll">
-      <workshop-channel-session-list :ws-id="wsId" />
+      <workshop-channel-session-list
+        :ws-id="wsId"
+        :channel-id="channelId"
+        @open-session="emit('openSession', $event)"
+        @open-palette="emit('openPalette')"
+      />
     </div>
     <workshop-live-agent-bar
       :ws-id="wsId"
@@ -36,7 +47,7 @@ const emit = defineEmits<{ (e: 'openAgent', target: { channelId: string, agentId
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  background: var(--chat-canvas);
+  background: var(--chat-surface-raised);
 }
 .left-scroll {
   flex: 1 1 auto;
@@ -58,8 +69,8 @@ const emit = defineEmits<{ (e: 'openAgent', target: { channelId: string, agentId
     left: 0;
     z-index: 30;
     width: min(86vw, 320px);
-    border-right: 1px solid var(--line);
-    box-shadow: var(--shadow-float);
+    border-right: 1px solid var(--chat-line);
+    box-shadow: var(--chat-shadow);
     animation: pane-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   }
 }

@@ -90,13 +90,23 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       catch (err) {
         log.error(`[AgentRuntime:${this.agentId}] 记忆召回失败:`, err)
       }
-      const request: AgentRunRequest = this.toRequest(msg, memoryBlock)
+      // Session Context：metadata 优先，其次 task.sessionId；非 session 消息保持 legacy。
+      const sessionId = typeof msg.metadata?.['x-aw-session-id'] === 'string'
+        ? String(msg.metadata['x-aw-session-id'])
+        : (taskId ? this.deps.taskEngine.get(taskId)?.sessionId : undefined)
+      const runtimeSession = sessionId ? this.getSessionContext(sessionId) : null
+      const request: AgentRunRequest = this.toRequest(
+        msg,
+        memoryBlock,
+        runtimeSession ? { id: runtimeSession.id, block: runtimeSession.block } : undefined,
+      )
       const ctx: AgentRunContext = {
         agentId: this.agentId,
         channelId: msg.contextId,
         role: this.role,
         workspace: this.deps.workspace,
         signal: this.abortController.signal,
+        ...(runtimeSession ? { session: { id: runtimeSession.id, block: runtimeSession.block } } : {}),
       }
       // 补入产出者 agentId(monitor 据此归属事件;不改原 msg,用浅拷贝)
       const enrichedSource = { ...msg, metadata: { ...msg.metadata, 'x-aw-producing-agent': this.agentId } }
@@ -216,6 +226,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
             : (typeof msg.metadata['x-aw-from-user-id'] === 'string' ? msg.metadata['x-aw-from-user-id'] : undefined),
           replyToId: typeof msg.metadata['x-aw-reply-to'] === 'string' ? msg.metadata['x-aw-reply-to'] : undefined,
           deliveryId: typeof msg.metadata['x-aw-delivery-id'] === 'string' ? msg.metadata['x-aw-delivery-id'] : undefined,
+          ...(sessionId ? { sessionId } : {}),
         })
         repliedToRequester = true
       }
@@ -473,7 +484,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       .catch(() => {})
   }
 
-  protected toRequest(msg: A2AMessage, memory?: string): AgentRunRequest {
+  protected toRequest(msg: A2AMessage, memory?: string, session?: { id: string, block: string }): AgentRunRequest {
     return {
       message: msg,
       taskId: msg.taskId,
@@ -481,6 +492,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       fromAgentId: (msg.metadata?.['x-aw-from-agent'] as string | undefined) ?? null,
       toAgentId: this.agentId,
       memory,
+      ...(session ? { session } : {}),
     }
   }
 

@@ -1,0 +1,5 @@
+# GPT Image enhancement prompt — Figure 3
+
+Faithfully restore and enhance the supplied raster image for an IEEE journal figure. Keep the original 2:1 landscape composition and every existing element in the same position: exact English wording, spelling, punctuation, icons, box geometry, line paths, arrow directions, approval/no-approval branches, feedback loop, and evidence bands. Do not redraw the diagram with a new design, crop, simplify, translate, add, remove, or rewrite anything. Keep it as a raster image.
+
+Only improve print clarity: make every existing label crisp and legible, with consistent dark navy text and clear teal/amber accents; clean mild edge softness and aliasing; keep the white canvas and pale blue-gray panels clean; retain the original teal, navy, and amber palette. Preserve the serif typography and relative text weights. No shadows, textures, decorative effects, extra headings, labels, arrows, or symbols. Use the highest native output resolution available and retain generous original margins. This is an image restoration of a fixed diagram, not a new composition.

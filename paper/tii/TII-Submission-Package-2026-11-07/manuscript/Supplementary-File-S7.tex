@@ -1,0 +1,294 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.78in]{geometry}
+\usepackage{booktabs,tabularx,array,longtable}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{url}
+\usepackage{cite}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=*}
+\renewcommand{\thetable}{S7-\Roman{table}}
+\title{Supplementary File S7: Simulator Evaluation Evidence through November 7, 2026}
+\author{}
+\date{November 7, 2026}
+\begin{document}
+\maketitle
+
+\section*{Scope and evidence selection}
+This file documents the simulator evidence cited in the revised evaluation. It keeps the integrated pipeline, scene--protocol probes, historical five-seed endpoint comparison, process-window ablation, approval pilot, production-mode checks, follow-up scenario pilot, fixed-horizon E6 comparison, and E7 Agent pilot separate because they use different test units and denominators. Core records are in \texttt{S7-core.zip}; the E6/E7 records, preregistered E6 plan, episode traces, and interpretation erratum are in \texttt{S7-e6-e7-2026-11-07.zip}. No physical-plant result is included.
+
+The November 1 five-seed endpoint comparison is retained below as historical evidence only. Its unequal observation windows and endpoint rules do not support a control-effect comparison. The main paper instead reports the later E6 fixed-horizon paired subset and the bounded E7 pilot; these batches are not pooled.
+
+\section*{Consolidation update (November 2--3, 2026)}
+The data package is organized into four folders. \texttt{01-paper-evidence/} is the frozen November 1 batch used for the six principal experiment blocks. \texttt{02-c3-pilot-negative/} contains a November 2 live-Agent multi-round pilot. The archive retains its original folder name; here it is referred to as the negative live-Agent pilot. After pipeline fixes, the best episode completed with zero governed writes while the process variable remained outside its band, and a second episode timed out without a write. The pilot exposed platform integration defects in task-artifact addressing, lead-queue draining, and goal completion without checking the process criterion. These defects are outside the positive claims in this paper. \texttt{03-system-validation-not-used/} contains other integration and demonstration reports that are not pooled with the controlled experiment blocks. \texttt{04-followup-scenario-pilot/} contains the November 3 single-run injection-twin pilot reported separately in Section VI; it is not a replication of the frozen batch.
+
+A separate cast-film probe record was excluded. Its manifest declared four scenes but recorded only cast-film, and its simulator endpoint did not match the endpoint in the reproduction command. None of its 24 admissible requests, 24 structural probes, or 20 readbacks are included in the manuscript totals or the data package. The scene--protocol counts below use the retained four-scene probe record.
+
+\section*{November 5 follow-up records}
+A corrected archive, \url{S7-followup.zip}, preserves the matrix CSV and manifest, the readback-mismatch record and an interpretation erratum, the two Agent outcome records and logs, the environment preflight, and the batch report. Its root manifest covers every other archive member. The four-scene matrix run used a recipe-window fraction of 0.8. All 110 collected requests outside those windows but inside structural limits returned \texttt{RECIPE\_LIMIT\_EXCEEDED}. Its other counts (220/220 accepted, 219/219 structural rejections, and 216/216 matching available readbacks) are separate from, and not added to, the November 1 batch. Input values and checks share configuration limits.
+
+In the readback-mismatch test, one simulated injection Modbus TCP node was subject to a calibration-offset injection: the command was 230, the driver readback was 251, and tolerance was 0.7. The outcome was \texttt{ok=false} and \texttt{unverified}; a separate read of the same simulator also returned 251. The 21-unit command-to-readback difference triggered the degraded receipt, while the separate read agreed with the driver's value; it was not independent hardware evidence. One baseline and one recovery returned \texttt{readback-verified}. Two November 5 debugging attempts were canceled after 371.63 and 372.24 seconds with zero recorded rounds and writes; their recorded 12 minutes is a budget, not elapsed time. The platform was not isolated as intended, so these attempts are excluded from the exploratory episode count. The batch report marks the Agent result unknown and the overall batch not passing.
+
+The available local runner and scenario libraries match the identifier recorded in the matrix manifest. Because the services were already running, the recorded source information does not establish their deployed state or a complete configuration snapshot. The mismatch record does not identify its runner source. The follow-up archive includes the environment preflight and both Agent logs, with an inventory covering its contents. These records support selected simulator paths, not physical actuation or a process-efficacy estimate.
+
+\section*{Later Agent integration and exploratory episodes}
+The later integration and episode extracts are in \url{S7-agent-followup.zip}. Two earlier and five later exploratory episodes supplement the two initial pilot episodes: nine selected records in three batches, not a common controlled sample. Four debugging attempts with invalid isolation are excluded. Another canceled episode is not included in the selection and its isolation status is unresolved; the nine records are not a complete pre-registered denominator. The later episodes did not share identical initial setpoints. In the five-episode batch, four recorded task completion and one cancellation; each recorded endpoint was outside its specified target band. The available records do not independently establish the number of Agent-attributed writes.
+
+A scripted integration probe used a worker token to invoke a recipe trial, with approval supplied by an automated proxy. The response reported one confirmed simulated write. A later snapshot of the mutable local write history contains a matching value and recipe-run identifier with a readback-verified acknowledgement. The history and response do not establish an independently observed hardware readback or a complete task-to-device chain; neither is evidence of a physical-device action, human approval, or an autonomous-Agent write.
+
+The investigation identified five categories for follow-up: node identifiers; binding confirmation and error handling; tool visibility and environment isolation; write-tool availability and authorization; and Agent execution behavior. These categories organize observations and hypotheses rather than establish a single cause for every episode. The later evidence collector derives its search window from the final timestamp, and the expected node mappings are absent from these summaries; its write count and \texttt{NO\_WRITE} verdict are therefore not independently reliable. The locally available worker streams contain truncated lines and are not included in this extract archive, which lacks a complete correlated task-to-device trace. A completed task outside its target band is an observed outcome, not proof of a particular completion-path defect. In the tested configuration, the recipe-trial route and direct-write tool availability were distinct; broader security claims require further tests.
+
+\section*{Representative systems}
+Table S7-I summarizes the operation boundary and evaluation scope of representative plant-facing agent systems cited in the manuscript. It does not rank their performance, and the reported evaluations are not directly comparable because the systems, tasks, and denominators differ.
+
+\begin{table}[h]
+\centering
+\caption{Representative plant-facing agent systems and the scope of their reported evaluations.}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{6.2cm}X@{}}
+\toprule
+System & Reported operation or integration mechanism & Reported evaluation \\
+\midrule
+Biskupovic et al.~\cite{biskupovic2025supervision} & Agent-based service selection and online reselection using performance and computational-load metrics & Industrial cyber--physical system study; service adaptability and performance \\
+K{\"o}hle et al.~\cite{koehle2026llmdriven} & Module-specific agents, MCP-to-OPC-UA skills, MQTT coordination, and injected factory state & Nine simulated production challenges \\
+Xavier et al.~\cite{xavier2026industriConnect} & MCP adapters for industrial protocols with a common response envelope and mock-first testing & 870 benchmark runs and 2,820 tool calls \\
+Graul et al.~\cite{graul2026aas} & AAS-grounded proposals, documented human authorization, and PLC-validated OPC UA Methods & Two laboratory proof-of-concept settings \\
+Schall~\cite{schall2026safe} & P\&ID-, SCADA-, and SOP-grounded proposal verification with gated execution & Five simulated scenarios, 43 proposals, and 50 LLM runs \\
+Lin and Chen~\cite{lin2026agentic} & Policy-governed sensor--MES--ERP digital thread & Manufacturing-record evaluation with operational metrics \\
+Vyas et al.~\cite{vyas2026detection} & Multi-agent fault-recovery planning with Digital Process Plant Twin validation before actuation & Mixing and continuous stirred-tank reactor studies \\
+PLCBench~\cite{zhou2026plcbench} & Hardware-in-the-loop PLC security benchmark with closed-loop process simulation & Security evaluation; complementary to operation-governance tests \\
+This work & Scene-bound production context and named signal mappings; shared dispatch with route-specific write governance and separate command receipts and process-observation evidence & Mapping and guard checks; 9/11 valid exploratory E6 pairs; three canceled E7 simulator episodes with recorder-reported writes; no physical-plant result \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section*{Integrated pipeline and scene--protocol probes}
+The two integrated executions used seed 42. Both manifests record that the platform and simulator were already running and that no Agent harness was active. Each run returned 77 passing assertions, zero warnings, and zero failures. Assertions are within-run checks, not independent trial observations.
+
+\begin{table}[h]
+\centering
+\caption{Valid collected scene--protocol probe outcomes.}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.0cm}r X r r r@{}}
+\toprule
+Scene & Writable nodes & Writable nodes by protocol & Admissible accepted & Structural rejected & Readback matched \\
+\midrule
+Injection & 11 & TCP 5; RTU 2; OPC UA 3; MQTT 1 & 44/44 & 44/44 & 44/44 \\
+Wastewater & 7 & TCP 1; RTU 3; OPC UA 2; MQTT 1 & 28/28 & 28/28 & 28/28 \\
+Annealing & 7 & TCP 3; RTU 2; OPC UA 1; MQTT 1 & 28/28 & 28/28 & 28/28 \\
+Biaxial line & 30 & TCP 20; RTU 1; OPC UA 8; HTTP 1 & 120/120 & 119/119 & 116/116 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+TCP and RTU in the table denote Modbus TCP and Modbus RTU. For each writable node, four tested values were expected to pass (three interior values and the upper boundary), followed by four structural-range probes expected to reject. One structural case in the biaxial-line set was not collected. Readback is counted only when the driver returned an actuator value. Across this four-scene subset, the totals are 220/220 accepted admissible requests, 219/219 rejected structural probes, and 216/216 matching available readbacks. The full planned scene--protocol matrix remains incomplete.
+
+The integrated film-line preset check is a separate pipeline result: five endpoint types were configured and nine selected negative probes were rejected (9/9), with no code edits. It reused the same runtime and is not an independent cold-start deployment. The pipeline run manifests and summaries are included in the data archive.
+
+\section*{Historical five-seed endpoint comparison (November 1; unequal horizons)}
+The no-write control ran for 60~s; its endpoint is the mean of the final five process-variable samples. The scripted setpoint policy used the \texttt{recipe\_trial} batch route of the shared governed-write service with scenario-specific mission logic; its endpoint is the final value recorded after the scenario-specific steps, not a fixed-horizon measurement. Each seed appears in both conditions for injection mass, wastewater dissolved oxygen (DO), and annealing hardness. The 150.41--172.90~s range records the wall time of each three-scene parallel batch, including setup; it is not the per-scene time to target. The contrast is descriptive rather than a time-matched test. The seed-42 no-write runs began from residual state (injection 32.378~g and DO 2.894~mg/L, both inside their bands), whereas the scripted runs and seeds 43--46 began from the scenario blueprint. Counts are reported for 12 blueprint-matched pairs and for all 15 runs. We recomputed band membership from the raw \texttt{pv}, \texttt{target}, and \texttt{tol} fields. The runner's \texttt{attained} field combines condition-specific checks and is not compared across conditions.
+
+\begin{longtable}{@{}p{2.7cm}p{2.3cm}r r r >{\centering\arraybackslash}p{1.5cm}@{}}
+\caption{Raw endpoints with band membership recomputed from each process variable, target, and tolerance. The final column lists no-write/scripted outcomes: the no-write control was in band in 0/15 runs and the scripted policy in 15/15; for the 12 blueprint-matched pairs, the counts were 0/12 and 12/12.}\label{tab:s7-opt}\\
+\toprule
+Scene & Target band & Seed & No-write endpoint & Scripted endpoint & In band \\
+\midrule
+\endfirsthead
+\toprule
+Scene & Target band & Seed & No-write endpoint & Scripted endpoint & In band \\
+\midrule
+\endhead
+Injection & $32.5\pm0.35$ g & 42 & 31.226 & 32.320 & No / Yes \\
+Injection & $32.5\pm0.35$ g & 43 & 31.272 & 32.180 & No / Yes \\
+Injection & $32.5\pm0.35$ g & 44 & 31.244 & 32.173 & No / Yes \\
+Injection & $32.5\pm0.35$ g & 45 & 31.272 & 32.190 & No / Yes \\
+Injection & $32.5\pm0.35$ g & 46 & 31.206 & 32.340 & No / Yes \\
+Wastewater DO & $3.4\pm0.6$ mg/L & 42 & 0.202 & 3.864 & No / Yes \\
+Wastewater DO & $3.4\pm0.6$ mg/L & 43 & 0.198 & 3.800 & No / Yes \\
+Wastewater DO & $3.4\pm0.6$ mg/L & 44 & 0.268 & 3.686 & No / Yes \\
+Wastewater DO & $3.4\pm0.6$ mg/L & 45 & 0.200 & 3.576 & No / Yes \\
+Wastewater DO & $3.4\pm0.6$ mg/L & 46 & 0.226 & 3.646 & No / Yes \\
+Annealing & $95\pm6$ HV & 42 & 134.66 & 97.74 & No / Yes \\
+Annealing & $95\pm6$ HV & 43 & 134.60 & 97.44 & No / Yes \\
+Annealing & $95\pm6$ HV & 44 & 134.66 & 97.80 & No / Yes \\
+Annealing & $95\pm6$ HV & 45 & 134.90 & 99.90 & No / Yes \\
+Annealing & $95\pm6$ HV & 46 & 134.36 & 98.20 & No / Yes \\
+\bottomrule
+\end{longtable}
+
+The individual values above are copied from the ten per-seed CSV result files. Across the 12 blueprint-matched pairs, 0/12 no-write endpoints and 12/12 scripted-policy endpoints were in band; including the residual-state seed-42 control gives 0/15 and 15/15. Across the five scripted-policy seeds, the missions issued 12 writes in 17 rounds for injection, 56 writes in 59 rounds for wastewater, and 41 writes in 50 rounds for annealing. These are workload counts, not an efficiency comparison. Seeds are simulator initializations, not independent production lines. The scripted policy is not an active-LLM policy, and the no-write control is not an industrial-controller baseline.
+
+\section*{Process-window guard ablation}
+The process-window study used seed 42, three repetitions in each arm, a direct DCW API call, a mock driver, and benchmark mode. Each repetition submitted six negative probes: four hard structural probes and two process-window probes; it also submitted three nominal legal requests and three boundary requests. The additional 20 timed writes per repetition were used for latency summaries and were excluded from these denominators. No readback-mismatch stimulus was included.
+
+\begin{table}[h]
+\centering
+\caption{Three-repeat process-window ablation. The combined-removal arm removes the process-window and readback-mismatch checks; hard structural limits remain active in every arm.}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}p{3.0cm} >{\centering\arraybackslash}p{2.8cm} >{\centering\arraybackslash}p{4.0cm} >{\centering\arraybackslash}p{2.0cm} >{\centering\arraybackslash}p{2.5cm}@{}}
+\toprule
+Arm & Negative probes rejected & Window violations returning HTTP 200 & Legal false blocks & Boundary expectations met \\
+\midrule
+Full guard & 18/18 & 0/6 & 0/9 & 9/9 \\
+No process-window guard & 12/18 & 6/6 & 0/9 & 9/9 \\
+No-readback check & 18/18 & 0/6 & 0/9 & 9/9 \\
+No process-window or readback guard & 12/18 & 6/6 & 0/9 & 9/9 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The four hard structural probe types were blocked in every arm (12/12 per arm). With the process-window guard active, all six targeted window violations returned HTTP 400; removing that guard yielded HTTP 200 for all six. The archived runner report labels the HTTP 200 cases as executed and journaled, and its validation summary calls them \texttt{processWindowDriverReach}. The archive contains no independent per-request driver-call or journal ledger for these labels. The report also refers to \texttt{e1-lite.csv}, which is absent; the raw rows are in \texttt{process-window-ablation.csv}. We therefore report the observed HTTP responses and do not count them as verified driver arrivals. The same clarification is included in \texttt{S7-core.zip} as \texttt{01-paper-evidence/process-window-ablation-interpretation.md}. The no-readback arm does not test readback-mismatch rejection because that stimulus was absent. Benchmark mode relaxes normal timing and hold-window controls, so these results concern the tested guard path only.
+
+\section*{Approval, production-mode, and authorization checks}
+The approval pilot used one injection scene and a scripted decision fixture. The full CSV and timing records are in the data archive.
+
+\begin{table}[h]
+\centering
+\caption{Four calls in the approval-route pilot. Auto rows are not clean matched pairs with the manual rows; no operator made a decision.}
+\begin{tabularx}{\textwidth}{@{}l X l r r r@{}}
+\toprule
+Mode & Runner stimulus & Decision & Before & After & Delay (ms) \\
+\midrule
+Manual & legal-approved & approved & 202 & 204.8 & 10\,593 \\
+Manual & legal-rejected & rejected & 216 & 216 & 544 \\
+Auto & label: manual arm rejected & n/a & 202 & 204.8 & 10\,071 \\
+Auto & label: manual arm approved & n/a & 216 & 218.8 & 10\,073 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The manual reject did not change the simulated control value. The auto-mode label/value mismatch means the four calls do not form a clean paired approval-on/off experiment. This pilot demonstrates route handling only; it is not evidence of operator judgment or an isolated approval-mechanism effect.
+
+In the separate production-mode guard run, the baseline value 190 was accepted. One example each was rejected for interval, step, node-range, recipe-window, and hold-window constraints. The exact API rejection codes are preserved in the source report and CSV. These one-case checks confirm expected branches for their configured inputs; they are not estimates of general rejection rates. A separate three-case authorization probe rejected an unbound write and a cross-node write while accepting one bound control write.
+
+\section*{Follow-up exploratory injection scenario pilot}
+The pilot was recorded on November 3. The isolated
+platform used a PLC-based simulated twin; the run manifest sets
+\texttt{realPlant=false}. An acceptance script executed the workflow. This
+pilot is separate from the frozen November 1 experiment batch, is not a
+replication of the five-seed comparison, and does not represent an active-Agent
+or physical-plant run.
+The individual run record does not identify the platform source, simulator configuration, or runner source. Its provenance is therefore less complete than that of the frozen batch, and the recorded environment is not a complete runtime snapshot.
+
+At setpoint 50 bar, the structured record gives a baseline product-weight
+observation of 31.503 g, below the 32.00--32.30 g band. The accompanying
+report gives 31.508 g; the discrepancy has not been resolved. The experiment plan probed setpoints 50, 55,
+and 60 bar.
+The stored ledger fields are:
+
+\begin{table}[h]
+\centering
+\caption{Aggregate values and classifications saved by the single-run experiment ledger.}
+\footnotesize
+\begin{tabular}{@{}l r r l@{}}
+\toprule
+Setpoint contrast & Stored effect (g) & Stored MDE (g) & Stored verdict \\
+\midrule
+50 to 50 & 0.00452 & 0.02214 & \texttt{no\_resolvable\_effect} \\
+50 to 55 & 0.26638 & 0.02007 & \texttt{underpowered} \\
+55 to 60 & 0.25173 & 0.02999 & \texttt{identifiable\_effect} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+MDE denotes minimum detectable effect. These are the aggregate fields stored
+by the acceptance script; the archive contains neither the underlying sample
+series nor the rule used to calculate the MDE and assign the verdicts. The
+reported gain of 0.05035 g/bar is the last stored effect divided by the
+5-bar step (0.2517336/5); it is a source-reported ratio, not an independently
+verified or replicated process model. After the design steps,
+the governed write changed the setpoint from 60 to 63.7; the returned device
+readback was 63.7. Following a 60-s wait, the runner averaged the three latest
+15-s DAQ buckets and measured 32.224 g, within the configured band. The
+reported 15/15 count refers to script assertions over this single execution,
+not to 15 independent trials.
+
+\begin{table}[h]
+\centering
+\caption{Summary of the single follow-up injection-twin execution.}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}p{3.3cm}X p{4.8cm}@{}}
+\toprule
+Stage & Recorded result & Interpretation limit \\
+\midrule
+Baseline & 31.503 g at setpoint 50 bar & One simulated-twin observation \\
+Design of experiments & Levels 50, 55, and 60 bar; one ledger verdict marked identifiable & Sample series and verdict rule are not in the archive \\
+Gain and final write & Reported ratio of 0.05035 g/bar; write from 60 to 63.7 with matching readback & Single-run ratio; not a replicated process estimate \\
+Process observation & 32.224 g after the specified wait and sampling window; target band 32.00--32.30 g & One in-band endpoint, no replication or physical-plant result \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The source report, machine-readable result, and execution log are in
+\texttt{04-followup-scenario-pilot/}. The local checksum manifest identifies
+the included files. Later platform acceptance suites use other fixtures and
+assertion outcomes and are not pooled with this pilot or the six principal
+experiment blocks.
+
+\section*{E6 fixed-horizon comparison and E7 Agent pilot (November 7)}
+The separate archive \texttt{S7-e6-e7-2026-11-07.zip} contains the frozen E6 plan, the seed-43 injection pilot, all 11 post-pilot scene--seed attempts, and three E7 simulator episodes with their saved recorder streams. The E6 comparison used a no-write arm (C0) and the deterministic scripted \texttt{recipe\_trial} policy (C1), with independently reset arms, a pre-specified initial-state window, randomized within-block order, 1-s sampling, and fixed horizons of 180~s for injection and 240~s for wastewater and annealing. The pilot was kept separate. Pairs with a sampling gap greater than 5~s were retained but treated as invalid; no replacement pairs were added.
+
+Nine of the 11 post-pilot pairs were valid, and all nine had positive $\Delta\mathrm{IAE}=\mathrm{IAE}_{C0}-\mathrm{IAE}_{C1}$. The per-scene medians and ranges are shown in Table~\ref{tab:s7-e6}. This exploratory sample compares one deterministic policy with no-write in simulation. It is not a powered estimate, does not include PID, and does not measure an LLM policy. The archived convenience report and per-scene aggregate included invalid rows; the included \texttt{INTERPRETATION-ERRATUM.md} documents why the paired analysis here uses only rows for which both arms are valid.
+
+\begin{table}[h]
+\centering
+\caption{Valid post-pilot E6 paired IAE differences. Positive values favor the scripted policy on this metric.}
+\label{tab:s7-e6}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}l r X X@{}}
+\toprule
+Scene & Valid pairs & Median $\Delta$IAE & Range $\Delta$IAE \\
+\midrule
+Injection & 3/3 & 165.165~g\,s & 162.535--195.169~g\,s \\
+Wastewater & 3/4 & 615.605~mg/L\,s & 611.670--630.980~mg/L\,s \\
+Annealing & 3/4 & 8000.450~HV\,s & 7930.200--8084.150~HV\,s \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Wastewater seed~45 and annealing seed~46 were invalid because the C0 trajectory had a 9-s and 6-s sampling gap, respectively. The separate seed-43 injection pilot had $\Delta\mathrm{IAE}=163.240$~g\,s and is not included in the table. The paired values use the native process units multiplied by seconds; values from different scenes are not averaged.
+
+The three E7 episodes were run on the injection simulator. All ended as \texttt{CANCELED}; their recorded process values were below the 32.15--32.85~g target band. The local episode recorder logged two writes in two rounds for each episode, but the archive has no server-side journal export to independently reconcile those counts. One episode carried a false guard-status flag. Elapsed times were 380.10, 372.36, and 372.23~s; the configured 20-min budget is a cap, not elapsed runtime. These three episodes are a pilot, not a success-rate estimate.
+
+\begin{table}[h]
+\centering
+\caption{Latest E7 simulator pilot episodes. Write counts are local-recorder reports, not independently verified driver events.}
+\label{tab:s7-e7}
+\footnotesize
+\begin{tabular}{@{}r l r l r r@{}}
+\toprule
+Episode & Task state & Process value (g) & Guard flag & Writes/rounds & Elapsed (s) \\
+\midrule
+1 & CANCELED & 31.70 & false & 2/2 & 380.10 \\
+2 & CANCELED & 31.87 & true & 2/2 & 372.36 \\
+3 & CANCELED & 31.99 & true & 2/2 & 372.23 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The archive does not include the server-side journal export, a complete live-service source snapshot, or a hermetic runtime image. It supports review of the saved records, not an independent rerun of the acquisition or verification of Agent-attributed driver writes. The earlier November 1 five-seed endpoints and the E7 pilot are retained as separate batches and are not pooled with E6.
+
+\section*{Reproduction and provenance}
+The platform manifests identify a source state, but the experiment runners were modified at execution time and the running services were not captured as a complete snapshot. The archived records preserve the available source and run provenance. The two raw condition keys below are retained because the runner requires them: \texttt{C0} denotes the no-write control, and \texttt{C1} denotes the scripted setpoint policy. Representative commands recorded by the runners are:
+\begin{quote}
+\footnotesize\ttfamily\raggedright
+node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3\par\smallskip
+node bench/experiment/scenario-protocol-probes.mjs --scenarios injection,wwtp,anneal,biax --seed 42\par\smallskip
+node bench/experiment/optimization-control.mjs --condition C1 --scenarios injection,wwtp,anneal --seed 42\par\smallskip
+node bench/experiment/optimization-control.mjs --condition C0 --scenarios injection,wwtp,anneal --seed 42 --duration 60\par\smallskip
+node bench/e1-lite.mjs --seed 42 --repeats 3\par\smallskip
+node bench/experiment/approval-gate.mjs --scenario injection --base http://127.0.0.1:3005\par\smallskip
+node bench/experiment/production-guards.mjs --base http://127.0.0.1:3010\par\smallskip
+node bench/experiment/authorization-probe.mjs --scenario injection --base http://127.0.0.1:3005
+\end{quote}
+The optimization commands were run for seeds 42--46 in both conditions. Re-running them creates new result identifiers and can produce different simulator trajectories if the environment or service state changes. The integrated pipeline recorded source and runner identifiers, but the active service source tree was not captured as a complete snapshot. The archive includes the run manifests, selected reports, raw CSVs, a machine-readable validation summary, checksum manifest, and self-contained HTML dashboard; it does not include the excluded cast-film run.
+
+\bibliographystyle{IEEEtran}
+\bibliography{resources/refs}
+
+\end{document}

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head><title>Fig. 1 — Cast-film running example</title></head>
+  <body>
+    <outline text="Fig. 1 — Cast-film running example">
+      <outline text="Production context">
+        <outline text="Cast-film line" />
+        <outline text="Control node: line-speed setpoint (linespeed-sp / MQTT)" />
+        <outline text="Measurement node: film thickness (film-thickness / MQTT)" />
+      </outline>
+      <outline text="Separate evidence">
+        <outline text="Command service receipt" />
+        <outline text="Optional setpoint device readback" />
+        <outline text="Later DAQ process observation" />
+        <outline text="Illustrative production context, not causal evidence" />
+      </outline>
+    </outline>
+  </body>
+</opml>

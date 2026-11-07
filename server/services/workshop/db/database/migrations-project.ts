@@ -51,6 +51,11 @@ function hasDecisionColumn(db: DatabaseSync, column: string): boolean {
   return cols.some(c => c.name === column)
 }
 
+function hasChannelSessionColumn(db: DatabaseSync, column: string): boolean {
+  const cols = db.prepare('PRAGMA table_info(channel_sessions)').all() as Array<{ name: string }>
+  return cols.some(c => c.name === column)
+}
+
 export function migrateProjectColumns(db: DatabaseSync): void {
   if (!hasChannelAgentColumn(db, 'agent_kind')) {
     db.exec('ALTER TABLE channel_agents ADD COLUMN agent_kind TEXT NOT NULL DEFAULT \'channel_agent\'')
@@ -129,6 +134,22 @@ export function migrateProjectColumns(db: DatabaseSync): void {
   if (!hasDecisionColumn(db, 'actor_kind')) {
     db.exec('ALTER TABLE project_decisions ADD COLUMN actor_kind TEXT NOT NULL DEFAULT \'\'')
   }
+  // ===== 项目任务实例会话（2026-11-07）：任务专属 Channel + 会话行 =====
+  if (!hasWorkItemColumn(db, 'instance_channel_id')) {
+    db.exec('ALTER TABLE project_work_items ADD COLUMN instance_channel_id TEXT')
+  }
+  if (!hasChannelSessionColumn(db, 'project_id')) {
+    db.exec('ALTER TABLE channel_sessions ADD COLUMN project_id TEXT')
+  }
+  if (!hasChannelSessionColumn(db, 'project_work_item_id')) {
+    db.exec('ALTER TABLE channel_sessions ADD COLUMN project_work_item_id TEXT')
+  }
+  if (!hasChannelSessionColumn(db, 'created_by_kind')) {
+    db.exec('ALTER TABLE channel_sessions ADD COLUMN created_by_kind TEXT NOT NULL DEFAULT \'user\'')
+  }
+  if (!hasChannelSessionColumn(db, 'instance_kind')) {
+    db.exec('ALTER TABLE channel_sessions ADD COLUMN instance_kind TEXT NOT NULL DEFAULT \'manual\'')
+  }
   ensureProjectIndexes(db)
 }
 
@@ -140,4 +161,5 @@ export function ensureProjectIndexes(db: DatabaseSync): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id, project_work_item_id)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_trace ON tasks(trace_id)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_channel_agents_kind ON channel_agents(channel_id, agent_kind)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_channel_sessions_work_item ON channel_sessions(project_id, project_work_item_id)')
 }

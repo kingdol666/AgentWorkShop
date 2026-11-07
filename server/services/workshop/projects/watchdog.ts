@@ -24,7 +24,7 @@ export interface WatchdogFinding {
   evidence: Array<Record<string, unknown>>
 }
 
-const WI_INFLIGHT = `SELECT id, title, state, deadline_at AS deadlineAt, trace_id AS traceId FROM project_work_items
+const WI_INFLIGHT = `SELECT id, title, state, deadline_at AS deadlineAt, exec_budget_minutes AS execBudgetMinutes, trace_id AS traceId FROM project_work_items
   WHERE project_id = ? AND state IN ('DISPATCHED','RUNNING','DISPATCHING')`
 
 const DECISION_COUNTS = `SELECT decision_type AS type, COUNT(*) AS n FROM project_decisions
@@ -41,7 +41,7 @@ export function createProjectWatchdog(db: DatabaseSync, kernel: ProjectKernelRep
 
   const scanProject = (projectId: string, planVersion: number): WatchdogFinding[] => {
     const findings: WatchdogFinding[] = []
-    const inflight = db.prepare(WI_INFLIGHT).all(projectId) as Array<{ id: string, title: string, state: string, deadlineAt: string | null, traceId: string }>
+    const inflight = db.prepare(WI_INFLIGHT).all(projectId) as Array<{ id: string, title: string, state: string, deadlineAt: string | null, execBudgetMinutes?: number | null, traceId: string }>
 
     // 预算燃烧：在飞工作项已过 deadline（reconcile 会收敛为 OVERDUE/BLOCKED；
     // watchdog 在两 tick 之间仍可提前捕获并升级）。
@@ -55,14 +55,23 @@ export function createProjectWatchdog(db: DatabaseSync, kernel: ProjectKernelRep
     }
 
     // 连续无进展：有在飞但 ledger 长时间无新条目。
+    // P1-6：固定 30min 阈值对长预算任务（60min 预算合法静默 >30min）必然误报——
+    // 改为按工作项预算比例（0.75×budget，钳位 [10min, 6h]），取在飞项中最敏感阈值；
+    // options.noProgressMs 显式提供时保持固定阈值（兼容既有测试与调用方）。
     if (inflight.length > 0) {
       const lastAt = kernel.ledger.lastAt(projectId)
       const lastMs = lastAt ? Date.parse(lastAt) : Number.NEGATIVE_INFINITY
-      if (nowMs() - lastMs > noProgressMs) {
+      const quietMs = nowMs() - lastMs
+      let thresholdMs = noProgressMs
+      if (!options.noProgressMs) {
+        const thresholds = inflight.map(w => Math.min(6 * 3_600_000, Math.max(10 * 60_000, 0.75 * (Number(w.execBudgetMinutes) || 60) * 60_000)))
+        thresholdMs = thresholds.length > 0 ? Math.min(...thresholds) : noProgressMs
+      }
+      if (quietMs > thresholdMs) {
         findings.push({
           type: 'no_progress',
-          detail: `在飞 ${inflight.length} 项但账本已 ${Math.round((nowMs() - lastMs) / 60_000)} 分钟无进展`,
-          evidence: [{ lastLedgerAt: lastAt, inflight: inflight.length }],
+          detail: `在飞 ${inflight.length} 项但账本已 ${Math.round(quietMs / 60_000)} 分钟无进展（阈值 ${Math.round(thresholdMs / 60_000)} 分钟）`,
+          evidence: [{ lastLedgerAt: lastAt, inflight: inflight.length, thresholdMs }],
         })
       }
     }

@@ -8,7 +8,7 @@
  *  - V1 不做 leader 自建 Channel、不做自主 replan。
  */
 import type { DatabaseSync } from 'node:sqlite'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import type { AgentChannelManager } from '../runtime/manager'
 import type { ProjectApprovalRow, ProjectChannelRow, ProjectDeliverableRow, ProjectDecisionRow, ProjectEventRow, ProjectMemberRow, ProjectMessageRow, ProjectResultRow, ProjectRow, ProjectTechnicalReviewRow, ProjectWorkItemRow } from '../db/project.repo'
 import {
@@ -27,6 +27,7 @@ import {
   createProjectMessageRepo,
 } from '../db/project.repo'
 import { createTaskRepo } from '../db/task.repo'
+import { createChannelSessionRepo } from '../db/channel-session.repo'
 import { createProjectKernelRepo } from '../db/project-kernel.repo'
 import type { TaskRow } from '../db/database'
 import { withTransaction } from '../db/transaction'
@@ -36,6 +37,7 @@ import { argsDigest } from './digest'
 import { PROJECT_GATED_WRITE_TOOL_NAMES } from './tool-surface'
 import { evaluateWorkItemReadiness } from './readiness'
 import { selectReadyWithContext } from './route-dispatcher'
+import { validateBlueprint, type ProjectBlueprint } from './blueprints.repo'
 
 export interface ProjectActor {
   id: string
@@ -467,6 +469,9 @@ export interface CreateProjectInput {
   mode?: 'observe' | 'supervised' | 'auto'
   leaderHarness?: string
   leaderConfig?: Record<string, unknown>
+  /** P1-2 前置：leader 模型直选（蓝图/REST 创建时钉 provider/model） */
+  leaderProvider?: string
+  leaderModel?: string
   /** 审查修复：计划门开关（缺省 1=派发必须先批计划；0=关闭，测试/无计划场景用） */
   planApprovalRequired?: number
   /** PR20 Route 派发闭环：true=计划批准后按 dependsOn 就绪顺序自动派发（缺省 false，行为零突变） */
@@ -504,6 +509,8 @@ export class ProjectService {
   private readonly technicalReviews
   private readonly messages
   private readonly tasks
+  /** 任务实例会话（2026-11-07）：project_work_item_id → 任务专属 Channel 的会话行 */
+  private readonly sessions
   /** PR17 M4 内核仓储：ledger / plan_versions / effects / health。 */
   private readonly kernelRepo
 
@@ -526,6 +533,7 @@ export class ProjectService {
     this.technicalReviews = createProjectTechnicalReviewRepo(db)
     this.messages = createProjectMessageRepo(db)
     this.tasks = createTaskRepo(db)
+    this.sessions = createChannelSessionRepo(db)
     this.kernelRepo = createProjectKernelRepo(db)
   }
 
@@ -585,7 +593,9 @@ export class ProjectService {
       ownerUserId: actor.id,
       planApprovalRequired: input.planApprovalRequired === 0 ? 0 : 1,
       autoDispatch: input.autoDispatch ? 1 : 0,
-      routingPolicy: input.routingPolicy ?? 'legacy',
+      // P0-7：与 REST 入口（index.post.ts 默认 technical）统一——service 层不再默认 legacy，
+      // 消除"REST 创建=technical、工具/服务路径创建=legacy"的双轨不一致。
+      routingPolicy: input.routingPolicy ?? 'technical',
       configJson: JSON.stringify({
         leaderHarness: input.leaderHarness ?? 'mock',
         routeGate: input.routeGate ?? 'none',
@@ -607,7 +617,13 @@ export class ProjectService {
         leadAgent: {
           name: 'Project Leader',
           harness: input.leaderHarness ?? 'mock',
-          config: { ...(input.leaderConfig ?? {}), systemPromptPrefix: '你是项目总工（Project Leader），只做项目级规划与复核。' },
+          config: {
+            ...(input.leaderConfig ?? {}),
+            // P1-2 前置：蓝图/创建方可指定 leader 模型（provider/model 直达 omp set_model）
+            ...(input.leaderProvider ? { provider: input.leaderProvider } : {}),
+            ...(input.leaderModel ? { model: input.leaderModel } : {}),
+            systemPromptPrefix: '你是项目总工（Project Leader），只做项目级规划与复核。',
+          },
           agentKind: 'project_leader',
         },
         ownerUserId: actor.id,
@@ -620,6 +636,23 @@ export class ProjectService {
         leadAgentId: office.leadAgentId ?? null,
       })
       if (!updated) throw new AppError(500, 'INTERNAL', 'Project 创建后无法回填办公室指针')
+      // Session Context：项目办公室的 Project Leader 上下文是一等 project session。
+      // 幂等：同 project 已有 active project session 则复用（创建失败会由 catch 归档项目）。
+      if (updated.leadAgentId) {
+        const existing = this.sessions.listByProject(project.id)
+          .find(s => s.instanceKind === 'project' && s.status === 'active')
+        if (!existing) {
+          this.sessions.create({
+            channelId: office.channelId,
+            title: `项目会话：${name}`,
+            memberMap: { [updated.leadAgentId]: updated.leadAgentId },
+            createdBy: actor.id,
+            projectId: project.id,
+            createdByKind: 'project',
+            instanceKind: 'project',
+          })
+        }
+      }
       return updated
     }
     catch (err) {
@@ -751,6 +784,56 @@ export class ProjectService {
       if (reopened) this.projects.update(id, { status: previousStatus })
       throw err
     }
+  }
+
+  /**
+   * P2 终止运行：owner 终止项目 = 级联终结（与 pause 可恢复相对，终止是终态）。
+   *  - 全部未终结工作项 → CANCELED(PROJECT_TERMINATED) + attempt 闭合；
+   *  - 各自 root 任务树 cancelTree（后代优先）——频道侧正在执行的 omp 回合被取消；
+   *  - 待批审批全部过期；项目状态 → canceled（内核/路由/派发均只认 active）。
+   * manager 未暴露 TaskEngine 时（最小 stub）任务树取消静默跳过——工作项侧已终结。
+   */
+  terminate(id: string, actor: ProjectActor, reason: string): ProjectRow {
+    const p = this.get(id, actor)
+    this.requireOwner(p, actor)
+    if (p.status === 'canceled') return this.projects.findById(id)!
+    if (p.status === 'completed' || p.status === 'archived') {
+      throw new AppError(409, 'PROJECT_STATE_INVALID', `项目 ${p.status} 不可终止`)
+    }
+    if (!reason.trim()) throw new AppError(400, 'BAD_REQUEST', '终止必须给出理由')
+    const engineAccess = (this.manager as unknown as { getTaskEngine?: () => { cancelTree?: (taskId: string, by: string, reason: string) => Array<{ id: string, state: string }> } }).getTaskEngine
+    const engine = typeof engineAccess === 'function' ? engineAccess.call(this.manager) : undefined
+    const items = this.workItems.listByProject(id)
+    const canceledTasks: Array<{ taskId: string, state: string }> = []
+    withTransaction(this.db, () => {
+      for (const wi of items) {
+        if (['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(wi.state)) continue
+        this.workItems.update(wi.id, {
+          state: 'CANCELED',
+          stateReason: 'PROJECT_TERMINATED',
+          closedAt: new Date().toISOString(),
+          closeReason: 'PROJECT_TERMINATED',
+        })
+        if (wi.currentAttemptId) {
+          const attempt = this.attempts.findById(wi.currentAttemptId)
+          if (attempt && !attempt.closedAt) this.attempts.close(attempt.id, 'CLOSED', 'PROJECT_TERMINATED')
+          if (attempt?.channelTaskId && engine?.cancelTree) {
+            try {
+              for (const t of engine.cancelTree(attempt.channelTaskId, actor.id, `PROJECT_TERMINATED: ${reason}`)) {
+                canceledTasks.push({ taskId: t.id, state: t.state })
+              }
+            }
+            catch { /* 任务可能已终态——工作项侧已终结，容忍 */ }
+          }
+        }
+        this.record(id, 'work.canceled', actor, { workItemId: wi.id, reason: `PROJECT_TERMINATED: ${reason}` }, wi.traceId, 'work.canceled', `work:${wi.id}:terminated`, { workItemId: wi.id })
+      }
+      this.approvals.expire(id)
+      this.approvals.expireAllPending(id)
+      this.projects.update(id, { status: 'canceled' })
+      this.record(id, 'project.terminated', actor, { reason, canceledWorkItems: items.length, canceledTasks: canceledTasks.length }, '', 'project.terminated', `project:${id}:terminated`, { reason, canceledTasks })
+    })
+    return this.projects.findById(id)!
   }
 
   archive(id: string, actor: ProjectActor): ProjectRow {
@@ -1061,6 +1144,17 @@ export class ProjectService {
 
       // P1：契约 handoff —— 项目目标/验收标准/输出契约/上游成果正文随 root 一起注入。
       const handoff = this.buildHandoffBundle(p, wi, d)
+      // ===== 任务实例（2026-11-07）：确保本任务有专属执行 Channel =====
+      // 根任务 FIFO 按 Channel 生效 —— 独立 Channel 才能让多个任务真正并行；
+      // 每个实例 Channel 自带 SchedulerLoop/根队列/成员 runtime/workspace（任务特有的实例对象）。
+      const instanceChannelId = await this.ensureTaskInstanceChannel({
+        project: p, workItem: wi, actor,
+      })
+      const instanceChannel = this.manager.getChannelForUser(instanceChannelId, p.ownerUserId)
+      if (!instanceChannel || instanceChannel.enabled !== 1 || !instanceChannel.leadAgentId) {
+        throw new AppError(409, 'TASK_INSTANCE_UNAVAILABLE', `任务实例 Channel 不可用: ${instanceChannelId}`)
+      }
+      const taskSession = this.sessions.listByWorkItem(wi.id).find(s => s.status === 'active')
       const attemptNo = this.attempts.listByWorkItem(wi.id).reduce((max, a) => Math.max(max, a.attemptNo), 0) + 1
       const sourceKey = `pw:${wi.id}:${attemptNo}`
       const traceId = wi.traceId || `trace:${wi.id}`
@@ -1068,20 +1162,24 @@ export class ProjectService {
       // 只有赢得 claim 的调用才能继续 submitProjectRoot（并发第二路会唯一索引/claim 失败回滚）。
       withTransaction(this.db, () => {
         attempt = this.attempts.create({
-          projectId: id, workItemId: wi.id, attemptNo, channelId: wi.channelId, sourceKey, traceId,
+          projectId: id, workItemId: wi.id, attemptNo, channelId: instanceChannelId, sourceKey, traceId,
+          sessionId: taskSession?.id,
         })
         if (!this.workItems.claimForDispatch(wi.id, attempt.id)) {
           throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项已被其他派发者领取')
         }
       })
       stage = 'submit'
+      // Session Context：任务实例 Channel 的 active session 是该 root 的权威上下文（上方已取）。
       const { task } = await this.manager.submitProjectRoot({
         projectId: id,
         workItemId: wi.id,
         attemptNo,
         sourceKey,
         traceId,
-        channelId: wi.channelId,
+        channelId: instanceChannelId,
+        assigneeId: instanceChannel.leadAgentId,
+        sessionId: taskSession?.id,
         title: wi.title,
         description: wi.brief,
         execBudgetMinutes: wi.execBudgetMinutes,
@@ -1089,7 +1187,7 @@ export class ProjectService {
       })
       this.attempts.setDispatched(attempt!.id, task.id)
       const evtType = opts.auto ? 'work.dispatch_auto' : 'work.dispatched'
-      this.record(id, evtType, actor, { workItemId: wi.id, taskId: task.id, attemptNo, inputResultIds: handoff.upstream.map(r => r.id) }, traceId, evtType, `work:${wi.id}:${opts.auto ? 'auto' : 'dispatched'}:a${attemptNo}`, { workItemId: wi.id, taskId: task.id, attemptNo, auto: opts.auto, inputResultIds: handoff.upstream.map(r => r.id), planVersion: p.planVersion, channelId: wi.channelId })
+      this.record(id, evtType, actor, { workItemId: wi.id, taskId: task.id, attemptNo, instanceChannelId, inputResultIds: handoff.upstream.map(r => r.id) }, traceId, evtType, `work:${wi.id}:${opts.auto ? 'auto' : 'dispatched'}:a${attemptNo}`, { workItemId: wi.id, taskId: task.id, attemptNo, auto: opts.auto, inputResultIds: handoff.upstream.map(r => r.id), planVersion: p.planVersion, channelId: wi.channelId, instanceChannelId })
       return this.workItems.update(wi.id, {
         state: 'DISPATCHED',
         stateReason: null,
@@ -1134,7 +1232,15 @@ export class ProjectService {
           stateReason: message,
           currentAttemptId: null,
         })
-        this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: message }, wi.traceId || `trace:${wi.id}`, 'work.blocked', `work:${wi.id}:blocked:${Date.now()}`, { workItemId: wi.id, reason: message, stage, errno })
+        // P1-5：事件键含 Date.now() 使 blocked 重复不可去重 → leader 每轮刷屏。
+        // 改为按 attempt 分幕：同 attempt 内重复 blocked 收敛为一键，新 attempt 是新信号。
+        const attemptNo = wi.currentAttemptId ? (this.attempts.findById(wi.currentAttemptId)?.attemptNo ?? 0) : 0
+        this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: message }, wi.traceId || `trace:${wi.id}`, 'work.blocked', `work:${wi.id}:blocked:a${attemptNo}`, { workItemId: wi.id, reason: message, stage, errno })
+      }
+      // 派发前（precheck）失败：刚建的任务实例没有承载任何任务，回收避免孤儿 Channel/会话；
+      // submit 阶段的瞬时失败保留实例供退避重试复用（会话记忆连续）。
+      if (stage === 'precheck' && this.workItems.findById(wi.id)?.instanceChannelId) {
+        void this.releaseTaskInstance(this.workItems.findById(wi.id)!, 'DISPATCH_PRECHECK_FAILED', p.ownerUserId).catch(() => {})
       }
       throw err
     }
@@ -1143,6 +1249,102 @@ export class ProjectService {
   listResults(id: string, actor: ProjectActor): ProjectResultRow[] {
     this.get(id, actor)
     return this.filterResultsByGrant(id, this.results.listByProject(id), actor)
+  }
+
+  // ===== 任务实例（2026-11-07）：任务专属 Channel + 会话行 =====
+
+  /**
+   * 确保工作项有可用的任务实例 Channel（幂等）：
+   *  - 已有 instanceChannelId 且其会话 active、Channel 启用 → 复用（重试保留实例）
+   *  - 否则创建专属 Channel（模板成员克隆）+ 会话行，绑定项目（binding_type='task_instance'）
+   * 返回实例 Channel id（root 任务在其上派发）。
+   */
+  private async ensureTaskInstanceChannel(input: {
+    project: ProjectRow
+    workItem: ProjectWorkItemRow
+    actor: ProjectActor
+  }): Promise<string> {
+    const { project: p, workItem: wi, actor } = input
+    // 兼容降级：测试替身/旧 manager 无任务实例能力时，退回共享 Channel 派发（既有语义）。
+    const mgr = this.manager as unknown as { createTaskInstance?: AgentChannelManager['createTaskInstance'] }
+    if (typeof mgr.createTaskInstance !== 'function') return wi.channelId
+    const activeSession = this.sessions.listByWorkItem(wi.id).find(s => s.status === 'active')
+    if (wi.instanceChannelId && activeSession && activeSession.channelId === wi.instanceChannelId) {
+      const ch = this.manager.getChannelForUser(wi.instanceChannelId, p.ownerUserId)
+      if (ch && ch.enabled === 1 && ch.leadAgentId) return wi.instanceChannelId
+    }
+    // actor 取项目 owner（系统派发无 Channel 所有权，不能传 system）；admin 保留管理员能力
+    const ownerActor = { id: p.ownerUserId, role: actor.role === 'admin' ? 'admin' : 'user' }
+    const created = await this.manager.createTaskInstance({
+      projectId: p.id,
+      workItemId: wi.id,
+      templateChannelId: wi.channelId,
+      title: wi.title,
+      actor: ownerActor,
+    })
+    // 绑定项目：agentProjectContext 依此判定实例成员的 channel_lead 工具面
+    if (!this.bindings.findActiveByChannel(created.channelId)) {
+      this.bindings.add({
+        projectId: p.id,
+        channelId: created.channelId,
+        bindingType: 'task_instance',
+        charter: `任务实例：${wi.title}`,
+        addedBy: p.ownerUserId,
+      })
+    }
+    this.workItems.update(wi.id, { instanceChannelId: created.channelId })
+    this.record(p.id, 'work.instance_created', actor, {
+      workItemId: wi.id, instanceChannelId: created.channelId, sessionId: created.sessionId, members: created.members.length,
+    }, wi.traceId || `trace:${wi.id}`, 'work.instance_created', `work:${wi.id}:instance:${created.channelId}`, {
+      workItemId: wi.id, instanceChannelId: created.channelId, sessionId: created.sessionId, templateChannelId: wi.channelId,
+    })
+    return created.channelId
+  }
+
+  /**
+   * 释放任务实例：会话行 close（在飞子任务按树取消 + 成员 runtime 卸载）+ 停用实例 Channel
+   * （停调度、卸载成员；Channel/会话行保留审计）。幂等：无 active 会话且 Channel 已停用则跳过。
+   * actor 取实例 Channel 属主（manager 的 close/open 走 owner 可写校验；system 身份会被 403）。
+   */
+  private async releaseTaskInstance(workItem: ProjectWorkItemRow, reason: string, ownerUserId = 'system'): Promise<void> {
+    const activeSessions = this.sessions.listByWorkItem(workItem.id).filter(s => s.status === 'active')
+    const instanceChannelId = workItem.instanceChannelId
+    const instanceChannel = instanceChannelId ? await this.manager.getChannel(instanceChannelId) : null
+    const channelEnabled = instanceChannel ? instanceChannel.enabled === 1 : false
+    if (activeSessions.length === 0 && !channelEnabled) return
+    const ownerActor = { id: instanceChannel?.ownerUserId ?? ownerUserId, role: 'user' }
+    for (const s of activeSessions) {
+      try {
+        await this.manager.closeChannelSession({
+          channelId: s.channelId,
+          sessionId: s.id,
+          actor: ownerActor,
+          reason: `TASK_TERMINAL:${reason}`,
+        })
+      }
+      catch { /* 会话已关闭/成员已卸载：释放语义幂等 */ }
+    }
+    if (instanceChannelId && channelEnabled) {
+      const stillActive = this.sessions.listByWorkItem(workItem.id).some(s => s.status === 'active')
+      if (stillActive) return
+      try {
+        await this.manager.updateChannel(instanceChannelId, { enabled: 0 }, ownerActor)
+      }
+      catch { /* Channel 已删除：无需停用 */ }
+    }
+  }
+
+  /** 终态工作项的任务实例回收（runRouteLoop 每轮调用；幂等，只处理仍有 active 会话/启用实例的项）。 */
+  private async releaseTerminalTaskInstances(projectId: string): Promise<void> {
+    const project = this.projects.findById(projectId)
+    const terminal = this.workItems.listByProject(projectId)
+      .filter(w => ['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(w.state))
+    for (const wi of terminal) {
+      try {
+        await this.releaseTaskInstance(wi, wi.closeReason ?? wi.state, project?.ownerUserId ?? 'system')
+      }
+      catch { /* 单项失败不影响其它项 */ }
+    }
   }
 
   /**
@@ -1295,7 +1497,7 @@ export class ProjectService {
   }
 
   /**
-   * 实际派发体：计划已批 + auto_dispatch=1 的 active 项目，对 selectReadyWorkItems
+   * 实际派发体：计划已批 + auto_dispatch=1 的 active 项目，对 selectReadyWithContext
    * 选出的就绪项按序调用内部派发路径（system actor）。单项失败已由派发路径置
    * BLOCKED 并落 work.blocked（SLOW 邮箱评估），隔离继续。
    * 项目完成仍走 owner 审批门 —— 自动派发永不自动完成项目。
@@ -1320,23 +1522,29 @@ export class ProjectService {
       routingPolicy: p.routingPolicy,
     })
     // Router v3 P0 容量：Channel root FIFO 决定每 Channel 并发 1；项目 4；每 tick 2。
+    // 2026-11-07 任务实例：每个工作项有自己的实例 Channel（根 FIFO 彼此独立），
+    // 因此按「实例 Channel」计数 —— 同模板 Channel 上多个任务可真正并行。
     const limits = { perChannel: 1, perProject: 4, perTick: 2 }
     const inFlight = items.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state))
     let projectSlots = Math.max(0, limits.perProject - inFlight.length)
     let tickSlots = limits.perTick
     const channelInFlight = new Map<string, number>()
-    for (const w of inFlight) channelInFlight.set(w.channelId, (channelInFlight.get(w.channelId) ?? 0) + 1)
+    for (const w of inFlight) {
+      const key = w.instanceChannelId ?? w.channelId
+      channelInFlight.set(key, (channelInFlight.get(key) ?? 0) + 1)
+    }
     const systemActor = { id: 'system', role: 'system' } as const
     for (const wi of ready) {
       if (projectSlots <= 0 || tickSlots <= 0) break
-      if ((channelInFlight.get(wi.channelId) ?? 0) >= limits.perChannel) continue
+      const dispatchKey = wi.instanceChannelId ?? wi.channelId
+      if ((channelInFlight.get(dispatchKey) ?? 0) >= limits.perChannel) continue
       try {
         const row = await this.dispatchWorkItemAs(id, wi.id, systemActor, p, { auto: true })
         const attempt = row.currentAttemptId ? this.attempts.findById(row.currentAttemptId) : undefined
         out.dispatched.push({ workItemId: wi.id, taskId: attempt?.channelTaskId ?? null })
         projectSlots -= 1
         tickSlots -= 1
-        channelInFlight.set(wi.channelId, (channelInFlight.get(wi.channelId) ?? 0) + 1)
+        channelInFlight.set(dispatchKey, (channelInFlight.get(dispatchKey) ?? 0) + 1)
       }
       catch {
         // 派发失败路径已落 BLOCKED/retry 事件；继续其余就绪项（R5）。
@@ -1385,6 +1593,9 @@ export class ProjectService {
     autoDispatch: Awaited<ReturnType<ProjectService['autoDispatchProject']>>
   }> {
     const reconcile = this.reconcileInternal(id)
+    // 任务实例回收：终态工作项的专属 Channel/会话停用（幂等；放在派发前，
+    // 让下一批任务使用干净实例，也避免终态实例继续占用调度槽位）
+    await this.releaseTerminalTaskInstances(id)
     // Router v3 验收闭环：成果 submitted 后主动向 Leader/独立评审 Channel 发 L1 请求，
     // 而不是等人工在演示脚本里逐个 @。消息幂等（correlation=review:<resultId>）。
     await this.ensureTechnicalReviewRequests(id)
@@ -1424,7 +1635,7 @@ export class ProjectService {
       let reviewerChannelId = ''
       let reviewerAgentId = ''
       if (configuredReviewer) {
-        const bound = bindings.some(b => b.channelId === configuredReviewer) && configuredReviewer !== result.channelId
+        const bound = bindings.some(b => b.channelId === configuredReviewer && b.bindingType !== 'task_instance') && configuredReviewer !== result.channelId
         const ch = bound ? this.manager.getChannelForUser(configuredReviewer, p.ownerUserId) : null
         if (ch?.leadAgentId) {
           reviewerChannelId = configuredReviewer
@@ -1434,6 +1645,7 @@ export class ProjectService {
       if (!reviewerAgentId) {
         // 独立评审 Channel 约定：已绑定、非生产、且没有任何工作项（纯评审角色）。
         const candidate = bindings.find((b) => {
+          if (b.bindingType === 'task_instance') return false
           if (b.channelId === result.channelId) return false
           return !items.some(w => w.channelId === b.channelId && !['CANCELED', 'SUPERSEDED'].includes(w.state))
         })
@@ -2070,6 +2282,9 @@ export class ProjectService {
     routeGate?: 'none' | 'leader'
     /** Router v3：独立评审 Channel id；传空串清除。 */
     reviewerChannelId?: string
+    /** P0-7：路由口径（legacy/technical）；owner 变更落 project.updated 审计，
+     * 影响后续所有就绪判定（存量在飞项不受影响）。 */
+    routingPolicy?: 'legacy' | 'technical'
   }): ProjectRow {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
@@ -2077,6 +2292,9 @@ export class ProjectService {
     if (name !== undefined && !name) throw new AppError(400, 'BAD_REQUEST', '名称不能为空')
     const objective = patch.objective?.trim()
     if (objective !== undefined && !objective) throw new AppError(400, 'BAD_REQUEST', '目标不能为空')
+    if (patch.routingPolicy !== undefined && !['legacy', 'technical'].includes(patch.routingPolicy)) {
+      throw new AppError(400, 'BAD_REQUEST', 'routingPolicy 只能是 legacy 或 technical')
+    }
     const config = parseJson<Record<string, unknown>>(p.configJson, {})
     const nextConfig = { ...config }
     if (patch.routeGate !== undefined) nextConfig.routeGate = patch.routeGate
@@ -2092,6 +2310,7 @@ export class ProjectService {
       ...(objective !== undefined ? { objective } : {}),
       ...(patch.mode !== undefined ? { mode: patch.mode } : {}),
       ...(patch.autoDispatch !== undefined ? { autoDispatch: patch.autoDispatch ? 1 : 0 } : {}),
+      ...(patch.routingPolicy !== undefined ? { routingPolicy: patch.routingPolicy } : {}),
       ...(patch.routeGate !== undefined || patch.reviewerChannelId !== undefined
         ? { configJson: JSON.stringify(nextConfig) }
         : {}),
@@ -2099,6 +2318,76 @@ export class ProjectService {
     if (!next) throw new AppError(404, 'NOT_FOUND', `Project 不存在: ${id}`)
     this.record(id, 'project.updated', actor, { patch }, '', 'project.updated', `project:${id}:updated:${Date.now()}`, { fields: Object.keys(patch) })
     return next
+  }
+
+  /**
+   * P1-1 项目蓝图一键实例化：「构建好模板 → 新开会话直接用」。
+   * 流程（全部确定性，无 LLM）：validate → createProject(routingPolicy 等) → 逐频道
+   * createChannel+bind（channelKey→id 解析）→ 计划提案（resolve 后的 channelIds）→
+   * 蓝图声明 planApprovalRequired=false 时 owner 同步批准并物化（计划自批在项目层
+   * 允许：提交者与批准者同为 owner，实机试点 S5b 已验证该路径）→ 激活。
+   * 幂等边界：每次实例化 = 全新 project（"新开会话"语义），名称带随机后缀防撞。
+   */
+  async instantiateBlueprint(actor: ProjectActor, input: {
+    blueprint: ProjectBlueprint
+    nameOverride?: string
+  }): Promise<{ projectId: string, channelIdByKey: Record<string, string>, workItemIds: string[], planApprovalId?: string, status: 'active' | 'pending_plan_approval' }> {
+    const bp = input.blueprint
+    validateBlueprint(bp)
+    const suffix = randomUUID().slice(0, 6)
+    const planApprovalRequired = bp.planApprovalRequired !== false
+    const project = await this.create({
+      name: `${(input.nameOverride ?? bp.name).trim()}-${suffix}`,
+      objective: bp.objective,
+      description: bp.description,
+      routingPolicy: bp.routingPolicy ?? 'technical',
+      planApprovalRequired: planApprovalRequired ? 1 : 0,
+      autoDispatch: bp.autoDispatch ?? false,
+      mode: bp.mode,
+      leaderHarness: bp.leaderHarness,
+      leaderProvider: bp.leaderProvider,
+      leaderModel: bp.leaderModel,
+    }, actor)
+    const pid = project.id
+    // 频道：逐个创建 + 绑定（key → id 解析表）
+    const channelIdByKey: Record<string, string> = {}
+    for (const def of bp.channels) {
+      const ch = await this.manager.createChannel({
+        name: `${def.name ?? def.key}-${suffix}`,
+        description: def.charter,
+        scenarioPrompt: def.charter,
+        ownerUserId: actor.id,
+        actor,
+        leadAgent: { name: `${def.name ?? def.key}·Lead`, harness: def.leadHarness ?? 'mock', config: def.leadConfig },
+      })
+      this.bindChannel(pid, ch.channelId, actor, def.charter ?? '')
+      channelIdByKey[def.key] = ch.channelId
+    }
+    // 计划：channelKey → 解析后的 channelId（normalizeProjectPlan 校验 DAG/依赖/契约）
+    const plan = {
+      deliverables: bp.plan.deliverables.map(d => ({
+        ...d,
+        channelId: channelIdByKey[String(d.channelKey ?? d.channelId ?? '')] ?? d.channelId,
+      })),
+      work_items: bp.plan.work_items.map(w => ({
+        ...w,
+        channelId: channelIdByKey[String(w.channelKey ?? w.channelId ?? '')] ?? w.channelId,
+      })),
+    }
+    const approval = this.requestPlanApproval(pid, actor, { version: 1, plan })
+    if (!planApprovalRequired) {
+      this.decideApproval(pid, approval.id, actor, true)
+    }
+    const status: 'active' | 'pending_plan_approval' = planApprovalRequired ? 'pending_plan_approval' : 'active'
+    if (status === 'active') this.activate(pid, actor)
+    const workItems = this.listWorkItems(pid, actor)
+    return {
+      projectId: pid,
+      channelIdByKey,
+      workItemIds: workItems.map(w => w.id),
+      planApprovalId: planApprovalRequired ? approval.id : undefined,
+      status,
+    }
   }
 
   /** PATCH 交付物（owner-only；planned/rejected 态可编辑）。 */
@@ -2170,6 +2459,24 @@ export class ProjectService {
   projectSnapshot(id: string, actor: ProjectActor) {
     const p = this.get(id, actor)
     const report = this.projectWeeklyReport(id, actor)
+    const items = this.workItems.listByProject(id)
+    // P2 Channel 状态可见面：owner 无需逐频道点开——每个下属频道的在飞工作项与 root 任务态
+    const channels = this.bindings.listByProject(id).map((b) => {
+      const own = items.filter(w => w.channelId === b.channelId)
+      const rootTasks = own
+        .filter(w => !['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(w.state) && w.currentAttemptId)
+        .map((w) => {
+          const a = this.attempts.findById(w.currentAttemptId!)
+          const t = a?.channelTaskId ? this.tasks.findById(a.channelTaskId) : undefined
+          return { workItemId: w.id, title: w.title, workItemState: w.state, taskId: t?.id ?? null, taskState: t?.state ?? null }
+        })
+      return {
+        ...b,
+        workItems: own.length,
+        inFlight: own.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state)).length,
+        rootTasks,
+      }
+    })
     return {
       project: {
         id: p.id, name: p.name, description: p.description, objective: p.objective,
@@ -2177,11 +2484,14 @@ export class ProjectService {
         ownerUserId: p.ownerUserId, officeChannelId: p.officeChannelId, leadAgentId: p.leadAgentId,
         planVersion: p.planVersion, plan: parseJson(p.planJson, {}), createdAt: p.createdAt,
         autoDispatch: p.autoDispatch === 1,
+        // P2 可见性补齐：routingPolicy 是 leader 判上游"完成"语义与 owner 审计路由口径的关键字段
+        // （此前仅 observability 透出，主视图缺失——实机试点 S3 断言被迫绕行）
+        routingPolicy: p.routingPolicy,
       },
-      channels: this.bindings.listByProject(id),
+      channels,
       members: this.members.listByProject(id),
       deliverables: this.deliverables.listByProject(id),
-      workItems: this.workItems.listByProject(id),
+      workItems: items,
       results: this.filterResultsByGrant(id, this.results.listByProject(id), actor),
       approvals: { pending: this.approvals.listPending(id), history: this.approvals.listByProject(id) },
       report,
@@ -2252,10 +2562,38 @@ export class ProjectService {
     }
     const channels = this.listBoundChannels(p).map((c) => {
       const own = items.filter(w => w.channelId === c.channelId)
+      // P2 Channel 状态可见面：每个下属频道在飞工作项的 root 任务状态（owner 无需逐频道点开）
+      const rootTasks = own
+        .filter(w => !['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(w.state) && w.currentAttemptId)
+        .map((w) => {
+          const a = this.attempts.findById(w.currentAttemptId!)
+          const t = a?.channelTaskId ? this.tasks.findById(a.channelTaskId) : undefined
+          return { workItemId: w.id, title: w.title, workItemState: w.state, taskId: t?.id ?? null, taskState: t?.state ?? null }
+        })
+      // 任务实例（2026-11-07）：本 lane 名下工作项的任务专属执行上下文。
+      // 每项一个实例 Channel + 一行会话（instance_kind='task'），前端据此展示
+      // 「任务 → 会话 → 实例频道」并可跳转到控制台会话视图。
+      const laneSessions = own.map((w) => {
+        const s = this.sessions.listByWorkItem(w.id).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0]
+        const inst = w.instanceChannelId ? this.manager.getChannelForUser(w.instanceChannelId, p.ownerUserId) : null
+        return {
+          workItemId: w.id,
+          workItemTitle: w.title,
+          workItemState: w.state,
+          sessionId: s?.id ?? null,
+          sessionTitle: s?.title ?? null,
+          sessionStatus: s?.status ?? null,
+          sessionKind: s?.instanceKind ?? null,
+          instanceChannelId: w.instanceChannelId ?? null,
+          instanceEnabled: inst ? inst.enabled === 1 : false,
+        }
+      })
       return {
         ...c,
         workItems: own.length,
         inFlight: own.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state)).length,
+        rootTasks,
+        sessions: laneSessions,
         ready: own.filter(w => w.state === 'DRAFT' && evaluateWorkItemReadiness(w, readinessCtx).ready).length,
         blocked: own.filter(w => w.state === 'BLOCKED' || w.state === 'REWORK').length,
       }
@@ -2290,9 +2628,14 @@ export class ProjectService {
           waitingReason = readiness.reason
         }
       }
+      const sessionRow = this.sessions.listByWorkItem(w.id).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0]
       return {
         id: w.id, title: w.title, brief: w.brief, channelId: w.channelId, deliverableId: w.deliverableId,
         state: w.state, stage: this.stageOf(w, readiness, result),
+        // 任务实例：专属执行 Channel + 会话（任务 = 独立 session 的可视锚点）
+        instanceChannelId: w.instanceChannelId,
+        sessionId: sessionRow?.id ?? null,
+        sessionStatus: sessionRow?.status ?? null,
         waitingOn,
         waitingReason,
         priority: w.priority, resultKey: w.resultKey, attemptCount: w.attemptCount, maxAttempts: w.maxAttempts,
@@ -2620,6 +2963,16 @@ export class ProjectService {
     deliverables: ProjectDeliverableRow[]
     workItems: ProjectWorkItemRow[]
     pendingApprovals: number
+    /** Session Context：Project 的 project/task session 目录（brief 预览） */
+    sessions: Array<{
+      id: string
+      kind: string
+      title: string
+      status: string
+      workItemId: string | null
+      summary: string
+      lastActiveAt: string | null
+    }>
   } {
     const ctx = this.requireAgentContext(agentId, 'any')
     const deliverables = this.deliverables.listByProject(ctx.project.id)
@@ -2633,6 +2986,15 @@ export class ProjectService {
       deliverables,
       workItems: items,
       pendingApprovals: this.approvals.listPending(ctx.project.id).length,
+      sessions: this.sessions.listByProject(ctx.project.id).map(s => ({
+        id: s.id,
+        kind: s.instanceKind,
+        title: s.title,
+        status: s.status,
+        workItemId: s.projectWorkItemId,
+        summary: s.summary,
+        lastActiveAt: s.lastActiveAt,
+      })),
     }
   }
 
@@ -2745,14 +3107,17 @@ export class ProjectService {
     const workItemId = task.projectWorkItemId!
     const wi = this.workItems.findById(workItemId)
     if (!wi || wi.projectId !== ctx.project.id) throw new AppError(404, 'NOT_FOUND', '工作项不存在')
-    if (wi.channelId !== ctx.channelId) throw new AppError(403, 'RESULT_SCOPE_VIOLATION', '只能提交本频道工作项的成果')
+    // 任务实例（2026-11-07）：执行发生在工作项专属 Channel —— 该频道成员等价于执行通道，
+    // 结果行仍以模板 channelId 归属（项目级稳定标识），因此两侧都接受。
+    const isInstanceChannel = wi.instanceChannelId != null && wi.instanceChannelId === ctx.channelId
+    if (wi.channelId !== ctx.channelId && !isInstanceChannel) throw new AppError(403, 'RESULT_SCOPE_VIOLATION', '只能提交本频道工作项的成果')
     let result = input.resultId ? this.results.findById(input.resultId) : undefined
     if (!result) result = this.results.findByWorkItemAttempt(wi.id, task.projectAttemptNo ?? 0, wi.resultKey)
     if (!result && task.state === 'COMPLETED') result = this.ensureDraftFromTask(task.id)
     if (!result) {
       throw new AppError(409, 'RESULT_DRAFT_NOT_FOUND', `没有可提交的成果草稿；请先完成任务 ${task.id} 或等待 Reconciler 生成 draft`)
     }
-    if (result.projectId !== ctx.project.id || result.channelId !== ctx.channelId) {
+    if (result.projectId !== ctx.project.id || (result.channelId !== ctx.channelId && result.channelId !== wi.channelId)) {
       throw new AppError(403, 'RESULT_SCOPE_VIOLATION', '成果不属于本项目/本频道')
     }
     if (!['draft', 'rejected'].includes(result.status)) {
@@ -2841,6 +3206,14 @@ export class ProjectService {
     if (input.verdict === 'pass' && !criteriaCheck.ok) {
       throw new AppError(409, 'ACCEPTANCE_CRITERIA_FAILED', `技术验收不能通过：${criteriaCheck.blockingFailures.join('；')}`)
     }
+    // P0-8 决策时证据复验：重算 content_sha256 与提交时落库值比对。哈希不符说明
+    // 提交后 payload/summary/evidence 被改动（submit→review 窗口内的篡改面）。
+    if (!backfill) {
+      const recomputed = sha256Hex(`${result.summary ?? ''}\n${result.payloadJson ?? ''}\n${JSON.stringify(parseJson<Array<Record<string, unknown>>>(result.evidenceJson ?? '[]', []))}`)
+      if (result.contentSha256 && recomputed !== result.contentSha256) {
+        throw new AppError(409, 'RESULT_EVIDENCE_TAMPERED', `成果内容哈希不符(提交后被改动)：拒绝技术验收 result=${result.id}`)
+      }
+    }
     const checksJson = JSON.stringify([...criteriaCheck.checks, ...(input.checks ?? [])])
     const reviewerKind = ctx.isLeader ? 'project_leader' : 'channel_lead'
     let review!: ProjectTechnicalReviewRow
@@ -2866,6 +3239,9 @@ export class ProjectService {
           reviewedAt: new Date().toISOString(),
           rejectReason: null,
         })
+        // P0-8 审计卫生：返工标记随后续验收通过清零。旧缺陷——markReworkRequired(false)
+        // 无调用点，返工-再提交-通过后 approved 成果仍带脏标（下游血缘与报表失真）。
+        if (result.reworkRequired) this.results.markReworkRequired(result.id, false)
         this.record(ctx.project.id, 'result.technical_accepted', { id: agentId, role: ctx.role, agentId }, { resultId: result.id, reviewId: review.id, reviewerChannelId: ctx.channelId }, result.traceId, 'result.technical_accepted', `result:${result.id}:technical-accepted:${review.id}`, { resultId: result.id, reviewId: review.id, reviewerKind })
       }
       else {
@@ -3334,7 +3710,18 @@ export class ProjectService {
         throw new AppError(409, 'PROPOSAL_STATE_INVALID', 'route 提案已被处理')
       }
       const args = parseJson<Record<string, unknown>>(decision.argsJson, {})
-      const workItem = await this.applyRouteDecision(p, decision, actor)
+      // P0-1 提案补偿：markApplied 先于执行体（CAS 防 双应用），执行体失败必须回退
+      // applied→proposed + 落 plan.apply_failed（SLOW 类型，leader 可见），否则动作
+      // 静默丢失且不可重放。
+      let workItem: ProjectWorkItemRow | undefined
+      try {
+        workItem = await this.applyRouteDecision(p, decision, actor)
+      }
+      catch (err) {
+        this.decisions.markApplyFailed(decisionId, `apply_failed: ${err instanceof Error ? err.message : String(err)}`)
+        this.record(projectId, 'plan.apply_failed', actor, { decisionId, error: err instanceof Error ? err.message : String(err) }, decision.traceId, 'plan.apply_failed', `proposal:${decisionId}:apply_failed`, { decisionId })
+        throw err
+      }
       this.record(projectId, 'proposal.applied', actor, { decisionId, workItemId: workItem?.id, action: args.action }, decision.traceId, 'proposal.applied', `proposal:${decisionId}:applied`, { decisionId, workItemId: workItem?.id, action: args.action })
       return { workItem, dispatched: args.action === 'dispatch' || args.action === 'retry' || args.action === 'rework', channelId: workItem?.channelId }
     }
@@ -3392,19 +3779,29 @@ export class ProjectService {
     if (!this.decisions.markApplied(decisionId, 'applied', 'owner applied proposal')) {
       throw new AppError(409, 'PROPOSAL_STATE_INVALID', '提案已被处理')
     }
-    const workItem = this.workItems.create({
-      projectId,
-      deliverableId,
-      channelId,
-      title,
-      brief: String(args.brief ?? ''),
-      dependsOnJson: JSON.stringify(Array.isArray(args.dependsOn) ? args.dependsOn : []),
-      planVersion: p.planVersion,
-      execBudgetMinutes: Number(args.execBudgetMinutes ?? 60),
-      traceId: decision.traceId || `proposal:${decisionId}`,
-      dedupeKey,
-      createdBy: 'project_leader',
-    })
+    // P0-1 提案补偿：工作项创建失败 → applied 回退 proposed（可重放）。创建成功后
+    // dispatchWorkItem 的失败不回退（工作项已存在，走其自身 BLOCKED/work.blocked 路径）。
+    let workItem: ProjectWorkItemRow
+    try {
+      workItem = this.workItems.create({
+        projectId,
+        deliverableId,
+        channelId,
+        title,
+        brief: String(args.brief ?? ''),
+        dependsOnJson: JSON.stringify(Array.isArray(args.dependsOn) ? args.dependsOn : []),
+        planVersion: p.planVersion,
+        execBudgetMinutes: Number(args.execBudgetMinutes ?? 60),
+        traceId: decision.traceId || `proposal:${decisionId}`,
+        dedupeKey,
+        createdBy: 'project_leader',
+      })
+    }
+    catch (err) {
+      this.decisions.markApplyFailed(decisionId, `apply_failed: ${err instanceof Error ? err.message : String(err)}`)
+      this.record(projectId, 'plan.apply_failed', actor, { decisionId, error: err instanceof Error ? err.message : String(err) }, decision.traceId, 'plan.apply_failed', `proposal:${decisionId}:apply_failed`, { decisionId })
+      throw err
+    }
     this.record(projectId, 'proposal.applied', actor, { decisionId, workItemId: workItem.id }, decision.traceId, 'proposal.applied', `proposal:${decisionId}:applied`, { decisionId, workItemId: workItem.id })
     let dispatched = false
     if (args.dispatch === true) {
@@ -3474,16 +3871,24 @@ export class ProjectService {
     }
     const digest = argsDigest(args)
     const row = this.db.prepare(
-      `SELECT id, payload_json AS payloadJson FROM project_approvals
+      `SELECT id, payload_json AS payloadJson, requested_by_agent_id AS requestedByAgentId FROM project_approvals
        WHERE project_id = ? AND kind = 'write_intent' AND subject_id = ? AND status = 'approved'
          AND consumed_at IS NULL AND (expires_at IS NULL OR expires_at > ?)
        ORDER BY created_at DESC LIMIT 1`,
-    ).get(origin.project.id, origin.task.projectWorkItemId, new Date().toISOString()) as { id: string, payloadJson: string } | undefined
+    ).get(origin.project.id, origin.task.projectWorkItemId, new Date().toISOString()) as { id: string, payloadJson: string, requestedByAgentId: string | null } | undefined
     if (!row) {
       return {
         allowed: false,
         code: 'PROJECT_WRITE_INTENT_REQUIRED',
         message: `${toolName} 在项目来源任务中需要 owner 批准的 write_intent；请先调用 project_request_write_intent`,
+      }
+    }
+    // P0-5：意图绑定申请者——同频道其他 lead 不得消费他人获批的写意图。
+    if (row.requestedByAgentId && row.requestedByAgentId !== agentId) {
+      return {
+        allowed: false,
+        code: 'PROJECT_WRITE_INTENT_MISMATCH',
+        message: `write_intent(${row.id}) 属于 ${row.requestedByAgentId.slice(0, 8)}，不能由其他 agent 消费`,
       }
     }
     const payload = parseJson<Record<string, unknown>>(row.payloadJson, {})
@@ -3543,7 +3948,9 @@ export class ProjectService {
 
   private listBoundChannels(p: ProjectRow): Array<{ channelId: string, name: string, enabled: number, leadAgentId: string | null, status: string }> {
     return this.bindings.listByProject(p.id)
-      .filter(b => b.status === 'active')
+      // 任务实例 Channel 不是「成员 Channel」：它们的执行视图由 workItems(instanceChannelId)
+      // 与会话行承载，不应作为独立 lane/评审候选出现在项目拓扑里。
+      .filter(b => b.status === 'active' && b.bindingType !== 'task_instance')
       .map((b) => {
         const ch = this.manager.getChannelForUser(b.channelId, p.ownerUserId)
         return {
@@ -3578,7 +3985,8 @@ export class ProjectService {
     return task
   }
 
-  /** 项目来源解析：显式 root 优先；否则取该 Agent 最近一个项目 root（含终态，fail-closed）。 */
+  /** 项目来源解析：显式 root 优先；否则取该 Agent 最近一个项目 root。P0-5：终态 root
+   * 不再作为写上下文（"含终态"允许任务完成后 24h 内继续消费意图 = 关门时间形同虚设）。 */
   private projectOriginOf(agentId: string, activeRootTaskId?: string | null): { task: TaskRow, project: ProjectRow } | null {
     let task: TaskRow | undefined
     if (activeRootTaskId) {
@@ -3592,6 +4000,7 @@ export class ProjectService {
       task = row?.id ? this.tasks.findById(row.id) : undefined
     }
     if (!task || task.source !== 'project') return null
+    if (['COMPLETED', 'CANCELED', 'FAILED', 'SUPERSEDED'].includes(task.state)) return null
     const project = task.projectId ? this.projects.findById(task.projectId) : undefined
     if (!project) throw new AppError(409, 'PROJECT_WRITE_CONTEXT_INVALID', '项目来源任务缺少有效项目上下文')
     return { task, project }
@@ -3866,14 +4275,28 @@ export class ProjectService {
     if (p.officeChannelId === channelId) throw new AppError(400, 'PROJECT_OFFICE_NOT_MEMBER', '不能解绑项目办公室')
     const b = this.bindings.findOne(id, channelId)
     if (!b || b.status !== 'active') throw new AppError(404, 'NOT_FOUND', 'Channel 未绑定到该项目')
-    // 项目组修改不能把正在执行的工作项悬空：先取消/完成或改派，再解绑。
-    const open = this.workItems.listByProject(id)
-      .filter(w => w.channelId === channelId && !['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(w.state))
-    if (open.length > 0) {
-      throw new AppError(409, 'CHANNEL_HAS_ACTIVE_WORK', `该 Channel 仍有 ${open.length} 个未终态工作项，不能解绑`)
-    }
     this.bindings.setStatus(id, channelId, 'detached')
-    this.record(id, 'channel.detached', actor, { channelId }, '', 'channel.detached', `project:${id}:channel:${channelId}:detached`, { channelId })
+    // P0-3 解绑语义：该频道名下的在飞工作项随解绑终结化（CANCELED + attempt 闭合 +
+    // work.canceled 事件）。不终结化的旧行为：worker 因绑定失效 403 永远无法提交 →
+    // 工作项永久悬挂；且 reconcile 终态守卫保证迟到的 root 终态不会复活已终结工作项
+    // （root 进程本身的回收属频道侧生命周期，随资源回收计划处理）。
+    const inFlight = this.workItems.listByProject(id)
+      .filter(w => w.channelId === channelId && !['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(w.state))
+    for (const wi of inFlight) {
+      withTransaction(this.db, () => {
+        this.workItems.update(wi.id, {
+          state: 'CANCELED',
+          stateReason: 'CHANNEL_DETACHED',
+          closedAt: new Date().toISOString(),
+          closeReason: 'CHANNEL_DETACHED',
+        })
+        if (wi.currentAttemptId) {
+          const attempt = this.attempts.findById(wi.currentAttemptId)
+          if (attempt && !attempt.closedAt) this.attempts.close(attempt.id, 'CLOSED', 'CHANNEL_DETACHED')
+        }
+        this.record(id, 'work.canceled', actor, { workItemId: wi.id, reason: 'CHANNEL_DETACHED', channelId }, wi.traceId, 'work.canceled', `work:${wi.id}:channel-detached`, { workItemId: wi.id, reason: 'CHANNEL_DETACHED' })
+      })
+    }
   }
 
   /** REST 删除/禁用/替换 lead 前调用：active 项目的办公室频道不可变。 */

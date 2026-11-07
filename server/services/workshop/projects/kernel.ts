@@ -83,8 +83,26 @@ export function initProjectKernel(deps: ProjectKernelDeps, options: ProjectKerne
     mailbox: async (effect, payload) => {
       const ids = Array.isArray(payload.events) ? payload.events as string[] : []
       const rows = ids.map(id => db.prepare('SELECT type, created_at AS createdAt, payload_json AS payloadJson FROM project_events WHERE id = ?').get(id) as { type: string, createdAt: string, payloadJson: string } | undefined).filter(Boolean) as Array<{ type: string, createdAt: string, payloadJson: string }>
-      const lines = rows.map(r => `- ${r.type} @ ${r.createdAt} ${r.payloadJson.slice(0, 200)}`)
-      const text = ['[项目内核] 以下事件需要你评估（计划是否仍有效/是否卡住/下一步）：', ...lines, '如有需要请用项目提案工具给出建议；无需要则忽略。'].join('\n')
+      // P1-5 批次级确定性摘要：按类型聚合计数 + 仅最新一条保留 payload 细节。
+      // 旧实现逐条 200 字截断罗列，长批次下 leader 上下文线性膨胀。
+      const byType = new Map<string, { n: number, last: { createdAt: string, payloadJson: string } }>()
+      for (const r of rows) {
+        const cur = byType.get(r.type)
+        if (cur) {
+          cur.n += 1
+          if (r.createdAt > cur.last.createdAt) cur.last = { createdAt: r.createdAt, payloadJson: r.payloadJson }
+        }
+        else {
+          byType.set(r.type, { n: 1, last: { createdAt: r.createdAt, payloadJson: r.payloadJson } })
+        }
+      }
+      const lines = [...byType.entries()].map(([type, agg]) =>
+        `- ${type} ×${agg.n}（最新 @ ${agg.last.createdAt}）${agg.last.payloadJson.slice(0, 200)}`)
+      const text = [
+        `[项目内核] 事件批次摘要（${rows.length} 条，按类型聚合；需要细节请用 project_get_status）：`,
+        ...lines,
+        '如有需要请用项目提案工具给出建议；无需要则忽略。',
+      ].join('\n')
       await deps.sendMailbox(effect.projectId, text)
     },
     notify: async (effect, payload) => {

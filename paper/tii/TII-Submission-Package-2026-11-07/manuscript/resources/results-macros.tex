@@ -1,0 +1,157 @@
+% Evidence snapshot: one archived integrated run with raw reports, run
+% manifest, scenario definitions, and metrics.
+% The two live engine-task logs are original outputs saved at execution time,
+% as confirmed by the author; the structured run report retains their checked
+% outcomes. The four-arm ablation has its own companion run record.
+\newcommand{\resSeed}{42}
+\newcommand{\resPhases}{20}
+\newcommand{\resChecksTotal}{83}
+\newcommand{\resChecksPass}{83}
+\newcommand{\resChecksWarn}{0}
+\newcommand{\resChecksFail}{0}
+\newcommand{\resTotalWall}{26\,min}
+\newcommand{\resDaqSamples}{55}
+\newcommand{\resWriteP}{29.954\,ms}
+\newcommand{\resTcpP}{47.8\,ms}
+\newcommand{\resOpcP}{19.8\,ms}
+\newcommand{\resMqttP}{19.3\,ms}
+\newcommand{\resHttpP}{32.9\,ms}
+% p95 per protocol line, same run: ~6 writes each. Recorded in the archive's
+% metrics.csv (write_p95_ms) but reported in the body only since the 2026-10-12
+% revision, so they live here rather than inline. Names must be letters only:
+% \resTcpP95 would parse as \resTcpP followed by the characters "95".
+\newcommand{\resTcpTail}{248.9\,ms}
+\newcommand{\resOpcTail}{20.5\,ms}
+\newcommand{\resMqttTail}{20.1\,ms}
+\newcommand{\resHttpTail}{44.6\,ms}
+% cross-protocol ranges over the four write families (min p50 = MQTT, max
+% p50 = Modbus TCP; min p95 = MQTT, max p95 = Modbus TCP)
+\newcommand{\resPfiftyRange}{19.3--47.8\,ms}
+\newcommand{\resPninetyfiveRange}{20.1--248.9\,ms}
+\newcommand{\resWriteNperLine}{6}
+\newcommand{\resAblationRun}{\texttt{20260921181234-e1lite}}
+\newcommand{\resFullIntercept}{18/18}
+\newcommand{\resNoInterlockIntercept}{12/18}
+\newcommand{\resNoReadbackIntercept}{18/18}
+\newcommand{\resUngatedIntercept}{12/18}
+\newcommand{\resBackstop}{130.2\,s}
+% 134.7 s: defined but NOT used in the body (the drill's archived timing is
+% 130.196 s, = \resBackstop); kept only so the symbol is not silently reused.
+\newcommand{\resBackstopDrill}{134.7\,s}
+\newcommand{\resPortFfive}{9/9}
+\newcommand{\resPortCode}{0}
+\newcommand{\resParamChecks}{4/4}
+\newcommand{\resHitlLatency}{461\,ms}
+\newcommand{\resMissionFrom}{200}
+\newcommand{\resMissionTo}{204.704}
+\newcommand{\resMissionPv}{204.70}
+\newcommand{\resMissionTarget}{$204.704\pm0.75$}
+\newcommand{\resBiaxSp}{30}
+\newcommand{\resBiaxDaq}{19}
+\newcommand{\resBiaxWrites}{3}
+\newcommand{\resBiaxStart}{28.10}
+\newcommand{\resBiaxFinal}{25.66}
+\newcommand{\resBiaxTarget}{25.0}
+\newcommand{\resBiaxTol}{0.7}
+\newcommand{\resLlmWall}{156.3\,s}
+\newcommand{\resGoalWall}{637.3\,s}
+\newcommand{\resGoalFinal}{51.7}
+\newcommand{\resJstar}{89.894}
+\newcommand{\resJzero}{67.2}
+\newcommand{\resControllerMin}{0.965}
+\newcommand{\resControllerMean}{0.969}
+\newcommand{\resControllerMax}{0.972}
+\newcommand{\resInjStart}{31.25}
+\newcommand{\resInjFinal}{32.17}
+\newcommand{\resInjWrites}{2}
+\newcommand{\resInjWall}{26.48\,s}
+\newcommand{\resWwtpStart}{0.21}
+\newcommand{\resWwtpFinal}{3.50}
+\newcommand{\resWwtpWrites}{15}
+\newcommand{\resWwtpWall}{169.27\,s}
+\newcommand{\resWwtpCostStart}{181.5}
+\newcommand{\resWwtpCostFinal}{179.1}
+\newcommand{\resAnnealStart}{134.52}
+\newcommand{\resAnnealFinal}{100.08}
+\newcommand{\resAnnealWrites}{5}
+\newcommand{\resAnnealWall}{102.76\,s}
+\newcommand{\resAnnealSpeedFinal}{164}
+\newcommand{\resAnnealSpeedTried}{176}
+\newcommand{\resAnnealGain}{17.1\%}
+% writeLockSeconds: node field default 30 s, constructor default 60 s; the
+% online path enforces max(60 s, configured), so 60 s is the effective floor
+% (unused in body since the pacing-window rewrite; kept for reference).
+\newcommand{\resWriteLock}{60\,s}
+
+% October 2026 deployment-scale campaign (v0.7.57), added with the revision.
+% The hardened-pipeline run is archived at 91/91; three consecutive
+% full-suite runs score 79/79 each (237 total; an earlier 80-per-run tally
+% counted one S7 report assertion that is not a logged check). Per-run
+% reports, manifests, and timelines are archived with each benchmark run.
+\newcommand{\resPipeRun}{\texttt{benchmark-20261008045434}}
+\newcommand{\resPipeTotal}{91}
+\newcommand{\resPipeApi}{54}
+\newcommand{\resCampaignRuns}{three consecutive}
+\newcommand{\resCampaignTotal}{237}
+\newcommand{\resCampaignApi}{45}
+\newcommand{\resLoopTotal}{53}
+\newcommand{\resAckTotal}{34}
+\newcommand{\resDocsTotal}{91}
+\newcommand{\resLinesLive}{34}
+\newcommand{\resLinesRunning}{17}
+% channel count across the three October 9 regression runs: 111/111/113;
+% the body reports the range rather than one run's value.
+\newcommand{\resChannelsLive}{111--113}
+\newcommand{\resDaqOnline}{67}
+\newcommand{\resWriteNodesLive}{77}
+\newcommand{\resRecipesLive}{52}
+\newcommand{\resBindingsLive}{385}
+% approval->dispatch spans both campaigns: 8/9/9 ms (Oct 7-8), 9/6/6 ms (Oct 9).
+\newcommand{\resHitlDispatchMs}{6--9\,ms}
+\newcommand{\resLadderFrom}{66}
+\newcommand{\resLadderTo}{63}
+\newcommand{\resConsistencyErr}{0.0\,bar}
+\newcommand{\resObsVerifyFast}{25.1\,s}
+% 245.204 s (benchmark-20261007194413) / 245.184 s (-07194925), exact values
+\newcommand{\resObsVerifyCadence}{245.20/245.18\,s}
+\newcommand{\resCadenceWait}{218\,s}
+\newcommand{\resWideRows}{869}
+
+% October 9, 2026 regression campaign (v0.7.57), same live instance.
+% Three runs archived at 92/92, 90/90, and 90/90; timeline.jsonl per run
+% (S4/S5 process records, HITL card events).
+\newcommand{\resNovRuns}{\texttt{benchmark-20261009021149}/\texttt{-024141}/\texttt{-033810}}
+\newcommand{\resNovTotal}{272}
+\newcommand{\resNovApi}{54}
+\newcommand{\resNovDeadband}{0.15\,g}
+\newcommand{\resNovZigzagFrom}{64}
+\newcommand{\resNovZigzagTo}{63}
+\newcommand{\resNovCorrFrom}{63}
+\newcommand{\resNovCorrTo}{65}
+\newcommand{\resNovWeights}{$32.49/32.33/32.22$\,g}
+\newcommand{\resNovCadenceReject}{69\,s}
+\newcommand{\resNovCardId}{\texttt{ap-2950a5b6}}
+\newcommand{\resNovRunId}{\texttt{rr-51b0a0ac}}
+\newcommand{\resNovScheme}{hold-pressure micro-up (sensitivity excitation step)}
+\newcommand{\resNovSlope}{0.052\,g/bar}
+% Oct 9 diagnostics: three-run distribution, not the single worst run.
+% runs 021149/024141/033810: rows 663/843/861, in-spec 100.0/96.4/94.0%,
+% std 0.042/0.186/0.237 g. \resNovInspec/\resNovWideRows/\resNovStd are the
+% single third-run values; the ranges above are defined for reference and
+% \resRowsRange is the one used in the body.
+\newcommand{\resNovInspecRange}{94.0--100.0\%}
+\newcommand{\resNovStdRange}{0.04--0.24\,g}
+\newcommand{\resRowsRange}{663--869}
+\newcommand{\resNovInspec}{94.0\%}
+\newcommand{\resNovWideRows}{861}
+\newcommand{\resNovStd}{0.24\,g}
+
+% Seven-leg fault-suite outcomes (hardening ack-gate suite,
+% tmp-e2e/hardening-ack-gate.mjs; archived in
+% docs/audit/2026-10-08-production-hardening-report.md): 2 parameters
+% promoted transport-acknowledged -> readback-verified by post-write
+% re-read; 1 failed (broker unreachable, healthy sibling verified);
+% 1 unverified (publish-only endpoint, three verification attempts).
+\newcommand{\resAckPromoted}{2}
+\newcommand{\resAckFailed}{1}
+\newcommand{\resAckUnverified}{1}

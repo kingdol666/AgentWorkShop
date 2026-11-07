@@ -16,8 +16,23 @@ import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { harnessContinuityEnabled, rootQueueEnabled, workshopSettings } from '../../settings'
 import { TERMINAL_TASK_STATES, type TaskState } from '../../types/task'
 import { composeChannelSystemPrompt } from '../../aml/twin/prompt-composer'
+import { createChannelSessionRepo } from '../../db/channel-session.repo'
+import { SessionContextService, formatBriefText } from '../../sessions/context'
 
 export abstract class ManagerRuntimeWiring extends ManagerBus {
+  private sessionContextService: SessionContextService | null = null
+
+  /** Session Context 单例（按需建；repo 持有 db，不额外连接） */
+  protected getSessionContextService(): SessionContextService {
+    if (!this.sessionContextService) {
+      this.sessionContextService = new SessionContextService(
+        this.deps.db,
+        createChannelSessionRepo(this.deps.db),
+      )
+    }
+    return this.sessionContextService
+  }
+
   /** 按实例装配 AgentRuntime(每个实例一个独立运行时) */
   protected wireMember(m: ChannelAgentRow): AgentRuntime {
     const agent = instanceToAgentInfo(m)
@@ -71,6 +86,17 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       bus,
       workspace,
       memory,
+      // Session Context：按 sessionId 装配平台上下文块；异常降级为 legacy 回合，不阻断执行。
+      sessionContext: (sessionId) => {
+        try {
+          const brief = this.getSessionContextService().briefOf(sessionId)
+          if (!brief) return null
+          return { block: formatBriefText(brief), summary: brief.nextStep }
+        }
+        catch {
+          return null
+        }
+      },
       // 平台代投:人类 requireReply 的回执落时间线(人类无信箱,route 无人可投)
       // v17:同一回调也是**群聊回复的唯一出口** —— 关联 ID 齐备时写 chat_messages
       // (sender=agent,自动 @提问者)并发布 chat.message;关联缺失时退回纯时间线行为。
@@ -82,11 +108,13 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
           'x-aw-relayed': 'true',
           ...(reply.sourceChatMessageId ? { 'x-aw-source-chat-message-id': reply.sourceChatMessageId } : {}),
           ...(reply.requesterUserId ? { 'x-aw-requester-user-id': reply.requesterUserId } : {}),
+          ...(reply.sessionId ? { 'x-aw-session-id': reply.sessionId } : {}),
         })
         this.deps.repos.messages.create({
           id: message.messageId,
           channelId: m.channelId,
           taskId: null,
+          sessionId: reply.sessionId ?? null,
           fromAgentId: agent.id,
           toAgentId: null,
           role: message.role,
