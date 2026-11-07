@@ -23,6 +23,9 @@ export function projectPromptSection(agentId: string): string {
     const workItems = listOrNone(brief.workItems.map(w =>
       `- ${w.title} [${w.state}] channel=${w.channelId} budget=${w.execBudgetMinutes}min id=${w.id}`,
     ))
+    const sessions = listOrNone(brief.sessions.map(s =>
+      `- ${s.id} [${s.kind}/${s.status}] ${s.title}${s.workItemId ? ` workItem=${s.workItemId}` : ''}${s.summary ? ` — ${s.summary.slice(0, 160)}` : ''}`,
+    ))
     const vars = {
       projectName: p.name,
       projectId: p.id,
@@ -34,6 +37,7 @@ export function projectPromptSection(agentId: string): string {
       pendingApprovals: brief.pendingApprovals,
       deliverables,
       workItems,
+      sessions,
       channelId: brief.channelId,
       role: brief.role,
     }

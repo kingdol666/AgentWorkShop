@@ -309,6 +309,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
         sessionRepo: createChannelSessionRepo(this.deps.db),
       },
     )
+    this.getSessionContextService().refresh(result.sessionId)
     const { recordOps } = await import('../../ops/ops')
     recordOps({
       actor: input.actor.id,
@@ -350,6 +351,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
         sessionRepo: createChannelSessionRepo(this.deps.db),
       },
     )
+    this.getSessionContextService().refresh(input.sessionId)
     const { recordOps } = await import('../../ops/ops')
     recordOps({
       actor: input.actor.id,

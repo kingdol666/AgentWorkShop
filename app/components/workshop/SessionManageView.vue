@@ -13,7 +13,7 @@
  * 选中会话为 active 时 10s 轻轮询消息与运行态(管理视图取向:显式刷新优先)。
  */
 import { message } from 'ant-design-vue'
-import { useWorkshopApi, type ChannelSessionDto, type ChannelMessageDto } from '@/app/composables/workshop/useWorkshopApi'
+import { useWorkshopApi, type ChannelSessionDto, type ChannelMessageDto, type SessionBriefDto, type SessionHistoryDto } from '@/app/composables/workshop/useWorkshopApi'
 
 const { t } = useI18n()
 
@@ -32,6 +32,10 @@ const loadError = ref('')
 const activeSessionId = ref<string | null>(null)
 const messages = ref<ChannelMessageDto[]>([])
 const messagesLoading = ref(false)
+const brief = ref<SessionBriefDto | null>(null)
+const history = ref<SessionHistoryDto[]>([])
+const composerText = ref('')
+const sending = ref(false)
 
 const activeSession = computed(() => sessions.value.find(s => s.id === activeSessionId.value) ?? null)
 
@@ -120,9 +124,40 @@ async function loadMessages(s: ChannelSessionDto): Promise<void> {
   finally { messagesLoading.value = false }
 }
 
+/** Session Context：brief/history 与消息并行拉取；失败不阻断消息面。 */
+async function loadContext(s: ChannelSessionDto): Promise<void> {
+  const [b, h] = await Promise.allSettled([
+    api.getSessionBrief(props.channelId, s.id),
+    api.getSessionHistory(props.channelId, s.id, 80),
+  ])
+  brief.value = b.status === 'fulfilled' ? (b.value.data ?? null) : null
+  history.value = h.status === 'fulfilled' ? (h.value.data ?? []) : []
+}
+
+const isManualSession = computed(() => {
+  const kind = activeSession.value?.instanceKind
+  return !kind || kind === 'manual'
+})
+
+async function sendMessage(): Promise<void> {
+  const text = composerText.value.trim()
+  const session = activeSession.value
+  if (!text || !session || sending.value) return
+  sending.value = true
+  try {
+    await api.sendSessionMessage(props.channelId, session.id, { text })
+    composerText.value = ''
+    await Promise.all([loadMessages(session), loadContext(session)])
+  }
+  catch (err) {
+    message.error(apiErrorMessage(err))
+  }
+  finally { sending.value = false }
+}
+
 async function selectSession(s: ChannelSessionDto): Promise<void> {
   activeSessionId.value = s.id
-  await loadMessages(s)
+  await Promise.all([loadMessages(s), loadContext(s)])
 }
 
 // 选中会话为 active 时轻轮询(10s):新消息与运行态回流;切换/卸载/登出即停
@@ -135,6 +170,7 @@ watch(activeSessionId, (sid) => {
       const cur = sessions.value.find(x => x.id === activeSessionId.value)
       if (cur?.status !== 'active') return
       void loadMessages(cur)
+      void loadContext(cur)
       void refreshRuntime()
     }, 10_000)
   }
@@ -456,6 +492,50 @@ watch(() => props.channelId, () => {
                 </div>
               </div>
             </template>
+          </div>
+          <div
+            v-if="brief"
+            class="sm-brief"
+          >
+            <div class="sm-brief-row">
+              <span class="sm-brief-label">Session Context</span>
+              <b>{{ brief.nextStep }}</b>
+            </div>
+            <div class="sm-brief-row muted">
+              <span>当前任务：{{ brief.currentTask?.title ?? '—' }}</span>
+              <span>{{ brief.currentTask?.state ?? '—' }} · {{ brief.currentTask?.progress ?? 0 }}%</span>
+              <span>交付物 {{ brief.deliverables.length }}</span>
+              <span>未决 {{ brief.openQuestions.length }}</span>
+            </div>
+            <p
+              v-if="brief.openQuestions.length"
+              class="sm-brief-open"
+            >
+              未决：{{ brief.openQuestions.join('；') }}
+            </p>
+          </div>
+          <div class="sm-compose">
+            <a-textarea
+              v-model:value="composerText"
+              :rows="2"
+              :maxlength="8000"
+              :disabled="!isManualSession || activeSession.status !== 'active'"
+              :placeholder="isManualSession ? '向本会话的成员发消息（Ctrl/⌘+Enter 发送）' : '任务/项目会话由项目派发控制，只读查看'"
+              @keydown.ctrl.enter.prevent="sendMessage"
+              @keydown.meta.enter.prevent="sendMessage"
+            />
+            <div class="sm-compose-actions">
+              <span class="muted">{{ isManualSession ? '消息进入 session clone 成员；回执自动落同一 session。' : '只读：任务/项目会话由项目派发与验收链路控制。' }}</span>
+              <a-button
+                type="primary"
+                size="small"
+                :loading="sending"
+                :disabled="!composerText.trim() || !isManualSession || activeSession.status !== 'active'"
+                @click="sendMessage"
+              >
+                发送
+              </a-button>
+            </div>
           </div>
         </template>
         <div
@@ -890,6 +970,92 @@ watch(() => props.channelId, () => {
   text-align: center;
   font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
+}
+.sm-brief {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  margin: 8px 12px 0;
+  background: var(--chat-surface-raised);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-control);
+}
+.sm-brief-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--chat-ink);
+}
+.sm-brief-label {
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-chip);
+}
+.sm-brief-row.muted {
+  font-size: 11.5px;
+  color: var(--chat-ink-faint);
+}
+.sm-brief-open {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--tone-warning-dot);
+}
+.sm-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px 12px;
+}
+.sm-compose-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+.sm-compose-actions .muted {
+  font-size: 11px;
+  color: var(--chat-ink-faint);
+}
+/* 窄屏：会话列表在上、详情在下；否则 320px rail + 详情在 390px 视口里被裁切 */
+@media (max-width: 760px) {
+  .sm-body {
+    flex-direction: column;
+  }
+  .sm-rail {
+    flex: 0 0 auto;
+    max-height: 38vh;
+    padding: 10px;
+    border-right: 0;
+    border-bottom: 1px solid var(--chat-line);
+  }
+  .sm-detail {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .sm-detail-head {
+    padding: 10px 12px;
+  }
+  .sm-detail-title h4 {
+    white-space: normal;
+  }
+  .sm-msgs {
+    padding: 10px 12px;
+  }
+  .sm-brief {
+    margin-inline: 10px;
+  }
+  .sm-compose {
+    padding: 8px 10px 12px;
+  }
+  .sm-compose-actions {
+    align-items: flex-end;
+  }
 }
 .spin {
   animation: sm-spin 1s linear infinite;

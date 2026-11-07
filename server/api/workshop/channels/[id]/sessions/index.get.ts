@@ -23,18 +23,32 @@ export default defineApiHandler(async (event) => {
   const manager = getWorkshopManager()
   manager.getChannelForUser(channelId, user.id)
   const sessions = manager.listChannelSessions(channelId)
-  return sessions.map(s => ({
-    id: s.id,
-    title: s.title,
-    status: s.status,
-    memoryPolicy: s.memoryPolicy,
-    memberMap: parseMemberMap(s.memberMapJson),
-    createdAt: s.createdAt,
-    closedAt: s.closedAt,
-    // 项目任务实例（2026-11-07）：任务溯源，前端会话卡展示「任务」徽标
-    projectId: s.projectId,
-    projectWorkItemId: s.projectWorkItemId,
-    createdByKind: s.createdByKind,
-    instanceKind: s.instanceKind,
-  }))
+  return sessions.map((s) => {
+    const brief = manager.getSessionBrief(s.id)
+    return {
+      id: s.id,
+      title: s.title,
+      status: s.status,
+      memoryPolicy: s.memoryPolicy,
+      memberMap: parseMemberMap(s.memberMapJson),
+      createdAt: s.createdAt,
+      closedAt: s.closedAt,
+      // 项目任务实例（2026-11-07）：任务溯源，前端会话卡展示「任务」徽标
+      projectId: s.projectId,
+      projectWorkItemId: s.projectWorkItemId,
+      createdByKind: s.createdByKind,
+      instanceKind: s.instanceKind,
+      summary: s.summary,
+      lastActiveAt: s.lastActiveAt,
+      kind: brief?.kind ?? (s.instanceKind === 'task' ? 'task' : s.instanceKind === 'project' ? 'project' : 'manual'),
+      brief: brief
+        ? {
+            currentTask: brief.currentTask,
+            nextStep: brief.nextStep,
+            openQuestions: brief.openQuestions,
+            deliverables: brief.deliverables,
+          }
+        : null,
+    }
+  })
 })

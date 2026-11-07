@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-11-07T03:39:19.342Z",
+  "pass": 7,
+  "fail": 0,
+  "results": [
+    {
+      "id": "U0",
+      "name": "注册 owner",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "U1",
+      "name": "创建工作区并挂载 Channel",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "U2",
+      "name": "Channel sessions 视图渲染",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "U3",
+      "name": "session brief 卡渲染",
+      "pass": true,
+      "detail": "Session Context会话进行中（2 条消息）；等待成员回复或下一指令当前任务：—— · 0%交付物 0未决 0"
+    },
+    {
+      "id": "U4",
+      "name": "UI 发送 → clone 回执",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "U5",
+      "name": "移动端无横向溢出",
+      "pass": true,
+      "detail": "overflow=false"
+    },
+    {
+      "id": "U6",
+      "name": "Project sessions 卡渲染 project/task",
+      "pass": true,
+      "detail": " 项目会话 2 个 session 刷新会话 task任务：UI 工作项closedUI 工作项打开会话project项目会话：Session UI 项目 1794022757103activeUI 工作项打开会话"
+    }
+  ]
+}

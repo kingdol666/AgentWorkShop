@@ -286,6 +286,7 @@ export interface MessageRow {
   id: string
   channelId: string
   taskId: string | null
+  sessionId: string | null
   fromAgentId: string | null
   toAgentId: string | null
   role: string
@@ -332,6 +333,7 @@ export interface TaskRow {
   projectId: string | null
   projectWorkItemId: string | null
   projectAttemptNo: number | null
+  sessionId: string | null
   traceId: string
   /** 显式替代关系:本任务(FAILED/CANCELED)被 replacement 覆盖 */
   supersededByTaskId?: string | null

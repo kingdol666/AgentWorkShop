@@ -621,6 +621,23 @@ export class ProjectService {
         leadAgentId: office.leadAgentId ?? null,
       })
       if (!updated) throw new AppError(500, 'INTERNAL', 'Project 创建后无法回填办公室指针')
+      // Session Context：项目办公室的 Project Leader 上下文是一等 project session。
+      // 幂等：同 project 已有 active project session 则复用（创建失败会由 catch 归档项目）。
+      if (updated.leadAgentId) {
+        const existing = this.sessions.listByProject(project.id)
+          .find(s => s.instanceKind === 'project' && s.status === 'active')
+        if (!existing) {
+          this.sessions.create({
+            channelId: office.channelId,
+            title: `项目会话：${name}`,
+            memberMap: { [updated.leadAgentId]: updated.leadAgentId },
+            createdBy: actor.id,
+            projectId: project.id,
+            createdByKind: 'project',
+            instanceKind: 'project',
+          })
+        }
+      }
       return updated
     }
     catch (err) {
@@ -1037,6 +1054,7 @@ export class ProjectService {
       if (!instanceChannel || instanceChannel.enabled !== 1 || !instanceChannel.leadAgentId) {
         throw new AppError(409, 'TASK_INSTANCE_UNAVAILABLE', `任务实例 Channel 不可用: ${instanceChannelId}`)
       }
+      const taskSession = this.sessions.listByWorkItem(wi.id).find(s => s.status === 'active')
       const attemptNo = this.attempts.listByWorkItem(wi.id).reduce((max, a) => Math.max(max, a.attemptNo), 0) + 1
       const sourceKey = `pw:${wi.id}:${attemptNo}`
       const traceId = wi.traceId || `trace:${wi.id}`
@@ -1045,12 +1063,14 @@ export class ProjectService {
       withTransaction(this.db, () => {
         attempt = this.attempts.create({
           projectId: id, workItemId: wi.id, attemptNo, channelId: instanceChannelId, sourceKey, traceId,
+          sessionId: taskSession?.id,
         })
         if (!this.workItems.claimForDispatch(wi.id, attempt.id)) {
           throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项已被其他派发者领取')
         }
       })
       stage = 'submit'
+      // Session Context：任务实例 Channel 的 active session 是该 root 的权威上下文（上方已取）。
       const { task } = await this.manager.submitProjectRoot({
         projectId: id,
         workItemId: wi.id,
@@ -1059,6 +1079,7 @@ export class ProjectService {
         traceId,
         channelId: instanceChannelId,
         assigneeId: instanceChannel.leadAgentId,
+        sessionId: taskSession?.id,
         title: wi.title,
         description: wi.brief,
         execBudgetMinutes: wi.execBudgetMinutes,
@@ -2839,6 +2860,16 @@ export class ProjectService {
     deliverables: ProjectDeliverableRow[]
     workItems: ProjectWorkItemRow[]
     pendingApprovals: number
+    /** Session Context：Project 的 project/task session 目录（brief 预览） */
+    sessions: Array<{
+      id: string
+      kind: string
+      title: string
+      status: string
+      workItemId: string | null
+      summary: string
+      lastActiveAt: string | null
+    }>
   } {
     const ctx = this.requireAgentContext(agentId, 'any')
     const deliverables = this.deliverables.listByProject(ctx.project.id)
@@ -2852,6 +2883,15 @@ export class ProjectService {
       deliverables,
       workItems: items,
       pendingApprovals: this.approvals.listPending(ctx.project.id).length,
+      sessions: this.sessions.listByProject(ctx.project.id).map(s => ({
+        id: s.id,
+        kind: s.instanceKind,
+        title: s.title,
+        status: s.status,
+        workItemId: s.projectWorkItemId,
+        summary: s.summary,
+        lastActiveAt: s.lastActiveAt,
+      })),
     }
   }
 

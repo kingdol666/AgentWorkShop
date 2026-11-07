@@ -29,15 +29,20 @@ export interface ChannelSessionRow {
   projectId: string | null
   projectWorkItemId: string | null
   createdByKind: 'user' | 'project'
-  instanceKind: 'manual' | 'task'
+  instanceKind: 'manual' | 'task' | 'project'
+  /** Session Context：确定性摘要 / brief 缓存 / 最近活动 / 纪元 */
+  summary: string
+  briefJson: string
+  lastActiveAt: string | null
+  generation: number
 }
 
-const SESSION_COLS = 'id, channel_id AS channelId, title, status, memory_policy AS memoryPolicy, member_map_json AS memberMapJson, created_by AS createdBy, created_at AS createdAt, closed_at AS closedAt, project_id AS projectId, project_work_item_id AS projectWorkItemId, created_by_kind AS createdByKind, instance_kind AS instanceKind'
+const SESSION_COLS = 'id, channel_id AS channelId, title, status, memory_policy AS memoryPolicy, member_map_json AS memberMapJson, created_by AS createdBy, created_at AS createdAt, closed_at AS closedAt, project_id AS projectId, project_work_item_id AS projectWorkItemId, created_by_kind AS createdByKind, instance_kind AS instanceKind, summary, brief_json AS briefJson, last_active_at AS lastActiveAt, generation'
 
 export function createChannelSessionRepo(db: DatabaseSync) {
   const insertStmt = db.prepare(
-    `INSERT INTO channel_sessions (id, channel_id, title, status, memory_policy, member_map_json, created_by, created_at, project_id, project_work_item_id, created_by_kind, instance_kind)
-     VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO channel_sessions (id, channel_id, title, status, memory_policy, member_map_json, created_by, created_at, project_id, project_work_item_id, created_by_kind, instance_kind, summary, brief_json, last_active_at, generation)
+     VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, '', '{}', ?, 0)`,
   )
   const byIdStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE id = ?`)
   const byChannelStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE channel_id = ? ORDER BY created_at DESC`)
@@ -55,7 +60,7 @@ export function createChannelSessionRepo(db: DatabaseSync) {
       projectId?: string | null
       projectWorkItemId?: string | null
       createdByKind?: 'user' | 'project'
-      instanceKind?: 'manual' | 'task'
+      instanceKind?: 'manual' | 'task' | 'project'
     }): ChannelSessionRow {
       const id = `cs-${randomUUID().slice(0, 8)}`
       const now = new Date().toISOString()
@@ -71,6 +76,7 @@ export function createChannelSessionRepo(db: DatabaseSync) {
         input.projectWorkItemId ?? null,
         input.createdByKind ?? 'user',
         input.instanceKind ?? 'manual',
+        now,
       )
       return this.findById(id)!
     },
@@ -94,6 +100,31 @@ export function createChannelSessionRepo(db: DatabaseSync) {
 
     listActive(channelId: string): ChannelSessionRow[] {
       return this.listByChannel(channelId).filter(s => s.status === 'active')
+    },
+
+    /** 刷新 brief/summary（Session Context 幂等写）。 */
+    updateBrief(id: string, input: { summary?: string, briefJson?: string, lastActiveAt?: string | null }): boolean {
+      const current = this.findById(id)
+      if (!current) return false
+      const result = db.prepare('UPDATE channel_sessions SET summary = ?, brief_json = ?, last_active_at = ? WHERE id = ?')
+        .run(
+          input.summary ?? current.summary,
+          input.briefJson ?? current.briefJson,
+          input.lastActiveAt !== undefined ? input.lastActiveAt : current.lastActiveAt,
+          id,
+        )
+      return Number(result.changes ?? 0) > 0
+    },
+
+    /** 触碰活跃时间（消息/任务事件）。 */
+    touch(id: string, at = new Date().toISOString()): void {
+      db.prepare('UPDATE channel_sessions SET last_active_at = ? WHERE id = ?').run(at, id)
+    },
+
+    /** 会话纪元 +1（关闭重开/恢复；旧代次事件由上层栅栏丢弃）。 */
+    bumpGeneration(id: string): number {
+      db.prepare('UPDATE channel_sessions SET generation = generation + 1 WHERE id = ?').run(id)
+      return this.findById(id)?.generation ?? 0
     },
 
     /** 关闭会话（幂等：已 closed 返回 false）。 */

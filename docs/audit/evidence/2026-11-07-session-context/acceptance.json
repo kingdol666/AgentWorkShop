@@ -1,0 +1,128 @@
+{
+  "generatedAt": "2026-11-07T03:38:56.213Z",
+  "base": "http://127.0.0.1:3991",
+  "pass": 20,
+  "fail": 0,
+  "results": [
+    {
+      "id": "R1",
+      "name": "注册 owner",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C1",
+      "name": "创建 Channel + mock lead",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C2",
+      "name": "添加 mock worker",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C3",
+      "name": "创建 manual session（克隆成员）",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C4",
+      "name": "session 发消息（投递给 clone）",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C5",
+      "name": "clone 回执落同一 session（metadata.session_id）",
+      "pass": true,
+      "detail": "{\"id\":\"3bcf9780-a9a1-4f96-98e7-ad33d032a6e7\",\"channelId\":\"69187834-3e09-4791-b765-1f1698692e22\",\"taskId\":null,\"fromAgentId\":\"64f0b928-038a-4a58-a447-5d96ead067e4\",\"toAgentId\":null,\"role\":\"ROLE_AGENT\",\"parts\":[{\"text\":\"@owner:7b446d38-c7e8-45b5-91bb-90b850591a9f mock 群聊回复(64f0b928-038a-4a58-a447-5d96"
+    },
+    {
+      "id": "C6",
+      "name": "session brief 可读",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C7",
+      "name": "brief 含最近消息/下一步",
+      "pass": true,
+      "detail": "{\"sessionId\":\"cs-d0b258ee\",\"kind\":\"manual\",\"title\":\"验收会话\",\"status\":\"active\",\"channelId\":\"69187834-3e09-4791-b765-1f1698692e22\",\"channelName\":\"Session 验收频道 1794022735426\",\"projectId\":null,\"projectName\":null,\"workItemId\":null,\"workItemTitle\":null,\"objective\":\"验收会话\",\"rootTaskId\":null,\"currentTask\":null"
+    },
+    {
+      "id": "C8",
+      "name": "session history 有界可读",
+      "pass": true,
+      "detail": "rows=2"
+    },
+    {
+      "id": "P1",
+      "name": "创建 Project",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P2",
+      "name": "绑定执行 Channel",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P3",
+      "name": "创建必选交付物",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P4",
+      "name": "创建工作项",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P5",
+      "name": "激活项目",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P6",
+      "name": "提交 plan 审批",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P7",
+      "name": "批准 plan",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P8",
+      "name": "派发工作项（任务实例 Channel + session）",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P9",
+      "name": "Project session 目录含 project + task",
+      "pass": true,
+      "detail": "[{\"id\":\"cs-fcab4e5c\",\"kind\":\"task\",\"title\":\"任务：验收工作项\",\"status\":\"closed\",\"channelId\":\"2d195db6-8fdd-4e21-8d10-3e56acb3d476\",\"projectId\":\"98873ae7-da5a-4f9e-a514-eb1119d63205\",\"workItemId\":\"e1acf594-28ed-4342-8468-ef45157bebd6\",\"summary\":\"task session cs-fcab4e5c（closed）；项目：Session 验收项目 1794022736046；工作项：验收工作项；当前任务：验收工作项 [COMPLETED 100%]；下一步：任务已完成，等待成果验收\",\"currentTask\":\"验收工作项\",\"lastActiveAt\":\"2026-11-07T11:38:56.176+08:00\"},{\"id\":\"cs-8027fecf\",\"kind\":\"project\",\"title\":\"项目会话：Session 验收项目 1794022736"
+    },
+    {
+      "id": "P10",
+      "name": "task session brief 可读",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P11",
+      "name": "task brief 关联工作项",
+      "pass": true,
+      "detail": "{\"sessionId\":\"cs-fcab4e5c\",\"kind\":\"task\",\"title\":\"任务：验收工作项\",\"status\":\"closed\",\"channelId\":\"2d195db6-8fdd-4e21-8d10-3e56acb3d476\",\"channelName\":\"Session 验收频道 1794022735426 · 任务 c73a\",\"projectId\":\"98873ae7-da5a-4f9e-a514-eb1119d63205\",\"projectName\":\"Session 验收项目 1794022736046\",\"workItemId\":\"e1acf594-28ed-4342-8468-ef45157bebd6\",\"workItemTitle\":\"验收工作项\",\"objective\":\"产出一个可验收结果\",\"rootTaskId\":\"15141fc7-4"
+    }
+  ]
+}
