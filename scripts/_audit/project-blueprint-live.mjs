@@ -31,14 +31,14 @@ const step = (name, ok, detail) => {
   console.log(`${ok ? '✔' : '✘'} [${name}] ${String(detail ?? '').slice(0, 160)}`)
   return ok
 }
-const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 async function api(method, path, body, timeoutMs = 30_000, agentToken) {
   const res = await fetch(`${base}${path}`, {
     method,
     headers: {
       'content-type': 'application/json',
-      ...((agentToken ? { authorization: `Bearer ${agentToken}`, 'x-aw-agent-token': agentToken } : (token ? { authorization: `Bearer ${token}` } : {}))),
+      ...((agentToken ? { 'authorization': `Bearer ${agentToken}`, 'x-aw-agent-token': agentToken } : (token ? { authorization: `Bearer ${token}` } : {}))),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),

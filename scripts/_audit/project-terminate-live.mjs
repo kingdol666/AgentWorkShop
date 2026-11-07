@@ -33,14 +33,14 @@ const step = (name, ok, detail) => {
   console.log(`${ok ? '✔' : '✘'} [${name}] ${String(detail ?? '').slice(0, 170)}`)
   return ok
 }
-const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 async function api(method, path, body, timeoutMs = 30_000, agentToken) {
   const res = await fetch(`${base}${path}`, {
     method,
     headers: {
       'content-type': 'application/json',
-      ...((agentToken ? { authorization: `Bearer ${agentToken}`, 'x-aw-agent-token': agentToken } : (token ? { authorization: `Bearer ${token}` } : {}))),
+      ...((agentToken ? { 'authorization': `Bearer ${agentToken}`, 'x-aw-agent-token': agentToken } : (token ? { authorization: `Bearer ${token}` } : {}))),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
@@ -100,9 +100,7 @@ async function main() {
     return finish(false)
   }
   const cidByKey = inst.data?.channelIdByKey ?? {}
-  const ont = { cid: cidByKey.ont, leadId: (await api('GET', `/api/workshop/channels/${cidByKey.ont}/agents`)).data?.find(a => a.role === 'lead')?.id }
-  const proc = { cid: cidByKey.proc, leadId: (await api('GET', `/api/workshop/channels/${cidByKey.proc}/agents`)).data?.find(a => a.role === 'lead')?.id }
-  await api('POST', `/api/workshop/projects/${pid}/work-items/${w1}/dispatch`)
+  const ont = { cid: cidByKey.ont, leadId: (await api('GET', `/api/workshop/channels/${cidByKey.ont}/agents`)).data?.find(a => a.role === 'lead')?.id }  await api('POST', `/api/workshop/projects/${pid}/work-items/${w1}/dispatch`)
   const doneW1 = await waitRootDone(pid, w1, { cid: ont.cid, leadId: ont.leadId }, 180_000)
   if (!step('S3a-root-done-W1', doneW1.ok, doneW1.detail)) return finish(false)
   // W2 派发 → 在飞（本脚本主体=队列/可见面/终止级联；submit→review 全链已由
@@ -150,7 +148,7 @@ async function main() {
     await sleep(4000)
     const ms = await api('GET', `/api/workshop/channels/${office}/messages?limit=50`)
     const arr = ms.data?.messages ?? ms.data ?? []
-    const norm = arr.map(m => {
+    const norm = arr.map((m) => {
       // parts 可能是 JSON 字符串或已解析数组——统一解析出纯文本（String(array) 会变 [object Object]）
       let parts = m.parts_json ?? m.parts ?? []
       if (typeof parts === 'string') { try { parts = JSON.parse(parts) } catch { parts = [{ text: parts }] } }

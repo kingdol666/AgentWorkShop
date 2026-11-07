@@ -85,7 +85,6 @@ type Fixture = ReturnType<typeof fixture>
 
 const owner = { id: 'u-owner', role: 'user' }
 
-
 async function setupProject(f: Fixture, opts: { routingPolicy?: 'legacy' | 'technical', autoDispatch?: boolean } = {}) {
   const p = await f.svc.create({
     name: `P0-${randomUUID().slice(0, 8)}`, objective: 'hardening regression',
@@ -224,15 +223,18 @@ test('P0-1 route 提案应用失败 → applied 回退 proposed + plan.apply_fai
       state: 'proposed', traceId: 'p0-1',
     })
     // 注入执行体失败
-    const original = (f.svc as unknown as Record<string, unknown>)['applyRouteDecision']
-    ;(f.svc as unknown as Record<string, unknown>)['applyRouteDecision'] = async () => { throw new Error('boom') }
+    const svcPatch = f.svc as unknown as Record<string, unknown>
+    const original = svcPatch['applyRouteDecision']
+    svcPatch['applyRouteDecision'] = async () => {
+      throw new Error('boom')
+    }
     await assert.rejects(() => f.svc.applyProposal(s.p.id, decision.id, owner), /boom/)
     const afterFail = f.decisions.findById(s.p.id, decision.id)!
     assert.equal(afterFail.state, 'proposed', 'applied 必须回退 proposed（可重放）')
     assert.equal(afterFail.outcome, 'apply_failed')
     assert.ok(f.events.listByProject(s.p.id).some(e => e.type === 'plan.apply_failed'))
     // 恢复执行体 → 重放成功
-    ;(f.svc as unknown as Record<string, unknown>)['applyRouteDecision'] = original
+    svcPatch['applyRouteDecision'] = original
     const applied = await f.svc.applyProposal(s.p.id, decision.id, owner)
     assert.ok(applied.workItem || applied.dispatched)
     assert.equal(f.decisions.findById(s.p.id, decision.id)!.state, 'applied')
@@ -246,7 +248,7 @@ test('P0-3 解绑：在飞工作项终结化 + work.canceled 事件；迟到 roo
   const f = fixture()
   try {
     const s = await setupProject(f, { routingPolicy: 'legacy' })
-    const w1 = f.svc.createWorkItem(s.p.id, owner, { deliverableId: s.d.id, channelId: s.a.channelId, title: 'U1', })
+    const w1 = f.svc.createWorkItem(s.p.id, owner, { deliverableId: s.d.id, channelId: s.a.channelId, title: 'U1' })
     const w2 = f.svc.createWorkItem(s.p.id, owner, { deliverableId: s.d.id, channelId: s.a.channelId, title: 'D1', dependsOn: [w1.id] })
     await f.svc.dispatchWorkItem(s.p.id, w1.id, owner)
     assert.equal(f.svc.listWorkItems(s.p.id, owner).find(x => x.id === w1.id)!.state, 'DISPATCHED')

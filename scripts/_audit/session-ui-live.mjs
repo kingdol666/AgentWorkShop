@@ -36,7 +36,7 @@ const step = (name, ok, detail) => {
   console.log(`${ok ? '✔' : '✘'} [${name}] ${String(detail ?? '').slice(0, 200)}`)
   return ok
 }
-const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 async function api(method, path, body, timeoutMs = 30_000, opts = {}) {
   const res = await fetch(`${base}${path}`, {
@@ -44,7 +44,7 @@ async function api(method, path, body, timeoutMs = 30_000, opts = {}) {
     headers: {
       'content-type': 'application/json',
       ...(opts.cookie ? { cookie: opts.cookie } : {}),
-      ...((opts.agentToken ? { authorization: `Bearer ${opts.agentToken}`, 'x-aw-agent-token': opts.agentToken } : (token && !opts.noAuth ? { authorization: `Bearer ${token}` } : {}))),
+      ...((opts.agentToken ? { 'authorization': `Bearer ${opts.agentToken}`, 'x-aw-agent-token': opts.agentToken } : (token && !opts.noAuth ? { authorization: `Bearer ${token}` } : {}))),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
@@ -130,10 +130,7 @@ async function main() {
   const detailOk = detailA.status === 200 && detailA.data?.channelId === cid && detailA.data?.status === 'active'
   step('S4b-detail-200', detailOk, `detail=${detailA.status} channelId 匹配=${detailA.data?.channelId === cid}`)
 
-  // ⑤ 两会话 omp clone 各发 task 消息（独立 runtime 各自消费）
-  const tokA = (await api('POST', `/api/workshop/channels/${cid}/agents/${aId}/rotate-token`, {})).data?.token
-  const tokB = (await api('POST', `/api/workshop/channels/${cid}/agents/${bId}/rotate-token`, {})).data?.token
-  const tagA = randomUUID().slice(0, 6)
+  // ⑤ 两会话 omp clone 各发 task 消息（独立 runtime 各自消费）  const tagA = randomUUID().slice(0, 6)
   const tagB = randomUUID().slice(0, 6)
   const send = async (aid, tag) => {
     const m = await api('POST', `/api/workshop/channels/${cid}/messages`, {

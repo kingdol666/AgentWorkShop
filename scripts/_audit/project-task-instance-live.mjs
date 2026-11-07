@@ -36,7 +36,7 @@ const step = (name, ok, detail) => {
   console.log(`${ok ? '✔' : '✘'} [${name}] ${String(detail ?? '').slice(0, 210)}`)
   return ok
 }
-const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 async function api(method, path, body, timeoutMs = 30_000) {
   const res = await fetch(`${base}${path}`, {

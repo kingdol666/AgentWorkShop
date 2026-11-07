@@ -12,7 +12,7 @@
  * 排序 priority DESC → createdAt ASC，保证多就绪项的派发次序确定。
  */
 import type { ProjectDeliverableRow, ProjectResultRow, ProjectWorkItemRow } from '../db/project.repo'
-import { evaluateWorkItemReadiness, selectReadyWorkItemsWithContext, type ReadinessContext } from './readiness'
+import { evaluateWorkItemReadiness, selectReadyWorkItemsWithContext } from './readiness'
 
 // P0-8：已删除 selectReadyWorkItems legacy shim（routingPolicy 硬编码 'legacy'，
 // 误用即绕过 technical 门；全仓无真实调用方）。所有调用走 selectReadyWithContext。

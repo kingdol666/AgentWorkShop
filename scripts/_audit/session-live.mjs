@@ -31,14 +31,14 @@ const step = (name, ok, detail) => {
   console.log(`${ok ? '✔' : '✘'} [${name}] ${String(detail ?? '').slice(0, 170)}`)
   return ok
 }
-const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 async function api(method, path, body, timeoutMs = 30_000, agentToken) {
   const res = await fetch(`${base}${path}`, {
     method,
     headers: {
       'content-type': 'application/json',
-      ...((agentToken ? { authorization: `Bearer ${agentToken}`, 'x-aw-agent-token': agentToken } : (token ? { authorization: `Bearer ${token}` } : {}))),
+      ...((agentToken ? { 'authorization': `Bearer ${agentToken}`, 'x-aw-agent-token': agentToken } : (token ? { authorization: `Bearer ${token}` } : {}))),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
@@ -86,10 +86,7 @@ async function main() {
   const okS3 = Boolean(sA.sessionId && sB.sessionId && aId && bId && aId !== bId)
   if (!step('S3-two-sessions', okS3, `A=${String(sA.sessionId).slice(0, 8)} B=${String(sB.sessionId).slice(0, 8)} cloneA=${String(aId).slice(0, 8)} cloneB=${String(bId).slice(0, 8)}`)) return finish(false)
 
-  // ③ 各会话独立对话：向两会话成员各发 task 消息（requireReply）
-  const tokA = (await api('POST', `/api/workshop/channels/${cid}/agents/${aId}/rotate-token`, {})).data?.token
-  const tokB = (await api('POST', `/api/workshop/channels/${cid}/agents/${bId}/rotate-token`, {})).data?.token
-  const send = async (aid) => {
+  // ③ 各会话独立对话：向两会话成员各发 task 消息（requireReply）  const send = async (aid) => {
     const m = await api('POST', `/api/workshop/channels/${cid}/messages`, {
       toAgentId: aid, text: `会话任务：请执行本会话的分析并汇报 ${randomUUID().slice(0, 6)}`, fromLabel: 'owner', priority: 'task', requireReply: true,
     })

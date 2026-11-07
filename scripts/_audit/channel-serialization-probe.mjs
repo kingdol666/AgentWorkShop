@@ -29,7 +29,7 @@ const api = async (method, path, body) => {
   const json = await res.json().catch(() => null)
   return { status: res.status, data: json?.data, message: json?.message ?? '' }
 }
-const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 async function main() {
   const st = await api('GET', '/api/users/setup-status')

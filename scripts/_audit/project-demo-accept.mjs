@@ -42,7 +42,7 @@ async function api(method, path, body) {
   const json = await res.json().catch(() => null)
   return { status: res.status, data: json?.data, message: json?.message ?? '' }
 }
-const sha = (buf) => createHash('sha256').update(buf).digest('hex').slice(0, 12)
+const sha = buf => createHash('sha256').update(buf).digest('hex').slice(0, 12)
 const artifactOf = (dir, file) => {
   const p = join(workspaceRoot, dir, file)
   if (!existsSync(p)) return null
@@ -84,7 +84,7 @@ async function main() {
 
   const res = await api('GET', `/api/workshop/projects/${projectId}/results`)
   const results = res.data ?? []
-  const withEvidence = results.filter(r => {
+  const withEvidence = results.filter((r) => {
     try {
       const ev = JSON.parse(String(r.evidenceJson ?? '[]'))
       return Array.isArray(ev) && ev.length > 0
@@ -94,7 +94,7 @@ async function main() {
   step('E5-results-evidence', results.length >= items.length && withEvidence.length >= 2,
     `results=${results.length} 带证据=${withEvidence.length}（${results.slice(0, 3).map(r => `${String(r.title).slice(0, 12)}/${r.status}`).join(' | ')}）`)
 
-  const artifacts = items.map(w => {
+  const artifacts = items.map((w) => {
     const dir = w.instanceChannelId
     const cand = w.title.includes('pricing') ? 'pricing.html' : 'index.html'
     return { workItemId: w.id, title: w.title, instanceChannelId: dir, ...(artifactOf(dir, cand) ?? { file: cand, missing: true }) }
@@ -129,7 +129,7 @@ function finish(pass, evidence = {}) {
     `- base=${base}`, `- project=${evidence?.project?.name ?? '?'} (${evidence?.project?.id ?? '?'})`, '',
     ...steps.map(s => `- ${s.ok ? '✔' : '✘'} **${s.name}** ${s.detail}`), '',
     '## 产物清单', '',
-    ...(evidence.artifacts ?? []).map((a) => a.missing
+    ...(evidence.artifacts ?? []).map(a => a.missing
       ? `- ✘ ${a.file}（缺失）`
       : `- ✔ ${a.file} — ${a.bytes} bytes, sha256:${a.sha256_12}, title: ${a.title}`), '',
   ].join('\n')
