@@ -17,6 +17,7 @@ import { harnessContinuityEnabled, rootQueueEnabled, workshopSettings } from '..
 import { TERMINAL_TASK_STATES, type TaskState } from '../../types/task'
 import { composeChannelSystemPrompt } from '../../aml/twin/prompt-composer'
 import { createChannelSessionRepo } from '../../db/channel-session.repo'
+import { shouldRescueBusyStuck } from './rescue-policy'
 import { SessionContextService, formatBriefText } from '../../sessions/context'
 
 /**
@@ -181,6 +182,24 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     if (existing) return existing
     const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
     if (!m || m.enabled !== 1) return undefined
+    // WP2 守卫 A：频道已停用（任务实例终态回收/频道关闭）→ 拒绝按需重装配，
+    // 防「已停用频道被直接寻址复活」。
+    const ch = this.deps.repos.channels.findById(channelId)
+    if (ch && ch.enabled !== 1) return undefined
+    // WP2 守卫 B：会话克隆（名字带 ·session· 标记）只在所属会话仍 active 时可装配；
+    // 已关闭会话的克隆不可被任何寻址路径重新拉起（历史行仍保留审计）。
+    if (String(m.name ?? '').includes('·session·')) {
+      try {
+        const active = this.deps.db.prepare(
+          `SELECT 1 AS ok FROM channel_sessions WHERE channel_id = ? AND status = 'active' AND member_map_json LIKE ? LIMIT 1`,
+        ).get(channelId, `%${agentId}%`) as { ok?: number } | undefined
+        if (!active) {
+          log.warn(`[AgentChannelManager] 拒绝装配已关闭会话的克隆 ${channelId.slice(0, 8)}/${agentId.slice(0, 8)}`)
+          return undefined
+        }
+      }
+      catch { /* 查询失败按可装配处理（不阻断正常装配） */ }
+    }
     return this.wireMember(m)
   }
 
@@ -437,8 +456,18 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       // 此时卸载会打断正在生成的长任务（D1 反复卸载的直接根因）。
       const leadRt = this.runtimeOf(channel.id, channel.leadAgentId)
       if (leadRt?.getState?.() === 'busy') {
-        log.warn(`[AgentChannelManager] D1 兜底跳过:lead 正忙(channel ${channel.id.slice(0, 8)} root ${head.id.slice(0, 8)})`)
-        continue
+        // WP9：区分「健康长回合」与「卡死 busy」——后者（长时间无回合推进）允许受控重组。
+        const cfgMs = Number(process.env.AW_RESCUE_BUSY_STUCK_MS ?? 0)
+        const minBusyMs = Number.isFinite(cfgMs) && cfgMs >= 60_000
+          ? cfgMs
+          : Math.max(30 * 60_000, Number(workshopSettings().supervise_hard_timeout_ms) || 900_000)
+        const contr = leadRt.getContinuity?.()
+        const stuck = shouldRescueBusyStuck({ busy: true, lastUsedAt: contr?.lastUsedAt, now, minBusyMs })
+        if (!stuck) {
+          log.warn(`[AgentChannelManager] D1 兜底跳过:lead 正忙(channel ${channel.id.slice(0, 8)} root ${head.id.slice(0, 8)})`)
+          continue
+        }
+        log.warn(`[AgentChannelManager] D1 兜底:lead 长时间 busy 无推进(自 ${contr?.lastUsedAt ?? '?'})，按 busy-stuck 强制重组(root ${head.id.slice(0, 8)})`)
       }
       const last = this.rescueSeen.get(head.id) ?? 0
       if (now - last < RESCUE_COOLDOWN_MS) continue

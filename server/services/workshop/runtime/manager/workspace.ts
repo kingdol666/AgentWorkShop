@@ -9,6 +9,8 @@ import type { WorkspaceTask } from '../../types/task'
 import type { AgentMemory } from '../memory'
 import { AppError } from '../../../../utils/errors'
 import { workshopSettings } from '../../settings'
+import { activeSessionIdOfMember } from '../../agents/session-clone'
+import { createChannelSessionRepo } from '../../db/channel-session.repo'
 
 export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
   /** Agent 自主作业能力面(绑定本实例身份与 channel,委托 manager 作业方法) */
@@ -54,9 +56,13 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
         this.buses.get(channelId)?.notifyMemory({ agentId: agent.id, scope: input.scope, title: input.title, dedupKey: saved.dedupKey })
         return saved
       },
-      // 会话压缩摘要入库(harvest 桥):omp 压缩产出 → 本成员 episodic-session 记忆
+      // 会话压缩摘要入库(harvest 桥):omp 压缩产出 → 本成员 episodic-session 记忆。
+      // omp 内部 session 与平台 cs-* 未打通,运行时不知道平台会话 id —— 在桥内按
+      // memberMap 反查本实例所属 active 会话补齐(排除 project 恒等映射)。
       recordSessionMemory: async (input) => {
-        const saved = await memory.recordSessionCompaction(input)
+        const sessionId = input.sessionId
+          ?? activeSessionIdOfMember(createChannelSessionRepo(this.deps.db).listByChannel(channelId), agent.id)
+        const saved = await memory.recordSessionCompaction({ ...input, sessionId })
         this.buses.get(channelId)?.notifyMemory({ agentId: agent.id, scope: 'private', title: `会话压缩摘要(${input.summary.length}字)`, dedupKey: saved.dedupKey })
       },
       // 团队成员管理(仅 lead;manager 内二次校验角色,工具面与决策面共用)

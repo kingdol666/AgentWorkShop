@@ -36,6 +36,16 @@ export interface SessionCloneDeps {
   }
   /** 停用 clone 实例（触发既有 runtime 卸载路径） */
   unloadAgent: (channelId: string, instanceId: string, reason: string) => Promise<void>
+  /**
+   * 强制摘除 clone 运行时（会话关闭专用）：绕过 unloadAgent 的 idle/pending 闸门，
+   * 先摘索引再停机（stopAndDetach 语义）——防「忙 clone + 遗留 pending 消息」僵尸运行时。
+   * 缺省时回退 unloadAgent（兼容测试替身）。
+   */
+  stopAgentRuntime?: (channelId: string, instanceId: string, reason: string) => Promise<void>
+  /** 中止 clone 正在执行的指定任务（cancelTree 后立刻打断 LLM 回合，不等回合自然结束）。 */
+  abortTask?: (channelId: string, instanceId: string, taskId: string) => void
+  /** 停用 clone 成员行（enabled=0）：关闭的会话不得再被寻址/惰性重装配。 */
+  disableAgent?: (channelId: string, instanceId: string) => void
   notify?: (channelId: string, payload: { op: 'added' | 'updated' | 'removed', agentId: string, name: string, role: 'lead' | 'worker', harness: string }) => void
 }
 
@@ -117,11 +127,46 @@ export async function closeChannelSession(deps: SessionCloneDeps, input: {
   for (const cloneId of clones) {
     for (const t of deps.tasks.list(input.channelId)) {
       if (t.assigneeId !== cloneId || TERMINAL_TASK_STATES.has(t.state)) continue
-      deps.tasks.cancelTree(t.id, input.actorId, reason)
+      const canceled = deps.tasks.cancelTree(t.id, input.actorId, reason) as
+        | Array<{ id?: string, assigneeId?: string | null }>
+        | undefined
       canceledTasks += 1
+      // 取消只改任务状态；正在跑的 LLM 回合必须显式打断，否则 clone 会继续烧预算到回合结束。
+      // 子任务可能指派给同频道的其他 clone，按各自 assignee 的运行时中止。
+      const abortIds = Array.isArray(canceled) && canceled.length > 0
+        ? canceled.map(c => ({ taskId: String(c?.id ?? ''), agentId: String(c?.assigneeId ?? cloneId) }))
+        : [{ taskId: t.id, agentId: cloneId }]
+      for (const a of abortIds) {
+        if (a.taskId) deps.abortTask?.(input.channelId, a.agentId, a.taskId)
+      }
     }
-    await deps.unloadAgent(input.channelId, cloneId, reason)
+    // 关闭的会话不得再被寻址：先停用成员行，再强制摘除运行时。
+    // 会话关闭用「强制摘除」而非带闸门的 unloadAgent —— 取消在飞任务后忙 clone 会
+    // 立刻卸载；遗留的 pending assign 消息不再把运行时钉住（会话已关闭，不应再消费）。
+    deps.disableAgent?.(input.channelId, cloneId)
+    if (deps.stopAgentRuntime) await deps.stopAgentRuntime(input.channelId, cloneId, reason)
+    else await deps.unloadAgent(input.channelId, cloneId, reason)
   }
   input.sessionRepo.close(input.sessionId)
   return { canceledTasks, clones }
+}
+
+/**
+ * 反向解析成员当前所属的 active 会话（memberMap 的 value 命中成员实例 id）。
+ *
+ * 用于运行时写入面补 session 戳（如 omp 压缩摘要）。project 会话是
+ * 「办公室 lead → 自身」的恒等映射（projects/service.ts 创建），不属于可复用
+ * 会话维度，排除以免把项目办公室的摘要误盖成会话戳；manual/task 会话的
+ * memberMap 值都是真实克隆实例 id，按实例反查即可。
+ */
+export function activeSessionIdOfMember(
+  sessions: Array<{ id: string, status: string, instanceKind: string, memberMapJson: string }>,
+  memberId: string,
+): string | null {
+  for (const s of sessions) {
+    if (s.status !== 'active' || s.instanceKind === 'project') continue
+    const map = parseJson<Record<string, string>>(s.memberMapJson, {})
+    if (Object.values(map).includes(memberId)) return s.id
+  }
+  return null
 }
