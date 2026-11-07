@@ -1,0 +1,4 @@
+✔ [P10] task session brief 可读
+✔ [P11] task brief 关联工作项
+
+=== SESSION CONTEXT ACCEPTANCE pass=20 fail=0 ===

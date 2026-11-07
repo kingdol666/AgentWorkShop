@@ -1,0 +1,3 @@
+✔ [M4] memories 列表含 sessionId 字段(UI 徽标)
+
+=== SESSION MEMORY RUNTIME ACCEPTANCE pass=22 fail=0 ===
