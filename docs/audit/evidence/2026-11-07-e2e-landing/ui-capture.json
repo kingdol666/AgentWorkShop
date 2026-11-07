@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-11-07T11:27:38.918Z",
+  "base": "http://127.0.0.1:3995",
+  "results": [
+    {
+      "id": "UI-0",
+      "name": "workspace 就绪(目标频道已挂载)",
+      "pass": true,
+      "detail": "wsId=3e6569a5-ea46-4e3a-b192-fff4405d0206"
+    },
+    {
+      "id": "UI-2",
+      "name": "会话视图渲染(brief/注入预览;DOM 真实等待)",
+      "pass": true,
+      "detail": "probe=多会话1 新建会话Channel 是模板:每个会话克隆独立成员实例组(独立运行时/队列/记忆域),会话间并行、会话内串行落地页需求会话进行中创建于 11/07 15:03:34 会话 Lead·ses"
+    },
+    {
+      "id": "UI-3",
+      "name": "移动端会话视图(390x844)无横向溢出",
+      "pass": true,
+      "detail": "overflow=false"
+    },
+    {
+      "id": "UI-1",
+      "name": "项目页渲染(Leader 对话/项目会话/快照面板)",
+      "pass": true,
+      "detail": "DOM probe"
+    },
+    {
+      "id": "UI-4",
+      "name": "落地页可渲染(真实引擎文案产物;hero/卖点/FAQ/CTA)",
+      "pass": true,
+      "detail": "DOM probe"
+    },
+    {
+      "id": "UI-5",
+      "name": "落地页移动端(390x844)无横向溢出",
+      "pass": true,
+      "detail": "overflow=false"
+    }
+  ]
+}

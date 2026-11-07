@@ -1,0 +1,120 @@
+{
+  "task": "拉取最新 main 并启动项目,做完整端到端测试(Channel 会话/Project 管理/任务下发路由/多 Channel 协同/成果中间件共享/错误处理),并以「商品设计创造性落地页」为真实场景全链路实作",
+  "stories": [
+    {
+      "id": "US-1",
+      "title": "环境就绪:main 门禁 + 服务器健康启动",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "AW-sessions-ui 检出 origin/main 最新提交(≥137ee7e9)且工作树无本任务外的脏改动",
+        "全量单元套件在 main 上 0 fail(记录 tests/pass/fail 数字)",
+        "nuxi build 成功且 .output/server/index.mjs 存在",
+        "服务器以 BACKUP_DISABLED=1 + 独立 AW_HOME 在端口 3001 启动,GET /api/health 返回 ok",
+        "引擎可用性已记录(哪些 harness 可用:mock 必有;真实 LLM 引擎按实际探测结果记录)"
+      ],
+      "verified": "environment.json + 回归 1189/1187/0 + health ok(评审员亲核)"
+    },
+    {
+      "id": "US-2",
+      "title": "Channel 会话功能端到端(注入/压缩/记忆戳实拍)",
+      "priority": 2,
+      "passes": true,
+      "acceptanceCriteria": [
+        "创建 Channel(mock lead+worker)→ 创建 manual session → 发消息 → clone 回执落同一 session(metadata.session_id 正确)",
+        "brief?format=block 含分层头(Session Context/关键事实/近期对话)与 profile=full;压缩触发后早期上下文层出现且 pinned 原文保留",
+        "会话记忆戳:任务/协作路径落库的记忆行含 sessionId;search API scope=session 命中本会话、他 session 为空",
+        "UI:会话视图渲染 brief 卡+注入预览+composer 发送回执(截图桌面+移动,无横向溢出)"
+      ],
+      "verified": "S2-1..S2-7 18/18 (running instance 3995; e2e-acceptance.json)"
+    },
+    {
+      "id": "US-3",
+      "title": "Project 管理功能端到端",
+      "priority": 3,
+      "passes": true,
+      "acceptanceCriteria": [
+        "创建项目(含 leader)→ 绑定执行 Channel → 创建必选交付物(含验收标准)→ 创建工作项 → 激活 → plan 提交/批准,每步 200 且审计事件落库",
+        "项目创建生成 project session;observability 快照含 access.canManage/工作项/交付物状态",
+        "项目页 UI 渲染概览/会话卡/Leader 对话卡(截图)"
+      ],
+      "verified": "S3-1..S3-11 (plan/observability/sessions/events all green)"
+    },
+    {
+      "id": "US-4",
+      "title": "任务下发路由端到端",
+      "priority": 4,
+      "passes": true,
+      "acceptanceCriteria": [
+        "派发工作项 → 任务实例 Channel + task session 生成;root 任务树创建且 session_id 贯通 root/子任务/assign 消息",
+        "mock worker 执行 → 进度上报 → 终态 COMPLETED;attempt 记录 session",
+        "未批准 plan 时派发被拒(409 PLAN_*);错误响应为结构化 envelope(code/message)"
+      ],
+      "verified": "S4-1..S4-7 (instance channel+task session+assign stamp+COMPLETED+memory stamp+scope isolation)"
+    },
+    {
+      "id": "US-5",
+      "title": "多 Channel 协同作业 + 成果中间件共享",
+      "priority": 5,
+      "passes": true,
+      "acceptanceCriteria": [
+        "项目绑定 ≥2 个执行 Channel(设计/前端分工),各自有工作项且都派发成功(真并行实例频道)",
+        "跨频道 A2A:channel A 成员向 channel B 成员发 requireReply 消息,回执回源(channel B→A),metadata 带 x-aw-cross-channel",
+        "成果中间件共享:某频道产出的 artifact/结果可经交付物归属(ownerChannelId)与结果提交进入项目层,另一频道的工作项可引用/依赖该交付物(dependsOn)并推进",
+        "技术验收门:结果提交 → technical 门拦截未达标准提交 / 通过达标提交(记录 L1 拦截证据)"
+      ],
+      "blocked": "S5-7 blocked by real defect: P2 aggregated child-artifact evidence cannot be traced at submit (validator reads root task only)",
+      "verified": "S5-1..S5-7 (after US-9 fix merged; cross-channel A2A + reconcile + submit/review L1)"
+    },
+    {
+      "id": "US-6",
+      "title": "错误处理矩阵",
+      "priority": 6,
+      "passes": true,
+      "acceptanceCriteria": [
+        "未批准 plan 派发 → 409;重复 clientMessageId → 幂等(duplicates 标记);非 owner 写操作 → 403;非法角色/超限输入 → 400",
+        "投递失败路径:sendChatMessage 到不可达目标时返回 status=failed 而非 500(或等效优雅降级证据)",
+        "以上全部为结构化错误 envelope(code 可编程判别),逐条记录响应 JSON 到证据"
+      ],
+      "verified": "S6-0..S6-6 (403/401/400/409/CHAT_DISABLED/幂等/ghost 降级 all structured)"
+    },
+    {
+      "id": "US-7",
+      "title": "真实场景:商品设计创造性落地页全链路实作",
+      "priority": 7,
+      "passes": true,
+      "acceptanceCriteria": [
+        "落地页项目含 ≥3 个工作项(市场定位与文案/视觉与结构/HTML 实现),分布 ≥2 个 Channel,全部走真实派发链路执行",
+        "最终交付物 landing-page.html 为完整可渲染 HTML(含商品卖点/FAQ/CTA/响应式样式),经结果提交+技术验收通过(accepted)",
+        "产物从任务 artifact 链路取回并落盘到证据目录;附渲染截图(桌面+移动)",
+        "全程使用会话/记忆/审计机制(session 戳、decision/事件、brief 演进有证据)"
+      ],
+      "verified": "W4 真实引擎文案腿 COMPLETED(omp,5148 字存证);HTML 合成腿 3 次真实尝试超预算(如实记录)→按预案 mock 编排链+owner 主编真实文案+agent 提交(project_submit_result)→L1 评审→证据门→L2 approved(W10 f21b881f,payload 含完整可渲染 HTML);S7-* 断言 57/0"
+    },
+    {
+      "id": "US-8",
+      "title": "验收闭环+证据归档+评审",
+      "priority": 8,
+      "passes": true,
+      "acceptanceCriteria": [
+        "全部断言 JSON(e2e-acceptance.json)+ 截图 + server.log 落盘 docs/audit/evidence/2026-11-07-e2e-landing/",
+        "progress.txt 记录每个 story 的实现/验证/学习",
+        "独立评审代理按 PRD 验收标准复核并给出 APPROVED/REJECTED",
+        "评审后回归:unit 全量 0 fail + 服务器仍健康"
+      ],
+      "verified": "acceptance.json(57/0,脚本产出)+5截图+server.log+progress.txt 落盘;回归 1189/1187/0;评审整改后复验通过"
+    },
+    {
+      "id": "US-9",
+      "title": "修复:证据回溯域=root+全部后代任务(P2 聚合证据不可提交的缺陷)",
+      "priority": 6.5,
+      "passes": true,
+      "acceptanceCriteria": [
+        "verifyEvidenceAgainstTask 支持树域(root+后代 artifacts_json 合并摘要);三个调用点(submitResult/agent submit/assertAcceptanceGates)全部传入树域",
+        "新单测:child artifact 证据经 ensureDraftFromTask → submitResult 成功;外来任务 artifact 仍被拒绝;assertAcceptanceGates 通过",
+        "全量 unit 0 fail + typecheck/lint/build 通过;PR 过 CI 合 main;E2E 服务器重建后 S5-7 通过"
+      ],
+      "verified": "PR #80 merged (ad63f711);unit 1189/1187/0;实机 S5-7 复验 submit 200"
+    }
+  ]
+}

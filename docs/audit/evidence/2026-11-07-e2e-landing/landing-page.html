@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T1 口袋翻译器 · 入耳即译,落地就开口</title>
+<style>
+:root { --ink:#1a1d21; --paper:#faf9f7; --accent:#e8622c; --line:#e8e4de; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--ink); background:var(--paper); line-height:1.6; }
+.wrap { max-width:880px; margin:0 auto; padding:0 20px; }
+.hero { padding:72px 0 56px; background:linear-gradient(180deg,#fff 0%,var(--paper) 100%); border-bottom:1px solid var(--line); text-align:center; }
+.hero .badge { display:inline-block; font-size:13px; letter-spacing:.12em; color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:4px 14px; margin-bottom:22px; }
+.hero h1 { font-size:44px; line-height:1.25; letter-spacing:-0.01em; font-weight:700; }
+.hero p.sub { margin:18px auto 0; max-width:560px; font-size:17px; color:#5a5f66; }
+.hero .price { margin-top:10px; font-size:15px; color:#8a8f96; }
+.cta-row { margin-top:30px; display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+.btn { display:inline-block; padding:14px 30px; border-radius:12px; font-size:16px; font-weight:600; text-decoration:none; transition:opacity .15s; }
+.btn-primary { background:var(--ink); color:#fff; }
+.btn-primary strong { color:#ffb38a; }
+.btn-ghost { background:transparent; color:var(--ink); border:1px solid var(--ink); }
+.btn:hover { opacity:.86; }
+.hero .hint { margin-top:14px; font-size:13px; color:#8a8f96; }
+section { padding:56px 0; border-bottom:1px solid var(--line); }
+h2 { font-size:26px; margin-bottom:26px; }
+.selling { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.selling article { background:#fff; border:1px solid var(--line); border-radius:14px; padding:22px; }
+.selling h3 { font-size:18px; margin-bottom:10px; }
+.selling h3::before { content:"●"; color:var(--accent); margin-right:8px; font-size:13px; }
+.selling p { font-size:14px; color:#5a5f66; }
+.faq details { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 20px; margin-bottom:12px; }
+.faq summary { font-weight:600; cursor:pointer; font-size:15px; }
+.faq p { margin-top:10px; font-size:14px; color:#5a5f66; }
+.final { text-align:center; }
+.final h2 { font-size:30px; }
+.final p { color:#5a5f66; margin-bottom:24px; }
+footer { padding:26px 0 40px; text-align:center; font-size:12px; color:#8a8f96; }
+@media (max-width:640px) {
+  .hero { padding:52px 0 40px; } .hero h1 { font-size:30px; }
+  .selling { grid-template-columns:1fr; }
+  .btn { width:100%; text-align:center; }
+}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <span class="badge">T1 口袋翻译器</span>
+    <h1>入耳即译,落地就开口</h1>
+    <p class="sub">T1 口袋翻译器|离线双语,35 小时续航,1299 元。飞机落地的那一刻,你已经在对话里了。</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#buy">立即入手 · <strong>1299 元</strong></a>
+      <a class="btn btn-ghost" href="#faq">看看 T1 怎么用</a>
+    </div>
+    <p class="hint">入耳即译 · 离线双语 · 35 小时续航 · 下一趟航班落地,你就已经在对话里了。</p>
+  </div>
+</header>
+<main class="wrap">
+  <section id="selling">
+    <h2>为什么带上它出差</h2>
+    <div class="selling">
+      <article><h3>戴上就译,对话不用等</h3><p>入耳即译,不用低头找屏幕,谈事就是谈事。</p></article>
+      <article><h3>离线双语,信号差也照说</h3><p>飞机上、地下车库、境外漫游断网,翻译都跟着你。</p></article>
+      <article><h3>35 小时续航,一趟差旅不断线</h3><p>短途跨境往返,基本一次充电覆盖全程对话。</p></article>
+    </div>
+  </section>
+  <section id="faq" class="faq">
+    <h2>常见问题</h2>
+    <details open><summary>没网、没信号还能翻吗?</summary><p>能。离线双语在耳机内完成,飞机上、地铁里、境外漫游断网都能用。</p></details>
+    <details><summary>一趟出差要充几次电?</summary><p>标称 35 小时续航,多数短途跨境差旅一次充电就够;强度高请按行程留出充电时间。</p></details>
+    <details><summary>对话时要掏手机、点 App 吗?</summary><p>不用。入耳即译,戴上直接开口,双手留给行李和护照。</p></details>
+    <details><summary>1299 元,比我手机里的翻译软件值在哪?</summary><p>值在「不用准备」:耳机形态 + 离线双语,把翻译从「打开 App、等加载、递手机」变成「直接开口」。关键时刻的一次沟通成本,往往比差价贵。</p></details>
+  </section>
+  <section id="buy" class="final">
+    <h2>下一趟航班落地,你就已经在对话里了。</h2>
+    <p>1299 元,没有 WiFi 也能开口。入耳即译,离线双语,35 小时续航。</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#">立即入手 · <strong>1299 元</strong></a>
+    </div>
+  </section>
+</main>
+<footer>AgentWorkShop E2E · 由真实引擎文案(omp)+平台验收链产出的演示落地页 · © 2026 T1</footer>
+</body>
+</html>
