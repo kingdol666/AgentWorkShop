@@ -83,9 +83,15 @@ const topAfter = await page.evaluate(() => document.querySelector('.chan-title')
 check('侧栏切换频道 → 标题条跟随', switchCh === 'clicked' && topAfter.length > 0, `after=${topAfter}`)
 
 // ⑤ Composer 发送(任务模式 mock lead):POST /tasks 200 或 409 查重守卫
+// 注意:sessions 视图刻意隐藏全局任务 composer(自带 session composer)——先切回对话视图。
 await page.evaluate(() => {
   const rows = [...document.querySelectorAll('.channel-item')]
   rows[0]?.click()
+})
+await sleep(1200)
+await page.evaluate(() => {
+  const btns = [...document.querySelectorAll('.rail-views .rail-btn')]
+  btns[0]?.click()
 })
 await sleep(1500)
 let postStatus = 0, dupCode = false

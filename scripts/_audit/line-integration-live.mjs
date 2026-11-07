@@ -206,13 +206,15 @@ async function main() {
     const target = anchor + stepLimit * 0.6
     agent = candAgent
     let attempt = await attemptTrial(cand, target)
-    // 节拍卡控(≥300s 防连发,硬闸无应急豁免):早拒(不建卡)或批准后 429 都等足后自动重试
-    for (let round = 0; round < 2; round++) {
+    // 频控双闸感知重试:
+    // ① 试验节拍(≥300s,同线防连发) —— 早拒(不建卡)或批准后 429;
+    // ② 节点在线写间隔(≥60s,防抖动) —— 刚做过受治理写入(如 seed 回读验证)后立即试验会撞冷却。
+    for (let round = 0; round < 3; round++) {
       const cadenceText = attempt.trial?.text ?? attempt.early?.text ?? ''
-      const m = cadenceText.match(/等待\s*(\d+)s 后再试/)
+      const m = cadenceText.match(/等待\s*(\d+)s 后再试/) ?? cadenceText.match(/还需\s*(\d+)s/)
       const waitSec = m ? Number(m[1]) : 0
       if (!(waitSec > 0 && waitSec <= 360)) break
-      console.log(`  · 试验节拍卡控生效(硬闸),等待 ${waitSec + 5}s 后自动重试(第 ${round + 1} 次)`)
+      console.log(`  · 频控闸生效(节拍/写间隔),等待 ${waitSec + 5}s 后自动重试(第 ${round + 1} 次)`)
       await sleep((waitSec + 5) * 1000)
       attempt = await attemptTrial(cand, target)
     }
