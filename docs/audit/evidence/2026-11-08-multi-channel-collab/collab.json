@@ -1,0 +1,410 @@
+{
+  "generatedAt": "2026-11-07T18:18:11.779Z",
+  "base": "http://127.0.0.1:3997",
+  "pass": 67,
+  "fail": 0,
+  "results": [
+    {
+      "id": "S0-1",
+      "name": "双账号登录(owner=A 独立评审=B)",
+      "pass": true,
+      "detail": "A=admin@awshop.local B=verify-pitfall@aw.local"
+    },
+    {
+      "id": "S0-2",
+      "name": "产线现场就绪",
+      "pass": true,
+      "detail": "dcw=4 daq=19 recipes=4 running=4"
+    },
+    {
+      "id": "S0-3",
+      "name": "目标线解析(SP/配方/数采通道)",
+      "pass": true,
+      "detail": "line=ln-66ef9 sp=dw-d0824 daq=11"
+    },
+    {
+      "id": "S1-1",
+      "name": "分析/调优频道建立(绑线+lead+worker)",
+      "pass": true,
+      "detail": "ana=02078be6 tune=8b5dbca8"
+    },
+    {
+      "id": "S1-2",
+      "name": "建模频道建立(toolProfile=aml_training)",
+      "pass": true,
+      "detail": "ch=fd4a6f94 profile=aml_training"
+    },
+    {
+      "id": "S1-3",
+      "name": "三频道节点绑定(数采/写控/配方,全部 200)",
+      "pass": true,
+      "detail": "posts=9 bad="
+    },
+    {
+      "id": "S2-1",
+      "name": "Project 编组(3 频道+3 交付物+W1→W2→W3 依赖链,technical 路由)",
+      "pass": true,
+      "detail": "p=904de1d8 deps=true"
+    },
+    {
+      "id": "W1-d1",
+      "name": "W1 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-d2",
+      "name": "W1 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=7349bcd8"
+    },
+    {
+      "id": "W1-d3",
+      "name": "W1 root 保持非终态(驱动作业窗口)",
+      "pass": true,
+      "detail": "root=WAITING child=4d800193"
+    },
+    {
+      "id": "W1-d4",
+      "name": "W1 实例 lead 启用",
+      "pass": true,
+      "detail": "lead=e277ad9b"
+    },
+    {
+      "id": "W1-t1",
+      "name": "W1 实例 lead 数采查询(真实数据,逐节点)",
+      "pass": true,
+      "detail": "[演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP] 数采数据查询结果(1 个节点): ■ 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP[id=dn-7312cf8b](熔体/箱体温度)单位 ℃,正常量程 160~300℃,当前状态 ok,时间窗 2026-11-08T01:43 ~ 2026-11-08T02:13(降采样 60000ms,聚合 avg) 当前活动批次 run=rr-0436da0f 配方「演示配方1」(rc-f1 | [演示·注塑主机PLC(Modbus TCP)·机筒温度区3SP] 数采数据查询结果(1 个节点): ■ 演示·注塑主机PLC(Modbus TCP)·机筒温度区3SP[id=dn-4f99422b](熔体/箱体温度)单位 ℃,正常量程 160~300℃,当前状态 ok,时间窗 2026-11-08T01:43 ~ 2026"
+    },
+    {
+      "id": "W1-t2",
+      "name": "W1 分析结论入台账(analysis_save)",
+      "pass": true,
+      "detail": "分析报告已留痕:ar-0d673bfa。产线「演示线1·注塑主机PLC(Modbus TCP)」,结论 3 条,配方 rc-f105fbaf。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-0d673bfa\") 查回全文。"
+    },
+    {
+      "id": "W1-c1",
+      "name": "W1 实例 lead 取消 mock 子任务",
+      "pass": true,
+      "detail": "任务 4d800193-7dc3-45c8-b3dc-321c7d8445ef 已取消并移出 assignee 队列"
+    },
+    {
+      "id": "W1-c2",
+      "name": "W1 自派替代分支(assignee=lead)",
+      "pass": true,
+      "detail": "子任务 dc48e167-d8ce-48f7-9b5b-896c824c4234 已创建并指派 → e277ad9b-2d01-4c11-be78-d2736c9b9a80(父任务 b361610e-2612-4cf6-b283-5532be63b553,标题: W1 补收口分支)"
+    },
+    {
+      "id": "W1-c3",
+      "name": "W1 supersede 显式替代(取消分支处置)",
+      "pass": true,
+      "detail": "分支「W1 数据分析:漂移诊断 — worker 执行与交付」(CANCELED)已标记为被 dc48e167 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并 complete_task。"
+    },
+    {
+      "id": "W1-c4",
+      "name": "W1 收替代分支",
+      "pass": true,
+      "detail": "任务 dc48e167-d8ce-48f7-9b5b-896c824c4234 已是完成状态(可能已被平台收口),无需重复完成。"
+    },
+    {
+      "id": "W1-c5",
+      "name": "W1 实例 lead 以真实工件收口 root",
+      "pass": true,
+      "detail": "任务 b361610e-2612-4cf6-b283-5532be63b553 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W1-c6",
+      "name": "W1 工作项 COMPLETED(对账收敛)",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W1-s1",
+      "name": "W1 draft 自动物化(证据=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"77535c2e-7a28-4658-ac2e-0094e6c3231d\",\"projectId\":\"904de1d8-ddf6-4de3-8322-7ea11385a96e\",\"deliverableId\":\"ce0d4a66-e78d-4644-93f5-664d06651d8f\",\"channelI"
+    },
+    {
+      "id": "W1-s2",
+      "name": "W1 owner(integrator) 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s3",
+      "name": "W1 L1 技术评审(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s4",
+      "name": "W1 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s5",
+      "name": "W1 L2 签核(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s6",
+      "name": "W1 成果终态 approved",
+      "pass": true,
+      "detail": "status=approved"
+    },
+    {
+      "id": "W2-d1",
+      "name": "W2 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-d2",
+      "name": "W2 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=2ccb34ee"
+    },
+    {
+      "id": "W2-d3",
+      "name": "W2 root 保持非终态(驱动作业窗口)",
+      "pass": true,
+      "detail": "root=WAITING child=a52c0364"
+    },
+    {
+      "id": "W2-d4",
+      "name": "W2 实例 lead 启用",
+      "pass": true,
+      "detail": "lead=000f44f9"
+    },
+    {
+      "id": "W2-h",
+      "name": "W2 handoff bundle 携带上游真实结论(跨 Channel 协同)",
+      "pass": true,
+      "detail": "…W1 分析结论(2026-11-07T18:13):线 ln-66ef9 近 3…已注入"
+    },
+    {
+      "id": "W2-t0",
+      "name": "W2 治理阴性:实例内写无 write_intent 被拒",
+      "pass": true,
+      "detail": "PROJECT_WRITE_INTENT_REQUIRED: recipe_trial 在项目来源任务中需要 owner 批准的 write_intent；请先调用 project_request_write_intent"
+    },
+    {
+      "id": "W2-t1",
+      "name": "W2 write_intent 申请(实例 lead)",
+      "pass": true,
+      "detail": "{ \"ok\": true, \"approvalId\": \"22b4cadd-acfb-473d-abce-dc307f6abeb2\", \"digest\": \"8d11872a24fbe39fef2de05f8e9af132514fbeb1474bc73b864e615230feaef5\", \"tool\": \"recip"
+    },
+    {
+      "id": "W2-t2",
+      "name": "W2 owner 批准 write_intent(项目层治理)",
+      "pass": true,
+      "detail": "approval=22b4cadd"
+    },
+    {
+      "id": "W2-t3",
+      "name": "W2 recipe_trial HITL 卡+批准",
+      "pass": true,
+      "detail": "card=ap-9ae28"
+    },
+    {
+      "id": "W2-t4",
+      "name": "W2 trial 收口(设备受理)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-0537d):演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP→232.8℃ [证实✓]。假设:多Channel协同·调优:依据 W1 分析结论,单变量 SP 231.40→232.80。 人工附言:多Channel协同验收批准(W2)注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候"
+    },
+    {
+      "id": "W2-t5",
+      "name": "W2 设备回读收敛(真实工况写)",
+      "pass": true,
+      "detail": "target=232.80 final=232.80"
+    },
+    {
+      "id": "W2-c1",
+      "name": "W2 实例 lead 取消 mock 子任务",
+      "pass": true,
+      "detail": "任务 a52c0364-c6a4-4568-b177-1467b48ac385 已取消并移出 assignee 队列"
+    },
+    {
+      "id": "W2-c2",
+      "name": "W2 自派替代分支(assignee=lead)",
+      "pass": true,
+      "detail": "子任务 5739a059-96ac-4ba8-808c-5abd4bf80f06 已创建并指派 → 000f44f9-b627-4459-85e0-0071c2c76b50(父任务 71b469a4-999a-47ab-9166-b41e2cfd6ac0,标题: W2 补收口分支)"
+    },
+    {
+      "id": "W2-c3",
+      "name": "W2 supersede 显式替代(取消分支处置)",
+      "pass": true,
+      "detail": "分支「W2 工艺调优:SP 治理试验 — worker 执行与交付」(CANCELED)已标记为被 5739a059 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并 complete_task。"
+    },
+    {
+      "id": "W2-c4",
+      "name": "W2 收替代分支",
+      "pass": true,
+      "detail": "任务 5739a059-96ac-4ba8-808c-5abd4bf80f06 已是完成状态(可能已被平台收口),无需重复完成。"
+    },
+    {
+      "id": "W2-c5",
+      "name": "W2 实例 lead 以真实工件收口 root",
+      "pass": true,
+      "detail": "任务 71b469a4-999a-47ab-9166-b41e2cfd6ac0 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W2-c6",
+      "name": "W2 工作项 COMPLETED(对账收敛)",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W2-s1",
+      "name": "W2 draft 自动物化(证据=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"9e3945f0-4e88-4493-819f-28405efd9cff\",\"projectId\":\"904de1d8-ddf6-4de3-8322-7ea11385a96e\",\"deliverableId\":\"9e026946-e5e2-42ba-a3d9-6f9ff12b5b8b\",\"channelI"
+    },
+    {
+      "id": "W2-s2",
+      "name": "W2 owner(integrator) 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s3",
+      "name": "W2 L1 技术评审(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s4",
+      "name": "W2 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s5",
+      "name": "W2 L2 签核(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s6",
+      "name": "W2 成果终态 approved",
+      "pass": true,
+      "detail": "status=approved"
+    },
+    {
+      "id": "W3-d1",
+      "name": "W3 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-d2",
+      "name": "W3 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=8b7a4023"
+    },
+    {
+      "id": "W3-d3",
+      "name": "W3 root 保持非终态(驱动作业窗口)",
+      "pass": true,
+      "detail": "root=SUBMITTED child=无(非 mock"
+    },
+    {
+      "id": "W3-d4",
+      "name": "W3 实例 lead 启用",
+      "pass": true,
+      "detail": "lead=18e7d3ac"
+    },
+    {
+      "id": "W3-h",
+      "name": "W3 handoff bundle 携带上游真实结论(跨 Channel 协同)",
+      "pass": true,
+      "detail": "…W2 调优结论:依据 W1 分析建议,SP 231.40→232.80(Δ1.4…已注入"
+    },
+    {
+      "id": "W3-t1",
+      "name": "W3 aml_dataset_build 首试(批次语义/去重熔断=设计;有数据集=直接过)",
+      "pass": true,
+      "detail": "数据集构建完成: dataset_id: ds-mw6q84xh-q3t26p 三元组: 产线 ln-66ef94b8 / 产品 演示产品1 / 配方 演示配方1(purpose=mpc_surrogate,beat=5000ms,history=64,horizon=8) 行数 673 | 窗口 train 673 / val 0 / test 0 | 批次 1 个参与构建 逐节点清洗摘要: - 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP(dn-7312"
+    },
+    {
+      "id": "W3-t2",
+      "name": "W3 aml_dataset_stats(数据质量报告)",
+      "pass": true,
+      "detail": "数据集 ds-mw6q84xh-q3t26p 统计报告(beat=5000ms,history=64 拍,horizon=8 拍,purpose=mpc_surrogate) 三元组: ln-66ef94b8 / pd-67b10a72 / rc-f105fbaf | 行数 673 | 批次 1(1 参与构建)| 创建 2026-11-08 02:18:11 逐节点统计(train 切分): - 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP(dn-7312c"
+    },
+    {
+      "id": "W3-c5",
+      "name": "W3 实例 lead 以真实工件收口 root",
+      "pass": true,
+      "detail": "任务 5cbbe0ba-d77e-47b7-911a-33f09bdf80dc 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W3-c6",
+      "name": "W3 工作项 COMPLETED(对账收敛)",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W3-s1",
+      "name": "W3 draft 自动物化(证据=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"c46aa6f4-e5ac-444b-bef3-9141649cab37\",\"projectId\":\"904de1d8-ddf6-4de3-8322-7ea11385a96e\",\"deliverableId\":\"3113a757-29ba-4210-bd88-4a2d1f302207\",\"channelI"
+    },
+    {
+      "id": "W3-s2",
+      "name": "W3 owner(integrator) 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-s3",
+      "name": "W3 L1 技术评审(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-s4",
+      "name": "W3 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-s5",
+      "name": "W3 L2 签核(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-s6",
+      "name": "W3 成果终态 approved",
+      "pass": true,
+      "detail": "status=approved"
+    },
+    {
+      "id": "S3-1",
+      "name": "项目完成审批创建(交付物验收齐备门)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-2",
+      "name": "项目完成签核(独立 admin) → completed",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-3",
+      "name": "项目终态 completed",
+      "pass": true,
+      "detail": "status=completed"
+    },
+    {
+      "id": "S3-4",
+      "name": "全链审计事件齐备",
+      "pass": true,
+      "detail": "missing="
+    }
+  ]
+}
