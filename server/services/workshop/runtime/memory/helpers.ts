@@ -23,6 +23,8 @@ export const RRF_K = 60
 export const MMR_LAMBDA = 0.7
 /** 任务关联加权:候选行 taskId ∈ 兄弟/父任务集时终分加成 */
 export const RELATED_TASK_BOOST = 0.3
+/** session 行加分(auto 档):当前会话作用域记忆的排序偏好(不过滤) */
+export const SESSION_RELEVANCE_BOOST = 0.15
 /** 策展层 kind(确定性 L0/按 key 直取;不进 L1 排名防双份注入,search_memory 仍可命中) */
 export const CURATED_KINDS = new Set(['brief', 'chronicle', 'reflection'])
 /** kind 感知时近衰减半衰期(天;0 = 不衰减) */

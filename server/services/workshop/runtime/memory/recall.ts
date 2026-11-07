@@ -5,7 +5,7 @@
 import { AgentMemoryState } from './state'
 import type { MemoryRow } from '../../db/database'
 import type { MemoryScope, MemorySnippet, RecallOptions } from './types'
-import { CURATED_KINDS, FTS_POOL, MMR_LAMBDA, RECENT_FALLBACK, RELATED_TASK_BOOST, RRF_K, buildMatchQuery, estimateTokens, memoryCfg, unsegmentCJK } from './helpers'
+import { CURATED_KINDS, FTS_POOL, MMR_LAMBDA, RECENT_FALLBACK, RELATED_TASK_BOOST, RRF_K, SESSION_RELEVANCE_BOOST, buildMatchQuery, estimateTokens, memoryCfg, unsegmentCJK } from './helpers'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 
 export abstract class AgentMemoryRecall extends AgentMemoryState {
@@ -14,10 +14,10 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
    * FTS 榜与向量榜各按名次贡献 1/(k+rank) 累加,再按榜内最高分归一化到 0-1——
    * 相比 v1 的 max 距离归一化,弱首命中/两榜分纲不一致时排序依然稳定。
    */
-  protected async collectHits(query: string, scope: MemoryScope): Promise<Map<string, { row: MemoryRow, relevance: number }>> {
+  protected async collectHits(query: string, scope: MemoryScope, sessionId?: string | null): Promise<Map<string, { row: MemoryRow, relevance: number }>> {
     const rrf = new Map<string, { row: MemoryRow, score: number }>()
     const addRank = (row: MemoryRow, rank: number): void => {
-      if (!this.inScope(row, scope)) return
+      if (!this.inScope(row, scope, sessionId)) return
       const inc = 1 / (RRF_K + rank + 1)
       const cur = rrf.get(row.id)
       if (cur) cur.score += inc
@@ -25,7 +25,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     }
     const match = buildMatchQuery(query)
     if (match) {
-      const found = this.repo.search(this.opts.agentId, match, FTS_POOL)
+      const found = this.repo.search(this.opts.agentId, match, FTS_POOL, sessionId && scope === 'session' ? { sessionId } : {})
       found.forEach((row, i) => addRank(row, i))
     }
     // 向量分支:查询向量 + 本人/team 双域 kNN,按距离名次参与 RRF(失败退化纯 FTS)
@@ -37,7 +37,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
           const ownDomains: string[]
             = scope === 'shared'
               ? [TEAM_AGENT_ID]
-              : scope === 'private'
+              : scope === 'private' || scope === 'session'
                 ? [this.opts.agentId]
                 : [this.opts.agentId, TEAM_AGENT_ID]
           const vAll = ownDomains.flatMap(d =>
@@ -68,7 +68,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     for (const { row, score } of rrf.values()) {
       hits.set(row.id, { row, relevance: best > 0 ? score / best : 0 })
     }
-    if (scope !== 'shared') {
+    if (scope !== 'shared' && scope !== 'session') {
       for (const row of this.repo.listRecent(this.opts.agentId, RECENT_FALLBACK)) {
         if (CURATED_KINDS.has(row.kind)) continue
         if (!hits.has(row.id)) hits.set(row.id, { row, relevance: 0.15 })
@@ -77,13 +77,13 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     return hits
   }
 
-  /** 排序(综合分降序;策展层排除/任务关联加权;不含预算/touch 副作用) */
+  /** 排序(综合分降序;策展层排除/任务关联加权/session 行加分;不含预算/touch 副作用) */
   protected async rank(
     query: string,
     scope: MemoryScope,
-    opts: { excludeCurated?: boolean, relatedTaskIds?: string[] } = {},
+    opts: { excludeCurated?: boolean, relatedTaskIds?: string[], sessionId?: string | null } = {},
   ): Promise<Array<{ row: MemoryRow, relevance: number, score: number }>> {
-    const hits = await this.collectHits(query, scope)
+    const hits = await this.collectHits(query, scope, opts.sessionId)
     const related = opts.relatedTaskIds && opts.relatedTaskIds.length > 0 ? new Set(opts.relatedTaskIds) : null
     return [...hits.values()]
       .filter(h => !opts.excludeCurated || !CURATED_KINDS.has(h.row.kind))
@@ -91,6 +91,10 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
         let score = this.score(h.row, h.relevance)
         if (related && h.row.taskId && related.has(h.row.taskId)) {
           score = Math.min(1, score + RELATED_TASK_BOOST)
+        }
+        // session 行加分(auto 档):当前会话作用域的记忆排序偏好(不过滤,其余照常)
+        if (opts.sessionId && scope === 'auto' && h.row.sessionId === opts.sessionId) {
+          score = Math.min(1, score + SESSION_RELEVANCE_BOOST)
         }
         return { ...h, score }
       })
@@ -112,7 +116,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     const budget = explicit ?? memoryCfg().primer_tokens
     const totalBudget = explicit ?? memoryCfg().inject_total
     const scope = recallOpts.scope ?? 'auto'
-    const scored = await this.rank(query, scope, { excludeCurated: true, relatedTaskIds: recallOpts.relatedTaskIds })
+    const scored = await this.rank(query, scope, { excludeCurated: true, relatedTaskIds: recallOpts.relatedTaskIds, sessionId: recallOpts.sessionId })
 
     const lines: string[] = []
     const touched: string[] = []
@@ -189,13 +193,13 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
    * 触发 touch(access_count 强化后续召回排序);limit 上限防御;
    * relatedTaskIds 透传任务关联加权(与 recall 同源排序)。
    */
-  async recallRows(query: string, opts: { scope?: MemoryScope, limit?: number, relatedTaskIds?: string[] } = {}): Promise<MemorySnippet[]> {
+  async recallRows(query: string, opts: { scope?: MemoryScope, limit?: number, relatedTaskIds?: string[], sessionId?: string | null } = {}): Promise<MemorySnippet[]> {
     const scope = opts.scope ?? 'auto'
     const limit = Math.min(Math.max(opts.limit ?? 5, 1), 20)
     // 召回度量(2026-10-05 记忆治理最小版):hit/miss 计数 —— 72% 记忆从未被召回的
     // 问题先变成可观测数据,再决定是否值得做自动合并。
     const stats = recallStatsOf()
-    const scoredAll = await this.rank(query, scope, { relatedTaskIds: opts.relatedTaskIds })
+    const scoredAll = await this.rank(query, scope, { relatedTaskIds: opts.relatedTaskIds, sessionId: opts.sessionId })
     if (scoredAll.length > 0) stats.hits++
     else stats.misses++
     const scored = scoredAll.slice(0, limit)
@@ -211,10 +215,11 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
         createdAt: s.row.createdAt,
         score: Math.round(s.score * 1000) / 1000,
         source: shared ? 'shared' as const : 'private' as const,
-        // §7.4 DTO 必带:来源 Channel / task / 可见性。
+        // §7.4 DTO 必带:来源 Channel / task / session / 可见性。
         // rootId 由上层(manager 持有 TaskEngine)补齐 —— 记忆层不查任务表。
         channelId: s.row.channelId,
         taskId: s.row.taskId ?? null,
+        sessionId: s.row.sessionId ?? null,
         visibility: shared ? 'channel-shared' as const : 'private' as const,
       }
     })

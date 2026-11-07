@@ -40,7 +40,7 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
       // 记忆按需抓取/主动沉淀(成员校验 + 委托本实例 AgentMemory;shared 写入即 Channel 公共域)
       recallMemory: async (input) => {
         this.requireMember(channelId, agent.id)
-        const rows = await memory.recallRows(input.query, { scope: input.scope, limit: input.limit })
+        const rows = await memory.recallRows(input.query, { scope: input.scope, limit: input.limit, sessionId: input.sessionId })
         // §7.4:rootId 由 manager 补齐(记忆层不查任务表)
         return rows.map((r) => {
           if (!r.taskId) return r

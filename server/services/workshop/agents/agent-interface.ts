@@ -134,9 +134,10 @@ export interface AgentWorkspace {
   listMail(opts?: { limit?: number, agentId?: string }): Promise<ChannelMail[]>
   /**
    * 记忆按需抓取(search_memory 工具桥):混合检索(FTS+向量)本人私有域 + Channel 公共域。
-   * scope: auto=私有+公共(默认) / private / shared;返回结构化片段(综合分排序)。
+   * scope: auto=私有+公共(默认;sessionId 命中加分) / private / shared / session=仅当前会话行;
+   * sessionId = 运行时当前会话(工具桥注入)。返回结构化片段(综合分排序)。
    */
-  recallMemory(input: { query: string, scope?: 'auto' | 'private' | 'shared', limit?: number }): Promise<Array<{
+  recallMemory(input: { query: string, scope?: 'auto' | 'private' | 'shared' | 'session', limit?: number, sessionId?: string | null }): Promise<Array<{
     id: string
     kind: string
     title: string
@@ -145,22 +146,24 @@ export interface AgentWorkspace {
     createdAt: string
     score: number
     source: 'private' | 'shared'
-    /** §7.4 来源定位:Channel / root / task / 可见性 */
+    /** §7.4 来源定位:Channel / root / task / session / 可见性 */
     channelId?: string
     taskId?: string | null
+    sessionId?: string | null
     rootId?: string | null
     visibility?: 'channel-shared' | 'private' | 'cross-channel'
   }>>
   /**
    * 记忆主动沉淀(save_memory 工具桥):Agent 作业中总结的可复用经验/结论。
-   * scope='private' → 本人记忆库;scope='shared' → Channel 公共记忆域(全员可检索)。
+   * scope='private' → 本人记忆库;scope='shared' → Channel 公共记忆域(全员可检索);
+   * sessionId 给定时记忆带会话作用域(session 档检索可命中)。
    */
-  saveMemory(input: { title: string, content: string, importance?: number, scope: 'private' | 'shared', dedupKey?: string }): Promise<{ scope: 'private' | 'shared', dedupKey: string }>
+  saveMemory(input: { title: string, content: string, importance?: number, scope: 'private' | 'shared', dedupKey?: string, sessionId?: string | null }): Promise<{ scope: 'private' | 'shared', dedupKey: string }>
   /**
    * 会话压缩摘要入库(harvest 桥;omp compaction 产出的会话摘要 → 本成员持久记忆)。
    * 平台 70% 主动压缩与 omp 原生 auto-compaction 双路统一经此落库(episodic-session)。
    */
-  recordSessionMemory?(input: { summary: string, tokensBefore?: number, tokensAfter?: number, reason?: string }): Promise<void>
+  recordSessionMemory?(input: { summary: string, tokensBefore?: number, tokensAfter?: number, reason?: string, sessionId?: string | null }): Promise<void>
   /** 订阅同事产出 */
   subscribe(input: { agentIds?: string[] }): Promise<void>
   /** (lead)在本 channel 内新建团队成员(worker):按需建模板并克隆为独立实例 */

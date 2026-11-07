@@ -15,7 +15,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
    * scope='private' → 本人 semantic 域;scope='shared' → Channel 公共域(全员可检索;
    * dedupKey 按来源 Agent 命名空间隔离,避免多 Agent 同 key 互相覆盖)。写入后自动向量化。
    */
-  async save(input: { title: string, content: string, importance?: number, scope: 'private' | 'shared', dedupKey?: string }): Promise<{ scope: 'private' | 'shared', dedupKey: string }> {
+  async save(input: { title: string, content: string, importance?: number, scope: 'private' | 'shared', dedupKey?: string, sessionId?: string | null }): Promise<{ scope: 'private' | 'shared', dedupKey: string }> {
     const shared = input.scope === 'shared'
     const rawKey = input.dedupKey?.trim() || `agent-save:${randomUUID().slice(0, 8)}`
     // 共享域命名空间:同 channel 多 agent 各自的沉淀互不覆盖
@@ -86,6 +86,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       content: segmentCJK(content).slice(0, CONTENT_STORE_LIMIT),
       importance: input.importance ?? (shared ? 0.85 : 0.7),
       taskId: null,
+      sessionId: input.sessionId ?? '',
       dedupKey: finalKey,
     })
     await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, owner, finalKey, content)
@@ -114,6 +115,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       content: segmentCJK(content).slice(0, CONTENT_STORE_LIMIT),
       importance: task.state === 'COMPLETED' ? 0.8 : 0.55,
       taskId: task.id,
+      sessionId: task.sessionId ?? '',
       dedupKey: `task:${task.id}`,
     })
     await this.vectorize(content, `task:${task.id}`)
@@ -135,6 +137,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       content: segmentCJK(content).slice(0, 600),
       importance: 0.4,
       taskId: msg.taskId ?? null,
+      sessionId: (msg.metadata?.['x-aw-session-id'] as string | undefined) ?? '',
       dedupKey: `peer:${msg.messageId}`,
     })
     await this.vectorize(content, `peer:${msg.messageId}`)

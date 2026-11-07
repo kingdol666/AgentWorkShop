@@ -17,7 +17,7 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
    * 压缩摘要入库(compaction harvest):kind=episodic-session,14d 保鲜,向量化一次。
    * 三路统一入口(平台主动 compact / omp 阈值自动 / overflow),dedupKey 含序号防互踩。
    */
-  async recordSessionCompaction(input: { summary: string, tokensBefore?: number, tokensAfter?: number, reason?: string }): Promise<{ dedupKey: string }> {
+  async recordSessionCompaction(input: { summary: string, tokensBefore?: number, tokensAfter?: number, reason?: string, sessionId?: string | null }): Promise<{ dedupKey: string }> {
     this.sessionSeq += 1
     const dedupKey = `session:${this.opts.agentId}:c${this.sessionSeq}`
     const meta: string[] = []
@@ -34,6 +34,7 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       content: segmentCJK(`${head}${input.summary}`).slice(0, CONTENT_STORE_LIMIT),
       importance: 0.75,
       taskId: null,
+      sessionId: input.sessionId ?? '',
       dedupKey,
     })
     await this.vectorize(input.summary, dedupKey)

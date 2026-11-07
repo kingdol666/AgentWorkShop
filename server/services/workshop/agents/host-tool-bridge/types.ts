@@ -15,9 +15,11 @@ export interface HostToolResult {
   isError?: boolean
 }
 
-/** 会话态(impl 持有,桥读写):当前执行任务 + 待回执上下文 */
+/** 会话态(impl 持有,桥读写):当前执行任务 + 当前 session + 待回执上下文 */
 export interface HostToolSessionState {
   currentTaskId: string | null
+  /** 当前回合的 session id(memory 工具的 session 作用域;平台注入,回合结束清空) */
+  sessionId: string | null
   sourceChatMessageId: string | null
   sourceChatDeliveryId: string | null
   replyContext: { fromId: string, messageId: string } | null

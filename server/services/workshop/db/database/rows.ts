@@ -260,6 +260,8 @@ export interface MemoryRow {
   content: string
   importance: number
   taskId: string | null
+  /** 诞生时的 session 作用域(''=channel 级;session 档检索按此过滤) */
+  sessionId: string
   accessCount: number
   lastAccessedAt: string | null
   createdAt: string

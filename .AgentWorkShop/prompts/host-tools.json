@@ -417,7 +417,7 @@
   {
     "name": "search_memory",
     "label": "Search Memory",
-    "description": "Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel's shared team memories). Results may include: your task history, the TEAM CHRONICLE (团队编年史 = rolling log of everything the team finished), past SESSION COMPACTION SUMMARIES (会话压缩摘要 = conclusions from earlier context windows), monthly reflections (作业反思), and shared conventions. Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints/brief mention something you need details on. Pass a focused query describing what you want to remember.",
+    "description": "Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel's shared team memories). Results may include: your task history, the TEAM CHRONICLE (团队编年史 = rolling log of everything the team finished), past SESSION COMPACTION SUMMARIES (会话压缩摘要 = conclusions from earlier context windows), monthly reflections (作业反思), and shared conventions. Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints/brief mention something you need details on. Pass a focused query describing what you want to remember. scope=\"session\" restricts results to memories scoped to the CURRENT session (rows recorded while working inside this session); the platform injects the session id at runtime.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -430,9 +430,10 @@
           "enum": [
             "auto",
             "private",
-            "shared"
+            "shared",
+            "session"
           ],
-          "description": "Which memory domain to search: \"auto\" = your private + channel shared (default), \"private\" = only your own, \"shared\" = only channel-wide shared memories"
+          "description": "检索域: auto=私有+公共(默认,当前会话记忆加分) / private=仅本人私有 / shared=仅频道公共 / session=仅当前会话作用域行(运行时由平台注入 session)"
         },
         "limit": {
           "type": "number",
@@ -450,7 +451,7 @@
   {
     "name": "save_memory",
     "label": "Save Memory",
-    "description": "Persist a distilled, reusable insight into memory for future tasks. scope=\"private\" saves to YOUR personal memory (only you recall it); scope=\"shared\" saves to the CHANNEL shared memory visible to ALL teammates (use for conclusions, conventions, or knowledge the whole team benefits from — not task-specific minutiae). Distill before saving: title = short topic, content = the reusable conclusion. Use a stable dedup_key to update an existing memory instead of duplicating. NOTE: the platform already auto-archives task outcomes, team results, the team chronicle, and session compaction summaries — never save whole task logs or raw session transcripts.",
+    "description": "Persist a distilled, reusable insight into memory for future tasks. scope=\"private\" saves to YOUR personal memory (only you recall it); scope=\"shared\" saves to the CHANNEL shared memory visible to ALL teammates (use for conclusions, conventions, or knowledge the whole team benefits from — not task-specific minutiae). Distill before saving: title = short topic, content = the reusable conclusion. Use a stable dedup_key to update an existing memory instead of duplicating. NOTE: the platform already auto-archives task outcomes, team results, the team chronicle, and session compaction summaries — never save whole task logs or raw session transcripts. By default the memory is scoped to the CURRENT session (platform injects the id at runtime); pass session_scope=false for channel-level memories visible across sessions.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -477,6 +478,10 @@
         "dedup_key": {
           "type": "string",
           "description": "Stable key for idempotent update (same key overwrites instead of duplicating)"
+        },
+        "session_scope": {
+          "type": "boolean",
+          "description": "默认 true:自动标注当前会话作用域(session 档检索可命中);false 表示频道级记忆(跨会话可见)"
         }
       },
       "required": [
@@ -4313,23 +4318,61 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "result_id": { "type": "string", "description": "成果 id（缺省用当前 attempt 的 draft）" },
-        "task_id": { "type": "string", "description": "项目 root 任务 id（缺省取本 Agent 最近的项目任务）" },
-        "title": { "type": "string", "description": "成果标题" },
-        "summary": { "type": "string", "description": "结果摘要（<=8KB）" },
-        "method": { "type": "string", "description": "方法/数据窗口/参数" },
-        "data_window": { "type": "object", "description": "数据窗口 {from,to} 等" },
-        "sample_count": { "type": "number", "description": "样本数" },
-        "confidence": { "type": "number", "description": "置信度 0-1" },
-        "validity_scope": { "type": "string", "description": "有效范围/适用条件" },
-        "payload": { "type": "object", "description": "结构化结果（<=64KB）" },
+        "result_id": {
+          "type": "string",
+          "description": "成果 id（缺省用当前 attempt 的 draft）"
+        },
+        "task_id": {
+          "type": "string",
+          "description": "项目 root 任务 id（缺省取本 Agent 最近的项目任务）"
+        },
+        "title": {
+          "type": "string",
+          "description": "成果标题"
+        },
+        "summary": {
+          "type": "string",
+          "description": "结果摘要（<=8KB）"
+        },
+        "method": {
+          "type": "string",
+          "description": "方法/数据窗口/参数"
+        },
+        "data_window": {
+          "type": "object",
+          "description": "数据窗口 {from,to} 等"
+        },
+        "sample_count": {
+          "type": "number",
+          "description": "样本数"
+        },
+        "confidence": {
+          "type": "number",
+          "description": "置信度 0-1"
+        },
+        "validity_scope": {
+          "type": "string",
+          "description": "有效范围/适用条件"
+        },
+        "payload": {
+          "type": "object",
+          "description": "结构化结果（<=64KB）"
+        },
         "evidence": {
           "type": "array",
           "description": "证据数组（<=50 条，必须引用真实 task/artifact）",
-          "items": { "type": "object" }
+          "items": {
+            "type": "object"
+          }
         },
-        "change_summary": { "type": "string", "description": "相对上一版的改动" },
-        "open_questions": { "type": "string", "description": "未决问题" }
+        "change_summary": {
+          "type": "string",
+          "description": "相对上一版的改动"
+        },
+        "open_questions": {
+          "type": "string",
+          "description": "未决问题"
+        }
       }
     },
     "noRefs": true,
@@ -4342,12 +4385,27 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "tool": { "type": "string", "description": "要高危执行的工具名（dcw_control/recipe_update/line_start 等）" },
-        "args": { "type": "object", "description": "与真实调用完全一致的参数对象（参与 digest）" },
-        "reason": { "type": "string", "description": "写意图依据/理由" },
-        "task_id": { "type": "string", "description": "项目 root 任务 id（缺省取本 Agent 最近的项目任务）" }
+        "tool": {
+          "type": "string",
+          "description": "要高危执行的工具名（dcw_control/recipe_update/line_start 等）"
+        },
+        "args": {
+          "type": "object",
+          "description": "与真实调用完全一致的参数对象（参与 digest）"
+        },
+        "reason": {
+          "type": "string",
+          "description": "写意图依据/理由"
+        },
+        "task_id": {
+          "type": "string",
+          "description": "项目 root 任务 id（缺省取本 Agent 最近的项目任务）"
+        }
       },
-      "required": ["tool", "args"]
+      "required": [
+        "tool",
+        "args"
+      ]
     },
     "noRefs": true,
     "riskClass": "read"
@@ -4359,9 +4417,14 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "plan": { "type": "object", "description": "计划对象：{deliverables:[...], work_items:[...]}（见 project-leader 提示词的 schema）" }
+        "plan": {
+          "type": "object",
+          "description": "计划对象：{deliverables:[...], work_items:[...]}（见 project-leader 提示词的 schema）"
+        }
       },
-      "required": ["plan"]
+      "required": [
+        "plan"
+      ]
     },
     "noRefs": true,
     "riskClass": "read"
@@ -4373,16 +4436,47 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "deliverable_id": { "type": "string", "description": "目标交付物 id（用 project_read_deliverables 获取）" },
-        "channel_id": { "type": "string", "description": "目标成员 Channel id（必须已绑定项目）" },
-        "title": { "type": "string", "description": "工作项标题" },
-        "brief": { "type": "string", "description": "brief 与验收标准" },
-        "dedupe_key": { "type": "string", "description": "幂等键（缺省由交付物/频道/标题派生）" },
-        "depends_on": { "type": "array", "items": { "type": "string" }, "description": "依赖的工作项 id" },
-        "exec_budget_minutes": { "type": "number", "description": "执行预算分钟" },
-        "dispatch": { "type": "boolean", "description": "owner 应用提案后是否立即派发" }
+        "deliverable_id": {
+          "type": "string",
+          "description": "目标交付物 id（用 project_read_deliverables 获取）"
+        },
+        "channel_id": {
+          "type": "string",
+          "description": "目标成员 Channel id（必须已绑定项目）"
+        },
+        "title": {
+          "type": "string",
+          "description": "工作项标题"
+        },
+        "brief": {
+          "type": "string",
+          "description": "brief 与验收标准"
+        },
+        "dedupe_key": {
+          "type": "string",
+          "description": "幂等键（缺省由交付物/频道/标题派生）"
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "依赖的工作项 id"
+        },
+        "exec_budget_minutes": {
+          "type": "number",
+          "description": "执行预算分钟"
+        },
+        "dispatch": {
+          "type": "boolean",
+          "description": "owner 应用提案后是否立即派发"
+        }
       },
-      "required": ["deliverable_id", "channel_id", "title"]
+      "required": [
+        "deliverable_id",
+        "channel_id",
+        "title"
+      ]
     },
     "noRefs": true,
     "riskClass": "read"
@@ -4394,9 +4488,14 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "plan": { "type": "object", "description": "新版本计划对象" }
+        "plan": {
+          "type": "object",
+          "description": "新版本计划对象"
+        }
       },
-      "required": ["plan"]
+      "required": [
+        "plan"
+      ]
     },
     "noRefs": true,
     "riskClass": "read"
@@ -4408,11 +4507,27 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "result_id": { "type": "string", "description": "成果 id" },
-        "decision": { "type": "string", "enum": ["reviewed", "rejected"], "description": "复核结论" },
-        "reason": { "type": "string", "description": "依据/驳回原因" }
+        "result_id": {
+          "type": "string",
+          "description": "成果 id"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "reviewed",
+            "rejected"
+          ],
+          "description": "复核结论"
+        },
+        "reason": {
+          "type": "string",
+          "description": "依据/驳回原因"
+        }
       },
-      "required": ["result_id", "decision"]
+      "required": [
+        "result_id",
+        "decision"
+      ]
     },
     "noRefs": true,
     "riskClass": "read"
@@ -4424,11 +4539,26 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "kind": { "type": "string", "enum": ["project_complete", "deliverable_acceptance"], "description": "审批类型" },
-        "result_id": { "type": "string", "description": "deliverable_acceptance 时的成果 id" },
-        "reason": { "type": "string", "description": "申请依据" }
+        "kind": {
+          "type": "string",
+          "enum": [
+            "project_complete",
+            "deliverable_acceptance"
+          ],
+          "description": "审批类型"
+        },
+        "result_id": {
+          "type": "string",
+          "description": "deliverable_acceptance 时的成果 id"
+        },
+        "reason": {
+          "type": "string",
+          "description": "申请依据"
+        }
       },
-      "required": ["kind"]
+      "required": [
+        "kind"
+      ]
     },
     "noRefs": true,
     "riskClass": "read"
@@ -4440,10 +4570,18 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "name": { "type": "string", "description": "新频道名称（项目内唯一）" },
-        "charter": { "type": "string", "description": "频道职责/章程（成为频道场景提示词）" }
+        "name": {
+          "type": "string",
+          "description": "新频道名称（项目内唯一）"
+        },
+        "charter": {
+          "type": "string",
+          "description": "频道职责/章程（成为频道场景提示词）"
+        }
       },
-      "required": ["name"]
+      "required": [
+        "name"
+      ]
     },
     "noRefs": true,
     "riskClass": "read"
@@ -4455,13 +4593,38 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "work_item_id": { "type": "string", "description": "工作项 id（必须属于本项目）" },
-        "action": { "type": "string", "enum": ["dispatch", "defer", "retry", "rework", "escalate"], "description": "路由动作" },
-        "reason": { "type": "string", "description": "决策依据（写入审计）" },
-        "defer_minutes": { "type": "number", "description": "action=defer 时的延后分钟数（1–1440）" },
-        "target_channel_id": { "type": "string", "description": "action=dispatch 时可指定项目内已绑定的目标 Channel" }
+        "work_item_id": {
+          "type": "string",
+          "description": "工作项 id（必须属于本项目）"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "dispatch",
+            "defer",
+            "retry",
+            "rework",
+            "escalate"
+          ],
+          "description": "路由动作"
+        },
+        "reason": {
+          "type": "string",
+          "description": "决策依据（写入审计）"
+        },
+        "defer_minutes": {
+          "type": "number",
+          "description": "action=defer 时的延后分钟数（1–1440）"
+        },
+        "target_channel_id": {
+          "type": "string",
+          "description": "action=dispatch 时可指定项目内已绑定的目标 Channel"
+        }
       },
-      "required": ["work_item_id", "action"]
+      "required": [
+        "work_item_id",
+        "action"
+      ]
     },
     "noRefs": true,
     "riskClass": "write"
@@ -4473,12 +4636,34 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "result_id": { "type": "string", "description": "成果 id（状态必须为 submitted）" },
-        "verdict": { "type": "string", "enum": ["pass", "fail"], "description": "技术验收结论" },
-        "checks": { "type": "array", "items": { "type": "object" }, "description": "补充检查项（可选）" },
-        "note": { "type": "string", "description": "验收依据/失败原因" }
+        "result_id": {
+          "type": "string",
+          "description": "成果 id（状态必须为 submitted）"
+        },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail"
+          ],
+          "description": "技术验收结论"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "补充检查项（可选）"
+        },
+        "note": {
+          "type": "string",
+          "description": "验收依据/失败原因"
+        }
       },
-      "required": ["result_id", "verdict"]
+      "required": [
+        "result_id",
+        "verdict"
+      ]
     },
     "noRefs": true,
     "riskClass": "write"
@@ -4490,16 +4675,48 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "to_channel_id": { "type": "string", "description": "目标成员 Channel id（leader/Channel 间消息必填）" },
-        "to_leader": { "type": "boolean", "description": "Channel 发往项目办公室 leader 时置 true" },
-        "body": { "type": "string", "description": "消息正文（≤8000 字符）" },
-        "kind": { "type": "string", "enum": ["note", "escalate", "reply", "request_review"], "description": "消息类型" },
-        "require_reply": { "type": "boolean", "description": "是否要求对方回复" },
-        "work_item_id": { "type": "string", "description": "关联工作项 id（可选）" },
-        "result_id": { "type": "string", "description": "关联成果 id（可选）" },
-        "correlation_id": { "type": "string", "description": "幂等相关键（可选）" }
+        "to_channel_id": {
+          "type": "string",
+          "description": "目标成员 Channel id（leader/Channel 间消息必填）"
+        },
+        "to_leader": {
+          "type": "boolean",
+          "description": "Channel 发往项目办公室 leader 时置 true"
+        },
+        "body": {
+          "type": "string",
+          "description": "消息正文（≤8000 字符）"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "note",
+            "escalate",
+            "reply",
+            "request_review"
+          ],
+          "description": "消息类型"
+        },
+        "require_reply": {
+          "type": "boolean",
+          "description": "是否要求对方回复"
+        },
+        "work_item_id": {
+          "type": "string",
+          "description": "关联工作项 id（可选）"
+        },
+        "result_id": {
+          "type": "string",
+          "description": "关联成果 id（可选）"
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "幂等相关键（可选）"
+        }
       },
-      "required": ["body"]
+      "required": [
+        "body"
+      ]
     },
     "noRefs": true,
     "riskClass": "write"
@@ -4511,13 +4728,30 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "body": { "type": "string", "description": "升级正文（≤8000 字符）" },
-        "work_item_id": { "type": "string", "description": "关联工作项 id（可选）" },
-        "result_id": { "type": "string", "description": "关联成果 id（可选）" },
-        "correlation_id": { "type": "string", "description": "幂等相关键（可选）" },
-        "require_reply": { "type": "boolean", "description": "是否要求 leader 回复" }
+        "body": {
+          "type": "string",
+          "description": "升级正文（≤8000 字符）"
+        },
+        "work_item_id": {
+          "type": "string",
+          "description": "关联工作项 id（可选）"
+        },
+        "result_id": {
+          "type": "string",
+          "description": "关联成果 id（可选）"
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "幂等相关键（可选）"
+        },
+        "require_reply": {
+          "type": "boolean",
+          "description": "是否要求 leader 回复"
+        }
       },
-      "required": ["body"]
+      "required": [
+        "body"
+      ]
     },
     "noRefs": true,
     "riskClass": "write"
@@ -4529,7 +4763,10 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "limit": { "type": "number", "description": "最多返回条数（默认 50，最大 200）" }
+        "limit": {
+          "type": "number",
+          "description": "最多返回条数（默认 50，最大 200）"
+        }
       }
     },
     "noRefs": true,

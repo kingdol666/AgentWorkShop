@@ -405,9 +405,9 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
       case 'get_task_details':
         return await handleGetTaskDetails(args, ws)
       case 'search_memory':
-        return await handleSearchMemory(args, ws)
+        return await handleSearchMemory(args, ws, ctx.state.sessionId)
       case 'save_memory':
-        return await handleSaveMemory(args, ws)
+        return await handleSaveMemory(args, ws, ctx.state.sessionId)
       case 'create_team_agent':
         return await handleCreateTeamAgent(args, ws)
       case 'update_team_agent':
