@@ -19,6 +19,10 @@ export abstract class TaskEngineTransition extends TaskEngineCreate {
     const row = this.repos.tasks.findById(taskId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
     const current = row.state as TaskState
+    // D3 幂等迁移：重复派发/重复汇总会再次请求 WORKING → WORKING（TRANSITIONS 不含自迁移）。
+    // 作为 no-op 返回当前任务：不广播、不刷新租约；终态自迁移（如重复 COMPLETED）
+    // 仍按非法迁移拒绝，收口不可重入的语义不变。
+    if (current === state && state === 'WORKING') return rowToTask(row)
     const allowed = TRANSITIONS[current] ?? []
     if (!allowed.includes(state)) {
       throw new AppError(400, 'INVALID_TRANSITION', `非法状态迁移: ${current} → ${state}`)
