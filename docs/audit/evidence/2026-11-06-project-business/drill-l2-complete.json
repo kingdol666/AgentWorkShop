@@ -1,0 +1,102 @@
+{
+  "req": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "6909dcf3-2bb4-47b2-a083-77cf6c739100",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "deliverable_acceptance",
+      "subjectType": "result",
+      "subjectId": "7d64eeca-8d20-44bd-931c-766abb1f0de0",
+      "subjectVersion": 1,
+      "status": "pending",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"resultId\":\"7d64eeca-8d20-44bd-931c-766abb1f0de0\",\"version\":1}",
+      "argsDigest": "",
+      "reason": "deliverable acceptance",
+      "decisionReason": "",
+      "decidedByUserId": null,
+      "consumedAt": null,
+      "traceId": "plan:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:3:w-drill",
+      "expiresAt": "2026-11-07T18:06:15.172+08:00",
+      "createdAt": "2026-11-06T18:06:15.172+08:00",
+      "decidedAt": null
+    }
+  },
+  "dec": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "6909dcf3-2bb4-47b2-a083-77cf6c739100",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "deliverable_acceptance",
+      "subjectType": "result",
+      "subjectId": "7d64eeca-8d20-44bd-931c-766abb1f0de0",
+      "subjectVersion": 1,
+      "status": "approved",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"resultId\":\"7d64eeca-8d20-44bd-931c-766abb1f0de0\",\"version\":1}",
+      "argsDigest": "",
+      "reason": "deliverable acceptance",
+      "decisionReason": "独立 L2：演练清单与 L1 证据一致",
+      "decidedByUserId": "b0c13b67-acc6-4667-9edb-fc63bb7069bb",
+      "consumedAt": null,
+      "traceId": "plan:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:3:w-drill",
+      "expiresAt": "2026-11-07T18:06:15.172+08:00",
+      "createdAt": "2026-11-06T18:06:15.172+08:00",
+      "decidedAt": "2026-11-06T18:06:15.188+08:00"
+    }
+  },
+  "creq": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "625330d9-4eff-4876-8a2f-4e0cda068266",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "project_complete",
+      "subjectType": "project",
+      "subjectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "subjectVersion": null,
+      "status": "pending",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"deliverables\":[{\"id\":\"54c6cf0f-566d-44e3-9d5a-a0c3e32c8cc5\",\"status\":\"approved\"},{\"id\":\"32ab0b44-9841-44b8-9fa4-5f47cc80353d\",\"status\":\"approved\"},{\"id\":\"e4d0b9a7-546f-45a2-8044-25649a03ab1f\",\"status\":\"approved\"}],\"workItems\":3}",
+      "argsDigest": "",
+      "reason": "project completion acceptance",
+      "decisionReason": "",
+      "decidedByUserId": null,
+      "consumedAt": null,
+      "traceId": "project:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:complete",
+      "expiresAt": "2026-11-07T18:06:15.197+08:00",
+      "createdAt": "2026-11-06T18:06:15.197+08:00",
+      "decidedAt": null
+    }
+  },
+  "cdec": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "625330d9-4eff-4876-8a2f-4e0cda068266",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "project_complete",
+      "subjectType": "project",
+      "subjectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "subjectVersion": null,
+      "status": "approved",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"deliverables\":[{\"id\":\"54c6cf0f-566d-44e3-9d5a-a0c3e32c8cc5\",\"status\":\"approved\"},{\"id\":\"32ab0b44-9841-44b8-9fa4-5f47cc80353d\",\"status\":\"approved\"},{\"id\":\"e4d0b9a7-546f-45a2-8044-25649a03ab1f\",\"status\":\"approved\"}],\"workItems\":3}",
+      "argsDigest": "",
+      "reason": "project completion acceptance",
+      "decisionReason": "演练清单 L1/L2 全通过，业务复核项目完成",
+      "decidedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "consumedAt": null,
+      "traceId": "project:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:complete",
+      "expiresAt": "2026-11-07T18:06:15.197+08:00",
+      "createdAt": "2026-11-06T18:06:15.197+08:00",
+      "decidedAt": "2026-11-06T18:06:15.217+08:00"
+    }
+  }
+}

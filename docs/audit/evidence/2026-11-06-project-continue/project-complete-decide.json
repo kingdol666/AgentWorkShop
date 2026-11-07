@@ -1,0 +1,25 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "id": "c382c599-1a28-4f74-ab67-c4bf6aca81df",
+    "projectId": "58576fb2-4642-4b65-b636-54c9eb8fa41a",
+    "kind": "project_complete",
+    "subjectType": "project",
+    "subjectId": "58576fb2-4642-4b65-b636-54c9eb8fa41a",
+    "subjectVersion": null,
+    "status": "approved",
+    "requestedByAgentId": null,
+    "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+    "payloadJson": "{\"deliverables\":[{\"id\":\"cd49ccd8-e1b0-4b6e-a86d-9a4e4b4824df\",\"status\":\"approved\"},{\"id\":\"36435b9e-9635-4af0-b9fd-eadc9834e952\",\"status\":\"approved\"},{\"id\":\"5a82a929-ec2c-402f-8adc-170f69828dfe\",\"status\":\"approved\"},{\"id\":\"4f439147-3e41-4231-b87f-c369fb0da77a\",\"status\":\"approved\"}],\"workItems\":4}",
+    "argsDigest": "",
+    "reason": "project completion acceptance",
+    "decisionReason": "ARK-7 修复增量 L1/L2 全通过，owner 批准项目再次完成",
+    "decidedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+    "consumedAt": null,
+    "traceId": "project:58576fb2-4642-4b65-b636-54c9eb8fa41a:complete",
+    "expiresAt": "2026-11-07T13:57:21.495+08:00",
+    "createdAt": "2026-11-06T13:57:21.495+08:00",
+    "decidedAt": "2026-11-06T13:57:24.794+08:00"
+  }
+}

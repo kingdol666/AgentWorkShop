@@ -1,0 +1,299 @@
+{
+  "generatedAt": "2026-11-06T07:33:40.384Z",
+  "project": {
+    "id": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+    "name": "值班手册 · 连续验收 kp12h",
+    "status": "completed",
+    "plan_version": 2,
+    "auto_dispatch": 1,
+    "routing_policy": "technical",
+    "office_channel_id": "2ba25c71-c4b3-42c2-a48b-df0d3c151cf1",
+    "lead_agent_id": "5259f4ce-3418-4f2b-8007-8c68e52e693b"
+  },
+  "deliverables": [
+    {
+      "id": "54c6cf0f-566d-44e3-9d5a-a0c3e32c8cc5",
+      "name": "值班手册",
+      "status": "approved",
+      "acceptance_criteria_json": "[\"artifact.present\",\"min_bytes:800\",\"text.contains:值班\"]"
+    },
+    {
+      "id": "32ab0b44-9841-44b8-9fa4-5f47cc80353d",
+      "name": "值班手册 FAQ 增量",
+      "status": "approved",
+      "acceptance_criteria_json": "[\"artifact.present\",\"min_bytes:1000\",\"text.contains:FAQ\",\"text.contains:升级\",\"text.contains:回滚\",\"text.contains:交接\"]"
+    }
+  ],
+  "workItems": [
+    {
+      "id": "571a216d-c9cc-409e-9f66-39cdc6a33fda",
+      "title": "编写值班手册单文件 Markdown（800-1500 字，覆盖巡检/升级/交接）",
+      "state": "COMPLETED",
+      "dedupe_key": "kp12h-handbook-v1",
+      "plan_version": 1
+    },
+    {
+      "id": "caf40207-d1b7-4ac2-a130-b1e96b627c37",
+      "title": "编写值班手册 FAQ 增量（5 条问答，≥1000 字）",
+      "state": "COMPLETED",
+      "dedupe_key": "followup-runbook-faq-kp12h",
+      "plan_version": 2
+    }
+  ],
+  "results": [
+    {
+      "id": "d2f2c580-93ba-409e-8880-cae28ee4660b",
+      "title": "编写值班手册单文件 Markdown（800-1500 字，覆盖巡检/升级/交接） 成果",
+      "status": "approved",
+      "version": 1,
+      "submitted_at": "2026-11-06T14:29:45.295+08:00",
+      "payload_json": "{\"file\":\"oncall-runbook.md\",\"bytes\":3651,\"sha256\":\"741c3c36fc941d8a73d2d51e027255fc7dbe491d8f75ce4bd51d233b56f7e151\",\"cjk\":969}",
+      "evidence_json": "[{\"artifactId\":\"07cc3fa3-7862-402f-9f43-78327ffb6f9e\",\"name\":\"oncall-runbook.md\",\"kind\":\"artifact\",\"bytes\":3651,\"sha256\":\"741c3c36fc941d8a73d2d51e027255fc7dbe491d8f75ce4bd51d233b56f7e151\",\"source\":\"root\"}]"
+    },
+    {
+      "id": "03c44d96-bafa-44f2-8e89-05697ce0396e",
+      "title": "编写值班手册 FAQ 增量（5 条问答，≥1000 字） 成果",
+      "status": "approved",
+      "version": 1,
+      "submitted_at": "2026-11-06T14:54:55.297+08:00",
+      "payload_json": "{\"file\":\"oncall-runbook-faq.md\",\"bytes\":6986,\"sha256\":\"0e2cb3ef6078c5c8b76e99efc9f12fc7a5128e90273824e2a0559d778b387558\",\"cjk\":1885,\"faq\":5}",
+      "evidence_json": "[{\"artifactId\":\"fbb9083d-1d48-4888-97ac-10eb8551c4fb\",\"name\":\"oncall-runbook-faq.md\",\"kind\":\"artifact\",\"bytes\":6986,\"sha256\":\"0e2cb3ef6078c5c8b76e99efc9f12fc7a5128e90273824e2a0559d778b387558\",\"source\":\"root\"}]"
+    }
+  ],
+  "technicalReviews": [
+    {
+      "result_id": "d2f2c580-93ba-409e-8880-cae28ee4660b",
+      "result_version": 1,
+      "reviewer_agent_id": "4bc1f9c3-9008-4cfa-89c7-01277e687028",
+      "reviewer_channel_id": "7cf7c595-f191-461c-8985-f7cca205a653",
+      "reviewer_kind": "channel_lead",
+      "verdict": "pass",
+      "note": "L1 技术验收通过。证据核验：artifact 07cc3fa3-7862-402f-9f43-78327ffb6f9e 实际落盘 3,651B，sha256 与成果证据一致（741c3c36fc941d8a73d2d51e027255fc7dbe491d8f75ce4bd51d233b56f7e151）；单文件 Markdown；CJK 969 字（总字符 1,433），符合 800-1500 字；含“值班”。内容覆盖三项必需主题：日常巡检（平台/产线/数采/配方/告警/任务/审批/批次/日志 9 项及频次）、故障升级（P1/P2/P3 定级、通知时限、止损动作、无响应升级）、交接（记录/批次/告警/待跟踪/写操作/工具 6 项双确认）。巡检与升级引用 line_status、line_context、ops_log 等真实平台能力，并明确写操作须人工审批、不得绕过，具备可执行性。未发现阻塞缺陷；L2 业务签核不在本环节范围。",
+      "created_at": "2026-11-06T14:34:52.359+08:00"
+    },
+    {
+      "result_id": "03c44d96-bafa-44f2-8e89-05697ce0396e",
+      "result_version": 1,
+      "reviewer_agent_id": "4bc1f9c3-9008-4cfa-89c7-01277e687028",
+      "reviewer_channel_id": "7cf7c595-f191-461c-8985-f7cca205a653",
+      "reviewer_kind": "channel_lead",
+      "verdict": "pass",
+      "note": "L1 技术验收通过。证据核验：artifact fbb9083d-1d48-4888-97ac-10eb8551c4fb（oncall-runbook-faq.md）实际落盘 6,986B，sha256=0e2cb3ef6078c5c8b76e99efc9f12fc7a5128e90273824e2a0559d778b387558，与成果证据一致；验收标准逐项满足：artifact.present=true；min_bytes:1000 实测 6,986B；text.contains: FAQ（9 次）、升级（16）、回滚（16）、交接（14）全部命中。内容为 5 条独立 FAQ（常见故障判定处置/升级时限与对象/回滚触发与验证/写操作审批与驳回/交接遗留项），CJK 1,885 字，与 v1 oncall-runbook.md 口径一致（引用 line_status、line_context、ops_log、recipe_versions 实时读数），并明确写操作须人工审批、回滚须授权执行与逐参数回读，具备可执行性。未发现阻塞缺陷；L2 业务签核不在本环节范围。",
+      "created_at": "2026-11-06T15:00:28.259+08:00"
+    }
+  ],
+  "approvals": [
+    {
+      "id": "5c2baf16-57f1-4d90-b0f2-d1f801162d29",
+      "kind": "plan_approval",
+      "status": "approved",
+      "requested_by_agent_id": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+      "decided_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decision_reason": "Ralph 验收：批准 plan v1",
+      "created_at": "2026-11-06T14:10:25.908+08:00"
+    },
+    {
+      "id": "ec613768-84ed-4510-8157-f0c6e0b448f5",
+      "kind": "deliverable_acceptance",
+      "status": "approved",
+      "requested_by_agent_id": null,
+      "decided_by_user_id": "b0c13b67-acc6-4667-9edb-fc63bb7069bb",
+      "decision_reason": "独立 L2 签核：值班手册 v1 内容与 L1 记录一致",
+      "created_at": "2026-11-06T14:36:30.252+08:00"
+    },
+    {
+      "id": "17984b1f-45d0-4c4d-b130-d9222f9da407",
+      "kind": "project_complete",
+      "status": "approved",
+      "requested_by_agent_id": null,
+      "decided_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decision_reason": "值班手册 v1 L1/L2 全通过，Ralph 验收项目完成",
+      "created_at": "2026-11-06T14:36:34.399+08:00"
+    },
+    {
+      "id": "86b90201-8d87-4bae-95a4-b4a84abd0bd1",
+      "kind": "plan_approval",
+      "status": "approved",
+      "requested_by_agent_id": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+      "decided_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decision_reason": "Ralph 验收：批准 plan v2（FAQ 增量）",
+      "created_at": "2026-11-06T14:43:24.264+08:00"
+    },
+    {
+      "id": "acb76cd1-5f54-4784-8d71-bc12be93f9de",
+      "kind": "deliverable_acceptance",
+      "status": "approved",
+      "requested_by_agent_id": null,
+      "decided_by_user_id": "b0c13b67-acc6-4667-9edb-fc63bb7069bb",
+      "decision_reason": "独立 L2：FAQ 增量与 L1 证据一致",
+      "created_at": "2026-11-06T15:01:34.540+08:00"
+    },
+    {
+      "id": "88cc8c26-bbda-4640-a77e-60e47e46aa9e",
+      "kind": "project_complete",
+      "status": "approved",
+      "requested_by_agent_id": null,
+      "decided_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decision_reason": "FAQ 增量 L1/L2 全通过，Ralph 验收再次完成",
+      "created_at": "2026-11-06T15:01:34.559+08:00"
+    }
+  ],
+  "projectMessages": [
+    {
+      "id": "c7a247bd-95cd-4bbb-940c-244281f1e45f",
+      "from_agent_id": "system:review",
+      "from_channel_id": "2ba25c71-c4b3-42c2-a48b-df0d3c151cf1",
+      "to_agent_id": "4bc1f9c3-9008-4cfa-89c7-01277e687028",
+      "to_channel_id": "7cf7c595-f191-461c-8985-f7cca205a653",
+      "kind": "request_review",
+      "work_item_id": "571a216d-c9cc-409e-9f66-39cdc6a33fda",
+      "result_id": "d2f2c580-93ba-409e-8880-cae28ee4660b",
+      "correlation_id": "review:d2f2c580-93ba-409e-8880-cae28ee4660b:v1:2026-11-06T14:29:45.295+08:00",
+      "status": "delivered",
+      "created_at": "2026-11-06T14:29:52.062+08:00"
+    },
+    {
+      "id": "caf62321-b2a9-430a-9401-0c7b7fcd5584",
+      "from_agent_id": "system:review",
+      "from_channel_id": "2ba25c71-c4b3-42c2-a48b-df0d3c151cf1",
+      "to_agent_id": "4bc1f9c3-9008-4cfa-89c7-01277e687028",
+      "to_channel_id": "7cf7c595-f191-461c-8985-f7cca205a653",
+      "kind": "request_review",
+      "work_item_id": "caf40207-d1b7-4ac2-a130-b1e96b627c37",
+      "result_id": "03c44d96-bafa-44f2-8e89-05697ce0396e",
+      "correlation_id": "review:03c44d96-bafa-44f2-8e89-05697ce0396e:v1:2026-11-06T14:54:55.297+08:00",
+      "status": "delivered",
+      "created_at": "2026-11-06T14:55:03.205+08:00"
+    },
+    {
+      "id": "c66d5062-2249-4ec2-83d1-6aa18832b155",
+      "from_agent_id": "252f95f6-3953-40f8-b40b-07164d7d3747",
+      "from_channel_id": "2a12401e-7738-4e08-bcc1-0410e8ad0189",
+      "to_agent_id": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+      "to_channel_id": "2ba25c71-c4b3-42c2-a48b-df0d3c151cf1",
+      "kind": "note",
+      "work_item_id": null,
+      "result_id": null,
+      "correlation_id": "b5a07e10-4511-4a81-8d66-25148a78c05c",
+      "status": "delivered",
+      "created_at": "2026-11-06T15:02:42.250+08:00"
+    },
+    {
+      "id": "dc134de4-d2f5-43ab-9f5e-ac3073d4d66e",
+      "from_agent_id": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+      "from_channel_id": "2ba25c71-c4b3-42c2-a48b-df0d3c151cf1",
+      "to_agent_id": "252f95f6-3953-40f8-b40b-07164d7d3747",
+      "to_channel_id": "2a12401e-7738-4e08-bcc1-0410e8ad0189",
+      "kind": "reply",
+      "work_item_id": "caf40207-d1b7-4ac2-a130-b1e96b627c37",
+      "result_id": "03c44d96-bafa-44f2-8e89-05697ce0396e",
+      "correlation_id": "l1-closure-faq-kp12h",
+      "status": "delivered",
+      "created_at": "2026-11-06T15:18:40.648+08:00"
+    }
+  ],
+  "eventCount": 30,
+  "keyEvents": [
+    {
+      "type": "plan.proposed",
+      "created_at": "2026-11-06T14:10:25.917+08:00",
+      "payload_json": "{\"proposalId\":\"948ab642-b87d-4091-9a41-85a84510124a\",\"approvalId\":\"5c2baf16-57f1-4d90-b0f2-d1f801162d29\",\"version\":1}"
+    },
+    {
+      "type": "plan.applied",
+      "created_at": "2026-11-06T14:10:40.997+08:00",
+      "payload_json": "{\"version\":1,\"createdDeliverables\":1,\"createdWorkItems\":1,\"warnings\":[]}"
+    },
+    {
+      "type": "work.dispatch_auto",
+      "created_at": "2026-11-06T14:10:41.164+08:00",
+      "payload_json": "{\"workItemId\":\"571a216d-c9cc-409e-9f66-39cdc6a33fda\",\"taskId\":\"0a68da79-7428-4328-aa3e-6058b48c630d\",\"attemptNo\":1,\"auto\":true,\"inputResultIds\":[],\"planVersion\":1,\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\"}"
+    },
+    {
+      "type": "work.completed",
+      "created_at": "2026-11-06T14:29:26.564+08:00",
+      "payload_json": "{\"workItemId\":\"571a216d-c9cc-409e-9f66-39cdc6a33fda\",\"taskId\":\"0a68da79-7428-4328-aa3e-6058b48c630d\"}"
+    },
+    {
+      "type": "result.submitted",
+      "created_at": "2026-11-06T14:29:45.295+08:00",
+      "payload_json": "{\"resultId\":\"d2f2c580-93ba-409e-8880-cae28ee4660b\"}"
+    },
+    {
+      "type": "result.technical_accepted",
+      "created_at": "2026-11-06T14:34:52.359+08:00",
+      "payload_json": "{\"resultId\":\"d2f2c580-93ba-409e-8880-cae28ee4660b\",\"reviewId\":\"d06dd794-25b5-4309-82fa-ababf7d9ba4b\",\"reviewerKind\":\"channel_lead\"}"
+    },
+    {
+      "type": "project.complete_requested",
+      "created_at": "2026-11-06T14:36:34.400+08:00",
+      "payload_json": "{\"approvalId\":\"17984b1f-45d0-4c4d-b130-d9222f9da407\"}"
+    },
+    {
+      "type": "project.followup_requested",
+      "created_at": "2026-11-06T14:36:42.855+08:00",
+      "payload_json": "{\"messageId\":\"dc1b1b8a-545a-4ee7-8792-56da2cf82d4f\",\"channelId\":\"2ba25c71-c4b3-42c2-a48b-df0d3c151cf1\",\"reopened\":true,\"preview\":\"在同一项目继续，不要新建项目。请先读 project_get_status / project_read_deliverables / project_read_results 确认 v1 已验收；然后用 project_propose_replan 追加：新交付物「值班手册 FAQ 增量」+ 1 个新工作项（新 dedupeKey 例如 followup-runbook-faq-kp12h），交\"}"
+    },
+    {
+      "type": "project.reopened",
+      "created_at": "2026-11-06T14:36:42.855+08:00",
+      "payload_json": "{\"from\":\"completed\",\"to\":\"active\",\"messageId\":\"dc1b1b8a-545a-4ee7-8792-56da2cf82d4f\"}"
+    },
+    {
+      "type": "plan.proposed",
+      "created_at": "2026-11-06T14:43:24.265+08:00",
+      "payload_json": "{\"proposalId\":\"e9885aa5-20d7-4ebe-8ae8-3c5ed435e644\",\"approvalId\":\"86b90201-8d87-4bae-95a4-b4a84abd0bd1\",\"version\":2}"
+    },
+    {
+      "type": "plan.applied",
+      "created_at": "2026-11-06T14:43:56.496+08:00",
+      "payload_json": "{\"version\":2,\"createdDeliverables\":1,\"createdWorkItems\":1,\"warnings\":[]}"
+    },
+    {
+      "type": "work.dispatch_auto",
+      "created_at": "2026-11-06T14:44:02.759+08:00",
+      "payload_json": "{\"workItemId\":\"caf40207-d1b7-4ac2-a130-b1e96b627c37\",\"taskId\":\"ef22e8bb-c4c2-447f-815d-709ce86eb732\",\"attemptNo\":1,\"auto\":true,\"inputResultIds\":[],\"planVersion\":2,\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\"}"
+    },
+    {
+      "type": "work.completed",
+      "created_at": "2026-11-06T14:53:20.397+08:00",
+      "payload_json": "{\"workItemId\":\"caf40207-d1b7-4ac2-a130-b1e96b627c37\",\"taskId\":\"ef22e8bb-c4c2-447f-815d-709ce86eb732\"}"
+    },
+    {
+      "type": "result.submitted",
+      "created_at": "2026-11-06T14:54:55.298+08:00",
+      "payload_json": "{\"resultId\":\"03c44d96-bafa-44f2-8e89-05697ce0396e\"}"
+    },
+    {
+      "type": "result.technical_accepted",
+      "created_at": "2026-11-06T15:00:28.260+08:00",
+      "payload_json": "{\"resultId\":\"03c44d96-bafa-44f2-8e89-05697ce0396e\",\"reviewId\":\"a11eebf7-b080-4d04-a819-9eea6724221c\",\"reviewerKind\":\"channel_lead\"}"
+    }
+  ],
+  "chat": [
+    {
+      "sender_type": "user",
+      "sender_name": "Router Owner",
+      "text": "请为项目「值班手册 · 连续验收 kp12h」制定 plan v1，只做 1 个交付物「值班手册」和 1 个工作项，交给生产 Channel 2a12401e-7738-4e08-bcc1-0410e8ad0189。交付必须是单文件 Markdown（800-1500 字），覆盖：日常巡检清单、故障升级路径、交接清单。验收标准：artifact.present、min_bytes:800、text.contains:值班。禁止写 HTML、禁止调研、禁止建多个交付物。请只调用 project_propose_plan 提交计划，等待 owner 批准。",
+      "created_at": "2026-11-06T14:07:49.794+08:00"
+    },
+    {
+      "sender_type": "agent",
+      "sender_name": "Project Leader",
+      "text": ".📋 计划 v1 已提交并已落地。\n\n**调用结果**\n- `project_propose_plan` → `ok:true`，proposalId `948ab642-b87d-4091-9a41-85a84510124a`，approvalId `5c2baf16-57f1-4d90-b0f2-d1f801162d29`，planVersion **1**\n- 紧随的 `project_get_status` 显示：project `status=active`、planVersion=1、`pendingApprovals=[]`；交付物 `54c6cf0f-566d-44e3-9d5a-a0c3e32c8cc5`（值班手册）状态 `planned`；工作项 `571a216d-c9cc-409e-9f66-39cdc6a33fda` 已 `DISPATCHED` 到 `2a12401e-7738-4e08-bcc1-0410e8ad0189`（值班手册生产 kp12h）。\n\n**计划内容**\n- 交付物 `d-handbook`「值班手册」，required=true，仅此一",
+      "created_at": "2026-11-06T14:12:38.704+08:00"
+    },
+    {
+      "sender_type": "user",
+      "sender_name": "Router Owner",
+      "text": "在同一项目继续，不要新建项目。请先读 project_get_status / project_read_deliverables / project_read_results 确认 v1 已验收；然后用 project_propose_replan 追加：新交付物「值班手册 FAQ 增量」+ 1 个新工作项（新 dedupeKey 例如 followup-runbook-faq-kp12h），交给生产 Channel 2a12401e-7738-4e08-bcc1-0410e8ad0189。内容：基于已验收 v1，追加 FAQ 5 条（常见故障、升级、回滚、审批、交接），单文件 Markdown ≥1000 字，必须包含 FAQ、升级、回滚；不要重做 v1，不要写 HTML，不要调研。只提交计划，等待 owner 批准。",
+      "created_at": "2026-11-06T14:36:42.854+08:00"
+    },
+    {
+      "sender_type": "agent",
+      "sender_name": "Project Leader",
+      "text": "...📋 已在同一项目 `a1955fd9-e3ff-45fa-919d-a4fa1b61a576` 提交 plan v2（replan），等待你批准。\n\n**① v1 验收确认（先读后写）**\n- `project_get_status`：planVersion=1，项目 active\n- `project_read_deliverables`：`54c6cf0f-566d-44e3-9d5a-a0c3e32c8cc5`「值班手册」status=**approved**，criteria = artifact.present / min_bytes:800 / text.contains:值班\n- `project_read_results`：成果 `d2f2c580-93ba-409e-8880-cae28ee4660b` status=**approved**；L1 技术验收 pass（评审 Channel `4bc1f9c3…`，reviewId `d06dd794…`）；证据 artifact `07cc3fa3…` = `oncall-runbook.md` 3,651B，",
+      "created_at": "2026-11-06T14:44:36.090+08:00"
+    }
+  ]
+}

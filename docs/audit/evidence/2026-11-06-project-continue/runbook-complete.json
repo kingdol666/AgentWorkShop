@@ -1,0 +1,52 @@
+{
+  "request": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "17984b1f-45d0-4c4d-b130-d9222f9da407",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "project_complete",
+      "subjectType": "project",
+      "subjectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "subjectVersion": null,
+      "status": "pending",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"deliverables\":[{\"id\":\"54c6cf0f-566d-44e3-9d5a-a0c3e32c8cc5\",\"status\":\"approved\"}],\"workItems\":1}",
+      "argsDigest": "",
+      "reason": "project completion acceptance",
+      "decisionReason": "",
+      "decidedByUserId": null,
+      "consumedAt": null,
+      "traceId": "project:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:complete",
+      "expiresAt": "2026-11-07T14:36:34.399+08:00",
+      "createdAt": "2026-11-06T14:36:34.399+08:00",
+      "decidedAt": null
+    }
+  },
+  "decide": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "17984b1f-45d0-4c4d-b130-d9222f9da407",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "project_complete",
+      "subjectType": "project",
+      "subjectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "subjectVersion": null,
+      "status": "approved",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"deliverables\":[{\"id\":\"54c6cf0f-566d-44e3-9d5a-a0c3e32c8cc5\",\"status\":\"approved\"}],\"workItems\":1}",
+      "argsDigest": "",
+      "reason": "project completion acceptance",
+      "decisionReason": "值班手册 v1 L1/L2 全通过，Ralph 验收项目完成",
+      "decidedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "consumedAt": null,
+      "traceId": "project:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:complete",
+      "expiresAt": "2026-11-07T14:36:34.399+08:00",
+      "createdAt": "2026-11-06T14:36:34.399+08:00",
+      "decidedAt": "2026-11-06T14:36:34.407+08:00"
+    }
+  }
+}

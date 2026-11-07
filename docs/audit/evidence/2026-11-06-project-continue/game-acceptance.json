@@ -1,0 +1,171 @@
+{
+  "game": "D:\\codes\\ABO\\aw-router-demo-20261105\\data\\workspaces\\89d72e64-3782-43c9-b207-545bdcaa6b55\\game.html",
+  "bytes": 26741,
+  "checks": [
+    {
+      "id": "S1",
+      "name": "单文件存在且 >= 8000 字节",
+      "pass": true,
+      "detail": "26741 bytes"
+    },
+    {
+      "id": "S2",
+      "name": "源码包含 <!DOCTYPE",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S3",
+      "name": "源码包含 <canvas",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S4",
+      "name": "源码包含 devicePixelRatio",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S5",
+      "name": "源码包含 touchstart",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S6",
+      "name": "源码包含 touchmove",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S7",
+      "name": "源码包含 visibilitychange",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S8",
+      "name": "源码包含 blur",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S9",
+      "name": "源码包含 __game",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S10",
+      "name": "源码包含 debug=1",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R1",
+      "name": "无 ?debug=1 时 window.__game 不暴露",
+      "pass": true,
+      "detail": "undefined"
+    },
+    {
+      "id": "R2",
+      "name": "?debug=1 时提供测试入口",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R3",
+      "name": "移动端无横向溢出",
+      "pass": true,
+      "detail": "{\"cssW\":390,\"cssH\":219.375,\"w\":2560,\"h\":1440,\"dpr\":2,\"overflowX\":false}"
+    },
+    {
+      "id": "R4",
+      "name": "canvas backing store 按 DPR 放大",
+      "pass": true,
+      "detail": "{\"cssW\":390,\"cssH\":219.375,\"w\":2560,\"h\":1440,\"dpr\":2,\"overflowX\":false}"
+    },
+    {
+      "id": "R5",
+      "name": "暂停/静音/全屏按钮可见且触摸目标 >=44",
+      "pass": true,
+      "detail": "[{\"id\":\"bPause\",\"x\":216,\"y\":320,\"w\":48,\"h\":48,\"visible\":true},{\"id\":\"bMute\",\"x\":274,\"y\":320,\"w\":48,\"h\":48,\"visible\":true},{\"id\":\"bFull\",\"x\":332,\"y\":320,\"w\":48,\"h\":48,\"visible\":true}]"
+    },
+    {
+      "id": "R6",
+      "name": "390×844 触屏拖动改变飞船坐标",
+      "pass": true,
+      "detail": "{\"before\":{\"st\":\"play\",\"px\":640,\"py\":600},\"during\":{\"st\":\"play\",\"px\":880.218670072137,\"py\":406.96714012060545,\"bullets\":10}}"
+    },
+    {
+      "id": "R7",
+      "name": "触屏移动时自动开火",
+      "pass": true,
+      "detail": "10"
+    },
+    {
+      "id": "R8",
+      "name": "暂停按钮进入 pause",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R9",
+      "name": "blur 后停止移动并自动暂停",
+      "pass": true,
+      "detail": "{\"px1\":747.4999999999994,\"afterBlur\":{\"st\":\"pause\",\"px\":747.4999999999994}}"
+    },
+    {
+      "id": "R10",
+      "name": "visibilitychange(hidden) 自动暂停",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R11",
+      "name": "桌面 D 键移动 + Space 开火",
+      "pass": true,
+      "detail": "{\"px0\":640,\"pxD\":747.4999999999994,\"bullets\":4}"
+    },
+    {
+      "id": "R12",
+      "name": "第 1 关配额达成进入升级",
+      "pass": true,
+      "detail": "{\"st\":\"upgrade\",\"score\":2300}"
+    },
+    {
+      "id": "R13",
+      "name": "升级选择进入第 2 关",
+      "pass": true,
+      "detail": "{\"st\":\"play\",\"l\":2}"
+    },
+    {
+      "id": "R14",
+      "name": "第 3 关胜利状态",
+      "pass": true,
+      "detail": "win"
+    },
+    {
+      "id": "R15",
+      "name": "R 重开回到第 1 关",
+      "pass": true,
+      "detail": "{\"st\":\"play\",\"l\":1,\"score\":0}"
+    },
+    {
+      "id": "R16",
+      "name": "船体归零进入 GAME OVER",
+      "pass": true,
+      "detail": "{\"st\":\"over\",\"hull\":0}"
+    },
+    {
+      "id": "R17",
+      "name": "全流程 0 pageerror",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "pass": 27,
+  "total": 27,
+  "generatedAt": "2026-11-06T06:03:56.700Z"
+}

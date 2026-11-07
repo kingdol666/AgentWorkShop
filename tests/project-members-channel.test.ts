@@ -86,11 +86,18 @@ test('成员 CRUD：owner 可加/改/删/列；非 owner 不可写；成员可�
     // 重复添加 → 幂等返回；role 变更走 setRole
     const again = s.svc.addMember(s.p.id, s.owner, { userId: s.viewer.id, role: 'approver' })
     assert.equal(again.role, 'approver')
+    // 未带 role 的重复添加不得把 approver 静默降级
+    assert.equal(s.svc.addMember(s.p.id, s.owner, { userId: s.viewer.id }).role, 'approver')
     assert.equal(s.svc.listMembers(s.p.id, s.owner).length, 1)
     // owner 不能把自己加为成员
     assert.throws(
       () => s.svc.addMember(s.p.id, s.owner, { userId: 'u-owner' }),
       (e: unknown) => (e as { code?: string }).code === 'MEMBER_CONFLICT',
+    )
+    // 角色白名单：任意字符串不得落库
+    assert.throws(
+      () => s.svc.addMember(s.p.id, s.owner, { userId: 'u-bad-role', role: 'owner' }),
+      (e: unknown) => (e as { code?: string }).code === 'BAD_REQUEST',
     )
     // viewer 可读项目（此前会 403）
     assert.equal(s.svc.get(s.p.id, s.viewer).id, s.p.id)
@@ -198,6 +205,38 @@ test('M5：leader 建频道提案 → owner 应用 → 频道创建并绑定；�
       () => s.svc.applyProposal(s.p.id, proposed.proposalId, s.owner),
       (e: unknown) => (e as { code?: string }).code === 'PROPOSAL_STATE_INVALID',
     )
+  }
+  finally {
+    s.db.close()
+  }
+})
+
+test('项目组修改：解绑随行终结化在飞工作项（P0-3）；空频道可直接解绑', async () => {
+  const s = await setup()
+  try {
+    // P0-3 解绑语义：在飞工作项随解绑终结化（CANCELED/CHANNEL_DETACHED + attempt 闭合），
+    // 不再 409 拒绝 —— 旧行为会让 worker 因绑定失效 403 永远无法提交，工作项永久悬挂。
+    const wi = s.svc.createWorkItem(s.p.id, s.owner, {
+      deliverableId: s.d.id,
+      channelId: s.member.channelId,
+      title: '进行中的工作项',
+    })
+    s.svc.unbindChannel(s.p.id, s.member.channelId, s.owner)
+    const events = s.svc.listEvents(s.p.id, s.owner)
+    assert.ok(events.some(e => e.type === 'work.canceled'), '解绑必须发出 work.canceled')
+    const after = s.svc.listWorkItems(s.p.id, s.owner).find(w => w.id === wi.id)
+    assert.equal(after?.state, 'CANCELED')
+    assert.equal(after?.stateReason, 'CHANNEL_DETACHED')
+    let binding = s.svc.listChannels(s.p.id, s.owner).find(b => b.channelId === s.member.channelId)
+    assert.equal(binding?.status, 'detached')
+
+    // 已终结工作项的频道重新绑定后可直接解绑（无在飞 → 不产生新取消）
+    const rebind = s.svc.bindChannel(s.p.id, s.member.channelId, s.owner, { charter: 'rebind' })
+    assert.equal(rebind.status, 'active')
+    s.svc.unbindChannel(s.p.id, s.member.channelId, s.owner)
+    binding = s.svc.listChannels(s.p.id, s.owner).find(b => b.channelId === s.member.channelId)
+    assert.equal(binding?.status, 'detached')
+    assert.ok(!s.svc.listEvents(s.p.id, s.owner).some(e => e.type === 'channel.detached'), 'P0-3 后不再发 channel.detached')
   }
   finally {
     s.db.close()

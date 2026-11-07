@@ -1,0 +1,25 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "id": "271f47fb-7f17-4b94-aae1-7041bca50762",
+    "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+    "kind": "plan_approval",
+    "subjectType": "plan",
+    "subjectId": "plan:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:3",
+    "subjectVersion": 3,
+    "status": "approved",
+    "requestedByAgentId": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+    "requestedByUserId": null,
+    "payloadJson": "{\"deliverables\":[{\"key\":\"d-handbook\",\"name\":\"值班手册\",\"description\":\"单文件 Markdown 值班手册（800-1500 字），必须覆盖三部分：日常巡检清单、故障升级路径、交接清单。验收口径：artifact.present；min_bytes:800；text.contains:值班。禁止 HTML、禁止外部调研、禁止拆分多交付物。\",\"required\":true,\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:800\",\"text.contains:值班\"]},{\"key\":\"d-faq\",\"name\":\"值班手册 FAQ 增量\",\"description\":\"在已验收 v1 值班手册基础上追加 FAQ 增量：问答 5 条，覆盖常见故障、升级、回滚、审批、交接；单文件 Markdown，正文 ≥1000 字。必须出现关键字 FAQ、升级、回滚。不重做 v1、不写 HTML、不做外部调研。验收口径：artifact.present；min_bytes:1000；text.contains:FAQ；text.contains:升级；text.contains:回滚；text.contains:交接。\",\"required\":true,\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:1000\",\"text.contains:FAQ\",\"text.contains:升级\",\"text.contains:回滚\",\"text.contains:交接\"]},{\"key\":\"d-drill\",\"name\":\"5 分钟演练清单\",\"description\":\"单文件 Markdown 演练清单 oncall-drill.md，正文 ≥600 字；覆盖 5 分钟演练步骤、回滚、交接三部分，可直接照做。必须出现关键字：演练、5 分钟、回滚、交接。不重做 v1 值班手册与 FAQ 增量、不写 HTML、不做外部调研、不拆分多文件。验收口径：artifact.present；min_bytes:600；text.contains:演练；text.contains:5 分钟；text.contains:回滚；text.contains:交接。\",\"required\":true,\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:600\",\"text.contains:演练\",\"text.contains:5 分钟\",\"text.contains:回滚\",\"text.contains:交接\"]}],\"work_items\":[{\"key\":\"w-handbook\",\"deliverableKey\":\"d-handbook\",\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"title\":\"编写值班手册单文件 Markdown（800-1500 字，覆盖巡检/升级/交接）\",\"brief\":\"【目标】产出一份可直接执行的值班手册，单文件 Markdown，正文 800-1500 字（中文字符计数）。\\n【必含结构】1) 日常巡检清单：按班次列出检查项、判断阈值、异常时第一动作；2) 故障升级路径：分级（P1/P2/P3）→ 触发条件 → 通知对象 → 升级时限 → 止损手段；3) 交接清单：交接前须确认的状态、遗留问题、待跟踪事项与责任人。\\n【验收标准】artifact.present；min_bytes:800；text.contains:值班。字数超上限 1500 字按不通过处理。\\n【禁止】输出 HTML；不做外部调研/联网检索；不拆成多个交付物或多文件。\\n【交付】单个 .md 文件，并在结果中说明文件路径与字数统计。\",\"dependsOn\":[],\"execBudgetMinutes\":60,\"dedupeKey\":\"kp12h-handbook-v1\",\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:800\",\"text.contains:值班\"]},{\"key\":\"w-faq\",\"deliverableKey\":\"d-faq\",\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"title\":\"编写值班手册 FAQ 增量（5 条问答，≥1000 字）\",\"brief\":\"【基线】v1 已验收：artifact oncall-runbook.md，3,651B，CJK 969 字（成果结果 id d2f2c580-93ba-409e-8880-cae28ee4660b）。本工作项只做增量，不重写、不复制、不重登 v1 交付物。\\n【目标】同目录产出新的单文件 Markdown（如 oncall-runbook-faq.md），正文 ≥1000 个中文字符，且必须包含以下关键字：FAQ、升级、回滚、交接。\\n【必含结构】FAQ 问答 5 条，一一对应五个主题：1) 常见故障（现象→判定→处置）；2) 升级（何时升级、通知谁、时限）；3) 回滚（触发条件、回滚步骤、回滚后确认）；4) 审批（哪些写操作必须人工审批、驳回后怎么办）；5) 交接（交接时 FAQ 相关要点与遗留项）。每条问答须给出可直接照做的步骤或判定标准，避免泛泛而谈。\\n【验收标准】artifact.present；min_bytes:1000；text.contains:FAQ；text.contains:升级；text.contains:回滚；text.contains:交接。正文不足 1000 字按不通过处理。\\n【禁止】输出 HTML；不联网/不做外部调研；不修改已验收 v1 文件内容；不拆多个交付物或多文件。\\n【交付】单个 .md 文件；结果中说明文件路径、CJK 字数、FAQ 条数与五个主题的覆盖位置。\",\"dependsOn\":[],\"execBudgetMinutes\":60,\"dedupeKey\":\"followup-runbook-faq-kp12h\",\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:1000\",\"text.contains:FAQ\",\"text.contains:升级\",\"text.contains:回滚\",\"text.contains:交接\"]},{\"key\":\"w-drill\",\"deliverableKey\":\"d-drill\",\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"title\":\"编写 5 分钟演练清单 oncall-drill.md（≥600 字，覆盖演练步骤/回滚/交接）\",\"brief\":\"【基线】v1 值班手册（artifact oncall-runbook.md，结果 d2f2c580-93ba-409e-8880-cae28ee4660b）与 FAQ 增量（artifact oncall-runbook-faq.md，结果 03c44d96-bafa-44f2-8e89-05697ce0396e）均已验收。本工作项只做增量，不重写、不复制、不重登已验收交付物。\\n【目标】产出新的单文件 Markdown：oncall-drill.md，正文 ≥600 个中文字符，必须出现关键字：演练、5 分钟、回滚、交接。\\n【必含结构】1) 5 分钟演练步骤：按 0:00-5:00 时间轴给出每一步的动作、观察项、判定通过/失败的标准（如检查 line_status/line_context 读数、ops_log 有无异常、告警是否闭环、审批队列是否为空）；2) 回滚：演练失败或观察项不达标的触发条件、回滚步骤（逐参数回读、恢复基线、确认恢复）、回滚后确认项；3) 交接：演练结论、失败点、遗留待跟踪事项、责任人与下一次演练时间的记录格式。每步须可直接照做，避免泛泛而谈。\\n【验收标准】artifact.present；min_bytes:600；text.contains:演练；text.contains:5 分钟；text.contains:回滚；text.contains:交接。正文不足 600 字按不通过处理。\\n【禁止】输出 HTML；不联网/不做外部调研；不修改已验收 v1/FAQ 文件；不拆多个交付物或多文件。\\n【交付】单个 .md 文件；结果中说明文件路径、CJK 字数、三部分覆盖位置。\",\"dependsOn\":[],\"execBudgetMinutes\":60,\"dedupeKey\":\"followup-runbook-drill-kp12h\",\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:600\",\"text.contains:演练\",\"text.contains:5 分钟\",\"text.contains:回滚\",\"text.contains:交接\"]}]}",
+    "argsDigest": "",
+    "reason": "project plan proposal",
+    "decisionReason": "Ralph 业务复核：批准 plan v3（5 分钟演练清单）",
+    "decidedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+    "consumedAt": null,
+    "traceId": "plan:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:3",
+    "expiresAt": "2026-11-07T16:56:21.468+08:00",
+    "createdAt": "2026-11-06T16:56:21.468+08:00",
+    "decidedAt": "2026-11-06T17:05:46.078+08:00"
+  }
+}

@@ -8,8 +8,10 @@
  * 交互契约:全部 data-testid 原位保留(projects-smoke/interactions 依赖);
  * 数据逻辑零改动,本轮只动模板外壳与样式声部。
  */
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { mdLite } from '@/app/composables/workshop/useEventBlocks'
 import { useUserStore } from '~/stores/workshop/user'
+import type { AepChatMessage } from '#shared/workshop-protocol'
 
 definePageMeta({ layout: 'console' })
 
@@ -282,6 +284,111 @@ async function loadProjectSessions(): Promise<void> {
 }
 onMounted(loadProjectSessions)
 
+// ===== 持续开发：项目办公室 Leader 对话 =====
+const chatMessages = ref<AepChatMessage[]>([])
+const chatText = ref('')
+const chatLoading = ref(false)
+const chatSending = ref(false)
+const chatError = ref('')
+const chatNotice = ref('')
+const chatThread = ref<HTMLElement | null>(null)
+const chatInput = ref<HTMLTextAreaElement | null>(null)
+const chatInitialized = ref(false)
+/** 服务端 access.canManage：只有 owner/admin 可继续开发；加载前默认关闭，避免非 owner 闪现可提交入口 */
+const canManageProject = ref(false)
+let chatTimer: ReturnType<typeof setInterval> | null = null
+
+const canContinueProject = computed(() => Boolean(
+  canManageProject.value
+  && project.value?.officeChannelId
+  && project.value?.leadAgentId
+  && project.value.status !== 'archived'
+  && project.value.status !== 'draft',
+))
+
+function formatChatTime(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+function scrollChatToBottom(force = false): void {
+  void nextTick(() => {
+    const el = chatThread.value
+    if (!el) return
+    // 轮询刷新时，用户可能正在往上读历史；只有本来就在底部才跟随新消息。
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    if (force || nearBottom) el.scrollTop = el.scrollHeight
+  })
+}
+
+function focusContinue(): void {
+  activeTab.value = 'overview'
+  void nextTick(() => {
+    // 以输入框为锚点居中，而不是把对话卡顶端顶到视口上沿：
+    // 900px 高的桌面/手机上，卡顶端对齐会把 composer 推到折叠线以下。
+    chatInput.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    chatInput.value?.focus({ preventScroll: true })
+  })
+}
+
+async function loadChat(): Promise<void> {
+  const officeChannelId = project.value?.officeChannelId
+  if (!officeChannelId) return
+  chatLoading.value = true
+  try {
+    const res = await http.get<{ data: { messages?: AepChatMessage[] } }>(
+      `/workshop/channels/${officeChannelId}/chat/messages?limit=100`,
+    )
+    // 服务端返回新→旧；对话区按时间正序渲染。
+    chatMessages.value = [...(res.data?.messages ?? [])].reverse()
+    chatError.value = ''
+    scrollChatToBottom(!chatInitialized.value)
+    chatInitialized.value = true
+  }
+  catch (e) {
+    if (!chatMessages.value.length) chatError.value = e instanceof Error ? e.message : '对话加载失败'
+  }
+  finally {
+    chatLoading.value = false
+  }
+}
+
+async function sendContinuation(): Promise<void> {
+  const text = chatText.value.trim()
+  if (!text || chatSending.value || !canContinueProject.value) return
+  chatSending.value = true
+  chatError.value = ''
+  chatNotice.value = ''
+  try {
+    const res = await http.post<{
+      data: {
+        project: ProjectDto
+        reopened: boolean
+        chatMessageId: string
+        deliveries: Array<{ deliveryId: string, agentId: string, status: string }>
+        duplicates: boolean
+      }
+    }>(`/workshop/projects/${id}/continue`, {
+      message: text,
+      clientMessageId: `project-continue-${id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    })
+    project.value = res.data.project
+    chatText.value = ''
+    const delivered = res.data.deliveries.filter(d => d.status === 'delivered' || d.status === 'consumed').length
+    chatNotice.value = res.data.reopened
+      ? `项目已重新打开；需求已发给 Project Leader（已投递 ${delivered} 个目标），批准增量计划后继续派发。`
+      : `需求已发给 Project Leader（已投递 ${delivered} 个目标）。`
+    await Promise.all([load(), loadChat(), loadObservability()])
+    scrollChatToBottom(true)
+  }
+  catch (e) {
+    chatError.value = e instanceof Error ? e.message : '发送失败'
+  }
+  finally {
+    chatSending.value = false
+  }
+}
+
 /** PR15 五 tab（plan §7.2）：概览/计划与工作/交付物/审批/决策与事件。 */
 type TabKey = 'overview' | 'plan' | 'deliverables' | 'approvals' | 'events'
 const activeTab = ref<TabKey>('overview')
@@ -510,6 +617,7 @@ async function loadObservability(): Promise<void> {
   try {
     const r = await http.get<{ data: ObservabilityDto }>(`/workshop/projects/${id}/observability`)
     obs.value = r.data ?? null
+    canManageProject.value = r.data?.access?.canManage === true
     lastObsAt.value = new Date().toLocaleTimeString()
   }
   catch (e) {
@@ -554,10 +662,15 @@ onMounted(() => {
   obsTimer = setInterval(() => {
     void loadObservability()
   }, 5000)
+  chatTimer = setInterval(() => {
+    if (!chatSending.value) void loadChat()
+  }, 5000)
 })
 onUnmounted(() => {
   if (obsTimer) clearInterval(obsTimer)
   obsTimer = null
+  if (chatTimer) clearInterval(chatTimer)
+  chatTimer = null
 })
 </script>
 
@@ -630,6 +743,14 @@ onUnmounted(() => {
         </div>
         <div class="life-grid">
           <button
+            v-if="canContinueProject"
+            class="btn small"
+            data-testid="continue-project"
+            @click="focusContinue"
+          >
+            {{ project?.status === 'completed' ? '继续开发' : '补充需求' }}
+          </button>
+          <button
             class="btn small ghost"
             :disabled="loading"
             @click="lifecycle('reconcile')"
@@ -699,6 +820,152 @@ onUnmounted(() => {
       >
         {{ error }}
       </p>
+
+      <section
+        v-show="activeTab === 'overview'"
+        class="card chat-card"
+        data-testid="project-leader-chat"
+      >
+        <header class="chat-head">
+          <div class="leader-id">
+            <span
+              class="leader-avatar"
+              aria-hidden="true"
+            >PL</span>
+            <div class="leader-copy">
+              <h2>Project Leader 对话</h2>
+              <p>
+                项目办公室
+                <template v-if="project?.officeChannelId">
+                  · <code>{{ project.officeChannelId.slice(0, 8) }}…</code>
+                </template>
+              </p>
+            </div>
+          </div>
+          <div class="chat-head-actions">
+            <span class="muted">{{ chatMessages.length }} 条对话</span>
+            <button
+              type="button"
+              class="btn small ghost"
+              :disabled="chatLoading"
+              @click="loadChat"
+            >
+              刷新
+            </button>
+          </div>
+        </header>
+
+        <p
+          v-if="project?.status === 'completed'"
+          class="chat-hint"
+        >
+          项目已完成。<b>发送补充需求会自动重新打开项目</b>；Leader 会先读现状，再提出增量计划（plan vN+1），owner 批准后继续派发、验收，不需要新建项目。
+        </p>
+        <p
+          v-else-if="project?.status === 'paused'"
+          class="chat-hint"
+        >
+          项目已暂停；发送补充需求会自动恢复为进行中，再交给同一个 Project Leader 评估。
+        </p>
+        <p
+          v-else
+          class="chat-hint"
+        >
+          消息直接进入项目办公室，由同一个 Project Leader 接收；适合补充 bug 复现、变更需求和验收反馈。
+        </p>
+
+        <div
+          ref="chatThread"
+          class="chat-thread"
+          data-testid="project-leader-thread"
+        >
+          <div
+            v-if="!chatMessages.length && !chatLoading"
+            class="chat-empty"
+          >
+            <strong>还没有对话</strong>
+            <span>可以直接描述 bug、复现步骤或下一轮需求。</span>
+          </div>
+          <div
+            v-else-if="chatLoading && !chatMessages.length"
+            class="chat-empty"
+          >
+            <span class="muted">正在同步对话…</span>
+          </div>
+          <div
+            v-for="m in chatMessages"
+            :key="m.id"
+            class="chat-row"
+            :class="m.senderType"
+            :data-testid="`project-chat-${m.senderType}`"
+          >
+            <span
+              class="chat-avatar"
+              aria-hidden="true"
+            >{{ m.senderType === 'user' ? '你' : 'PL' }}</span>
+            <div class="chat-bubble-wrap">
+              <div class="chat-meta">
+                <strong>{{ m.senderType === 'user' ? '你' : m.senderName }}</strong>
+                <span>{{ formatChatTime(m.createdAt) }}</span>
+              </div>
+              <!-- eslint-disable vue/no-v-html -- mdLite 先 escapeHtml，仅注入受控标记 -->
+              <div
+                class="chat-body"
+                v-html="mdLite(m.text)"
+              />
+              <!-- eslint-enable vue/no-v-html -->
+            </div>
+          </div>
+        </div>
+
+        <p
+          v-if="chatError"
+          class="error"
+        >
+          {{ chatError }}
+        </p>
+        <p
+          v-if="chatNotice"
+          class="muted"
+        >
+          {{ chatNotice }}
+        </p>
+
+        <div class="chat-compose">
+          <textarea
+            ref="chatInput"
+            v-model="chatText"
+            rows="3"
+            maxlength="8000"
+            data-testid="project-continue-input"
+            :disabled="!canContinueProject"
+            :placeholder="canContinueProject
+              ? '例如：游戏在移动端无法操作；第 2 关闪电伤害判定偏大；请修复并补回归验证。'
+              : '只有项目 owner 可以在这里继续开发。'"
+            @keydown.ctrl.enter.prevent="sendContinuation"
+            @keydown.meta.enter.prevent="sendContinuation"
+          />
+          <div class="chat-compose-actions">
+            <span class="composer-hint">
+              Ctrl/⌘ + Enter 发送
+              <template v-if="!canContinueProject">
+                · 只有项目 owner 可继续开发
+              </template>
+            </span>
+            <div class="composer-right">
+              <span class="muted mono">{{ chatText.length }} / 8000</span>
+              <button
+                class="btn small"
+                data-testid="project-continue-send"
+                :disabled="chatSending || !chatText.trim() || !canContinueProject"
+                @click="sendContinuation"
+              >
+                {{ chatSending ? '发送中…' : '发送并继续开发' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section
         v-show="activeTab === 'overview'"
@@ -2260,5 +2527,145 @@ code {
   .main-col { padding: 0 12px 40px; }
   .grid2 { grid-template-columns: 1fr; }
   .drawer { width: 100vw; }
+}
+
+/* ── Project Leader 对话（持续开发）────────────────────────────── */
+.chat-card { display: flex; flex-direction: column; gap: 12px; }
+.chat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--chat-line);
+}
+.leader-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.leader-avatar {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--chat-canvas);
+  background: var(--chat-ink);
+  border-radius: 50%;
+}
+.leader-copy h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.leader-copy p { margin: 2px 0 0; font-size: 12px; color: var(--chat-ink-faint); }
+.chat-head-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.chat-hint {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--chat-ink-soft);
+  background: color-mix(in srgb, var(--chat-ink) 4%, transparent);
+  border-radius: 10px;
+}
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 28px 12px;
+  font-size: 13px;
+  color: var(--chat-ink-faint);
+  text-align: center;
+}
+.chat-empty strong { font-size: 14px; color: var(--chat-ink-soft); }
+.chat-row { display: flex; gap: 10px; align-items: flex-start; }
+.chat-row.user { flex-direction: row-reverse; }
+.chat-avatar {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--chat-ink-soft);
+  background: color-mix(in srgb, var(--chat-ink) 7%, transparent);
+  border-radius: 50%;
+}
+.chat-bubble-wrap { max-width: min(78%, 640px); min-width: 0; }
+.chat-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 3px;
+  font-size: 11px;
+  color: var(--chat-ink-faint);
+}
+.chat-row.user .chat-meta { justify-content: flex-end; }
+.chat-meta strong { font-size: 12px; color: var(--chat-ink-soft); }
+.chat-body {
+  padding: 9px 12px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--chat-ink);
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.chat-row.user .chat-body { background: var(--chat-bubble-user, color-mix(in srgb, var(--chat-ink) 6%, transparent)); }
+.chat-body :deep(p) { margin: 0 0 6px; }
+.chat-body :deep(p:last-child) { margin-bottom: 0; }
+.chat-body :deep(ul),
+.chat-body :deep(ol) { margin: 6px 0; padding-left: 18px; }
+.chat-body :deep(code) {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  background: color-mix(in srgb, var(--chat-ink) 6%, transparent);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.chat-body :deep(pre) {
+  margin: 6px 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  background: color-mix(in srgb, var(--chat-ink) 5%, transparent);
+  border-radius: 8px;
+}
+.chat-body :deep(pre code) { background: transparent; padding: 0; }
+.chat-compose { display: flex; flex-direction: column; gap: 8px; }
+.chat-compose textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.6;
+  color: var(--chat-ink);
+  background: var(--chat-canvas);
+  border: 1px solid var(--chat-line);
+  border-radius: 12px;
+  resize: vertical;
+  transition: border-color var(--transition-fast);
+}
+.chat-compose textarea:focus { border-color: var(--chat-line-strong); outline: none; }
+.chat-compose textarea:disabled { opacity: 0.6; cursor: not-allowed; }
+.chat-compose-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.composer-hint { font-size: 11px; color: var(--chat-ink-faint); }
+.composer-right { display: flex; align-items: center; gap: 10px; }
+.mono { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 11px; }
+@media (max-width: 860px) {
+  .chat-bubble-wrap { max-width: 86%; }
+  .chat-compose-actions { flex-direction: column; align-items: stretch; }
+  .composer-right { justify-content: space-between; }
 }
 </style>

@@ -269,3 +269,30 @@ test('自批可达：owner 提交的成果 owner 不能批准（SELF_APPROVAL_FO
     s.db.close()
   }
 })
+
+test('project_complete 决策时重跑完成门：审批后新增必选交付物 → 拒绝完成', async () => {
+  const s = await setup({ planRequired: false })
+  try {
+    await s.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner)
+    const root = s.tasks.listRoots(s.member.channelId)[0]!
+    s.tasks.update(root.id, { state: 'COMPLETED', artifacts: [{ artifactId: 'a', name: 'r', parts: [{ text: 'x' }] }] })
+    s.svc.reconcile(s.p.id, s.owner)
+    const draft = s.svc.listResults(s.p.id, s.owner)[0]!
+    s.svc.submitResult(s.p.id, draft.id, s.owner, { summary: 'ok' })
+    s.svc.reviewResult(s.p.id, draft.id, s.owner, 'reviewed')
+    const acceptance = s.svc.requestAcceptance(s.p.id, draft.id, s.owner)
+    s.svc.decideApproval(s.p.id, acceptance.id, { id: 'u-admin', role: 'admin' }, true)
+    const approval = s.svc.requestProjectComplete(s.p.id, s.owner)
+    // 审批创建后范围变化：新增必选交付物，完成门不再成立
+    s.svc.createDeliverable(s.p.id, s.owner, { name: '审批后新增交付物', required: true })
+    assert.throws(
+      () => s.svc.decideApproval(s.p.id, approval.id, s.owner, true),
+      (e: unknown) => (e as { code?: string }).code === 'DELIVERABLES_INCOMPLETE',
+    )
+    const still = s.svc.listApprovalHistory(s.p.id, s.owner).find(a => a.id === approval.id)
+    assert.equal(still?.status, 'pending')
+  }
+  finally {
+    s.db.close()
+  }
+})

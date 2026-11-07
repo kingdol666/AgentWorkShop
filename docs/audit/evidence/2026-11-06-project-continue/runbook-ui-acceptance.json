@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-11-06T07:41:23.873Z",
+  "desktop": {
+    "title": "值班手册 · 连续验收 kp12h",
+    "heading": "Project Leader 对话",
+    "chatMsgs": 4,
+    "hint": "项目已完成。发送补充需求会自动重新打开项目；Leader 会先读现状，再提出增量计划（plan vN+1），owner 批准后继续派发、验收，不需要新建项目。",
+    "planV2": true,
+    "sendBtn": true,
+    "input": true,
+    "overflowX": false
+  },
+  "sendEnabled": true,
+  "focus": "project-continue-input",
+  "mobile": {
+    "overflowX": false,
+    "chat": true,
+    "send": true
+  },
+  "errors": [],
+  "pageErrors": 0
+}

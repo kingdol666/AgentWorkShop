@@ -105,6 +105,11 @@ test('PATCH 项目：owner 更新基本信息生效 + 审计落库；viewer 403'
     assert.equal(next.name, 'API 补全项目 V2')
     assert.equal(next.mode, 'observe')
     assert.ok(s.svc.listDecisions(s.p.id, s.owner).some(d => d.decisionType === 'project.updated'))
+    // reviewerChannelId 传空串必须真正删除 config 键（JSON.stringify 会丢 undefined）
+    s.svc.updateProject(s.p.id, s.owner, { reviewerChannelId: s.member.channelId })
+    assert.equal(JSON.parse(s.svc.get(s.p.id, s.owner).configJson).reviewerChannelId, s.member.channelId)
+    s.svc.updateProject(s.p.id, s.owner, { reviewerChannelId: '' })
+    assert.equal('reviewerChannelId' in JSON.parse(s.svc.get(s.p.id, s.owner).configJson), false)
     assert.throws(
       () => s.svc.updateProject(s.p.id, s.owner, { name: '  ' }),
       (e: unknown) => (e as { code?: string }).code === 'BAD_REQUEST',
