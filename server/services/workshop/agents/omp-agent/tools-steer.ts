@@ -10,6 +10,7 @@ import { log } from './helpers'
 import { abortToCancelDecision } from './supervision-decision'
 import { recordSupervisionToolHistory } from './supervision-history'
 import { ompAgentTeamAuditFailure, recordOmpAgentTeamToolEvent } from './agentteam-audit'
+import { workshopSettings } from '../../settings'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 
 export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle {
@@ -475,7 +476,8 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
     // 否则消息永久卡 consuming、队友消息无限堆积。host 工具内阻塞
     // (poll_messages 最长 180s)与慢 provider(实测单步可 >5min)都有
     // tool/状态事件刷新计时;默认 600s 覆盖慢回合,只拦真僵死。
-    const idleTimeoutMs = this.config.promptTimeoutMs ?? 600_000
+    // WP8：停滞看门狗阈值入运行语义设置（缺省 600s；per-agent promptTimeoutMs 仍可覆盖）
+    const idleTimeoutMs = this.config.promptTimeoutMs ?? (Number(workshopSettings().harness_stall_timeout_ms) || 600_000)
     let lastActivity = Date.now()
     let stallTimer: ReturnType<typeof setTimeout> | null = null
 

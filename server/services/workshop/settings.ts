@@ -129,6 +129,12 @@ export interface WorkshopSettings {
   harness_continuity_enabled: boolean
   /** §11 回滚开关:Channel 过程记忆摘要写入 */
   channel_memory_digest_enabled: boolean
+  /** WP4：项目并发派发上限（同项目在飞任务实例数；缺省 4） */
+  dispatch_per_project: number
+  /** WP4：单 tick 派发上限（缺省 2） */
+  dispatch_per_tick: number
+  /** WP8：Harness 回合静默看门狗（ms；缺省 600s，per-agent promptTimeoutMs 可覆盖） */
+  harness_stall_timeout_ms: number
 }
 export interface BackupSettings {
   disabled: boolean

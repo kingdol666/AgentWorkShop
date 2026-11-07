@@ -94,7 +94,6 @@ export interface ChannelSessionDto {
   channelId?: string
   title: string
   status: 'active' | 'closed'
-  memoryPolicy: string
   /** 基础成员 id → clone 实例 id */
   memberMap: Record<string, string>
   createdBy?: string | null

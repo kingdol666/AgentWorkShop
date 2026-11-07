@@ -95,6 +95,16 @@ export abstract class OmpRpcAgentImplContextGovernance extends OmpRpcAgentImplCo
     const client = this.client
     if (!client || !client.alive) return
     try {
+      // WP10：进程重建后会话身份补探——sessionId 缺失时用 get_state 轻量刷新一次
+      // （continuity 观测据此重新绑定；失败静默不影响回合）。
+      if (!this.sessionId) {
+        try {
+          const st = await client.send({ type: 'get_state' })
+          const s = (st.data ?? {}) as Record<string, unknown>
+          if (typeof s.sessionId === 'string' && s.sessionId) this.sessionId = s.sessionId
+        }
+        catch { /* get_state 不可用：仅损失观测精度 */ }
+      }
       const usage = await this.probeUsage(client)
       if (!usage || usage.percent === null || usage.percent < this.compactThreshold()) return
       if (Date.now() - this.lastCompactAt < this.compactMinIntervalMs()) return
