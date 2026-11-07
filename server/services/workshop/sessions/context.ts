@@ -17,6 +17,21 @@ export interface SessionTaskBrief {
   assigneeId: string
 }
 
+export interface SessionTurnItem {
+  id: string
+  role: 'user' | 'agent'
+  name: string
+  text: string
+  at: string
+}
+
+export interface SessionCompressedState {
+  /** 已折叠消息的最大 rowid（插入序，单调可比；message id 是 UUID 不可比） */
+  uptoSeq: number
+  lines: string[]
+  generation: number
+}
+
 export interface SessionBrief {
   sessionId: string
   kind: 'manual' | 'task' | 'project'
@@ -34,6 +49,9 @@ export interface SessionBrief {
   tasks: SessionTaskBrief[]
   deliverables: Array<{ name: string, status: string, artifactId: string | null, bytes: number }>
   recentMessages: Array<{ role: string, name: string, text: string, at: string }>
+  recentTurns: SessionTurnItem[]
+  /** 压缩层快照（uptoSeq 供跨代折叠续接；generation 仅观测用） */
+  compressed: { uptoSeq: number, generation: number, lines: string[] }
   decisions: Array<{ id: string, text: string, state: string, at: string }>
   openQuestions: string[]
   nextStep: string
@@ -80,6 +98,27 @@ function short(text: string, limit: number): string {
   return flat.length > limit ? `${flat.slice(0, limit)}…` : flat
 }
 
+/** ── 注入 v2：分层装配常量 ─────────────────────────────────────────── */
+
+/** 近期对话层：逐条原文的窗口大小 */
+const RECENT_TURN_LIMIT = 8
+/** 近期对话层字符预算（超限从最旧开始丢整条） */
+const RECENT_CHAR_BUDGET = 2400
+/** 近期单条最大字符 */
+const RECENT_ITEM_MAX = 300
+/** 压缩层字符预算 */
+const COMPRESSED_CHAR_BUDGET = 1200
+/** pinned 行上限（决策/结论/未决/风险/交付） */
+const PINNED_MAX = 14
+/** 话题行上限 */
+const TOPIC_MAX = 10
+/** pinned 行判定：消息正文以这些前缀开头时原文进压缩层 */
+const PINNED_LINE_RE = /^\s*(决策|结论|决定|问题|未决|风险|交付|交付物|验收)\s*[:：]/
+
+function charsOf(lines: string[]): number {
+  return lines.reduce((n, l) => n + l.length, 0)
+}
+
 function sessionKind(row: ChannelSessionRow): SessionBrief['kind'] {
   if (row.instanceKind === 'project') return 'project'
   if (row.instanceKind === 'task') return 'task'
@@ -102,7 +141,10 @@ export class SessionContextService {
   buildBrief(sessionId: string, opts: { refresh?: boolean } = {}): SessionBrief | null {
     const row = this.sessions.findById(sessionId)
     if (!row) return null
-    const brief = this.assemble(row)
+    // 压缩状态跨代携带：从上一份 brief_json 读取，窗口外新消息增量折叠。
+    const prev = parseJson<{ compressed?: SessionCompressedState } | null>(row.briefJson, null)
+    const compressed = this.foldOlderMessages(row, prev?.compressed ?? { uptoSeq: 0, lines: [], generation: 0 })
+    const brief = this.assemble(row, compressed)
     if (opts.refresh) {
       this.sessions.updateBrief(sessionId, {
         summary: this.toSummary(brief),
@@ -111,6 +153,67 @@ export class SessionContextService {
       })
     }
     return brief
+  }
+
+  /**
+   * 提取式压缩：把「窗口外且未折叠」的旧消息并入压缩层。
+   * pinned 行（决策/结论/未决/风险/交付 前缀）原文保留；其余压成话题行。
+   * 全程确定性、幂等（uptoId 推进 + 行去重），不调 LLM。
+   */
+  private foldOlderMessages(row: ChannelSessionRow, state: SessionCompressedState): SessionCompressedState {
+    const messages = this.listSessionMessages(row, 200)
+    const windowStart = Math.max(0, messages.length - RECENT_TURN_LIMIT)
+    const older = messages.slice(0, windowStart).filter(m => m.seq > state.uptoSeq)
+    if (older.length === 0) return state
+    const pinned: string[] = []
+    const topics: string[] = []
+    for (const m of older) {
+      if (PINNED_LINE_RE.test(m.text)) pinned.push(`${m.name}: ${short(m.text, 200)}`)
+      else topics.push(`· ${m.name}: ${short(m.text, 36)}`)
+    }
+    const merged = [...new Set([...state.lines, ...pinned, ...topics])]
+    const lines = this.trimCompressedLines(merged)
+    const last = older[older.length - 1]
+    return {
+      uptoSeq: last ? last.seq : state.uptoSeq,
+      lines,
+      generation: state.generation + 1,
+    }
+  }
+
+  /** 按 rowid 正序列出 session 消息（manual 用 session_id；task/project 回退实例频道）。 */
+  private listSessionMessages(row: ChannelSessionRow, limit: number): Array<{ id: string, seq: number, role: 'user' | 'agent', name: string, text: string, at: string }> {
+    const filter = row.instanceKind === 'task' || row.instanceKind === 'project'
+      ? 'session_id = ? OR (session_id IS NULL AND channel_id = ?)'
+      : 'session_id = ?'
+    const args = filter.includes('channel_id') ? [row.id, row.channelId, limit] : [row.id, limit]
+    const rows = this.db.prepare(
+      `SELECT id, rowid AS seq, role, from_agent_id AS fromAgentId, to_agent_id AS toAgentId,
+              parts_json AS partsJson, created_at AS at
+       FROM messages WHERE ${filter} ORDER BY rowid ASC LIMIT ?`,
+    ).all(...args) as Array<{ id: string, seq: number, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
+    return rows.map(m => ({
+      id: m.id,
+      seq: Number(m.seq),
+      role: m.role === 'ROLE_USER' ? 'user' as const : 'agent' as const,
+      name: m.role === 'ROLE_USER' ? '人类' : (m.fromAgentId ?? '系统'),
+      text: textOfParts(m.partsJson),
+      at: m.at,
+    })).filter(m => m.text)
+  }
+
+  /** 压缩层预算：pinned 上限 14 行，话题上限 10 行，总字符 ≤ 1200（超限先丢最旧话题）。 */
+  private trimCompressedLines(lines: string[]): string[] {
+    const pinned = lines.filter(l => !l.startsWith('· '))
+    const topics = lines.filter(l => l.startsWith('· '))
+    const keptPinned = pinned.slice(-PINNED_MAX)
+    let keptTopics: string[] = []
+    for (const t of topics.slice(-TOPIC_MAX)) {
+      const candidate = [...keptTopics, t]
+      if (charsOf(keptPinned) + charsOf(candidate) > COMPRESSED_CHAR_BUDGET) break
+      keptTopics = candidate
+    }
+    return [...keptPinned, ...keptTopics]
   }
 
   /** 读取已缓存 brief；缓存缺失时惰性构建。 */
@@ -235,7 +338,7 @@ export class SessionContextService {
     return this.sessions.listByChannel(channelId).find(s => s.status === 'active')
   }
 
-  private assemble(row: ChannelSessionRow): SessionBrief {
+  private assemble(row: ChannelSessionRow, compressed: SessionCompressedState): SessionBrief {
     const channel = this.db.prepare('SELECT name FROM channels WHERE id = ?').get(row.channelId) as { name: string } | undefined
     const project = row.projectId
       ? this.db.prepare('SELECT name, objective FROM projects WHERE id = ?').get(row.projectId) as { name: string, objective: string } | undefined
@@ -295,20 +398,16 @@ export class SessionContextService {
             bytes: (a.parts ?? []).reduce((n, p) => n + ('text' in p ? p.text.length : 0), 0),
           }))
         }).slice(-8)
-    const messageFilter = row.instanceKind === 'task' || row.instanceKind === 'project'
-      ? 'session_id = ? OR (session_id IS NULL AND channel_id = ?)'
-      : 'session_id = ?'
-    const messageArgs = messageFilter.includes('channel_id') ? [row.id, row.channelId, 12] : [row.id, 12]
-    const messages = this.db.prepare(
-      `SELECT role, from_agent_id AS fromAgentId, to_agent_id AS toAgentId, parts_json AS partsJson, created_at AS at
-       FROM messages WHERE ${messageFilter} ORDER BY created_at DESC LIMIT ?`,
-    ).all(...messageArgs) as Array<{ role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
-    const recentMessages = messages.reverse().map(m => ({
-      role: m.role === 'ROLE_USER' ? 'user' : 'agent',
-      name: m.fromAgentId ?? m.toAgentId ?? 'system',
-      text: short(textOfParts(m.partsJson), 240),
+    const messages = this.listSessionMessages(row, 12)
+    const recentTurns: SessionTurnItem[] = messages
+      .slice(-RECENT_TURN_LIMIT)
+      .map(m => ({ id: m.id, role: m.role, name: m.name, text: short(m.text, RECENT_ITEM_MAX), at: m.at }))
+    const recentMessages = messages.map(m => ({
+      role: m.role,
+      name: m.name,
+      text: short(m.text, 240),
       at: m.at,
-    })).filter(m => m.text)
+    }))
     const decisions = row.projectId
       ? (this.db.prepare(
           `SELECT id, decision_type AS decisionType, state, outcome, created_at AS at
@@ -347,6 +446,8 @@ export class SessionContextService {
       tasks: scopeTasks,
       deliverables,
       recentMessages,
+      recentTurns,
+      compressed: { uptoSeq: compressed.uptoSeq, generation: compressed.generation, lines: compressed.lines },
       decisions,
       openQuestions,
       nextStep: this.nextStep(currentTask, recentMessages.length),
@@ -377,11 +478,18 @@ export class SessionContextService {
   }
 }
 
-/** 供 prompt 使用的有界文本（≤ ~400 tok 目标）。 */
-export function formatBriefText(brief: SessionBrief): string {
+/**
+ * 供 prompt 使用的分层装配文本（注入 v2）。
+ *
+ * 三层（profile=full）：身份与要点 → 关键事实(pinned) → 早期压缩 → 近期原文 → 边界规则。
+ * profile=brief（有原生会话的引擎，如 claude resume 试点）：只保留身份与要点 + pinned，
+ * 近期/早期层整体省略（历史由 harness 原生会话承载）。
+ * 每层都有硬预算：pinned ≤14 行、压缩 ≤1200 chars、近期 ≤8 条 ×300 chars 且总 ≤2400 chars。
+ */
+export function formatBriefText(brief: SessionBrief, profile: 'full' | 'brief' = 'full'): string {
   const lines = [
     `## Session Context (authoritative)`,
-    `session_id=${brief.sessionId} | kind=${brief.kind} | status=${brief.status}`,
+    `session_id=${brief.sessionId} | kind=${brief.kind} | status=${brief.status} | profile=${profile}`,
     `title=${brief.title}`,
     brief.projectName ? `project=${brief.projectName}` : '',
     brief.workItemTitle ? `work_item=${brief.workItemTitle}` : '',
@@ -395,18 +503,44 @@ export function formatBriefText(brief: SessionBrief): string {
     brief.deliverables.length
       ? `deliverables=${brief.deliverables.slice(0, 5).map(d => `${d.name}(${d.bytes}B)`).join('; ')}`
       : '',
-    brief.recentMessages.length
-      ? `recent=${brief.recentMessages.slice(-4).map(m => `${m.role}:${short(m.text, 120)}`).join(' | ')}`
-      : '',
     brief.decisions.length
       ? `decisions=${brief.decisions.slice(0, 3).map(d => short(d.text, 100)).join('; ')}`
       : '',
     brief.openQuestions.length ? `open_questions=${brief.openQuestions.join('; ')}` : '',
     `next_step=${brief.nextStep}`,
-    `## Session Boundary`,
-    `- This session is the only authoritative context.`,
-    `- Do not reuse facts, task ids, artifact paths, or decisions from other sessions unless they appear above.`,
-    `- If you need another session, use the session catalog/API; never guess.`,
   ]
+  // ── 关键事实（pinned）：来自压缩层里的原文行（决策/结论/未决/风险/交付 前缀的行）
+  const pinnedLines = brief.compressed.lines.filter(l => !l.startsWith('· '))
+  if (pinnedLines.length) {
+    lines.push(`### 关键事实 (pinned)`)
+    lines.push(...pinnedLines.map(l => `- ${l}`))
+  }
+  if (profile === 'full') {
+    // ── 早期上下文（compressed）：窗口外旧轮次的提取式压缩
+    const topicLines = brief.compressed.lines.filter(l => l.startsWith('· '))
+    if (topicLines.length || brief.compressed.generation > 0) {
+      lines.push(`### 早期上下文 (compressed, generation=${brief.compressed.generation})`)
+      if (topicLines.length) lines.push(...topicLines)
+      else lines.push('（更早的对话已并入关键事实；无额外话题）')
+    }
+    // ── 近期对话（recent）：逐条原文，窗口 8 条 ×300 chars，总 ≤2400 chars；
+    // 超预算时从最旧一侧丢弃（从最新往回保留连续窗口）。
+    const turns: string[] = brief.recentTurns.map(m => `[${m.at.slice(11, 16)}] ${m.name}: ${m.text}`)
+    const budgeted: string[] = []
+    let used = 0
+    for (let i = turns.length - 1; i >= 0; i--) {
+      const t = turns[i] ?? ''
+      if (used + t.length > RECENT_CHAR_BUDGET) break
+      budgeted.unshift(t)
+      used += t.length
+    }
+    lines.push(`### 近期对话 (recent, ${budgeted.length} turns)`)
+    if (budgeted.length) lines.push(...budgeted)
+    else lines.push('（暂无对话）')
+  }
+  lines.push(`## Session Boundary`)
+  lines.push(`- This session is the only authoritative context.`)
+  lines.push(`- Do not reuse facts, task ids, artifact paths, or decisions from other sessions unless they appear above.`)
+  lines.push(`- If you need another session, use the session catalog/API; never guess.`)
   return lines.filter(Boolean).join('\n')
 }

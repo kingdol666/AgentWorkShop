@@ -133,6 +133,10 @@ try {
   await sendBtn.asElement()?.click()
   const replied = await poll(async () => page.evaluate(() => document.querySelector('.sm-msgs')?.textContent?.includes('mock 群聊回复') ?? false), 25000)
   ok('U4', 'UI 发送 → clone 回执', Boolean(replied))
+
+  // 注入 v2：brief 卡里的「注入预览」应渲染分层块（Session Context / 近期对话）
+  const blockPreview = await page.evaluate(() => document.querySelector('.sm-block-preview')?.textContent ?? '')
+  ok('U7', '注入预览渲染分层块', /注入预览/.test(blockPreview) && /Session Context/.test(blockPreview) && /近期对话/.test(blockPreview), blockPreview.slice(0, 300))
   await page.screenshot({ path: join(EVID, 'channel-session-desktop.png') })
 
   // 移动端

@@ -19,6 +19,12 @@ import { composeChannelSystemPrompt } from '../../aml/twin/prompt-composer'
 import { createChannelSessionRepo } from '../../db/channel-session.repo'
 import { SessionContextService, formatBriefText } from '../../sessions/context'
 
+/**
+ * 有原生会话持久化的引擎 → session 注入用 brief 档（只注身份+关键事实，历史归引擎）。
+ * 未知引擎缺省 full：平台三层装配是无持久化引擎的安全缺省。
+ */
+const SESSION_BRIEF_PROFILE_ENGINES = new Set(['claude'])
+
 export abstract class ManagerRuntimeWiring extends ManagerBus {
   private sessionContextService: SessionContextService | null = null
 
@@ -87,11 +93,14 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       workspace,
       memory,
       // Session Context：按 sessionId 装配平台上下文块；异常降级为 legacy 回合，不阻断执行。
+      // profile 按引擎能力选择（harness 无关的唯一开关点）：有原生会话持久化的引擎
+      // 只注入 brief 层（历史归引擎会话），其余引擎 full 三层装配。
       sessionContext: (sessionId) => {
         try {
           const brief = this.getSessionContextService().briefOf(sessionId)
           if (!brief) return null
-          return { block: formatBriefText(brief), summary: brief.nextStep }
+          const profile = SESSION_BRIEF_PROFILE_ENGINES.has(agent.harness) ? 'brief' as const : 'full' as const
+          return { block: formatBriefText(brief, profile), summary: brief.nextStep }
         }
         catch {
           return null
