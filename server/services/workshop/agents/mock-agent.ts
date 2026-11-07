@@ -99,6 +99,21 @@ export class MockAgentImpl implements AgentInterface {
   }
 
   /**
+   * 注入 v2 验收锚点：从 session block 提取装配档位特征并编成标签。
+   * 让 E2E 能断言「Session Context 块真的随 AgentRunRequest 进了 harness」，
+   * 以及压缩世代/分层是否按预期演进（brief/recent/earlier 层存在性 + generation）。
+   */
+  private sessionCtxTag(request: AgentRunRequest): string {
+    const block = request.session?.block
+    if (!block) return ''
+    const brief = block.includes('## Session Context (authoritative)') ? 1 : 0
+    const recent = block.includes('### 近期对话') ? 1 : 0
+    const earlier = block.includes('### 早期上下文') ? 1 : 0
+    const gen = (block.match(/generation=(\d+)/) ?? [])[1] ?? '0'
+    return ` <ctx brief=${brief} recent=${recent} earlier=${earlier} gen=${gen}>`
+  }
+
+  /**
    * 人类群聊请求剧本:回一条面向提问者的公开回复。
    *
    * 回复文本刻意带上源群聊消息 id 与提问者显示名,使 E2E 能断言
@@ -130,7 +145,7 @@ export class MockAgentImpl implements AgentInterface {
         messageId: `chat-reply-${randomUUID()}`,
         contextId: ctx.channelId,
         role: 'ROLE_AGENT',
-        parts: [{ text: `@${fromLabel} mock 群聊回复(${ctx.agentId}):已处理「${text.slice(0, 80)}」;source=${sourceId.slice(0, 8)}` }],
+        parts: [{ text: `@${fromLabel} mock 群聊回复(${ctx.agentId}):已处理「${text.slice(0, 80)}」;source=${sourceId.slice(0, 8)}${this.sessionCtxTag(request)}` }],
       },
     }
     yield { kind: 'done' }
@@ -447,6 +462,22 @@ export class MockAgentImpl implements AgentInterface {
             contextId: ctx.channelId,
             role: 'ROLE_AGENT',
             parts: [{ text: `[场景系统提示已注入]\n${this.systemPromptPrefix}` }],
+          },
+          timestamp: new Date().toISOString(),
+        },
+      }
+    }
+    // Session Context 注入锚点:session 块以首条状态消息透出(验证平台装配真的随请求到达 harness)
+    if (request.session?.block) {
+      yield {
+        kind: 'status',
+        status: {
+          state: 'WORKING',
+          message: {
+            messageId: `session-ctx-${randomUUID()}`,
+            contextId: ctx.channelId,
+            role: 'ROLE_AGENT',
+            parts: [{ text: `[Session 上下文已注入]\n${request.session.block}` }],
           },
           timestamp: new Date().toISOString(),
         },

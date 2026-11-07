@@ -6,7 +6,7 @@ import { ManagerTasks } from './tasks'
 import type { A2AMessage, Part } from '../../types/a2a'
 import type { ChannelRow } from '../../db/database'
 import { parseJson } from '../../db/database'
-import type { SessionBrief, SessionCatalogItem, SessionHistoryItem } from '../../sessions/context'
+import { formatBriefText, type SessionBrief, type SessionCatalogItem, type SessionHistoryItem } from '../../sessions/context'
 import { AppError } from '../../../../utils/errors'
 import { WORKSHOP_PERMISSION_SCOPE_HEADER, intersectWorkshopPermissionScope, parseWorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
 import { buildMessage } from './helpers'
@@ -113,6 +113,13 @@ export abstract class ManagerA2A extends ManagerTasks {
   /** 单 session 的确定性 brief（缓存缺失时惰性构建）。 */
   getSessionBrief(sessionId: string): SessionBrief | null {
     return this.getSessionContextService().briefOf(sessionId)
+  }
+
+  /** 注入 prompt 前的最终装配文本（UI 预览/验收共用；full 档）。 */
+  getSessionContextBlock(sessionId: string): string | null {
+    const brief = this.getSessionContextService().briefOf(sessionId)
+    if (!brief) return null
+    return formatBriefText(brief, 'full')
   }
 
   /** Channel 会话目录（给 UI/lead；不返回其他 session 原文）。 */

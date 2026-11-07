@@ -1,0 +1,152 @@
+{
+  "generatedAt": "2026-11-07T05:16:37.267Z",
+  "base": "http://127.0.0.1:3993",
+  "pass": 24,
+  "fail": 0,
+  "results": [
+    {
+      "id": "R1",
+      "name": "注册 owner",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C1",
+      "name": "创建 Channel + mock lead",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C2",
+      "name": "添加 mock worker",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C3",
+      "name": "创建 manual session",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "V1a",
+      "name": "block API 返回分层注入文本",
+      "pass": true,
+      "detail": "## Session Context (authoritative)\nsession_id=cs-502dde83 | kind=manual | status=active | profile=full\ntitle=注入验收会话\nobjective=注入验收会话\ncurrent_task=(none)\nnext_step=会话进行中（1 条消息）；等待成员回复或下一指令\n### 近期对话 (re"
+    },
+    {
+      "id": "V1b",
+      "name": "profile=full 标注在块头",
+      "pass": true,
+      "detail": "## Session Context (authoritative)\nsession_id=cs-502dde83 | kind=manual | status=active | profile=full\ntitle=注入验收会话\nobje"
+    },
+    {
+      "id": "V1c",
+      "name": "近期对话层含原文轮次",
+      "pass": true,
+      "detail": "## Session Context (authoritative)\nsession_id=cs-502dde83 | kind=manual | status=active | profile=full\ntitle=注入验收会话\nobjective=注入验收会话\ncurrent_task=(none)\nnext_step=会话进行中（1 条消息）；等待成员回复或下一指令\n### 近期对话 (recent, 1 turns)\n[13:16] 系统: 请报告当前会话上下文并保持简短\n## Session Boundary\n- This session is the only authoritative context.\n- Do not reuse facts, task ids, artifact paths, or decisions from other sessions unless"
+    },
+    {
+      "id": "V2a",
+      "name": "压缩触发：早期上下文层出现",
+      "pass": true,
+      "detail": "锁定A方案作为本会话交付基线，后续验收不得更改口径与范围」;source= <ctx brief=1 recent=1 earlier=0 gen=0>\n[13:16] 系统: 第 6 轮推进：补充 FAQ 条目与巡检要点 6\n[13:16] 系统: 第 7 轮推进：补充 FAQ 条目与巡检要点 7\n## Session Boundary\n- This session is the only authoritative context.\n- Do not reuse facts, task ids, artifact paths, or decisions from other sessions unless they appear above.\n- If you need another session, use the session catalog/API; never guess."
+    },
+    {
+      "id": "V2b",
+      "name": "pinned 原文保留（关键事实层）",
+      "pass": true,
+      "detail": "## Session Context (authoritative)\nsession_id=cs-502dde83 | kind=manual | status=active | profile=full\ntitle=注入验收会话\nobjective=注入验收会话\ncurrent_task=(none)\nnext_step=会话进行中（12 条消息）；等待成员回复或下一指令\n### 关键事实 (pinned)\n- 系统: 决策：锁定A方案作为本会话交付基线，后续验收不得更改口径与范围\n### 早期上下文 (compressed, generation=6)\n· 系统: 请报告当前会话上下文并保持简短\n· 系统: 今天我们先聊一下值班手册的目录结构安排，然后再看看 FAQ 需要补充哪些…\n· d930ce40-5d0e-482b-b88b-c960f83b4398: @owner:4938f"
+    },
+    {
+      "id": "V2c",
+      "name": "填充长句被压缩（原文不再整体出现）",
+      "pass": true,
+      "detail": "filler 全文不应出现在注入块"
+    },
+    {
+      "id": "V2d",
+      "name": "压缩层话题行有界(1..10)且填充句仅以压缩形式留存",
+      "pass": true,
+      "detail": "topicLines=7"
+    },
+    {
+      "id": "V2e",
+      "name": "generation ≥ 1 标注",
+      "pass": true,
+      "detail": "generation=6"
+    },
+    {
+      "id": "V3",
+      "name": "mock 回执 ctx 标签 earlier=1（块真实进入 harness 请求）",
+      "pass": true,
+      "detail": "{\"id\":\"6d34f8b0-c40c-4e7a-8b79-ced5989f4491\",\"channelId\":\"1aafb2eb-4171-4d6d-ba49-b910df812f19\",\"taskId\":null,\"fromAgentId\":\"d930ce40-5d0e-482b-b88b-c960f83b4398\",\"toAgentId\":null,\"role\":\"ROLE_AGENT\",\"parts\":[{\"text\":\"@owner:4938ff70-c2bc-4bfe-9d3c-e940a973244f mock 群聊回复(d930ce40-5d0e-482b-b88b-c960f83b4398):已处理「今天我们先聊一下值班手册的目录结构安排，然后再看看 FAQ 需要补充哪些条目与示例，最后讨论巡检报告模板的格式、字段与统计口径，并排一个初稿时间表」;source= <ct"
+    },
+    {
+      "id": "P1",
+      "name": "创建 Project",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P2",
+      "name": "绑定执行 Channel",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P3",
+      "name": "创建必选交付物",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P4",
+      "name": "创建工作项",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P5",
+      "name": "激活项目",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P6",
+      "name": "提交 plan 审批",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P7",
+      "name": "批准 plan",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P8",
+      "name": "派发工作项",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "V4a",
+      "name": "task session 注入块含近期对话",
+      "pass": true,
+      "detail": "## Session Context (authoritative)\nsession_id=cs-23693c80 | kind=task | status=closed | profile=full\ntitle=任务：注入验收工作项\nproject=注入 v2 验收项目 1794028597116\nwork_item=注入验收工作项\nobjective=产出一个可验收结果\ncurrent_tas"
+    },
+    {
+      "id": "V4b",
+      "name": "task session 块关联工作项",
+      "pass": true,
+      "detail": "## Session Context (authoritative)\nsession_id=cs-23693c80 | kind=task | status=closed | profile=full\ntitle=任务：注入验收工作项\nproject=注入 v2 验收项目 1794028597116\nwork_item=注入验收工作项\nobjective=产出一个可验收结果\ncurrent_task=注入验收工作项 [COMPLETED 100%]\ntasks=注入验收工作项[COMPLETED]\ndeliverables=input(178B); lead-direct-answer(33B"
+    },
+    {
+      "id": "V4c",
+      "name": "task session 块 profile=full",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

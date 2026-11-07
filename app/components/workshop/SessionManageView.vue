@@ -33,6 +33,8 @@ const activeSessionId = ref<string | null>(null)
 const messages = ref<ChannelMessageDto[]>([])
 const messagesLoading = ref(false)
 const brief = ref<SessionBriefDto | null>(null)
+/** 注入 v2：prompt 前最终装配文本（分层块），供「注入预览」展示 */
+const briefBlock = ref<string | null>(null)
 const history = ref<SessionHistoryDto[]>([])
 const composerText = ref('')
 const sending = ref(false)
@@ -124,14 +126,16 @@ async function loadMessages(s: ChannelSessionDto): Promise<void> {
   finally { messagesLoading.value = false }
 }
 
-/** Session Context：brief/history 与消息并行拉取；失败不阻断消息面。 */
+/** Session Context：brief/block/history 与消息并行拉取；失败不阻断消息面。 */
 async function loadContext(s: ChannelSessionDto): Promise<void> {
-  const [b, h] = await Promise.allSettled([
+  const [b, h, blk] = await Promise.allSettled([
     api.getSessionBrief(props.channelId, s.id),
     api.getSessionHistory(props.channelId, s.id, 80),
+    api.getSessionBlock(props.channelId, s.id),
   ])
   brief.value = b.status === 'fulfilled' ? (b.value.data ?? null) : null
   history.value = h.status === 'fulfilled' ? (h.value.data ?? []) : []
+  briefBlock.value = blk.status === 'fulfilled' ? (blk.value.data?.block ?? null) : null
 }
 
 const isManualSession = computed(() => {
@@ -513,6 +517,13 @@ watch(() => props.channelId, () => {
             >
               未决：{{ brief.openQuestions.join('；') }}
             </p>
+            <details
+              v-if="briefBlock"
+              class="sm-block-preview"
+            >
+              <summary>注入预览（每回合进入 harness 的上下文块）</summary>
+              <pre>{{ briefBlock }}</pre>
+            </details>
           </div>
           <div class="sm-compose">
             <a-textarea
@@ -1005,6 +1016,30 @@ watch(() => props.channelId, () => {
   margin: 0;
   font-size: 11.5px;
   color: var(--tone-warning-dot);
+}
+.sm-block-preview {
+  margin-top: 4px;
+  font-size: 11.5px;
+}
+.sm-block-preview summary {
+  cursor: pointer;
+  color: var(--chat-ink-faint);
+  user-select: none;
+}
+.sm-block-preview pre {
+  max-height: 260px;
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--chat-ink-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--chat-canvas);
+  border: 1px solid var(--chat-line);
+  border-radius: 8px;
 }
 .sm-compose {
   display: flex;

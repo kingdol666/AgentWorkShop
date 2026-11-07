@@ -233,6 +233,8 @@ export function useWorkshopApi() {
       http.post<{ data: { canceledTasks: number, clones: string[] } }>(`/workshop/channels/${id}/sessions/${sid}/close`, body ?? {}),
     /** Session Context brief（确定性装配） */
     getSessionBrief: (id: string, sid: string) => http.get<{ data: SessionBriefDto | null }>(`/workshop/channels/${id}/sessions/${sid}/brief`),
+    /** 注入 v2：prompt 前最终装配文本（分层块预览） */
+    getSessionBlock: (id: string, sid: string) => http.get<{ data: { block: string | null } }>(`/workshop/channels/${id}/sessions/${sid}/brief`, { format: 'block' }),
     /** Session Context 有界历史 */
     getSessionHistory: (id: string, sid: string, limit = 80) => http.get<{ data: SessionHistoryDto[] }>(`/workshop/channels/${id}/sessions/${sid}/history`, { limit }),
     /** 手工会话发送消息（投给 session clone，requireReply） */

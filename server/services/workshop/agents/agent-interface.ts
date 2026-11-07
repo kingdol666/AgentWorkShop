@@ -36,8 +36,8 @@ export interface AgentRunRequest {
   toAgentId: string | null
   /** 平台记忆系统装配的历史上下文块(可选;harness 自主决定是否注入 prompt) */
   memory?: string
-  /** Session Context：当前回合的会话身份与已格式化上下文块 */
-  session?: { id: string, block: string }
+  /** Session Context：当前回合的会话身份与已格式化上下文块（profile 标注装配档位） */
+  session?: { id: string, block: string, profile?: 'full' | 'brief' }
 }
 
 /** Agent 自主作业能力面(MCP 工具子集,进程内直调) */
@@ -192,8 +192,8 @@ export interface AgentRunContext {
   signal: AbortSignal
   /** 平台记忆块(supervise 路径注入;run 路径用 AgentRunRequest.memory) */
   memory?: string
-  /** Session Context：当前 supervision/run 的会话身份与上下文块 */
-  session?: { id: string, block: string }
+  /** Session Context：当前 supervision/run 的会话身份与上下文块（profile 标注装配档位） */
+  session?: { id: string, block: string, profile?: 'full' | 'brief' }
 }
 
 /** 统一事件流(对齐 A2A StreamResponse):run() 逐条产出的五变体 */
