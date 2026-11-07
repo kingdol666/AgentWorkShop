@@ -163,3 +163,17 @@ export function ensureProjectIndexes(db: DatabaseSync): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_channel_agents_kind ON channel_agents(channel_id, agent_kind)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_channel_sessions_work_item ON channel_sessions(project_id, project_work_item_id)')
 }
+
+/**
+ * 2026-11-07:approved 槽位索引按工作项隔离。
+ * 旧索引 (project_id, deliverable_id, result_key) WHERE status='approved' 是交付物级共享槽:
+ * 多工作项交付物的新批准会 supersede 其他工作项的 approved,与 deliverableAcceptanceReady
+ * 的"每工作项各一个 approved"矛盾 → 多工作项项目永远无法 complete(实机 E2E 揪出)。
+ * 旧库:DROP 旧索引 + 重建含 work_item_id 的新索引(幂等;已有 approved 行不动,
+ * 历史上被互斥挤掉的槽位由业务层重新收口)。
+ */
+export function migrateApprovedSlotScope(db: DatabaseSync): void {
+  db.exec('DROP INDEX IF EXISTS uq_project_result_approved')
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_project_result_approved
+    ON project_results(project_id, deliverable_id, result_key, work_item_id) WHERE status='approved'`)
+}
