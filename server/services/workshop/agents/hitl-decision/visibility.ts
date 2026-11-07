@@ -36,7 +36,17 @@ export function assertCanDecideHitlChannel(
   opts: { policy?: string, snapshot?: { eligibleUserIds?: string[], memberGenerations?: Record<string, number> } } = {},
 ): void {
   const manager = resolveHitlRuntime()
-  if (!manager || !channelId) return
+  // fail-closed：鉴权面不可用/归属缺失时不能“静默放行”。
+  // 旧行为 `!manager || !channelId → return` 等于任何登录用户都能裁决无归属待办
+  // （审批旁路，与 §13.2 的收紧方向相反）。
+  if (!manager) {
+    throw new AppError(503, 'HITL_AUTH_UNAVAILABLE', 'HITL 运行时不可用，无法校验审批归属，已拒绝')
+  }
+  if (!channelId) {
+    // 无 Channel 归属的待办仅管理员可处理（与 decide 端点对 Agent 归属缺失的口径一致）。
+    if (user.role === 'admin') return
+    throw new AppError(403, 'SCOPE_VIOLATION', '待办缺少 Channel 归属，仅管理员可处理')
+  }
   if (user.role === 'admin') {
     manager.requireChannelMember(channelId, user)
     return
