@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-11-07T16:17:15.305Z",
+  "base": "http://127.0.0.1:3996",
+  "pass": 17,
+  "fail": 0,
+  "results": [
+    {
+      "id": "V0-1",
+      "name": "实例健康",
+      "pass": true,
+      "detail": "{\"status\":\"ok\",\"app\":\"AgentWorkShop\",\"version\":\"0.9.5\",\"mode\":\"dev\",\"uptimeMs\":185773,\"timestamp\":\"2026-11-08T00:17:14.888+08:00\",\"workshop\":\"ready\",\"wiredAgents\":4,\"activeChannels\":4,\"memory\":{\"heapUsedMb\":39,\"heapLimitMb\":4288,\"rssMb\":121,\"externalMb\":13,\"heapRatio\":0.0091}}"
+    },
+    {
+      "id": "V0-2",
+      "name": "管理员鉴权",
+      "pass": true,
+      "detail": "needsSetup=false"
+    },
+    {
+      "id": "V1-0",
+      "name": "建执行频道",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "V1-1",
+      "name": "项目/工作项就绪",
+      "pass": true,
+      "detail": "ok/ok"
+    },
+    {
+      "id": "V1-2",
+      "name": "并发双派发：恰一次成功、一次 409 冲突",
+      "pass": true,
+      "detail": "statuses=200/409"
+    },
+    {
+      "id": "V1-3",
+      "name": "冲突码 WORK_ITEM_IN_FLIGHT（可重试，不再 BLOCKED）",
+      "pass": true,
+      "detail": "{\"status\":409,\"code\":\"WORK_ITEM_IN_FLIGHT\",\"message\":\"工作项已有在飞 attempt\",\"data\":null}"
+    },
+    {
+      "id": "V3-0",
+      "name": "实例 lead 可解析且启用",
+      "pass": true,
+      "detail": "channel=6a9827b2-e02a-46b3-9a89-5e51d12666c7 enabled=1"
+    },
+    {
+      "id": "V3-1",
+      "name": "实例 lead 读工作项非空（修复前恒空集）",
+      "pass": true,
+      "detail": "[\n  {\n    \"id\": \"6804a199-ddc0-4b36-b7af-29531df10916\",\n    \"title\": \"并发派发验证工作项\",\n    \"state\": \"RUNNING\",\n    \"channelId\": \"ec7fed8b-3ae7-43d3-bd83-9dfa70e9d215\",\n    \"deliverableId\": \"76aa4886-76ea-4d97-81be-0a0a47af01b0\",\n    \"brief\": \"[m"
+    },
+    {
+      "id": "V3-2",
+      "name": "实例 lead 读到本工作项 draft 成果（修复前恒空集）",
+      "pass": true,
+      "detail": "[\n  {\n    \"id\": \"verify-draft-mw6lwls2\",\n    \"title\": \"读面验证成果\",\n    \"status\": \"draft\",\n    \"channelId\": \"ec7fed8b-3ae7-43d3-bd83-9dfa70e9d215\",\n    \"deliverableId\": \"76aa4886-76ea-4d97-81be-0a0a47af01b0\",\n    \"workItemId\": \"6804a199-ddc0-4b36-b7af-29531df10916\",\n    \"attemptNo\": 999,\n    \"version\": 1,\n    \"summary\": \"用"
+    },
+    {
+      "id": "V1-4",
+      "name": "工作项指向唯一实例频道",
+      "pass": true,
+      "detail": "instanceChannelId=6a9827b2-e02a-46b3-9a89-5e51d12666c7"
+    },
+    {
+      "id": "V1-5",
+      "name": "唯一 attempt（无 attemptNo 竞态）",
+      "pass": true,
+      "detail": "attempts=1"
+    },
+    {
+      "id": "V1-6",
+      "name": "唯一 task session（无孤儿实例）",
+      "pass": true,
+      "detail": "taskSessions=1"
+    },
+    {
+      "id": "V2-0",
+      "name": "创建 manual session（克隆成员）",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "V2-1",
+      "name": "关闭会话 200",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "V2-2",
+      "name": "会话终态 closed",
+      "pass": true,
+      "detail": "{\"id\":\"cs-d9b2b5f1\",\"title\":\"close verify\",\"status\":\"closed\",\"memoryPolicy\":\"session\",\"memberMap\":{\"5c2bbe08-8253-473c-bc1e-f341df2d0653\":\"680cad19-6f4c-47c9-8e"
+    },
+    {
+      "id": "V2-3",
+      "name": "clone 成员行已停用（enabled=0，不可再寻址）",
+      "pass": true,
+      "detail": "[{\"name\":\"verify session lead·session·1\",\"enabled\":0},{\"name\":\"verify session worker·session·2\",\"enabled\":0}]"
+    },
+    {
+      "id": "V2-4",
+      "name": "关闭会话拒新消息（409 SESSION_CLOSED）",
+      "pass": true,
+      "detail": "{\"status\":409,\"code\":\"SESSION_CLOSED\",\"message\":\"会话已关闭，不能继续发送消息\",\"data\":null}"
+    }
+  ]
+}
