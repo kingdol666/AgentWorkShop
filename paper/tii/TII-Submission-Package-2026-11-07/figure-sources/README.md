@@ -1,0 +1,7 @@
+# Figure source files
+
+Editable sources and their generators are grouped by manuscript figure. Active exports are kept under `../figures/`: Figure 1 is a composite PDF with a Codex-generated cast-film illustration (GPT Image 2.6 requested; no API subvariant was exposed) and code-authored vector text, plus SVG/PNG previews; Figures 4 and 5 are vector PDFs; Figures 2 and 3 are supplied raster diagrams enhanced for contrast and restored at 4x resolution. Original references, prompts, and intermediate image assets are retained beside their notes.
+
+Run `..\tools\regenerate-figures.ps1` from the package root to rebuild Figure 1 and vector Figures 4 and 5. Figure 1 regeneration uses the retained image base, so it does not call the image generator. Figures 2 and 3 are preserved raster assets and are not overwritten by the script. Figure 5 reads E6 pairs from `supplementary/S7-e6-e7-2026-11-07.zip` and guard-ablation records from `supplementary/S7-core.zip`; its editable draw.io version is regenerated from the resulting CSVs. Regeneration requires Python, Matplotlib, and the included supplementary archive. Check figure captions and text whenever content changes.
+
+The former vector redraws and their alternatives are kept in the external `superseded-vector-figures-2026-11-07` archive for history. The current paper uses the composite Figure 1, the two enhanced supplied raster diagrams, and vector Figures 4 and 5.

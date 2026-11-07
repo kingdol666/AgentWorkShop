@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="252pt" height="143pt" viewBox="0 0 252 143" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-11-07T03:20:27.121855</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 143 
+L 252 143 
+L 252 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 9 3 
+L 243 3 
+Q 245 3 245 5 
+L 245 30 
+Q 245 32 243 32 
+L 9 32 
+Q 7 32 7 30 
+L 7 5 
+Q 7 3 9 3 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #f3f6f8; stroke: #23415a; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 65 32 
+Q 65 35.5 65 38.105573 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #23415a; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 66.2 35.705573 
+L 65 38.105573 
+L 63.8 35.705573 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #23415a; stroke: #23415a; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 187 32 
+Q 187 35.5 187 38.105573 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #167d86; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 188.2 35.705573 
+L 187 38.105573 
+L 185.8 35.705573 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #167d86; stroke: #167d86; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 9 40 
+L 121 40 
+Q 123 40 123 42 
+L 123 80 
+Q 123 82 121 82 
+L 9 82 
+Q 7 82 7 80 
+L 7 42 
+Q 7 40 9 40 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #f3f6f8; stroke: #23415a; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 131 40 
+L 243 40 
+Q 245 40 245 42 
+L 245 80 
+Q 245 82 243 82 
+L 131 82 
+Q 129 82 129 80 
+L 129 42 
+Q 129 40 131 40 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #f0f8f7; stroke: #167d86; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 9 90 
+L 77 90 
+Q 79 90 79 92 
+L 79 131 
+Q 79 133 77 133 
+L 9 133 
+Q 7 133 7 131 
+L 7 92 
+Q 7 90 9 90 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #ffffff; stroke: #23415a; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 86 90 
+L 160 90 
+Q 162 90 162 92 
+L 162 131 
+Q 162 133 160 133 
+L 86 133 
+Q 84 133 84 131 
+L 84 92 
+Q 84 90 86 90 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #ffffff; stroke: #23415a; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 169 90 
+L 243 90 
+Q 245 90 245 92 
+L 245 131 
+Q 245 133 243 133 
+L 169 133 
+Q 167 133 167 131 
+L 167 92 
+Q 167 90 169 90 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #ffffff; stroke: #167d86; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 43 86 
+Q 43 88 43 89.105573 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #23415a; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 44.2 86.705573 
+L 43 89.105573 
+L 41.8 86.705573 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #23415a; stroke: #23415a; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 123 86 
+Q 123 88 123 89.105573 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #23415a; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 124.2 86.705573 
+L 123 89.105573 
+L 121.8 86.705573 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #23415a; stroke: #23415a; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 206 86 
+Q 206 88 206 89.105573 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #167d86; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 207.2 86.705573 
+L 206 89.105573 
+L 204.8 86.705573 
+z
+" clip-path="url(#pe5b992d556)" style="fill: #167d86; stroke: #167d86; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_1">
+    <path d="M 65 82 
+L 65 86 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #23415a; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 65 86 
+L 43 86 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #23415a; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 65 82 
+L 65 86 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #23415a; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_4">
+    <path d="M 65 86 
+L 123 86 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #23415a; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_5">
+    <path d="M 187 82 
+L 187 86 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #167d86; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_6">
+    <path d="M 187 86 
+L 206 86 
+" clip-path="url(#pe5b992d556)" style="fill: none; stroke: #167d86; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 9.7px; font-family: 'Times New Roman'; text-anchor: middle; fill: #263442" x="126" y="19.830273" transform="rotate(-0 126 19.830273)">Cast-film context: line / product / recipe / run</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 9.5px; font-family: 'Times New Roman'; fill: #263442" transform="translate(40.064727 54.389692)">Control node</text>
+    <text style="font-size: 9.5px; font-family: 'Times New Roman'; fill: #263442" transform="translate(27.138789 63.282227)">line speed  ·  m/min</text>
+    <text style="font-size: 9.5px; font-family: 'Times New Roman'; fill: #263442" transform="translate(40.679258 72.174761)">MQTT write</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 9.5px; font-family: 'Times New Roman'; fill: #263442" transform="translate(150.726328 54.380786)">Measurement node</text>
+    <text style="font-size: 9.5px; font-family: 'Times New Roman'; fill: #263442" transform="translate(147.454766 63.27332)">film thickness  ·  µm</text>
+    <text style="font-size: 9.5px; font-family: 'Times New Roman'; fill: #263442" transform="translate(164.265312 72.183667)">MQTT read</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 9.5px; font-family: 'Times New Roman'; fill: #263442" transform="translate(23.208828 109.335959)">Command</text>
+    <text style="font-size: 9.5px; font-family: 'Times New Roman'; fill: #263442" transform="translate(26.643672 118.228494)">outcome</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 9.5px; font-family: 'Times New Roman'; fill: #263442" transform="translate(90.148555 109.335959)">Optional setpoint</text>
+    <text style="font-size: 9.5px; font-family: 'Times New Roman'; fill: #263442" transform="translate(105.85918 118.228494)">readback</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 9.2px; font-family: 'Times New Roman'; fill: #263442" transform="translate(181.350469 105.098439)">Later process</text>
+    <text style="font-size: 9.2px; font-family: 'Times New Roman'; fill: #263442" transform="translate(184.538125 113.710156)">observation</text>
+    <text style="font-size: 9.2px; font-family: 'Times New Roman'; fill: #263442" transform="translate(185.816062 122.321874)">(thickness)</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pe5b992d556">
+   <rect x="0" y="0" width="252" height="143"/>
+  </clipPath>
+ </defs>
+</svg>
