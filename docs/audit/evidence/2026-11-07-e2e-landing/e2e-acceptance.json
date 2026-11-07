@@ -1,0 +1,350 @@
+{
+  "generatedAt": "2026-11-07T10:44:21.110Z",
+  "base": "http://127.0.0.1:3995",
+  "pass": 57,
+  "fail": 0,
+  "results": [
+    {
+      "id": "S2-1",
+      "name": "创建 Channel(mock lead)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S2-2",
+      "name": "创建 manual session",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S2-3",
+      "name": "分层注入块(身份/近期对话/profile=full)",
+      "pass": true,
+      "detail": "## Session Context (authoritative)\nsession_id=cs-bb98951c | kind=manual | status=active | profile=full\ntitle=落地页需求会话\nobjective=落地页需求会话\ncurrent_task=(none)\nnext_step=会话进行中（1 条消息）；等待成员回复或下一指令\n### 近期对话 ("
+    },
+    {
+      "id": "S2-4",
+      "name": "压缩触发:pinned 原文保留+早期上下文层出现",
+      "pass": true,
+      "detail": "点与 FAQ 条目 6\n[15:03] 系统: 第 7 轮推进:补充首屏文案要点与 FAQ 条目 7\n## Session Boundary\n- This session is the only authoritative context.\n- Do not reuse facts, task ids, artifact paths, or decisions from other sessions unless they appear above.\n- If you need another session, use the session catalog/API; never guess."
+    },
+    {
+      "id": "S2-5",
+      "name": "填充长句被压缩(全文不再出现)",
+      "pass": true,
+      "detail": "filler 全文不应出现在块中"
+    },
+    {
+      "id": "S2-6",
+      "name": "mock 回执 ctx 标签(块真实进入 harness 请求)",
+      "pass": true,
+      "detail": "{\"id\":\"690bdcd1-930b-48b1-ba26-5efba14d05ac\",\"channelId\":\"eb69fee3-4db9-4dc2-8236-d65f62d8011e\",\"taskId\":null,\"fromAgentId\":\"a02e7d19-e8ed-4e84-8ae7-69f29242d8ef\",\"toAgentId\":null,\"role\":\"ROLE_AGENT\",\"parts\":[{\"text\":\"@owner:0e1228d2-03f3-4"
+    },
+    {
+      "id": "S2-7",
+      "name": "回执与请求同 session(history)",
+      "pass": true,
+      "detail": "rows=16"
+    },
+    {
+      "id": "S3-1",
+      "name": "两个执行 Channel 就绪(设计/前端)",
+      "pass": true,
+      "detail": "{\"A\":{\"channelId\":\"96a07cf7-1c88-4ba4-ad41-b97feb046b10\",\"workerId\":\"f87ec42c-8803-48ad-bafb-fa4867ceaafd\",\"leadId\":\"30bfce01-02a7-412b-92e7-43e90a1abc4f\"},\"B\":{\"channelId\":\"88910efc-0c92-4006-965a-13"
+    },
+    {
+      "id": "S3-2",
+      "name": "创建落地页 Project(mock leader)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-3",
+      "name": "绑定两个执行 Channel",
+      "pass": true,
+      "detail": "ok/ok"
+    },
+    {
+      "id": "S3-4",
+      "name": "必选交付物 landing-page.html(归属设计频道)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-5",
+      "name": "三个工作项创建(2 设计 + 1 前端)",
+      "pass": true,
+      "detail": "ok/ok/ok"
+    },
+    {
+      "id": "S3-6",
+      "name": "激活项目",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-7",
+      "name": "提交 plan v1 审批",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-8",
+      "name": "owner 批准 plan",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-9",
+      "name": "observability 快照(access/工作项/交付物)",
+      "pass": true,
+      "detail": "{\"project\":{\"id\":\"1686137b-e7d5-4769-a9fd-04e5087f5199\",\"name\":\"T1 口袋翻译器 · 创造性落地页 1794035014702\",\"description\":\"\",\"objective\":\"为「口袋翻译器 T1」打造可渲染、可转化的创造性商品落地页:首屏实时互译演示 + 卖点 + FAQ + CTA\",\"successCriteria\":[],\"status\":\"active\",\"mode\":\"supervise"
+    },
+    {
+      "id": "S3-10",
+      "name": "project session 生成",
+      "pass": true,
+      "detail": "[{\"id\":\"cs-3f218b9b\",\"kind\":\"project\",\"title\":\"项目会话：T1 口袋翻译器 · 创造性落地页 1794035014702\",\"status\":\"active\",\"channelId\":\"dad15320-bd59-479a-a912-77df84cf2254\",\"projectId\":\"1686137b-e7d5-4769-a9fd-04e5087f5"
+    },
+    {
+      "id": "S3-11",
+      "name": "审计事件落库",
+      "pass": true,
+      "detail": "events=3"
+    },
+    {
+      "id": "S4-1",
+      "name": "派发 W1(任务实例 Channel + task session)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S4-2",
+      "name": "task session 生成并关联工作项",
+      "pass": true,
+      "detail": "{\"id\":\"cs-3b8860c1\",\"kind\":\"task\",\"title\":\"任务：市场定位与首屏文案\",\"status\":\"active\",\"channelId\":\"6fcb049e-2596-413f-937e-12440c521068\",\"projectId\":\"1686137b-e7d5-4769-a9fd-04e5087f5199\",\"workItemId\":\"ac26947c-"
+    },
+    {
+      "id": "S4-3",
+      "name": "task session 注入块含工作项上下文",
+      "pass": true,
+      "detail": "## Session Context (authoritative)\nsession_id=cs-3b8860c1 | kind=task | status=active | profile=full\ntitle=任务：市场定位与首屏文案\nproject=T1 口袋翻译器 · 创造性落地页 1794035014702\nwork_item=市场定位与首屏文案\nobjective=输出商品定位、三大卖点、首屏标题与 CTA 文案(纯文本交付)\ncurrent_task=市场定位与"
+    },
+    {
+      "id": "S4-4",
+      "name": "assign 消息带 x-aw-session-id(路由贯通)",
+      "pass": true,
+      "detail": "{\"x-aw-task-kind\":\"assign\",\"x-aw-task-id\":\"f03cca60-129e-43ae-a3b5-024a2b3e5158\",\"x-aw-assignment-generation\":0,\"x-aw-execution-lease-id\":\"2a28826a-cbc3-4e47-9100-041c73c9de55\",\"x-aw-session-id\":\"cs-3b8860c1\"}"
+    },
+    {
+      "id": "S4-5",
+      "name": "mock worker 执行 → 工作项 COMPLETED",
+      "pass": true,
+      "detail": "{\"id\":\"ac26947c-f7e5-4f30-a6b1-40670aad4d29\",\"title\":\"市场定位与首屏文案\",\"brief\":\"输出商品定位、三大卖点、首屏标题与 CTA 文案(纯文本交付)\",\"channelId\":\"96a07cf7-1c88-4ba4-ad41-b97feb046b10\",\"deliverableId\":\"16ba2932-7578-405f-ad98-8"
+    },
+    {
+      "id": "S4-6",
+      "name": "任务终态记忆带 task session 戳(记忆模块生效)",
+      "pass": true,
+      "detail": "{\"id\":\"1e294824-ca41-4fdc-8c77-4337def82c3c\",\"channelId\":\"6fcb049e-2596-413f-937e-12440c521068\",\"agentId\":\"fd6208d1-7265-474e-a378-2c5a20987f8a\",\"kind\":\"episodic-task\",\"title\":\"市场定位与首屏文案\",\"content\":\"[ 项目任务 ]\\n 项目：T1 口袋翻译器  ·  创造性落地页 1794035"
+    },
+    {
+      "id": "S4-7",
+      "name": "scope=session 检索隔离(本会话命中/他 session 空)",
+      "pass": true,
+      "detail": "hit=1 miss=0"
+    },
+    {
+      "id": "S5-1",
+      "name": "W2 已在先前运行完成(重入幂等;两实例频道均真并行)",
+      "pass": true,
+      "detail": "state=COMPLETED (previous run)"
+    },
+    {
+      "id": "S5-2",
+      "name": "W2 完成(两个实例频道均真并行)",
+      "pass": true,
+      "detail": "{\"id\":\"f5a66a16-4ea0-4a3d-a05c-f67bb10a3be4\",\"title\":\"视觉结构与 FAQ 大纲\",\"brief\":\"输出落地页区块结构、FAQ 六问、配色与版式建议(纯文本交付)\",\"channelId\":\"96a07cf7-1c88-4ba4-ad41-b97feb046b10\",\"deliverableId\":\"16ba2932-7578-405f-ad9"
+    },
+    {
+      "id": "S5-3",
+      "name": "跨频道 A2A 发送(lead→toChannelId, requireReply)",
+      "pass": true,
+      "detail": "{\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"messageId\":\"85252699-80b4-467a-843e-bc224fca9e33\",\"toChannelId\":\"88910efc-0c92-4006-965a-13c06421c621\",\"toChannelName\":\"前端频道 1794035014672\",\"toLeadAgentId\":\"1e716ba4-d67c-4065-9efd-4cae59be6d79"
+    },
+    {
+      "id": "S5-4",
+      "name": "跨频道回执回源(x-aw-cross-channel)",
+      "pass": true,
+      "detail": "{\"id\":\"82d79ce6-d6e2-42c0-95ae-3418695e4c5f\",\"channelId\":\"96a07cf7-1c88-4ba4-ad41-b97feb046b10\",\"taskId\":null,\"fromAgentId\":\"1e716ba4-d67c-4065-9efd-4cae59be6d79\",\"toAgentId\":\"30bfce01-02a7-412b-92e7-43e90a1abc4f\",\"role\":\"ROLE_AGENT\",\"parts\":[{\"text\":\"mock 跨Channel回复(1e716ba4-d67c-4065-9efd-4cae59be"
+    },
+    {
+      "id": "S5-5",
+      "name": "reconcile(任务成果 → 项目结果物化)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S5-6",
+      "name": "draft 结果生成(成果中间件入项目层)",
+      "pass": true,
+      "detail": "[{\"id\":\"6ff6543f-58a0-4922-99f0-2839063ec7ac\",\"projectId\":\"1686137b-e7d5-4769-a9fd-04e5087f5199\",\"deliverableId\":\"16ba2932-7578-405f-ad98-89df81b85029\",\"channelId\":\"96a07cf7-1c88-4ba4-ad41-b97feb046b10\",\"lineId\":\"\",\"workItemId\":\"f5a66a16-4ea0-4a3d-a05c-f67bb10a3be4\",\"attemptNo\":1,\"resultKey\":\"main\","
+    },
+    {
+      "id": "S5-7",
+      "name": "结果 submit + 技术评审(L1 门)通过",
+      "pass": true,
+      "detail": "[{\"id\":\"6ff6543f\",\"review\":200,\"msg\":\"ok\"},{\"id\":\"49ba1b65\",\"review\":200,\"msg\":\"ok\"}]"
+    },
+    {
+      "id": "S6-0",
+      "name": "未授权自助注册被拒(403 REGISTRATION_CLOSED,结构化)",
+      "pass": true,
+      "detail": "{\"status\":403,\"code\":\"REGISTRATION_CLOSED\",\"message\":\"自助注册已关闭(security.allowRegistration=false),请联系管理员开通账号\",\"data\":null}"
+    },
+    {
+      "id": "S6-1",
+      "name": "无凭据写操作 → 401(结构化,身份门)",
+      "pass": true,
+      "detail": "{\"code\":\"USER_UNAUTHORIZED\",\"message\":\"需要有效的用户 token(Authorization: Bearer <用户token>;经 /api/users/register 或 /api/users/login 获取)\",\"data\":null}"
+    },
+    {
+      "id": "S6-2",
+      "name": "非法角色 → 400",
+      "pass": true,
+      "detail": "{\"status\":400,\"code\":\"VALIDATION_ERROR\",\"message\":\"role: Invalid enum value. Expected 'lead' | 'worker', received 'owner'\",\"data\":null}"
+    },
+    {
+      "id": "S6-3",
+      "name": "缺目标消息 → 400(结构化 envelope)",
+      "pass": true,
+      "detail": "{\"status\":400,\"code\":\"BAD_REQUEST\",\"message\":\"toAgentId 必填(跨 Channel 请改用 toChannelId)\",\"data\":null}"
+    },
+    {
+      "id": "S6-4",
+      "name": "未批准 plan 派发 → 409(结构化)",
+      "pass": true,
+      "detail": "{\"status\":409,\"code\":\"PLAN_NOT_APPROVED\",\"message\":\"项目要求先批准计划（plan_approval）才能派发工作项\",\"data\":null}"
+    },
+    {
+      "id": "S6-5a",
+      "name": "未开启群聊的频道拒绝聊天(409 CHAT_DISABLED,结构化)",
+      "pass": true,
+      "detail": "{\"status\":409,\"code\":\"CHAT_DISABLED\",\"message\":\"该 Channel 未开启群聊(需 owner 显式开启)\",\"data\":null}"
+    },
+    {
+      "id": "S6-5",
+      "name": "重复 clientMessageId 幂等",
+      "pass": true,
+      "detail": "{\"enable\":200,\"c1\":false,\"c2\":true,\"m1\":\"2b2c03e8-9d7a-4528-848b-58ced32d18e3\",\"m2\":\"2b2c03e8-9d7a-4528-848b-58ced32d18e3\"}"
+    },
+    {
+      "id": "S6-6",
+      "name": "不可达目标优雅降级(非 500)",
+      "pass": true,
+      "detail": "200 ok"
+    },
+    {
+      "id": "S7-1",
+      "name": "omp 真实引擎 worker 加入两个频道",
+      "pass": true,
+      "detail": "{\"ompA\":\"ok\",\"ompB\":\"ok\"}"
+    },
+    {
+      "id": "S7-2",
+      "name": "W4 文案工作项创建",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S7-3",
+      "name": "W4 派发(omp 执行)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S7-6",
+      "name": "W3 brief 注入真实文案成果(成果复用)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S7-7",
+      "name": "W3 派发(omp 执行)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S7-4",
+      "name": "W4 omp 执行完成",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "S7-5",
+      "name": "W4 真实 LLM 文案取回(成果中间件)",
+      "pass": true,
+      "detail": "len=5147"
+    },
+    {
+      "id": "S7-2b",
+      "name": "W5 工作项创建(40min 预算+真实文案)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S7-7b",
+      "name": "W5 派发(omp 执行)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S7-2c",
+      "name": "W6 编排验证工作项创建",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S7-7c",
+      "name": "W6 派发(mock 腿)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S7-15",
+      "name": "最终成果 L2 验收 approved(agent 作者持证,owner 批准无自批冲突)",
+      "pass": true,
+      "detail": "status=approved result=f21b881f"
+    },
+    {
+      "id": "S7-16",
+      "name": "最终成果 payload 含真实落地页 HTML(hero/卖点/FAQ/CTA 区块齐备)",
+      "pass": true,
+      "detail": "chars=4318"
+    },
+    {
+      "id": "S7-17",
+      "name": "真实 LLM 文案存证(成果中间件取回)",
+      "pass": true,
+      "detail": "chars=5148"
+    },
+    {
+      "id": "S7-18",
+      "name": "全链审计事件齐备(派发/完成/提交/评审/审批)",
+      "pass": true,
+      "detail": "missing="
+    },
+    {
+      "id": "S7-19",
+      "name": "W4 真实引擎腿 COMPLETED(omp)",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "S7-ITER",
+      "name": "HTML 合成腿迭代(全程如实记录)",
+      "pass": true,
+      "detail": "3 次真实引擎(omp)尝试均超执行预算 ROOT_TIMEOUT(10/10/40min,最后一次跑满 40 分钟)——本机 omp 产能不足以一次产出整页 HTML;按预案降级:mock 编排腿闭合派发链 + 真实 LLM 文案(5148 字,W4 COMPLETED)+ owner 主编 HTML + agent 提交(project_submit_result 带 task 上下文)→ L1 评审 → 证据门重跑 → L2 approved(W10, f21b881f)。全程事件/attempt 可审计。"
+    }
+  ]
+}

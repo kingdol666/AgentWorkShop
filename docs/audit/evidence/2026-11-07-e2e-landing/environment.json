@@ -1,0 +1,119 @@
+{
+  "generatedAt": "2026-11-07",
+  "main": "137ee7e9",
+  "unit": {
+    "tests": 1187,
+    "pass": 1185,
+    "fail": 0,
+    "skipped": 2
+  },
+  "build": "ok (.output/server/index.mjs)",
+  "server": {
+    "base": "http://127.0.0.1:3995",
+    "port": 3995,
+    "awHome": ".e2e-home",
+    "backupDisabled": true,
+    "health": "ok",
+    "freshUptimeMs": 14068
+  },
+  "harnesses": [
+    {
+      "id": "mock",
+      "available": true,
+      "inprocess": true,
+      "command": null,
+      "error": null
+    },
+    {
+      "id": "omp",
+      "available": true,
+      "inprocess": false,
+      "command": "omp",
+      "error": null
+    },
+    {
+      "id": "opencode",
+      "available": true,
+      "inprocess": false,
+      "command": "opencode",
+      "error": null
+    },
+    {
+      "id": "codex",
+      "available": true,
+      "inprocess": false,
+      "command": "codex",
+      "error": null
+    },
+    {
+      "id": "dsh",
+      "available": true,
+      "inprocess": false,
+      "command": "dsh",
+      "error": null
+    },
+    {
+      "id": "claude",
+      "available": true,
+      "inprocess": true,
+      "command": null,
+      "error": null
+    },
+    {
+      "id": "gemini",
+      "available": true,
+      "inprocess": false,
+      "command": "gemini",
+      "error": null
+    },
+    {
+      "id": "copilot",
+      "available": true,
+      "inprocess": false,
+      "command": "copilot",
+      "error": null
+    },
+    {
+      "id": "cursor",
+      "available": true,
+      "inprocess": false,
+      "command": "cursor-agent",
+      "error": null
+    },
+    {
+      "id": "crush",
+      "available": true,
+      "inprocess": false,
+      "command": "crush",
+      "error": null
+    },
+    {
+      "id": "goose",
+      "available": true,
+      "inprocess": false,
+      "command": "goose",
+      "error": null
+    },
+    {
+      "id": "qwen",
+      "available": true,
+      "inprocess": false,
+      "command": "qwen",
+      "error": null
+    },
+    {
+      "id": "pi",
+      "available": true,
+      "inprocess": false,
+      "command": "pi",
+      "error": null
+    },
+    {
+      "id": "hermes",
+      "available": true,
+      "inprocess": false,
+      "command": "hermes",
+      "error": null
+    }
+  ]
+}
