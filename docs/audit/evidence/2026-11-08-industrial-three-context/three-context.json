@@ -1,0 +1,218 @@
+{
+  "generatedAt": "2026-11-07T17:17:09.337Z",
+  "base": "http://127.0.0.1:3997",
+  "pass": 35,
+  "fail": 0,
+  "results": [
+    {
+      "id": "S0-1",
+      "name": "管理员登录",
+      "pass": true,
+      "detail": "admin@awshop.local"
+    },
+    {
+      "id": "S0-2",
+      "name": "产线现场就绪(节点/配方/开跑)",
+      "pass": true,
+      "detail": "dcw=4 daq=19 recipes=4 running=4/4"
+    },
+    {
+      "id": "S0-3",
+      "name": "选定 A/C 上下文产线",
+      "pass": true,
+      "detail": "A=ln-66ef9 C=ln-f82b9"
+    },
+    {
+      "id": "A1",
+      "name": "建绑线频道+成员+令牌",
+      "pass": true,
+      "detail": "ch=2175b94c lead=7cdc5957"
+    },
+    {
+      "id": "A2",
+      "name": "节点绑定(daq auto + dcw/recipe 首绑 manual)",
+      "pass": true,
+      "detail": "daq=200 dcw=200 recipe=200 rows=3 dcwMode=manual"
+    },
+    {
+      "id": "A3a",
+      "name": "生产频道工具面含产线+分析留痕族",
+      "pass": true,
+      "detail": "n=96 missing="
+    },
+    {
+      "id": "A3b",
+      "name": "AML/优化器族按模式门控(生产频道正确缺席)",
+      "pass": true,
+      "detail": "amlPresent=无"
+    },
+    {
+      "id": "A4",
+      "name": "Channel 直调 daq_query(数采)",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点): ■ 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP[id=dn-7312cf8b](熔体/箱体温度)单位 ℃,正常量程 160~300℃,当前状态 ok,时间窗 2026-11-08T01:05 ~ 2026-11-08T01:08(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-ef2938cf 配方「演示配方1」(rc-f10"
+    },
+    {
+      "id": "A5",
+      "name": "跨线数采阴性(越权拒绝)",
+      "pass": true,
+      "detail": "工具调用被拒(引用校验,daq_query):node_id = 「dn-bb63afc8」不在你的授权范围内(节点「演示·模温机与锁模单元(Modbus RTU)·锁模力SP」,归属产线 ln-f82b99fc)。 该节点不在你的绑定范围内。你的绑定节点:dn-7312cf8b, dw-d0824206;频道绑线「ln-66ef94b8」只读数采节点:dn"
+    },
+    {
+      "id": "A6",
+      "name": "Channel 直调 line_context(绑线全景)",
+      "pass": true,
+      "detail": "你控制的产线全景(1 条): ■ 产线 演示线1·注塑主机PLC(Modbus TCP)(ln-66ef94b8) · 状态:运行中 活动批次 rr-ef293 · 产品「演示产品1」(pd-67b10a72) · 开跑 00:41:30 · 已打标 8465 样本 我绑定的节点:数控 [演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP];数采 [演示·注塑主机PLC(Modbus "
+    },
+    {
+      "id": "A7",
+      "name": "dcw_control 直写按设计拒绝(治理语义)",
+      "pass": true,
+      "detail": "直接节点写控已禁用(权限模型 v2):Agent 不再直接操作数控节点。请改用绑定的配方完成同样动作 —— recipe_update(参数写入,生成新版本)/ recipe_apply(整批下发)/ recipe_trial(候选整批试验,不写版本)/ recipe_rollback(回退);均为带理由与 HITL 的配方面操作,治理联锁(量程/步长/限速"
+    },
+    {
+      "id": "A8a",
+      "name": "recipe_trial 发起 HITL 审批卡",
+      "pass": true,
+      "detail": "card=ap-aa93619"
+    },
+    {
+      "id": "A8b",
+      "name": "HITL 批准受理",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "A8c",
+      "name": "trial 收口(设备受理)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-7748e):演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP→231.68℃ [证实✓]。假设:三上下文验收·Channel 直调:单变量 SP=231.68(HITL manual 链)。 人工附言:三上下文集成验收批准(A)注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固"
+    },
+    {
+      "id": "A8d",
+      "name": "设备侧回读收敛(真实工况交互)",
+      "pass": true,
+      "detail": "target=231.68 final=231.70"
+    },
+    {
+      "id": "B1",
+      "name": "创建 manual session(克隆成员)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "B2",
+      "name": "克隆继承节点绑定面(daq/dcw/recipe)",
+      "pass": true,
+      "detail": "clone=a2aaa9c8 rows=3"
+    },
+    {
+      "id": "B3",
+      "name": "Session 克隆身份调 daq_query(会话内作业)",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点): ■ 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP[id=dn-7312cf8b](熔体/箱体温度)单位 ℃,正常量程 160~300℃,当前状态 ok,时间窗 2026-11-08T01:10 ~ 2026-11-08T01:12(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-ef2938cf 配方「演示配方1」(rc-f10"
+    },
+    {
+      "id": "B4",
+      "name": "第二会话克隆并行作业(独立身份)",
+      "pass": true,
+      "detail": "clone2=b8adfda6 你控制的产线全景(1 条): ■ 产线 演示线1·注塑主机PLC(Modbus TCP)(ln-66ef94b8) · 状态:运行中 活动批次 rr-ef293 · 产品「演示产品1」(pd-67b10a72) · 开跑 00:41:30 · 已打标 9696 样本 我绑定的节点"
+    },
+    {
+      "id": "B5",
+      "name": "关闭会话:克隆停用+拒新消息+基础成员保留(WP2)",
+      "pass": true,
+      "detail": "close=200 cloneEnabled=0 base=1 late=409/SESSION_CLOSED"
+    },
+    {
+      "id": "C1",
+      "name": "项目+绑定+派发(实例创建)",
+      "pass": true,
+      "detail": "p=cc4528c2 dispatch=200 ok"
+    },
+    {
+      "id": "C2",
+      "name": "任务实例 Channel+lead(绑定复制载体)",
+      "pass": true,
+      "detail": "instCh=0acba24e lead=c4077d10"
+    },
+    {
+      "id": "C3",
+      "name": "实例继承绑定面(daq/dcw/recipe)",
+      "pass": true,
+      "detail": "rows=3"
+    },
+    {
+      "id": "C4",
+      "name": "实例 lead 调 daq_query(项目内数采)",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点): ■ 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP[id=dn-7312cf8b](熔体/箱体温度)单位 ℃,正常量程 160~300℃,当前状态 ok,时间窗 2026-11-08T01:10 ~ 2026-11-08T01:12(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-ef2938cf 配方「演示配方1」(rc-f10"
+    },
+    {
+      "id": "C5",
+      "name": "实例内治理写阴性:无 write_intent 被拒(PROJECT_WRITE_INTENT_REQUIRED)",
+      "pass": true,
+      "detail": "PROJECT_WRITE_INTENT_REQUIRED: recipe_trial 在项目来源任务中需要 owner 批准的 write_intent；请先调用 project_request_write_intent"
+    },
+    {
+      "id": "C6a",
+      "name": "project_request_write_intent 申请",
+      "pass": true,
+      "detail": "{ \"ok\": true, \"approvalId\": \"50d74304-40ed-444c-8a4b-d64ebc7af406\", \"digest\": \"f6219fe24b6b000c6d6a385e7dc4e8cbc259674c582499cb2e12de5ba94e58ac\", \"tool\": \"recipe_trial\", \"status\": \"pending\", \"next\": \""
+    },
+    {
+      "id": "C6b",
+      "name": "owner 批准 write_intent(项目层治理)",
+      "pass": true,
+      "detail": "approval=50d74304-4"
+    },
+    {
+      "id": "C7a",
+      "name": "实例内 recipe_trial 过项目门+HITL 卡",
+      "pass": true,
+      "detail": "card=ap-bc005e5"
+    },
+    {
+      "id": "C7b",
+      "name": "HITL 批准受理(产线层治理)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C7c",
+      "name": "trial 收口(设备受理)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-c4b24):演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP→230.02℃ [证实✓]。假设:三上下文验收·Project 实例:单变量 SP=230.02(write_intent+HITL 双治理)。 人工附言:三上下文集成验收批准(C)注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_upda"
+    },
+    {
+      "id": "C7d",
+      "name": "设备侧回读收敛(项目内真实写)",
+      "pass": true,
+      "detail": "target=230.02 final=230.00"
+    },
+    {
+      "id": "D1",
+      "name": "analysis_save(分析结论留痕台账)",
+      "pass": true,
+      "detail": "分析报告已留痕:ar-27749707。产线「演示线1·注塑主机PLC(Modbus TCP)」,结论 3 条,配方 rc-f105fbaf。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-27749707\") 查回全文。"
+    },
+    {
+      "id": "D2",
+      "name": "analysis_query(台账查回)",
+      "pass": true,
+      "detail": "共 3 条分析报告(新→旧): [ar-27749707] 11-08 01:17:09 | 演示线1·注塑主机PLC(Modbus TCP) | 配方 rc-f105fbaf v1 | 三上下文集成·SP 漂移核查 1794071829277(general) Channel/Session/Project 三上下文分别完成数读取数与治理写;SP 目标 231.68 已由 HITL 链真实下发并回读收敛 —— 产线直调-c03af/直"
+    },
+    {
+      "id": "D3",
+      "name": "dcw_journal(写控台账可审计)",
+      "pass": true,
+      "detail": "优化记录(4 条,含参数/判定/窗口): - opt-f245fc7a [open] 演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP: 231.7 → 230.02,设定 01:17:07,判定 未判定,进行中 假设: 三上下文验收·Project 实例:单变量 SP=230.02(write_intent+HITL 双治理) - opt-914274eb [superseded]"
+    },
+    {
+      "id": "D4",
+      "name": "intervention_history(干预台账)",
+      "pass": true,
+      "detail": "干预台账(最近 5 条,节点 dw-d0824206;判定分布:未判定(无判读上下文)×5): 2026-11-08T01:17:07.247+08:00 演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP 231.7→230.02(Δ-1.68) [agent] 判定:未判定(无判读上下文) 2026-11-08T01:12:00.467+08:00 演示·注塑主机PLC(Modbu"
+    }
+  ]
+}
