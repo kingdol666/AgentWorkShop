@@ -1,0 +1,1745 @@
+✔ 数采依赖就绪(MQTT 127.0.0.1:1883 · Timescale 127.0.0.1:5432)
+› 生产服务(repo 模式) -> http://0.0.0.0:3997  (端口来源: CLI)
+› 配置: D:\codes\ABO\aw-mem-runtime\config.yml · 数据: D:\codes\ABO\aw-mem-runtime\.AgentWorkShop\data
+› 停止: Ctrl+C
+[config] 生产服务启动 -> http://0.0.0.0:3997  (模式: repo, port source: env)
+[start] 拉起服务子进程 #1(heap 4096MB)
+[stability-guard] armed (socket 断连/sqlite 瞬态忙/外部设备不可达/引擎边界错误 → 记录继续;其余真实错误 → exit 1)
+[error-ledger] armed (API 未捕获异常/5xx → audit_log system 域 level=error,限流去重)
+[system-config] runtimeConfig 只读 → live 应用降级为服务内存视图 + SSE 广播(前端实时;服务端 SSR 完整生效需重启)
+[system-config] 运行时设置已加载 -> D:\codes\ABO\aw-mem-runtime\.AgentWorkShop\runtime-settings.json(配置根 D:\codes\ABO\aw-mem-runtime\.AgentWorkShop,模式 repo)
+{"t":"2026-11-08T01:35:47.788+08:00","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=126 plugin=21 unavailable=21 total=147 (boot)"}
+{"t":"2026-11-08T01:35:47.828+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:c4077d10-f17b-4fea-9f37-0e909739b1d1] Harness 重建(SERVER_RESTART)lease=86b4e0ea"}
+[workshop.schedule] 定时任务运行时已启动(tick=10000ms)
+[aw-plugins] 配置根: D:\codes\ABO\aw-mem-runtime\.AgentWorkShop (repo 模式)
+[aw-plugins] 自环 origin: http://127.0.0.1:3997
+{"t":"2026-11-08T01:35:47.891+08:00","level":"info","scope":"daq.queue","msg":"[daq-queue] 进程内 mock 队列就绪(启动插件将按 infra 状态装配 MQTT)"}
+[aw-plugins] 发现 11 个插件(停用 0),开始装载 ...
+{"t":"2026-11-08T01:35:47.897+08:00","level":"info","scope":"daq.templates","msg":"[daq] 插件模板注册:「矩阵验收标定模板(插件)」(plug-matrix-profile,插件=plugin)"}
+{"t":"2026-11-08T01:35:47.898+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「matrix_pipeline_probe」(aw-matrix-plugin)"}
+[aw-plugins] [aw-matrix-plugin] 已注册 omp 工具:「matrix_pipeline_probe」
+[aw-plugins] [aw-matrix-plugin] aw-matrix-plugin v1.0.0 就绪:驱动 matrix-thermo + 处理器 matrix-derate + 模板 plug-matrix-profile + 工具 matrix_pipeline_probe + 路由 /stats
+[aw-plugins] ✔ 已装载 [project] aw-matrix-plugin@1.0.0
+{"t":"2026-11-08T01:35:47.900+08:00","level":"info","scope":"daq.templates","msg":"[daq] 插件模板注册:「×2 标定轮廓(插件验证)」(plug-verify-x2-profile,插件=plugin)"}
+[aw-plugins] [daq-sink-verify] daq-sink-verify v2 就绪:驱动 verify-burst + 处理器 verify-x2 + 模板 plug-verify-x2-profile
+{"t":"2026-11-08T01:35:47.900+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「verify_pipeline_probe」(daq-sink-verify)"}
+[aw-plugins] [daq-sink-verify] 已注册 omp 工具:「verify_pipeline_probe」
+[aw-plugins] ✔ 已装载 [project] daq-sink-verify@2.0.0
+{"t":"2026-11-08T01:35:47.902+08:00","level":"info","scope":"daq.templates","msg":"[daq] 插件模板注册:「粗糙度轮廓仪(插件示例)」(plug-demo-roughness,插件=plugin)"}
+[aw-plugins] [daq-vector-demo] daq-vector-demo 就绪:处理器 demo-roughness + 模板 plug-demo-roughness 已注册
+[aw-plugins] ✔ 已装载 [project] daq-vector-demo@1.1.0
+{"t":"2026-11-08T01:35:47.908+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「sentinel_screen」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「sentinel_screen」
+{"t":"2026-11-08T01:35:47.908+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「sentinel_watch」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「sentinel_watch」
+{"t":"2026-11-08T01:35:47.909+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「sentinel_status」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「sentinel_status」
+{"t":"2026-11-08T01:35:47.909+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「sentinel_baseline」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「sentinel_baseline」
+{"t":"2026-11-08T01:35:47.909+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「experience_log」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「experience_log」
+{"t":"2026-11-08T01:35:47.909+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「experience_recommend」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「experience_recommend」
+{"t":"2026-11-08T01:35:47.910+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「experience_feedback」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「experience_feedback」
+{"t":"2026-11-08T01:35:47.910+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「optimizer_campaign」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「optimizer_campaign」
+{"t":"2026-11-08T01:35:47.910+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「optimizer_round」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「optimizer_round」
+{"t":"2026-11-08T01:35:47.910+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「optimizer_state」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「optimizer_state」
+[aw-plugins] ✔ 已装载 [project] idd-closedloop-bridge@0.1.0
+{"t":"2026-11-08T01:35:47.912+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「sensor_calibration_log」(omp-sensor-tools)"}
+[aw-plugins] [omp-sensor-tools] 已注册 omp 工具:「sensor_calibration_log」
+[aw-plugins] [omp-sensor-tools] omp-sensor-tools 就绪:工具 sensor_calibration_log 已对 lead/worker 全体 agent 生效
+[aw-plugins] ✔ 已装载 [project] omp-sensor-tools@1.0.0
+[aw-plugins] [twin-castfilm] twin-castfilm:castfilm FOPDT Twin Provider 与 ScenePack(scene-castfilm-line1)已注册
+[aw-plugins] ✔ 已装载 [project] twin-castfilm@1.0.0
+[aw-plugins] [twin-thermal-demo] 外部 thermal-demo Twin Provider 已注册
+[aw-plugins] ✔ 已装载 [project] twin-thermal-demo@1.0.0
+{"t":"2026-11-08T01:35:47.931+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「diag_run」(diag-bridge)"}
+[aw-plugins] [diag-bridge] 已注册 omp 工具:「diag_run」
+{"t":"2026-11-08T01:35:47.932+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「diag_status」(diag-bridge)"}
+[aw-plugins] [diag-bridge] 已注册 omp 工具:「diag_status」
+{"t":"2026-11-08T01:35:47.932+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「diag_results」(diag-bridge)"}
+[aw-plugins] [diag-bridge] 已注册 omp 工具:「diag_results」
+{"t":"2026-11-08T01:35:47.932+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「diag_result_get」(diag-bridge)"}
+[aw-plugins] [diag-bridge] 已注册 omp 工具:「diag_result_get」
+{"t":"2026-11-08T01:35:47.932+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「diag_result_annotate」(diag-bridge)"}
+[aw-plugins] [diag-bridge] 已注册 omp 工具:「diag_result_annotate」
+[aw-plugins] [diag-bridge] diag-bridge 就绪:工具 diag_run/diag_status/diag_results/diag_result_get/diag_result_annotate + 路由 health/runs/snapshot/report/results,轮询 15s 已启动
+[aw-plugins] ✔ 已装载 [builtin] diag-bridge@2.3.0 (+client)
+Listening on http://0.0.0.0:3997
+{"t":"2026-11-08T01:35:47.944+08:00","level":"info","scope":"aml.py","msg":"[aml-uv] 探测到 uv uv 0.11.29 (901092ee1 2026-07-15 x86_64-pc-windows-msvc) @ D:\\anaconda3\\Scripts\\uv.exe (来源=path)"}
+{"t":"2026-11-08T01:35:47.962+08:00","level":"info","scope":"daq.infra","msg":"[daq-infra] 真实链路就绪(mqtt=127.0.0.1:1883, timescale=127.0.0.1:5432, objectstore=127.0.0.1:9000, 来源=direct)"}
+{"t":"2026-11-08T01:35:48.003+08:00","level":"info","scope":"aml.py","msg":"[aml-python] 探测成功:Python 3.12.7 @ D:\\anaconda3\\python.exe (uv: D:\\anaconda3\\Scripts\\uv.exe)"}
+{"t":"2026-11-08T01:35:50.456+08:00","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=126 plugin=21 unavailable=0 total=147 (plugin-tools-change)"}
+[aw-plugins] [rag-bridge] catalog 不可达(目标 127.0.0.1 是私网/环回地址,已按 SSRF 防护拒绝(如确需访问内网,设置 AW_ALLOW_PRIVATE_OUTBOUND=1)),跳过查找直接尝试建库
+[api] GET /api/health - 7ms
+[aw-plugins] [rag-bridge] ensureKB 未完成(不影响装载,工具会在服务可用后按需重试):创建知识库 aw-industrial 失败:目标 127.0.0.1 是私网/环回地址,已按 SSRF 防护拒绝(如确需访问内网,设置 AW_ALLOW_PRIVATE_OUTBOUND=1)
+{"t":"2026-11-08T01:35:55.481+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「kb_agent」(rag-bridge)"}
+[aw-plugins] [rag-bridge] 已注册 omp 工具:「kb_agent」
+{"t":"2026-11-08T01:35:55.481+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「kb_agent_status」(rag-bridge)"}
+[aw-plugins] [rag-bridge] 已注册 omp 工具:「kb_agent_status」
+[aw-plugins] ✔ 已装载 [builtin] rag-bridge@2.2.0 (+client)
+{"t":"2026-11-08T01:35:55.582+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「serial_ports」(serial-bridge)"}
+[aw-plugins] [serial-bridge] 已注册 omp 工具:「serial_ports」
+[aw-plugins] [serial-bridge] serial-bridge 就绪:驱动 serial(读 14 参数)+ 写控 serial + 路由 health/ports/probe + 工具 serial_ports;serialport 可用
+[aw-plugins] ✔ 已装载 [builtin] serial-bridge@1.0.0 (+client)
+[aw-plugins] [twin-injection-default] 默认注塑 Twin Provider 已注册:injection-greybox-v1@1.0.0
+[aw-plugins] ✔ 已装载 [builtin] twin-injection-default@1.0.0
+[aw-plugins] 装载完成: 11 个(含停用)/ 0 失败 / 活跃路由 15 条
+{"t":"2026-11-08T01:35:55.598+08:00","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=126 plugin=21 unavailable=0 total=147 (plugin-host-ready)"}
+{"t":"2026-11-08T01:35:55.747+08:00","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=126 plugin=21 unavailable=0 total=147 (plugin-tools-change)"}
+{"t":"2026-11-08T01:35:56.306+08:00","level":"info","scope":"daq.tsdb","msg":"[daq-tsdb] TimescaleDB 就绪:","args":["postgres://***@127.0.0.1:5432/awshop"]}
+{"t":"2026-11-08T01:36:09.119+08:00","level":"warn","scope":"daq.objectstore","msg":"[daq-objectstore] The difference between the request time and the server&#39;s time is too large. → 已降级本地磁盘(data/daq-objects/)"}
+{"t":"2026-11-08T01:36:11.131+08:00","level":"info","scope":"daq.queue","msg":"[daq-queue] MQTT 队列就绪:","args":["mqtt://127.0.0.1:1883"]}
+[workshop] DAQ 采集补挂完成(running=true,宿主端口已装配)
+{"t":"2026-11-08T01:36:11.193+08:00","level":"info","scope":"daq.mqtt","msg":"[daq-mqtt] 已连接","args":["mqtt://127.0.0.1:1883","· 订阅","aw/daq/+/sample"]}
+{"t":"2026-11-08T01:36:16.583+08:00","level":"warn","scope":"daq.drivers","msg":"[daq-opcua] WARN:节点 endpoint=opc.tcp://127.0.0.1:5843 使用 securityMode=None(匿名/明文),仅限测试环境;生产请配置 Sign/SignAndEncrypt + 证书"}
+{"t":"2026-11-08T01:36:16.756+08:00","level":"warn","scope":"daq.drivers.mqtt","msg":"[mqtt] mqtt://127.0.0.1:18830 连接错误: connack timeout(保持重连)"}
+{"t":"2026-11-08T01:36:16.758+08:00","level":"warn","scope":"daq.controller","msg":"[daq-push] 演示·冷却水单元(MQTT)·WaterTempPV(dn-32e4f870) 订阅失败(5s 后重试): MQTT 连接失败: connack timeout"}
+{"t":"2026-11-08T01:36:16.758+08:00","level":"warn","scope":"daq.controller","msg":"[daq-push] 演示·冷却水单元(MQTT)·CoolFlowPV(dn-83e8db4b) 订阅失败(5s 后重试): MQTT 连接失败: connack timeout"}
+{"t":"2026-11-08T01:36:21.985+08:00","level":"info","scope":"daq.controller","msg":"[daq-push] 演示·冷却水单元(MQTT)·WaterTempPV(dn-32e4f870) mqtt 被动订阅已建立"}
+{"t":"2026-11-08T01:36:21.987+08:00","level":"info","scope":"daq.controller","msg":"[daq-push] 演示·冷却水单元(MQTT)·CoolFlowPV(dn-83e8db4b) mqtt 被动订阅已建立"}
+[daq-rollup] 聚合完成:1m=38 行,1h=0 行,产线 746
+[api] GET /api/health - 2ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 39ms
+[api] POST /api/users/login - 32ms
+[recipe-rollback] 恢复 8 锚 / 1 条 open 优化记录
+[api] GET /api/workshop/dcw - 19ms
+[api] GET /api/workshop/daq - 7ms
+[api] GET /api/workshop/dcw - 5ms
+[api] GET /api/workshop/dcw - 3ms
+[api] PATCH /api/system/settings - 5ms
+[api] GET /api/workshop/workspaces - 4ms
+[api] POST /api/workshop/channels - 8ms
+[api] POST /api/workshop/channels/48b782fd-7b0c-4e96-98d0-555dcafb6939/agents - 9ms
+[api] POST /api/workshop/channels/48b782fd-7b0c-4e96-98d0-555dcafb6939/agents - 1ms
+[api] POST /api/workshop/channels/48b782fd-7b0c-4e96-98d0-555dcafb6939/activate - 4ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/48b782fd-7b0c-4e96-98d0-555dcafb6939 - 5ms
+[api] POST /api/workshop/channels - 1ms
+[api] POST /api/workshop/channels/1a930ede-dfda-465d-9160-47af5522afc8/agents - 2ms
+[api] POST /api/workshop/channels/1a930ede-dfda-465d-9160-47af5522afc8/agents - 1ms
+[api] POST /api/workshop/channels/1a930ede-dfda-465d-9160-47af5522afc8/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/1a930ede-dfda-465d-9160-47af5522afc8 - 1ms
+[api] GET /api/workshop/channel-templates - 5ms
+[api] POST /api/workshop/channel-templates/chtpl-aml-training-default/instantiate - 26ms
+[api] POST /api/workshop/channels/6d4f5262-ac2a-4880-a134-b8c032d6cae9/agents - 1ms
+[api] GET /api/workshop/channels/6d4f5262-ac2a-4880-a134-b8c032d6cae9/agents - 5ms
+[api] POST /api/workshop/channels/6d4f5262-ac2a-4880-a134-b8c032d6cae9/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/6d4f5262-ac2a-4880-a134-b8c032d6cae9 - 0ms
+[api] GET /api/workshop/channels/6d4f5262-ac2a-4880-a134-b8c032d6cae9/twin-profile - 4ms
+[api] POST /api/workshop/agent-tools/bindings - 6ms
+[api] POST /api/workshop/agent-tools/bindings - 0ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 0ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/projects - 4ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/channels - 5ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/channels - 1ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/channels - 1ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/deliverables - 4ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/deliverables - 1ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/deliverables - 0ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/work-items - 4ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/work-items - 1ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/work-items - 1ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/activate - 5ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/plan/request-approval - 6ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/approvals/a46e9e6b-453d-46ed-b598-f578a48332f7/decide - 6ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686/dispatch - 36ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 5ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 2ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 2ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 0ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 2ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 0ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 0ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 0ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 2ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 2ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686 - 1ms
+[api] GET /api/health - 1ms
+[api] POST /api/users/login - 32ms
+[api] GET /api/workshop/projects - 14ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability - 7ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/events?scope=all&limit=30 - 5ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 34ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0 - 12ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/work-items//cancel - 6ms
+[api] GET /api/health - 1ms
+{"t":"2026-11-08T01:41:17.903+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:c682cf00-2b36-4f6e-aaed-8ddb113489ae] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:41:17.904+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e632301b-e81b-4576-a521-f6bc150dbc4f] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:41:17.905+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:c682cf00-2b36-4f6e-aaed-8ddb113489ae] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:41:17.905+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e632301b-e81b-4576-a521-f6bc150dbc4f] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/users/login - 33ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability - 2ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability - 1ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/work-items/1df55c4c-20c2-44ca-b1fc-874f9ccc1686/cancel - 2ms
+{"t":"2026-11-08T01:41:28.130+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:70eb4152-4e8b-471f-9b6a-35019b39f8e1] abortTask 调用(task=5c83d359-9cfd-465a-a991-91ea442b038b,state=busy)"}
+{"t":"2026-11-08T01:41:28.131+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:0eedd6bb-33b0-4cfe-aeab-21dd9a23c0e3] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:41:28.137+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:70eb4152-4e8b-471f-9b6a-35019b39f8e1] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:41:28.143+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:0eedd6bb-33b0-4cfe-aeab-21dd9a23c0e3] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/health - 0ms
+{"t":"2026-11-08T01:42:10.539+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:3e436697-6181-4d94-a430-a2ee8d813227] abortTask 调用(task=41015e18-a280-4206-a8d3-bacdd71dc30b,state=busy)"}
+{"t":"2026-11-08T01:42:10.543+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:c4077d10-f17b-4fea-9f37-0e909739b1d1] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:42:10.546+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:3e436697-6181-4d94-a430-a2ee8d813227] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:42:10.551+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:c4077d10-f17b-4fea-9f37-0e909739b1d1] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/users/login - 32ms
+[api] POST /api/users/login - 28ms
+[api] GET /api/workshop/dcw - 4ms
+[api] GET /api/workshop/daq - 2ms
+[api] GET /api/workshop/dcw - 4ms
+[api] GET /api/workshop/dcw - 4ms
+[api] PATCH /api/system/settings - 2ms
+[api] GET /api/workshop/workspaces - 1ms
+[api] POST /api/workshop/channels - 2ms
+[api] POST /api/workshop/channels/4451f038-a4e9-4ac8-811c-cb00873d1afc/agents - 3ms
+[api] POST /api/workshop/channels/4451f038-a4e9-4ac8-811c-cb00873d1afc/agents - 1ms
+[api] POST /api/workshop/channels/4451f038-a4e9-4ac8-811c-cb00873d1afc/activate - 0ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/4451f038-a4e9-4ac8-811c-cb00873d1afc - 0ms
+[api] POST /api/workshop/channels - 12ms
+[api] POST /api/workshop/channels/0c8ff757-b78c-422d-b7d4-15354ed20b34/agents - 2ms
+[api] POST /api/workshop/channels/0c8ff757-b78c-422d-b7d4-15354ed20b34/agents - 1ms
+[api] POST /api/workshop/channels/0c8ff757-b78c-422d-b7d4-15354ed20b34/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/0c8ff757-b78c-422d-b7d4-15354ed20b34 - 1ms
+[api] GET /api/workshop/channel-templates - 1ms
+[api] POST /api/workshop/channel-templates/chtpl-aml-training-default/instantiate - 29ms
+[api] POST /api/workshop/channels/82d8e28d-f04f-4fb8-a2a1-dfe81776dbf7/agents - 1ms
+[api] GET /api/workshop/channels/82d8e28d-f04f-4fb8-a2a1-dfe81776dbf7/agents - 1ms
+[api] POST /api/workshop/channels/82d8e28d-f04f-4fb8-a2a1-dfe81776dbf7/activate - 0ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/82d8e28d-f04f-4fb8-a2a1-dfe81776dbf7 - 1ms
+[api] GET /api/workshop/channels/82d8e28d-f04f-4fb8-a2a1-dfe81776dbf7/twin-profile - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 0ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 0ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/projects - 2ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/channels - 1ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/channels - 0ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/channels - 1ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/deliverables - 1ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/deliverables - 0ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/deliverables - 1ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/work-items - 2ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/work-items - 1ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/work-items - 2ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/activate - 1ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/plan/request-approval - 2ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/approvals/f106d907-046a-4649-be4b-153b3055a3eb/decide - 2ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe/dispatch - 28ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 2ms
+[api] GET /api/workshop/channels/c35370fa-05d5-4213-b245-be8220ffb077/agents - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 6ms
+[api] POST /api/workshop/agent-tools/invoke - 3ms
+{"t":"2026-11-08T01:42:12.136+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:d2b0c916-f644-4c61-8ae7-4e0d1b16cb71] abortTask 调用(task=c65e48f1-aacd-4bd3-acfd-e9a277ae7769,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 7ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 2ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/health - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 2ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 12ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/health - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/results - 0ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 1ms
+{"t":"2026-11-08T01:44:17.955+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:fa6427d2-f271-41a0-9c15-e864beb35c81] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:44:17.955+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:14a38ea2-010a-4a10-b624-d2b8a3f0a4dd] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:44:17.956+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:d2b0c916-f644-4c61-8ae7-4e0d1b16cb71] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:44:17.957+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:fa6427d2-f271-41a0-9c15-e864beb35c81] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:44:17.957+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:14a38ea2-010a-4a10-b624-d2b8a3f0a4dd] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/health - 0ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 1ms
+{"t":"2026-11-08T01:46:17.984+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:3ea4c90a-0573-4a58-8f94-c5c3b9312a84] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:46:17.984+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:3ea4c90a-0573-4a58-8f94-c5c3b9312a84] runtime.stop() 调用(卸载/停用)"}
+[daq-rollup] 聚合完成:1m=57 行,1h=0 行,产线 750
+[api] GET /api/health - 0ms
+[api] GET /api/health - 1ms
+[api] POST /api/users/login - 31ms
+[api] POST /api/users/login - 26ms
+[api] GET /api/workshop/projects - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability - 2ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/work-items/0262f3a5-f1be-48f4-ba01-169a41362afe/cancel - 1ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/work-items/6ecb119c-a181-47ff-b6a4-832a07dd9a62/cancel - 1ms
+[api] POST /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/work-items/2b351ed2-5ee7-47ff-86e0-1f3f9bb1f3ab/cancel - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability - 2ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/work-items/10869528-88ce-4277-953d-cb94a56df00e/cancel - 2ms
+[api] POST /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/work-items/df2f63cc-a577-44b5-ae92-09b568ee6819/cancel - 1ms
+[api] GET /api/workshop/dcw - 5ms
+[api] GET /api/workshop/daq - 1ms
+[api] GET /api/workshop/dcw - 3ms
+[api] GET /api/workshop/dcw - 5ms
+[api] PATCH /api/system/settings - 1ms
+[api] GET /api/workshop/workspaces - 1ms
+[api] POST /api/workshop/channels - 4ms
+[api] POST /api/workshop/channels/30d7311b-133e-4855-ac2b-e90c020e05ce/agents - 3ms
+[api] POST /api/workshop/channels/30d7311b-133e-4855-ac2b-e90c020e05ce/agents - 2ms
+[api] POST /api/workshop/channels/30d7311b-133e-4855-ac2b-e90c020e05ce/activate - 0ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/30d7311b-133e-4855-ac2b-e90c020e05ce - 1ms
+[api] POST /api/workshop/channels - 2ms
+[api] POST /api/workshop/channels/5e3d5f9f-018c-467f-95ac-e60538d0d5fd/agents - 1ms
+[api] POST /api/workshop/channels/5e3d5f9f-018c-467f-95ac-e60538d0d5fd/agents - 2ms
+[api] POST /api/workshop/channels/5e3d5f9f-018c-467f-95ac-e60538d0d5fd/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/5e3d5f9f-018c-467f-95ac-e60538d0d5fd - 0ms
+[api] GET /api/workshop/channel-templates - 1ms
+[api] POST /api/workshop/channel-templates/chtpl-aml-training-default/instantiate - 24ms
+[api] POST /api/workshop/channels/b1cc09ca-5695-450e-9215-9cf5558394c4/agents - 1ms
+[api] GET /api/workshop/channels/b1cc09ca-5695-450e-9215-9cf5558394c4/agents - 1ms
+[api] POST /api/workshop/channels/b1cc09ca-5695-450e-9215-9cf5558394c4/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/b1cc09ca-5695-450e-9215-9cf5558394c4 - 0ms
+[api] GET /api/workshop/channels/b1cc09ca-5695-450e-9215-9cf5558394c4/twin-profile - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 0ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 0ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/projects - 2ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/channels - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/channels - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/channels - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/deliverables - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/deliverables - 3ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/deliverables - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/work-items - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/work-items - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/work-items - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/activate - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/plan/request-approval - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/approvals/5592fef9-c961-4b9a-8804-e8281f83dbca/decide - 2ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/work-items/149af649-6962-482b-b7de-24f445e32ebc/dispatch - 34ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/channels/8dde1569-1b18-4852-ae30-bdff3249dbc1/agents - 1ms
+[api] POST /api/workshop/agent-tools/invoke - 142ms
+[api] POST /api/workshop/agent-tools/invoke - 90ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+{"t":"2026-11-08T01:47:41.197+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:6f63b891-1931-405d-a9a6-755b57a507cd] abortTask 调用(task=f9dd8428-1a38-4b1c-8185-47a6afcec942,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 10ms
+[api] POST /api/workshop/agent-tools/invoke - 45ms
+[api] POST /api/workshop/agent-tools/invoke - 8ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 2ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/health - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+{"t":"2026-11-08T01:47:48.012+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:95ba810f-aefa-486f-b545-7f655c75516e] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:47:48.017+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:95ba810f-aefa-486f-b545-7f655c75516e] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 2ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 2ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability/work-items/149af649-6962-482b-b7de-24f445e32ebc - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+{"t":"2026-11-08T01:48:12.608+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:61260277-5ea2-4d56-9c96-8d7c0a7d68ad] supervise external cancel → abort 当前调度回合"}
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/health - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 2ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/results - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 1ms
+{"t":"2026-11-08T01:49:18.040+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:61260277-5ea2-4d56-9c96-8d7c0a7d68ad] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:49:18.041+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:61260277-5ea2-4d56-9c96-8d7c0a7d68ad] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/users/login - 31ms
+[api] POST /api/users/login - 32ms
+[api] GET /api/workshop/projects - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/work-items/149af649-6962-482b-b7de-24f445e32ebc/cancel - 1ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/work-items/0528714f-b904-4584-9fbe-8c70a49bd47d/cancel - 0ms
+[api] POST /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/work-items/ae508df6-9584-4cbe-bb59-b2416e76d4ca/cancel - 2ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability - 1ms
+[api] GET /api/workshop/dcw - 4ms
+[api] GET /api/workshop/daq - 1ms
+[api] GET /api/workshop/dcw - 3ms
+[api] GET /api/workshop/dcw - 3ms
+[api] PATCH /api/system/settings - 1ms
+[api] GET /api/workshop/workspaces - 0ms
+[api] POST /api/workshop/channels - 2ms
+[api] POST /api/workshop/channels/fa7a8dad-e8c0-4f1a-9447-6714cf8064b0/agents - 2ms
+[api] POST /api/workshop/channels/fa7a8dad-e8c0-4f1a-9447-6714cf8064b0/agents - 1ms
+[api] POST /api/workshop/channels/fa7a8dad-e8c0-4f1a-9447-6714cf8064b0/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/fa7a8dad-e8c0-4f1a-9447-6714cf8064b0 - 1ms
+[api] POST /api/workshop/channels - 2ms
+[api] POST /api/workshop/channels/6fc78196-ffb5-442f-946a-2fea24395e74/agents - 5ms
+[api] POST /api/workshop/channels/6fc78196-ffb5-442f-946a-2fea24395e74/agents - 1ms
+[api] POST /api/workshop/channels/6fc78196-ffb5-442f-946a-2fea24395e74/activate - 0ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/6fc78196-ffb5-442f-946a-2fea24395e74 - 1ms
+[api] GET /api/workshop/channel-templates - 2ms
+[api] POST /api/workshop/channel-templates/chtpl-aml-training-default/instantiate - 21ms
+[api] POST /api/workshop/channels/f1697cae-b937-4473-b961-53b9d4e05cc5/agents - 2ms
+[api] GET /api/workshop/channels/f1697cae-b937-4473-b961-53b9d4e05cc5/agents - 1ms
+[api] POST /api/workshop/channels/f1697cae-b937-4473-b961-53b9d4e05cc5/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/f1697cae-b937-4473-b961-53b9d4e05cc5 - 0ms
+[api] GET /api/workshop/channels/f1697cae-b937-4473-b961-53b9d4e05cc5/twin-profile - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 0ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/projects - 2ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/channels - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/channels - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/channels - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/deliverables - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/deliverables - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/deliverables - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/work-items - 0ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/work-items - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/work-items - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/activate - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/plan/request-approval - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/approvals/5568e03c-1fee-40ee-ac03-3c3b37064a9c/decide - 2ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/work-items/e7a8402e-4e04-4524-bd89-b27cc2e2b76b/dispatch - 27ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/e7a8402e-4e04-4524-bd89-b27cc2e2b76b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/e7a8402e-4e04-4524-bd89-b27cc2e2b76b - 1ms
+[api] GET /api/workshop/channels/90a13b48-4ef2-4fa0-ac88-423508534e9b/agents - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 152ms
+[api] POST /api/workshop/agent-tools/invoke - 71ms
+[api] POST /api/workshop/agent-tools/invoke - 11ms
+{"t":"2026-11-08T01:49:43.255+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:6c3b66aa-63a9-43e6-b4fe-b2b5ebe46a27] abortTask 调用(task=e6811a78-ab78-4b5a-85b6-c2803764dc72,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 9ms
+[api] POST /api/workshop/agent-tools/invoke - 20ms
+[api] POST /api/workshop/agent-tools/invoke - 5ms
+[api] POST /api/workshop/agent-tools/invoke - 0ms
+{"t":"2026-11-08T01:49:43.352+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:dbd37328-9597-4332-90cd-2cb31e440cd1] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:49:43.352+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:dbd37328-9597-4332-90cd-2cb31e440cd1] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:49:43.353+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:6c3b66aa-63a9-43e6-b4fe-b2b5ebe46a27] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 22ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/e7a8402e-4e04-4524-bd89-b27cc2e2b76b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results - 0ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results/f1727a61-0dcd-4369-bcaa-d607ebf9dcff/submit - 8ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results/f1727a61-0dcd-4369-bcaa-d607ebf9dcff/review - 5ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results/f1727a61-0dcd-4369-bcaa-d607ebf9dcff/request-acceptance - 4ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/approvals/7c6125f1-eda5-40b1-b85c-1ffcfcf694fa/decide - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d/dispatch - 22ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/ccd407ef-59b4-4ce1-956c-f75a6d920921/agents - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 0ms
+[api] GET /api/workshop/channels/undefined/tasks - 5ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+{"t":"2026-11-08T01:49:48.048+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e822807f-0f58-48a4-84e1-1b2e538d06ad] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:49:48.052+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:6f63b891-1931-405d-a9a6-755b57a507cd] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:49:48.054+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e822807f-0f58-48a4-84e1-1b2e538d06ad] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:49:48.058+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:c0ec2f86-0c4d-4810-b7d2-0b3e78a30a67] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:49:48.059+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e22776b4-d42e-4ab1-b750-8273bced8d2e] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:49:48.059+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:c0ec2f86-0c4d-4810-b7d2-0b3e78a30a67] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:49:48.060+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e22776b4-d42e-4ab1-b750-8273bced8d2e] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 0ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 2ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 2ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 2ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 2ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/dcw - 3ms
+[api] POST /api/workshop/agent-tools/invoke - 3ms
+[api] POST /api/workshop/agent-tools/invoke - 11ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/approvals?status=pending - 4ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/approvals/27cc9feb-319c-4975-ac42-da5ed9a83ef9/decide - 1ms
+[api] GET /api/workshop/hitl/pending - 17ms
+[api] POST /api/workshop/hitl/respond - 44ms
+[api] POST /api/workshop/agent-tools/invoke - 1591ms
+[api] GET /api/workshop/dcw - 4ms
+{"t":"2026-11-08T01:50:12.312+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:718eea26-7631-426b-b9dc-5c1955b633d2] abortTask 调用(task=d1f14ddd-401d-4c96-bcb8-d187c4fec1eb,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 24ms
+[api] POST /api/workshop/agent-tools/invoke - 28ms
+[api] POST /api/workshop/agent-tools/invoke - 5ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+{"t":"2026-11-08T01:50:12.399+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:6edbd5d4-60c1-48e8-befb-e9636f35630f] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:50:12.399+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:6edbd5d4-60c1-48e8-befb-e9636f35630f] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:50:12.399+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:718eea26-7631-426b-b9dc-5c1955b633d2] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 11ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results/183c1d7d-1b68-44db-80c4-5f7826d37aeb/submit - 2ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results/183c1d7d-1b68-44db-80c4-5f7826d37aeb/review - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results/183c1d7d-1b68-44db-80c4-5f7826d37aeb/request-acceptance - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/approvals/642f9503-ffd1-4fa0-9def-c0d4f3dd4e4e/decide - 2ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b/dispatch - 35ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 2ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/health - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 2ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 2ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 2ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/fd50ed28-9c2d-4315-a17d-21639703c7e2/agents - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 2ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 2ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 2ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 0ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 2ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 2ms
+[api] GET /api/workshop/channels/undefined/tasks - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 1ms
+[api] GET /api/workshop/channels/undefined/tasks - 0ms
+[api] GET /api/health - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+{"t":"2026-11-08T01:51:17.871+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:d1efb79d-5b8a-486b-9ef1-c6bf6497f739] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:51:17.871+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:d1efb79d-5b8a-486b-9ef1-c6bf6497f739] supervise external cancel → abort 当前调度回合"}
+{"t":"2026-11-08T01:51:17.873+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:d1efb79d-5b8a-486b-9ef1-c6bf6497f739] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 8ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/07e2ff0d-6641-474b-85e7-16e22a4e049b - 2ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results/cd8339f8-6ced-4c80-a20d-bbfd9fbb3766/submit - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results/cd8339f8-6ced-4c80-a20d-bbfd9fbb3766/review - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results/cd8339f8-6ced-4c80-a20d-bbfd9fbb3766/request-acceptance - 3ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/approvals/147d0a08-5a37-48f5-9df4-0e3c8db8cc2f/decide - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results - 1ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/complete - 5ms
+[api] POST /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/approvals/9df548ac-59c9-4663-9717-f180043f8d6d/decide - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86 - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/events?scope=all&limit=300 - 1ms
+[api] GET /api/health - 0ms
+{"t":"2026-11-08T01:51:48.073+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e7be0bb9-4777-48fe-9720-49845dc23887] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:51:48.073+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:b3699a63-30ab-45d1-9b69-4037eb7aecf7] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:51:48.073+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e7be0bb9-4777-48fe-9720-49845dc23887] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T01:51:48.074+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:b3699a63-30ab-45d1-9b69-4037eb7aecf7] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/users/login - 28ms
+[api] GET /api/workshop/projects - 0ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability - 12ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability - 2ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability/work-items/5ee93e15-526e-4e62-92dc-13bbdc4fb53d - 1ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 28ms
+[api] GET /api/workshop/channels/ccd407ef-59b4-4ce1-956c-f75a6d920921/tasks - 1ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 32ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/results - 1ms
+[api] GET /api/workshop/channels/ccd407ef-59b4-4ce1-956c-f75a6d920921/tasks - 1ms
+[api] GET /api/health - 0ms
+{"t":"2026-11-08T01:53:41.412+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:9a931a0f-00f0-4241-9ee5-cc47da055d5a] supervise external cancel → abort 当前调度回合"}
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 29ms
+[api] GET /api/workshop/channels - 7ms
+[api] GET /api/workshop/channels/fd50ed28-9c2d-4315-a17d-21639703c7e2/agents - 1ms
+[api] GET /api/workshop/daq - 2ms
+[api] POST /api/users/login - 32ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 31ms
+[api] GET /api/workshop/channels/fd50ed28-9c2d-4315-a17d-21639703c7e2/agents - 1ms
+[api] GET /api/workshop/channels - 2ms
+[api] GET /api/health - 1ms
+{"t":"2026-11-08T01:54:48.122+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:9a931a0f-00f0-4241-9ee5-cc47da055d5a] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:54:48.122+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:9a931a0f-00f0-4241-9ee5-cc47da055d5a] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/users/login - 28ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86 - 1ms
+[api] GET /api/workshop/channels/f1697cae-1a37-4e13-9030-6e40a17af79d/agents - 11ms
+[api] POST /api/users/login - 29ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/observability - 1ms
+[api] GET /api/workshop/projects/e724558a-ccc4-4035-8f38-c8acdcb53a86/channels - 12ms
+[api] POST /api/users/login - 26ms
+[api] GET /api/workshop/channels/f1697cae-8e5a-4f79-a54a-9a0f0bd0d0d0/agents - 0ms
+[api] GET /api/workshop/channels - 2ms
+[api] GET /api/workshop/channels/f1697cae-b937-4473-b961-53b9d4e05cc5/agents - 1ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 29ms
+[api] GET /api/workshop/dcw - 3ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+[api] POST /api/users/login - 26ms
+[api] POST /api/workshop/agent-tools/invoke - 4ms
+{"t":"2026-11-08T01:55:43.521+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:958409e2-cb56-4859-bca6-73c379d098c9] supervise external cancel → abort 当前调度回合"}
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 27ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+[api] GET /api/health - 1ms
+[daq-rollup] 聚合完成:1m=57 行,1h=0 行,产线 750
+[api] POST /api/users/login - 37ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] GET /api/health - 1ms
+{"t":"2026-11-08T01:56:48.153+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:958409e2-cb56-4859-bca6-73c379d098c9] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T01:56:48.154+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:958409e2-cb56-4859-bca6-73c379d098c9] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/users/login - 29ms
+[api] GET /api/workshop/agent-tools/bindings?agentId=958409e2-cb56-4859-bca6-73c379d098c9 - 5ms
+[api] POST /api/users/login - 33ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 27ms
+[api] GET /api/workshop/channels/f1697cae-8e5a-4f79-a54a-9a0f0bd0d0d0/agents - 1ms
+[api] GET /api/workshop/channels - 2ms
+[api] GET /api/workshop/channels/f1697cae-8e5a-4f79-a54a-9a0f0bd0d0d0/agents - 0ms
+[api] GET /api/workshop/channels - 2ms
+[api] GET /api/workshop/channels/f1697cae-8e5a-4f79-a54a-9a0f0bd0d0d0/agents - 1ms
+[api] GET /api/workshop/channels - 2ms
+[api] GET /api/workshop/channels/f1697cae-8e5a-4f79-a54a-9a0f0bd0d0d0/agents - 0ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 28ms
+[api] GET /api/workshop/channels - 2ms
+[api] GET /api/workshop/channels/6d4f5262-ac2a-4880-a134-b8c032d6cae9/agents - 1ms
+[api] GET /api/workshop/channels - 2ms
+[api] GET /api/workshop/channels/82d8e28d-f04f-4fb8-a2a1-dfe81776dbf7/agents - 1ms
+[api] GET /api/workshop/channels - 2ms
+[api] GET /api/workshop/channels/b1cc09ca-5695-450e-9215-9cf5558394c4/agents - 1ms
+[api] GET /api/workshop/channels - 2ms
+[api] GET /api/workshop/channels/f1697cae-b937-4473-b961-53b9d4e05cc5/agents - 0ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 30ms
+[api] GET /api/workshop/channel-templates - 10ms
+[api] POST /api/workshop/channel-templates/chtpl-aml-training-default/instantiate - 23ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 31ms
+[api] POST /api/users/login - 32ms
+[api] GET /api/workshop/projects - 2ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability - 11ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability - 2ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability - 2ms
+[api] GET /api/workshop/dcw - 4ms
+[api] GET /api/workshop/daq - 1ms
+[api] GET /api/workshop/dcw - 5ms
+[api] GET /api/workshop/dcw - 3ms
+[api] PATCH /api/system/settings - 2ms
+[api] GET /api/workshop/workspaces - 1ms
+[api] POST /api/workshop/channels - 3ms
+[api] POST /api/workshop/channels/bc297ff9-ace4-40e8-9b96-c4dc88115387/agents - 5ms
+[api] POST /api/workshop/channels/bc297ff9-ace4-40e8-9b96-c4dc88115387/agents - 1ms
+[api] POST /api/workshop/channels/bc297ff9-ace4-40e8-9b96-c4dc88115387/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/bc297ff9-ace4-40e8-9b96-c4dc88115387 - 1ms
+[api] POST /api/workshop/channels - 2ms
+[api] POST /api/workshop/channels/ded2a7ff-3e6d-421a-a5e9-7ae7e507d3b1/agents - 1ms
+[api] POST /api/workshop/channels/ded2a7ff-3e6d-421a-a5e9-7ae7e507d3b1/agents - 1ms
+[api] POST /api/workshop/channels/ded2a7ff-3e6d-421a-a5e9-7ae7e507d3b1/activate - 0ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/ded2a7ff-3e6d-421a-a5e9-7ae7e507d3b1 - 1ms
+[api] GET /api/workshop/channel-templates - 1ms
+[api] POST /api/workshop/channel-templates/chtpl-aml-training-default/instantiate - 24ms
+[api] DELETE /api/workshop/channels/a3a9a7ca-0738-4309-8e66-f1919cfceab3/agents/03a7e681-aa0b-48ad-8225-ab32251ee94c - 5ms
+[api] DELETE /api/workshop/channels/a3a9a7ca-0738-4309-8e66-f1919cfceab3/agents/3328bb3c-b4f0-49ec-906b-9e9ce8519370 - 1ms
+[api] POST /api/workshop/channels/a3a9a7ca-0738-4309-8e66-f1919cfceab3/agents - 1ms
+[api] POST /api/workshop/channels/a3a9a7ca-0738-4309-8e66-f1919cfceab3/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/a3a9a7ca-0738-4309-8e66-f1919cfceab3 - 0ms
+[api] GET /api/workshop/channels/a3a9a7ca-0738-4309-8e66-f1919cfceab3/twin-profile - 0ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/projects - 5ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/channels - 2ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/channels - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/channels - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/deliverables - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/deliverables - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/deliverables - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/work-items - 2ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/work-items - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/work-items - 0ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/activate - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/plan/request-approval - 2ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/approvals/7600e633-2998-4908-a8d4-b28f46ee223e/decide - 3ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/work-items/1a1f5340-f2ef-406e-ae4f-4f23167c8e51/dispatch - 35ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/1a1f5340-f2ef-406e-ae4f-4f23167c8e51 - 0ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/1a1f5340-f2ef-406e-ae4f-4f23167c8e51 - 1ms
+[api] GET /api/workshop/channels/3ffd2e10-309d-4098-8c73-32917ce91ff5/agents - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 83ms
+[api] POST /api/workshop/agent-tools/invoke - 77ms
+[api] POST /api/workshop/agent-tools/invoke - 13ms
+{"t":"2026-11-08T02:02:06.129+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:ed525c5e-ce4f-4263-87e0-0c284a0ab6c2] abortTask 调用(task=f7eead83-7bd8-495d-8330-156013cf1c5f,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 10ms
+[api] POST /api/workshop/agent-tools/invoke - 41ms
+[api] POST /api/workshop/agent-tools/invoke - 8ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+{"t":"2026-11-08T02:02:06.227+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:7c2b434b-6838-4adb-8c7c-1dfd9b66a5ee] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:02:06.227+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:7c2b434b-6838-4adb-8c7c-1dfd9b66a5ee] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:02:06.227+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:ed525c5e-ce4f-4263-87e0-0c284a0ab6c2] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 13ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/1a1f5340-f2ef-406e-ae4f-4f23167c8e51 - 2ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results/0734ae51-05ab-47c6-9683-f296bf51c69a/submit - 2ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results/0734ae51-05ab-47c6-9683-f296bf51c69a/review - 3ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results/0734ae51-05ab-47c6-9683-f296bf51c69a/request-acceptance - 2ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/approvals/f14a0d61-983c-42bb-91d4-a834bd227903/decide - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/0c3b7f40-f6cd-4617-818c-c69fe112570a - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/work-items/0c3b7f40-f6cd-4617-818c-c69fe112570a/dispatch - 26ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/0c3b7f40-f6cd-4617-818c-c69fe112570a - 0ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/0c3b7f40-f6cd-4617-818c-c69fe112570a - 1ms
+[api] GET /api/workshop/channels/0d6e63b3-1863-4399-ac36-148c74fb58cc/agents - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/0c3b7f40-f6cd-4617-818c-c69fe112570a - 1ms
+[api] GET /api/workshop/channels/0d6e63b3-1863-4399-ac36-148c74fb58cc/tasks - 1ms
+[api] GET /api/workshop/dcw - 5ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/approvals?status=pending - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/approvals/d7a2fb92-8399-4952-9f50-918b50423f6c/decide - 0ms
+[api] GET /api/workshop/hitl/pending - 2ms
+[api] POST /api/workshop/hitl/respond - 11ms
+[api] POST /api/workshop/agent-tools/invoke - 1574ms
+[api] GET /api/workshop/dcw - 5ms
+{"t":"2026-11-08T02:02:10.124+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:bdaa224d-ba4c-46d0-bfdf-68dd56b188d3] abortTask 调用(task=a5e6a305-2b73-4fed-81ef-0ccaf26cef91,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 18ms
+[api] POST /api/workshop/agent-tools/invoke - 23ms
+[api] POST /api/workshop/agent-tools/invoke - 6ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+{"t":"2026-11-08T02:02:10.200+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:f8a4d114-aed7-4bc1-a5e1-84d2e9ec9e33] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:02:10.200+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:f8a4d114-aed7-4bc1-a5e1-84d2e9ec9e33] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:02:10.200+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:bdaa224d-ba4c-46d0-bfdf-68dd56b188d3] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 10ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/0c3b7f40-f6cd-4617-818c-c69fe112570a - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results - 0ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results/258c9378-9290-44ed-ae69-473b1436202b/submit - 3ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results/258c9378-9290-44ed-ae69-473b1436202b/review - 3ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results/258c9378-9290-44ed-ae69-473b1436202b/request-acceptance - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/approvals/b30ae28d-d5f6-4349-aa60-30d3e1c86703/decide - 3ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results - 0ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36/dispatch - 18ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 0ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 2ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 2ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 0ms
+[api] GET /api/health - 0ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 0ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 0ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 2ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 0ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/channels/eda2d72a-deaa-4dc8-a499-4dbf2b64eee6/agents - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 0ms
+[api] GET /api/workshop/channels/eda2d72a-deaa-4dc8-a499-4dbf2b64eee6/tasks - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 14ms
+{"t":"2026-11-08T02:02:50.659+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:939000cd-bc02-47f3-9b75-a82a576d690d] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:02:50.659+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:939000cd-bc02-47f3-9b75-a82a576d690d] supervise external cancel → abort 当前调度回合"}
+{"t":"2026-11-08T02:02:50.660+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:939000cd-bc02-47f3-9b75-a82a576d690d] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 8ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/observability/work-items/fbdb9e0a-1ff9-4cea-a83b-5012456f5e36 - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results - 0ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results/fb42ce34-beb0-4924-bf24-377ee3d00378/submit - 2ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results/fb42ce34-beb0-4924-bf24-377ee3d00378/review - 2ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results/fb42ce34-beb0-4924-bf24-377ee3d00378/request-acceptance - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/approvals/c6c1f9ae-ad82-40f1-b3cf-da245731e9b5/decide - 2ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/results - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/complete - 1ms
+[api] POST /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/approvals/f284e73f-3024-4485-ac2d-f8803e207961/decide - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae - 1ms
+[api] GET /api/workshop/projects/64c103ef-17e1-4dd4-8b56-cdb4a805b4ae/events?scope=all&limit=300 - 1ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 27ms
+[api] GET /api/workshop/dcw/runs?limit=8 - 14ms
+[api] GET /api/workshop/channels/f1697cae-8e5a-4f79-a54a-9a0f0bd0d0d0/agents - 0ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 0ms
+{"t":"2026-11-08T02:04:18.263+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:5114e212-7a6d-4040-b233-8c561b45c4ef] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:04:18.263+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:457b85a0-78ff-4ead-ba45-c5e15c774e63] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:04:18.263+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:5114e212-7a6d-4040-b233-8c561b45c4ef] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:04:18.263+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:457b85a0-78ff-4ead-ba45-c5e15c774e63] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/health - 0ms
+[api] GET /api/health - 0ms
+[api] POST /api/users/login - 28ms
+[api] POST /api/users/login - 26ms
+[api] GET /api/workshop/projects - 0ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability - 11ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability - 2ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability - 2ms
+[api] GET /api/workshop/dcw - 3ms
+[api] GET /api/workshop/daq - 1ms
+[api] GET /api/workshop/dcw - 4ms
+[api] GET /api/workshop/dcw - 4ms
+[api] PATCH /api/system/settings - 0ms
+[api] GET /api/workshop/workspaces - 1ms
+[api] POST /api/workshop/channels - 2ms
+[api] POST /api/workshop/channels/2e4a6bae-04cf-400d-906c-4da718c674cb/agents - 3ms
+[api] POST /api/workshop/channels/2e4a6bae-04cf-400d-906c-4da718c674cb/agents - 1ms
+[api] POST /api/workshop/channels/2e4a6bae-04cf-400d-906c-4da718c674cb/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/2e4a6bae-04cf-400d-906c-4da718c674cb - 1ms
+[api] POST /api/workshop/channels - 2ms
+[api] POST /api/workshop/channels/b0e7482a-3251-4109-bf8c-f22793e36860/agents - 1ms
+[api] POST /api/workshop/channels/b0e7482a-3251-4109-bf8c-f22793e36860/agents - 1ms
+[api] POST /api/workshop/channels/b0e7482a-3251-4109-bf8c-f22793e36860/activate - 0ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/b0e7482a-3251-4109-bf8c-f22793e36860 - 0ms
+[api] GET /api/workshop/channel-templates - 1ms
+[api] POST /api/workshop/channel-templates/chtpl-aml-training-default/instantiate - 21ms
+[api] DELETE /api/workshop/channels/31369171-c550-46f2-a4d9-8e816f8d968f/agents/e6520e64-0e6c-4451-97dd-ac0d89eee207 - 1ms
+[api] DELETE /api/workshop/channels/31369171-c550-46f2-a4d9-8e816f8d968f/agents/ab8b0036-d875-4518-97f9-03014245f9cd - 1ms
+[api] POST /api/workshop/channels/31369171-c550-46f2-a4d9-8e816f8d968f/agents - 1ms
+[api] POST /api/workshop/channels/31369171-c550-46f2-a4d9-8e816f8d968f/activate - 0ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/31369171-c550-46f2-a4d9-8e816f8d968f - 1ms
+[api] GET /api/workshop/channels/31369171-c550-46f2-a4d9-8e816f8d968f/twin-profile - 0ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/projects - 2ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/channels - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/channels - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/channels - 0ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/deliverables - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/deliverables - 0ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/deliverables - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/work-items - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/work-items - 0ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/work-items - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/activate - 0ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/plan/request-approval - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/approvals/9335ed91-9398-49c6-b805-e2d7545c758e/decide - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/work-items/87543423-fee9-492f-a58b-eac439ac399d/dispatch - 22ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/87543423-fee9-492f-a58b-eac439ac399d - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/87543423-fee9-492f-a58b-eac439ac399d - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/87543423-fee9-492f-a58b-eac439ac399d - 1ms
+[api] GET /api/workshop/channels/2ff59b9a-7edb-462d-b043-fcdf02dbd297/agents - 1ms
+[api] POST /api/workshop/agent-tools/invoke - 91ms
+[api] POST /api/workshop/agent-tools/invoke - 70ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+{"t":"2026-11-08T02:05:34.765+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:5ffa5356-6adb-4262-bd95-c04a84eba64e] abortTask 调用(task=d637837b-6c85-4db3-9d3e-c04ee3203a42,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 7ms
+[api] POST /api/workshop/agent-tools/invoke - 38ms
+[api] POST /api/workshop/agent-tools/invoke - 4ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+{"t":"2026-11-08T02:05:34.862+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:505d2ebd-313c-4ee3-afa5-9ef391f6b983] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:05:34.863+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:505d2ebd-313c-4ee3-afa5-9ef391f6b983] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:05:34.863+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:5ffa5356-6adb-4262-bd95-c04a84eba64e] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 10ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/87543423-fee9-492f-a58b-eac439ac399d - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results - 0ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results/f0d9736c-acbd-42cd-9d46-fa1a8a7e5021/submit - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results/f0d9736c-acbd-42cd-9d46-fa1a8a7e5021/review - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results/f0d9736c-acbd-42cd-9d46-fa1a8a7e5021/request-acceptance - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/approvals/5e12c1fa-3785-4697-84c1-dc0ec278a093/decide - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/bfcc7d9a-ce26-402a-bace-592712a6661a - 0ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/work-items/bfcc7d9a-ce26-402a-bace-592712a6661a/dispatch - 23ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/bfcc7d9a-ce26-402a-bace-592712a6661a - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/bfcc7d9a-ce26-402a-bace-592712a6661a - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/bfcc7d9a-ce26-402a-bace-592712a6661a - 1ms
+[api] GET /api/workshop/channels/63f7dc3b-23f7-48f8-b3bf-de936160a9f9/agents - 0ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/bfcc7d9a-ce26-402a-bace-592712a6661a - 1ms
+[api] GET /api/workshop/channels/63f7dc3b-23f7-48f8-b3bf-de936160a9f9/tasks - 1ms
+[api] GET /api/workshop/dcw - 3ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/approvals?status=pending - 0ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/approvals/cde708a4-2387-40e5-83bb-713bbeb42589/decide - 2ms
+[api] GET /api/workshop/hitl/pending - 1ms
+[api] POST /api/workshop/hitl/respond - 3ms
+[api] POST /api/workshop/agent-tools/invoke - 1511ms
+[api] GET /api/health - 0ms
+{"t":"2026-11-08T02:06:02.329+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:aac7a671-d260-494f-a902-85affe185e4b] supervise external cancel → abort 当前调度回合"}
+[api] GET /api/health - 1ms
+[daq-rollup] 聚合完成:1m=57 行,1h=0 行,产线 750
+[api] GET /api/health - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/approvals?status=pending - 0ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/approvals/360447d8-d77b-420a-94df-edfeb5ac5f9a/decide - 2ms
+[api] GET /api/workshop/hitl/pending - 1ms
+[api] POST /api/workshop/hitl/respond - 15ms
+[api] POST /api/workshop/agent-tools/invoke - 1553ms
+[api] GET /api/workshop/dcw - 3ms
+{"t":"2026-11-08T02:07:17.336+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:8ed72a6a-c188-4cde-a158-6eceb5bdd377] abortTask 调用(task=2db6a821-3044-445d-a09f-4bfaa2bc9079,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 9ms
+[api] POST /api/workshop/agent-tools/invoke - 38ms
+[api] POST /api/workshop/agent-tools/invoke - 6ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+{"t":"2026-11-08T02:07:17.443+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:4e0813c2-0d8a-4bf0-8f7a-81829ff64701] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:07:17.443+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:4e0813c2-0d8a-4bf0-8f7a-81829ff64701] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:07:17.443+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:8ed72a6a-c188-4cde-a158-6eceb5bdd377] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 9ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/bfcc7d9a-ce26-402a-bace-592712a6661a - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results/3fdc8b01-3833-4334-8b64-9a1c52d03f55/submit - 3ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results/3fdc8b01-3833-4334-8b64-9a1c52d03f55/review - 2ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results/3fdc8b01-3833-4334-8b64-9a1c52d03f55/request-acceptance - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/approvals/7117ef95-c33b-4fee-a8dc-b0136ab0d169/decide - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57/dispatch - 34ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/health - 1ms
+{"t":"2026-11-08T02:07:18.291+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:aac7a671-d260-494f-a902-85affe185e4b] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:07:18.291+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:aac7a671-d260-494f-a902-85affe185e4b] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 0ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 0ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 0ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+{"t":"2026-11-08T02:07:48.301+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:92ee441d-1c7e-4c09-9ea0-e613f91ee497] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:07:48.302+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:cf777fd0-5181-4720-8faa-4ac4e4b579d3] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:07:48.302+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:92ee441d-1c7e-4c09-9ea0-e613f91ee497] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:07:48.302+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:cf777fd0-5181-4720-8faa-4ac4e4b579d3] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/channels/323186b3-3820-4b2d-bee7-dc5d511f828a/agents - 0ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/channels/323186b3-3820-4b2d-bee7-dc5d511f828a/tasks - 1ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] GET /api/workshop/dcw/runs?limit=20 - 0ms
+[api] POST /api/workshop/dcw/runs/rr-ef2938cf/close - 25ms
+[api] POST /api/workshop/dcw/lines/ln-66ef94b8/start - 48ms
+[api] POST /api/workshop/agent-tools/invoke - 250ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+{"t":"2026-11-08T02:07:58.333+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:f85be3e0-0978-4f91-830d-900b80b5b2bb] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:07:58.334+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:f85be3e0-0978-4f91-830d-900b80b5b2bb] supervise external cancel → abort 当前调度回合"}
+{"t":"2026-11-08T02:07:58.336+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:f85be3e0-0978-4f91-830d-900b80b5b2bb] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 23ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/observability/work-items/62eae712-bb40-4e6a-ae2c-00394f62eb57 - 1ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results/0abff811-da74-46a5-afdd-df187512d76a/submit - 2ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results/0abff811-da74-46a5-afdd-df187512d76a/review - 3ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results/0abff811-da74-46a5-afdd-df187512d76a/request-acceptance - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/approvals/890746d0-2120-45cf-aa1e-b1198ac3d335/decide - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/results - 0ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/complete - 1ms
+[api] POST /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/approvals/0735b2a1-b611-4be0-8347-bc458a693710/decide - 2ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8 - 0ms
+[api] GET /api/workshop/projects/789dd213-57f7-4bc2-b046-d5f7511d04f8/events?scope=all&limit=300 - 1ms
+{"t":"2026-11-08T02:08:06.413+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:30c7fce1-2df7-4e9a-aefe-58081652f65f] supervise external cancel → abort 当前调度回合"}
+[api] GET /api/health - 1ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 0ms
+{"t":"2026-11-08T02:09:18.325+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:30c7fce1-2df7-4e9a-aefe-58081652f65f] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:09:18.325+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:30c7fce1-2df7-4e9a-aefe-58081652f65f] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/users/login - 30ms
+[api] POST /api/users/login - 30ms
+[api] GET /api/workshop/projects - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability - 7ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability - 2ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability - 1ms
+[api] GET /api/workshop/dcw - 3ms
+[api] GET /api/workshop/daq - 1ms
+[api] GET /api/workshop/dcw - 4ms
+[api] GET /api/workshop/dcw - 3ms
+[api] PATCH /api/system/settings - 1ms
+[api] GET /api/workshop/workspaces - 1ms
+[api] POST /api/workshop/channels - 2ms
+[api] POST /api/workshop/channels/103e33c1-d8e4-427f-9a94-7554dc3f6a85/agents - 3ms
+[api] POST /api/workshop/channels/103e33c1-d8e4-427f-9a94-7554dc3f6a85/agents - 1ms
+[api] POST /api/workshop/channels/103e33c1-d8e4-427f-9a94-7554dc3f6a85/activate - 0ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/103e33c1-d8e4-427f-9a94-7554dc3f6a85 - 1ms
+[api] POST /api/workshop/channels - 2ms
+[api] POST /api/workshop/channels/28bae638-2ede-4629-ac2a-a05e8cd8ea63/agents - 2ms
+[api] POST /api/workshop/channels/28bae638-2ede-4629-ac2a-a05e8cd8ea63/agents - 1ms
+[api] POST /api/workshop/channels/28bae638-2ede-4629-ac2a-a05e8cd8ea63/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/28bae638-2ede-4629-ac2a-a05e8cd8ea63 - 1ms
+[api] GET /api/workshop/channel-templates - 2ms
+[api] POST /api/workshop/channel-templates/chtpl-aml-training-default/instantiate - 23ms
+[api] DELETE /api/workshop/channels/1baf88aa-cdcd-4494-af5d-8fb95f4af17c/agents/7851b37a-520f-43dd-aa20-b20357515b2a - 1ms
+[api] DELETE /api/workshop/channels/1baf88aa-cdcd-4494-af5d-8fb95f4af17c/agents/dd6fd5e6-d6c0-405a-9e71-ce61604b7edb - 0ms
+[api] POST /api/workshop/channels/1baf88aa-cdcd-4494-af5d-8fb95f4af17c/agents - 0ms
+[api] POST /api/workshop/channels/1baf88aa-cdcd-4494-af5d-8fb95f4af17c/activate - 0ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/1baf88aa-cdcd-4494-af5d-8fb95f4af17c - 1ms
+[api] GET /api/workshop/channels/1baf88aa-cdcd-4494-af5d-8fb95f4af17c/twin-profile - 0ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 3ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/projects - 5ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/channels - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/channels - 0ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/channels - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/deliverables - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/deliverables - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/deliverables - 2ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/work-items - 2ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/work-items - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/work-items - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/activate - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/plan/request-approval - 2ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/approvals/7a60f7ab-ba3f-4d67-8011-16e9b34cf15a/decide - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/work-items/300be939-f7ad-44ae-8d32-fef3bc8fffdc/dispatch - 43ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/300be939-f7ad-44ae-8d32-fef3bc8fffdc - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/300be939-f7ad-44ae-8d32-fef3bc8fffdc - 0ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/300be939-f7ad-44ae-8d32-fef3bc8fffdc - 1ms
+[api] GET /api/workshop/channels/478e764d-aac2-4554-abb7-4a71fe080e26/agents - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 116ms
+[api] POST /api/workshop/agent-tools/invoke - 72ms
+[api] POST /api/workshop/agent-tools/invoke - 3ms
+{"t":"2026-11-08T02:09:29.495+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:3ff82d74-65fa-4d52-8c6a-4dcb3a0f15ef] abortTask 调用(task=bd905a30-8f43-4a94-a150-0c46c01fb559,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 11ms
+[api] POST /api/workshop/agent-tools/invoke - 19ms
+[api] POST /api/workshop/agent-tools/invoke - 5ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+{"t":"2026-11-08T02:09:29.557+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:9db651d3-dcb6-4262-bfae-d0eaa36b953a] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:09:29.557+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:9db651d3-dcb6-4262-bfae-d0eaa36b953a] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:09:29.558+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:3ff82d74-65fa-4d52-8c6a-4dcb3a0f15ef] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 20ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/300be939-f7ad-44ae-8d32-fef3bc8fffdc - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results - 0ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results/cce5f846-58db-40b5-8b9d-0fab4deb57ea/submit - 2ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results/cce5f846-58db-40b5-8b9d-0fab4deb57ea/review - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results/cce5f846-58db-40b5-8b9d-0fab4deb57ea/request-acceptance - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/approvals/8b114bce-acba-481e-b3a5-8cb83f19e6b9/decide - 2ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/f0f6576a-1fb6-432d-bc38-d64d3a940989 - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/work-items/f0f6576a-1fb6-432d-bc38-d64d3a940989/dispatch - 25ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/f0f6576a-1fb6-432d-bc38-d64d3a940989 - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/f0f6576a-1fb6-432d-bc38-d64d3a940989 - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/f0f6576a-1fb6-432d-bc38-d64d3a940989 - 1ms
+[api] GET /api/workshop/channels/3a0aedba-7a49-4f93-a9b4-0c082003f52a/agents - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/f0f6576a-1fb6-432d-bc38-d64d3a940989 - 0ms
+[api] GET /api/workshop/channels/3a0aedba-7a49-4f93-a9b4-0c082003f52a/tasks - 1ms
+[api] GET /api/workshop/dcw - 4ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/approvals?status=pending - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/approvals/8db66ddd-4372-4eec-9d91-3e212d1fbcef/decide - 0ms
+[api] GET /api/workshop/hitl/pending - 1ms
+[api] POST /api/workshop/hitl/respond - 3ms
+[api] POST /api/workshop/agent-tools/invoke - 1494ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 1ms
+{"t":"2026-11-08T02:11:35.103+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:8c0a4315-dc92-4e5e-8fdd-98cdd6cfaac7] supervise external cancel → abort 当前调度回合"}
+[api] GET /api/health - 1ms
+{"t":"2026-11-08T02:11:48.346+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:45c430ed-b3af-4828-af58-c4d5a75f5733] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:11:48.346+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:4b4466a6-1f69-47c5-805d-167af73ad9cf] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:11:48.347+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:45c430ed-b3af-4828-af58-c4d5a75f5733] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:11:48.347+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:4b4466a6-1f69-47c5-805d-167af73ad9cf] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/health - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/approvals?status=pending - 0ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/approvals/481df2d7-035e-4ff8-a1eb-31fac6bfe178/decide - 1ms
+[api] GET /api/workshop/hitl/pending - 1ms
+[api] POST /api/workshop/hitl/respond - 16ms
+[api] POST /api/workshop/agent-tools/invoke - 1551ms
+[api] GET /api/workshop/dcw - 5ms
+{"t":"2026-11-08T02:12:24.033+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:7e3b27f5-94b5-4fb2-9e9b-9e3b9e8cf1ca] abortTask 调用(task=810a36d8-878e-44bc-9fce-2e16b86709e5,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 21ms
+[api] POST /api/workshop/agent-tools/invoke - 23ms
+[api] POST /api/workshop/agent-tools/invoke - 16ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+{"t":"2026-11-08T02:12:24.123+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:26d57a89-d39c-42e1-8b33-b2501001f7db] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:12:24.123+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:26d57a89-d39c-42e1-8b33-b2501001f7db] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:12:24.123+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:7e3b27f5-94b5-4fb2-9e9b-9e3b9e8cf1ca] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 11ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/f0f6576a-1fb6-432d-bc38-d64d3a940989 - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results/350fd3d1-fb8b-4771-8aac-1ebc07a0af6f/submit - 2ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results/350fd3d1-fb8b-4771-8aac-1ebc07a0af6f/review - 2ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results/350fd3d1-fb8b-4771-8aac-1ebc07a0af6f/request-acceptance - 3ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/approvals/6a99e412-b788-4a80-b958-f83a1fbff943/decide - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/work-items/ac57f160-256f-4bae-aca4-03265850ea5e/dispatch - 34ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 0ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 2ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 0ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 0ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+{"t":"2026-11-08T02:12:48.369+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:8c0a4315-dc92-4e5e-8fdd-98cdd6cfaac7] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:12:48.369+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:8c0a4315-dc92-4e5e-8fdd-98cdd6cfaac7] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 2ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 2ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 0ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 0ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/channels/02a1547f-d07c-468f-b946-b35c018109e5/agents - 0ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/channels/02a1547f-d07c-468f-b946-b35c018109e5/tasks - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+[api] POST /api/workshop/agent-tools/invoke - 2ms
+{"t":"2026-11-08T02:13:04.689+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e9814253-ba91-47ce-8b63-44a293b4a391] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:13:04.690+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:e9814253-ba91-47ce-8b63-44a293b4a391] supervise external cancel → abort 当前调度回合"}
+{"t":"2026-11-08T02:13:04.691+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e9814253-ba91-47ce-8b63-44a293b4a391] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 10ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/observability/work-items/ac57f160-256f-4bae-aca4-03265850ea5e - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results/fc04461c-6e67-4003-900a-93ed7b48d1af/submit - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results/fc04461c-6e67-4003-900a-93ed7b48d1af/review - 2ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results/fc04461c-6e67-4003-900a-93ed7b48d1af/request-acceptance - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/approvals/b49bc4b9-ef08-4ca0-97a3-ecdfb9370489/decide - 1ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/results - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/complete - 1ms
+[api] POST /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/approvals/50143da3-c1a7-4e37-91b5-7f1d484b4bc7/decide - 2ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4 - 0ms
+[api] GET /api/workshop/projects/5ad2278a-0231-4cea-8484-d8b43da3adc4/events?scope=all&limit=300 - 0ms
+[api] GET /api/health - 1ms
+[api] POST /api/users/login - 25ms
+[api] POST /api/users/login - 25ms
+[api] GET /api/workshop/projects - 1ms
+[api] GET /api/workshop/projects/fa0d1662-8f0f-4506-a1cb-b15525449036/observability - 1ms
+[api] GET /api/workshop/projects/366dd63c-9df8-491f-95b2-d745c38cb49c/observability - 1ms
+[api] GET /api/workshop/projects/a6f78516-b06e-4fd7-939f-7264da4643d0/observability - 1ms
+[api] GET /api/workshop/dcw - 2ms
+[api] GET /api/workshop/daq - 1ms
+[api] GET /api/workshop/dcw - 4ms
+[api] GET /api/workshop/dcw - 4ms
+[api] PATCH /api/system/settings - 0ms
+[api] GET /api/workshop/workspaces - 1ms
+[api] POST /api/workshop/channels - 2ms
+[api] POST /api/workshop/channels/02078be6-89e6-47ce-8526-c43cd50a3e72/agents - 12ms
+[api] POST /api/workshop/channels/02078be6-89e6-47ce-8526-c43cd50a3e72/agents - 2ms
+[api] POST /api/workshop/channels/02078be6-89e6-47ce-8526-c43cd50a3e72/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/02078be6-89e6-47ce-8526-c43cd50a3e72 - 1ms
+[api] POST /api/workshop/channels - 1ms
+[api] POST /api/workshop/channels/8b5dbca8-ee93-48e3-95bd-5ca0d2faaefa/agents - 2ms
+[api] POST /api/workshop/channels/8b5dbca8-ee93-48e3-95bd-5ca0d2faaefa/agents - 2ms
+[api] POST /api/workshop/channels/8b5dbca8-ee93-48e3-95bd-5ca0d2faaefa/activate - 1ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/8b5dbca8-ee93-48e3-95bd-5ca0d2faaefa - 1ms
+[api] GET /api/workshop/channel-templates - 1ms
+[api] POST /api/workshop/channel-templates/chtpl-aml-training-default/instantiate - 20ms
+[api] DELETE /api/workshop/channels/fd4a6f94-5f40-46d8-b51a-7af08e31dde9/agents/b03a6d6b-b39f-410b-b623-e5d139415e1c - 0ms
+[api] DELETE /api/workshop/channels/fd4a6f94-5f40-46d8-b51a-7af08e31dde9/agents/8bd2b276-bf09-4f46-9752-33b4ed451e4c - 1ms
+[api] POST /api/workshop/channels/fd4a6f94-5f40-46d8-b51a-7af08e31dde9/agents - 1ms
+[api] POST /api/workshop/channels/fd4a6f94-5f40-46d8-b51a-7af08e31dde9/activate - 0ms
+[api] POST /api/workshop/workspaces/8afccc27-2773-42ce-8a7e-74c1c1dd7f67/channels/fd4a6f94-5f40-46d8-b51a-7af08e31dde9 - 1ms
+[api] GET /api/workshop/channels/fd4a6f94-5f40-46d8-b51a-7af08e31dde9/twin-profile - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/agent-tools/bindings - 2ms
+[api] POST /api/workshop/agent-tools/bindings - 1ms
+[api] POST /api/workshop/projects - 2ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/channels - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/channels - 0ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/channels - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/deliverables - 0ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/deliverables - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/deliverables - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/work-items - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/work-items - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/work-items - 0ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/activate - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/plan/request-approval - 2ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/approvals/ce053a5e-07a9-4412-aee7-a908933ffa43/decide - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/work-items/42973575-0812-4ef9-baa4-af9476c40d3e/dispatch - 25ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/42973575-0812-4ef9-baa4-af9476c40d3e - 2ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/42973575-0812-4ef9-baa4-af9476c40d3e - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/42973575-0812-4ef9-baa4-af9476c40d3e - 0ms
+[api] GET /api/workshop/channels/7349bcd8-eff9-4d17-830c-48d8ab0f0ea4/agents - 1ms
+[api] POST /api/workshop/agent-tools/invoke - 81ms
+[api] POST /api/workshop/agent-tools/invoke - 73ms
+[api] POST /api/workshop/agent-tools/invoke - 11ms
+{"t":"2026-11-08T02:13:34.256+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:78c80970-7798-4d23-b01d-3801bd675a9a] abortTask 调用(task=4d800193-7dc3-45c8-b3dc-321c7d8445ef,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 19ms
+[api] POST /api/workshop/agent-tools/invoke - 16ms
+[api] POST /api/workshop/agent-tools/invoke - 6ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+{"t":"2026-11-08T02:13:34.341+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e277ad9b-2d01-4c11-be78-d2736c9b9a80] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:13:34.341+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:e277ad9b-2d01-4c11-be78-d2736c9b9a80] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:13:34.341+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:78c80970-7798-4d23-b01d-3801bd675a9a] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 7ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/42973575-0812-4ef9-baa4-af9476c40d3e - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results/77535c2e-7a28-4658-ac2e-0094e6c3231d/submit - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results/77535c2e-7a28-4658-ac2e-0094e6c3231d/review - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results/77535c2e-7a28-4658-ac2e-0094e6c3231d/request-acceptance - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/approvals/cf952e10-5963-4341-8f51-708ab3fce497/decide - 2ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/83ec0a37-fc76-4706-a8fa-b7133bd4a795 - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/work-items/83ec0a37-fc76-4706-a8fa-b7133bd4a795/dispatch - 21ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/83ec0a37-fc76-4706-a8fa-b7133bd4a795 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/83ec0a37-fc76-4706-a8fa-b7133bd4a795 - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/83ec0a37-fc76-4706-a8fa-b7133bd4a795 - 0ms
+[api] GET /api/workshop/channels/2ccb34ee-b63b-4f0f-aada-a7c3fad2f6a9/agents - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/83ec0a37-fc76-4706-a8fa-b7133bd4a795 - 1ms
+[api] GET /api/workshop/channels/2ccb34ee-b63b-4f0f-aada-a7c3fad2f6a9/tasks - 1ms
+[api] GET /api/workshop/dcw - 3ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/approvals?status=pending - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/approvals/22b4cadd-acfb-473d-abce-dc307f6abeb2/decide - 22ms
+[api] GET /api/workshop/hitl/pending - 1ms
+[api] POST /api/workshop/hitl/respond - 3ms
+[api] POST /api/workshop/agent-tools/invoke - 1526ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/health - 0ms
+{"t":"2026-11-08T02:15:29.745+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:f637370e-7af0-4d5d-bc75-16e79437f210] supervise external cancel → abort 当前调度回合"}
+[api] GET /api/health - 0ms
+{"t":"2026-11-08T02:15:48.387+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:abf61e1f-dcb2-4ec0-8d65-f5dbb862f21d] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:15:48.387+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:ad8ad6a4-1c23-48c9-939c-46bca17c8f70] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:15:48.388+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:abf61e1f-dcb2-4ec0-8d65-f5dbb862f21d] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:15:48.388+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:ad8ad6a4-1c23-48c9-939c-46bca17c8f70] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/health - 1ms
+[daq-rollup] 聚合完成:1m=38 行,1h=0 行,产线 750
+[api] GET /api/health - 1ms
+{"t":"2026-11-08T02:16:48.412+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:f637370e-7af0-4d5d-bc75-16e79437f210] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:16:48.413+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:f637370e-7af0-4d5d-bc75-16e79437f210] runtime.stop() 调用(卸载/停用)"}
+[api] GET /api/health - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/approvals?status=pending - 0ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/approvals/11337b4a-036b-4b4a-822a-16e8b1091128/decide - 2ms
+[api] GET /api/workshop/hitl/pending - 1ms
+[api] POST /api/workshop/hitl/respond - 17ms
+[api] POST /api/workshop/agent-tools/invoke - 1551ms
+[api] GET /api/workshop/dcw - 3ms
+{"t":"2026-11-08T02:17:30.783+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:c3e38d36-5830-418e-b3e8-32c76281376f] abortTask 调用(task=a52c0364-c6a4-4568-b177-1467b48ac385,state=busy)"}
+[api] POST /api/workshop/agent-tools/invoke - 11ms
+[api] POST /api/workshop/agent-tools/invoke - 28ms
+[api] POST /api/workshop/agent-tools/invoke - 5ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+{"t":"2026-11-08T02:17:30.887+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:000f44f9-b627-4459-85e0-0071c2c76b50] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:17:30.887+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:000f44f9-b627-4459-85e0-0071c2c76b50] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-08T02:17:30.887+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:c3e38d36-5830-418e-b3e8-32c76281376f] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 8ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/83ec0a37-fc76-4706-a8fa-b7133bd4a795 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results - 0ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results/9e3945f0-4e88-4493-819f-28405efd9cff/submit - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results/9e3945f0-4e88-4493-819f-28405efd9cff/review - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results/9e3945f0-4e88-4493-819f-28405efd9cff/request-acceptance - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/approvals/866e6e49-8dbb-4f5b-837b-30aca62b75b1/decide - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results - 1ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/work-items/ee762905-3b81-498d-bda6-4b2b294ac080/dispatch - 47ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 2ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/health - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 2ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 2ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 2ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/channels/8b7a4023-43e1-4b0d-9f3d-70c978a4aa79/agents - 0ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/channels/8b7a4023-43e1-4b0d-9f3d-70c978a4aa79/tasks - 0ms
+[api] POST /api/workshop/agent-tools/invoke - 108ms
+[api] POST /api/workshop/agent-tools/invoke - 1ms
+{"t":"2026-11-08T02:18:11.626+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:18e7d3ac-9003-46b6-8163-8431c56c154a] abortCurrent 调用(state=idle)"}
+{"t":"2026-11-08T02:18:11.627+08:00","level":"warn","scope":"workshop.omp","msg":"[OmpRpcAgent:18e7d3ac-9003-46b6-8163-8431c56c154a] supervise external cancel → abort 当前调度回合"}
+{"t":"2026-11-08T02:18:11.628+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:18e7d3ac-9003-46b6-8163-8431c56c154a] runtime.stop() 调用(卸载/停用)"}
+[api] POST /api/workshop/agent-tools/invoke - 7ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/observability/work-items/ee762905-3b81-498d-bda6-4b2b294ac080 - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results - 0ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results/c46aa6f4-e5ac-444b-bef3-9141649cab37/submit - 3ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results/c46aa6f4-e5ac-444b-bef3-9141649cab37/review - 2ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results/c46aa6f4-e5ac-444b-bef3-9141649cab37/request-acceptance - 2ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/approvals/4e239a19-407f-4ff2-ac39-43f9656a54ae/decide - 2ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/results - 0ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/complete - 0ms
+[api] POST /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/approvals/ee2e41d0-cf72-407e-8ead-23d578f4502d/decide - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e - 1ms
+[api] GET /api/workshop/projects/904de1d8-ddf6-4de3-8322-7ea11385a96e/events?scope=all&limit=300 - 1ms
+[api] GET /api/health - 1ms
