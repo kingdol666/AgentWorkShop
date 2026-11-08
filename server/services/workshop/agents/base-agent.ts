@@ -97,7 +97,19 @@ export abstract class BaseAgentImpl implements AgentInterface {
   }
 
   protected refreshIdentity(): void {
-    this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName, harness: this.harnessId }
+    // harnessId 是**子类 getter**:基类构造期调用本方法时,子类字段(spec/config 等)尚未赋值
+    // (JS 类语义:派生类字段初始化必须等 super() 返回)。直接读会 TypeError
+    // —— 2026-11-08 生产审计 P0-1:one-shot 家族 6 引擎(gemini/copilot/cursor/crush/goose/pi)
+    // 构造即崩,2026-10-31 回归引入。此处 fail-safe 读:构造期取不到就留空,
+    // 子类在自身构造末尾(spec 就绪后)再调一次 refreshIdentity() 补齐。
+    let harness = ''
+    try {
+      harness = this.harnessId
+    }
+    catch {
+      harness = ''
+    }
+    this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName, harness }
     this.roster = this.makeRoster()
   }
 
