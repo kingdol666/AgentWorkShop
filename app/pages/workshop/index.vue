@@ -121,15 +121,15 @@ useHead({ title: () => t('titles.workshop') })
 </template>
 
 <style scoped>
-.page { padding: 4px; }
+.page { width: 100%; max-width: 1240px; padding: 4px; margin: 0 auto; }
 
 /* 卡片/空态/页头/登录门的规则都随各自的标记搬进了 components/workshop/workbench/*
    (scoped 编译成 .x[data-v-<scopeId>],样式必须与拥有该元素的标记同址);
    这里只剩页面自己的外壳类。 */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(336px, 1fr));
+  gap: 18px;
 }
 
 /* 新建占位砖:与工作区卡同高同圆角,虚线边界表明"这里还能放一个" */
@@ -139,8 +139,8 @@ useHead({ title: () => t('titles.workshop') })
   gap: 6px;
   align-items: center;
   justify-content: center;
-  min-height: 190px;
-  padding: 20px;
+  min-height: 196px;
+  padding: 22px;
   font-family: var(--font-body);
   color: var(--ink-faint);
   cursor: pointer;
