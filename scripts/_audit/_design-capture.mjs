@@ -36,7 +36,6 @@ await page.evaluateOnNewDocument(() => {
   try { localStorage.setItem('app', JSON.stringify({ isDark: false, sidebarCollapsed: false, accent: null, themeTouched: true })) } catch { /* frame gap */ }
 })
 
-let index = 0
 for (const t of TARGETS) {
   const [name, path] = t.split('::')
   const errors = []
@@ -48,7 +47,6 @@ for (const t of TARGETS) {
     await sleep(4500)
     // 聊天式页面等首帧消息渲染(WS 订阅)
     if (/\/workshop\/w\/|\/projects\//.test(path)) await sleep(2500)
-    index += 1
     await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: false })
     const info = await page.evaluate(() => ({
       len: document.body?.innerText?.length ?? 0,
