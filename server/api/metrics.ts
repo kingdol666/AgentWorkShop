@@ -24,6 +24,7 @@ export default defineEventHandler(async (event) => {
     __daqQueueBackend?: string
     __toolApprovals?: { listPending(agentId?: string): unknown[] }
     __wsDbFlushFails?: number
+    __awEngineActivateFailures?: number
     __awBackupLastAt?: string
   }
 
@@ -80,6 +81,9 @@ export default defineEventHandler(async (event) => {
     { name: 'awshop_tool_approvals_pending', help: 'Pending agent tool approvals(HITL)', value: toolPending },
     { name: 'awshop_operation_approvals_pending', help: 'Pending dangerous-operation approval requests(maker-checker)', value: opsPending },
   )
+
+  // ---- 引擎装配(P1 生产审计:6/14 引擎构造崩溃曾潜伏 8 天,崩了没有任何信号) ----
+  lines.push({ name: 'awshop_engine_activate_failures_total', help: 'Channel/engine activate failures or timeouts(since process start)', value: g.__awEngineActivateFailures ?? 0 })
 
   // ---- 备份(S6) ----
   lines.push({ name: 'awshop_backup_last_success_timestamp', help: 'Last successful backup ISO time(0=从未)', value: g.__awBackupLastAt ?? 0 })
