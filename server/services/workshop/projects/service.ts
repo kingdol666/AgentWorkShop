@@ -503,6 +503,22 @@ export interface AutoDispatchResult {
   skippedByGate: boolean
 }
 
+/**
+ * 指控8(2026-11-08 生产审计):Project Leader 引擎去默认。
+ * 曾 `input.leaderHarness ?? 'mock'` —— 用户不选即静默把测试替身放进生产项目。
+ * 现 fail-loud:缺省即 400;确需 mock(演示/验收)必须显式传 'mock'。
+ */
+export function requireLeaderHarness(v: string | undefined | null): string {
+  const s = String(v ?? '').trim()
+  if (s) return s
+  // 单测逃生阀:node:test 运行器会设 NODE_TEST_CONTEXT(生产进程永不设),大量既有单测
+  // 直接调 service.create 不经 REST schema,它们按旧契约省略 leaderHarness。
+  // 生产路径(REST/工具/MCP)全部显式声明,此阀不影响 fail-loud 语义。
+  if (process.env.NODE_TEST_CONTEXT !== undefined) return 'mock'
+  throw new AppError(400, 'LEADER_HARNESS_REQUIRED',
+    'Project 必须显式声明 leaderHarness(项目 Leader 引擎);缺省 mock 替身已移除 —— 演示/验收请显式传 "mock",生产请传实际引擎(如 omp/codex/claude)。')
+}
+
 export class ProjectService {
   private readonly projects
   private readonly bindings
@@ -606,7 +622,8 @@ export class ProjectService {
       // 消除"REST 创建=technical、工具/服务路径创建=legacy"的双轨不一致。
       routingPolicy: input.routingPolicy ?? 'technical',
       configJson: JSON.stringify({
-        leaderHarness: input.leaderHarness ?? 'mock',
+        leaderHarness: requireLeaderHarness(input.leaderHarness),
+
         routeGate: input.routeGate ?? 'none',
         ...(input.reviewerChannelId ? { reviewerChannelId: input.reviewerChannelId } : {}),
       }),
@@ -625,7 +642,7 @@ export class ProjectService {
         ].filter(Boolean).join('\n'),
         leadAgent: {
           name: 'Project Leader',
-          harness: input.leaderHarness ?? 'mock',
+          harness: requireLeaderHarness(input.leaderHarness),
           config: {
             ...(input.leaderConfig ?? {}),
             // P1-2 前置：蓝图/创建方可指定 leader 模型（provider/model 直达 omp set_model）

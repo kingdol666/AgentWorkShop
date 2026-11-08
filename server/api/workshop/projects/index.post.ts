@@ -14,7 +14,9 @@ const schema = z.object({
   objective: z.string().min(1),
   successCriteria: z.array(z.string()).optional(),
   mode: z.enum(['observe', 'supervised', 'auto']).optional(),
-  leaderHarness: z.string().min(1).optional(),
+  // 指控8(2026-11-08 生产审计):去默认 —— 曾 `?? 'mock'` 让用户不选就静默得到测试替身做
+  // 生产 Project Leader。现须显式声明;确需 mock(演示/验收)请显式传 'mock'。
+  leaderHarness: z.string().min(1, 'leaderHarness 必填:请显式声明项目 Leader 引擎(演示请传 "mock")'),
   leaderConfig: z.record(z.string(), z.unknown()).optional(),
   // PR20 Route 派发闭环：计划批准后按 dependsOn 就绪顺序自动派发（缺省 false）
   autoDispatch: z.boolean().optional(),
