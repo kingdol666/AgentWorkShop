@@ -106,6 +106,14 @@ const onSaveTemplate = (name: string): void => {
   saveTplOpen.value = true
 }
 
+/** 频道行副标题:只展示有信息量的计数(全 0 时仅成员数) */
+const channelMeta = (ch: { agents: number, busy: number, activeTasks: number }): string => {
+  const parts = [`${ch.agents} 成员`]
+  if (ch.busy > 0) parts.push(`忙 ${ch.busy}`)
+  if (ch.activeTasks > 0) parts.push(`任务 ${ch.activeTasks}`)
+  return parts.join(' · ')
+}
+
 const goTemplates = (): void => {
   navigateTo('/workshop/channel-templates')
 }
@@ -163,7 +171,7 @@ const goTemplates = (): void => {
     <ClientOnly>
       <div class="side-section">
         <div class="side-label">
-          {{ $t('wsView.channelListTitle') }}
+          {{ $t('wsView.channelListTitle') }} · {{ mountedChannels.length }}
         </div>
         <div
           v-if="mountedChannels.length === 0"
@@ -222,7 +230,7 @@ const goTemplates = (): void => {
             <span
               v-else
               class="meta"
-            >{{ ch.agents }} {{ $t('channelSessionList.k1ggoa45025') }} {{ ch.busy }} / {{ $t('channelSessionList.k3wcox034') }} {{ ch.activeTasks }}</span>
+            >{{ channelMeta(ch) }}</span>
           </div>
           <button
             v-if="displayWorkspace(ch.workspace)"
@@ -424,7 +432,7 @@ const goTemplates = (): void => {
 
 /* 频道行:填充态行(无边框卡;hover/active 灰阶) */
 .channel-item {
-  padding: 8px 10px;
+  padding: 7px 9px;
   margin: 1px 0;
   cursor: pointer;
   background: transparent;
@@ -491,10 +499,11 @@ const goTemplates = (): void => {
   border: 0;
   border-radius: 6px;
   /* 常显(低透明度):不再 hover-only——行级操作入口不应时隐时现 */
-  opacity: 0.55;
+  opacity: 0.28;
   transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
 }
 .channel-item:hover .op,
+.channel-item:focus-within .op,
 .channel-item.active .op { opacity: 0.9; }
 .op:hover {
   opacity: 1;
@@ -537,14 +546,14 @@ const goTemplates = (): void => {
 
 /* 模板挂载:发丝线分隔 + 紧凑选择器 */
 .mount-template {
-  padding: 12px 4px 6px;
-  margin-top: 10px;
+  padding: 10px 4px 4px;
+  margin-top: 8px;
   border-top: 1px solid var(--chat-line);
 }
 .select { width: 100%; }
 .tpl-hint {
-  padding: 5px 2px 0;
-  font-size: var(--fs-micro);
+  padding: 4px 2px 0;
+  font-size: 10px;
   color: var(--chat-ink-faint);
 }
 </style>

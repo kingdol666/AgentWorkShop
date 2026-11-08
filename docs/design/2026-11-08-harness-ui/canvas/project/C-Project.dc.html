@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>方向 C · Project 纸页</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; }
+  a { color: #8a3b2f; } a:hover { color: #6a2b21; }
+  * { box-sizing: border-box; }
+  button, textarea { font-family: inherit; }
+  .row-hover:hover { background: #eae1cf; }
+  .ghost-btn:hover { background: #eae1cf; }
+</style>
+</helmet>
+
+<div style="width: 100%; height: 100dvh; min-height: 900px; display: flex; background: #f7f2e8; color: #1e1a16; font-family: 'Geist', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; overflow: hidden;">
+
+  <aside style="width: 262px; flex: 0 0 262px; display: flex; flex-direction: column; background: #f2ebdd; border-right: 1px solid #e2d8c4; min-height: 0;">
+    <div style="padding: 16px 18px 6px; display: flex; align-items: center; gap: 8px;">
+      <a href="C-Channel.dc.html" aria-label="返回" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: #8c7f6b; text-decoration: none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      </a>
+      <span style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 13px; color: #8a3b2f;">Project</span>
+    </div>
+    <div style="padding: 4px 18px 14px;">
+      <h1 style="margin: 0; font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 18px; font-weight: 600; line-height: 1.4;">记账软件开发</h1>
+      <div style="display: flex; align-items: center; gap: 7px; margin-top: 7px; font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.06em;">
+        <span style="color: #5c7a52; border: 1px solid #a9bfa1; border-radius: 2px; padding: 1px 5px;">COMPLETED</span>
+        <span style="color: #8c7f6b;">plan v1</span>
+      </div>
+      <p style="margin: 9px 0 0; font-family: 'Noto Serif SC', serif; font-size: 11.5px; line-height: 1.85; color: #5c5042;">三频道协同交付：需求规格 → 源码实现 → 自动化测试。全部交付物经 L1 技术评审与 L2 签核。</p>
+    </div>
+
+    <nav style="flex: 1; overflow-y: auto; padding: 0 10px 12px;">
+      <div style="padding: 10px 8px 6px; border-top: 1px solid #e2d8c4; font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #8c7f6b;">Contents</div>
+      <sc-for list="{{ tabs }}" as="t">
+        <button type="button" onClick="{{ t.pick }}" class="row-hover" style="width: 100%; display: flex; align-items: baseline; gap: 9px; padding: 6px 8px; border: 0; border-radius: 2px; background: {{ t.bg }}; cursor: pointer; text-align: left;">
+          <span style="font-family: 'EB Garamond', serif; font-size: 12px; font-style: italic; color: {{ t.num }}; width: 15px;">{{ t.no }}</span>
+          <span style="flex: 1; font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 12.5px; color: {{ t.fg }}; font-weight: {{ t.weight }};">{{ t.label }}</span>
+          <span style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a;">{{ t.count }}</span>
+        </button>
+      </sc-for>
+
+      <div style="padding: 16px 8px 6px; border-top: 1px solid #e2d8c4; margin-top: 8px; font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #8c7f6b;">Deliverables</div>
+      <sc-for list="{{ deliverables }}" as="d">
+        <div style="display: flex; align-items: baseline; gap: 7px; padding: 5px 8px;">
+          <span style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #5c7a52;">✓</span>
+          <span style="flex: 1; font-family: 'Noto Serif SC', serif; font-size: 11.5px; color: #3f362b;">{{ d.name }}</span>
+          <span style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a;">{{ d.code }}</span>
+        </div>
+      </sc-for>
+    </nav>
+
+    <div style="border-top: 1px solid #e2d8c4; padding: 10px 16px 12px;">
+      <div style="display: flex; gap: 7px;">
+        <button type="button" style="flex: 1; height: 30px; border: 1px solid #1e1a16; border-radius: 2px; background: transparent; color: #1e1a16; font-size: 11.5px; cursor: pointer;">继续开发</button>
+        <button type="button" class="ghost-btn" style="height: 30px; padding: 0 9px; border: 1px solid #cdbca0; border-radius: 2px; background: transparent; color: #6f6252; font-size: 11px; cursor: pointer;">对账</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a;">
+        <span style="width: 16px; height: 16px; border-radius: 50%; background: #dbe8f0; color: #345d74; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 600;">PL</span>
+        <span>leader 9a5b6180 · technical</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column;">
+    <header style="height: 62px; flex: 0 0 62px; border-bottom: 1px solid #d9cdb7; display: flex; align-items: center; gap: 12px; padding: 0 26px;">
+      <div style="display: flex; align-items: baseline; gap: 7px;">
+        <span style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 14px; color: #8a3b2f;">Project</span>
+        <span style="font-family: 'Noto Serif SC', serif; font-size: 15px;">/</span>
+        <span style="font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 14px; font-weight: 600;">{{ activeLabel }}</span>
+      </div>
+      <span style="flex: 1"></span>
+      <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a;">plan v1 · 0 待批 · 7d 31 事件</span>
+      <button type="button" class="ghost-btn" aria-label="刷新" style="width: 26px; height: 26px; border: 0; border-radius: 2px; background: transparent; color: #8c7f6b; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.2"/><path d="M20 5v6h-6"/></svg>
+      </button>
+    </header>
+
+    <div style="flex: 1; overflow-y: auto; min-height: 0;">
+      <div style="max-width: 700px; margin: 0 auto; padding: 24px 26px 36px;">
+        <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; align-items: baseline; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid #1e1a16;">
+            <span style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 21px; color: #1e1a16;">Project Leader</span>
+            <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.08em; color: #8a3b2f; border: 1px solid #cdbca0; border-radius: 2px; padding: 0 4px;">TECHNICAL</span>
+            <span style="flex: 1"></span>
+            <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a;">项目办公室 · 3 频道</span>
+          </div>
+
+          <div style="padding: 22px 0 24px; border-bottom: 1px solid #e6dcc9;">
+            <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px;">
+              <span style="font-family: 'Noto Serif SC', serif; font-size: 12px; font-weight: 600;">Project Leader</span>
+              <span style="flex: 1"></span>
+              <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a;">17:35</span>
+            </div>
+            <div style="font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 14px; line-height: 1.92; color: #2a241d;">项目已收口：三个交付物全部 approved，成果经 L1 技术评审与 L2 签核，五类审计事件齐备。</div>
+            <div style="font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 14px; line-height: 1.92; color: #2a241d; margin-top: 6px;">如需继续，直接说明增量需求；我会先读现状，再给出 plan v2 的增量计划，不新建项目。</div>
+            <div style="margin-top: 11px; padding-left: 12px; border-left: 1px solid #d9cdb7; font-family: 'Geist Mono', monospace; font-size: 9.5px; color: #6f6252; display: flex; align-items: baseline; gap: 7px;">
+              <span style="color: #5c7a52;">✓</span>
+              <span style="color: #1e1a16;">project_get_status</span>
+              <span>3 交付物 · 3 工作项 · 0 阻塞</span>
+              <span style="flex: 1"></span>
+              <span style="color: #a3937a;">0.6s</span>
+            </div>
+          </div>
+
+          <div style="padding: 22px 0 20px; border-bottom: 1px solid #e6dcc9; display: flex; justify-content: flex-end;">
+            <div style="max-width: 84%;">
+              <div style="font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 14px; line-height: 1.85; color: #3a2f24; border-top: 1px solid #1e1a16; border-bottom: 1px solid #1e1a16; padding: 9px 2px;">导出功能先不做。下一版把「按月筛选」和「导出 CSV」拆开评估，先补一条按月的汇总查询。</div>
+              <div style="text-align: right; font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a; margin-top: 5px;">你 · 17:41 · 已投递</div>
+            </div>
+          </div>
+
+          <div style="padding: 16px 0 24px; border-bottom: 1px solid #e6dcc9;">
+            <div style="display: flex; align-items: flex-start; gap: 8px;">
+              <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #8c7f6b; padding-top: 2px;">Reply</span>
+              <div style="flex: 1;">
+                <textarea rows="2" placeholder="描述下一轮要补的需求，Leader 会先读现状再给增量计划…" style="width: 100%; border: 0; border-bottom: 1px solid #1e1a16; outline: 0; resize: none; font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 13px; line-height: 1.8; color: #1e1a16; background: transparent; padding: 0 0 5px;"></textarea>
+                <div style="display: flex; align-items: center; margin-top: 6px;">
+                  <span style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a;">⌘⏎ 发送 · 0 / 8000</span>
+                  <span style="flex: 1"></span>
+                  <button type="button" onClick="{{ sendToLeader }}" style="height: 28px; padding: 0 2px; border: 0; border-bottom: 1px solid #1e1a16; background: transparent; color: #1e1a16; font-size: 12px; letter-spacing: 0.04em; cursor: pointer;">{{ sendLabel }}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: baseline; gap: 10px; padding: 22px 0 8px;">
+            <span style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 17px;">Deliverables</span>
+            <span style="flex: 1; height: 1px; background: #d9cdb7;"></span>
+            <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #8c7f6b;">3 / 3 APPROVED</span>
+          </div>
+          <sc-for list="{{ deliverables }}" as="d">
+            <div style="display: flex; align-items: baseline; gap: 10px; padding: 9px 0; border-bottom: 1px solid #e6dcc9;">
+              <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a; width: 22px;">{{ d.code }}</span>
+              <span style="font-family: 'Noto Serif SC', serif; font-size: 12.5px; color: #2a241d; flex: 1;">{{ d.name }}</span>
+              <span style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 11.5px; color: #8c7f6b;">{{ d.channel }}</span>
+              <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a;">{{ d.artifact }}</span>
+            </div>
+          </sc-for>
+        </sc-if>
+
+        <sc-if value="{{ isWork }}" hint-placeholder-val="{{ true }}">
+          <div style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 22px;">Plan &amp; Work</div>
+          <div style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a; margin-top: 3px;">plan v1 · W1 → W2 → W3 · ALL COMPLETED</div>
+          <div style="margin-top: 16px;">
+            <sc-for list="{{ workItems }}" as="w">
+              <div style="display: flex; align-items: baseline; gap: 10px; padding: 10px 0; border-bottom: 1px solid #e6dcc9;">
+                <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a; width: 22px;">{{ w.code }}</span>
+                <span style="flex: 1; font-family: 'Noto Serif SC', serif; font-size: 12.5px;">{{ w.title }}</span>
+                <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #8c7f6b;">{{ w.channel }} · {{ w.budget }}min · ×{{ w.attempts }}</span>
+                <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #5c7a52;">DONE</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isApprovals }}" hint-placeholder-val="{{ true }}">
+          <div style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 22px;">Approvals</div>
+          <div style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a; margin-top: 3px;">0 PENDING · 6 HISTORICAL · ALL SIGNED</div>
+          <div style="margin-top: 16px; border-top: 1px solid #1e1a16; border-bottom: 1px solid #1e1a16; padding: 14px 2px; font-family: 'Noto Serif SC', serif; font-size: 13px;">所有审批已处理。最近一项：W3 成果签核，2026-11-08 17:33。</div>
+        </sc-if>
+      </div>
+    </div>
+  </main>
+
+  <aside style="width: 300px; flex: 0 0 300px; border-left: 1px solid #d9cdb7; background: #f2ebdd; overflow-y: auto;">
+    <div style="padding: 18px 18px 13px; border-bottom: 1px solid #e2d8c4;">
+      <div style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 15px; color: #8a3b2f;">Snapshot</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+        <div>
+          <div style="font-family: 'EB Garamond', serif; font-size: 30px; line-height: 1;">3<span style="font-size: 15px; color: #a3937a;">/3</span></div>
+          <div style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a; margin-top: 3px;">交付物已验收</div>
+        </div>
+        <div>
+          <div style="font-family: 'EB Garamond', serif; font-size: 30px; line-height: 1;">0</div>
+          <div style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a; margin-top: 3px;">阻塞 · 待批</div>
+        </div>
+        <div>
+          <div style="font-family: 'EB Garamond', serif; font-size: 30px; line-height: 1;">3</div>
+          <div style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a; margin-top: 3px;">协同频道</div>
+        </div>
+        <div>
+          <div style="font-family: 'EB Garamond', serif; font-size: 30px; line-height: 1;">31</div>
+          <div style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a; margin-top: 3px;">近 7 天事件</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding: 14px 18px; border-bottom: 1px solid #e2d8c4;">
+      <div style="font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #a3937a; margin-bottom: 7px;">频道</div>
+      <sc-for list="{{ channelRows }}" as="c">
+        <div style="padding: 5px 0;">
+          <div style="display: flex; align-items: baseline; gap: 7px;">
+            <span style="font-family: 'Noto Serif SC', serif; font-size: 12px; color: #2a241d; flex: 1;">{{ c.name }}</span>
+            <span style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #8a3b2f;">{{ c.role }}</span>
+          </div>
+          <div style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a; margin-top: 1px;">{{ c.meta }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="padding: 14px 18px;">
+      <div style="font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #a3937a; margin-bottom: 7px;">事件</div>
+      <sc-for list="{{ timeline }}" as="e">
+        <div style="display: flex; gap: 8px; padding-bottom: 9px;">
+          <span style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a; width: 30px; padding-top: 2px;">{{ e.time }}</span>
+          <span style="width: 4px; height: 4px; border-radius: 50%; background: {{ e.dot }}; margin-top: 5px; flex: 0 0 4px;"></span>
+          <span style="flex: 1; font-size: 10.5px; color: #3f362b; line-height: 1.5;">{{ e.text }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </aside>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props)
+    this.state = { tab: 'overview', sent: 0 }
+  }
+
+  renderVals() {
+    const state = this.state
+    const tabs = [
+      { key: 'overview', no: '01', label: '概览', count: '3/3' },
+      { key: 'work', no: '02', label: '计划与工作', count: '3' },
+      { key: 'approvals', no: '03', label: '审批', count: '0' },
+      { key: 'decisions', no: '04', label: '决策与事件', count: '31' },
+      { key: 'audit', no: '05', label: '审计', count: '12' },
+    ].map(t => {
+      const active = t.key === state.tab
+      return Object.assign({}, t, {
+        bg: active ? '#e6dcc9' : 'transparent',
+        num: active ? '#8a3b2f' : '#a3937a',
+        fg: active ? '#1e1a16' : '#4a4034',
+        weight: active ? 600 : 400,
+        pick: () => this.setState({ tab: t.key }),
+      })
+    })
+
+    const deliverables = [
+      { code: 'W1', name: '需求规格', channel: '需求频道', artifact: 'SPEC.md' },
+      { code: 'W2', name: '源码实现', channel: '开发频道', artifact: 'ledger.py' },
+      { code: 'W3', name: '自动化测试', channel: '测试频道', artifact: 'TEST-REPORT.md' },
+    ]
+    const workItems = [
+      { code: 'W1', title: '输出记账软件需求规格', channel: '需求', budget: 60, attempts: 1 },
+      { code: 'W2', title: '实现 ledger.py 命令行记账', channel: '开发', budget: 120, attempts: 2 },
+      { code: 'W3', title: '补齐自动化测试并出报告', channel: '测试', budget: 90, attempts: 1 },
+    ]
+    const channelRows = [
+      { name: '记账软件-需求', meta: 'W1 · 需求规格', role: 'owner' },
+      { name: '记账软件-开发', meta: 'W2 · 源码实现', role: 'dev' },
+      { name: '记账软件-测试', meta: 'W3 · 自动化测试', role: 'qa' },
+    ]
+    const timeline = [
+      { time: '17:33', text: 'W3 成果签核通过 · 项目 completed', dot: '#5c7a52' },
+      { time: '17:31', text: 'L2 人工签核 · 独立评审', dot: '#5c7a52' },
+      { time: '17:28', text: 'W3 technical 验收通过', dot: '#8a3b2f' },
+      { time: '16:52', text: 'plan v1 批准', dot: '#a3937a' },
+    ]
+
+    const found = tabs.find(t => t.key === state.tab)
+    return {
+      isOverview: state.tab === 'overview',
+      isWork: state.tab === 'work',
+      isApprovals: state.tab === 'approvals',
+      activeLabel: found ? found.label : '概览',
+      tabs, deliverables, workItems, channelRows, timeline,
+      sendToLeader: () => this.setState({ sent: state.sent + 1 }),
+      sendLabel: state.sent ? '已发送 ' + state.sent + ' 次' : '发送并继续开发',
+    }
+  }
+}
+</script>
+</body>
+</html>

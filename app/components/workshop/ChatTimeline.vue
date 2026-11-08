@@ -103,6 +103,12 @@ function avatarText(m: AepChatMessage): string {
   return t('chat.avatarHuman')
 }
 
+/** 智能体消息的 harness 标识(omp/dsh/codex…) —— 与 AgentBlock 的 harness 字段同源 */
+function harnessOf(m: AepChatMessage): string {
+  if (m.senderType !== 'agent') return ''
+  return entities.agents[props.channelId]?.find(a => a.agentId === m.senderId)?.harness ?? ''
+}
+
 function renderText(m: AepChatMessage): string {
   return mdLiteMentions(m.text, mentionMembers.value)
 }
@@ -380,7 +386,6 @@ watch(() => props.channelId, async () => {
                 </span>
               </div>
             </div>
-            <span class="aw-avatar ct-ava is-user">{{ avatarText(m) }}</span>
           </template>
 
           <template v-else>
@@ -391,8 +396,11 @@ watch(() => props.channelId, async () => {
             <div class="ct-body">
               <div class="ct-meta">
                 <span class="ct-sender">{{ senderNameOf(m) }}</span>
-                <span class="ct-role agent">
-                  <span class="i-tabler-robot" />
+                <span
+                  v-if="harnessOf(m)"
+                  class="ct-harness"
+                >{{ harnessOf(m) }}</span>
+                <span class="ct-role">
                   {{ entities.agents[channelId]?.find(a => a.agentId === m.senderId)?.role ?? 'agent' }}
                 </span>
                 <span class="ct-time">{{ formatLocalClock(m.createdAt, false) }}</span>
@@ -530,8 +538,8 @@ watch(() => props.channelId, async () => {
   scroll-behavior: smooth;
 }
 .ct-thread {
-  width: min(820px, calc(100% - 48px));
-  padding: 24px 0 120px;
+  width: min(800px, calc(100% - 64px));
+  padding: 26px 0 120px;
   margin: 0 auto;
 }
 .ct-earlier {
@@ -563,10 +571,10 @@ watch(() => props.channelId, async () => {
   text-transform: uppercase;
 }
 .ct-empty-title {
-  max-width: 640px;
-  margin: 14px auto 0;
+  max-width: 560px;
+  margin: 12px auto 0;
   font-family: var(--font-display);
-  font-size: clamp(30px, 4vw, 44px);
+  font-size: clamp(26px, 3vw, 34px);
   font-weight: 400;
   line-height: 1.08;
   letter-spacing: -0.035em;
@@ -659,8 +667,8 @@ watch(() => props.channelId, async () => {
 /* ── 消息:Agent 全宽阅读块;用户右侧暖灰气泡(ChatGPT 声部) ────── */
 .ct-row {
   display: flex;
-  gap: 14px;
-  padding: 14px 0;
+  gap: 13px;
+  padding: 18px 0;
   animation: ct-rise 0.32s var(--ease-out-quart) both;
 }
 .ct-row.agent { align-items: flex-start; }
@@ -676,12 +684,12 @@ watch(() => props.channelId, async () => {
   border-radius: var(--radius-pill);
 }
 .ct-ava {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   margin-top: 1px;
-  font-size: 12px;
+  font-size: 10.5px;
   border: 1px solid var(--chat-line);
-  box-shadow: 0 2px 6px rgb(41 37 36 / 5%);
+  box-shadow: 0 1px 3px rgb(41 37 36 / 4%);
 }
 .ct-ava.is-user {
   color: var(--chat-user-ink);
@@ -690,7 +698,7 @@ watch(() => props.channelId, async () => {
 .ct-body {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: calc(100% - 48px);
+  max-width: calc(100% - 41px);
 }
 .ct-meta {
   display: flex;
@@ -708,20 +716,29 @@ watch(() => props.channelId, async () => {
   display: inline-flex;
   gap: 3px;
   align-items: center;
-  padding: 1px 6px;
+  padding: 0 5px;
   font-family: var(--font-mono);
   font-size: var(--fs-micro);
-  letter-spacing: 0.06em;
+  line-height: 15px;
+  letter-spacing: 0.04em;
   color: var(--chat-ink-faint);
-  text-transform: uppercase;
+  text-transform: lowercase;
   border: 1px solid var(--chat-line);
-  border-radius: var(--radius-pill);
+  border-radius: 4px;
 }
-.ct-role.agent {
-  color: var(--chat-accent);
-  border-color: color-mix(in srgb, var(--chat-accent) 30%, transparent);
+/* harness 标识:与 AgentBlock 的 harness 字段同源,等宽轻 chip */
+.ct-harness {
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  line-height: 15px;
+  color: var(--chat-ink-faint);
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: 4px;
 }
 .ct-time {
+  margin-left: auto;
   font-family: var(--font-mono);
   font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
@@ -756,8 +773,8 @@ watch(() => props.channelId, async () => {
 }
 .ct-text {
   margin-top: 6px;
-  font-size: 15px;
-  line-height: 1.78;
+  font-size: 14.5px;
+  line-height: 1.74;
   color: var(--chat-ink);
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -802,17 +819,17 @@ watch(() => props.channelId, async () => {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  max-width: min(74%, 620px);
+  max-width: min(76%, 640px);
   min-width: 0;
 }
 .ct-user-bubble {
-  padding: 11px 15px;
-  font-size: 14.5px;
+  padding: 10px 15px;
+  font-size: 14px;
   line-height: 1.68;
   color: var(--chat-user-ink);
   background: var(--chat-user-bubble);
-  border: 1px solid var(--chat-line);
-  border-radius: 18px 18px 4px;
+  border: 1px solid transparent;
+  border-radius: 16px 16px 4px 16px;
   box-shadow: 0 1px 2px rgb(41 37 36 / 4%);
   overflow-wrap: anywhere;
   word-break: break-word;

@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>方向 C · Channel 纸页</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; }
+  a { color: #8a3b2f; } a:hover { color: #6a2b21; }
+  * { box-sizing: border-box; }
+  button, textarea { font-family: inherit; }
+  .row-hover:hover { background: #eae1cf; }
+  .icon-btn:hover { background: #eae1cf; }
+  .act:hover { background: #6a2b21; }
+</style>
+</helmet>
+
+<div style="width: 100%; height: 100dvh; min-height: 900px; display: flex; background: #f7f2e8; color: #1e1a16; font-family: 'Geist', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; overflow: hidden;">
+
+  <!-- 细图标轨 -->
+  <nav style="width: 48px; flex: 0 0 48px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 0; border-right: 1px solid #e2d8c4; background: #f2ebdd;">
+    <button type="button" aria-label="总览" style="width: 32px; height: 32px; border: 1px solid #1e1a16; border-radius: 50%; background: transparent; color: #1e1a16; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-bottom: 8px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18 9.5 6l4 8L17 8l3 10"/><path d="M4 21h16"/></svg>
+    </button>
+    <sc-for list="{{ views }}" as="v">
+      <button type="button" aria-label="{{ v.label }}" title="{{ v.label }}" onClick="{{ v.pick }}" class="icon-btn" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: {{ v.fg }}; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ v.d }}"/></svg>
+        <sc-if value="{{ v.active }}" hint-placeholder-val="{{ true }}">
+          <span style="position: absolute; bottom: -1px; left: 10px; width: 12px; height: 1.5px; background: #8a3b2f;"></span>
+        </sc-if>
+      </button>
+    </sc-for>
+    <span style="flex: 1"></span>
+    <div style="width: 26px; height: 26px; border-radius: 50%; background: #1e1a16; color: #f7f2e8; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500;">验</div>
+  </nav>
+
+  <!-- 侧栏 -->
+  <aside style="width: 264px; flex: 0 0 264px; display: flex; flex-direction: column; background: #f2ebdd; border-right: 1px solid #e2d8c4; min-height: 0;">
+    <div style="padding: 18px 18px 10px;">
+      <div style="font-family: 'EB Garamond', 'Songti SC', serif; font-style: italic; font-size: 13px; color: #8a3b2f; letter-spacing: 0.02em;">AgentWorkShop</div>
+      <div style="font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 17px; font-weight: 600; margin-top: 3px; letter-spacing: 0.01em;">CAL-3 涂布定量</div>
+      <div style="display: flex; align-items: center; gap: 7px; margin-top: 6px; font-family: 'Geist Mono', monospace; font-size: 9px; color: #8c7f6b; letter-spacing: 0.06em;">
+        <span>7 频道</span><span>·</span><span>4 会话</span><span>·</span><span>1 待批</span>
+      </div>
+    </div>
+
+    <div style="padding: 2px 14px 12px;">
+      <button type="button" style="width: 100%; height: 34px; border: 1px solid #1e1a16; border-radius: 2px; background: transparent; color: #1e1a16; font-size: 12px; letter-spacing: 0.04em; cursor: pointer;">＋ 新建频道</button>
+      <button type="button" class="icon-btn" style="width: 100%; height: 30px; margin-top: 6px; border: 0; border-radius: 2px; background: transparent; color: #8c7f6b; font-size: 11px; display: flex; align-items: center; gap: 6px; padding: 0 2px; cursor: pointer;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+        搜索频道与消息
+        <span style="margin-left: auto; font-family: 'Geist Mono', monospace; font-size: 8.5px;">⌘K</span>
+      </button>
+    </div>
+
+    <div style="flex: 1; overflow-y: auto; padding: 0 10px 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 8px 6px; border-top: 1px solid #e2d8c4;">
+        <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #8c7f6b;">Channels</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #8c7f6b;">07</span>
+      </div>
+      <sc-for list="{{ channels }}" as="c">
+        <button type="button" onClick="{{ c.pick }}" class="row-hover" style="width: 100%; display: flex; align-items: baseline; gap: 7px; padding: 6px 8px; border: 0; border-radius: 2px; background: {{ c.bg }}; cursor: pointer; text-align: left;">
+          <span style="font-family: 'EB Garamond', serif; font-size: 13px; color: #a3937a; width: 9px;">#</span>
+          <span style="flex: 1; min-width: 0; font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 12.5px; color: {{ c.fg }}; font-weight: {{ c.weight }}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ c.name }}</span>
+          <sc-if value="{{ c.pending }}" hint-placeholder-val="{{ true }}">
+            <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #8a3b2f;">●</span>
+          </sc-if>
+        </button>
+      </sc-for>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 8px 6px; border-top: 1px solid #e2d8c4; margin-top: 8px;">
+        <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #8c7f6b;">Sessions</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #8c7f6b;">04</span>
+      </div>
+      <sc-for list="{{ sessions }}" as="s">
+        <button type="button" class="row-hover" style="width: 100%; display: block; padding: 6px 8px; border: 0; border-radius: 2px; background: transparent; cursor: pointer; text-align: left;">
+          <span style="display: block; font-size: 11.5px; color: #3f362b; line-height: 1.4;">{{ s.title }}</span>
+          <span style="display: block; font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a; margin-top: 1px;">{{ s.meta }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="border-top: 1px solid #e2d8c4; padding: 10px 16px; font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a; display: flex; justify-content: space-between;">
+      <span>验收Owner · admin</span><span>:4001</span>
+    </div>
+  </aside>
+
+  <!-- 主列 -->
+  <main style="flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column;">
+    <header style="height: 62px; flex: 0 0 62px; border-bottom: 1px solid #d9cdb7; display: flex; align-items: center; gap: 12px; padding: 0 26px;">
+      <div style="min-width: 0;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <span style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 15px; color: #8a3b2f;">Channel</span>
+          <h1 style="margin: 0; font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 17px; font-weight: 600; letter-spacing: 0.01em;">{{ activeChannelName }}</h1>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; margin-top: 3px; font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.04em; color: #a3937a;">
+          <span>OPEN</span><span>·</span><span>seq 1842</span><span>·</span><span>line ln-3f21</span>
+        </div>
+      </div>
+      <span style="flex: 1"></span>
+      <span style="font-family: 'Geist Mono', monospace; font-size: 9px; color: #8a3b2f; border: 1px solid #8a3b2f; border-radius: 2px; padding: 3px 7px; letter-spacing: 0.04em;">1 待批</span>
+      <button type="button" class="icon-btn" aria-label="更多" style="width: 28px; height: 28px; border: 0; border-radius: 2px; background: transparent; color: #8c7f6b; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+      </button>
+    </header>
+
+    <div style="flex: 1; overflow-y: auto; min-height: 0;">
+      <div style="max-width: 720px; margin: 0 auto; padding: 26px 26px 20px;">
+        <div style="display: flex; align-items: baseline; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid #d9cdb7;">
+          <span style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 16px; color: #1e1a16;">Session</span>
+          <span style="flex: 1; height: 1px; background: #e6dcc9;"></span>
+          <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #8c7f6b;">今日 14:32 · 模拟回路 ln-3f21</span>
+        </div>
+
+        <sc-for list="{{ blocks }}" as="b">
+          <sc-if value="{{ b.isAgent }}" hint-placeholder-val="{{ true }}">
+            <article style="padding: 22px 0 24px; border-bottom: 1px solid #e6dcc9;">
+              <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
+                <span style="font-family: 'Noto Serif SC', serif; font-size: 12.5px; font-weight: 600; letter-spacing: 0.02em;">{{ b.author }}</span>
+                <span style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 11.5px; color: #8c7f6b;">{{ b.role }}</span>
+                <span style="font-family: 'Geist Mono', monospace; font-size: 8px; letter-spacing: 0.08em; color: #8a3b2f; border: 1px solid #cdbca0; border-radius: 2px; padding: 0 4px;">{{ b.harness }}</span>
+                <span style="flex: 1"></span>
+                <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a;">{{ b.time }}</span>
+              </div>
+              <div style="font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 14px; line-height: 1.92; color: #2a241d;">
+                <sc-for list="{{ b.parts }}" as="p"><span style="{{ p.style }}">{{ p.t }}</span></sc-for>
+              </div>
+              <sc-if value="{{ b.hasTools }}" hint-placeholder-val="{{ true }}">
+                <div style="margin-top: 12px; padding-left: 12px; border-left: 1px solid #d9cdb7;">
+                  <sc-for list="{{ b.tools }}" as="t">
+                    <div style="display: flex; align-items: baseline; gap: 8px; padding: 2px 0; font-family: 'Geist Mono', monospace; font-size: 9.5px; color: #6f6252;">
+                      <span style="color: #5c7a52;">✓</span>
+                      <span style="color: #1e1a16;">{{ t.name }}</span>
+                      <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ t.detail }}</span>
+                      <span style="color: #a3937a;">{{ t.dur }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </article>
+          </sc-if>
+
+          <sc-if value="{{ b.isUser }}" hint-placeholder-val="{{ true }}">
+            <div style="padding: 22px 0 24px; border-bottom: 1px solid #e6dcc9; display: flex; justify-content: flex-end;">
+              <div style="max-width: 82%;">
+                <div style="font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 14px; line-height: 1.85; color: #3a2f24; border-top: 1px solid #1e1a16; border-bottom: 1px solid #1e1a16; padding: 10px 2px;">{{ b.text }}</div>
+                <div style="text-align: right; font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a; margin-top: 5px;">你 · {{ b.time }} · 已投递</div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isApproval }}" hint-placeholder-val="{{ true }}">
+            <div style="padding: 22px 0; border-bottom: 1px solid #e6dcc9;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #8a3b2f;">Approval required</span>
+                <span style="flex: 1; height: 1px; background: #e6dcc9;"></span>
+                <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a;">digest 9f3c…a71d</span>
+              </div>
+              <div style="border: 1px solid #cdbca0; padding: 14px 15px; background: #fbf7ee;">
+                <div style="font-family: 'Noto Serif SC', serif; font-size: 14px; font-weight: 500; line-height: 1.7; color: #1e1a16;">recipe_trial · 烘箱二区设定 +0.2 ℃</div>
+                <div style="font-family: 'EB Garamond', serif; font-size: 13px; color: #6f6252; margin-top: 4px; font-style: italic;">168.4 → 168.6 ℃，单步 ≤ 0.3 ℃，间隔 ≥ 5 min 已满足；未达预期按快照回退。</div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #e6dcc9;">
+                  <button type="button" onClick="{{ b.approve }}" class="act" style="height: 30px; padding: 0 13px; border: 0; border-radius: 2px; background: #1e1a16; color: #f7f2e8; font-size: 11.5px; letter-spacing: 0.04em; cursor: pointer;">{{ b.approveLabel }}</button>
+                  <button type="button" onClick="{{ b.reject }}" style="height: 30px; padding: 0 11px; border: 1px solid #1e1a16; border-radius: 2px; background: transparent; color: #1e1a16; font-size: 11.5px; cursor: pointer;">{{ b.rejectLabel }}</button>
+                  <span style="flex: 1"></span>
+                  <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #8c7f6b;">逐动作审批</span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isResult }}" hint-placeholder-val="{{ true }}">
+            <div style="padding: 14px 0 18px; border-bottom: 1px solid #e6dcc9; display: flex; align-items: baseline; gap: 8px;">
+              <span style="font-family: 'Geist Mono', monospace; font-size: 8px; letter-spacing: 0.1em; color: #5c7a52;">ACK</span>
+              <span style="font-size: 11.5px; color: #4a5c43;">写控已确认 · 观测 DAQ 168.58 ℃ · 偏差 0.02 · 12.4 s</span>
+            </div>
+          </sc-if>
+        </sc-for>
+
+        <div style="display: flex; align-items: center; gap: 8px; padding: 14px 0 4px; font-family: 'EB Garamond', serif; font-style: italic; font-size: 12.5px; color: #8c7f6b;">
+          <span style="width: 5px; height: 5px; border-radius: 50%; background: #8a3b2f;"></span>
+          tuning-lead 正在等待你的批准
+          <span style="flex: 1; height: 1px; background: #e6dcc9;"></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex: 0 0 auto; border-top: 1px solid #1e1a16; background: #f7f2e8; padding: 0 26px;">
+      <div style="max-width: 720px; margin: 0 auto;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 0 0; font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #8c7f6b;">
+          <span style="letter-spacing: 0.1em; text-transform: uppercase;">Reply</span>
+          <span>·</span><span>omp</span><span>·</span><span style="color: #8a3b2f;">HITL 逐动作</span>
+          <span style="flex: 1"></span><span>@ 指派 · ⏎ 发送</span>
+        </div>
+        <div style="display: flex; align-items: flex-end; gap: 10px; padding: 8px 0 12px;">
+          <textarea rows="1" placeholder="写下回复，或 @ 成员指派任务…" style="flex: 1; border: 0; outline: 0; resize: none; font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 14px; line-height: 1.7; color: #1e1a16; background: transparent; padding: 2px 0;"></textarea>
+          <button type="button" onClick="{{ send }}" style="height: 30px; padding: 0 2px; border: 0; border-bottom: 1px solid #1e1a16; background: transparent; color: #1e1a16; font-size: 12.5px; letter-spacing: 0.04em; cursor: pointer;">发送 →</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页边注 -->
+  <aside style="width: 286px; flex: 0 0 286px; border-left: 1px solid #d9cdb7; background: #f2ebdd; overflow-y: auto;">
+    <div style="padding: 18px 18px 12px; border-bottom: 1px solid #e2d8c4;">
+      <div style="font-family: 'EB Garamond', serif; font-style: italic; font-size: 15px; color: #8a3b2f;">Marginalia</div>
+      <div style="font-family: 'Noto Serif SC', serif; font-size: 11.5px; line-height: 1.8; color: #5c5042; margin-top: 6px;">当前频道为四期递进中的第二期：只做小步治理，逐动作审批。所有写动作前必须有人工确认。</div>
+    </div>
+
+    <div style="padding: 14px 18px; border-bottom: 1px solid #e2d8c4;">
+      <div style="font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #a3937a; margin-bottom: 8px;">成员</div>
+      <sc-for list="{{ agents }}" as="a">
+        <div style="display: flex; align-items: baseline; gap: 8px; padding: 5px 0;">
+          <span style="font-family: 'Noto Serif SC', serif; font-size: 12px; color: #2a241d; flex: 1;">{{ a.name }}</span>
+          <span style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a;">{{ a.harness }}</span>
+          <span style="font-family: 'Geist Mono', monospace; font-size: 8px; color: {{ a.fg }};">{{ a.state }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="padding: 14px 18px; border-bottom: 1px solid #e2d8c4;">
+      <div style="font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #a3937a; margin-bottom: 8px;">关键读数</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <div style="font-family: 'EB Garamond', serif; font-size: 24px; line-height: 1; color: #1e1a16;">402.6</div>
+          <div style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a; margin-top: 3px;">g/m² 定量均值</div>
+        </div>
+        <div>
+          <div style="font-family: 'EB Garamond', serif; font-size: 24px; line-height: 1; color: #1e1a16;">168.4</div>
+          <div style="font-family: 'Geist Mono', monospace; font-size: 8px; color: #a3937a; margin-top: 3px;">℃ 烘箱二区</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding: 14px 18px;">
+      <div style="font-family: 'Geist Mono', monospace; font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #a3937a; margin-bottom: 8px;">队列</div>
+      <sc-for list="{{ queue }}" as="q">
+        <div style="display: flex; align-items: baseline; gap: 7px; padding: 4px 0;">
+          <span style="font-family: 'Geist Mono', monospace; font-size: 8.5px; color: #a3937a;">{{ q.id }}</span>
+          <span style="flex: 1; font-size: 11px; color: #3f362b; line-height: 1.4;">{{ q.title }}</span>
+          <span style="font-family: 'Geist Mono', monospace; font-size: 8px; color: {{ q.fg }};">{{ q.state }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </aside>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props)
+    this.state = { channel: '工艺调优频道', decision: 'pending' }
+  }
+
+  renderVals() {
+    const state = this.state
+    const channels = [
+      { name: '工艺调优频道', pending: true },
+      { name: '数据分析频道', pending: false },
+      { name: '模型构建频道', pending: false },
+      { name: '产线诊断频道', pending: false },
+      { name: 'BRG-5 轴承装配', pending: false },
+      { name: 'CAL-3 涂布定量', pending: false },
+      { name: 'WWTP 水处理', pending: false },
+    ].map(c => Object.assign({}, c, {
+      bg: c.name === state.channel ? '#e6dcc9' : 'transparent',
+      fg: c.name === state.channel ? '#1e1a16' : '#4a4034',
+      weight: c.name === state.channel ? 600 : 400,
+      pick: () => this.setState({ channel: c.name }),
+    }))
+
+    const views = [
+      { label: '对话', d: 'M21 12a8 8 0 0 1-8 8H6l-3 2 1-4.2A8 8 0 1 1 21 12z' },
+      { label: '时间线', d: 'M12 7v5l3 2M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z' },
+      { label: '泳道', d: 'M4 5h4v14H4zM10 5h4v9h-4zM16 5h4v12h-4z' },
+      { label: '任务板', d: 'M4 5h5v14H4zM10 5h5v8h-5zM16 5h4v11h-4z' },
+      { label: '同屏', d: 'M3 4h18v16H3zM3 10h18M12 10v10' },
+      { label: '孪生', d: 'M4 8 12 4l8 4v8l-8 4-8-4zM12 12l8-4M12 12 4 8M12 12v8' },
+      { label: '会话', d: 'M4 7h16v10H8l-4 3zM8 4h12v3' },
+    ].map((v, i) => Object.assign({}, v, {
+      active: i === 0, fg: i === 0 ? '#1e1a16' : '#8c7f6b',
+      pick: () => this.setState({ channel: state.channel }),
+    }))
+
+    const sessions = [
+      { title: '振动归因复核', meta: '今天 · 6 条' },
+      { title: 'T-042 试验方案评审', meta: '今天 · 4 条' },
+      { title: '四期递进 · W2 治理', meta: '昨天 · 18 条' },
+      { title: '数据集覆盖度核对', meta: '周一 · 9 条' },
+    ]
+
+    const parts = segs => segs.map(s => ({ t: s[0], style: s[1] ? 'font-weight:600;' : 'font-weight:400;' }))
+    const decision = state.decision
+    const blocks = [
+      {
+        isAgent: true, isUser: false, isApproval: false, isResult: false,
+        author: 'diag-lead', role: 'lead · 诊断', harness: 'DSH', time: '14:32',
+        parts: parts([
+          ['已完成 ', false], ['CAL-3 涂布定量波动', true],
+          [' 归因：近六小时三次批次偏移均落在烘箱二区，温度每偏离设定 1 ℃，定量均值移动 0.83 g/m²（r = 0.82，n = 3,140）。压辊压力与涂布间隙无显著相关。一期零写。', false],
+        ]),
+        hasTools: true,
+        tools: [
+          { name: 'analysis_query', detail: '定量 × 烘箱二区温度 · 3,140 点', dur: '2.1s' },
+          { name: 'analysis_save', detail: '结论 #A-2291 · r 0.82', dur: '0.4s' },
+        ],
+      },
+      { isAgent: false, isUser: true, isApproval: false, isResult: false, time: '14:35', text: '把升温补偿做小步试验：单步不超过 0.3 ℃，先在模拟回路上验证，不要直接动产线。' },
+      {
+        isAgent: true, isUser: false, isApproval: false, isResult: false,
+        author: 'tuning-lead', role: 'lead · 调优', harness: 'OMP', time: '14:36',
+        parts: parts([['方案 ', false], ['T-042', true], ['：模拟回路 ln-3f21，烘箱二区 +0.2 ℃，单步 0.2 ℃；间隔 ≥ 5 min；验证口径为定量 σ 与批次合格率。', false]]),
+        hasTools: false, tools: [],
+      },
+      {
+        isAgent: false, isUser: false, isApproval: true, isResult: false,
+        approve: () => this.setState({ decision: 'approved' }),
+        reject: () => this.setState({ decision: 'rejected' }),
+        approveLabel: decision === 'approved' ? '已批准' : '批准并下发',
+        rejectLabel: decision === 'rejected' ? '已拒绝' : '拒绝',
+      },
+    ]
+    if (decision === 'approved') {
+      blocks.push({ isAgent: false, isUser: false, isApproval: false, isResult: true })
+      blocks.push({
+        isAgent: true, isUser: false, isApproval: false, isResult: false,
+        author: 'tuning-lead', role: 'lead · 调优', harness: 'OMP', time: '14:37',
+        parts: parts([['试验已下发：设定 ', false], ['168.58 ℃', true], ['，回读偏差 0.02 ℃，十分钟观察窗开始。', false]]),
+        hasTools: false, tools: [],
+      })
+    }
+
+    const agents = [
+      { name: 'tuning-lead', harness: 'omp', state: 'busy', fg: '#8a3b2f' },
+      { name: 'diag-lead', harness: 'dsh', state: 'idle', fg: '#a3937a' },
+      { name: 'sys-verify', harness: 'omp', state: 'busy', fg: '#8a3b2f' },
+    ]
+
+    const queue = [
+      { id: 'T-042', title: '烘箱二区升温补偿试验', state: '待批', fg: '#8a3b2f' },
+      { id: 'T-043', title: '试验后定量复测', state: '阻塞', fg: '#a3937a' },
+      { id: 'A-2291', title: '归因结论归档', state: '完成', fg: '#5c7a52' },
+    ]
+
+    return {
+      activeChannelName: state.channel,
+      channels, views, sessions, blocks, agents, queue,
+      send: () => this.setState({ decision: state.decision }),
+    }
+  }
+}
+</script>
+</body>
+</html>
