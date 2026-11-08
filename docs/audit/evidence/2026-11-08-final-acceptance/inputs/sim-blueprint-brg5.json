@@ -1,0 +1,21 @@
+{
+  "simPort": 4039,
+  "mqttPort": 48830,
+  "devices": [
+    {
+      "id": "brg5-cell",
+      "name": "BRG-5 轴承装配单元",
+      "protocol": "mqtt",
+      "signals": [
+        { "id": "press-sp", "name": "压装力设定SP", "unit": "kN", "min": 6, "max": 14, "decimals": 2, "kind": "sp", "initial": 10 },
+        { "id": "grease-sp", "name": "注脂量设定SP", "unit": "g", "min": 0.5, "max": 1.6, "decimals": 2, "kind": "sp", "initial": 1.1 },
+        { "id": "press-pv", "name": "压装力实测PV", "unit": "kN", "min": 0, "max": 16, "decimals": 2, "kind": "pv",
+          "dynamics": { "base": 10, "tau": 3, "noise": 0.08, "follows": [{ "sp": "压装力设定SP", "gain": 0.99 }] } },
+        { "id": "grease-pv", "name": "注脂量实测PV", "unit": "g", "min": 0, "max": 2, "decimals": 3, "kind": "pv",
+          "dynamics": { "base": 1.1, "tau": 4, "noise": 0.01, "follows": [{ "sp": "注脂量设定SP", "gain": 0.98 }] } },
+        { "id": "vibration-pv", "name": "振动值PV", "unit": "dB(A)", "min": 0, "max": 80, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 43, "tau": 6, "noise": 0.6, "follows": [{ "sp": "压装力设定SP", "gain": -1.1 }] } }
+      ]
+    }
+  ]
+}
