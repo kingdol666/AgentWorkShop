@@ -7,7 +7,7 @@ import type { PublicSnapshot } from './types'
 import { maskSecretSettings } from './secrets'
 import { errorText } from './helpers'
 import { existsSync, watch } from 'node:fs'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 
 export abstract class SystemConfigServiceSnapshot extends SystemConfigServiceRecompute {
   protected watchFiles(): void {
@@ -25,13 +25,29 @@ export abstract class SystemConfigServiceSnapshot extends SystemConfigServiceRec
         this.broadcast({ type: 'config:reloaded', changed, ...this.eventTail() })
       }, 300)
     }
-    try {
-      if (existsSync(dataDir)) this.watcher.push(watch(dataDir, { persistent: false }, handler))
-      if (existsSync(this.root)) this.watcher.push(watch(this.root, { persistent: false }, handler))
+    // P1(2026-11-08 生产审计):此前只 watch(root) 与 watch(root/data 遗留布局),
+    // 而**生效**的 runtime-settings.json 在配置根(<root>/.AgentWorkShop/ 或 AW_HOME)下 ——
+    // 二者都不是非递归 watch(root) 的直子项 → 外部/CLI 写入永不触发热重载(静默失效),
+    // CLI 却打印「实时生效」。现补齐:直接监听生效配置文件 + 其所在目录。
+    const targets = new Set<string>()
+    if (this.settingsPath) {
+      targets.add(this.settingsPath)
+      targets.add(dirname(this.settingsPath))
     }
-    catch (err) {
-      console.warn('[system-config] 文件监听不可用（外部写入将不热重载）:', errorText(err))
+    if (existsSync(dataDir)) targets.add(dataDir)
+    if (existsSync(this.root)) targets.add(this.root)
+    let bound = 0
+    for (const target of targets) {
+      try {
+        if (!existsSync(target)) continue
+        this.watcher.push(watch(target, { persistent: false }, handler))
+        bound++
+      }
+      catch (err) {
+        console.warn(`[system-config] 监听失败 ${target}:`, errorText(err))
+      }
     }
+    if (bound === 0) console.warn('[system-config] 文件监听不可用（外部写入将不热重载）')
   }
 
   /* ---------------- 公共 API ---------------- */

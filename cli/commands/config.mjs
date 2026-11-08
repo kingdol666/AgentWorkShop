@@ -108,7 +108,10 @@ async function set(ctx, key, value) {
   const result = ctx.config.set(key, value)
   if (ctx.json) return emit(ctx, { ok: true, ...result })
   console.log(`${color.green('✔')} ${result.key} = ${color.green(String(result.value))}  ${color.dim(`(原值: ${result.effectiveBefore}, 原 ${result.previousSource === 'env' ? '被环境变量遮蔽' : `来源: ${result.previousSource}`})`)}`)
-  console.log(`  › 写入 ${ctx.settingsPath}  ·  ${color.yellow(result.applies === 'live' ? '实时生效' : '重启对应模式后生效')}`)
+  // P1(2026-11-08 生产审计):文案诚实化 —— 此前写盘后一律宣称「实时生效」,
+  // 而 watcher 当时监听遗留目录,外部写入实际不会热重载(误导运维)。
+  // 现:live 键说明「由服务端文件监听收敛(通常 <1s)」并给出兜底动作。
+  console.log(`  › 写入 ${ctx.settingsPath}  ·  ${color.yellow(result.applies === 'live' ? 'live 键:服务端监听自动重载(通常 <1s;未生效则重启或走设置页保存)' : 'restart 键:重启对应模式后生效')}`)
   if (result.previousSource === 'env')
     console.log(`  ${color.yellow('⚠')} 当前有同名环境变量(AW_${key.toUpperCase().replace(/\./g, '_')})在起作用,运行时优先级高于本写入`)
   return 0
