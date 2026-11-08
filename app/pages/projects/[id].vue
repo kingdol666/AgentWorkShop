@@ -392,6 +392,7 @@ async function sendContinuation(): Promise<void> {
 /** PR15 五 tab（plan §7.2）：概览/计划与工作/交付物/审批/决策与事件。 */
 type TabKey = 'overview' | 'plan' | 'deliverables' | 'approvals' | 'events'
 const activeTab = ref<TabKey>('overview')
+const activeTabLabel = computed(() => tabs.find(t => t.key === activeTab.value)?.label ?? '概览')
 /** 侧栏导航项(ChatGPT 化):tab 语义不变,icon 供侧栏条目使用 */
 const tabs: Array<{ key: TabKey, label: string, icon: string }> = [
   { key: 'overview', label: '概览', icon: 'i-tabler-dashboard' },
@@ -606,6 +607,14 @@ const itemsByChannel = computed(() => obs.value?.channels.map(c => ({
   channel: c,
   items: (obs.value?.workItems ?? []).filter(w => w.channelId === c.channelId),
 })) ?? [])
+/** 绑定行的人类可读频道名(observability 快照为单一事实源;未命中退回短 id) */
+const channelNameOf = (channelId: string): string =>
+  obs.value?.channels.find(c => c.channelId === channelId)?.name ?? channelId.slice(0, 8)
+/** 任务实例行的可读标签:charter 里带着「任务实例: W1 …」,比裸 UUID 有信息量 */
+const bindingLabel = (c: { channelId: string, bindingType: string, charter?: string }): string =>
+  c.bindingType === 'task_instance'
+    ? (c.charter || '任务实例')
+    : channelNameOf(c.channelId)
 const dispatchLog = computed(() => events.value
   .filter(e => ['work.dispatched', 'work.dispatch_auto', 'work.retry_scheduled', 'work.retried', 'work.rework', 'route.deferred', 'route.escalated'].includes(e.type))
   .slice(-30)
@@ -808,9 +817,13 @@ onUnmounted(() => {
     <!-- ══ 中区:主列(标题条 + 卡片分区) ══ -->
     <div class="main-col">
       <header class="top">
-        <h1>{{ project?.name ?? '项目' }}</h1>
+        <div class="crumb">
+          <span class="crumb-root">{{ project?.name ?? '项目' }}</span>
+          <span class="crumb-sep">/</span>
+          <h1>{{ activeTabLabel }}</h1>
+        </div>
         <p class="sub">
-          plan v{{ project?.planVersion ?? 0 }} · 待审批 {{ pendingApprovals.length }} 项 · leader {{ project?.leadAgentId ?? '-' }}
+          plan v{{ project?.planVersion ?? 0 }} · 待审批 {{ pendingApprovals.length }} 项 · leader {{ project?.leadAgentId?.slice(0, 8) ?? '-' }}
         </p>
       </header>
 
@@ -900,9 +913,10 @@ onUnmounted(() => {
             :data-testid="`project-chat-${m.senderType}`"
           >
             <span
+              v-if="m.senderType !== 'user'"
               class="chat-avatar"
               aria-hidden="true"
-            >{{ m.senderType === 'user' ? '你' : 'PL' }}</span>
+            >PL</span>
             <div class="chat-bubble-wrap">
               <div class="chat-meta">
                 <strong>{{ m.senderType === 'user' ? '你' : m.senderName }}</strong>
@@ -935,7 +949,7 @@ onUnmounted(() => {
           <textarea
             ref="chatInput"
             v-model="chatText"
-            rows="3"
+            rows="2"
             maxlength="8000"
             data-testid="project-continue-input"
             :disabled="!canContinueProject"
@@ -993,7 +1007,8 @@ onUnmounted(() => {
             v-for="c in channels"
             :key="c.channelId"
           >
-            <code>{{ c.channelId }}</code>
+            <span class="chan-name">{{ bindingLabel(c) }}</span>
+            <code class="chan-id">{{ c.channelId.slice(0, 8) }}</code>
             <span
               class="badge"
               :class="{ protected: c.bindingType === 'user_bound' }"
@@ -2006,7 +2021,7 @@ onUnmounted(() => {
 /* ── 左区:导航侧栏 ── */
 .side {
   display: flex;
-  flex: 0 0 248px;
+  flex: 0 0 264px;
   flex-direction: column;
   min-height: 0;
   padding: 14px 12px 12px;
@@ -2167,7 +2182,14 @@ onUnmounted(() => {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 24px 40px;
+  padding: 0 32px 40px;
+}
+/* 阅读列上限:与 Channel 控制台同一行宽纪律(卡片不拉满整屏) */
+.main-col > * {
+  width: 100%;
+  max-width: 880px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .top {
   position: sticky;
@@ -2184,10 +2206,20 @@ onUnmounted(() => {
 h1 {
   padding: 0;
   margin: 0;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 650;
   letter-spacing: -0.015em;
 }
+.crumb { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.crumb-root {
+  max-width: 46%;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--chat-ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crumb-sep { color: var(--chat-line-strong); }
 h2 { font-size: 15px; font-weight: 650; margin: 0 0 12px; }
 h3 { font-size: 13.5px; font-weight: 600; margin: 14px 0 8px; }
 h4 { font-size: 13px; font-weight: 600; margin: 16px 0 8px; }
@@ -2225,6 +2257,12 @@ h4 { font-size: 13px; font-weight: 600; margin: 16px 0 8px; }
 }
 .list { list-style: none; padding: 0; margin: 0 0 10px; display: flex; flex-direction: column; gap: 8px; }
 .list li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--chat-ink); }
+.chan-name { font-weight: 550; }
+.chan-id {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--chat-ink-faint);
+}
 .form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .form.inline { flex-direction: row; flex-wrap: wrap; }
 input, select, textarea {
@@ -2409,7 +2447,7 @@ code {
 /* ── 右区:项目快照上下文卡(ChatGPT 右栏同位;≥1200px 常驻) ── */
 .ctx {
   display: flex;
-  flex: 0 0 292px;
+  flex: 0 0 312px;
   flex-direction: column;
   gap: 12px;
   min-height: 0;
@@ -2530,7 +2568,7 @@ code {
 }
 
 /* ── Project Leader 对话（持续开发）────────────────────────────── */
-.chat-card { display: flex; flex-direction: column; gap: 12px; }
+.chat-card { display: flex; flex-direction: column; gap: 16px; }
 .chat-head {
   display: flex;
   justify-content: space-between;
@@ -2583,21 +2621,22 @@ code {
   text-align: center;
 }
 .chat-empty strong { font-size: 14px; color: var(--chat-ink-soft); }
-.chat-row { display: flex; gap: 10px; align-items: flex-start; }
-.chat-row.user { flex-direction: row-reverse; }
+.chat-row { display: flex; gap: 11px; align-items: flex-start; padding: 13px 0; }
+.chat-row.user { justify-content: flex-end; }
 .chat-avatar {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 600;
   color: var(--chat-ink-soft);
   background: color-mix(in srgb, var(--chat-ink) 7%, transparent);
   border-radius: 50%;
 }
-.chat-bubble-wrap { max-width: min(78%, 640px); min-width: 0; }
+.chat-bubble-wrap { max-width: min(80%, 640px); min-width: 0; }
+.chat-row.agent .chat-bubble-wrap { flex: 1 1 auto; }
 .chat-meta {
   display: flex;
   align-items: baseline;
@@ -2609,16 +2648,23 @@ code {
 .chat-row.user .chat-meta { justify-content: flex-end; }
 .chat-meta strong { font-size: 12px; color: var(--chat-ink-soft); }
 .chat-body {
-  padding: 9px 12px;
-  font-size: 13px;
-  line-height: 1.65;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.72;
   color: var(--chat-ink);
-  background: var(--chat-surface);
-  border: 1px solid var(--chat-line);
-  border-radius: 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   overflow-wrap: anywhere;
 }
-.chat-row.user .chat-body { background: var(--chat-bubble-user, color-mix(in srgb, var(--chat-ink) 6%, transparent)); }
+.chat-row.agent .chat-body { color: var(--chat-ink); }
+.chat-row.user .chat-body {
+  padding: 9px 14px;
+  font-size: 13.5px;
+  line-height: 1.66;
+  background: var(--chat-user-bubble);
+  border-radius: 16px 16px 4px 16px;
+}
 .chat-body :deep(p) { margin: 0 0 6px; }
 .chat-body :deep(p:last-child) { margin-bottom: 0; }
 .chat-body :deep(ul),
