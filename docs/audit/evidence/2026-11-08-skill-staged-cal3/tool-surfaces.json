@@ -1,0 +1,44 @@
+{
+  "capturedAt": "2026-11-08T05:11:34.483Z",
+  "note": "四档能力面工具面实测(同一产线,不同 Channel profile):写面工具随档位收敛/放开",
+  "surfaces": [
+    {
+      "stage": "W1 分析",
+      "profile": "line-doctor",
+      "channel": "CAL3诊断频道-DOC2PROJ",
+      "tools": 43,
+      "writeTools": [],
+      "semantics": "物理零写(写工具不在工具面)"
+    },
+    {
+      "stage": "W2 控制",
+      "profile": "legacy(tuning,hitl_governed)",
+      "channel": "CAL3控制频道-DOC2PROJ",
+      "tools": 96,
+      "writeTools": [
+        "recipe_update",
+        "recipe_trial",
+        "recipe_apply"
+      ],
+      "semantics": "配方面写 + HITL 逐动作审批 + 项目 write_intent"
+    },
+    {
+      "stage": "W3 训练",
+      "profile": "aml_training",
+      "channel": "CAL3训练频道-DOC2PROJ",
+      "tools": 102,
+      "writeTools": [],
+      "semantics": "建模任务面(数据集/训练/评估),零设备写"
+    },
+    {
+      "stage": "W4 自主优化",
+      "profile": "aml_optimization(exploration)",
+      "channel": "CAL3优化频道-DOC2PROJ",
+      "tools": 86,
+      "writeTools": [
+        "optimization_explore"
+      ],
+      "semantics": "仅受控激励工具,有界步长+可辨识性闸,无逐动作审批"
+    }
+  ]
+}

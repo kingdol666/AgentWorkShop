@@ -1,0 +1,34 @@
+{
+  "lineId": "ln-fabeef11",
+  "recipeId": "rc-eefa8c9c",
+  "channelId": "56dff838-6b65-419f-a4b6-406962456aa6",
+  "dcw": [
+    {
+      "id": "dw-3ea126d5",
+      "name": "鼓风机频率SP",
+      "min": 20,
+      "max": 50,
+      "stepLimit": 2,
+      "probeValue": 41
+    },
+    {
+      "id": "dw-e960a77d",
+      "name": "加药泵频率SP",
+      "min": 0,
+      "max": 50,
+      "stepLimit": 5,
+      "probeValue": 27
+    }
+  ],
+  "daq": [
+    "dn-c0c8b7a4",
+    "dn-86e002c8",
+    "dn-0900949c",
+    "dn-d938a9ba",
+    "dn-320f821b"
+  ],
+  "plugins": [
+    "idd-closedloop-bridge",
+    "rag-bridge"
+  ]
+}

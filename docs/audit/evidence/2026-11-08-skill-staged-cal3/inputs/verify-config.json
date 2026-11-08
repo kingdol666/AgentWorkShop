@@ -1,0 +1,43 @@
+{
+  "lineId": "ln-30b8559a",
+  "recipeId": "rc-b786aaac",
+  "channelId": "2dc67884-60ed-4416-8cdd-c77b52b4c5f6",
+  "dcw": [
+    {
+      "id": "dw-89a663be",
+      "name": "一区温度SP",
+      "min": 700,
+      "max": 850,
+      "stepLimit": 10,
+      "probeValue": 790
+    },
+    {
+      "id": "dw-5d362ec7",
+      "name": "二区温度SP",
+      "min": 700,
+      "max": 850,
+      "stepLimit": 10,
+      "probeValue": 810
+    },
+    {
+      "id": "dw-93f4c44d",
+      "name": "带速SP",
+      "min": 60,
+      "max": 120,
+      "stepLimit": 5,
+      "probeValue": 95
+    }
+  ],
+  "daq": [
+    "dn-a52fee22",
+    "dn-1ae3ed4f",
+    "dn-a241f628",
+    "dn-5bf0fbec",
+    "dn-76587308",
+    "dn-86eac63d"
+  ],
+  "plugins": [
+    "idd-closedloop-bridge",
+    "rag-bridge"
+  ]
+}

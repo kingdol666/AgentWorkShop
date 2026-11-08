@@ -1,0 +1,56 @@
+{
+  "lineId": "ln-30b8559a",
+  "provision": {
+    "lineId": "ln-30b8559a",
+    "dcw": {
+      "一区温度SP": "dw-89a663be",
+      "二区温度SP": "dw-5d362ec7",
+      "带速SP": "dw-93f4c44d"
+    },
+    "daq": {
+      "一区炉温PV": "dn-a52fee22",
+      "二区炉温PV": "dn-1ae3ed4f",
+      "出口带温PV": "dn-a241f628",
+      "抗拉强度PV": "dn-5bf0fbec",
+      "延伸率PV": "dn-76587308",
+      "表面缺陷数PV": "dn-86eac63d"
+    },
+    "recipeId": "rc-b786aaac",
+    "reused": false
+  },
+  "scenario": "optimize",
+  "templateId": "chtpl-aml-optimization-default",
+  "name": "CAL3优化频道-DOC2PROJ",
+  "bindings": [
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:一区炉温PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:二区炉温PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:出口带温PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "dcw",
+      "nodeId": "$DCW:一区温度SP",
+      "mode": "manual"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "recipe",
+      "nodeId": "$RECIPE",
+      "mode": "manual"
+    }
+  ]
+}

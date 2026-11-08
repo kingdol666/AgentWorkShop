@@ -1,0 +1,479 @@
+{
+  "generatedAt": "2026-11-08T07:10:44.264Z",
+  "base": "http://127.0.0.1:4001",
+  "pid": "abbf9233-b08c-4cfc-884e-b00bb20fd3bf",
+  "expected": 76,
+  "complete": true,
+  "pass": 78,
+  "fail": 0,
+  "results": [
+    {
+      "id": "S0-1",
+      "name": "双账号登录(owner / 独立评审)",
+      "pass": true,
+      "detail": "A=admin B=verify-pitfall"
+    },
+    {
+      "id": "S0-2",
+      "name": "现场上下文(鼓风机频率SP)",
+      "pass": true,
+      "detail": "sp=41.5"
+    },
+    {
+      "id": "S0-3",
+      "name": "setup:批次 A 就绪(owner;line_start 基线下发=平台语义;409=沿用活动批次)",
+      "pass": true,
+      "detail": "start=409 产线「4#污水A-O池-DOC2PROJ」已在运行(批次 rr-2811c173),请先停止当前数据采集 | latestRun=rr-d5cbeb7 open=false"
+    },
+    {
+      "id": "S1-1",
+      "name": "Project 创建(technical 路由)",
+      "pass": true,
+      "detail": "pid=abbf9233"
+    },
+    {
+      "id": "S1-2",
+      "name": "四频道绑定到 Project(职责分离)",
+      "pass": true,
+      "detail": "statuses=200/200/200/200"
+    },
+    {
+      "id": "S1-3",
+      "name": "四期交付物注册",
+      "pass": true,
+      "detail": "analysis,control,training,optimize"
+    },
+    {
+      "id": "S1-4",
+      "name": "四期依赖链 W1→W2→W3→W4",
+      "pass": true,
+      "detail": "8bef17→00329c→9a1850→64d5d7"
+    },
+    {
+      "id": "S1-5",
+      "name": "Project 激活",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S1-6",
+      "name": "plan 审批(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-d1",
+      "name": "W1 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-d2",
+      "name": "W1 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=8b36aa03"
+    },
+    {
+      "id": "W1-d3",
+      "name": "W1 实例 lead 启用",
+      "pass": true,
+      "detail": "lead=f66313d3 members=1"
+    },
+    {
+      "id": "W1-t1",
+      "name": "W1 数采取证(强度/炉温序列)",
+      "pass": true,
+      "detail": "tensile=61点 zone1=60点"
+    },
+    {
+      "id": "W1-t2",
+      "name": "W1 真实统计(Pearson 相关+波动)",
+      "pass": true,
+      "detail": "r(DO,氨氮)=0.447(n=60) 氨氮均值=6.25mg/L σ=0.53(一级A ≤5)"
+    },
+    {
+      "id": "W1-t3",
+      "name": "W1 出口温度交叉取证",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点): ■ pH PV[id=dn-0900949c](pH计)单位 -,正常量程 5~9-,当前状态 ok,时间窗 2026-11-08T14:58 ~ 2026-11-0"
+    },
+    {
+      "id": "W1-t4",
+      "name": "W1 结论入台账(带真实统计)",
+      "pass": true,
+      "detail": "分析报告已留痕:ar-07af8c6e。产线「4#污水A-O池-DOC2PROJ」,结论 0 条,配方 未关联。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-07af8c6e\") 查回全文。"
+    },
+    {
+      "id": "W1-t5",
+      "name": "分析频道零写档(profile=line-doctor)",
+      "pass": true,
+      "detail": "profile=line-doctor"
+    },
+    {
+      "id": "W1-c1",
+      "name": "W1 实例 lead 以真实工件收口 root",
+      "pass": true,
+      "detail": "任务 0b1e62ee-1216-4cde-a30b-c83108448b32 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W1-c2",
+      "name": "W1 工作项 COMPLETED",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W1-s1",
+      "name": "W1 draft 物化(证据=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"6320a3dc-91ed-4a48-a36c-fd19fa9d98b5\",\"projectId\":\"abbf9233-b08c-4cfc-884e-b00bb20fd3bf\",\"deliverableId\":\"3ecf133"
+    },
+    {
+      "id": "W1-s2",
+      "name": "W1 owner 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s3",
+      "name": "W1 L1 技术评审(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s4",
+      "name": "W1 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s5",
+      "name": "W1 L2 签核 → approved",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-d1",
+      "name": "W2 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-d2",
+      "name": "W2 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=0ac13c1c"
+    },
+    {
+      "id": "W2-d3",
+      "name": "W2 实例 lead 启用",
+      "pass": true,
+      "detail": "lead=08139a8a members=4"
+    },
+    {
+      "id": "W2-t0",
+      "name": "W2 治理阴性:无 write_intent 被拒",
+      "pass": true,
+      "detail": "PROJECT_WRITE_INTENT_REQUIRED: recipe_trial 在项目来源任务中需要 owner 批准的 write_intent；请先调用 project_request_write_intent"
+    },
+    {
+      "id": "W2-t1",
+      "name": "W2 write_intent 申请(lead-only)",
+      "pass": true,
+      "detail": "{ \"ok\": true, \"approvalId\": \"e4bcbc77-0929-4845-9144-088861678eba\", \"digest\": \"fc5fa9f6f26ff07632844f729c0cf6119ad0dbd615e1f4f647645c5caf92b2f0\", \"too"
+    },
+    {
+      "id": "W2-t2",
+      "name": "W2 owner 批准 write_intent",
+      "pass": true,
+      "detail": "approval=e4bcbc77"
+    },
+    {
+      "id": "W2-card",
+      "name": "W2 HITL 卡批准受理(第 1 次尝试)",
+      "pass": true,
+      "detail": "card=ap-80292dd trialErr=试验已整批下发并全部设备证实(1/1,批次 rr-0df10):鼓风机频率SP→43.5Hz [证实✓]。假设:W2 依据 W1 结论:鼓风机频率 41.5→43.5(Δ+2),HITL 逐动作审批。 人工附言:CAL-"
+    },
+    {
+      "id": "W2-t3",
+      "name": "W2 HITL 卡→批准→trial 收口(最终态)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-0df10):鼓风机频率SP→43.5Hz [证实✓]。假设:W2 依据 W1 结论:鼓风机频率 41.5→43.5(Δ+2),HITL 逐动作审批。 人工附言:CAL-3 W2 HITL 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步"
+    },
+    {
+      "id": "W2-t4",
+      "name": "W2 设备侧精确生效(=目标±1.0 且移动 ≥0.5)",
+      "pass": true,
+      "detail": "before=41.5 after=43.5 target=43.5"
+    },
+    {
+      "id": "W2-t5",
+      "name": "W2 工艺惯性后炉温复测(实测窗均值)",
+      "pass": true,
+      "detail": "post窗均值=3.2℃(n=15)"
+    },
+    {
+      "id": "W2-c1",
+      "name": "W2 实例 lead 以真实工件收口 root",
+      "pass": true,
+      "detail": "任务 765430c3-80b2-4fb2-be39-417ce04153d5 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W2-c2",
+      "name": "W2 工作项 COMPLETED",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W2-s1",
+      "name": "W2 draft 物化(证据=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"72ea6b28-609c-4bba-be45-a6282c456c26\",\"projectId\":\"abbf9233-b08c-4cfc-884e-b00bb20fd3bf\",\"deliverableId\":\"da22c43"
+    },
+    {
+      "id": "W2-s2",
+      "name": "W2 owner 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s3",
+      "name": "W2 L1 技术评审(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s4",
+      "name": "W2 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s5",
+      "name": "W2 L2 签核 → approved",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-d1",
+      "name": "W3 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-d2",
+      "name": "W3 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=08a1fee7"
+    },
+    {
+      "id": "W3-d3",
+      "name": "W3 实例 lead 启用",
+      "pass": true,
+      "detail": "lead=77cf96fb members=3"
+    },
+    {
+      "id": "W3-t0",
+      "name": "AML 档位为频道级(实例不继承;训练走基础 lead)",
+      "pass": true,
+      "detail": "baseLead=cf814fb6 profile=aml_training"
+    },
+    {
+      "id": "W3-t1",
+      "name": "W3 批次收口(run close;零设备写)",
+      "pass": true,
+      "detail": "close=200 run=rr-2811c17"
+    },
+    {
+      "id": "W3-t2",
+      "name": "W3 零写佐证:设备值保持治理值(未被 line.start 回退)",
+      "pass": true,
+      "detail": "after=43.5 治理值=43.5"
+    },
+    {
+      "id": "W3-t3",
+      "name": "W3 治理后数据在场(治理后 DO 窗实测,方向性判据)",
+      "pass": true,
+      "detail": "治理后 DO 窗均值=3.18 mg/L(n=15) vs 试验前 DO 均值 3.01(升曝气→DO 应上行;τ≈40s)"
+    },
+    {
+      "id": "W3-t4",
+      "name": "W3 aml_dataset_build(含治理后时段)",
+      "pass": true,
+      "detail": "数据集构建完成: dataset_id: ds-mw7hl27k-a6q8c9 三元组: 产线 ln-fabeef11 / 产品 4#污水A-O池-DOC2PROJ·默认产品 / 配方 WWTP-4 基线配方(purpose=mpc_surrogate,beat=2000ms,history=32,horizon=8) 行数 282 | 窗口 train 95 / val 0 / test 187 | 批次 2 个参与构建 逐节点清洗摘"
+    },
+    {
+      "id": "W3-t5",
+      "name": "W3 aml_dataset_stats(质量报告)",
+      "pass": true,
+      "detail": "数据集 ds-mw7hl27k-a6q8c9 统计报告(beat=2000ms,history=32 拍,horizon=8 拍,purpose=mpc_surrogate) 三元组: ln-fabeef11 / pd-7cf7192d / rc-eefa8c9c | 行数 282 | 批次 2(2 参与构建)| 创建 2026-11-08 15:04:04 逐节点统计(train 切分): - 溶解氧DO PV(dn-c0c8b7a4"
+    },
+    {
+      "id": "W3-c1",
+      "name": "W3 实例 lead 以真实工件收口 root",
+      "pass": true,
+      "detail": "任务 1472ef05-823f-4eaa-94a5-79a63e0802fd 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W3-c2",
+      "name": "W3 工作项 COMPLETED",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W3-s1",
+      "name": "W3 draft 物化(证据=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"0bbef607-0aa5-460e-9780-f2bf396fd559\",\"projectId\":\"abbf9233-b08c-4cfc-884e-b00bb20fd3bf\",\"deliverableId\":\"315ab89"
+    },
+    {
+      "id": "W3-s2",
+      "name": "W3 owner 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-s3",
+      "name": "W3 L1 技术评审(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-s4",
+      "name": "W3 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-s5",
+      "name": "W3 L2 签核 → approved",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W4-d1",
+      "name": "W4 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W4-d2",
+      "name": "W4 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=4b8c03f7"
+    },
+    {
+      "id": "W4-d3",
+      "name": "W4 实例 lead 启用",
+      "pass": true,
+      "detail": "lead=bee9f335 members=3"
+    },
+    {
+      "id": "W4-t0",
+      "name": "W4 优化档位就绪(aml_optimization 探索模式)",
+      "pass": true,
+      "detail": "profile=aml_optimization phase=exploration"
+    },
+    {
+      "id": "W4-s0",
+      "name": "setup:批次 B 就绪(owner;line_start 基线下发=平台语义;有效性由探索步运行门实证)",
+      "pass": true,
+      "detail": "start=200 ok | latestRun=rr-d5cbeb7 open=false"
+    },
+    {
+      "id": "W4-t1",
+      "name": "W4 有界激励执行(探索档;首次被拒如实记录)",
+      "pass": true,
+      "detail": "探索步完成(已真实写入产线并记录): 记录: opt-exploration-mw7htmp0-qu4y7u 控制: 鼓风机频率SP(dw-3ea126d5) 40 → 41.5(步长 1.500,方向 up) 响应: dn-320f821b 6.563 → 6.190(Δ=-0.373,窗口 60s) goal: (Channel 未设置 goal —— 建议先在 Channel 设置中定义优化 |首次被拒:探索步被拒绝(未写入产线,已记录 rejected):\n下发被拒绝:DCW 节点「鼓风机频率SP」两次在线写入间隔必须至少 60s，当前还需 52s(节点 鼓风机频率SP,物理量 产线速度设定;设定值必须落在安全量程与活动配方工艺窗口内)"
+    },
+    {
+      "id": "W4-t2",
+      "name": "W4 无审批产生(HITL 队列无新增+项目审批数无新增)",
+      "pass": true,
+      "detail": "hitl=0→0 approvals=0→0"
+    },
+    {
+      "id": "W4-t3",
+      "name": "W4 干预台账可查(审批归因面)",
+      "pass": true,
+      "detail": "干预台账(最近 5 条,节点 dw-3ea126d5;判定分布:效应可分辨×2, 未判定(无判读上下文)×3): 2026-11-08T15:09:43.998+08:00 鼓风机频率SP 40→41.5(Δ+1.5) [agent] 判定:效应可分辨效应=-0.3731 CI[-0.484, -0.266] MDE=0.428 2026-11-08T15:"
+    },
+    {
+      "id": "W4-t4",
+      "name": "W4 精确有界生效(Δ=+6±0.5,界内,≤步限)",
+      "pass": true,
+      "detail": "before=40 after=41.5 Δ=+1.5Hz bound=[20,50] stepLimit=2"
+    },
+    {
+      "id": "W4-c1",
+      "name": "W4 实例 lead 以真实工件收口 root",
+      "pass": true,
+      "detail": "任务 75d0878a-e6f2-4656-a2d9-c2091a425719 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W4-c2",
+      "name": "W4 工作项 COMPLETED",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W4-s1",
+      "name": "W4 draft 物化(证据=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"a476dc99-c7d6-4d82-8205-92a6723daa67\",\"projectId\":\"abbf9233-b08c-4cfc-884e-b00bb20fd3bf\",\"deliverableId\":\"2cde41e"
+    },
+    {
+      "id": "W4-s2",
+      "name": "W4 owner 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W4-s3",
+      "name": "W4 L1 技术评审(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W4-s4",
+      "name": "W4 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W4-s5",
+      "name": "W4 L2 签核 → approved",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-1",
+      "name": "项目完成审批创建",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-2",
+      "name": "项目完成签核(独立 admin)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S3-3",
+      "name": "项目终态 completed",
+      "pass": true,
+      "detail": "status=completed"
+    },
+    {
+      "id": "S3-4",
+      "name": "全链审计事件齐备",
+      "pass": true,
+      "detail": "missing="
+    },
+    {
+      "id": "S3-5",
+      "name": "四期交付物全部 approved",
+      "pass": true,
+      "detail": "approved=4"
+    }
+  ]
+}

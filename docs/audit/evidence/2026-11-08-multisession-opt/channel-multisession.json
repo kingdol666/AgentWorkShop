@@ -1,0 +1,129 @@
+{
+  "at": "2026-11-08T03:23:00.798Z",
+  "base": "http://127.0.0.1:4001",
+  "template": "chtpl-generic-optimize-default",
+  "pass": 20,
+  "fail": 0,
+  "results": [
+    {
+      "id": "S0-1",
+      "name": "owner 登录(admin@awshop.local)",
+      "pass": true,
+      "detail": "admin token ok"
+    },
+    {
+      "id": "S0-2",
+      "name": "产线现场就绪",
+      "pass": true,
+      "detail": "dcw=4 daq=19 recipes=4 running=4/4"
+    },
+    {
+      "id": "S0-3",
+      "name": "目标线解析(SP/配方/数采)",
+      "pass": true,
+      "detail": "line=ln-ecf63 stepLimit=2.8"
+    },
+    {
+      "id": "T1",
+      "name": "模板实例化(chtpl-generic-optimize-default: 1 lead+3 worker, 绑线)",
+      "pass": true,
+      "detail": "ch=b5a309f0 lead=d01fdf58 workers=3 line=bound"
+    },
+    {
+      "id": "T2",
+      "name": "worker 补 omp 运行时配置 + 频道激活",
+      "pass": true,
+      "detail": "model=qwen3.5-9b-claude-4.6-op…"
+    },
+    {
+      "id": "T3",
+      "name": "基础成员绑定(分析师=数采auto, 工艺=SP+配方)",
+      "pass": true,
+      "detail": "posts=5 bad= analystRows=3"
+    },
+    {
+      "id": "M1",
+      "name": "双会话创建(克隆成员,两会话互不相同)",
+      "pass": true,
+      "detail": "A=cs-0bb07(4 clones) B=cs-c9caf(4 clones)"
+    },
+    {
+      "id": "M2",
+      "name": "克隆继承绑定面(分析师克隆=数采行, 工艺克隆=dcw+recipe行)",
+      "pass": true,
+      "detail": "anaA=3行 engB dcw=true recipe=true"
+    },
+    {
+      "id": "P1a",
+      "name": "会话A克隆 daq_query(真实数采样本)",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点): ■ 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP[id=dn-160df029](熔体/箱体温度)单位 ℃,正常量程 160~300℃,当前状态 ok,时间窗 2026-11-08T11:19 ~ 2026-11-08T11:22(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-b1d8cd9f 配方「演示配方1」(rc-f78"
+    },
+    {
+      "id": "P1b",
+      "name": "会话B克隆 line_context(产线全景)",
+      "pass": true,
+      "detail": "你控制的产线全景(1 条): ■ 产线 演示线1·注塑主机PLC(Modbus TCP)(ln-ecf632b0) · 状态:运行中 活动批次 rr-b1d8c · 产品「演示产品1」(pd-eef2d87a) · 开跑 10:51:11 · 已打标 10011 样本 我绑定的节点:数控 [演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP];数采 [无] 我绑定的配方: [演示配方1"
+    },
+    {
+      "id": "P2",
+      "name": "双会话并行真 LLM 对话(独立 runtime 各自消费)",
+      "pass": true,
+      "detail": "sent=200/200 consumedA=true consumedB=true"
+    },
+    {
+      "id": "W1a",
+      "name": "会话A克隆 recipe_trial 发起 HITL 卡",
+      "pass": true,
+      "detail": "card=ap-e4846a9"
+    },
+    {
+      "id": "W1b",
+      "name": "HITL 批准受理",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1c",
+      "name": "trial 收口(设备受理)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-aba44):演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP→228.32℃ [证实✓]。假设:模板多会话验收·会话A工艺工程师:单变量 SP=228.32(HITL manual 链,自当前值 230.00)。 人工附言:模板多会话验收批准(MS-A)注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe"
+    },
+    {
+      "id": "W1d",
+      "name": "设备侧回读收敛(会话内治理写真实生效)",
+      "pass": true,
+      "detail": "target=228.32 final=228.30"
+    },
+    {
+      "id": "C1",
+      "name": "关闭会话B(A 不受影响)",
+      "pass": true,
+      "detail": "A=active B=closed"
+    },
+    {
+      "id": "C2",
+      "name": "会话B克隆成员全部停用(enabled=0)",
+      "pass": true,
+      "detail": "clones=4 states=0,0,0,0"
+    },
+    {
+      "id": "C3",
+      "name": "B克隆身份 invoke 被拒(WP2 生效)",
+      "pass": true,
+      "detail": "status=404 text="
+    },
+    {
+      "id": "C4",
+      "name": "会话A克隆仍可正常作业",
+      "pass": true,
+      "detail": "### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效 #### ◇ 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP [id=dn-160df029] - 物理量:"
+    },
+    {
+      "id": "C5",
+      "name": "基础成员保留(lead+workers enabled, 基础分析师可作业)",
+      "pass": true,
+      "detail": "lead=true workersAlive=true baseInvoke=ok"
+    }
+  ]
+}

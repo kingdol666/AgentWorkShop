@@ -19,7 +19,7 @@ description: AgentWorkShop 产线接入与作业频道锻造 skill。当用户�
 
 - 先跑 `node scripts/onboarding/preflight.mjs --json`;只要已有实例在跑,默认按生产对待,禁止 `aw start`/`aw stop`/taskkill/kill/同 home 再启实例/停启采集总控(`aw start` 会自动停掉既有实例)。
 - 配置作业直接在已运行实例上做:专用测试线 + `PROTO-` 前缀 + 本次 id 清单;不改不删既有资源。
-- 协议搬运/插件兜底/模拟→真实割接见 `aw-protocol-onboarding`;插件接口与热加载见 `aw-plugin-dev`。
+- 协议搬运/插件兜底/模拟→真实割接见 `aw-protocol-onboarding`;插件接口与热加载见 `aw-plugin-dev`;**多频道组 Project 协同(项目编组/依赖链/验收链)与全生命周期 ask 门见 `aw-doc-to-project`**(单频道交付后要组项目跑协同作业时,由它编排)。
 - 需要重启才生效的 builtin 插件/核心改动,移交维护窗口;project/user 插件用热加载。
 
 ## 一键接入(onboard.mjs,首选执行方式)

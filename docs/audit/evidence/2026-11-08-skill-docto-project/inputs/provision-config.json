@@ -1,0 +1,124 @@
+{
+  "line": {
+    "name": "2#挤出涂布线-DOC2PROJ",
+    "description": "aw-doc-to-project skill 实测线(模拟孪生:4034)"
+  },
+  "nodes": [
+    {
+      "kind": "dcw",
+      "name": "涂布头温度SP",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37542,
+        "unitId": 2,
+        "register": 40001,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "℃",
+      "min": 180,
+      "max": 260,
+      "decimals": 1,
+      "stepLimit": 3,
+      "holdIntervalMs": 120000,
+      "templateRef": "dcw-temp-sp"
+    },
+    {
+      "kind": "daq",
+      "name": "涂布头温度PV",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37542,
+        "unitId": 2,
+        "register": 40003,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "℃",
+      "min": 0,
+      "max": 300,
+      "decimals": 1,
+      "intervalMs": 2000,
+      "templateRef": "daq-temp-tc"
+    },
+    {
+      "kind": "daq",
+      "name": "挤出机熔体压力PV",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37542,
+        "unitId": 2,
+        "register": 40005,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "bar",
+      "min": 0,
+      "max": 250,
+      "decimals": 1,
+      "intervalMs": 5000,
+      "templateRef": "daq-pressure-tx"
+    },
+    {
+      "kind": "daq",
+      "name": "涂布定量PV",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37542,
+        "unitId": 2,
+        "register": 40007,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "g/m2",
+      "min": 0,
+      "max": 60,
+      "decimals": 1,
+      "intervalMs": 5000,
+      "templateRef": "daq-ct-ba82617a"
+    },
+    {
+      "kind": "dcw",
+      "name": "收卷张力SP",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37542,
+        "unitId": 2,
+        "register": 40009,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "N",
+      "min": 100,
+      "max": 400,
+      "decimals": 1,
+      "stepLimit": 10,
+      "holdIntervalMs": 120000,
+      "templateRef": "dcw-tension-sp"
+    }
+  ],
+  "recipe": {
+    "name": "涂布基线配方",
+    "params": [
+      {
+        "node": "涂布头温度SP",
+        "value": 210
+      },
+      {
+        "node": "收卷张力SP",
+        "value": 250
+      }
+    ]
+  },
+  "startLine": true
+}

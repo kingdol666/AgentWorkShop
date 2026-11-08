@@ -1,0 +1,32 @@
+{
+  "simPort": 4038,
+  "devices": [
+    {
+      "id": "wwtp4-blower",
+      "name": "WWTP-4 曝气主控",
+      "protocol": "modbus-tcp",
+      "unitId": 4,
+      "signals": [
+        { "id": "blower-sp", "name": "鼓风机频率SP", "unit": "Hz", "min": 20, "max": 50, "decimals": 1, "kind": "sp", "initial": 40 },
+        { "id": "dosing-sp", "name": "加药泵频率SP", "unit": "Hz", "min": 0, "max": 50, "decimals": 1, "kind": "sp", "initial": 25 },
+        { "id": "do-pv", "name": "溶解氧DO PV", "unit": "mg/L", "min": 0, "max": 10, "decimals": 2, "kind": "pv",
+          "dynamics": { "base": 3.1, "tau": 40, "noise": 0.12, "follows": [{ "sp": "鼓风机频率SP", "gain": 0.08 }] } },
+        { "id": "mlss-pv", "name": "污泥浓度MLSS PV", "unit": "mg/L", "min": 0, "max": 6000, "decimals": 0, "kind": "pv",
+          "dynamics": { "base": 3800, "tau": 90, "noise": 45 } },
+        { "id": "ph-pv", "name": "pH PV", "unit": "", "min": 5, "max": 9, "decimals": 2, "kind": "pv",
+          "dynamics": { "base": 7.4, "tau": 70, "noise": 0.05 } }
+      ]
+    },
+    {
+      "id": "wwtp4-eff",
+      "name": "WWTP-4 出水水质仪",
+      "protocol": "opcua",
+      "signals": [
+        { "id": "cod-pv", "name": "出水COD PV", "unit": "mg/L", "min": 0, "max": 100, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 42, "tau": 60, "noise": 2.5 } },
+        { "id": "nh3n-pv", "name": "出水氨氮PV", "unit": "mg/L", "min": 0, "max": 25, "decimals": 2, "kind": "pv",
+          "dynamics": { "base": 6.6, "tau": 55, "noise": 0.35, "follows": [{ "sp": "鼓风机频率SP", "gain": -0.12 }] } }
+      ]
+    }
+  ]
+}

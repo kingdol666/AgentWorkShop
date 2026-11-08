@@ -1,0 +1,32 @@
+{
+  "lineId": "ln-61a4796f",
+  "recipeId": "rc-2c5ac25d",
+  "channelId": "4779bdf4-dbde-48ba-9c77-6240da12cdf4",
+  "dcw": [
+    {
+      "id": "dw-65640d51",
+      "name": "涂布头温度SP",
+      "min": 180,
+      "max": 260,
+      "stepLimit": 3,
+      "probeValue": 211
+    },
+    {
+      "id": "dw-a9a8a489",
+      "name": "收卷张力SP",
+      "min": 100,
+      "max": 400,
+      "stepLimit": 10,
+      "probeValue": 255
+    }
+  ],
+  "daq": [
+    "dn-c4ecf149",
+    "dn-701f9e44",
+    "dn-5c1c3201"
+  ],
+  "plugins": [
+    "idd-closedloop-bridge",
+    "rag-bridge"
+  ]
+}

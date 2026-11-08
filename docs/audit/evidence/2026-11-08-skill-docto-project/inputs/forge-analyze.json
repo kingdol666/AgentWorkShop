@@ -1,0 +1,39 @@
+{
+  "lineId": "ln-61a4796f",
+  "scenario": "diagnose",
+  "name": "涂布分析频道-DOC2PROJ",
+  "provision": {
+    "lineId": "ln-61a4796f",
+    "dcw": {
+      "涂布头温度SP": "dw-65640d51",
+      "收卷张力SP": "dw-a9a8a489"
+    },
+    "daq": {
+      "涂布头温度PV": "dn-c4ecf149",
+      "挤出机熔体压力PV": "dn-701f9e44",
+      "涂布定量PV": "dn-5c1c3201"
+    },
+    "recipeId": "rc-2c5ac25d",
+    "reused": false
+  },
+  "bindings": [
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:涂布头温度PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:挤出机熔体压力PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:涂布定量PV",
+      "mode": "auto"
+    }
+  ]
+}
