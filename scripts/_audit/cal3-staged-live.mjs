@@ -23,7 +23,7 @@ mkdirSync(EVID, { recursive: true })
 
 const LINE = 'ln-30b8559a'
 const RECIPE = 'rc-b786aaac'
-const SP1 = 'dw-89a663be'   // 一区温度SP step 10 (700~850)
+const SP1 = 'dw-89a663be' // 一区温度SP step 10 (700~850)
 const DAQ = { zone1: 'dn-a52fee22', zone2: 'dn-1ae3ed4f', exit: 'dn-a241f628', tensile: 'dn-5bf0fbec', elong: 'dn-76587308', defect: 'dn-86eac63d' }
 const CH = {
   analysis: '7d34db4b-03ce-46c7-a341-1d9ddd676776',
@@ -55,7 +55,7 @@ async function api(method, path, body, opts = {}) {
 async function invoke(agentId, tool, argsTool = {}, timeoutMs = 240_000) {
   const res = await fetch(`${base}/api/workshop/agent-tools/invoke`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${tokenA}` },
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${tokenA}` },
     body: JSON.stringify({ agentId, tool, args: argsTool }),
     signal: AbortSignal.timeout(timeoutMs),
   })
@@ -68,7 +68,7 @@ async function invoke(agentId, tool, argsTool = {}, timeoutMs = 240_000) {
 async function daqSeries(nodeId, fromMs, toMs, bucketMs = 5000) {
   const j = await api('GET', `/api/workshop/daq/${nodeId}/samples?from=${fromMs}&to=${toMs}&bucketMs=${bucketMs}`)
   const pts = j?.data?.points ?? []
-  return pts.map(p => ({ at: Number(p.at ?? p.ts ?? 0), v: Number(p.avg ?? p.value ?? Number.NaN) })).filter(p => Number.isFinite(p.v) && p.v !== 0 || true).filter(p => Number.isFinite(p.v))
+  return pts.map(p => ({ at: Number(p.at ?? p.ts ?? 0), v: Number(p.avg ?? p.value ?? Number.NaN) })).filter(p => Number.isFinite(p.v))
 }
 function pearson(xs, ys) {
   const n = Math.min(xs.length, ys.length)
@@ -133,7 +133,7 @@ async function main() {
   const cur0 = Number(spNode?.value ?? 780)
   if (!step('S0-2', '现场上下文(一区温度SP)', Number.isFinite(cur0), `sp=${cur0}`)) return finish()
   await api('PATCH', '/api/system/settings', { override: { 'dcw.rollback_stale_ms': 60000 } })
-  process.on('exit', () => { void fetch(`${base}/api/system/settings`, { method: 'PATCH', headers: { 'content-type': 'application/json', authorization: `Bearer ${tokenA}` }, body: JSON.stringify({ override: { 'dcw.rollback_stale_ms': 1800000 } }) }).catch(() => {}) })
+  process.on('exit', () => { void fetch(`${base}/api/system/settings`, { method: 'PATCH', headers: { 'content-type': 'application/json', 'authorization': `Bearer ${tokenA}` }, body: JSON.stringify({ override: { 'dcw.rollback_stale_ms': 1800000 } }) }).catch(() => {}) })
   // setup 操作(owner,非工作项):开批次(运行门权威=line-run 注册表)。line_start 409=批次已活(沿用既有批次);
   // 真正的批次有效性由 W2 运行门实证(批次缺失时 W2-t3 会显式红)。
   const st0 = await api('POST', `/api/workshop/dcw/lines/${LINE}/start`, { recipeId: RECIPE })
@@ -213,7 +213,7 @@ async function main() {
   }, 20_000)
   step('W2-t2', 'W2 owner 批准 write_intent', ap ? (await api('POST', `/api/workshop/projects/${pid}/approvals/${ap.id}/decide`, { approve: true })).status === 200 : false, `approval=${String(ap?.id ?? '').slice(0, 8)}`)
   let trial = null
-  let w2WriteAt = 0
+  let w2WriteAt
   let firstTrialError = ''
   for (let round = 0; round < 4 && !(trial && !trial.isError); round++) {
     const startAt = Date.now()
@@ -395,7 +395,6 @@ async function main() {
   step('W4-t2', 'W4 无审批产生(HITL 队列无新增+项目审批数无新增)', hitlAfter === hitlBefore && apprCountAfter === apprCountBefore, `hitl=${hitlBefore}→${hitlAfter} approvals=${apprCountBefore}→${apprCountAfter}`)
   // 台账强证据:干预记录 approval_id 为空(源=agent-auto,非 HITL)
   const ih = await invoke(baseOptLead.id, 'intervention_history', { node_id: SP1, limit: 5 })
-  const w4NoApproval = !ih.isError && /approval|审批|null|无/i.test(ih.text)
   step('W4-t3', 'W4 干预台账可查(审批归因面)', !ih.isError, ih.text.replace(/\s+/g, ' ').slice(0, 180))
   const after4 = Number(((await dcwNodes()).find(n => n.id === SP1))?.value ?? Number.NaN)
   // 精确有界:Δ=+stepW4(±0.5) 且落在 [700,850] 且 ≤ 步限
@@ -430,4 +429,4 @@ function finish(pid) {
   process.exitCode = fail > 0 || !complete ? 1 : 0
 }
 
-main().catch(e => { console.error('fatal:', e); finish('') })
+main().catch((e) => { console.error('fatal:', e); finish('') })

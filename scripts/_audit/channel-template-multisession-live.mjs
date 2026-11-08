@@ -51,7 +51,7 @@ async function api(method, path, body, timeoutMs = 60_000) {
 async function invoke(agentId, tool, argsTool = {}, timeoutMs = 240_000) {
   const res = await fetch(`${base}/api/workshop/agent-tools/invoke`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
     body: JSON.stringify({ agentId, tool, args: argsTool }),
     signal: AbortSignal.timeout(timeoutMs),
   })
@@ -154,7 +154,7 @@ async function main() {
   if (!step('S0-2', '产线现场就绪', dcwAll.length > 0 && daqAll.length > 0 && recipesAll.length > 0 && running.length >= 1,
     `dcw=${dcwAll.length} daq=${daqAll.length} recipes=${recipesAll.length} running=${running.length}/${states.length}`)) return finish(false)
   await api('PATCH', '/api/system/settings', { override: { 'dcw.rollback_stale_ms': 60000 } })
-  process.on('exit', () => { void fetch(`${base}/api/system/settings`, { method: 'PATCH', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ override: { 'dcw.rollback_stale_ms': 1800000 } }) }).catch(() => {}) })
+  process.on('exit', () => { void fetch(`${base}/api/system/settings`, { method: 'PATCH', headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` }, body: JSON.stringify({ override: { 'dcw.rollback_stale_ms': 1800000 } }) }).catch(() => {}) })
 
   const ctx = pickLine(dcwAll, daqAll, recipesAll, running)
   if (!step('S0-3', '目标线解析(SP/配方/数采)', Boolean(ctx), `line=${String(ctx?.lineId ?? '').slice(0, 8)} stepLimit=${ctx?.stepLimit ?? '?'}`)) return finish(false)
@@ -280,7 +280,7 @@ async function main() {
   const rowB = listRows.find(s => s.id === sB.sessionId)
   step('C1', '关闭会话B(A 不受影响)', closeB.status === 200 && rowB?.status === 'closed' && rowA?.status === 'active', `A=${rowA?.status} B=${rowB?.status}`)
   const agsAfter = (await api('GET', `/api/workshop/channels/${cid}/agents`)).data ?? []
-  const bClonesDisabled = cloneIdsB.length > 0 && cloneIdsB.every(id => { const a = agsAfter.find(x => x.id === id); return a && (a.enabled ?? 1) !== 1 })
+  const bClonesDisabled = cloneIdsB.length > 0 && cloneIdsB.every((id) => { const a = agsAfter.find(x => x.id === id); return a && (a.enabled ?? 1) !== 1 })
   step('C2', '会话B克隆成员全部停用(enabled=0)', bClonesDisabled, `clones=${cloneIdsB.length} states=${cloneIdsB.map(id => agsAfter.find(x => x.id === id)?.enabled).join(',')}`)
   const denied = await invoke(cloneIdsB[0] ?? '', 'daq_query', { node_id: ctx.daqs[0].id, last_minutes: 1 })
   step('C3', 'B克隆身份 invoke 被拒(WP2 生效)', denied.isError || denied.status >= 400, `status=${denied.status} text=${denied.text.replace(/\s+/g, ' ').slice(0, 120)}`)
@@ -288,7 +288,7 @@ async function main() {
   step('C4', '会话A克隆仍可正常作业', !aliveA.isError, aliveA.text.replace(/\s+/g, ' ').slice(0, 160))
   const baseAlive = await invoke(analyst.id, 'daq_query', { node_id: ctx.daqs[0].id, last_minutes: 1 })
   const leadAlive = agsAfter.find(x => x.id === lead?.id && (x.enabled ?? 1) === 1)
-  const workersAlive = workers.every(w => { const a = agsAfter.find(x => x.id === w.id); return a && (a.enabled ?? 1) === 1 })
+  const workersAlive = workers.every((w) => { const a = agsAfter.find(x => x.id === w.id); return a && (a.enabled ?? 1) === 1 })
   step('C5', '基础成员保留(lead+workers enabled, 基础分析师可作业)', Boolean(leadAlive && workersAlive) && !baseAlive.isError,
     `lead=${Boolean(leadAlive)} workersAlive=${workersAlive} baseInvoke=${baseAlive.isError ? 'ERR' : 'ok'}`)
 

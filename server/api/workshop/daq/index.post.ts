@@ -30,7 +30,7 @@ export default defineApiHandler(async (event) => {
   // mock 只允许显式传入(演示/单测面),不得由缺省产生。MQTT fields 组走 driver=mqtt,豁免。
   if (body.lineId && !Array.isArray(body.fields) && !body.driver) {
     throw new AppError(400, ErrorCodes.VALIDATION_ERROR,
-      "绑定产线的数采节点必须显式指定 driver(如 modbus-tcp/opcua/mqtt/http);缺省 mock 驱动会造成假数据,已拒绝。演示节点请显式传 driver=\"mock\"。")
+      '绑定产线的数采节点必须显式指定 driver(如 modbus-tcp/opcua/mqtt/http);缺省 mock 驱动会造成假数据,已拒绝。演示节点请显式传 driver="mock"。')
   }
   const driverConfig = (body.driverConfig ?? {}) as Record<string, unknown>
   if (hasMqttFieldSpecs(driverConfig, body.fields)) {

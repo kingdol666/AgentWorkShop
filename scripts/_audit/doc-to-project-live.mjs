@@ -13,7 +13,6 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { randomUUID } from 'node:crypto'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolve(HERE, '..', '..')
@@ -26,10 +25,9 @@ mkdirSync(EVID, { recursive: true })
 // 阶段 3-4 落袋(与 inputs/provision-config.json、forge-*.json 输出一致)
 const LINE = arg('line', 'ln-61a4796f')
 const RECIPE = arg('recipe', 'rc-2c5ac25d')
-const SP = arg('sp', 'dw-65640d51')            // 涂布头温度SP(stepLimit 3)
+const SP = arg('sp', 'dw-65640d51') // 涂布头温度SP(stepLimit 3)
 const WEIGHT_DAQ = arg('weight', 'dn-5c1c3201') // 涂布定量PV
 const TEMP_DAQ = arg('tempdaq', 'dn-c4ecf149')
-const PRESS_DAQ = arg('pressdaq', 'dn-701f9e44')
 const CH_ANA = arg('ana', '4fa3ec4c-5888-4288-8cb5-bc48c2542876')
 const CH_TUNE = arg('tune', '4779bdf4-dbde-48ba-9c77-6240da12cdf4')
 
@@ -56,7 +54,7 @@ async function api(method, path, body, opts = {}) {
 async function invoke(agentId, tool, argsTool = {}, timeoutMs = 240_000) {
   const res = await fetch(`${base}/api/workshop/agent-tools/invoke`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${tokenA}` },
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${tokenA}` },
     body: JSON.stringify({ agentId, tool, args: argsTool }),
     signal: AbortSignal.timeout(timeoutMs),
   })
