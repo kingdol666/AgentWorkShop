@@ -1,0 +1,54 @@
+{
+  "lineId": "ln-7bda9583",
+  "provision": {
+    "lineId": "ln-7bda9583",
+    "dcw": {
+      "压装力设定SP": "dw-2958415e"
+    },
+    "daq": {
+      "压装力实测PV": "dn-2a9bd11f",
+      "注脂量实测PV": "dn-2f5c7a4b",
+      "振动值PV": "dn-e7bd2cd6"
+    },
+    "recipeId": "rc-73d00e2f",
+    "reused": false
+  },
+  "scenario": "tuning",
+  "name": "BRG5调优频道",
+  "plugins": {
+    "idd-closedloop-bridge": true,
+    "rag-bridge": true
+  },
+  "bindings": [
+    {
+      "agentRole": "worker:0",
+      "kind": "daq",
+      "nodeId": "$DAQ:压装力实测PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "worker:0",
+      "kind": "daq",
+      "nodeId": "$DAQ:注脂量实测PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "worker:0",
+      "kind": "daq",
+      "nodeId": "$DAQ:振动值PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "dcw",
+      "nodeId": "$DCW:压装力设定SP",
+      "mode": "manual"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "recipe",
+      "nodeId": "$RECIPE",
+      "mode": "manual"
+    }
+  ]
+}

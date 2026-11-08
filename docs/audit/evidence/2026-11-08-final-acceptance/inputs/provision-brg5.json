@@ -1,0 +1,87 @@
+{
+  "line": {
+    "name": "5#轴承装配线-BRG5",
+    "description": "上线前终验(MQTT 第三协议,孪生:4039;MQTT 多SP 合并 cmd topic 限制→单SP)"
+  },
+  "nodes": [
+    {
+      "kind": "dcw",
+      "name": "压装力设定SP",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 48830,
+        "topic": "aw/twin/brg5-cell/set",
+        "jsonKey": "setpoint"
+      },
+      "unit": "kN",
+      "min": 6,
+      "max": 14,
+      "decimals": 2,
+      "stepLimit": 0.5,
+      "holdIntervalMs": 120000,
+      "templateRef": "dcw-pressure-sp"
+    },
+    {
+      "kind": "daq",
+      "name": "压装力实测PV",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 48830,
+        "topic": "aw/twin/brg5-cell/press-pv",
+        "jsonPath": "data.press-pv"
+      },
+      "unit": "kN",
+      "min": 0,
+      "max": 16,
+      "decimals": 2,
+      "intervalMs": 2000,
+      "templateRef": "daq-ct-c3931500"
+    },
+    {
+      "kind": "daq",
+      "name": "注脂量实测PV",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 48830,
+        "topic": "aw/twin/brg5-cell/grease-pv",
+        "jsonPath": "data.grease-pv"
+      },
+      "unit": "g",
+      "min": 0,
+      "max": 2,
+      "decimals": 3,
+      "intervalMs": 2000,
+      "templateRef": "daq-ct-e321c2fa"
+    },
+    {
+      "kind": "daq",
+      "name": "振动值PV",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 48830,
+        "topic": "aw/twin/brg5-cell/vibration-pv",
+        "jsonPath": "data.vibration-pv"
+      },
+      "unit": "dB(A)",
+      "min": 0,
+      "max": 80,
+      "decimals": 1,
+      "intervalMs": 2000,
+      "templateRef": "daq-ct-e9bfdb97"
+    }
+  ],
+  "recipe": {
+    "name": "BRG-5 基线配方",
+    "params": [
+      {
+        "node": "压装力设定SP",
+        "value": 10
+      }
+    ]
+  },
+  "startLine": true
+}

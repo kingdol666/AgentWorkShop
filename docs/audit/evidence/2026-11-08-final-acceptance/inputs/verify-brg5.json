@@ -1,0 +1,26 @@
+{
+  "lineId": "ln-7bda9583",
+  "recipeId": "rc-73d00e2f",
+  "channelId": "e2406dcb-275c-40a2-91e2-9f0e90096bcf",
+  "dcw": [
+    {
+      "id": "dw-2958415e",
+      "name": "压装力设定SP",
+      "min": 6,
+      "max": 14,
+      "stepLimit": 0.5,
+      "probeValue": 10.2,
+      "ackMode": "transport-ack",
+      "observeDaqId": "dn-2a9bd11f"
+    }
+  ],
+  "daq": [
+    "dn-2a9bd11f",
+    "dn-2f5c7a4b",
+    "dn-e7bd2cd6"
+  ],
+  "plugins": [
+    "idd-closedloop-bridge",
+    "rag-bridge"
+  ]
+}
