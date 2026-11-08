@@ -1,0 +1,26 @@
+{
+  "at": "2026-11-08T03:31:13.875Z",
+  "base": "http://127.0.0.1:4001",
+  "pass": 3,
+  "fail": 0,
+  "results": [
+    {
+      "id": "I1",
+      "name": "定位协同优化项目",
+      "pass": true,
+      "detail": "pid=79d31858 name=注塑工艺协同优化 1794108261650"
+    },
+    {
+      "id": "I2",
+      "name": "工作项均持有任务实例 Channel",
+      "pass": true,
+      "detail": "workItems=3 instanceChannels=3"
+    },
+    {
+      "id": "I3",
+      "name": "任务实例 Channel 存在会话行(任务级多会话)",
+      "pass": true,
+      "detail": "ed461865:1行 fa0f36b8:1行 421c8183:1行"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "simPort": 4036,
+  "devices": [
+    {
+      "id": "cal3-furnace",
+      "name": "CAL-3 加热炉主控",
+      "protocol": "modbus-tcp",
+      "unitId": 3,
+      "signals": [
+        { "id": "zone1-sp", "name": "一区温度SP", "unit": "℃", "min": 700, "max": 850, "decimals": 1, "kind": "sp", "initial": 780 },
+        { "id": "zone2-sp", "name": "二区温度SP", "unit": "℃", "min": 700, "max": 850, "decimals": 1, "kind": "sp", "initial": 800 },
+        { "id": "speed-sp", "name": "带速SP", "unit": "m/min", "min": 60, "max": 120, "decimals": 1, "kind": "sp", "initial": 90 },
+        { "id": "zone1-pv", "name": "一区炉温PV", "unit": "℃", "min": 0, "max": 900, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 775, "tau": 75, "noise": 2.0, "follows": [{ "sp": "一区温度SP", "gain": 0.98 }] } },
+        { "id": "zone2-pv", "name": "二区炉温PV", "unit": "℃", "min": 0, "max": 900, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 795, "tau": 105, "noise": 2.2, "follows": [{ "sp": "二区温度SP", "gain": 0.98 }] } },
+        { "id": "exit-temp-pv", "name": "出口带温PV", "unit": "℃", "min": 0, "max": 800, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 682, "tau": 90, "noise": 3.0, "follows": [{ "sp": "二区温度SP", "gain": 0.72 }] } }
+      ]
+    },
+    {
+      "id": "cal3-qm",
+      "name": "CAL-3 在线质量检测仪",
+      "protocol": "opcua",
+      "signals": [
+        { "id": "tensile-pv", "name": "抗拉强度PV", "unit": "MPa", "min": 300, "max": 600, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 478, "tau": 40, "noise": 12.0, "follows": [{ "sp": "一区温度SP", "gain": -0.28 }] } },
+        { "id": "elongation-pv", "name": "延伸率PV", "unit": "%", "min": 10, "max": 30, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 19.2, "tau": 42, "noise": 0.5, "follows": [{ "sp": "一区温度SP", "gain": 0.012 }] } },
+        { "id": "defects-pv", "name": "表面缺陷数PV", "unit": "个/卷", "min": 0, "max": 50, "decimals": 0, "kind": "pv",
+          "dynamics": { "base": 6, "tau": 60, "noise": 1.5 } }
+      ]
+    }
+  ]
+}

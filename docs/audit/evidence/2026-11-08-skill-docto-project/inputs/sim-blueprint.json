@@ -1,0 +1,21 @@
+{
+  "simPort": 4034,
+  "devices": [
+    {
+      "id": "csl2-s7",
+      "name": "CSL-2 涂布主机",
+      "protocol": "modbus-tcp",
+      "unitId": 2,
+      "signals": [
+        { "id": "coatTemp-sp", "name": "涂布头温度SP", "unit": "℃", "min": 180, "max": 260, "decimals": 1, "kind": "sp", "initial": 210 },
+        { "id": "coatTemp-pv", "name": "涂布头温度PV", "unit": "℃", "min": 0, "max": 300, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 208, "tau": 8, "noise": 0.4, "follows": [{ "sp": "涂布头温度SP", "gain": 0.95 }] } },
+        { "id": "meltPress-pv", "name": "挤出机熔体压力PV", "unit": "bar", "min": 0, "max": 250, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 120, "tau": 15, "noise": 2.5 } },
+        { "id": "coatWeight-pv", "name": "涂布定量PV", "unit": "g/m2", "min": 0, "max": 60, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 28, "tau": 20, "noise": 0.8, "follows": [{ "sp": "涂布头温度SP", "gain": 0.12 }] } },
+        { "id": "windTension-sp", "name": "收卷张力SP", "unit": "N", "min": 100, "max": 400, "decimals": 1, "kind": "sp", "initial": 250 }
+      ]
+    }
+  ]
+}

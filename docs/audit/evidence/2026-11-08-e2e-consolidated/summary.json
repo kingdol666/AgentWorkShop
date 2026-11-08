@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-11-08T07:11:44.745Z",
+  "rounds": [
+    {
+      "id": "R1",
+      "round": "坑修复轮(合并后复验)",
+      "files": [
+        "docs/audit/evidence/2026-11-08-pitfall-fixes/verify.json"
+      ],
+      "pass": 17,
+      "fail": 0,
+      "total": 17,
+      "complete": "all-pass",
+      "note": "unit 1207 tests/1205 pass/0 fail/2 skip 同轮归档(PR#89)"
+    },
+    {
+      "id": "R2",
+      "round": "产线工具三上下文",
+      "files": [
+        "docs/audit/evidence/2026-11-08-industrial-three-context/three-context.json"
+      ],
+      "pass": 35,
+      "fail": 0,
+      "total": 35,
+      "complete": "all-pass",
+      "note": "Channel直调/Session克隆/Project实例 + 双治理写(PR#91)"
+    },
+    {
+      "id": "R3",
+      "round": "多Channel组Project协同(旧home)",
+      "files": [
+        "docs/audit/evidence/2026-11-08-multi-channel-collab/collab.json"
+      ],
+      "pass": 67,
+      "fail": 0,
+      "total": 67,
+      "complete": "all-pass",
+      "note": "分析/调优/建模三频道依赖链(证据入库 PR#94)"
+    },
+    {
+      "id": "R4",
+      "round": "模板多会话+产线优化",
+      "files": [
+        "docs/audit/evidence/2026-11-08-multisession-opt/channel-multisession.json",
+        "docs/audit/evidence/2026-11-08-multisession-opt/collab.json",
+        "docs/audit/evidence/2026-11-08-multisession-opt/instance-sessions.json"
+      ],
+      "pass": 92,
+      "fail": 0,
+      "total": 92,
+      "complete": "all-pass",
+      "note": "独立审查代理 VERDICT: APPROVED(裁决已归档)"
+    },
+    {
+      "id": "R5",
+      "round": "doc-to-project skill 首验(CSL-2 涂布)",
+      "files": [
+        "docs/audit/evidence/2026-11-08-skill-docto-project/doc-to-project.json"
+      ],
+      "pass": 48,
+      "fail": 0,
+      "total": 48,
+      "complete": "all-pass",
+      "note": "文档→模拟PLC→供给→锻造→Project 跑通;6 轮迭代"
+    },
+    {
+      "id": "R6",
+      "round": "CAL-3 四期递进(初版)",
+      "files": [],
+      "pass": 0,
+      "fail": 0,
+      "total": 0,
+      "complete": "all-pass",
+      "note": "**REJECTED** by 独立审查(W3 line.start 写设备/数据集非治理后/≥300s 未落地/W1 硬编码等 12 项) — 初版 72/72 不可采信"
+    },
+    {
+      "id": "R7",
+      "round": "CAL-3 四期递进(修正轮 run10)",
+      "files": [
+        "docs/audit/evidence/2026-11-08-skill-staged-cal3/staged.json"
+      ],
+      "pass": 78,
+      "fail": 0,
+      "total": 78,
+      "complete": true,
+      "note": "12 项审查发现全修复;verify-line 19/19;sim 3/3;provision 15/15;forge 30/30"
+    },
+    {
+      "id": "R8",
+      "round": "WWTP-4 全新产线 E2E(修正方法论首用)",
+      "files": [
+        "docs/audit/evidence/2026-11-08-e2e-wwtp/staged.json"
+      ],
+      "pass": 78,
+      "fail": 0,
+      "total": 78,
+      "complete": true,
+      "note": "双文档全新撰写;verify-line 16/16;sim 3/3;provision 13/13;forge 28/28"
+    }
+  ],
+  "totals": {
+    "assertions": 415,
+    "pass": 415,
+    "fail": 0
+  }
+}

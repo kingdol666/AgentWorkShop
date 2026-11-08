@@ -1,0 +1,191 @@
+{
+  "capturedAt": "2026-11-08T05:37:49.389Z",
+  "note": "端口迁移 diff:before=provision-config.json(供给期快照,37542) vs after=运行库现值。审查要求:证明只改 driverConfig、治理字段零改动",
+  "summary": {
+    "nodes": 9,
+    "onlyDriverConfig": 6,
+    "governanceViolations": 0
+  },
+  "diff": [
+    {
+      "name": "一区温度SP",
+      "changedFields": {
+        "driverConfig": {
+          "before": {
+            "host": "127.0.0.1",
+            "port": 37542,
+            "unitId": 3,
+            "register": 40001,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          },
+          "after": {
+            "host": "127.0.0.1",
+            "port": 37562,
+            "unitId": 3,
+            "register": 40001,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          }
+        }
+      },
+      "governanceUnchanged": true,
+      "onlyDriverConfigChanged": true
+    },
+    {
+      "name": "二区温度SP",
+      "changedFields": {
+        "driverConfig": {
+          "before": {
+            "host": "127.0.0.1",
+            "port": 37542,
+            "unitId": 3,
+            "register": 40003,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          },
+          "after": {
+            "host": "127.0.0.1",
+            "port": 37562,
+            "unitId": 3,
+            "register": 40003,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          }
+        }
+      },
+      "governanceUnchanged": true,
+      "onlyDriverConfigChanged": true
+    },
+    {
+      "name": "带速SP",
+      "changedFields": {
+        "driverConfig": {
+          "before": {
+            "host": "127.0.0.1",
+            "port": 37542,
+            "unitId": 3,
+            "register": 40005,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          },
+          "after": {
+            "host": "127.0.0.1",
+            "port": 37562,
+            "unitId": 3,
+            "register": 40005,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          }
+        }
+      },
+      "governanceUnchanged": true,
+      "onlyDriverConfigChanged": true
+    },
+    {
+      "name": "一区炉温PV",
+      "changedFields": {
+        "driverConfig": {
+          "before": {
+            "host": "127.0.0.1",
+            "port": 37542,
+            "unitId": 3,
+            "register": 40007,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          },
+          "after": {
+            "host": "127.0.0.1",
+            "port": 37562,
+            "unitId": 3,
+            "register": 40007,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          }
+        }
+      },
+      "governanceUnchanged": true,
+      "onlyDriverConfigChanged": true
+    },
+    {
+      "name": "二区炉温PV",
+      "changedFields": {
+        "driverConfig": {
+          "before": {
+            "host": "127.0.0.1",
+            "port": 37542,
+            "unitId": 3,
+            "register": 40009,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          },
+          "after": {
+            "host": "127.0.0.1",
+            "port": 37562,
+            "unitId": 3,
+            "register": 40009,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          }
+        }
+      },
+      "governanceUnchanged": true,
+      "onlyDriverConfigChanged": true
+    },
+    {
+      "name": "出口带温PV",
+      "changedFields": {
+        "driverConfig": {
+          "before": {
+            "host": "127.0.0.1",
+            "port": 37542,
+            "unitId": 3,
+            "register": 40011,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          },
+          "after": {
+            "host": "127.0.0.1",
+            "port": 37562,
+            "unitId": 3,
+            "register": 40011,
+            "registerType": "holding",
+            "dataType": "float32",
+            "byteOrder": "big"
+          }
+        }
+      },
+      "governanceUnchanged": true,
+      "onlyDriverConfigChanged": true
+    },
+    {
+      "name": "抗拉强度PV",
+      "changedFields": {},
+      "governanceUnchanged": true,
+      "onlyDriverConfigChanged": false
+    },
+    {
+      "name": "延伸率PV",
+      "changedFields": {},
+      "governanceUnchanged": true,
+      "onlyDriverConfigChanged": false
+    },
+    {
+      "name": "表面缺陷数PV",
+      "changedFields": {},
+      "governanceUnchanged": true,
+      "onlyDriverConfigChanged": false
+    }
+  ]
+}

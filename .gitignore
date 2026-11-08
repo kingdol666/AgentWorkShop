@@ -150,3 +150,6 @@ tmp-e2e/
 
 # 论文参考资料(第三方 PDF,本地研究材料不入库)
 paper/tii/reference-papers-*/
+
+# 隔离演练 home(运行时数据,不入库;2026-11-08)
+.deep-home-*/

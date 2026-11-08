@@ -1,0 +1,53 @@
+{
+  "lineId": "ln-fabeef11",
+  "provision": {
+    "lineId": "ln-fabeef11",
+    "dcw": {
+      "鼓风机频率SP": "dw-3ea126d5",
+      "加药泵频率SP": "dw-e960a77d"
+    },
+    "daq": {
+      "溶解氧DO PV": "dn-c0c8b7a4",
+      "污泥浓度MLSS PV": "dn-86e002c8",
+      "pH PV": "dn-0900949c",
+      "出水COD PV": "dn-d938a9ba",
+      "出水氨氮PV": "dn-320f821b"
+    },
+    "recipeId": "rc-eefa8c9c",
+    "reused": false
+  },
+  "scenario": "diagnose",
+  "name": "WWTP4诊断频道-DOC2PROJ",
+  "bindings": [
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:溶解氧DO PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:污泥浓度MLSS PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:pH PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:出水COD PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "$DAQ:出水氨氮PV",
+      "mode": "auto"
+    }
+  ]
+}

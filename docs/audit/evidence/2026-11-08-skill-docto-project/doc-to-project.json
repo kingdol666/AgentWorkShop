@@ -1,0 +1,302 @@
+{
+  "generatedAt": "2026-11-08T04:35:54.013Z",
+  "base": "http://127.0.0.1:4001",
+  "pid": "b4eba4e5-851a-4792-a5aa-f072d198bb1b",
+  "pass": 48,
+  "fail": 0,
+  "results": [
+    {
+      "id": "S0-1",
+      "name": "双账号登录(owner=A 独立评审=B)",
+      "pass": true,
+      "detail": "A=admin@awshop.local B=verify-pitfall@aw.local"
+    },
+    {
+      "id": "S0-2",
+      "name": "现场上下文(SP 当前值/步限)",
+      "pass": true,
+      "detail": "sp=211.2 stepLimit=3"
+    },
+    {
+      "id": "S1-1",
+      "name": "Project 创建(technical 路由)",
+      "pass": true,
+      "detail": "pid=b4eba4e5"
+    },
+    {
+      "id": "S1-2",
+      "name": "两频道绑定到 Project(charter)",
+      "pass": true,
+      "detail": "200/200"
+    },
+    {
+      "id": "S1-3",
+      "name": "交付物注册(分析+调优)",
+      "pass": true,
+      "detail": "ddd3e2e6/481cb731"
+    },
+    {
+      "id": "S1-4",
+      "name": "工作项依赖链 W1→W2",
+      "pass": true,
+      "detail": "W1=96978601 W2=abe30705"
+    },
+    {
+      "id": "S1-5",
+      "name": "Project 激活",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S1-6",
+      "name": "plan 审批(独立 admin 批准)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-d1",
+      "name": "W1 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-d2",
+      "name": "W1 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=363a5e31"
+    },
+    {
+      "id": "W1-d3",
+      "name": "W1 实例成员就绪(lead)",
+      "pass": true,
+      "detail": "lead=5a6fc893 eng=无 members=1"
+    },
+    {
+      "id": "W1-d4",
+      "name": "W1 root 非终态(驱动作业窗口)",
+      "pass": true,
+      "detail": "root=SUBMITTED"
+    },
+    {
+      "id": "W1-t1",
+      "name": "W1 实例 lead 数采查询(定量PV 真实样本)",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点): ■ 涂布定量PV[id=dn-5c1c3201](在线测厚定量)单位 g/m2,正常量程 0~60g/m2,当前状态 ok,时间窗 2026-11-08T12:30 ~ 2026-11-08T12:35(降采样 5000ms,聚合 avg) 当前活动批次 run=rr-68338024 配方「涂布基线配方」(rc-2c5ac25d)(可直接把 run_id/recipe_id 回传给 daq_query"
+    },
+    {
+      "id": "W1-t2",
+      "name": "W1 温度PV 交叉取证",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点): ■ 涂布头温度PV[id=dn-c4ecf149](熔体/箱体温度)单位 ℃,正常量程 0~300℃,当前状态 ok,时间窗 2026-11-08T12:30 ~ 2026-11-08T12:35(降采样 5000ms,聚合 avg) 当前活动批次 run=rr-68338024 配方"
+    },
+    {
+      "id": "W1-t3",
+      "name": "W1 分析结论入台账(analysis_save)",
+      "pass": true,
+      "detail": "分析报告已留痕:ar-b26cc88e。产线「2#挤出涂布线-DOC2PROJ」,结论 0 条,配方 未关联。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-b26cc88e\") 查回全文。"
+    },
+    {
+      "id": "W1-c1",
+      "name": "W1 实例 lead 以真实工件收口 root",
+      "pass": true,
+      "detail": "任务 a7c88524-7ff2-44e6-a4d6-16a48f0217e5 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W1-c2",
+      "name": "W1 工作项 COMPLETED(对账收敛)",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W1-s1",
+      "name": "W1 draft 自动物化(证据=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"9740acd6-f353-46f1-ae7f-bbecb00e3427\",\"projectId\":\"b4eba4e5-851a-4792-a5aa-f072d198bb1b\",\"deliverableId\":\"ddd3e2e6-d104-46b0-af07-30e"
+    },
+    {
+      "id": "W1-s2",
+      "name": "W1 owner(integrator) 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s3",
+      "name": "W1 L1 技术评审(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s4",
+      "name": "W1 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s5",
+      "name": "W1 L2 签核(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s6",
+      "name": "W1 成果终态 approved",
+      "pass": true,
+      "detail": "status=approved"
+    },
+    {
+      "id": "W2-d1",
+      "name": "W2 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-d2",
+      "name": "W2 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=101c9948"
+    },
+    {
+      "id": "W2-d3",
+      "name": "W2 实例成员就绪(lead+工艺工程师)",
+      "pass": true,
+      "detail": "lead=dae260eb eng=38072eb4 members=4"
+    },
+    {
+      "id": "W2-d4",
+      "name": "W2 root 非终态(驱动作业窗口)",
+      "pass": true,
+      "detail": "root=SUBMITTED"
+    },
+    {
+      "id": "W2-h",
+      "name": "W2 handoff bundle 携带 W1 真实结论",
+      "pass": true,
+      "detail": "…W1 分析结论(2026-11-08T04:35):线 ln-61a4796f …命中"
+    },
+    {
+      "id": "W2-t0",
+      "name": "W2 治理阴性:无 write_intent 被拒(worker 无项目来源任务)",
+      "pass": true,
+      "detail": "PROJECT_WRITE_INTENT_REQUIRED: 项目成员的高风险写必须经项目来源任务 + owner 批准的 write_intent（不得用普通任务绕过）"
+    },
+    {
+      "id": "W2-t1",
+      "name": "W2 write_intent 申请(实例 lead;工具为 lead-only)",
+      "pass": true,
+      "detail": "{ \"ok\": true, \"approvalId\": \"5f8ac7fa-c442-47e7-b88b-e94792e15661\", \"digest\": \"c9fb8fb97bcd8c1fc5eebdd2f5e9eab931a1f75214e3568c970b099d4745889c\", \"tool\": \"recip"
+    },
+    {
+      "id": "W2-t2",
+      "name": "W2 owner 批准 write_intent",
+      "pass": true,
+      "detail": "approval=5f8ac7fa"
+    },
+    {
+      "id": "W2-t3",
+      "name": "W2 recipe_trial 发起 HITL 卡",
+      "pass": true,
+      "detail": "card=ap-2de8b65"
+    },
+    {
+      "id": "W2-t4",
+      "name": "W2 HITL 批准受理",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-t5",
+      "name": "W2 trial 收口(设备受理)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-7692c):涂布头温度SP→209.4℃ [证实✓]。假设:依据 W1 分析结论的涂布头温度单变量小步试验(自 211.20),目标 209.4。 人工附言:doc-to-project skill 实测批准(W2)注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+"
+    },
+    {
+      "id": "W2-t6",
+      "name": "W2 设备回读收敛(真实工况写)",
+      "pass": true,
+      "detail": "target=209.4 final=209.40"
+    },
+    {
+      "id": "W2-c1",
+      "name": "W2 实例 lead 以真实工件收口 root",
+      "pass": true,
+      "detail": "任务 f2a80d80-d932-488b-82b8-d3b599887e31 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W2-c2",
+      "name": "W2 工作项 COMPLETED(对账收敛)",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W2-s1",
+      "name": "W2 draft 自动物化(证据=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"ab650f09-416b-4b5d-abac-d8254193c152\",\"projectId\":\"b4eba4e5-851a-4792-a5aa-f072d198bb1b\",\"deliverableId\":\"481cb731-3eb7-44ec-8f4f-ef8"
+    },
+    {
+      "id": "W2-s2",
+      "name": "W2 owner(integrator) 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s3",
+      "name": "W2 L1 技术评审(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s4",
+      "name": "W2 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s5",
+      "name": "W2 L2 签核(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s6",
+      "name": "W2 成果终态 approved",
+      "pass": true,
+      "detail": "status=approved"
+    },
+    {
+      "id": "S3-1",
+      "name": "项目完成审批创建(交付物验收齐备门)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-2",
+      "name": "项目完成签核(独立 admin) → completed",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-3",
+      "name": "项目终态 completed",
+      "pass": true,
+      "detail": "status=completed"
+    },
+    {
+      "id": "S3-4",
+      "name": "全链审计事件齐备",
+      "pass": true,
+      "detail": "missing="
+    },
+    {
+      "id": "S3-5",
+      "name": "落袋 id 汇总(交接面)",
+      "pass": true,
+      "detail": "project=b4eba4e5-851a-4792-a5aa-f072d198bb1b W1=96978601-aef2-4b1a-8c66-8b4dba501cb3 W2=abe30705-db01-4ee4-b90b-31b0dcc9d3cb ana=4fa3ec4c tune=4779bdf4"
+    }
+  ],
+  "gates": {
+    "gateA": "弹窗未应答 → 采用推荐默认(组Project跑通/mock 编排/5000ms/decimals 0.1);范围授权=任务书原文",
+    "gateB": "弹窗未应答 → 蓝图五清单按推荐执行(见 inputs/),交接时呈请追认",
+    "gateC": "交接声明见 handover.md;投用由产线负责人裁决"
+  }
+}
