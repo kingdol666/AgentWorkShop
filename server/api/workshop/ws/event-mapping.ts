@@ -7,6 +7,7 @@ import type { AgentChannelManager } from '../../../services/workshop/runtime/man
 import type { AgentEvent } from '../../../services/workshop/agents/agent-interface'
 import type { ChannelStream } from './shared'
 import { publish } from './publish'
+import { agentBlocksFromParts, normalizeToolLine } from '@/shared/agent-blocks'
 
 export function mapAgentEvent(manager: AgentChannelManager, stream: ChannelStream, event: AgentEvent, source: A2AMessage): void {
   const agentId = (source.metadata?.['x-aw-producing-agent'] as string | undefined)
@@ -23,9 +24,28 @@ export function mapAgentEvent(manager: AgentChannelManager, stream: ChannelStrea
       break
     case 'status':
       if (event.status.message) {
+        // AgentBlock v1(2026-11-08 生产审计·指控6):结构化工具块与文本帧并行下发。
+        // ① 原生块优先(omp 等发射点追加的 data Part);
+        // ② 无原生块时按 🔧 文本签名归一兜底派生(全 14 引擎文案互异但特征可识别;harness 字段空串=未知)。
+        //    单消息单工具行是所有 harness 的不变式(status 消息即单事件投影)。
+        const blocks = agentBlocksFromParts(event.status.message.parts)
+        for (const block of blocks) {
+          publish(manager, stream, 'agent.block', { block }, { agentId, taskId })
+        }
         // 纯空白文本(换行/空格拼接)同样不下发:聚合出"思考/中间输出 (空)"空白块
         const text = event.status.message.parts.map(p => ('text' in p ? p.text : '')).join(' ')
-        if (text.trim()) publish(manager, stream, 'agent.status.message', { text }, { agentId, taskId })
+        if (text.trim()) {
+          publish(manager, stream, 'agent.status.message', { text }, { agentId, taskId })
+          if (blocks.length === 0) {
+            const toolLine = event.status.message.parts
+              .map(p => ('text' in p ? p.text : ''))
+              .find(p => p.trim().startsWith('🔧'))
+            if (toolLine) {
+              const derived = normalizeToolLine(toolLine.trim())
+              if (derived) publish(manager, stream, 'agent.block', { block: derived }, { agentId, taskId })
+            }
+          }
+        }
       }
       break
     case 'artifact':

@@ -10,16 +10,40 @@ import type { EventBlock } from '@/app/composables/workshop/useEventBlocks'
 
 const props = defineProps<{ block: EventBlock }>()
 
-/** 解析 `🔧 name(arg preview)` 行 */
-const toolLines = computed(() =>
-  props.block.events.map((e) => {
+/** 解析工具行:AgentBlock v1 结构块优先(payload={block});正则反解 🔧 文本退路径(compat)。
+ *  去重:omp 等原生发射同一调用会有「结构帧+文本帧」两条(payload.block.text 与文本帧同文),
+ *  文本帧若已被任一结构块的 text 覆盖则跳过,避免双行。 */
+const toolLines = computed(() => {
+  const events = props.block.events
+  const covered = new Set<string>()
+  for (const e of events) {
+    const b = (e.payload as { block?: { text?: string } }).block
+    if (b?.text) covered.add(b.text)
+  }
+  return events.flatMap((e) => {
+    const structured = (e.payload as { block?: { tool?: string, argsPreview?: string | null, phase?: string, status?: string } }).block
     const text = String((e.payload as { text?: string }).text ?? '')
+    if (structured && structured.tool) {
+      const suffix = structured.phase === 'end'
+        ? (structured.status === 'error' ? ' ❌' : structured.status === 'ok' ? ' ✓' : '')
+        : ''
+      return [{
+        seq: e.seq,
+        time: formatLocalClock(e.at),
+        name: String(structured.tool),
+        args: String(structured.argsPreview ?? '') + suffix,
+        meta: TOOL_META[String(structured.tool)] ?? { icon: 'i-tabler-tool', kind: 'native' as const },
+      }]
+    }
+    // 已被结构块覆盖的文本帧跳过(去重);无结构覆盖时正则反解
+    if (covered.has(text)) return []
     const m = text.match(/^🔧\s*(\S+?)(?:\(([\s\S]*)\))?$/)
-    const name = m?.[1] ?? 'tool'
-    const args = m?.[2] ?? ''
-    return { seq: e.seq, time: formatLocalClock(e.at), name, args, meta: TOOL_META[name] ?? { icon: 'i-tabler-tool', kind: 'native' as const } }
-  }),
-)
+    if (!m) return []
+    const name = m[1] ?? 'tool'
+    const args = m[2] ?? ''
+    return [{ seq: e.seq, time: formatLocalClock(e.at), name, args, meta: TOOL_META[name] ?? { icon: 'i-tabler-tool', kind: 'native' as const } }]
+  })
+})
 
 const expanded = ref(false)
 const MAX = 4

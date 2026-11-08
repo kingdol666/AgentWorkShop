@@ -10,6 +10,7 @@ import { log } from './helpers'
 import { randomUUID } from 'node:crypto'
 import { toolArgsPreview } from '../prompt-builder'
 import { recordOmpAgentTeamToolEvent } from './agentteam-audit'
+import { toolBlockDataPart } from '@/shared/agent-blocks'
 
 export abstract class OmpRpcAgentImplEventMapping extends OmpRpcAgentImplToolsSteer {
   protected mapOmpEvent(event: AgentSessionEvent, taskId: string | undefined): AgentEvent[] {
@@ -59,6 +60,8 @@ export abstract class OmpRpcAgentImplEventMapping extends OmpRpcAgentImplToolsSt
           taskId: knownTaskId,
         })
         const toolName = event.toolName ?? 'tool'
+        const argsText = toolArgsPreview(event.args)
+        const startLine = `🔧 ${toolName}${argsText}`
         return [{
           kind: 'status',
           status: {
@@ -67,7 +70,16 @@ export abstract class OmpRpcAgentImplEventMapping extends OmpRpcAgentImplToolsSt
               messageId: randomUUID(),
               contextId: this.channelId,
               role: 'ROLE_AGENT',
-              parts: [{ text: `🔧 ${toolName}${toolArgsPreview(event.args)}` }],
+              // AgentBlock v1:结构化块与 🔧 文本并行发射(审计/统一渲染面;文本面兼容不变)
+              parts: [
+                { text: startLine },
+                toolBlockDataPart({
+                  kind: 'agent.tool', v: 1, harness: 'omp',
+                  tool: toolName, phase: 'start',
+                  argsPreview: argsText ? argsText.slice(1, 201) : null,
+                  text: startLine,
+                }),
+              ],
             },
             timestamp: new Date().toISOString(),
           },
@@ -101,6 +113,7 @@ export abstract class OmpRpcAgentImplEventMapping extends OmpRpcAgentImplToolsSt
           }
         }
         const summary = raw.slice(0, 300)
+        const endLine = `🔧 ${endToolName} ${isError ? '❌ 失败' : '✅ 完成'}${summary ? ': ' + summary : ''}`
         return [{
           kind: 'status',
           status: {
@@ -109,7 +122,17 @@ export abstract class OmpRpcAgentImplEventMapping extends OmpRpcAgentImplToolsSt
               messageId: randomUUID(),
               contextId: this.channelId,
               role: 'ROLE_AGENT',
-              parts: [{ text: `🔧 ${endToolName} ${isError ? '❌ 失败' : '✅ 完成'}${summary ? ': ' + summary : ''}` }],
+              // AgentBlock v1:end 块(status/errorText)与文本并行
+              parts: [
+                { text: endLine },
+                toolBlockDataPart({
+                  kind: 'agent.tool', v: 1, harness: 'omp',
+                  tool: endToolName, phase: 'end',
+                  status: isError ? 'error' : 'ok',
+                  errorText: isError ? summary : null,
+                  text: endLine,
+                }),
+              ],
             },
             timestamp: new Date().toISOString(),
           },
