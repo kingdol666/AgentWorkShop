@@ -78,7 +78,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 128 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.9.5</i></span>
+        <span>Version <i>v0.10.0</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -90,6 +90,44 @@ footer:
 <div class="hw-wrap">
 
   <div class="aw-ruler"></div>
+
+  <section class="hw-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">00</span>
+      <h2 class="hw-sec-title">What's new</h2>
+      <span class="hw-sec-en">RELEASE · v0.10.0</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <p class="hw-lead">
+      Three structural changes in November 2026: the console follows the ChatGPT harness,
+      execution environments are isolated per session, and Projects became delivery contracts.
+      All three were accepted on the main build.
+    </p>
+    <div class="hw-feats">
+      <div class="hw-f">
+        <span class="tag">UI</span>
+        <h3>ChatGPT-style harness console</h3>
+        <p>800px reading column, full-width agent blocks, a harness chip on every reply and a 26px composer; Channel / Project / entry pages rebuilt with every testid and interaction preserved.</p>
+        <p><a href="/AgentWorkShop/en/guide/harness-ui">Harness UI guide →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">SESS</span>
+        <h3>Channel sessions</h3>
+        <p>Template → channel → session; clone base members with isolated runtime / mailbox / execution lock / memory. Close one session and the others keep working; base members never leave.</p>
+        <p><a href="/AgentWorkShop/en/guide/channels-sessions">Channel sessions guide →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">PRJ</span>
+        <h3>Project delivery mode</h3>
+        <p>Blueprint → plan approval → WBS with dependencies → L1 technical review → L2 owner acceptance → deliverables; observe / supervised / auto, with CAL-3 78/78 on a real line.</p>
+        <p><a href="/AgentWorkShop/en/guide/projects">Project mode guide →</a></p>
+      </div>
+    </div>
+    <div class="hw-note">
+      <span class="t">Acceptance</span>
+      <p>CAL-3 four-stage loop 78/78 · multi-harness isolation 24/24 · channel multi-session 20/20 · Project delivery 58/58 · UI interaction 12/12 (main build, real line / real Chrome).</p>
+    </div>
+  </section>
 
   <section class="hw-sec">
     <div class="hw-sec-head">
@@ -287,7 +325,7 @@ footer:
       <div class="hw-p">
         <span class="no">04</span>
         <h3>Config-driven</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 140 settings across 19 groups (47 live / 93 restart), zero hardcoded defaults.</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 143 settings, zero hardcoded defaults.</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
@@ -310,6 +348,9 @@ footer:
     </div>
     <div class="hw-sec-rule"></div>
     <div class="hw-feats">
+      <div class="hw-f"><span class="tag">UI</span><h3>ChatGPT-style harness console</h3><p>800px reading column, full-width agent blocks, a harness chip on every reply and a 26px composer; Channel / Project / entry pages rebuilt with every data-testid and interaction preserved, usable at 390px.</p></div>
+      <div class="hw-f"><span class="tag">SESS</span><h3>Channel sessions</h3><p>Template → channel → session; clone base members with isolated runtime / mailbox / execution lock / engine process / memory domain. Serial inside a session, parallel across sessions; closing one leaves the rest running.</p></div>
+      <div class="hw-f"><span class="tag">PRJ</span><h3>Project delivery mode</h3><p>Blueprint instantiation → plan approval → WBS with dependsOn → L1 technical review → L2 owner acceptance → deliverables; observe / supervised / auto, with CAL-3 78/78 on a real line.</p></div>
       <div class="hw-f"><span class="tag">PROTOCOL</span><h3>Six-protocol DAQ &amp; control</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP in both directions + the built-in serial plugin (direct RS-232/485) — connection pools, classified errors, per-driver connection tests. Protocols are plugins: newly injected protocols appear in the frontend with zero form changes.</p></div>
       <div class="hw-f"><span class="tag">R/W</span><h3>Read-write control nodes</h3><p>Every control node reads its PLC value back through the same calibration path it writes with — SET vs ACT side by side, passive and never interlocked.</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>Human-approved writes</h3><p>Safe-range ∩ recipe-window interlock → approval → PLC write → readback → signed history; every decision audited.</p></div>
@@ -392,6 +433,9 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
 
   <p class="hw-lead" style="margin-top:22px">
     Go deeper: <a href="/AgentWorkShop/en/guide/first-session">your first agent × line session</a> (the whole chain in ~2 minutes) ·
+    <a href="/AgentWorkShop/en/guide/harness-ui">Harness console</a> ·
+    <a href="/AgentWorkShop/en/guide/channels-sessions">Channel sessions</a> ·
+    <a href="/AgentWorkShop/en/guide/projects">Project mode</a> ·
     <a href="/AgentWorkShop/en/sdk/">SDK guide</a> ·
     <a href="/AgentWorkShop/en/plugins/">plugin guide</a> ·
     <a href="/AgentWorkShop/en/cli/">aw CLI manual</a>
@@ -424,7 +468,7 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
   <section class="hw-final">
     <h2>Put an agent team on a real production line</h2>
     <p>
-      14 engines, 6 field protocols, 126 runtime settings and 1100+ baseline acceptance assertions (plus the follow-up wave reports) are
+      14 engines, 6 field protocols, 143 runtime settings and 1100+ baseline acceptance assertions (plus the follow-up wave reports) are
       already in the repository. Supervisory by design, second-level soft real-time;
       protocol-real, assertion-reproducible.
     </p>

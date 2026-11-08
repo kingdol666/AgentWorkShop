@@ -3,6 +3,14 @@
 > 完整发布产物与逐版本说明见 [GitHub Releases](https://github.com/kingdol666/AgentWorkShop/releases)。
 > 以下为核心版本节点——每个节点对应一轮可验收的能力跃迁,验收证据收录于 `docs/audit/`。
 
+## v0.10.0 — Harness 控制台 × Channel 多会话 × Project 交付(2026-11-09)
+
+- **ChatGPT 式 Harness UI**:Channel 控制台、Project 详情与入口页统一重排——800px 阅读列、Agent 通栏块、用户右侧浅泡、每条回复带 harness 标识、26px 圆角 Composer、黑白发送钮;全部 `data-testid`、快捷键、@ 提及、HITL 语义与 API 保留(PR #107 / #108 / #109)。
+- **Channel 多会话**:模板 → 频道 → 会话;每个会话克隆基础成员,拥有独立 runtime / mailbox / 执行锁 / 引擎进程 / 记忆域;会话内串行、会话间并行;关闭一个会话会取消其在飞任务树并卸载 clone,基础成员与其他会话不受影响。
+- **Project 交付模式**:蓝图一键实例化、计划审批、带 `dependsOn` 的 WBS、技术 L1 复核、Owner L2 验收、交付物与成果台账;`observe / supervised / auto` 三模式;completed 项目可持续开发(plan vN+1)。
+- **产线实证**:CAL-3 四期递进(只读分析 → HITL 写入 → 训练数据集 → 有界自主优化)真实产线 **78/78**;Channel 多会话 **20/20**;多 harness 隔离 **24/24**;Project 交付 **58/58**;UI 交互 **12/12**;unit **1253 pass / 0 fail / 2 skip**;typecheck ✔ / lint 0。
+- **文档**:README(中/英)重写;新增 [Harness 控制台](/guide/harness-ui)、[Channel 多会话](/guide/channels-sessions)、[Project 模式](/guide/projects) 三篇双语指南;README 设计画布 `docs/design/2026-11-09-readme/canvas/`。
+
 ## v0.9.x — 科学探索闭环(2026-11)
 
 - **v0.9.5(2026-11-03)** — **全功能多场景验收收口(T0–T5 + H1–H8)**:①**静态响应面数据集不再参与动态 G6 动作覆盖门**——`static_response@1` 按窗口聚合稳态样本,不做时间维因果识别,原实现把连续扫描判成"纯阶梯"而拒绝训练(优化器 live 105/105 复绿);②**Twin Provider Registry 改全局单例**——dev/多模块图下插件宿主的注册与工具面解析不再分属两份实例(`TWIN_PROVIDER_UNAVAILABLE` 消除,模型闭环 live 53/53);③HITL 审批超时 timer 保持引用(空闲事件循环不再让 Promise 永久 pending);④CI 增加 `pnpm/action-setup` 引导;⑤本体/模型/优化器实机套件夹具对齐 G6 与异步插件装载。验收:T0 静态五门全 0 · T1 单测 1017/1015/0 + MCP/插件/SDK/孪生/skills 全绿 · T2 科学 21/21·闭环 20/20·产线 44/44·本体 57/57·本体真机 87/87·模型闭环 53/53·优化器 105/105·异构 MES 23/23 · T3 api-live 71/鉴权 29/0/REST 鲁棒/时区 · T4 11 插件 failures=[]、工具 129(108 builtin)全 available · T5 build/冒烟/pack · UI 8/8;注塑闭环因演示实例无「工艺优化」worker 未跑(如实声明)。证据 `docs/audit/evidence/2026-11-03-full-acceptance-v094/`。

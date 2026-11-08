@@ -74,6 +74,9 @@ npm install -g agentworkshop@latest    # 手动等效
 
 - [配置系统](/guide/configuration) —— 四层优先级与配置根
 - [第一次 Agent × 产线会话](/guide/first-session) —— 2 分钟跑通全链
+- [Harness 控制台](/guide/harness-ui) —— ChatGPT 式阅读布局与不变量
+- [Channel 多会话](/guide/channels-sessions) —— 会话隔离与 Agent 生命周期
+- [Project 模式](/guide/projects) —— 蓝图、WBS、L1/L2 与交付物
 - [六协议数采与数控](/guide/daq-protocols) —— Modbus/OPC UA/MQTT/HTTP + 串口插件驱动
 - [Recipe 版本管理](/guide/recipe-versions) —— 归因历史与回退
 - [AML 自动建模](/guide/aml) —— 数据集 → 训练 → 门禁 → 晋级,混合孪生 × MPC

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-11-08T09:35:39.512Z",
+  "generatedAt": "2026-11-08T15:02:15.629Z",
   "base": "http://127.0.0.1:4001",
-  "pid": "be5fbcb1-a988-4bbb-aac5-c28387f3a77a",
+  "pid": "30710324-afb3-4ca6-ae4a-5323f9db070a",
   "pass": 58,
   "fail": 0,
   "results": [
@@ -15,13 +15,13 @@
       "id": "S1-1",
       "name": "三频道建立(需求/开发/测试;非产线域)",
       "pass": true,
-      "detail": "req=b2c8d2c5 dev=905f9b6b qa=f987020a"
+      "detail": "req=32ce9200 dev=2d4e2c68 qa=592cf1e7"
     },
     {
       "id": "S1-2",
       "name": "Project 创建(显式 leaderHarness;通用开发域)",
       "pass": true,
-      "detail": "pid=be5fbcb1 ok"
+      "detail": "pid=30710324 ok"
     },
     {
       "id": "S1-3",
@@ -33,13 +33,13 @@
       "id": "S1-4",
       "name": "三交付物注册",
       "pass": true,
-      "detail": "dda1cc/6349f0/759202"
+      "detail": "8a826c/77cca0/1086da"
     },
     {
       "id": "S1-5",
       "name": "依赖链 W1→W2→W3",
       "pass": true,
-      "detail": "992841→da8b46→bac80f"
+      "detail": "ef0f9e→4d168d→459bd4"
     },
     {
       "id": "S1-6",
@@ -57,13 +57,13 @@
       "id": "W1-d2",
       "name": "W1 实例 Channel+root 在飞",
       "pass": true,
-      "detail": "inst=9dfb0495"
+      "detail": "inst=d2915dec"
     },
     {
       "id": "W1-d3",
       "name": "W1 实例 lead 启用",
       "pass": true,
-      "detail": "lead=a5363875"
+      "detail": "lead=297379d1"
     },
     {
       "id": "W1-t1",
@@ -75,31 +75,31 @@
       "id": "W1-x1",
       "name": "W1 取消 mock 子任务",
       "pass": true,
-      "detail": "任务 350c87b2-33ce-41ee-8eba-f57794688719 已取消并移出 assignee 队列"
+      "detail": "任务 2b683070-728c-4823-a7ca-dc46c7fa5a94 已取消并移出 assignee 队列"
     },
     {
       "id": "W1-x2",
       "name": "W1 自派替代分支",
       "pass": true,
-      "detail": "90c9cd56"
+      "detail": "985e3e63"
     },
     {
       "id": "W1-x3",
       "name": "W1 supersede 显式替代",
       "pass": true,
-      "detail": "分支「W1 需求规格 — worker 执行与交付」(CANCELED)已标记为被 90c9cd56 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并 "
+      "detail": "分支「W1 需求规格 — worker 执行与交付」(CANCELED)已标记为被 985e3e63 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并 "
     },
     {
       "id": "W1-x4",
       "name": "W1 收替代分支",
       "pass": true,
-      "detail": "任务 90c9cd56-e670-437d-ae3c-b43046bdaa8f 已是完成状态(可能已被平台收口),无需重复完成。"
+      "detail": "任务 985e3e63-e931-45cc-9230-fc2a795f47b4 已是完成状态(可能已被平台收口),无需重复完成。"
     },
     {
       "id": "W1-c1",
       "name": "W1 实例 lead 收口(真实工件摘要)",
       "pass": true,
-      "detail": "任务 8368c0a4-cdb9-465a-9198-7af086e1f08d 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+      "detail": "任务 531f3b44-1401-443d-8b1a-9cc07927bdb6 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
     },
     {
       "id": "W1-c2",
@@ -111,7 +111,7 @@
       "id": "W1-s1",
       "name": "W1 draft 物化(交付物=真实工件)",
       "pass": true,
-      "detail": "{\"id\":\"98f675ef-abe5-40c8-9ea3-6f6d18dd1397\",\"projectId\":\"be5fbcb1-a988-4bbb-aac5-c28387f3a77a\",\"deliverableId"
+      "detail": "{\"id\":\"9cc98e05-45cd-48c9-80cc-194d5bed4160\",\"projectId\":\"30710324-afb3-4ca6-ae4a-5323f9db070a\",\"deliverableId"
     },
     {
       "id": "W1-s2",
@@ -147,49 +147,49 @@
       "id": "W2-d2",
       "name": "W2 实例 Channel+root 在飞",
       "pass": true,
-      "detail": "inst=c5705974"
+      "detail": "inst=c8f072e5"
     },
     {
       "id": "W2-d3",
       "name": "W2 实例 lead 启用",
       "pass": true,
-      "detail": "lead=53bbf498"
+      "detail": "lead=c6defa58"
     },
     {
       "id": "W2-t1",
       "name": "W2 源码落盘且可执行(python ledger.py summary)",
       "pass": true,
-      "detail": "{\"count\": 0, \"income\": 0, \"expense\": 0, \"balance\": 0}"
+      "detail": "{\"count\": 2, \"income\": 5000.0, \"expense\": 35.5, \"balance\": 4964.5}"
     },
     {
       "id": "W2-x1",
       "name": "W2 取消 mock 子任务",
       "pass": true,
-      "detail": "任务 40125f5c-b169-46a7-8c58-9fdef2d43afe 已取消并移出 assignee 队列"
+      "detail": "任务 f7253642-2013-49c6-9a5e-4f038d995350 已取消并移出 assignee 队列"
     },
     {
       "id": "W2-x2",
       "name": "W2 自派替代分支",
       "pass": true,
-      "detail": "241ce3c1"
+      "detail": "9553faef"
     },
     {
       "id": "W2-x3",
       "name": "W2 supersede 显式替代",
       "pass": true,
-      "detail": "分支「W2 源码实现 — worker 执行与交付」(CANCELED)已标记为被 241ce3c1 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并 "
+      "detail": "分支「W2 源码实现 — worker 执行与交付」(CANCELED)已标记为被 9553faef 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并 "
     },
     {
       "id": "W2-x4",
       "name": "W2 收替代分支",
       "pass": true,
-      "detail": "任务 241ce3c1-0492-4f8a-9587-e1b9893a0c89 已是完成状态(可能已被平台收口),无需重复完成。"
+      "detail": "任务 9553faef-6b44-4ea5-b0d1-0d86ab1d9965 已是完成状态(可能已被平台收口),无需重复完成。"
     },
     {
       "id": "W2-c1",
       "name": "W2 实例 lead 收口(真实工件摘要)",
       "pass": true,
-      "detail": "任务 dac45d0f-d5c0-432e-875f-1e1b8d7f9b55 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+      "detail": "任务 95f08653-4bbf-4e05-afe3-6f6ba8e67a76 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
     },
     {
       "id": "W2-c2",
@@ -201,7 +201,7 @@
       "id": "W2-s1",
       "name": "W2 draft 物化(交付物=真实工件)",
       "pass": true,
-      "detail": "{\"id\":\"be0269af-9164-42f7-982d-e787cd70d0bc\",\"projectId\":\"be5fbcb1-a988-4bbb-aac5-c28387f3a77a\",\"deliverableId"
+      "detail": "{\"id\":\"e4b929b8-9a8e-49d7-9acd-f97898f6927b\",\"projectId\":\"30710324-afb3-4ca6-ae4a-5323f9db070a\",\"deliverableId"
     },
     {
       "id": "W2-s2",
@@ -237,13 +237,13 @@
       "id": "W3-d2",
       "name": "W3 实例 Channel+root 在飞",
       "pass": true,
-      "detail": "inst=87a33670"
+      "detail": "inst=31346d35"
     },
     {
       "id": "W3-d3",
       "name": "W3 实例 lead 启用",
       "pass": true,
-      "detail": "lead=1f663d7a"
+      "detail": "lead=92e3147e"
     },
     {
       "id": "W3-t1",
@@ -255,31 +255,31 @@
       "id": "W3-x1",
       "name": "W3 取消 mock 子任务",
       "pass": true,
-      "detail": "任务 717a306f-cc92-4b5b-8c35-afdd59530da4 已取消并移出 assignee 队列"
+      "detail": "任务 c0024b0d-f7f4-4fe3-a691-9f6d0a7712d3 已取消并移出 assignee 队列"
     },
     {
       "id": "W3-x2",
       "name": "W3 自派替代分支",
       "pass": true,
-      "detail": "79069852"
+      "detail": "fdb7313d"
     },
     {
       "id": "W3-x3",
       "name": "W3 supersede 显式替代",
       "pass": true,
-      "detail": "分支「W3 自动化测试 — worker 执行与交付」(CANCELED)已标记为被 79069852 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并"
+      "detail": "分支「W3 自动化测试 — worker 执行与交付」(CANCELED)已标记为被 fdb7313d 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并"
     },
     {
       "id": "W3-x4",
       "name": "W3 收替代分支",
       "pass": true,
-      "detail": "任务 79069852-254d-4d2d-b3bb-8252fcc2cb1c 已是完成状态(可能已被平台收口),无需重复完成。"
+      "detail": "任务 fdb7313d-ccce-4286-8a72-999ba975a916 已是完成状态(可能已被平台收口),无需重复完成。"
     },
     {
       "id": "W3-c1",
       "name": "W3 实例 lead 收口(真实工件摘要)",
       "pass": true,
-      "detail": "任务 56f1be33-2a62-40d2-8878-eada28789d36 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+      "detail": "任务 88d9ba8d-e0ad-46d3-8594-3b25eafe0570 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
     },
     {
       "id": "W3-c2",
@@ -291,7 +291,7 @@
       "id": "W3-s1",
       "name": "W3 draft 物化(交付物=真实工件)",
       "pass": true,
-      "detail": "{\"id\":\"03e0efcd-2ae7-4ddc-9fed-2e296db8fdc6\",\"projectId\":\"be5fbcb1-a988-4bbb-aac5-c28387f3a77a\",\"deliverableId"
+      "detail": "{\"id\":\"cd9971a3-2c6c-40d3-9cd2-281d5e05c724\",\"projectId\":\"30710324-afb3-4ca6-ae4a-5323f9db070a\",\"deliverableId"
     },
     {
       "id": "W3-s2",

@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress'
 // 中文根站点 + /en/ 英文镜像(右上角语言切换);主题/搜索/页脚按 locale 各自声明
 const zhNav = [
   { text: '指南', link: '/guide/getting-started' },
+  { text: 'Project', link: '/guide/projects' },
   { text: '演示', link: '/demo' },
   { text: 'SDK', link: '/sdk/' },
   { text: '插件', link: '/plugins/' },
@@ -12,6 +13,7 @@ const zhNav = [
 ]
 const enNav = [
   { text: 'Guide', link: '/en/guide/getting-started' },
+  { text: 'Project', link: '/en/guide/projects' },
   { text: 'Demo', link: '/en/demo' },
   { text: 'SDK', link: '/en/sdk/' },
   { text: 'Plugins', link: '/en/plugins/' },
@@ -27,6 +29,9 @@ const zhGuide = [
   { text: 'HITL 人机协同审批', link: '/guide/hitl' },
   { text: 'Recipe 版本管理', link: '/guide/recipe-versions' },
   { text: '多 Harness Agent 团队', link: '/guide/multi-harness' },
+  { text: 'Harness 控制台', link: '/guide/harness-ui' },
+  { text: 'Channel 多会话', link: '/guide/channels-sessions' },
+  { text: 'Project 模式与交付', link: '/guide/projects' },
   { text: 'AML 自动建模', link: '/guide/aml' },
   { text: '本体与 AI 先行模型闭环', link: '/guide/ontology' },
   { text: '数据分析台账', link: '/guide/analysis-reports' },
@@ -44,6 +49,9 @@ const enGuide = [
   { text: 'HITL approvals', link: '/en/guide/hitl' },
   { text: 'Recipe versioning', link: '/en/guide/recipe-versions' },
   { text: 'Multi-harness agent teams', link: '/en/guide/multi-harness' },
+  { text: 'Harness console', link: '/en/guide/harness-ui' },
+  { text: 'Channel sessions', link: '/en/guide/channels-sessions' },
+  { text: 'Project mode & delivery', link: '/en/guide/projects' },
   { text: 'AML auto-modeling', link: '/en/guide/aml' },
   { text: 'Ontology & AI-first model loop', link: '/en/guide/ontology' },
   { text: 'Data-analysis ledger', link: '/en/guide/analysis-reports' },

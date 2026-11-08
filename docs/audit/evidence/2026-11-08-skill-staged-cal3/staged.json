@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-11-08T06:30:15.977Z",
+  "generatedAt": "2026-11-08T15:14:34.114Z",
   "base": "http://127.0.0.1:4001",
-  "pid": "f7cfd9f1-fe4d-4f8f-81f1-c3a3bc542db5",
+  "pid": "f0894811-0053-4b78-bf37-c8019f5242ec",
   "expected": 76,
   "complete": true,
   "pass": 78,
@@ -23,13 +23,13 @@
       "id": "S0-3",
       "name": "setup:批次 A 就绪(owner;line_start 基线下发=平台语义;409=沿用活动批次)",
       "pass": true,
-      "detail": "start=409 产线「3#连续退火炉-DOC2PROJ」已在运行(批次 rr-72226cf2),请先停止当前数据采集 | latestRun=rr-3ab859f open=false"
+      "detail": "start=409 产线「3#连续退火炉-DOC2PROJ」已在运行(批次 rr-97be563a),请先停止当前数据采集 | latestRun=rr-3ab859f open=false"
     },
     {
       "id": "S1-1",
       "name": "Project 创建(technical 路由)",
       "pass": true,
-      "detail": "pid=f7cfd9f1"
+      "detail": "pid=f0894811"
     },
     {
       "id": "S1-2",
@@ -47,7 +47,7 @@
       "id": "S1-4",
       "name": "四期依赖链 W1→W2→W3→W4",
       "pass": true,
-      "detail": "5a0adb→643f09→1441a6→026b5f"
+      "detail": "f55173→3ba8c1→a144d3→b4b03b"
     },
     {
       "id": "S1-5",
@@ -71,37 +71,37 @@
       "id": "W1-d2",
       "name": "W1 实例 Channel+root 在飞",
       "pass": true,
-      "detail": "inst=6b6c296c"
+      "detail": "inst=d07f49a6"
     },
     {
       "id": "W1-d3",
       "name": "W1 实例 lead 启用",
       "pass": true,
-      "detail": "lead=c3867f3d members=1"
+      "detail": "lead=4d4ecf75 members=1"
     },
     {
       "id": "W1-t1",
       "name": "W1 数采取证(强度/炉温序列)",
       "pass": true,
-      "detail": "tensile=61点 zone1=60点"
+      "detail": "tensile=60点 zone1=60点"
     },
     {
       "id": "W1-t2",
       "name": "W1 真实统计(Pearson 相关+波动)",
       "pass": true,
-      "detail": "r(炉温,强度)=0.130(n=60) 强度均值=473.7MPa σ=14.8(目标带 480±20)"
+      "detail": "r(炉温,强度)=0.133(n=60) 强度均值=479.0MPa σ=11.3(目标带 480±20)"
     },
     {
       "id": "W1-t3",
       "name": "W1 出口温度交叉取证",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点): ■ 出口带温PV[id=dn-a241f628](熔体/箱体温度)单位 ℃,正常量程 0~800℃,当前状态 ok,时间窗 2026-11-08T14:18 ~ 20"
+      "detail": "数采数据查询结果(1 个节点): ■ 出口带温PV[id=dn-a241f628](熔体/箱体温度)单位 ℃,正常量程 0~800℃,当前状态 ok,时间窗 2026-11-08T23:02 ~ 20"
     },
     {
       "id": "W1-t4",
       "name": "W1 结论入台账(带真实统计)",
       "pass": true,
-      "detail": "分析报告已留痕:ar-c5028faf。产线「3#连续退火炉-DOC2PROJ」,结论 0 条,配方 未关联。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-c5028faf\") 查回全文。"
+      "detail": "分析报告已留痕:ar-eb048605。产线「3#连续退火炉-DOC2PROJ」,结论 0 条,配方 未关联。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-eb048605\") 查回全文。"
     },
     {
       "id": "W1-t5",
@@ -113,7 +113,7 @@
       "id": "W1-c1",
       "name": "W1 实例 lead 以真实工件收口 root",
       "pass": true,
-      "detail": "任务 ae8527c9-278c-40ce-8dca-34da07a0d89c 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+      "detail": "任务 1ee913df-2759-4866-bfdd-4148ac50f04a 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
     },
     {
       "id": "W1-c2",
@@ -125,7 +125,7 @@
       "id": "W1-s1",
       "name": "W1 draft 物化(证据=真实工件)",
       "pass": true,
-      "detail": "{\"id\":\"0e187e3d-254e-4139-8d66-34ab0ac3ec21\",\"projectId\":\"f7cfd9f1-fe4d-4f8f-81f1-c3a3bc542db5\",\"deliverableId\":\"361089b"
+      "detail": "{\"id\":\"0a9b5f84-a338-4e08-b07b-a5f6a76b37e0\",\"projectId\":\"f0894811-0053-4b78-bf37-c8019f5242ec\",\"deliverableId\":\"deb08cf"
     },
     {
       "id": "W1-s2",
@@ -161,13 +161,13 @@
       "id": "W2-d2",
       "name": "W2 实例 Channel+root 在飞",
       "pass": true,
-      "detail": "inst=2ff4d623"
+      "detail": "inst=0a353ab8"
     },
     {
       "id": "W2-d3",
       "name": "W2 实例 lead 启用",
       "pass": true,
-      "detail": "lead=adae0909 members=4"
+      "detail": "lead=631513b4 members=4"
     },
     {
       "id": "W2-t0",
@@ -179,25 +179,25 @@
       "id": "W2-t1",
       "name": "W2 write_intent 申请(lead-only)",
       "pass": true,
-      "detail": "{ \"ok\": true, \"approvalId\": \"fc1a9bca-d0b2-4576-ab7a-7dfeb987879d\", \"digest\": \"6fabaabec65c3f57125217d76db3cc3b9aa5ea73426e37d9cc7b1fd5d9125bef\", \"too"
+      "detail": "{ \"ok\": true, \"approvalId\": \"f76554ac-8e69-4ebc-a5e4-7cd8cd075c93\", \"digest\": \"6fabaabec65c3f57125217d76db3cc3b9aa5ea73426e37d9cc7b1fd5d9125bef\", \"too"
     },
     {
       "id": "W2-t2",
       "name": "W2 owner 批准 write_intent",
       "pass": true,
-      "detail": "approval=fc1a9bca"
+      "detail": "approval=f76554ac"
     },
     {
       "id": "W2-card",
       "name": "W2 HITL 卡批准受理(第 1 次尝试)",
       "pass": true,
-      "detail": "card=ap-c972c45 trialErr=试验已整批下发并全部设备证实(1/1,批次 rr-8fd9a):一区温度SP→778℃ [证实✓]。假设:W2 依据 W1 结论:一区温度 786.0→778(Δ-8),HITL 逐动作审批。 人工附言:CAL-3 W2"
+      "detail": "card=ap-77e7fa2 trialErr=试验已整批下发并全部设备证实(1/1,批次 rr-5296a):一区温度SP→778℃ [证实✓]。假设:W2 依据 W1 结论:一区温度 786.0→778(Δ-8),HITL 逐动作审批。 人工附言:CAL-3 W2"
     },
     {
       "id": "W2-t3",
       "name": "W2 HITL 卡→批准→trial 收口(最终态)",
       "pass": true,
-      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-8fd9a):一区温度SP→778℃ [证实✓]。假设:W2 依据 W1 结论:一区温度 786.0→778(Δ-8),HITL 逐动作审批。 人工附言:CAL-3 W2 HITL 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 "
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-5296a):一区温度SP→778℃ [证实✓]。假设:W2 依据 W1 结论:一区温度 786.0→778(Δ-8),HITL 逐动作审批。 人工附言:CAL-3 W2 HITL 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 "
     },
     {
       "id": "W2-t4",
@@ -209,13 +209,13 @@
       "id": "W2-t5",
       "name": "W2 工艺惯性后炉温复测(实测窗均值)",
       "pass": true,
-      "detail": "post窗均值=779.1℃(n=14)"
+      "detail": "post窗均值=779.2℃(n=14)"
     },
     {
       "id": "W2-c1",
       "name": "W2 实例 lead 以真实工件收口 root",
       "pass": true,
-      "detail": "任务 693dcd62-019b-47d5-b907-cc0ebb1ad134 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+      "detail": "任务 1e347cce-c27d-4a8d-a838-8842c3d8e9ad 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
     },
     {
       "id": "W2-c2",
@@ -227,7 +227,7 @@
       "id": "W2-s1",
       "name": "W2 draft 物化(证据=真实工件)",
       "pass": true,
-      "detail": "{\"id\":\"4791fc0e-d101-4a11-947a-925c8866ffeb\",\"projectId\":\"f7cfd9f1-fe4d-4f8f-81f1-c3a3bc542db5\",\"deliverableId\":\"19b5b3f"
+      "detail": "{\"id\":\"c4c6acdb-306b-4082-8546-aa08fbded1e9\",\"projectId\":\"f0894811-0053-4b78-bf37-c8019f5242ec\",\"deliverableId\":\"5ebb292"
     },
     {
       "id": "W2-s2",
@@ -263,13 +263,13 @@
       "id": "W3-d2",
       "name": "W3 实例 Channel+root 在飞",
       "pass": true,
-      "detail": "inst=f63bc51a"
+      "detail": "inst=762f854b"
     },
     {
       "id": "W3-d3",
       "name": "W3 实例 lead 启用",
       "pass": true,
-      "detail": "lead=5de14ec6 members=3"
+      "detail": "lead=97fa36ba members=3"
     },
     {
       "id": "W3-t0",
@@ -281,7 +281,7 @@
       "id": "W3-t1",
       "name": "W3 批次收口(run close;零设备写)",
       "pass": true,
-      "detail": "close=200 run=rr-72226cf"
+      "detail": "close=200 run=rr-97be563"
     },
     {
       "id": "W3-t2",
@@ -293,25 +293,25 @@
       "id": "W3-t3",
       "name": "W3 治理后数据在场(治理时刻后炉温实测窗;PV 惯性 τ≈75s 容差放宽)",
       "pass": true,
-      "detail": "治理后窗均值=779.1℃(n=14,SP 治理值=778,PV 滞后容差 4.0)"
+      "detail": "治理后窗均值=779.2℃(n=15,SP 治理值=778,PV 滞后容差 4.0)"
     },
     {
       "id": "W3-t4",
       "name": "W3 aml_dataset_build(含治理后时段)",
       "pass": true,
-      "detail": "数据集构建完成: dataset_id: ds-mw7g50lu-px2a18 三元组: 产线 ln-30b8559a / 产品 3#连续退火炉-DOC2PROJ·默认产品 / 配方 CAL-3 基线配方(purpose=mpc_surrogate,beat=2000ms,history=32,horizon=8) 行数 1364 | 窗口 train 1136 / val 114 / test 114 | 批次 7 个参与构建 逐节点"
+      "detail": "数据集构建完成: dataset_id: ds-mw7yvdg2-k7z2ci 三元组: 产线 ln-30b8559a / 产品 3#连续退火炉-DOC2PROJ·默认产品 / 配方 CAL-3 基线配方(purpose=mpc_surrogate,beat=2000ms,history=32,horizon=8) 行数 16616 | 窗口 train 1251 / val 15252 / test 113 | 批次 8 个参与构建 "
     },
     {
       "id": "W3-t5",
       "name": "W3 aml_dataset_stats(质量报告)",
       "pass": true,
-      "detail": "数据集 ds-mw7g50lu-px2a18 统计报告(beat=2000ms,history=32 拍,horizon=8 拍,purpose=mpc_surrogate) 三元组: ln-30b8559a / pd-c607e962 / rc-b786aaac | 行数 1364 | 批次 7(7 参与构建)| 创建 2026-11-08 14:23:36 逐节点统计(train 切分): - 一区炉温PV(dn-a52fee22,"
+      "detail": "数据集 ds-mw7yvdg2-k7z2ci 统计报告(beat=2000ms,history=32 拍,horizon=8 拍,purpose=mpc_surrogate) 三元组: ln-30b8559a / pd-c607e962 / rc-b786aaac | 行数 16616 | 批次 8(8 参与构建)| 创建 2026-11-08 23:07:58 逐节点统计(train 切分): - 一区炉温PV(dn-a52fee22"
     },
     {
       "id": "W3-c1",
       "name": "W3 实例 lead 以真实工件收口 root",
       "pass": true,
-      "detail": "任务 f4f6aea2-eb8f-4dc7-bf8a-d9fb7cac7293 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+      "detail": "任务 e5183be0-3826-4cc7-b7c5-d68845dbb244 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
     },
     {
       "id": "W3-c2",
@@ -323,7 +323,7 @@
       "id": "W3-s1",
       "name": "W3 draft 物化(证据=真实工件)",
       "pass": true,
-      "detail": "{\"id\":\"e6f3b473-1dd5-4ba1-aa9d-c6f37bfd045e\",\"projectId\":\"f7cfd9f1-fe4d-4f8f-81f1-c3a3bc542db5\",\"deliverableId\":\"951bd42"
+      "detail": "{\"id\":\"f67302e5-9b0b-4954-939a-dc68d6b23fcf\",\"projectId\":\"f0894811-0053-4b78-bf37-c8019f5242ec\",\"deliverableId\":\"3829a70"
     },
     {
       "id": "W3-s2",
@@ -359,13 +359,13 @@
       "id": "W4-d2",
       "name": "W4 实例 Channel+root 在飞",
       "pass": true,
-      "detail": "inst=b08c0c5d"
+      "detail": "inst=4f96b815"
     },
     {
       "id": "W4-d3",
       "name": "W4 实例 lead 启用",
       "pass": true,
-      "detail": "lead=406138fd members=3"
+      "detail": "lead=bafc4569 members=3"
     },
     {
       "id": "W4-t0",
@@ -383,7 +383,7 @@
       "id": "W4-t1",
       "name": "W4 有界激励执行(探索档;首次被拒如实记录)",
       "pass": true,
-      "detail": "探索步完成(已真实写入产线并记录): 记录: opt-exploration-mw7gdl1v-b8q6qu 控制: 一区温度SP(dw-89a663be) 780 → 786(步长 6.000,方向 up) 响应: dn-5bf0fbec 496.728 → 493.732(Δ=-2.995,窗口 60s) goal: (Channel 未设置 goal —— 建议先在 Channel 设置中定 |首次被拒:探索步被拒绝(未写入产线,已记录 rejected):\n下发被拒绝:DCW 节点「一区温度SP」两次在线写入间隔必须至少 60s，当前还需 52s(节点 一区温度SP,物理量 烘箱温度设定;设定值必须落在安全量程与活动配方工艺窗口内)"
+      "detail": "探索步完成(已真实写入产线并记录): 记录: opt-exploration-mw7z3u9p-fpjvml 控制: 一区温度SP(dw-89a663be) 780 → 786(步长 6.000,方向 up) 响应: dn-5bf0fbec 487.841 → 491.318(Δ=3.476,窗口 60s) goal: (Channel 未设置 goal —— 建议先在 Channel 设置中定义 |首次被拒:探索步被拒绝(未写入产线,已记录 rejected):\n下发被拒绝:DCW 节点「一区温度SP」两次在线写入间隔必须至少 60s，当前还需 52s(节点 一区温度SP,物理量 烘箱温度设定;设定值必须落在安全量程与活动配方工艺窗口内)"
     },
     {
       "id": "W4-t2",
@@ -395,7 +395,7 @@
       "id": "W4-t3",
       "name": "W4 干预台账可查(审批归因面)",
       "pass": true,
-      "detail": "干预台账(最近 5 条,节点 dw-89a663be;判定分布:欠功效(不可辨识)×1, 未判定(无判读上下文)×3, 效应可分辨×1): 2026-11-08T14:29:15.747+08:00 一区温度SP 780→786(Δ+6) [agent] 判定:欠功效(不可辨识)效应=-2.995 CI[-6.63, 0.414] MDE=9.01 2026"
+      "detail": "干预台账(最近 5 条,节点 dw-89a663be;判定分布:欠功效(不可辨识)×2, 未判定(无判读上下文)×3): 2026-11-08T23:13:33.839+08:00 一区温度SP 780→786(Δ+6) [agent] 判定:欠功效(不可辨识)效应=3.476 CI[0.631, 6.58] MDE=8.39 2026-11-08T23:1"
     },
     {
       "id": "W4-t4",
@@ -407,7 +407,7 @@
       "id": "W4-c1",
       "name": "W4 实例 lead 以真实工件收口 root",
       "pass": true,
-      "detail": "任务 9f99d7ab-8808-4a8d-ac33-0b50ba6510c7 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+      "detail": "任务 db406ee8-ae2d-4252-9869-ad4940433d6d 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
     },
     {
       "id": "W4-c2",
@@ -419,7 +419,7 @@
       "id": "W4-s1",
       "name": "W4 draft 物化(证据=真实工件)",
       "pass": true,
-      "detail": "{\"id\":\"bca8a980-c7a9-406b-82f9-f296c6c989ca\",\"projectId\":\"f7cfd9f1-fe4d-4f8f-81f1-c3a3bc542db5\",\"deliverableId\":\"201059d"
+      "detail": "{\"id\":\"1821d2a4-e683-49be-908b-024bd1bfd133\",\"projectId\":\"f0894811-0053-4b78-bf37-c8019f5242ec\",\"deliverableId\":\"9bf559f"
     },
     {
       "id": "W4-s2",

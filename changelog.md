@@ -4,6 +4,21 @@
 
 以下为核心版本节点——每个节点对应一轮可验收的能力跃迁,验收证据收录于 `docs/audit/`。
 
+## v0.10.0 — Harness 控制台 × Channel 多会话 × Project 交付(2026-11-09)
+
+- **ChatGPT 式 Harness UI**:Channel 控制台、Project 详情与入口页统一重排——800px 阅读列、Agent 通栏块、用户右侧浅泡、每条回复带 harness 标识、26px 圆角 Composer、黑白发送钮;全部 `data-testid`、快捷键、@ 提及、HITL 语义与 API 保留。PR #107 / #108 / #109。
+- **Channel 多会话**:模板 → 频道 → 会话;每个会话克隆基础成员,拥有独立 runtime / mailbox / 执行锁 / 引擎进程 / 记忆域;会话内串行、会话间并行;关闭一个会话会取消其在飞任务树并卸载 clone,基础成员与其他会话不受影响。
+- **Project 交付模式**:蓝图一键实例化、计划审批、带 `dependsOn` 的 WBS、技术 L1 复核、Owner L2 验收、交付物与成果台账;`observe / supervised / auto` 三模式;completed 项目可持续开发(plan vN+1)。
+- **产线实证**:CAL-3 四期递进(只读分析 → HITL 写入 → 训练数据集 → 有界自主优化)在真实产线 **78/78**;Channel 多会话 **20/20**;多 harness 隔离 **24/24**;Project 交付 **58/58**;UI 交互 **12/12**;unit **1253 pass / 0 fail / 2 skip**;typecheck ✔ / lint 0。
+- **文档**:README(中/英)与 VitePress 全面重写;新增 [Harness 控制台](./docs/site/guide/harness-ui.md)、[Channel 多会话](./docs/site/guide/channels-sessions.md)、[Project 模式](./docs/site/guide/projects.md) 三篇双语指南;新增 README 设计画布 `docs/design/2026-11-09-readme/canvas/`。
+- **打包**:npm tarball 含预构建 `.output/`;`npm i -g` 全局安装链路实测。
+
+## v0.9.x — Project 层与生产化(2026-11 上旬)
+
+- **Project 层落地**:ProjectService / 办公室频道 / Project Leader / 成员 Channel 绑定 / WorkItem / Attempt / Deliverable / Result / Approval / Event;技术路由与 `routingPolicy=technical` 默认。
+- **生产审计修复**:`leaderHarness` 去默认(禁止静默 mock 生产 Leader)、activate 装配 deadline、设置热重载 watcher 监听生效配置目录、lint 基线恢复、CI quick-gate 稳定。
+- **部署与验收**:生产部署 runbook;BRG-5 MQTT 新产线 12/12;记账软件 Project 58/58;文档→节点→Channel→Project 全链 48/48。
+
 ## v0.8.x — 知识与闭环(2026-10 下旬)
 
 - **v0.8.8(2026-10-31)** — **时序存储治理与生命周期健壮性收口 + bench v2 写面**。时序库五修:压缩 chunk 上 `ctid` 批删必炸(TimescaleDB 2.29 实证)改为 MIN(ts) 快进 + 时间分片普通 DELETE,保留期清理在实例运行满 1 天后不再整体失效;rollup SQL 三层修复(GROUP BY 全列覆盖 / 参数显式类型 / 运行期新线免重启发现)使 1m/1h 聚合首次真正落行;历史窗口截断改保**最新**段并如实上报 truncated;逐线保留期 PUT 部分更新不再静默抹掉既有覆写(undefined=保持 / null=重置);裁剪上界受 1m 聚合水位钳制——"超保留期=降分辨率保留"契约兑现。任务生命周期四修:停滞判定改现读全行 artifacts(有交付物的任务不再被投影空值误杀;根任务不再被规则引擎越权自动验收)、D1 兜底救援投递前复读状态(杜绝同任务第二回合并发执行)、HITL 顺延逐根分流(受审批保护的根不再被连带 ROOT_TIMEOUT,悬空审批单消除)、引擎 dispatch 终态先拒 + 未接取先接取(孤儿子任务消除)。Agent 工具面六修:refuse_task 对终态 409 诚实拒绝(不再照发"请改派"回执诱导重复派发)、report_progress 终态 fail-open 修正 + 进度钳位 [0,100]、dispatch 随单节点授权判重前移 + 派发失败自动回滚授权、消息面空内容校验 + 回执票据发送失败保留。插件宿主 home 模式路径回归修复(设置热更重载后插件数据根漂移 → diag_run 读数据集 ENOENT)。MQTT 多字段采集与下发(`driverConfig.fields` 展开多子节点 + `jsonTemplate` 模板)。bench v2 治理写面收尾(探索步激励语义 delta 修复 + 自举节拍适配),流水线/场景复绿。验收:单测 913/913 · typecheck / ESLint 全绿 · Mimosa 深扫 46 项静态发现全定性(产品代码项逐一亲验)· PIPELINE 执行卡全层实测(静态一致性 100% · plc 13/13 · E1a 四臂消融理论模式全对且误拦恒 0 · api-live 75/75 · vs 20260914 冻结基线判定类逐位复现 ×2)· IDD/RAG 插件集成链真机全通(真 PLC 工况 + omp/ustc-deepseek-flash:导出 → IDD 深度诊断受理 → 知识入库(HITL)→ 检索命中)· P12 真实 harness 透明闭环 episode(资格门全过;越权工具调用被事件监控门当场取消并冻结 153 事件证据)。

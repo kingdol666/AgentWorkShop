@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <title>AgentWorkShop — README hero</title>
 <style>
-  /* README Hero —— 「控制室观察窗」
-   * 版式母题与产品同源:左侧是铭牌区(品牌 → 主张 → 数字带),右侧是一扇**仪表观察窗**
-   * (发丝边 + 四角注册标记 + mono 图号),窗里是真实界面截图,不是渲染图。
-   * 2600×1040 出图(@2x 渲染 1300×520)。 */
+  /* README Hero ——「控制室 × 静默 Harness」
+   * 左侧是工厂铭牌(品牌 → 主张 → 数字带),右侧是一扇仪表观察窗:
+   * 窗里是 2026-11 的新版 Channel 控制台实拍,不是渲染图。
+   * 1300×560 出图(@2x 渲染 2600×1120)。 */
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   :root {
@@ -17,11 +17,12 @@
     --ink-faint: #6d7f92;
     --green: #35e0a0;
     --cyan: #41c8f4;
+    --orange: #ff8a5c;
     --line: #1b2833;
     --line-soft: #142030;
   }
 
-  html, body { width: 1300px; height: 520px; overflow: hidden; }
+  html, body { width: 1300px; height: 560px; overflow: hidden; }
 
   body {
     position: relative;
@@ -30,194 +31,206 @@
     background: var(--canvas);
   }
 
-  /* 画布:极光(两团低饱和色斑)+ 六边形节点网(母题:互连节点) */
-  .aurora {
-    position: absolute; inset: -20%;
-    background:
-      radial-gradient(38% 46% at 22% 18%, rgba(53, 224, 160, 0.13), transparent 70%),
-      radial-gradient(42% 52% at 82% 78%, rgba(65, 200, 244, 0.12), transparent 72%),
-      radial-gradient(30% 40% at 62% 8%, rgba(139, 92, 246, 0.07), transparent 70%);
-    filter: blur(6px);
-  }
-
-  .hexgrid {
+  /* 工厂网格:80px 发丝线,压到 9% 不抢读数 */
+  .grid {
     position: absolute; inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 1 54 16v30L28 61 2 46V16Z M28 62 54 77v30L28 122 2 107V77Z' fill='none' stroke='%2335e0a0' stroke-width='1'/%3E%3C/svg%3E");
-    background-size: 56px 97px;
-    opacity: 0.055;
+    background-image:
+      linear-gradient(to right, rgba(53, 224, 160, 0.09) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(53, 224, 160, 0.09) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.55), transparent 72%);
+    -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.55), transparent 72%);
   }
 
-  /* 底缘与左缘的收边暗角:让内容有"压在一块厚玻璃后面"的纵深 */
-  .vignette {
-    position: absolute; inset: 0;
-    background:
-      linear-gradient(180deg, rgba(6, 8, 13, 0.55) 0%, transparent 22%, transparent 74%, rgba(6, 8, 13, 0.9) 100%),
-      linear-gradient(90deg, rgba(6, 8, 13, 0.6) 0%, transparent 30%);
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 64px;
+    padding: 0 54px;
+    display: flex; align-items: center; gap: 14px;
+    border-bottom: 1px solid var(--line);
   }
-
-  .wrap {
-    position: relative; z-index: 2;
-    display: grid;
-    /* minmax(0,1fr):不给左列 min-content 撑宽的权力 —— 否则 ticker 的 nowrap
-     * 会把右列"仪表窗"顶出画布(实测首版就是右列被裁)。 */
-    grid-template-columns: minmax(0, 1fr) 520px;
-    gap: 34px;
-    align-items: start;
-    height: 100%;
-    padding: 40px 46px 34px 54px;
-  }
-
-  /* ── 左侧:铭牌区 ── */
-  .left { min-width: 0; }
-  .brand { display: flex; align-items: center; gap: 16px; }
-  .brand svg { width: 46px; height: 46px; filter: drop-shadow(0 0 10px rgba(53, 224, 160, 0.35)); }
-  .wordmark { display: flex; flex-direction: column; gap: 3px; }
-  .wordmark .name {
-    font-size: 25px; font-weight: 700; letter-spacing: 0.2em; line-height: 1;
-  }
-  .wordmark .name .accent { color: var(--green); }
-  .wordmark .sub {
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { width: 25px; height: 25px; filter: drop-shadow(0 0 8px rgba(53, 224, 160, 0.28)); }
+  .brand .name { font-size: 15px; font-weight: 600; letter-spacing: 0.16em; }
+  .brand .name b { color: var(--green); font-weight: 600; }
+  .chip {
     font-family: 'Consolas', ui-monospace, monospace;
-    font-size: 9.5px; letter-spacing: 0.34em; text-transform: uppercase; color: var(--ink-faint);
+    font-size: 9.5px; letter-spacing: 0.08em;
+    color: var(--green);
+    border: 1px solid #1f4a3a; background: #0a1a14;
+    border-radius: 999px; padding: 3px 8px;
   }
+  .topnav {
+    margin-left: auto; display: flex; align-items: center; gap: 22px;
+    font-size: 11.5px; color: var(--ink-soft);
+  }
+  .topnav .gh { color: var(--ink); }
 
-  .headline {
-    margin-top: 26px;
-    font-size: 46px; line-height: 1.07; font-weight: 750; letter-spacing: -0.025em;
+  .left {
+    position: absolute; left: 54px; top: 90px; width: 552px;
   }
-  .headline .grad {
-    background: linear-gradient(92deg, var(--green) 4%, var(--cyan) 96%);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-
-  .tagline {
-    margin-top: 16px; max-width: 640px;
-    font-size: 14.5px; line-height: 1.62; color: var(--ink-soft);
-  }
-  .tagline b { color: #e9f1f6; font-weight: 600; }
-
-  /* 数字带:2×2 网格而不是一行 4 格 —— 一行 4 格在 646px 的铭牌区里必然溢出
-   * (实测会盖到右侧仪表窗上)。2×2 让每格有 320px,数字看得清,分割线也更像仪表盘。 */
-  .ticker {
-    display: grid; grid-template-columns: 1fr 1fr;
-    width: 100%; max-width: 638px; margin-top: 24px;
-    border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
-    background: rgba(10, 15, 22, 0.72);
-  }
-  .tick { display: flex; flex-direction: column; gap: 4px; padding: 10px 15px; }
-  .tick:nth-child(odd) { border-right: 1px solid var(--line); }
-  .tick:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
-  .tick .k {
+  .kicker {
     font-family: 'Consolas', ui-monospace, monospace;
-    font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #5d6f7d;
+    font-size: 9.5px; letter-spacing: 0.2em; color: var(--green);
   }
-  .tick .v { font-size: 12.5px; font-weight: 650; line-height: 1.35; white-space: nowrap; color: #eef4f2; }
-  .tick .v .mint { color: var(--green); }
-  .tick .v .blue { color: var(--cyan); }
-
-  .footnote {
-    position: absolute; left: 56px; bottom: 16px;
-    display: flex; gap: 18px;
+  h1 {
+    margin-top: 14px;
+    font-size: 44px; line-height: 1.05; font-weight: 600; letter-spacing: -0.025em;
+  }
+  h1 .line { color: var(--green); }
+  .sub {
+    margin-top: 15px; max-width: 500px;
+    font-size: 13.5px; line-height: 1.66; color: var(--ink-soft);
+  }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
+  .pill {
     font-family: 'Consolas', ui-monospace, monospace;
-    font-size: 8.6px; letter-spacing: 0.2em; text-transform: uppercase; color: #48586a;
+    font-size: 9.5px; color: #c7d3df;
+    border: 1px solid #22303d; background: #0a0f16;
+    border-radius: 999px; padding: 4px 8px;
   }
-
-  /* ── 右侧:仪表观察窗(发丝边 + 四角注册标记 + mono 图号) ── */
-  .scope { position: relative; }
-
-  .scope .frame {
-    position: relative;
-    border: 1px solid rgba(65, 200, 244, 0.22);
-    border-radius: 12px;
-    overflow: hidden;
-    background: #04070c;
-    box-shadow:
-      0 30px 70px rgba(0, 0, 0, 0.6),
-      0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-      0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  .cta { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600;
+    padding: 10px 15px; border-radius: 6px;
   }
+  .btn.primary { background: var(--green); color: #04120c; }
+  .btn.ghost { border: 1px solid #2a3a49; color: var(--ink); font-weight: 400; }
+  .btn .arr { font-family: 'Consolas', ui-monospace, monospace; }
 
-  .scope .frame img { display: block; width: 100%; }
-  .scope .frame.twin img { height: 288px; object-fit: cover; object-position: 50% 30%; }
-
-  /* 注册标记:四角 L 形,只给"主仪表"(与产品内 aw-bench--marked 同一语言) */
-  .corner { position: absolute; width: 12px; height: 12px; border: 1px solid rgba(65, 200, 244, 0.5); }
-  .corner.tl { top: -1px; left: -1px; border-right: 0; border-bottom: 0; border-top-left-radius: 12px; }
-  .corner.tr { top: -1px; right: -1px; border-left: 0; border-bottom: 0; border-top-right-radius: 12px; }
-  .corner.bl { bottom: -1px; left: -1px; border-right: 0; border-top: 0; border-bottom-left-radius: 12px; }
-  .corner.br { bottom: -1px; right: -1px; border-left: 0; border-top: 0; border-bottom-right-radius: 12px; }
-
-  .figlabel {
-    display: flex; align-items: center; gap: 9px;
-    margin-bottom: 7px;
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    margin-top: 22px; padding-top: 15px; border-top: 1px solid var(--line);
+  }
+  .stat .v {
     font-family: 'Consolas', ui-monospace, monospace;
-    font-size: 9.4px; letter-spacing: 0.16em; text-transform: uppercase; color: #7f93a8;
+    font-size: 24px; font-weight: 500; letter-spacing: -0.03em;
   }
-  .figlabel .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
-  .figlabel .rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+  .stat .k {
+    font-family: 'Consolas', ui-monospace, monospace;
+    font-size: 8px; letter-spacing: 0.14em; color: var(--ink-faint); margin-top: 2px;
+  }
 
-  .inset { margin-top: 10px; }
-  .inset img { height: 104px; object-fit: cover; object-position: 50% 18%; }
+  .right { position: absolute; left: 646px; top: 86px; width: 600px; }
+  .figcap {
+    display: flex; align-items: baseline; gap: 9px;
+    font-family: 'Consolas', ui-monospace, monospace;
+    font-size: 9px; letter-spacing: 0.12em; color: var(--ink-faint);
+  }
+  .figcap .no { color: var(--green); }
+  .figcap .right-side { margin-left: auto; }
+
+  .win {
+    position: relative; margin-top: 9px;
+    border: 1px solid #243341; border-radius: 14px; background: #0a0f16;
+    padding: 9px;
+    box-shadow: 0 26px 60px rgba(0, 0, 0, 0.55);
+  }
+  .chrome { display: flex; align-items: center; gap: 5px; padding: 2px 4px 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #2c3d4e; }
+  .dot.on { background: var(--orange); }
+  .chrome .label {
+    flex: 1; text-align: center;
+    font-family: 'Consolas', ui-monospace, monospace;
+    font-size: 8.5px; color: var(--ink-faint);
+  }
+  .chrome .live { color: var(--green); font-family: 'Consolas', ui-monospace, monospace; font-size: 8.5px; }
+  .win img {
+    display: block; width: 100%; height: auto;
+    border-radius: 8px; border: 1px solid #1a2733;
+  }
+
+  .hitl {
+    position: absolute; left: 18px; bottom: 26px;
+    display: flex; align-items: flex-start; gap: 10px;
+    width: 320px;
+    background: #0d141c; border: 1px solid #2a3a49; border-radius: 10px;
+    padding: 10px 13px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  }
+  .hitl svg { width: 14px; height: 14px; flex: 0 0 14px; margin-top: 1px; }
+  .hitl .t { font-size: 11px; font-weight: 500; }
+  .hitl .d {
+    font-family: 'Consolas', ui-monospace, monospace;
+    font-size: 9px; color: var(--ink-soft); margin-top: 2px;
+  }
+
+  .caption {
+    margin-top: 12px;
+    font-size: 10.5px; line-height: 1.55; color: var(--ink-soft);
+    max-width: 560px;
+  }
+  .caption b { color: var(--ink); font-weight: 500; }
 </style>
 </head>
 <body>
-  <div class="aurora"></div>
-  <div class="hexgrid"></div>
-  <div class="vignette"></div>
+  <div class="grid" aria-hidden="true"></div>
 
-  <div class="wrap">
-    <div class="left">
-      <div class="brand">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-          <defs>
-            <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#35e0a0"/><stop offset="1" stop-color="#41c8f4"/>
-            </linearGradient>
-          </defs>
-          <path d="M32 4 L56 18 V46 L32 60 L8 46 V18 Z" stroke="url(#g)" stroke-width="4" stroke-linejoin="round"/>
-          <path d="M32 15 L46.7 23.5 V40.5 L32 49 L17.3 40.5 V23.5 Z" stroke="#41c8f4" stroke-opacity="0.45" stroke-width="1.8" stroke-dasharray="4 3"/>
-          <path d="M32 23 L25 38 M32 23 L39 38 M25 38 L39 38" stroke="#35e0a0" stroke-width="1.8" stroke-opacity="0.75"/>
-          <circle cx="32" cy="23" r="3.4" fill="#35e0a0"/>
-          <circle cx="25" cy="38" r="3.4" fill="#41c8f4"/>
-          <circle cx="39" cy="38" r="3.4" fill="#41c8f4"/>
-        </svg>
-        <div class="wordmark">
-          <span class="name">AGENT<span class="accent">WORKSHOP</span></span>
-          <span class="sub">digital twin · agent orchestration</span>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#35e0a0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 18 9.5 6l4 8L17 8l3 10"/><path d="M4 21h16"/>
+      </svg>
+      <span class="name">AGENT<b>WORKSHOP</b></span>
+      <span class="chip">v0.10.0</span>
+    </div>
+    <nav class="topnav">
+      <span>Docs</span><span>Plugins</span><span>SDK</span><span>CLI</span><span class="gh">GitHub ↗</span>
+    </nav>
+  </header>
+
+  <section class="left">
+    <div class="kicker">INDUSTRIAL AGENT RUNTIME · OPEN SOURCE</div>
+    <h1>Agent teams,<br>meet the <span class="line">production line</span>.</h1>
+    <p class="sub">
+      One configuration-driven runtime where AI agent teams and an industrial digital twin share the
+      same event bus — read real telemetry, propose setpoints, pass human approval, write, and verify the readback.
+    </p>
+    <div class="pills">
+      <span class="pill">npm 0.10.0</span>
+      <span class="pill">Apache-2.0</span>
+      <span class="pill">Node ≥ 23.4</span>
+      <span class="pill">Nuxt 4</span>
+      <span class="pill">14 engines</span>
+      <span class="pill">6 protocols</span>
+    </div>
+    <div class="cta">
+      <span class="btn primary">Quick start <span class="arr">→</span></span>
+      <span class="btn ghost">3-min demo</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="v">14</div><div class="k">ENGINES</div></div>
+      <div class="stat"><div class="v">6</div><div class="k">PROTOCOLS</div></div>
+      <div class="stat"><div class="v">4</div><div class="k">ENTRY POINTS</div></div>
+      <div class="stat"><div class="v">1253</div><div class="k">UNIT TESTS</div></div>
+    </div>
+  </section>
+
+  <section class="right">
+    <div class="figcap">
+      <span class="no">FIG.01</span>
+      <span>CHANNEL CONSOLE · CHATGPT-STYLE HARNESS</span>
+      <span class="right-side">LIVE · seq 20</span>
+    </div>
+    <div class="win">
+      <div class="chrome">
+        <span class="dot"></span><span class="dot"></span><span class="dot on"></span>
+        <span class="label">agentworkshop / channel · OPEN</span>
+        <span class="live">●</span>
+      </div>
+      <img src="./harness-channel.png" alt="AgentWorkShop Channel console — ChatGPT-style harness layout">
+      <div class="hitl">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#35e0a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg>
+        <div>
+          <div class="t">HITL · write_intent approved</div>
+          <div class="d">setpoint 182.0 → 188.0 °C · readback verified</div>
         </div>
       </div>
-
-      <h1 class="headline">Agents that <span class="grad">run</span><br />the production line.</h1>
-
-      <p class="tagline">
-        A configuration-driven platform where <b>AI agent teams</b> and an <b>industrial digital twin</b>
-        share one runtime — agents query real telemetry, issue supervisory setpoints through
-        human-approved write control, and every event streams live to a 3D twin.
-      </p>
-
-      <div class="ticker">
-        <div class="tick"><span class="k">Task engine</span><span class="v">7-state · <span class="mint">goal / loop / pipeline</span></span></div>
-        <div class="tick"><span class="k">Entry points</span><span class="v">WS · MCP · A2A · REST</span></div>
-        <div class="tick"><span class="k">Field bus</span><span class="v">Modbus · OPC UA · MQTT · HTTP</span></div>
-        <div class="tick"><span class="k">Control path</span><span class="v">Interlock → HITL → <span class="blue">Readback</span></span></div>
-      </div>
     </div>
-
-    <div class="scope">
-      <div class="figlabel"><span class="dot"></span>FIG.00 · LIVE PLANT TWIN<span class="rule"></span>TownView · WebGL</div>
-      <div class="frame twin">
-        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
-        <img src="town.png" alt="3D digital twin town" />
-      </div>
-      <div class="figlabel inset-label" style="margin-top:14px"><span class="dot"></span>DAQ CONSOLE<span class="rule"></span>498 nodes · live</div>
-      <div class="frame inset">
-        <img src="daq.png" alt="DAQ console" />
-      </div>
-    </div>
-  </div>
-
-  <div class="footnote">
-    <span>supervisory layer</span><span>soft real-time</span><span>setpoints are advisory</span><span>loops stay in the plc</span>
-  </div>
+    <p class="caption">
+      <b>Live console, not a mock-up.</b> An 800 px reading column, full-width agent blocks,
+      right-aligned user bubbles and a harness chip on every reply.
+    </p>
+  </section>
 </body>
 </html>
