@@ -53,7 +53,7 @@ async function api(method, path, body, opts = {}) {
 async function invoke(agentId, tool, argsTool = {}, timeoutMs = 180_000) {
   const res = await fetch(`${base}/api/workshop/agent-tools/invoke`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${tokenA}` },
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${tokenA}` },
     body: JSON.stringify({ agentId, tool, args: argsTool }),
     signal: AbortSignal.timeout(timeoutMs),
   })
@@ -303,7 +303,7 @@ async function main() {
   const c2 = await dispatchAndWaitInstance(pid, w2, 'W2')
   if (!c2) return finish(pid)
   writeFileSync(join(APP, 'ledger.py'), LEDGER_PY, 'utf8')
-  let smoke = ''
+  let smoke
   let smokeOk = false
   try {
     smoke = execFileSync('python', [join(APP, 'ledger.py'), 'summary'], { encoding: 'utf8', timeout: 20_000 }).trim()
@@ -320,7 +320,7 @@ async function main() {
   const c3 = await dispatchAndWaitInstance(pid, w3, 'W3')
   if (!c3) return finish(pid)
   writeFileSync(join(APP, 'test_ledger.py'), TEST_PY, 'utf8')
-  let testOut = ''
+  let testOut
   let testOk = false
   try {
     testOut = execFileSync('python', [join(APP, 'test_ledger.py')], { encoding: 'utf8', timeout: 30_000 }).trim()
@@ -364,4 +364,4 @@ function finish(pid) {
   process.exitCode = fail > 0 ? 1 : 0
 }
 
-main().catch(e => { console.error('fatal:', e); finish('') })
+main().catch((e) => { console.error('fatal:', e); finish('') })

@@ -23,7 +23,7 @@ mkdirSync(EVID, { recursive: true })
 
 const LINE = 'ln-fabeef11'
 const RECIPE = 'rc-eefa8c9c'
-const SP1 = 'dw-3ea126d5'   // 鼓风机频率SP step 2 (20~50)
+const SP1 = 'dw-3ea126d5' // 鼓风机频率SP step 2 (20~50)
 const DAQ = { zone1: 'dn-c0c8b7a4', zone2: 'dn-86e002c8', exit: 'dn-0900949c', tensile: 'dn-320f821b', elong: 'dn-d938a9ba', defect: 'dn-320f821b' } // zone1=DO, tensile=氨氮, elong=COD
 const CH = {
   analysis: '034640a5-e6fd-4468-afaf-599edabb014f',
@@ -55,7 +55,7 @@ async function api(method, path, body, opts = {}) {
 async function invoke(agentId, tool, argsTool = {}, timeoutMs = 240_000) {
   const res = await fetch(`${base}/api/workshop/agent-tools/invoke`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${tokenA}` },
+    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${tokenA}` },
     body: JSON.stringify({ agentId, tool, args: argsTool }),
     signal: AbortSignal.timeout(timeoutMs),
   })
@@ -68,7 +68,7 @@ async function invoke(agentId, tool, argsTool = {}, timeoutMs = 240_000) {
 async function daqSeries(nodeId, fromMs, toMs, bucketMs = 5000) {
   const j = await api('GET', `/api/workshop/daq/${nodeId}/samples?from=${fromMs}&to=${toMs}&bucketMs=${bucketMs}`)
   const pts = j?.data?.points ?? []
-  return pts.map(p => ({ at: Number(p.at ?? p.ts ?? 0), v: Number(p.avg ?? p.value ?? Number.NaN) })).filter(p => Number.isFinite(p.v) && p.v !== 0 || true).filter(p => Number.isFinite(p.v))
+  return pts.map(p => ({ at: Number(p.at ?? p.ts ?? 0), v: Number(p.avg ?? p.value ?? Number.NaN) })).filter(p => Number.isFinite(p.v))
 }
 function pearson(xs, ys) {
   const n = Math.min(xs.length, ys.length)
@@ -136,7 +136,7 @@ async function main() {
   const preTreatDo = sDoPre.length ? sDoPre.reduce((a, b) => a + b.v, 0) / sDoPre.length : Number.NaN
   const productId = ((await api('GET', '/api/workshop/dcw')).data?.recipes ?? []).find(x => x.id === RECIPE)?.productId ?? ''
   await api('PATCH', '/api/system/settings', { override: { 'dcw.rollback_stale_ms': 60000 } })
-  process.on('exit', () => { void fetch(`${base}/api/system/settings`, { method: 'PATCH', headers: { 'content-type': 'application/json', authorization: `Bearer ${tokenA}` }, body: JSON.stringify({ override: { 'dcw.rollback_stale_ms': 1800000 } }) }).catch(() => {}) })
+  process.on('exit', () => { void fetch(`${base}/api/system/settings`, { method: 'PATCH', headers: { 'content-type': 'application/json', 'authorization': `Bearer ${tokenA}` }, body: JSON.stringify({ override: { 'dcw.rollback_stale_ms': 1800000 } }) }).catch(() => {}) })
   // setup 操作(owner,非工作项):开批次(运行门权威=line-run 注册表)。line_start 409=批次已活(沿用既有批次);
   // 真正的批次有效性由 W2 运行门实证(批次缺失时 W2-t3 会显式红)。
   const st0 = await api('POST', `/api/workshop/dcw/lines/${LINE}/start`, { recipeId: RECIPE })
@@ -216,7 +216,7 @@ async function main() {
   }, 20_000)
   step('W2-t2', 'W2 owner 批准 write_intent', ap ? (await api('POST', `/api/workshop/projects/${pid}/approvals/${ap.id}/decide`, { approve: true })).status === 200 : false, `approval=${String(ap?.id ?? '').slice(0, 8)}`)
   let trial = null
-  let w2WriteAt = 0
+  let w2WriteAt
   let firstTrialError = ''
   for (let round = 0; round < 4 && !(trial && !trial.isError); round++) {
     const startAt = Date.now()
@@ -309,7 +309,7 @@ async function main() {
   const sTreat = await daqSeries(DAQ.zone1, w2WriteAt, Date.now(), 2000)
   const meanTreat = sTreat.length ? sTreat.reduce((a, b) => a + b.v, 0) / sTreat.length : Number.NaN
   step('W3-t3', 'W3 治理后数据在场(治理后 DO 窗实测,方向性判据)', sTreat.length >= 8 && Number.isFinite(meanTreat) && Number.isFinite(preTreatDo) && meanTreat > preTreatDo,
-    `治理后 DO 窗均值=${Number.isFinite(meanTreat) ? meanTreat.toFixed(2) : '?'} mg/L(n=${sTreat.length}) vs 试验前 DO 均值 ${Number.isFinite(preTreatDo) ? preTreatDo.toFixed(2) : '?'}(升曝气→DO 应上行;τ≈40s)`);
+    `治理后 DO 窗均值=${Number.isFinite(meanTreat) ? meanTreat.toFixed(2) : '?'} mg/L(n=${sTreat.length}) vs 试验前 DO 均值 ${Number.isFinite(preTreatDo) ? preTreatDo.toFixed(2) : '?'}(升曝气→DO 应上行;τ≈40s)`)
   // 数据集窗口须覆盖治理时刻(含治理后数据);beat 网格须连续覆盖 history+horizon
   const runMinutes = openRun ? Math.max(12, Math.ceil((Date.now() - new Date(openRun.startedAt ?? Date.now()).getTime()) / 60000) + 4) : 30
   const buildDs = async () => invoke(baseTrainLead.id, 'aml_dataset_build', {
@@ -398,7 +398,6 @@ async function main() {
   step('W4-t2', 'W4 无审批产生(HITL 队列无新增+项目审批数无新增)', hitlAfter === hitlBefore && apprCountAfter === apprCountBefore, `hitl=${hitlBefore}→${hitlAfter} approvals=${apprCountBefore}→${apprCountAfter}`)
   // 台账强证据:干预记录 approval_id 为空(源=agent-auto,非 HITL)
   const ih = await invoke(baseOptLead.id, 'intervention_history', { node_id: SP1, limit: 5 })
-  const w4NoApproval = !ih.isError && /approval|审批|null|无/i.test(ih.text)
   step('W4-t3', 'W4 干预台账可查(审批归因面)', !ih.isError, ih.text.replace(/\s+/g, ' ').slice(0, 180))
   const after4 = Number(((await dcwNodes()).find(n => n.id === SP1))?.value ?? Number.NaN)
   // 精确有界:Δ=+stepW4(±0.3) 且落在 [20,50] 且 ≤ 步限
@@ -433,4 +432,4 @@ function finish(pid) {
   process.exitCode = fail > 0 || !complete ? 1 : 0
 }
 
-main().catch(e => { console.error('fatal:', e); finish('') })
+main().catch((e) => { console.error('fatal:', e); finish('') })

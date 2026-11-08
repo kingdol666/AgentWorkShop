@@ -23,7 +23,7 @@ export default defineApiHandler(async (event) => {
   // 「写入成功 + journal 留痕 + 设备零触达」的假闭环(既往 skill 实测教训)。
   if (body.lineId && !body.driver) {
     throw new AppError(400, ErrorCodes.VALIDATION_ERROR,
-      "绑定产线的写控节点必须显式指定 driver(如 modbus-tcp/opcua/mqtt/http);缺省 mock 驱动会造成假写入,已拒绝。演示节点请显式传 driver=\"mock\"。")
+      '绑定产线的写控节点必须显式指定 driver(如 modbus-tcp/opcua/mqtt/http);缺省 mock 驱动会造成假写入,已拒绝。演示节点请显式传 driver="mock"。')
   }
   const node = getDcwController().create(body)
   // R1:创建写控制节点(获得直写物理设备能力的入口)留痕;归属产线随行,产线日志可检索

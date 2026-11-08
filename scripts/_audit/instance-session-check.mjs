@@ -70,4 +70,4 @@ function finish() {
   process.exitCode = pass ? 0 : 1
 }
 
-main().catch(e => { console.error('FAIL:', e?.message ?? e); process.exitCode = 1 })
+main().catch((e) => { console.error('FAIL:', e?.message ?? e); process.exitCode = 1 })

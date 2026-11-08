@@ -102,7 +102,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
     // —— 2026-11-08 生产审计 P0-1:one-shot 家族 6 引擎(gemini/copilot/cursor/crush/goose/pi)
     // 构造即崩,2026-10-31 回归引入。此处 fail-safe 读:构造期取不到就留空,
     // 子类在自身构造末尾(spec 就绪后)再调一次 refreshIdentity() 补齐。
-    let harness = ''
+    let harness: string
     try {
       harness = this.harnessId
     }
