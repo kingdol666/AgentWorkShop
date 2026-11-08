@@ -11,6 +11,9 @@ export function classifyEvent(e: AepEnvelope): BlockKind {
   switch (e.type) {
     case 'agent.status.message':
       return TOOL_PREFIX.test(String((e.payload as { text?: string }).text ?? '')) ? 'tool' : 'status'
+    // AgentBlock v1(结构化工具块;payload={block};渲染在 ClusterTool 结构优先,正则退路径保留)
+    case 'agent.block':
+      return 'tool'
     case 'agent.status':
       return 'life'
     case 'a2a.message':
