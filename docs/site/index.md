@@ -61,7 +61,7 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">现场协议</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
-        <div class="hw-stat"><span class="v">138</span><span class="k">运行时设置项</span></div>
+        <div class="hw-stat"><span class="v">143</span><span class="k">运行时设置项</span></div>
         <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">验收断言</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
       </div>
@@ -72,10 +72,10 @@ footer:
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> 与
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>。
         其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
-        14 个 harness(<code>agents/registry.ts</code>) / 140 个设置项分 19 组(<code>aw config list</code>) / 7 态任务机。
+        14 个 harness(<code>agents/registry.ts</code>) / 143 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.9.5</i></span>
+        <span>版本 <i>v0.10.0</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -87,6 +87,43 @@ footer:
 <div class="hw-wrap">
 
   <div class="aw-ruler"></div>
+
+  <section class="hw-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">00</span>
+      <h2 class="hw-sec-title">本月新增</h2>
+      <span class="hw-sec-en">WHAT'S NEW · v0.10.0</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <p class="hw-lead">
+      2026-11 的三处结构变化：控制台按 ChatGPT harness 重排、执行环境可多会话隔离、
+      Project 变成交付契约。三者的验收都在 main 构建上跑过。
+    </p>
+    <div class="hw-feats">
+      <div class="hw-f">
+        <span class="tag">UI</span>
+        <h3>ChatGPT 式 Harness 控制台</h3>
+        <p>800px 阅读列、Agent 通栏块、每条回复带 harness 标识、26px 输入卡；Channel / Project / 入口页统一重排，testid 与交互零删除。</p>
+        <p><a href="/AgentWorkShop/guide/harness-ui">Harness UI 指南 →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">SESS</span>
+        <h3>Channel 多会话</h3>
+        <p>模板 → 频道 → 会话；克隆基础成员并隔离 runtime / mailbox / 执行锁 / 记忆域。关一个会话，其余照常作业，基础成员永不离开。</p>
+        <p><a href="/AgentWorkShop/guide/channels-sessions">Channel 多会话指南 →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">PRJ</span>
+        <h3>Project 交付模式</h3>
+        <p>蓝图 → 计划审批 → 带依赖 WBS → L1 技术复核 → L2 Owner 验收 → 交付物；observe / supervised / auto 三模式，CAL-3 实机 78/78。</p>
+        <p><a href="/AgentWorkShop/guide/projects">Project 模式指南 →</a></p>
+      </div>
+    </div>
+    <div class="hw-note">
+      <span class="t">验收</span>
+      <p>CAL-3 四期闭环 78/78 · 多 Harness 隔离 24/24 · Channel 多会话 20/20 · Project 交付 58/58 · UI 交互 12/12（main 构建，真实产线 / 真实 Chrome）。</p>
+    </div>
+  </section>
 
   <section class="hw-sec">
     <div class="hw-sec-head">
@@ -280,7 +317,7 @@ footer:
       <div class="hw-p">
         <span class="no">04</span>
         <h3>配置驱动</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——140 个设置项(47 live / 93 restart),代码零硬编码默认。</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——143 个设置项,代码零硬编码默认。</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
@@ -303,6 +340,9 @@ footer:
     </div>
     <div class="hw-sec-rule"></div>
     <div class="hw-feats">
+      <div class="hw-f"><span class="tag">UI</span><h3>ChatGPT 式 Harness 控制台</h3><p>800px 阅读列、Agent 通栏块、每条回复带 harness 标识、26px 输入卡；Channel / Project / 入口页统一重排，全部 data-testid 与交互语义保留，390px 可用。</p></div>
+      <div class="hw-f"><span class="tag">SESS</span><h3>Channel 多会话</h3><p>模板 → 频道 → 会话；克隆基础成员并隔离 runtime / mailbox / 执行锁 / 引擎进程 / 记忆域；会话内串行、会话间并行；关闭一个会话不影响其余。</p></div>
+      <div class="hw-f"><span class="tag">PRJ</span><h3>Project 交付模式</h3><p>蓝图一键实例化 → 计划审批 → 带 dependsOn 的 WBS → L1 技术复核 → L2 Owner 验收 → 交付物；observe / supervised / auto 三模式，CAL-3 四期实机 78/78。</p></div>
       <div class="hw-f"><span class="tag">PROTOCOL</span><h3>六协议数采与数控</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP 双向驱动 + 内置串口插件(RS-232/485 直连)——连接池、故障分类诊断、逐驱动连接测试;协议即插件,新协议注入后前端表单零改动。</p></div>
       <div class="hw-f"><span class="tag">R/W</span><h3>数控读写一体</h3><p>每个控制节点沿写链路同一套标定读回 PLC 当前值——SET 与 ACT 并排呈现,读为被动观测,不经过写联锁。</p></div>
       <div class="hw-f"><span class="tag">HITL</span><h3>人机协同写控</h3><p>安全量程 ∩ 配方窗口联锁 → 人工审批 → PLC 写入 → 回读校验 → 签名写历史;裁决人留痕审计。</p></div>
@@ -386,6 +426,9 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
 
   <p class="hw-lead" style="margin-top:22px">
     深入一步:<a href="/AgentWorkShop/guide/first-session">第一次 Agent × 产线会话</a>(约 2 分钟跑通全链) ·
+    <a href="/AgentWorkShop/guide/harness-ui">Harness 控制台</a> ·
+    <a href="/AgentWorkShop/guide/channels-sessions">Channel 多会话</a> ·
+    <a href="/AgentWorkShop/guide/projects">Project 模式</a> ·
     <a href="/AgentWorkShop/sdk/">SDK 开发指南</a> ·
     <a href="/AgentWorkShop/plugins/">插件开发指南</a> ·
     <a href="/AgentWorkShop/cli/">aw CLI 手册</a>
@@ -415,7 +458,7 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
   <section class="hw-final">
     <h2>把 Agent 接到真实产线上</h2>
     <p>
-      14 个执行引擎、6 种现场协议、140 个运行时设置项和 1100+ 条基础波验收断言(另有补充波报告)都已经在仓库里。
+      14 个执行引擎、6 种现场协议、143 个运行时设置项和 1100+ 条基础波验收断言(另有补充波报告)都已经在仓库里。
       监督层,秒级软实时;协议真实,断言可复跑。
     </p>
     <div class="hw-cta">

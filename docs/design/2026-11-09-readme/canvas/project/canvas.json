@@ -1,0 +1,46 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-09T00:20:00Z"
+  },
+  "title": "AgentWorkShop · README 与文档站重设计",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 1040,
+      "title": "01 · README 首屏"
+    },
+    "Sections.dc.html": {
+      "x": 0,
+      "y": 1160,
+      "w": 1280,
+      "h": 1480,
+      "title": "02 · README 正文"
+    },
+    "DocsHome.dc.html": {
+      "x": 0,
+      "y": 2760,
+      "w": 1280,
+      "h": 1050,
+      "title": "03 · VitePress 首页"
+    }
+  },
+  "order": ["Main.dc.html", "Sections.dc.html", "DocsHome.dc.html"],
+  "notes": {
+    "readme-title": {
+      "x": 0,
+      "y": -260,
+      "text": "README / VitePress · Control Room × Quiet Harness",
+      "kind": "title1",
+      "maxW": 1280
+    }
+  },
+  "designSystems": []
+}

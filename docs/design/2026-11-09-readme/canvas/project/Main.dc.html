@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>README · Control Room × Quiet Harness</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; }
+  a { color: #35e0a0; }
+  a:hover { color: #7af0c4; }
+  * { box-sizing: border-box; }
+  .cta:hover { background: #57eab4; }
+  .ghost:hover { border-color: #3f5668; background: #0d141c; }
+</style>
+</helmet>
+
+<div style="width: 100%; min-height: 1040px; background: #06080d; color: #eef3f8; font-family: 'Geist', -apple-system, 'Segoe UI', 'Inter', sans-serif; padding-bottom: 36px;">
+
+  <div style="max-width: 1280px; margin: 0 auto; padding: 0 64px;">
+
+    <!-- ═══ 顶栏 ═══ -->
+    <div style="height: 74px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid #1b2833;">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#35e0a0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 18 9.5 6l4 8L17 8l3 10"/><path d="M4 21h16"/>
+      </svg>
+      <span style="font-size: 16px; font-weight: 600; letter-spacing: 0.16em;">AGENT<span style="color: #35e0a0">WORKSHOP</span></span>
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.1em; color: #35e0a0; border: 1px solid #1f4a3a; background: #0a1a14; border-radius: 999px; padding: 3px 8px;">v0.10.0</span>
+      <span style="flex: 1"></span>
+      <span style="font-size: 12.5px; color: #a9b8c8; display: flex; gap: 22px; align-items: center;">
+        <span>Docs</span><span>Plugins</span><span>SDK</span><span>CLI</span><span style="color: #eef3f8;">GitHub ↗</span>
+      </span>
+    </div>
+
+    <!-- ═══ 首屏 ═══ -->
+    <div style="display: grid; grid-template-columns: 470px minmax(0, 1fr); gap: 58px; padding: 62px 0 30px; align-items: start;">
+
+      <div>
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.2em; color: #35e0a0;">INDUSTRIAL AGENT RUNTIME · OPEN SOURCE</div>
+
+        <h1 style="margin: 20px 0 22px; font-size: 52px; line-height: 1.05; font-weight: 600; letter-spacing: -0.025em;">
+          Agent teams,<br>
+          meet the <span style="color: #35e0a0;">production line</span>.
+        </h1>
+
+        <p style="margin: 0; max-width: 452px; font-size: 15px; line-height: 1.72; color: #a9b8c8;">
+          One configuration-driven runtime where AI agent teams and an industrial digital twin share the
+          same event bus — read real telemetry, propose setpoints, pass human approval, write, and verify the readback.
+        </p>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 7px; margin-top: 26px;">
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10.5px; color: #c7d3df; border: 1px solid #22303d; border-radius: 999px; padding: 5px 9px; background: #0a0f16;">npm 0.10.0</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10.5px; color: #c7d3df; border: 1px solid #22303d; border-radius: 999px; padding: 5px 9px; background: #0a0f16;">Apache-2.0</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10.5px; color: #c7d3df; border: 1px solid #22303d; border-radius: 999px; padding: 5px 9px; background: #0a0f16;">Node ≥ 23.4</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10.5px; color: #c7d3df; border: 1px solid #22303d; border-radius: 999px; padding: 5px 9px; background: #0a0f16;">Nuxt 4</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10.5px; color: #c7d3df; border: 1px solid #22303d; border-radius: 999px; padding: 5px 9px; background: #0a0f16;">14 engines</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10.5px; color: #c7d3df; border: 1px solid #22303d; border-radius: 999px; padding: 5px 9px; background: #0a0f16;">6 protocols</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 30px;">
+          <span class="cta" style="display: inline-flex; align-items: center; gap: 9px; background: #35e0a0; color: #04120c; font-size: 13px; font-weight: 600; padding: 11px 18px; border-radius: 6px;">Quick start <span style="font-family: 'Geist Mono', ui-monospace, monospace;">→</span></span>
+          <span class="ghost" style="display: inline-flex; align-items: center; gap: 9px; border: 1px solid #2a3a49; color: #eef3f8; font-size: 13px; padding: 10px 16px; border-radius: 6px;">3-min demo</span>
+          <span style="font-size: 12.5px; color: #8fa0b2;">Docs ↗</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; border-top: 1px solid #1b2833; margin-top: 38px; padding-top: 19px;">
+          <div>
+            <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 27px; font-weight: 500; letter-spacing: -0.03em;">14</div>
+            <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.14em; color: #6d7f92; margin-top: 3px;">ENGINES</div>
+          </div>
+          <div>
+            <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 27px; font-weight: 500; letter-spacing: -0.03em;">6</div>
+            <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.14em; color: #6d7f92; margin-top: 3px;">PROTOCOLS</div>
+          </div>
+          <div>
+            <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 27px; font-weight: 500; letter-spacing: -0.03em;">4</div>
+            <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.14em; color: #6d7f92; margin-top: 3px;">ENTRY POINTS</div>
+          </div>
+          <div>
+            <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 27px; font-weight: 500; letter-spacing: -0.03em;">1253</div>
+            <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.14em; color: #6d7f92; margin-top: 3px;">UNIT TESTS</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 观察窗 -->
+      <div style="min-width: 0;">
+        <div style="display: flex; align-items: baseline; gap: 10px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.13em; color: #6d7f92;">
+          <span style="color: #35e0a0;">FIG.01</span>
+          <span>CHANNEL CONSOLE · CHATGPT-STYLE HARNESS</span>
+          <span style="flex: 1"></span>
+          <span>LIVE · seq 20</span>
+        </div>
+
+        <div style="margin-top: 9px; border: 1px solid #243341; border-radius: 15px; background: #0a0f16; padding: 9px; box-shadow: 0 26px 70px rgba(0, 0, 0, 0.55);">
+          <div style="display: flex; align-items: center; gap: 6px; padding: 3px 5px 9px;">
+            <span style="width: 9px; height: 9px; border-radius: 50%; background: #2c3d4e;"></span>
+            <span style="width: 9px; height: 9px; border-radius: 50%; background: #2c3d4e;"></span>
+            <span style="width: 9px; height: 9px; border-radius: 50%; background: #e0663d;"></span>
+            <span style="flex: 1"></span>
+            <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; color: #6d7f92;">agentworkshop / channel · OPEN</span>
+            <span style="flex: 1"></span>
+            <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; color: #35e0a0;">●</span>
+          </div>
+          <img src="/_blob/5babcc35bee808b37e7eef9a77e01ee5" alt="AgentWorkShop Channel console — ChatGPT-style harness layout" style="display: block; width: 100%; height: auto; border-radius: 9px; border: 1px solid #1a2733;">
+        </div>
+
+        <div style="display: flex; align-items: flex-start; gap: 12px; margin: -18px 0 0 22px; position: relative; z-index: 2; width: 330px; background: #0d141c; border: 1px solid #2a3a49; border-radius: 10px; padding: 11px 14px; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#35e0a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 1px; flex: 0 0 16px;"><path d="m4 12 5 5L20 6"/></svg>
+          <div>
+            <div style="font-size: 11.5px; font-weight: 500; color: #eef3f8;">HITL · write_intent approved</div>
+            <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9.5px; color: #8fa0b2; margin-top: 3px;">setpoint 182.0 → 188.0 °C · readback verified</div>
+          </div>
+        </div>
+
+        <p style="margin: 14px 0 0; font-size: 11.5px; line-height: 1.6; color: #8fa0b2; max-width: 560px;">
+          Live console, not a mock-up: an 800 px reading column, full-width agent blocks, right-aligned user
+          bubbles and a harness chip on every reply.
+        </p>
+      </div>
+    </div>
+
+    <!-- ═══ 三根支柱 ═══ -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #1b2833; margin-top: 8px;">
+      <div style="padding: 24px 30px 4px 0; border-right: 1px solid #1b2833;">
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.16em; color: #35e0a0;">01 / COLLABORATE</div>
+        <div style="font-size: 15px; font-weight: 500; margin-top: 7px;">Channel runtime</div>
+        <p style="margin: 7px 0 0; font-size: 12px; line-height: 1.65; color: #8fa0b2;">Lead + workers, 14 harness engines, a 7-state task machine, HITL approvals and scheduled jobs — one team per channel, mixable engines.</p>
+      </div>
+      <div style="padding: 24px 30px 4px 30px; border-right: 1px solid #1b2833;">
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.16em; color: #ff8a5c;">02 / DELIVER</div>
+        <div style="font-size: 15px; font-weight: 500; margin-top: 7px;">Project mode</div>
+        <p style="margin: 7px 0 0; font-size: 12px; line-height: 1.65; color: #8fa0b2;">Blueprint → plan approval → work items with dependencies → L1/L2 acceptance → delivered artifacts. A delivery contract, not just chat.</p>
+      </div>
+      <div style="padding: 24px 0 4px 30px;">
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.16em; color: #41c8f4;">03 / GOVERN</div>
+        <div style="font-size: 15px; font-weight: 500; margin-top: 7px;">Industrial writes</div>
+        <p style="margin: 7px 0 0; font-size: 12px; line-height: 1.65; color: #8fa0b2;">Interlocks, rate gates, readback verification and an audit ledger. Every write passes through human approval when the line says so.</p>
+      </div>
+    </div>
+
+    <!-- ═══ 新版条 ═══ -->
+    <div style="display: flex; align-items: center; gap: 14px; margin-top: 30px; background: #0a0f16; border: 1px solid #1b2833; border-radius: 8px; padding: 11px 15px;">
+      <span style="width: 6px; height: 6px; border-radius: 50%; background: #35e0a0; flex: 0 0 6px;"></span>
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.12em; color: #35e0a0;">NEW IN 0.10.0</span>
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; color: #8fa0b2;">Harness UI</span>
+      <span style="color: #2a3a49;">/</span>
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; color: #8fa0b2;">Channel multi-session</span>
+      <span style="color: #2a3a49;">/</span>
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; color: #8fa0b2;">Project delivery</span>
+      <span style="color: #2a3a49;">/</span>
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; color: #8fa0b2;">CAL-3 four-stage 78/78</span>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {}
+  }
+}
+</script>
+</body>
+</html>

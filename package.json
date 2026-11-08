@@ -1,8 +1,8 @@
 {
   "name": "agentworkshop",
-  "version": "0.9.5",
+  "version": "0.10.0",
   "type": "module",
-  "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
+  "description": "AgentWorkShop — a configuration-driven industrial agent runtime: agent teams, Channel sessions, Project delivery and governed plant writes",
   "license": "Apache-2.0",
   "exports": {
     ".": {

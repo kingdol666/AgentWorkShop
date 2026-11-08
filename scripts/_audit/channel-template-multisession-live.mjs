@@ -179,9 +179,9 @@ async function main() {
   }
   const wsId = (await api('GET', '/api/workshop/workspaces')).data?.[0]?.id
     ?? (await api('POST', '/api/workshop/workspaces', { name: `模板多会话-${randomUUID().slice(0, 4)}` })).data?.id
-  await api('POST', `/api/workshop/channels/${cid}/activate`, {})
-  await api('POST', `/api/workshop/workspaces/${wsId}/channels/${cid}`, {})
-  step('T2', 'worker 补 omp 运行时配置 + 频道激活', true, `model=${OMP_MODEL.slice(0, 24)}…`)
+  const actT2 = await api('POST', `/api/workshop/channels/${cid}/activate`, {})
+  const mountT2 = await api('POST', `/api/workshop/workspaces/${wsId}/channels/${cid}`, {})
+  step('T2', 'worker 补 omp 运行时配置 + 频道激活', actT2.status === 200 && mountT2.status === 200, `activate=${actT2.status} mount=${mountT2.status} model=${OMP_MODEL.slice(0, 24)}…`)
 
   // ═══ T3 基础成员节点绑定(会话创建前;克隆继承) ═══
   const analyst = workers.find(w => /数据分析师/.test(w.name ?? '')) ?? workers[0]

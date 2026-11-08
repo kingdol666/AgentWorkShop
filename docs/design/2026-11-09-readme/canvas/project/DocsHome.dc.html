@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VitePress home · redesign</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; }
+  a { color: #35e0a0; }
+  a:hover { color: #7af0c4; }
+  * { box-sizing: border-box; }
+  .navlink:hover { color: #e8eef5; }
+  .card:hover { border-color: #2d4a63; background: #101c2b; }
+</style>
+</helmet>
+
+<div style="width: 100%; min-height: 1050px; background: #0a111d; color: #e8eef5; font-family: 'Geist', -apple-system, 'Segoe UI', 'Inter', sans-serif; padding-bottom: 34px;">
+
+  <!-- ═══ VitePress 顶栏 ═══ -->
+  <div style="border-bottom: 1px solid #1b2a3c; background: rgba(10, 17, 29, 0.92);">
+    <div style="max-width: 1200px; margin: 0 auto; height: 58px; padding: 0 28px; display: flex; align-items: center; gap: 22px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#35e0a0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 18 9.5 6l4 8L17 8l3 10"/><path d="M4 21h16"/>
+      </svg>
+      <span style="font-size: 14.5px; font-weight: 600; letter-spacing: 0.02em;">AgentWorkShop</span>
+      <span style="flex: 1"></span>
+      <span style="display: flex; align-items: center; gap: 20px; font-size: 12px; color: #8fa3b8;">
+        <span class="navlink" style="color: #e8eef5;">Guide</span>
+        <span class="navlink">Demo</span>
+        <span class="navlink">SDK</span>
+        <span class="navlink">Plugins</span>
+        <span class="navlink">CLI</span>
+        <span class="navlink">License</span>
+      </span>
+      <span style="display: flex; align-items: center; gap: 6px; border: 1px solid #24374b; border-radius: 6px; padding: 5px 9px; font-size: 11px; color: #6f8499;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
+        Search <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; border: 1px solid #24374b; border-radius: 3px; padding: 1px 3px;">⌘K</span>
+      </span>
+      <span style="font-size: 11px; color: #8fa3b8;">简体中文</span>
+    </div>
+  </div>
+
+  <div style="max-width: 1200px; margin: 0 auto; padding: 0 28px;">
+
+    <!-- ═══ Hero ═══ -->
+    <div style="text-align: center; padding: 58px 0 34px;">
+      <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.2em; color: #35e0a0;">INDUSTRIAL AGENT RUNTIME · v0.10.0</div>
+      <h1 style="margin: 16px 0 14px; font-size: 44px; line-height: 1.15; font-weight: 600; letter-spacing: -0.025em;">
+        Agent teams <span style="color: #35e0a0;">×</span> production line <span style="color: #41c8f4;">×</span> digital twin
+      </h1>
+      <p style="margin: 0 auto; max-width: 700px; font-size: 14.5px; line-height: 1.7; color: #8fa3b8;">
+        One configuration-driven runtime: agents read real telemetry, propose setpoints through human-approved
+        write control, and every event streams into the 3D twin. Protocols are real; claims are re-runnable.
+      </p>
+
+      <div style="display: flex; justify-content: center; gap: 11px; margin-top: 26px;">
+        <span style="display: inline-flex; align-items: center; gap: 8px; background: #35e0a0; color: #04120c; font-size: 12.5px; font-weight: 600; padding: 10px 17px; border-radius: 6px;">Quick start <span style="font-family: 'Geist Mono', ui-monospace, monospace;">→</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #2a4056; color: #e8eef5; font-size: 12.5px; padding: 9px 15px; border-radius: 6px;">Product demo <span style="font-family: 'Geist Mono', ui-monospace, monospace;">→</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #1b2a3c; color: #8fa3b8; font-size: 12.5px; padding: 9px 15px; border-radius: 6px;">GitHub ↗</span>
+      </div>
+
+      <div style="display: inline-flex; align-items: center; gap: 24px; margin-top: 30px; border: 1px solid #1b2a3c; border-radius: 8px; background: #0d1726; padding: 11px 22px;">
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.12em; color: #6f8499;">6 <span style="color: #8fa3b8;">PROTOCOLS</span></span>
+        <span style="width: 1px; height: 14px; background: #1b2a3c;"></span>
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.12em; color: #6f8499;">14 <span style="color: #8fa3b8;">ENGINES</span></span>
+        <span style="width: 1px; height: 14px; background: #1b2a3c;"></span>
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.12em; color: #6f8499;">4 <span style="color: #8fa3b8;">ENTRY POINTS</span></span>
+        <span style="width: 1px; height: 14px; background: #1b2a3c;"></span>
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.12em; color: #6f8499;">1253 <span style="color: #8fa3b8;">UNIT TESTS</span></span>
+      </div>
+    </div>
+
+    <!-- ═══ New in this release ═══ -->
+    <div style="display: flex; align-items: baseline; gap: 12px; margin-top: 10px;">
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.18em; color: #35e0a0;">NEW IN 0.9.6</span>
+      <span style="flex: 1; height: 1px; background: #1b2a3c;"></span>
+      <span style="font-size: 10.5px; color: #6f8499;">Release notes ↗</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px;">
+      <div class="card" style="border: 1px solid #1b2a3c; border-radius: 8px; background: #0d1726; padding: 15px 16px;">
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 8.5px; letter-spacing: 0.12em; color: #6f8499;">UI · HARNESS CONSOLE</div>
+        <div style="font-size: 13.5px; font-weight: 600; margin-top: 6px;">Read the work, not the chrome</div>
+        <p style="margin: 5px 0 0; font-size: 11px; line-height: 1.6; color: #8fa3b8;">800 px reading column, full-width agent blocks, a 26 px composer and a harness chip on every reply.</p>
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; color: #35e0a0; margin-top: 9px;">Open the Channel guide →</div>
+      </div>
+      <div class="card" style="border: 1px solid #1b2a3c; border-radius: 8px; background: #0d1726; padding: 15px 16px;">
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 8.5px; letter-spacing: 0.12em; color: #6f8499;">RUNTIME · SESSIONS</div>
+        <div style="font-size: 13.5px; font-weight: 600; margin-top: 6px;">One team, many isolated worlds</div>
+        <p style="margin: 5px 0 0; font-size: 11px; line-height: 1.6; color: #8fa3b8;">Templates instantiate channels; sessions clone members with their own runtime, mailbox and memory.</p>
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; color: #35e0a0; margin-top: 9px;">Open the sessions guide →</div>
+      </div>
+      <div class="card" style="border: 1px solid #1b2a3c; border-radius: 8px; background: #0d1726; padding: 15px 16px;">
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 8.5px; letter-spacing: 0.12em; color: #6f8499;">DELIVERY · PROJECTS</div>
+        <div style="font-size: 13.5px; font-weight: 600; margin-top: 6px;">A contract, not a transcript</div>
+        <p style="margin: 5px 0 0; font-size: 11px; line-height: 1.6; color: #8fa3b8;">Blueprint → plan approval → WBS → L1/L2 acceptance → deliverables, with observe/supervised/auto modes.</p>
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; color: #35e0a0; margin-top: 9px;">Open the Project guide →</div>
+      </div>
+    </div>
+
+    <!-- ═══ Start here ═══ -->
+    <div style="display: flex; align-items: baseline; gap: 12px; margin-top: 34px;">
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.18em; color: #41c8f4;">START HERE</span>
+      <span style="flex: 1; height: 1px; background: #1b2a3c;"></span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px;">
+      <div class="card" style="border: 1px solid #1b2a3c; border-radius: 8px; background: #0d1726; padding: 16px;">
+        <div style="display: flex; align-items: center; gap: 9px;">
+          <span style="width: 24px; height: 24px; border-radius: 6px; background: #0a1a14; border: 1px solid #1f4a3a; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; color: #35e0a0;">01</span>
+          <span style="font-size: 12.5px; font-weight: 600;">Install &amp; run</span>
+        </div>
+        <p style="margin: 8px 0 0; font-size: 11px; line-height: 1.6; color: #8fa3b8;">Node ≥ 23.4, one npm command, a prebuilt output. Data lives in ~/.AgentWorkShop and migrates across versions.</p>
+      </div>
+      <div class="card" style="border: 1px solid #1b2a3c; border-radius: 8px; background: #0d1726; padding: 16px;">
+        <div style="display: flex; align-items: center; gap: 9px;">
+          <span style="width: 24px; height: 24px; border-radius: 6px; background: #0a1822; border: 1px solid #1f3d4f; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; color: #41c8f4;">02</span>
+          <span style="font-size: 12.5px; font-weight: 600;">First agent × line session</span>
+        </div>
+        <p style="margin: 8px 0 0; font-size: 11px; line-height: 1.6; color: #8fa3b8;">Build a line, deploy a team, bind nodes, submit a goal and approve the first governed write — in about two minutes.</p>
+      </div>
+      <div class="card" style="border: 1px solid #1b2a3c; border-radius: 8px; background: #0d1726; padding: 16px;">
+        <div style="display: flex; align-items: center; gap: 9px;">
+          <span style="width: 24px; height: 24px; border-radius: 6px; background: #1a1426; border: 1px solid #3d2c55; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; color: #b79cf0;">03</span>
+          <span style="font-size: 12.5px; font-weight: 600;">Architecture &amp; SDK</span>
+        </div>
+        <p style="margin: 8px 0 0; font-size: 11px; line-height: 1.6; color: #8fa3b8;">Four entry points, one event bus, a plugin host and a typed client — read the contracts before changing them.</p>
+      </div>
+    </div>
+
+    <!-- ═══ Guide grid ═══ -->
+    <div style="display: flex; align-items: baseline; gap: 12px; margin-top: 34px;">
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.18em; color: #41c8f4;">GUIDE</span>
+      <span style="flex: 1; height: 1px; background: #1b2a3c;"></span>
+      <span style="font-size: 10.5px; color: #6f8499;">15 guides · 简体中文 / English</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; margin-top: 14px;">
+      <div style="border-left: 1px solid #1b2a3c; padding: 3px 0 3px 12px;">
+        <div style="font-size: 11.5px; font-weight: 500;">Six-protocol DAQ &amp; control</div>
+        <div style="font-size: 10px; color: #6f8499; margin-top: 2px;">Modbus · OPC UA · MQTT · HTTP · serial · MES</div>
+      </div>
+      <div style="border-left: 1px solid #1b2a3c; padding: 3px 0 3px 12px;">
+        <div style="font-size: 11.5px; font-weight: 500;">HITL approvals</div>
+        <div style="font-size: 10px; color: #6f8499; margin-top: 2px;">Interlocks, write intents, readback, audit</div>
+      </div>
+      <div style="border-left: 1px solid #1b2a3c; padding: 3px 0 3px 12px;">
+        <div style="font-size: 11.5px; font-weight: 500;">Multi-harness agent teams</div>
+        <div style="font-size: 10px; color: #6f8499; margin-top: 2px;">14 engines under one contract</div>
+      </div>
+      <div style="border-left: 1px solid #1b2a3c; padding: 3px 0 3px 12px;">
+        <div style="font-size: 11.5px; font-weight: 500;">Channel sessions</div>
+        <div style="font-size: 10px; color: #6f8499; margin-top: 2px;">Templates, clones, isolation, close semantics</div>
+      </div>
+      <div style="border-left: 1px solid #1b2a3c; padding: 3px 0 3px 12px;">
+        <div style="font-size: 11.5px; font-weight: 500;">Project mode</div>
+        <div style="font-size: 10px; color: #6f8499; margin-top: 2px;">Blueprint, WBS, technical gate, L1/L2</div>
+      </div>
+      <div style="border-left: 1px solid #1b2a3c; padding: 3px 0 3px 12px;">
+        <div style="font-size: 11.5px; font-weight: 500;">AML auto-modelling</div>
+        <div style="font-size: 10px; color: #6f8499; margin-top: 2px;">Physics priors, conformal UQ, promotion</div>
+      </div>
+      <div style="border-left: 1px solid #1b2a3c; padding: 3px 0 3px 12px;">
+        <div style="font-size: 11.5px; font-weight: 500;">Ontology &amp; AI-first loop</div>
+        <div style="font-size: 10px; color: #6f8499; margin-top: 2px;">Entities, relations, compiled artifacts</div>
+      </div>
+      <div style="border-left: 1px solid #1b2a3c; padding: 3px 0 3px 12px;">
+        <div style="font-size: 11.5px; font-weight: 500;">Line-level permissions</div>
+        <div style="font-size: 10px; color: #6f8499; margin-top: 2px;">none / view / operate, agent write tracks</div>
+      </div>
+      <div style="border-left: 1px solid #1b2a3c; padding: 3px 0 3px 12px;">
+        <div style="font-size: 11.5px; font-weight: 500;">Recipe versioning &amp; rollback</div>
+        <div style="font-size: 10px; color: #6f8499; margin-top: 2px;">Trial, promote, restore the batch</div>
+      </div>
+    </div>
+
+    <!-- ═══ Footer band ═══ -->
+    <div style="display: flex; align-items: center; gap: 14px; margin-top: 34px; border-top: 1px solid #1b2a3c; padding-top: 15px;">
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; color: #6f8499;">Apache-2.0 · Copyright © 2026 kingdol</span>
+      <span style="flex: 1"></span>
+      <span style="font-size: 10px; color: #6f8499;">简体中文 / English</span>
+      <span style="font-size: 10px; color: #6f8499;">GitHub ↗</span>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1050}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {}
+  }
+}
+</script>
+</body>
+</html>

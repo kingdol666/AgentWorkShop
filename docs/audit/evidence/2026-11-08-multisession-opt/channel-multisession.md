@@ -2,20 +2,20 @@
 
 - base=http://127.0.0.1:4001 template=chtpl-generic-optimize-default
 - ✔ **S0-1** owner 登录(admin@awshop.local) — admin token ok
-- ✔ **S0-2** 产线现场就绪 — dcw=4 daq=19 recipes=4 running=4/4
+- ✔ **S0-2** 产线现场就绪 — dcw=12 daq=36 recipes=8 running=8/8
 - ✔ **S0-3** 目标线解析(SP/配方/数采) — line=ln-ecf63 stepLimit=2.8
-- ✔ **T1** 模板实例化(chtpl-generic-optimize-default: 1 lead+3 worker, 绑线) — ch=b5a309f0 lead=d01fdf58 workers=3 line=bound
-- ✔ **T2** worker 补 omp 运行时配置 + 频道激活 — model=qwen3.5-9b-claude-4.6-op…
+- ✔ **T1** 模板实例化(chtpl-generic-optimize-default: 1 lead+3 worker, 绑线) — ch=6ee96f63 lead=3648fa1d workers=3 line=bound
+- ✔ **T2** worker 补 omp 运行时配置 + 频道激活 — activate=200 mount=200 model=qwen3.5-9b-claude-4.6-op…
 - ✔ **T3** 基础成员绑定(分析师=数采auto, 工艺=SP+配方) — posts=5 bad= analystRows=3
-- ✔ **M1** 双会话创建(克隆成员,两会话互不相同) — A=cs-0bb07(4 clones) B=cs-c9caf(4 clones)
+- ✔ **M1** 双会话创建(克隆成员,两会话互不相同) — A=cs-fd8f3(4 clones) B=cs-b596a(4 clones)
 - ✔ **M2** 克隆继承绑定面(分析师克隆=数采行, 工艺克隆=dcw+recipe行) — anaA=3行 engB dcw=true recipe=true
-- ✔ **P1a** 会话A克隆 daq_query(真实数采样本) — 数采数据查询结果(1 个节点): ■ 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP[id=dn-160df029](熔体/箱体温度)单位 ℃,正常量程 160~300℃,当前状态 ok,时间窗 2026-11-08T11:19 ~ 2026-11-08T11:22(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-b1d8cd9f 配方「演示配方1」(rc-f78
-- ✔ **P1b** 会话B克隆 line_context(产线全景) — 你控制的产线全景(1 条): ■ 产线 演示线1·注塑主机PLC(Modbus TCP)(ln-ecf632b0) · 状态:运行中 活动批次 rr-b1d8c · 产品「演示产品1」(pd-eef2d87a) · 开跑 10:51:11 · 已打标 10011 样本 我绑定的节点:数控 [演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP];数采 [无] 我绑定的配方: [演示配方1
+- ✔ **P1a** 会话A克隆 daq_query(真实数采样本) — 数采数据查询结果(1 个节点): ■ 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP[id=dn-160df029](熔体/箱体温度)单位 ℃,正常量程 160~300℃,当前状态 ok,时间窗 2026-11-08T22:59 ~ 2026-11-08T23:02(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-b68db7db 配方「演示配方1」(rc-f78
+- ✔ **P1b** 会话B克隆 line_context(产线全景) — 你控制的产线全景(1 条): ■ 产线 演示线1·注塑主机PLC(Modbus TCP)(ln-ecf632b0) · 状态:运行中 活动批次 rr-b68db · 产品「演示产品1」(pd-eef2d87a) · 开跑 11:28:48 · 已打标 88569 样本 我绑定的节点:数控 [演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP];数采 [无] 我绑定的配方: [演示配方1
 - ✔ **P2** 双会话并行真 LLM 对话(独立 runtime 各自消费) — sent=200/200 consumedA=true consumedB=true
-- ✔ **W1a** 会话A克隆 recipe_trial 发起 HITL 卡 — card=ap-e4846a9
+- ✔ **W1a** 会话A克隆 recipe_trial 发起 HITL 卡 — card=ap-53ae55c
 - ✔ **W1b** HITL 批准受理 — ok
-- ✔ **W1c** trial 收口(设备受理) — 试验已整批下发并全部设备证实(1/1,批次 rr-aba44):演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP→228.32℃ [证实✓]。假设:模板多会话验收·会话A工艺工程师:单变量 SP=228.32(HITL manual 链,自当前值 230.00)。 人工附言:模板多会话验收批准(MS-A)注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 
-- ✔ **W1d** 设备侧回读收敛(会话内治理写真实生效) — target=228.32 final=228.30
+- ✔ **W1c** trial 收口(设备受理) — 试验已整批下发并全部设备证实(1/1,批次 rr-066de):演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP→223.22℃ [证实✓]。假设:模板多会话验收·会话A工艺工程师:单变量 SP=223.22(HITL manual 链,自当前值 224.90)。 人工附言:模板多会话验收批准(MS-A)注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query
+- ✔ **W1d** 设备侧回读收敛(会话内治理写真实生效) — target=223.22 final=223.20
 - ✔ **C1** 关闭会话B(A 不受影响) — A=active B=closed
 - ✔ **C2** 会话B克隆成员全部停用(enabled=0) — clones=4 states=0,0,0,0
 - ✔ **C3** B克隆身份 invoke 被拒(WP2 生效) — status=404 text=

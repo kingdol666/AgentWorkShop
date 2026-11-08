@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-08T03:23:00.798Z",
+  "at": "2026-11-08T15:02:05.901Z",
   "base": "http://127.0.0.1:4001",
   "template": "chtpl-generic-optimize-default",
   "pass": 20,
@@ -15,7 +15,7 @@
       "id": "S0-2",
       "name": "产线现场就绪",
       "pass": true,
-      "detail": "dcw=4 daq=19 recipes=4 running=4/4"
+      "detail": "dcw=12 daq=36 recipes=8 running=8/8"
     },
     {
       "id": "S0-3",
@@ -27,13 +27,13 @@
       "id": "T1",
       "name": "模板实例化(chtpl-generic-optimize-default: 1 lead+3 worker, 绑线)",
       "pass": true,
-      "detail": "ch=b5a309f0 lead=d01fdf58 workers=3 line=bound"
+      "detail": "ch=6ee96f63 lead=3648fa1d workers=3 line=bound"
     },
     {
       "id": "T2",
       "name": "worker 补 omp 运行时配置 + 频道激活",
       "pass": true,
-      "detail": "model=qwen3.5-9b-claude-4.6-op…"
+      "detail": "activate=200 mount=200 model=qwen3.5-9b-claude-4.6-op…"
     },
     {
       "id": "T3",
@@ -45,7 +45,7 @@
       "id": "M1",
       "name": "双会话创建(克隆成员,两会话互不相同)",
       "pass": true,
-      "detail": "A=cs-0bb07(4 clones) B=cs-c9caf(4 clones)"
+      "detail": "A=cs-fd8f3(4 clones) B=cs-b596a(4 clones)"
     },
     {
       "id": "M2",
@@ -57,13 +57,13 @@
       "id": "P1a",
       "name": "会话A克隆 daq_query(真实数采样本)",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点): ■ 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP[id=dn-160df029](熔体/箱体温度)单位 ℃,正常量程 160~300℃,当前状态 ok,时间窗 2026-11-08T11:19 ~ 2026-11-08T11:22(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-b1d8cd9f 配方「演示配方1」(rc-f78"
+      "detail": "数采数据查询结果(1 个节点): ■ 演示·注塑主机PLC(Modbus TCP)·机筒温度区2SP[id=dn-160df029](熔体/箱体温度)单位 ℃,正常量程 160~300℃,当前状态 ok,时间窗 2026-11-08T22:59 ~ 2026-11-08T23:02(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-b68db7db 配方「演示配方1」(rc-f78"
     },
     {
       "id": "P1b",
       "name": "会话B克隆 line_context(产线全景)",
       "pass": true,
-      "detail": "你控制的产线全景(1 条): ■ 产线 演示线1·注塑主机PLC(Modbus TCP)(ln-ecf632b0) · 状态:运行中 活动批次 rr-b1d8c · 产品「演示产品1」(pd-eef2d87a) · 开跑 10:51:11 · 已打标 10011 样本 我绑定的节点:数控 [演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP];数采 [无] 我绑定的配方: [演示配方1"
+      "detail": "你控制的产线全景(1 条): ■ 产线 演示线1·注塑主机PLC(Modbus TCP)(ln-ecf632b0) · 状态:运行中 活动批次 rr-b68db · 产品「演示产品1」(pd-eef2d87a) · 开跑 11:28:48 · 已打标 88569 样本 我绑定的节点:数控 [演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP];数采 [无] 我绑定的配方: [演示配方1"
     },
     {
       "id": "P2",
@@ -75,7 +75,7 @@
       "id": "W1a",
       "name": "会话A克隆 recipe_trial 发起 HITL 卡",
       "pass": true,
-      "detail": "card=ap-e4846a9"
+      "detail": "card=ap-53ae55c"
     },
     {
       "id": "W1b",
@@ -87,13 +87,13 @@
       "id": "W1c",
       "name": "trial 收口(设备受理)",
       "pass": true,
-      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-aba44):演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP→228.32℃ [证实✓]。假设:模板多会话验收·会话A工艺工程师:单变量 SP=228.32(HITL manual 链,自当前值 230.00)。 人工附言:模板多会话验收批准(MS-A)注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe"
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-066de):演示·注塑主机PLC(Modbus TCP)·机筒温度区1SP→223.22℃ [证实✓]。假设:模板多会话验收·会话A工艺工程师:单变量 SP=223.22(HITL manual 链,自当前值 224.90)。 人工附言:模板多会话验收批准(MS-A)注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe"
     },
     {
       "id": "W1d",
       "name": "设备侧回读收敛(会话内治理写真实生效)",
       "pass": true,
-      "detail": "target=228.32 final=228.30"
+      "detail": "target=223.22 final=223.20"
     },
     {
       "id": "C1",

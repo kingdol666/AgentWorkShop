@@ -83,6 +83,9 @@ freshest version.)
 
 - [Configuration](/en/guide/configuration) — four-layer precedence and the config root
 - [Your first agent × line session](/en/guide/first-session) — the full chain in 2 minutes
+- [Harness console](/en/guide/harness-ui) — the ChatGPT-style reading layout and its invariants
+- [Channel sessions](/en/guide/channels-sessions) — session isolation and the agent lifecycle
+- [Project mode](/en/guide/projects) — blueprint, WBS, L1/L2 and deliverables
 - [Six-protocol DAQ & control](/en/guide/daq-protocols) — Modbus/OPC UA/MQTT/HTTP + the serial plugin
 - [Recipe versioning](/en/guide/recipe-versions) — attributed history and rollback
 - [AML auto-modeling](/en/guide/aml) — dataset → training → gates → promotion, hybrid twin × MPC
