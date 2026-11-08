@@ -117,10 +117,6 @@ onMounted(load)
           v-model="form.objective"
           placeholder="例如：良率提升到 98%"
         ></label>
-        <label class="wide">描述<input
-          v-model="form.description"
-          placeholder="可选"
-        ></label>
         <label>Leader 引擎<select
           v-model="form.leaderHarness"
         >
@@ -137,6 +133,10 @@ onMounted(load)
             claude（真实 LLM）
           </option>
         </select></label>
+        <label class="wide">描述<input
+          v-model="form.description"
+          placeholder="可选：范围、约束、验收口径"
+        ></label>
       </div>
       <button
         class="btn"
@@ -188,8 +188,8 @@ onMounted(load)
 .projects-page {
   flex: 1 1 auto;
   width: 100%;
-  max-width: 920px;
-  padding: 28px 24px 48px;
+  max-width: 1080px;
+  padding: 30px 28px 52px;
   margin: 0 auto;
   overflow-y: auto;
   color: var(--chat-ink);
@@ -204,7 +204,7 @@ onMounted(load)
   margin-bottom: 20px;
   border-bottom: 1px solid var(--chat-line);
 }
-h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -0.015em; }
+h1 { margin: 0 0 6px; font-size: 24px; font-weight: 650; letter-spacing: -0.02em; }
 .sub { margin: 0; color: var(--chat-ink-faint); font-size: 13px; }
 .card {
   padding: 18px 20px;
@@ -214,7 +214,7 @@ h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -0.015e
 }
 .create { margin-bottom: 18px; }
 .create h2 { margin: 0 0 12px; font-size: 15px; font-weight: 650; }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
 .grid label {
   display: flex;
   flex-direction: column;
@@ -254,12 +254,14 @@ input::placeholder { color: var(--chat-ink-faint); }
   border: 1px solid var(--chat-line);
 }
 .btn.ghost:hover { opacity: 1; border-color: var(--chat-line-strong); }
-.list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.list { display: grid; grid-template-columns: repeat(auto-fill, minmax(318px, 1fr)); gap: 14px; }
 .project { cursor: pointer; transition: border-color var(--transition-fast), box-shadow var(--transition-fast); }
 .project:hover {
   border-color: var(--chat-line-strong);
-  box-shadow: 0 10px 28px rgb(12 10 9 / 6%);
+  box-shadow: 0 12px 32px rgb(12 10 9 / 7%);
+  transform: translateY(-1px);
 }
+.project { transition: border-color var(--transition-fast), box-shadow var(--transition-base), transform var(--transition-base); }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .row strong { font-size: 14px; }
 .badge {
@@ -273,7 +275,7 @@ input::placeholder { color: var(--chat-ink-faint); }
 .badge.active { color: var(--tone-success-dot); background: var(--tone-success-bg); }
 .badge.paused { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
 .badge.draft { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
-.badge.completed { color: var(--tone-info-dot); background: var(--tone-info-bg); }
+.badge.completed { color: var(--tone-success-dot); background: var(--tone-success-bg); }
 .badge.archived { color: var(--chat-ink-faint); background: color-mix(in srgb, var(--chat-ink) 6%, transparent); }
 .objective { margin: 10px 0; font-size: 13px; color: var(--chat-ink-soft); }
 .meta {
@@ -285,5 +287,6 @@ input::placeholder { color: var(--chat-ink-faint); }
 }
 .empty { color: var(--chat-ink-faint); }
 .error { color: var(--tone-danger-dot); }
+@media (max-width: 960px) { .grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
 </style>
