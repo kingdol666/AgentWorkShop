@@ -1,0 +1,100 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-08T09:44:49Z"
+  },
+  "title": "AgentWorkShop · Harness UI 三方向",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "A-Channel.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "expand": "fill",
+      "is_interactive": true,
+      "title": "A · Channel 控制台"
+    },
+    "A-Project.dc.html": {
+      "x": 1520,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "expand": "fill",
+      "is_interactive": true,
+      "title": "A · Project 详情"
+    },
+    "B-Channel.dc.html": {
+      "x": 0,
+      "y": 1250,
+      "w": 1440,
+      "h": 900,
+      "expand": "fill",
+      "is_interactive": true,
+      "title": "B · Channel 驾驶舱"
+    },
+    "B-Project.dc.html": {
+      "x": 1520,
+      "y": 1250,
+      "w": 1440,
+      "h": 900,
+      "expand": "fill",
+      "is_interactive": true,
+      "title": "B · Project 驾驶舱"
+    },
+    "C-Channel.dc.html": {
+      "x": 0,
+      "y": 2500,
+      "w": 1440,
+      "h": 900,
+      "expand": "fill",
+      "is_interactive": true,
+      "title": "C · Channel 纸页"
+    },
+    "C-Project.dc.html": {
+      "x": 1520,
+      "y": 2500,
+      "w": 1440,
+      "h": 900,
+      "expand": "fill",
+      "is_interactive": true,
+      "title": "C · Project 纸页"
+    }
+  },
+  "order": [
+    "A-Channel.dc.html",
+    "A-Project.dc.html",
+    "B-Channel.dc.html",
+    "B-Project.dc.html",
+    "C-Channel.dc.html",
+    "C-Project.dc.html"
+  ],
+  "notes": {
+    "rowA": {
+      "x": 0,
+      "y": -300,
+      "text": "方向 A · Quiet Harness —— ChatGPT 同构的静默纸面：白画布、单一暖橙、发丝线分层",
+      "kind": "title1",
+      "maxW": 2960
+    },
+    "rowB": {
+      "x": 0,
+      "y": 950,
+      "text": "方向 B · Ops Cockpit —— 对话 + 常驻运行栏：深色轨、钴蓝指令色、等宽读数、密度更高",
+      "kind": "title1",
+      "maxW": 2960
+    },
+    "rowC": {
+      "x": 0,
+      "y": 2200,
+      "text": "方向 C · Paper Session —— 纸页与页边注：暖纸底、衬线排版、横线分隔、字号更大",
+      "kind": "title1",
+      "maxW": 2960
+    }
+  },
+  "designSystems": []
+}

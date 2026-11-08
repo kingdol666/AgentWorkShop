@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>方向 A · Channel 控制台</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=EB+Garamond:ital,wght@1,400;1,500&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; }
+  a { color: #b9541f; }
+  a:hover { color: #8f3f14; }
+  * { box-sizing: border-box; }
+  button, textarea { font-family: inherit; }
+  .row-hover:hover { background: #f1efec; }
+  .rail-btn:hover { background: #f1efec; color: #0d0d0d; }
+  .icon-btn:hover { background: #f4f2ee; }
+  .ghost-btn:hover { background: #f4f2ee; }
+  .send:hover { background: #2a2a2a; }
+</style>
+</helmet>
+
+<div style="width: 100%; height: 100dvh; min-height: 900px; display: flex; background: #ffffff; color: #0d0d0d; font-family: 'Geist', -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif; overflow: hidden;">
+
+  <!-- ═══ 图标轨 56 ═══ -->
+  <nav style="width: 56px; flex: 0 0 56px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0 12px; border-right: 1px solid #ececea; background: #ffffff;">
+    <button class="rail-btn" type="button" aria-label="AgentWorkShop 总览" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: #0d0d0d; color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18 9.5 6l4 8L17 8l3 10"/><path d="M4 21h16"/></svg>
+    </button>
+    <span style="height: 6px"></span>
+    <button class="rail-btn" type="button" aria-label="收起侧栏" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #5d5b55; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/></svg>
+    </button>
+    <button class="rail-btn" type="button" aria-label="搜索（⌘K）" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #5d5b55; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+    </button>
+    <span style="width: 28px; height: 1px; background: #ececea; margin: 8px 0"></span>
+
+    <sc-for list="{{ views }}" as="v">
+      <button class="rail-btn" type="button" aria-label="{{ v.label }}" title="{{ v.label }}" onClick="{{ v.pick }}" style="width: 36px; height: 36px; border: 0; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; background: {{ v.bg }}; color: {{ v.fg }};">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ v.d }}"/></svg>
+        <sc-if value="{{ v.active }}" hint-placeholder-val="{{ true }}">
+          <span style="position: absolute; left: -10px; top: 9px; width: 2px; height: 18px; border-radius: 2px; background: #e06a35;"></span>
+        </sc-if>
+      </button>
+    </sc-for>
+
+    <span style="flex: 1"></span>
+    <button class="rail-btn" type="button" aria-label="A2A 调试" style="width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: #5d5b55; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="m7 9 3 3-3 3"/><path d="M13 15h4"/></svg>
+    </button>
+    <div style="width: 30px; height: 30px; border-radius: 50%; background: #efe4d8; color: #7a4a24; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; margin-top: 6px;" title="验收Owner · admin">验</div>
+  </nav>
+
+  <!-- ═══ 会话侧栏 272 ═══ -->
+  <aside style="width: 272px; flex: 0 0 272px; display: flex; flex-direction: column; background: #f9f9f8; border-right: 1px solid #ececea; min-height: 0;">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 14px 14px 10px;">
+      <button type="button" class="ghost-btn" style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: transparent; border-radius: 10px; padding: 6px 8px; cursor: pointer; text-align: left;">
+        <span style="width: 24px; height: 24px; border-radius: 7px; background: #0d0d0d; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; flex: 0 0 24px;">AW</span>
+        <span style="min-width: 0;">
+          <span style="display: block; font-size: 13px; font-weight: 600; color: #0d0d0d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">CAL-3 涂布定量</span>
+          <span style="display: block; font-size: 11px; color: #8f8c84;">7 个频道 · 4 会话</span>
+        </span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8f8c84" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-left: auto; flex: 0 0 auto;"><path d="m7 9 5 5 5-5"/></svg>
+      </button>
+      <button type="button" aria-label="工作区设置" class="icon-btn" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: #5d5b55; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </div>
+
+    <div style="padding: 0 14px 10px;">
+      <button type="button" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px; height: 38px; border: 0; border-radius: 10px; background: #0d0d0d; color: #ffffff; font-size: 13px; font-weight: 500; cursor: pointer;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        新建频道
+      </button>
+      <button type="button" class="ghost-btn" style="width: 100%; display: flex; align-items: center; gap: 8px; height: 36px; margin-top: 6px; padding: 0 9px; border: 0; border-radius: 9px; background: transparent; color: #5d5b55; font-size: 12.5px; cursor: pointer;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+        <span style="flex: 1; text-align: left;">搜索</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 10.5px; color: #8f8c84; border: 1px solid #e3e1dc; border-radius: 5px; padding: 1px 5px; background: #ffffff;">⌘K</span>
+      </button>
+    </div>
+
+    <div style="flex: 1; overflow-y: auto; padding: 2px 8px 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 6px 6px;">
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8f8c84;">频道 · 7</span>
+        <span style="color: #8f8c84;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+        </span>
+      </div>
+      <sc-for list="{{ channels }}" as="c">
+        <button type="button" onClick="{{ c.pick }}" class="row-hover" style="width: 100%; display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 8px; margin-bottom: 1px; border: 0; border-radius: 9px; cursor: pointer; text-align: left; background: {{ c.bg }};">
+          <span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: #8f8c84; width: 10px; text-align: center;">#</span>
+          <span style="flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: {{ c.fg }}; font-weight: {{ c.weight }};">{{ c.name }}</span>
+          <sc-if value="{{ c.live }}" hint-placeholder-val="{{ true }}">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #3f8f5f;"></span>
+          </sc-if>
+          <sc-if value="{{ c.pending }}" hint-placeholder-val="{{ true }}">
+            <span style="font-size: 10px; font-weight: 600; color: #b9541f; background: #fbeee4; border-radius: 999px; padding: 1px 6px;">1</span>
+          </sc-if>
+        </button>
+      </sc-for>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 6px 6px;">
+        <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8f8c84;">会话</span>
+        <button type="button" class="icon-btn" aria-label="新建会话" style="width: 22px; height: 22px; border: 0; border-radius: 6px; background: transparent; color: #8f8c84; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+      <sc-for list="{{ sessions }}" as="s">
+        <button type="button" class="row-hover" style="width: 100%; display: flex; align-items: flex-start; gap: 8px; padding: 7px 8px; border: 0; border-radius: 9px; background: transparent; cursor: pointer; text-align: left;">
+          <span style="width: 14px; flex: 0 0 14px; color: #8f8c84; margin-top: 1px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H6l-3 2 1-4.2A8 8 0 1 1 21 12z"/></svg>
+          </span>
+          <span style="flex: 1; min-width: 0;">
+            <span style="display: block; font-size: 12.5px; color: #3f3d39; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ s.title }}</span>
+            <span style="display: block; font-size: 10.5px; color: #a6a39b; margin-top: 1px;">{{ s.meta }}</span>
+          </span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="border-top: 1px solid #ececea; padding: 10px 12px; display: flex; align-items: center; gap: 9px; background: #f9f9f8;">
+      <div style="width: 28px; height: 28px; border-radius: 50%; background: #efe4d8; color: #7a4a24; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 600; flex: 0 0 28px;">验</div>
+      <div style="flex: 1; min-width: 0;">
+        <div style="font-size: 12px; font-weight: 500; color: #0d0d0d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">验收Owner</div>
+        <div style="font-size: 10.5px; color: #8f8c84;">admin · 本机实例 :4001</div>
+      </div>
+      <button type="button" aria-label="账户菜单" class="icon-btn" style="width: 26px; height: 26px; border: 0; border-radius: 7px; background: transparent; color: #8f8c84; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══ 中央列 ═══ -->
+  <main style="flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: #ffffff;">
+    <header style="height: 56px; flex: 0 0 56px; display: flex; align-items: center; gap: 10px; padding: 0 18px 0 20px; border-bottom: 1px solid #ececea;">
+      <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+        <span style="font-family: 'Geist Mono', monospace; font-size: 14px; color: #b3afa7;">#</span>
+        <h1 style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ activeChannelName }}</h1>
+        <span style="display: inline-flex; align-items: center; gap: 5px; margin-left: 2px; padding: 2px 8px 2px 6px; border-radius: 999px; background: #f4f8f5; color: #367048; font-size: 10.5px; font-weight: 500;">
+          <span style="width: 5px; height: 5px; border-radius: 50%; background: #367048;"></span>
+          已连接
+        </span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 10.5px; color: #a6a39b; margin-left: 2px;">seq 1842</span>
+      </div>
+      <span style="flex: 1"></span>
+      <div style="display: flex; align-items: center; gap: 2px;">
+        <span style="display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 7px; background: #fdf3ec; color: #b9541f; font-size: 11.5px; font-weight: 500; margin-right: 6px;">
+          <span style="width: 5px; height: 5px; border-radius: 50%; background: #e06a35;"></span>
+          1 项待批
+        </span>
+        <button type="button" class="icon-btn" aria-label="切换上下文面板" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: #6f6c65; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M15 4v16"/></svg>
+        </button>
+        <button type="button" class="icon-btn" aria-label="A2A 终端" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: #6f6c65; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="m7 9 3 3-3 3"/><path d="M13 15h4"/></svg>
+        </button>
+        <button type="button" class="icon-btn" aria-label="更多操作" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: #6f6c65; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div style="flex: 1; overflow-y: auto; min-height: 0;">
+      <div style="max-width: 788px; margin: 0 auto; padding: 26px 24px 20px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin: 2px 0 22px;">
+          <span style="flex: 1; height: 1px; background: #f0eeea;"></span>
+          <span style="font-size: 10.5px; color: #a6a39b; letter-spacing: 0.01em;">今天 14:32 · 模拟回路 ln-3f21</span>
+          <span style="flex: 1; height: 1px; background: #f0eeea;"></span>
+        </div>
+
+        <sc-for list="{{ blocks }}" as="b">
+          <!-- 智能体消息:通栏阅读块,无气泡 -->
+          <sc-if value="{{ b.isAgent }}" hint-placeholder-val="{{ true }}">
+            <article style="display: flex; gap: 13px; padding: 0 0 26px;">
+              <div style="width: 28px; height: 28px; flex: 0 0 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 10.5px; font-weight: 600; background: {{ b.avatarColor }};">{{ b.initials }}</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: baseline; gap: 7px; margin-bottom: 6px;">
+                  <span style="font-size: 13px; font-weight: 600;">{{ b.author }}</span>
+                  <span style="font-size: 10.5px; color: #8f8c84;">{{ b.role }}</span>
+                  <span style="font-family: 'Geist Mono', monospace; font-size: 10px; color: #b3afa7; border: 1px solid #ececea; border-radius: 4px; padding: 0 4px; line-height: 15px;">{{ b.harness }}</span>
+                  <span style="font-size: 10.5px; color: #b3afa7; margin-left: auto;">{{ b.time }}</span>
+                </div>
+                <div style="font-size: 14.5px; line-height: 1.72; color: #1f1e1c; text-wrap: pretty;">
+                  <sc-for list="{{ b.parts }}" as="p"><span style="{{ p.style }}">{{ p.t }}</span></sc-for>
+                </div>
+
+                <sc-if value="{{ b.hasTools }}" hint-placeholder-val="{{ true }}">
+                  <div style="margin-top: 12px; border: 1px solid #ececea; border-radius: 10px; background: #fcfcfa; overflow: hidden;">
+                    <sc-for list="{{ b.tools }}" as="t">
+                      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-bottom: 1px solid #f2f0ec;">
+                        <span style="width: 15px; height: 15px; flex: 0 0 15px; display: flex; align-items: center; justify-content: center; color: #367048;">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>
+                        </span>
+                        <span style="font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #0d0d0d; font-weight: 500;">{{ t.name }}</span>
+                        <span style="font-size: 11.5px; color: #6f6c65; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ t.detail }}</span>
+                        <span style="flex: 1"></span>
+                        <span style="font-family: 'Geist Mono', monospace; font-size: 10.5px; color: #a6a39b;">{{ t.dur }}</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#b3afa7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 13px;"><path d="m9 6 6 6-6 6"/></svg>
+                      </div>
+                    </sc-for>
+                    <div style="padding: 7px 11px; font-size: 10.5px; color: #a6a39b; background: #faf9f7;">工具调用已并入 AgentBlock v1 · 前端统一渲染</div>
+                  </div>
+                </sc-if>
+              </div>
+            </article>
+          </sc-if>
+
+          <!-- 用户消息:右侧浅泡 -->
+          <sc-if value="{{ b.isUser }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; justify-content: flex-end; padding: 0 0 26px;">
+              <div style="max-width: 76%;">
+                <div style="background: #f3f1ec; border-radius: 16px 16px 4px 16px; padding: 11px 15px; font-size: 14px; line-height: 1.65; color: #1a1a18;">{{ b.text }}</div>
+                <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 5px; font-size: 10.5px; color: #b3afa7;">
+                  <span>{{ b.time }}</span>
+                  <span>· 已投递</span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- HITL 审批卡:内联于人机对话 -->
+          <sc-if value="{{ b.isApproval }}" hint-placeholder-val="{{ true }}">
+            <div style="margin: 0 0 26px 41px; border: 1px solid #e8d9c8; border-radius: 12px; background: #fffdfa; overflow: hidden;">
+              <div style="display: flex; align-items: center; gap: 8px; padding: 9px 13px; background: #fdf6ee; border-bottom: 1px solid #f0e3d3;">
+                <span style="width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; color: #b9541f;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 7v5c0 5 3.8 8.4 9 9 5.2-.6 9-4 9-9V7l-9-4Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                </span>
+                <span style="font-size: 12px; font-weight: 600; color: #8f3f14;">待人工批准 · 设备写动作</span>
+                <span style="flex: 1"></span>
+                <span style="font-family: 'Geist Mono', monospace; font-size: 10.5px; color: #a8825f;">digest 9f3c…a71d</span>
+              </div>
+              <div style="padding: 13px;">
+                <div style="font-size: 13.5px; line-height: 1.6; color: #1f1e1c;">
+                  <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #f6f4f0; border: 1px solid #ececea; border-radius: 5px; padding: 1px 5px;">recipe_trial</span>
+                  烘箱二区设定 <strong style="font-weight: 600;">+0.2 ℃</strong>（168.4 → 168.6 ℃），线路 ln-3f21
+                </div>
+                <div style="display: flex; gap: 18px; margin-top: 11px; padding-top: 11px; border-top: 1px dashed #ece4d9;">
+                  <div>
+                    <div style="font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #a6a39b;">预期影响</div>
+                    <div style="font-size: 12px; color: #3f3d39; margin-top: 2px;">定量 σ ↓ 约 0.4%</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #a6a39b;">回退</div>
+                    <div style="font-size: 12px; color: #3f3d39; margin-top: 2px;">−0.2 ℃ 快照 · 可一键回滚</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #a6a39b;">节拍闸</div>
+                    <div style="font-size: 12px; color: #3f3d39; margin-top: 2px;">≥ 5 min · 已满足</div>
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; padding: 0 13px 13px;">
+                <button type="button" onClick="{{ b.approve }}" style="height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: #0d0d0d; color: #fff; font-size: 12.5px; font-weight: 500; cursor: pointer;">{{ b.approveLabel }}</button>
+                <button type="button" onClick="{{ b.reject }}" class="ghost-btn" style="height: 32px; padding: 0 12px; border: 1px solid #e3e1dc; border-radius: 8px; background: #ffffff; color: #3f3d39; font-size: 12.5px; cursor: pointer;">{{ b.rejectLabel }}</button>
+                <span style="flex: 1"></span>
+                <span style="font-size: 10.5px; color: #a6a39b;">逐动作审批 · 批准后 60s 内执行</span>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- 工具结果条(折叠) -->
+          <sc-if value="{{ b.isResult }}" hint-placeholder-val="{{ true }}">
+            <div style="margin: -8px 0 26px 41px; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #ececea; border-radius: 10px; background: #fcfcfa;">
+              <span style="font-family: 'Geist Mono', monospace; font-size: 10px; color: #367048; background: #edf7f0; border-radius: 4px; padding: 1px 5px; text-transform: uppercase; letter-spacing: 0.04em;">ack</span>
+              <span style="font-size: 12px; color: #3f3d39;">写控已确认 · 观测 DAQ <span style="font-family: 'Geist Mono', monospace;">168.58 ℃</span> · 偏差 0.02</span>
+              <span style="flex: 1"></span>
+              <span style="font-family: 'Geist Mono', monospace; font-size: 10.5px; color: #a6a39b;">12.4 s</span>
+            </div>
+          </sc-if>
+        </sc-for>
+
+        <div style="display: flex; align-items: center; gap: 9px; padding: 4px 0 10px 41px; color: #8f8c84;">
+          <span style="width: 5px; height: 5px; border-radius: 50%; background: #e06a35;"></span>
+          <span style="font-size: 11.5px;">tuning-lead 正在等待你的批准</span>
+          <span style="flex: 1; height: 1px; background: #f2f0ec;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Composer -->
+    <div style="flex: 0 0 auto; padding: 0 24px 16px; background: #ffffff;">
+      <div style="max-width: 788px; margin: 0 auto;">
+        <div style="border: 1px solid #e3e1dc; border-radius: 26px; background: #ffffff; box-shadow: 0 8px 28px rgb(13 13 13 / 7%); padding: 13px 13px 9px 17px;">
+          <textarea rows="1" value="{{ draft }}" onChange="{{ onDraft }}" placeholder="继续追问，或 @ 成员指派任务…" style="width: 100%; border: 0; outline: 0; resize: none; font-size: 14px; line-height: 1.55; color: #0d0d0d; background: transparent; min-height: 23px; padding: 0;"></textarea>
+          <div style="display: flex; align-items: center; gap: 6px; margin-top: 9px;">
+            <button type="button" class="icon-btn" aria-label="添加附件" style="width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: #5d5b55; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button type="button" class="ghost-btn" style="height: 28px; display: flex; align-items: center; gap: 5px; padding: 0 8px; border: 1px solid #ececea; border-radius: 7px; background: #fcfcfa; color: #3f3d39; font-size: 11.5px; cursor: pointer;">
+              <span style="font-family: 'Geist Mono', monospace; font-size: 10.5px; color: #8f8c84;">harness</span>
+              omp
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8f8c84" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <button type="button" class="ghost-btn" style="height: 28px; display: flex; align-items: center; gap: 5px; padding: 0 8px; border: 1px solid #f0dfd0; border-radius: 7px; background: #fdf6ee; color: #8f3f14; font-size: 11.5px; cursor: pointer;">
+              <span style="width: 5px; height: 5px; border-radius: 50%; background: #e06a35;"></span>
+              HITL 逐动作
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b9541f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <span style="flex: 1"></span>
+            <span style="font-size: 10.5px; color: #b3afa7; margin-right: 4px;">4 频道已挂载</span>
+            <button type="button" onClick="{{ send }}" class="send" aria-label="发送" style="width: 32px; height: 32px; border: 0; border-radius: 50%; background: #0d0d0d; color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m6 11 6-6 6 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; font-size: 10.5px; color: #b3afa7;">
+          <span>Enter 发送 · Shift+Enter 换行</span>
+          <span>·</span>
+          <span>写动作需人工批准后下发</span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props)
+    this.state = { channel: '工艺调优频道', draft: '', decision: 'pending', sent: [] }
+  }
+
+  renderVals() {
+    const state = this.state
+    const channels = [
+      { name: '工艺调优频道', live: true, pending: true },
+      { name: '数据分析频道', live: true, pending: false },
+      { name: '模型构建频道', live: true, pending: false },
+      { name: '产线诊断频道', live: false, pending: false },
+      { name: 'BRG-5 轴承装配', live: false, pending: false },
+      { name: 'CAL-3 涂布定量', live: false, pending: false },
+      { name: 'WWTP 水处理', live: false, pending: false },
+    ].map(c => Object.assign({}, c, {
+      active: c.name === state.channel,
+      bg: c.name === state.channel ? '#eceae6' : 'transparent',
+      fg: c.name === state.channel ? '#0d0d0d' : '#3f3d39',
+      weight: c.name === state.channel ? 600 : 400,
+      pick: () => this.setState({ channel: c.name }),
+    }))
+
+    const views = [
+      { label: '对话', d: 'M21 12a8 8 0 0 1-8 8H6l-3 2 1-4.2A8 8 0 1 1 21 12z' },
+      { label: '时间线', d: 'M12 7v5l3 2M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z' },
+      { label: '泳道', d: 'M4 5h4v14H4zM10 5h4v9h-4zM16 5h4v12h-4z' },
+      { label: '任务板', d: 'M4 5h5v14H4zM10 5h5v8h-5zM16 5h4v11h-4z' },
+      { label: '多通道同屏', d: 'M3 4h18v16H3zM3 10h18M12 10v10' },
+      { label: '数字孪生', d: 'M4 8 12 4l8 4v8l-8 4-8-4zM12 12l8-4M12 12 4 8M12 12v8' },
+      { label: '多会话', d: 'M4 7h16v10H8l-4 3zM8 4h12v3' },
+    ].map((v, i) => {
+      const active = i === 0
+      return Object.assign({}, v, {
+        active,
+        bg: active ? '#f1efec' : 'transparent',
+        fg: active ? '#0d0d0d' : '#5d5b55',
+        pick: () => this.setState({ channel: state.channel }),
+      })
+    })
+
+    const sessions = [
+      { title: '振动归因复核', meta: '今天 · 6 条消息' },
+      { title: 'T-042 试验方案评审', meta: '今天 · 4 条消息' },
+      { title: '四期递进 · W2 治理', meta: '昨天 · 18 条消息' },
+      { title: '数据集覆盖度核对', meta: '2 天前 · 9 条消息' },
+    ]
+
+    const parts = (segments) => segments.map(s => ({
+      t: s[0],
+      style: s[1] ? 'font-weight:600;' : 'font-weight:400;',
+    }))
+
+    const decision = state.decision
+    const blocks = [
+      {
+        kind: 'agent', isAgent: true, isUser: false, isApproval: false, isResult: false,
+        initials: 'DG', avatarColor: '#6b5aa0',
+        author: 'diag-lead', role: 'lead · 诊断', harness: 'dsh', time: '14:32',
+        parts: parts([
+          ['已完成 ', false], ['CAL-3 涂布定量波动', true],
+          [' 归因。近 6 小时 3 次批次偏移都落在烘箱二区:温度每偏离设定 1 ℃,定量均值移动 ', false],
+          ['0.83 g/m²', false],
+          ['(r = 0.82,n = 3,140)。压辊压力与涂布间隙在同一窗口内无显著相关;一期只读诊断到此为止,零写动作。', false],
+        ]),
+        hasTools: true,
+        tools: [
+          { name: 'analysis_query', detail: '定量 × 烘箱二区温度 · 3,140 点', dur: '2.1 s' },
+          { name: 'analysis_save', detail: '结论 #A-2291 · 关联强度 0.82', dur: '0.4 s' },
+        ],
+      },
+      {
+        kind: 'user', isAgent: false, isUser: true, isApproval: false, isResult: false,
+        time: '14:35',
+        text: '把升温补偿做小步试验:单步不超过 0.3 ℃,先在模拟回路上验证,不要直接动产线。',
+      },
+      {
+        kind: 'agent', isAgent: true, isUser: false, isApproval: false, isResult: false,
+        initials: 'TL', avatarColor: '#2f7d6f',
+        author: 'tuning-lead', role: 'lead · 调优', harness: 'omp', time: '14:36',
+        parts: parts([
+          ['方案 ', false], ['T-042', true],
+          [' 已生成:模拟回路 ln-3f21,烘箱二区 +0.2 ℃,单步 0.2 ℃(≤ 0.3 上限),两次试验间隔 ≥ 5 min。验证口径是定量 σ 与批次合格率;若 σ 未下降,按快照回退。', false],
+        ]),
+        hasTools: false,
+        tools: [],
+      },
+      {
+        kind: 'approval', isAgent: false, isUser: false, isApproval: true, isResult: false,
+        approve: () => this.setState({ decision: 'approved' }),
+        reject: () => this.setState({ decision: 'rejected' }),
+        approveLabel: decision === 'approved' ? '已批准 · 等待执行' : '批准并下发',
+        rejectLabel: decision === 'rejected' ? '已拒绝' : '拒绝',
+      },
+    ]
+
+    if (decision === 'approved') {
+      blocks.push({ kind: 'result', isAgent: false, isUser: false, isApproval: false, isResult: true })
+      blocks.push({
+        kind: 'agent', isAgent: true, isUser: false, isApproval: false, isResult: false,
+        initials: 'TL', avatarColor: '#2f7d6f',
+        author: 'tuning-lead', role: 'lead · 调优', harness: 'omp', time: '14:37',
+        parts: parts([
+          ['试验已下发并确认:设定值 ', false], ['168.58 ℃', true],
+          [',观测回读与设定偏差 0.02 ℃。进入 10 min 观察窗,结束后自动复测定量 σ。', false],
+        ]),
+        hasTools: false,
+        tools: [],
+      })
+    }
+
+    state.sent.forEach((text, i) => {
+      blocks.push({
+        kind: 'user', isAgent: false, isUser: true, isApproval: false, isResult: false,
+        time: '14:4' + i, text,
+      })
+    })
+
+    return {
+      activeChannelName: state.channel,
+      channels,
+      views,
+      sessions,
+      blocks,
+      draft: state.draft,
+      onDraft: e => this.setState({ draft: e.target.value }),
+      send: () => {
+        const text = String(state.draft || '').trim()
+        if (!text) return
+        this.setState({ sent: state.sent.concat([text]), draft: '' })
+      },
+    }
+  }
+}
+</script>
+</body>
+</html>

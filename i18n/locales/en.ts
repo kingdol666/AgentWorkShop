@@ -2089,7 +2089,7 @@ export default {
     sentToChatNoAgent: 'Sent to the group (no {\'@\'}agent, no agent run)',
     composerChatDisabled: 'Group chat is disabled for this channel — ask the owner to enable it in the members panel and retry',
     composerNotMember: 'You are not a member of this channel yet — join via the members panel',
-    composerPlaceholder: 'Send to group chat…  {\'@\'} mention an agent (triggers a run) or a member (notification only)',
+    composerPlaceholder: 'Continue the thread, or {\'@\'} a member to assign a task…',
     blockChatDisabled: 'Group chat is disabled for this channel (the owner can enable it in the members panel)',
     blockNotMember: 'You are not a member yet — join via the members panel to post',
     liveNow: 'Live',

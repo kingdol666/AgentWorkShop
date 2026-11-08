@@ -484,28 +484,28 @@ const placeholder = computed(() => {
  * 画布来自 chat 视图;本组件只在 workspace dock 内使用,不改全局表单。 */
 .composer {
   position: relative;
-  padding: 12px 24px 10px;
-  background: linear-gradient(180deg, transparent, var(--chat-canvas) 46%);
+  padding: 8px 24px 12px;
+  background: var(--chat-canvas);
 }
 
 .composer-box {
   position: relative;
   z-index: 1;
-  max-width: 820px;
-  padding: 12px 14px 8px;
+  max-width: 800px;
+  padding: 10px 12px 7px 16px;
   margin: 0 auto;
   background: var(--chat-surface);
-  border: 1px solid var(--chat-line);
-  border-radius: 24px;
+  border: 1px solid var(--chat-line-strong);
+  border-radius: 26px;
   box-shadow:
     0 1px 2px rgb(12 10 9 / 4%),
     0 16px 44px rgb(12 10 9 / 7%);
   transition: border-color var(--transition-slow), box-shadow var(--transition-slow);
 }
 .composer-box:focus-within {
-  border-color: var(--chat-line-strong);
+  border-color: color-mix(in srgb, var(--chat-ink) 26%, var(--chat-line-strong));
   box-shadow:
-    0 18px 50px rgb(12 10 9 / 10%);
+    0 10px 34px rgb(12 10 9 / 9%);
 }
 
 /* 群聊不可发言时的诚实提示(不渲染必然失败的发送) */
@@ -522,12 +522,12 @@ const placeholder = computed(() => {
   display: block;
   width: 100%;
   max-height: 200px;
-  min-height: 46px;
-  padding: 4px 3px 7px;
+  min-height: 40px;
+  padding: 3px 2px 5px;
   overflow-y: auto;
   font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.65;
+  font-size: 14px;
+  line-height: 1.6;
   color: var(--chat-ink);
   resize: none;
   background: transparent;
@@ -541,9 +541,9 @@ const placeholder = computed(() => {
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
-  max-width: 820px;
+  max-width: 800px;
   padding: 0 10px;
-  margin: 8px auto 0;
+  margin: 7px auto 0;
   font-size: 10px;
   color: var(--chat-ink-faint);
 }

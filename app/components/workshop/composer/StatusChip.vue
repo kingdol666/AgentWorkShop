@@ -107,25 +107,27 @@ defineProps<{
   align-items: center;
   width: max-content;
   max-width: 100%;
-  margin: 0 0 4px 2px;
-  padding: 2px 8px;
-  font-size: 11.5px;
-  color: var(--ink-faint);
-  background: var(--paper-deep);
-  border-radius: var(--radius-chip);
+  min-height: 16px;
+  margin: 0 0 3px 2px;
+  padding: 0;
+  font-size: 10.5px;
+  color: var(--chat-ink-faint);
+  background: transparent;
+  border-radius: 0;
 }
 .chip-key {
-  font-weight: 600;
-  color: var(--ink-soft);
+  font-weight: 500;
+  color: var(--chat-ink-soft);
 }
 .chip-target {
   font-weight: 600;
-  color: var(--ink);
+  color: var(--chat-ink);
 }
 .chip-hint {
   margin-left: auto;
   padding-left: 8px;
-  color: var(--ink-faint);
+  font-size: 10.5px;
+  color: var(--chat-ink-faint);
 }
 
 /* 可达性提示 chip:ok 绿 / info 蓝 / warn 琥珀 —— 状态不只靠颜色(附文字) */

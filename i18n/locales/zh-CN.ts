@@ -2089,7 +2089,7 @@ export default {
     sentToChatNoAgent: '已发到群聊(未 {\'@\'}Agent,无 Agent 执行)',
     composerChatDisabled: '该 Channel 未开启群聊 —— 请 owner 在右侧成员面板开启后重试',
     composerNotMember: '你还不是该 Channel 的群成员 —— 请在右侧成员面板加入群聊',
-    composerPlaceholder: '发送到群聊…  {\'@\'} 提及 Agent(触发执行)或成员(仅通知)',
+    composerPlaceholder: '继续追问，或 {\'@\'} 成员指派任务…',
     blockChatDisabled: '该 Channel 未开启群聊(owner 可在右侧成员面板开启)',
     blockNotMember: '你还不是群成员 —— 请在右侧成员面板加入群聊后发言',
     liveNow: '在线',

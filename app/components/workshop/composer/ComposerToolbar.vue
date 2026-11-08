@@ -189,8 +189,8 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
 }
 .composer-bar .aw-seg button + button { box-shadow: none; }
 .composer-bar .aw-seg button.on {
-  color: var(--chat-accent);
-  background: var(--chat-accent-soft);
+  color: var(--chat-ink);
+  background: color-mix(in srgb, var(--chat-ink) 9%, transparent);
 }
 .composer-bar .aw-seg button:not(.on):hover { color: var(--chat-ink); }
 
@@ -222,21 +222,20 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   font-size: 16px;
-  color: var(--on-accent);
+  color: var(--chat-canvas);
   cursor: pointer;
-  background: var(--chat-accent);
+  background: var(--chat-ink);
   border: 0;
   border-radius: var(--radius-pill);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--chat-accent) 28%, transparent);
+  box-shadow: none;
   transition: background var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast), box-shadow var(--transition-fast);
 }
 .send-btn:hover:not(:disabled) {
-  background: var(--chat-accent-strong);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--chat-accent) 36%, transparent);
+  opacity: 0.86;
   transform: translateY(-1px);
 }
 .send-btn:active:not(:disabled) { transform: scale(0.96); }
