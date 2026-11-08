@@ -136,6 +136,8 @@ export class OneShotCliAgentImpl extends BaseAgentImpl implements AgentInterface
     })
     this.config = config as OneShotCliConfig
     this.spec = spec
+    // spec 就绪后补齐身份(P0-1)：基类构造期 spec 未赋值、harnessId 取不到，此后再刷新一次
+    this.refreshIdentity()
   }
 
   protected get harnessId(): string {

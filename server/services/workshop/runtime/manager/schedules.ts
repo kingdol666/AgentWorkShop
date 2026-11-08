@@ -34,10 +34,19 @@ export abstract class ManagerSchedules extends ManagerHostTools {
     for (const channelId of activeChannelIds) {
       const channel = this.deps.repos.channels.findById(channelId)
       if (!channel || channel.enabled !== 1) continue
-      this.ensureChannelActive(channelId)
-      // §6.4:跨进程重启后旧子进程必然不可用 —— 对仍在恢复的 channel,如实记录
-      // SERVER_RESTART,而不是让前端以为 Harness 会话仍在复用。
-      this.runtimeOf(channelId, channel.leadAgentId ?? '')?.markServerRestart?.()
+      // P0-1(2026-11-08 生产审计):逐 channel 兜底 —— 单 channel 装配失败(如引擎构造
+      // 抛错)绝不能中断整轮 restore:restore 由 nitro 插件裸调(async 未 await),
+      // 抛出即成 unhandledRejection → 进程退出 → 启动崩溃循环。
+      try {
+        this.ensureChannelActive(channelId)
+        // §6.4:跨进程重启后旧子进程必然不可用 —— 对仍在恢复的 channel,如实记录
+        // SERVER_RESTART,而不是让前端以为 Harness 会话仍在复用。
+        this.runtimeOf(channelId, channel.leadAgentId ?? '')?.markServerRestart?.()
+      }
+      catch (err) {
+        log.error(`[restore] channel ${channelId} 恢复失败(继续其余):`,
+          err instanceof Error ? err.message : String(err))
+      }
     }
     // 断线重连:ASSIGNED/WORKING 的叶子任务(无子任务)若无 pending assign 投递
     // (消息已被消费但任务未完成——进程内 run 抛错、或崩溃落在消费后),
