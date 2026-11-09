@@ -13,7 +13,7 @@
  * 选中会话为 active 时 10s 轻轮询消息与运行态(管理视图取向:显式刷新优先)。
  */
 import { message } from 'ant-design-vue'
-import { useWorkshopApi, type ChannelSessionDto, type ChannelMessageDto, type SessionBriefDto, type SessionHistoryDto } from '@/app/composables/workshop/useWorkshopApi'
+import { useWorkshopApi, type ChannelSessionSummaryDto, type ChannelMessageDto, type SessionBriefDto, type SessionHistoryDto } from '@/app/composables/workshop/useWorkshopApi'
 
 const { t } = useI18n()
 
@@ -23,7 +23,7 @@ const emit = defineEmits<{ (e: 'openAgent', id: string): void }>()
 const api = useWorkshopApi()
 
 // ===== 数据面 =====
-const sessions = ref<ChannelSessionDto[]>([])
+const sessions = ref<ChannelSessionSummaryDto[]>([])
 const agentById = ref<Record<string, { id: string, name: string, enabled?: number, harness: string }>>({})
 const queueByAgent = ref<Record<string, { state: string, queuedCount: number, completedCount: number }>>({})
 const loading = ref(true)
@@ -53,7 +53,7 @@ function applyQueue(rows: Array<{ agentId: string, state: string, queuedCount: n
   const next = Object.fromEntries(rows.map(x => [x.agentId, { state: x.state, queuedCount: x.queuedCount, completedCount: x.completedCount }]))
   if (JSON.stringify(next) !== JSON.stringify(queueByAgent.value)) queueByAgent.value = next
 }
-function sessionClones(s: ChannelSessionDto): string[] {
+function sessionClones(s: ChannelSessionSummaryDto): string[] {
   return Object.values(s.memberMap ?? {})
 }
 const stateLabel = (state: string): string =>
@@ -105,7 +105,7 @@ function stopPoll(): void {
   }
 }
 
-async function loadMessages(s: ChannelSessionDto): Promise<void> {
+async function loadMessages(s: ChannelSessionSummaryDto): Promise<void> {
   messagesLoading.value = true
   try {
     const cloneIds = new Set(sessionClones(s))
@@ -127,7 +127,7 @@ async function loadMessages(s: ChannelSessionDto): Promise<void> {
 }
 
 /** Session Context：brief/block/history 与消息并行拉取；失败不阻断消息面。 */
-async function loadContext(s: ChannelSessionDto): Promise<void> {
+async function loadContext(s: ChannelSessionSummaryDto): Promise<void> {
   const [b, h, blk] = await Promise.allSettled([
     api.getSessionBrief(props.channelId, s.id),
     api.getSessionHistory(props.channelId, s.id, 80),
@@ -159,7 +159,7 @@ async function sendMessage(): Promise<void> {
   finally { sending.value = false }
 }
 
-async function selectSession(s: ChannelSessionDto): Promise<void> {
+async function selectSession(s: ChannelSessionSummaryDto): Promise<void> {
   activeSessionId.value = s.id
   await Promise.all([loadMessages(s), loadContext(s)])
 }
@@ -217,7 +217,7 @@ async function submitCreate(): Promise<void> {
 
 // ===== 关闭会话(级联;幂等) =====
 const closing = ref<string | null>(null)
-async function submitClose(s: ChannelSessionDto): Promise<void> {
+async function submitClose(s: ChannelSessionSummaryDto): Promise<void> {
   closing.value = s.id
   try {
     const res = await api.closeChannelSession(props.channelId, s.id, { reason: 'owner closed from console' })

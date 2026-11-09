@@ -49,7 +49,9 @@ export default async function securityPlugin() {
   if (!password || KNOWN_DEFAULT_PASSWORDS.has(password)) {
     throw new Error(
       '[security] 拒绝启动:production 模式下 sessionPassword 为空或仍是仓库默认值。'
-      + '请在 config.yml 的 security.sessionPassword 设置强随机密钥(≥32 位)后重启。'
+      + '请在 .env 设置 NUXT_SESSION_PASSWORD=<≥32 位随机串> 后重启(推荐);'
+      + '或在 config.yml 的 security.sessionPassword 改完后**重新 aw build** —— '
+      + '该值在构建期内联进产物,构建后只改 config.yml 不会生效。'
       + 'TLS/WSS 部署基线见 README「部署」一节(建议由 caddy/nginx 反向代理终止)。',
     )
   }

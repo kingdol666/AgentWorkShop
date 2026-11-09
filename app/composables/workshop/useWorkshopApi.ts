@@ -116,6 +116,15 @@ export interface ChannelSessionDto {
   brief?: SessionBriefDto | null
 }
 
+/**
+ * 会话清单行:列表端点只回 brief 的 4 个字段(currentTask/nextStep/openQuestions/
+ * deliverables),完整 SessionBriefDto 只在详情/专用 brief 端点。
+ * 旧类型把列表行标成完整 SessionBriefDto —— 读 summary 字段会拿到 undefined。
+ */
+export interface ChannelSessionSummaryDto extends Omit<ChannelSessionDto, 'brief'> {
+  brief?: Pick<SessionBriefDto, 'currentTask' | 'nextStep' | 'openQuestions' | 'deliverables'> | null
+}
+
 /** Session Context：平台确定性 brief（有界；不含原始 transcript） */
 export interface SessionBriefDto {
   sessionId: string
@@ -228,7 +237,7 @@ export function useWorkshopApi() {
     /** 产线清单(绑线选择器数据源) */
     listDcwLines: () => http.get<{ data: { lines: Array<{ id: string, name: string, state?: string }> } }>('/workshop/dcw/lines?limit=200'),
     // channel sessions(S1 多会话:Channel=模板,会话=从基础成员克隆的独立实例组)
-    listChannelSessions: (id: string) => http.get<{ data: ChannelSessionDto[] }>(`/workshop/channels/${id}/sessions`),
+    listChannelSessions: (id: string) => http.get<{ data: ChannelSessionSummaryDto[] }>(`/workshop/channels/${id}/sessions`),
     /** 单会话详情(sid 不属于该频道 → 404) */
     getChannelSession: (id: string, sid: string) => http.get<{ data: ChannelSessionDto }>(`/workshop/channels/${id}/sessions/${sid}`),
     createChannelSession: (id: string, body: { title?: string }) =>
@@ -338,7 +347,7 @@ export function useWorkshopApi() {
     // channel 成员的 harness 终端会话(rpc-ui 镜像;lanes 控制面板数据源)
     listChannelTerminals: (id: string) => http.get<{ data: TerminalSessionDto[] }>(`/workshop/channels/${id}/terminals`),
     // plugins(插件管理:清单为顶层 plugins key,非信封;启停 admin + 热重载;健康走插件自注册 /health)
-    listPlugins: () => http.get<{ plugins?: WorkshopPluginDto[], data?: { plugins?: WorkshopPluginDto[] } }>('/workshop/plugins'),
+    listPlugins: () => http.get<{ data: { plugins?: WorkshopPluginDto[], failures?: Array<{ source: string, error: string }>, initedAt?: string | null } }>('/workshop/plugins'),
     enablePlugin: (name: string) => http.post<{ data?: { ok?: boolean, enabled?: boolean } }>(`/workshop/plugins/${name}/enable`, {}),
     disablePlugin: (name: string) => http.post<{ data?: { ok?: boolean, enabled?: boolean } }>(`/workshop/plugins/${name}/disable`, {}),
     /** 插件健康检测(原始返回,非信封:rag-bridge 看 backend.ok && web.ok,diag-bridge 看 remote.status==='ok') */

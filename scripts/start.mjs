@@ -7,7 +7,8 @@
 // 另在启动前预载 .env（cwd 的 .env;NUXT_SESSION_PASSWORD 等密钥只经环境
 // 注入,绝不写入 config.yml/仓库;已导出的真实环境变量优先）。
 // ============================================================
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -138,7 +139,20 @@ if (!existsSync(outputEntry)) {
   process.exit(1)
 }
 
-const childEnv = { ...process.env, AW_PARENT_PID: String(process.pid) }
+// ---- 优雅停机令牌(Windows 无信号语义:`aw stop` 走 HTTP 触发 nitro close 钩子) ----
+// 令牌只落 <configRoot>/.runtime/stop-token(0600) 与子进程 env,不进日志;
+// 端点另要求环回地址 + 自定义 header(浏览器 drive-by POST 过不了 preflight)。
+const stopToken = randomBytes(24).toString('hex')
+const runtimeDir = join(rm.configRoot, '.runtime')
+try {
+  mkdirSync(runtimeDir, { recursive: true })
+  writeFileSync(join(runtimeDir, 'stop-token'), stopToken, { encoding: 'utf8', mode: 0o600 })
+}
+catch (err) {
+  console.warn('› 停机令牌写入失败(aw stop 将回退强制终止):', String(err?.message ?? err))
+}
+
+const childEnv = { ...process.env, AW_PARENT_PID: String(process.pid), AW_STOP_TOKEN: stopToken }
 // 堆限额固化:父进程未带 --max-old-space-size 时给子进程补默认 4096MB(3GB 事故线以上)
 if (!/max-old-space-size/.test(String(childEnv.NODE_OPTIONS ?? ''))) {
   const cfg = Number(childEnv.AW_HEAP_LIMIT_MB ?? 4096)

@@ -234,3 +234,29 @@ test('P1-9 行为:锁内容损坏 → 视为残留并接管', async () => {
   })
   assert.equal(ran, true, '损坏锁应被接管')
 })
+
+// ════════════════ D2:优雅停机通道(2026-11-10) ════════════════
+
+test('D2 start.mjs 生成停机令牌并交给子进程/运行时文件', () => {
+  const src = read('scripts/start.mjs')
+  assert.match(src, /randomBytes\(/, '令牌必须随机生成')
+  assert.match(src, /AW_STOP_TOKEN/, '子进程需拿到停机令牌')
+  assert.match(src, /'stop-token'/, '令牌需落盘供 aw stop 读取')
+})
+
+test('D2 aw stop 先走 HTTP 优雅停机,再回退强杀', () => {
+  const src = read('cli/commands/stop.mjs')
+  assert.match(src, /\/api\/system\/shutdown/, '必须调用优雅停机端点')
+  const gracefulAt = src.indexOf('await tryGracefulStop')
+  const killAt = src.indexOf('killTree(pid)', gracefulAt)
+  assert.ok(gracefulAt > 0 && killAt > gracefulAt, '优雅通道必须先于强杀(强杀作为兜底)')
+  assert.match(src, /12_000|12000/, '必须有等待窗口后才强杀')
+})
+
+test('D2 停机端点:令牌存在性 + 头部校验 + 环回限制 + 触发 close 钩子', () => {
+  const src = read('server/api/system/shutdown.post.ts')
+  assert.match(src, /AW_STOP_TOKEN/, '必须校验令牌存在(dev 无令牌 → 404)')
+  assert.match(src, /x-aw-stop-token/, '必须校验请求头令牌')
+  assert.match(src, /isLoopback/, '必须限制本机触发')
+  assert.match(src, /callHook\('close'\)/, '必须触发 nitro close 钩子')
+})

@@ -84,7 +84,11 @@ export async function run(argv, ctx) {
     // 生产密钥
     const sess = eff.security?.sessionPassword ?? ctx.env.NUXT_SESSION_PASSWORD
     const isDefault = /change-me|awshop-dev-secret/.test(String(sess))
-    add('生产 session 密钥', !isDefault, isDefault ? '仍是默认值（生产部署前必须更换）' : '已自定义（或由 env 提供）')
+    // 注意:该值在构建期内联进 .output,构建后只改 config.yml 不生效 —— 运行时唯一通道是
+    // NUXT_SESSION_PASSWORD;doctor 读到的是配置引擎有效值,不代表产物实际使用的值。
+    add('生产 session 密钥', !isDefault, isDefault
+      ? '仍是默认值（生产部署前必须更换）'
+      : '已自定义（或由 env 提供）;注意:构建后改 config.yml 不生效,须设 NUXT_SESSION_PASSWORD 或重新 aw build')
 
     // 产物
     add('生产构建存在', existsSync(join(ctx.root, '.output', 'server', 'index.mjs')), existsSync(join(ctx.root, '.output', 'server', 'index.mjs')) ? '.output/server/index.mjs' : '尚未 aw build')
