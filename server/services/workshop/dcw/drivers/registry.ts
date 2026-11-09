@@ -89,11 +89,6 @@ function aliasDcwDriverKind(kind: string): string {
   return kind
 }
 
-export function normalizeDcwDriverKind(kind: string): DcwDriverKind {
-  const k = aliasDcwDriverKind(kind)
-  return ((k in REGISTRY || pluginRegistry().has(k) ? k : 'mock')) as DcwDriverKind
-}
-
 /**
  * 严格解析(入口级:create/patch/testDriver):未知 kind 显式报错。
  * 配置错协议名静默采 mock 驱动 = 写路径假成功(工业高危默认,2026-10-08 P0-5;
@@ -106,13 +101,17 @@ export function requireDcwDriverKind(kind: string): DcwDriverKind {
 }
 
 /**
- * 启动迁移:磁盘遗留 kind 别名归一;无法归一的未知 kind 降级 mock 并打标
- * (fail-visible,不砖启动 —— 由 repo load() 调用,降级节点写路径会显式失败待重配)。
+ * 启动迁移:磁盘遗留 kind 别名归一。
+ *
+ * 未知 kind **不再降级 mock**(2026-11-10 对齐 DAQ S11):mock 驱动写返回 ok:true、
+ * 回读读同一进程内 Map,会把"驱动插件没加载/协议名写错"变成一次"写成功且设备证实"
+ * 的假闭环。现在保留原名并标 unknown,由 resolveDcwDriver 落到 unavailableDcwDriver
+ * 显式失败,等插件注册或人工重配(不砖启动)。
  */
-export function migrateDcwDriverKind(kind: string): { kind: DcwDriverKind, downgraded: boolean } {
+export function migrateDcwDriverKind(kind: string): { kind: DcwDriverKind, downgraded: boolean, unknown?: boolean } {
   const k = aliasDcwDriverKind(kind)
   if (k in REGISTRY || pluginRegistry().has(k)) return { kind: k as DcwDriverKind, downgraded: false }
-  return { kind: 'mock', downgraded: true }
+  return { kind: k as DcwDriverKind, downgraded: false, unknown: true }
 }
 
 /**

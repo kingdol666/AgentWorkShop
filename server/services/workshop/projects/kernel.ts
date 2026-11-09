@@ -180,6 +180,15 @@ export function initProjectKernel(deps: ProjectKernelDeps, options: ProjectKerne
 
   const handle: ProjectKernelHandle = {
     start: () => {
+      // 崩溃恢复:上次进程 claim 后没收口的 effects 退回 pending。
+      // 不做这一步,这些行会永久停在 running(due 只选 pending),对应 effect 永不重放。
+      try {
+        const recovered = kernelRepo.effects.resetRunningToPending()
+        if (recovered > 0) console.warn(`[project-kernel] 崩溃恢复:${recovered} 条 running effect 已退回 pending`)
+      }
+      catch (err) {
+        console.error('[project-kernel] effects 崩溃恢复失败(不阻断启动):', err)
+      }
       // dead-man：接管时把上次运行遗留健康行标记 stale。
       for (const p of activeProjects()) {
         try {

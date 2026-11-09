@@ -210,6 +210,19 @@ export function createProjectKernelRepo(db: DatabaseSync) {
         return db.prepare(`UPDATE project_effects SET status='dead', last_error=?, next_retry_at=NULL, updated_at=? WHERE id=? AND status='running'`)
           .run(error, now(), id).changes > 0
       },
+      /**
+       * 崩溃恢复:把上次进程 claim 后未收口的 running 行退回 pending。
+       *
+       * claim → markDone/markRetry/markDead 之间进程退出,行会永久停在 running:
+       * due() 只选 pending、mark* 只认 running,再没有任何路径会碰它 —— 该 effect
+       * 永不重放(mailbox/task_callback 卡死;enqueue 又按 dedupe_key 返回同一行)。
+       * attempts 保留:已达 3 次的下次失败直接 dead + 升级,不会无限重放。
+       */
+      resetRunningToPending(): number {
+        return db.prepare(
+          `UPDATE project_effects SET status='pending', next_retry_at=NULL, updated_at=? WHERE status='running'`,
+        ).run(now()).changes as number
+      },
       /** S3 合并语义：新事件并入 pending 的 mailbox effect payload（推理期到达的事件进下一批）。 */
       mergeIntoPendingMailbox(projectId: string, eventIds: string[]): boolean {
         const row = db.prepare(
