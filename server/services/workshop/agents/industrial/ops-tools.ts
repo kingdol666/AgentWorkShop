@@ -43,6 +43,19 @@ export function channelBoundLineId(agentId: string): string | null {
   }
 }
 
+/** Agent 成员所属 Channel（写台账归因用；manager 未装配 → 空串） */
+export function channelIdOfAgent(agentId: string): string {
+  try {
+    const g = globalThis as typeof globalThis & {
+      __workshopManager?: { deps?: { repos?: { channelAgents?: { findById(id: string): { channelId?: string } | undefined } } } }
+    }
+    return g.__workshopManager?.deps?.repos?.channelAgents?.findById(agentId)?.channelId ?? ''
+  }
+  catch {
+    return ''
+  }
+}
+
 /** Agent 负责范围 = 绑定节点的全集(节点 id 集 + 这些节点所属产线集)
  *  ∪ 绑定配方所在产线(kind='recipe';v2 权限模型:配方绑定授予该线的读面+配方操作面)
  *  ∪ 频道绑定产线(boundLineIds;v18 只读扩权:日志/配方史/上下文可读)。 */
@@ -1267,6 +1280,7 @@ export async function toolRecipeTrial(agentId: string, args: {
       overrides: list, trial: true, agentDispatch: true, agentApprovalId: gateApprovalId, emergency,
       agentTrialMeta: {
         actor: agentId, actorName: agentBadgeLabel(agentId), hypothesis,
+        channelId: invocation?.channelId || channelIdOfAgent(agentId),
         ...(invocation?.agentId === agentId && invocation.taskId ? { taskId: invocation.taskId } : {}),
         executionMode: executionModeOfAgent(agentId),
       },
@@ -1397,6 +1411,7 @@ export async function toolRecipeApply(agentId: string, args: {
       agentTrialMeta: {
         actor: agentId,
         actorName: agentBadgeLabel(agentId),
+        channelId: invocation?.channelId || channelIdOfAgent(agentId),
         ...(invocation?.agentId === agentId && invocation.taskId ? { taskId: invocation.taskId } : {}),
         executionMode: executionModeOfAgent(agentId),
       },
