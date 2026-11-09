@@ -884,6 +884,17 @@ export class ProjectService {
     return this.deliverables.listByProject(id)
   }
 
+  /**
+   * 单交付物(主资源路径读面)。授权与列表同源：`get` 已按 owner/admin/member 判定可读，
+   * 这里只补「必须属于本项目」的归属校验，避免跨项目 id 越权读取。
+   */
+  getDeliverable(id: string, deliverableId: string, actor: ProjectActor): ProjectDeliverableRow {
+    this.get(id, actor)
+    const row = this.deliverables.findById(deliverableId)
+    if (!row || row.projectId !== id) throw new AppError(404, 'NOT_FOUND', `交付物不存在或不属于该项目: ${deliverableId}`)
+    return row
+  }
+
   createDeliverable(id: string, actor: ProjectActor, input: {
     name: string
     description?: string
@@ -962,6 +973,14 @@ export class ProjectService {
   listWorkItems(id: string, actor: ProjectActor): ProjectWorkItemRow[] {
     this.get(id, actor)
     return this.workItems.listByProject(id)
+  }
+
+  /** 单工作项(主资源路径读面)。授权与列表同源 + 归属校验(防跨项目 id 越权读取)。 */
+  getWorkItem(id: string, workItemId: string, actor: ProjectActor): ProjectWorkItemRow {
+    this.get(id, actor)
+    const row = this.workItems.findById(workItemId)
+    if (!row || row.projectId !== id) throw new AppError(404, 'NOT_FOUND', `工作项不存在或不属于该项目: ${workItemId}`)
+    return row
   }
 
   createWorkItem(id: string, actor: ProjectActor, input: {
