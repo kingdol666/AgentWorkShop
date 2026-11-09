@@ -18,7 +18,8 @@ const reopenSchema = z.object({
 
 export default defineApiHandler(async (event) => {
   const taskId = getRouterParam(event, 'id')!
-  const body = await readValidatedBody(event, zValidator(reopenSchema)).catch(() => ({}) as z.infer<typeof reopenSchema>)
+  // 空 body 合法:reopen 可无载荷;不用 catch 吞掉校验错误(title 为空串应 400)
+  const body = await readValidatedBody(event, zValidator(reopenSchema.default({})))
   const manager = getWorkshopManager()
   const task = (manager as unknown as { getTaskEngine?: () => { get: (id: string) => { channelId: string } | undefined } }).getTaskEngine?.().get(taskId)
   if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)

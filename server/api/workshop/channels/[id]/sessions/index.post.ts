@@ -14,7 +14,10 @@ const schema = z.object({ title: z.string().max(120).optional() })
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const channelId = getRouterParam(event, 'id')!
-  const body = await readValidatedBody(event, zValidator(schema)).catch(() => ({ title: undefined }))
+  // 空 body 合法(标题可缺省):把"未提供"收敛进 schema,而不是 catch 掉校验错误。
+  // 旧写法 .catch(() => ({ title: undefined })) 会把 title>120 一并吞成"无标题",
+  // 用户提交的超长标题被静默改名为随机默认标题。
+  const body = await readValidatedBody(event, zValidator(schema.default({})))
   return getWorkshopManager().createChannelSession({
     channelId,
     actor: { id: user.id, role: user.role },
