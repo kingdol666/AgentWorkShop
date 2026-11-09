@@ -1,0 +1,139 @@
+#!/usr/bin/env node
+/**
+ * 统一验收：三维度修复的 HTTP 级验证（针对 acceptance 构建）。
+ * 用法: AW_BASE=http://127.0.0.1:3011 node scripts/demo/accept-harness-fix.mjs
+ */
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
+const EVID = join(REPO, 'docs/audit/evidence/2026-11-09-harness-fix-acceptance')
+mkdirSync(EVID, { recursive: true })
+const BASE = process.env.AW_BASE || 'http://127.0.0.1:3011'
+const EMAIL = process.env.AW_EMAIL || 'visual@awshop.local'
+const PASS = process.env.AW_PASS || 'Visual2026'
+
+const results = []
+const ok = (id, name, cond, detail = '') => {
+  results.push({ id, name, pass: Boolean(cond), detail: String(detail).slice(0, 400) })
+  console.log(`${cond ? '✔' : '✖'} [${id}] ${name}${cond ? '' : ` — ${String(detail).slice(0, 240)}`}`)
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+async function call(method, path, body, token, timeoutMs = 60_000) {
+  const res = await fetch(BASE + path, {
+    method,
+    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    body: (body === undefined || body === null) ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
+  })
+  const json = await res.json().catch(() => null)
+  return { http: res.status, code: json?.code, data: json?.data, message: json?.message, raw: json }
+}
+const arr = d => (Array.isArray(d) ? d : [])
+
+const main = async () => {
+  const login = await call('POST', '/api/users/login', { email: EMAIL, password: PASS })
+  const token = login.data?.token
+  ok('A0', '登录', Boolean(token), login.message)
+
+  /* ===== 场景：项目 + 交付物 + 工作项 ===== */
+  const pr = (await call('POST', '/api/workshop/projects', {
+    name: `验收-${Date.now().toString(36).slice(-5)}`, objective: '三维度修复 HTTP 验收', leaderHarness: 'mock',
+  }, token)).data
+  const ch = (await call('POST', '/api/workshop/channels', {
+    name: `验收频道-${Date.now().toString(36).slice(-4)}`, scenarioPrompt: 'x',
+    leadAgent: { name: 'Acc Lead', harness: 'mock', config: {} },
+  }, token)).data
+  await call('POST', `/api/workshop/projects/${pr.id}/channels`, { channelId: ch.channelId, charter: 'x' }, token)
+  const dv = (await call('POST', `/api/workshop/projects/${pr.id}/deliverables`, {
+    name: '验收交付物', ownerChannelId: ch.channelId, required: true, acceptanceCriteria: ['产物存在'],
+  }, token)).data
+  const wi = (await call('POST', `/api/workshop/projects/${pr.id}/work-items`, {
+    deliverableId: dv.id, channelId: ch.channelId, title: '验收工作项', dedupeKey: `acc-${Date.now().toString(36)}`,
+  }, token)).data
+  ok('A1', '夹具建立(项目/频道/交付物/工作项)', Boolean(pr?.id && dv?.id && wi?.id))
+
+  /* ===== PR-3：子资源主路径 GET ===== */
+  const wiGet = await call('GET', `/api/workshop/projects/${pr.id}/work-items/${wi.id}`, null, token)
+  ok('G1', 'GET 工作项主路径 200（原 404 非信封）', wiGet.http === 200 && wiGet.data?.id === wi.id, `http=${wiGet.http} code=${wiGet.code}`)
+  const dvGet = await call('GET', `/api/workshop/projects/${pr.id}/deliverables/${dv.id}`, null, token)
+  ok('G2', 'GET 交付物主路径 200', dvGet.http === 200 && dvGet.data?.id === dv.id, `http=${dvGet.http}`)
+  const cross = await call('GET', `/api/workshop/projects/${pr.id}/work-items/not-exist-id`, null, token)
+  ok('G3', '跨项目/不存在 id → 404 统一信封', cross.http === 404 && cross.code === 'NOT_FOUND' && cross.data === null,
+    `http=${cross.http} code=${cross.code} data=${JSON.stringify(cross.data)}`)
+
+  /* ===== PR-2：写面 schema（400 精确到字段） ===== */
+  const dcwBad = await call('POST', '/api/workshop/dcw/params/nope/write', { value: 'abc' }, token)
+  ok('S1', 'dcw 参数写:value 非数值 → 400 且字段精确', dcwBad.http === 400 && /^value:/.test(String(dcwBad.message ?? '')),
+    `http=${dcwBad.http} msg=${wiSafe(dcwBad.message)}`)
+  const dcwNan = await call('POST', '/api/workshop/dcw/params/nope/write', { value: {} }, token)
+  ok('S2', 'dcw 参数写:对象值 → 400（旧实现 Number({})=NaN 会带进控制器）', dcwNan.http === 400 && /^value:/.test(String(dcwNan.message ?? '')),
+    `http=${dcwNan.http} msg=${wiSafe(dcwNan.message)}`)
+  const invBad = await call('POST', '/api/workshop/agent-tools/invoke', { agentId: '', tool: '' }, token)
+  ok('S3', '工具桥:空 agentId → 400 字段精确', invBad.http === 400 && /^(agentId|tool):/.test(String(invBad.message ?? '')),
+    `http=${invBad.http} msg=${wiSafe(invBad.message)}`)
+  const invBadTool = await call('POST', '/api/workshop/agent-tools/invoke', { agentId: 'a', tool: 'bad tool!' }, token)
+  ok('S4', '工具桥:非法 tool 名 → 400', invBadTool.http === 400 && /^tool:/.test(String(invBadTool.message ?? '')),
+    `http=${invBadTool.http} msg=${wiSafe(invBadTool.message)}`)
+  const invArgs = await call('POST', '/api/workshop/agent-tools/invoke', { agentId: 'a', tool: 'ok', args: [1, 2] }, token)
+  ok('S5', '工具桥:args 非对象 → 400', invArgs.http === 400 && /^args:/.test(String(invArgs.message ?? '')),
+    `http=${invArgs.http} msg=${wiSafe(invArgs.message)}`)
+  const hitlBad = await call('POST', '/api/workshop/hitl/respond', { kind: 'made-up', id: 'x' }, token)
+  ok('S6', 'HITL:未知 kind → 400', hitlBad.http === 400, `http=${hitlBad.http}`)
+  const permBad = await call('PUT', '/api/workshop/permissions', { userId: 'u', grants: [{ lineId: 'l', mode: 'root' }] }, token)
+  ok('S7', '权限:非法 mode → 400（原 as string 落库）', permBad.http === 400 && /grants/.test(String(permBad.message ?? '')),
+    `http=${permBad.http} msg=${wiSafe(permBad.message)}`)
+  const secretBad = await call('PUT', '/api/workshop/mes/secrets', { ref: '  ', value: 'x' }, token)
+  ok('S8', 'MES 凭据:空 ref → 400', secretBad.http === 400 && /^ref:/.test(String(secretBad.message ?? '')),
+    `http=${secretBad.http} msg=${wiSafe(secretBad.message)}`)
+  const twinBad = await call('POST', '/api/workshop/device-twins/x/control', { command: '' }, token)
+  ok('S9', '孪生控制:空 command → 400', twinBad.http === 400, `http=${twinBad.http}`)
+
+  /* ===== PR-1：omp 会话身份（terminate → 重建 → sessionId 非空且不等于旧值） ===== */
+  const chOmp = (await call('POST', '/api/workshop/channels', {
+    name: `身份验收-${Date.now().toString(36).slice(-4)}`, scenarioPrompt: 'x',
+    leadAgent: { name: 'Sid Probe', harness: 'omp', config: { promptTimeoutMs: 1_800_000 } },
+  }, token)).data
+  const mon = async () => {
+    const m = (await call('GET', '/api/system/monitor', null, token)).data ?? {}
+    const a = arr(m.agents).find(x => x.agentId === chOmp?.leadAgentId)
+    return { sid: a?.continuity?.sessionId ?? null, pid: a?.process?.pid ?? null, state: a?.state }
+  }
+  await call('POST', `/api/workshop/channels/${chOmp.channelId}/messages`, {
+    toAgentId: chOmp.leadAgentId, text: '请只回复 OK 两个字母。', requireReply: true, priority: 'immediate',
+  }, token)
+  let first = null
+  for (let i = 0; i < 30; i++) {
+    await sleep(10_000)
+    first = await mon()
+    if (first.sid) break
+  }
+  ok('H1', '基线:首次 spawn 建立 sessionId', Boolean(first?.sid), JSON.stringify(first))
+  // terminate → 触发重建 → 发消息 → 期望 sessionId 非空且 ≠ 旧值
+  await call('POST', '/api/system/monitor/terminate', { channelId: chOmp.channelId, agentId: chOmp.leadAgentId }, token)
+  await sleep(8_000)
+  await call('POST', `/api/workshop/channels/${chOmp.channelId}/messages`, {
+    toAgentId: chOmp.leadAgentId, text: '请只回复 OK。', requireReply: true, priority: 'immediate',
+  }, token)
+  let second = null
+  for (let i = 0; i < 30; i++) {
+    await sleep(10_000)
+    second = await mon()
+    if (second.sid && second.pid) break
+  }
+  ok('H2', '重建后 sessionId 非空（重绑成功）', Boolean(second?.sid), JSON.stringify(second))
+  ok('H3', '重建后 sessionId ≠ 旧值（无陈旧绑定）', Boolean(second?.sid) && second.sid !== first?.sid,
+    `old=${String(first?.sid).slice(0, 12)} new=${String(second?.sid).slice(0, 12)}`)
+
+  const summary = {
+    generatedAt: new Date().toISOString(), base: BASE,
+    pass: results.filter(r => r.pass).length, fail: results.filter(r => !r.pass).length, results,
+  }
+  writeFileSync(join(EVID, 'acceptance.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8')
+  console.log(`\n=== ACCEPT pass=${summary.pass} fail=${summary.fail} → ${EVID} ===`)
+  process.exitCode = summary.fail > 0 ? 1 : 0
+}
+const wiSafe = s => String(s ?? '').slice(0, 90)
+main().catch(e => { console.error('验收异常:', String(e).slice(0, 300)); process.exit(1) })
