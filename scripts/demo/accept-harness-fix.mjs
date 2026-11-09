@@ -105,6 +105,9 @@ const main = async () => {
   const g4 = await call('GET', `/api/workshop/daq/${missingId}`, null, token)
   ok('G7', 'GET /daq/:id 路由存在（404 统一信封）',
     g4.http === 404 && g4.code === 'NOT_FOUND', `http=${g4.http} code=${g4.code}`)
+  const g5 = await call('GET', `/api/workshop/dcw/lines/${missingId}`, null, token)
+  ok('G8', 'GET /dcw/lines/:id 产线详情路由存在（404 统一信封）',
+    g5.http === 404 && g5.code === 'NOT_FOUND', `http=${g5.http} code=${g5.code}`)
   // 列表端点仍可用（query schema 不误伤合法请求）
   // 注:line_id/node_ids 至少一个是既有业务规则(DataQueryError),与 query schema 无关;
   // 这里只断言「不再出现字段级解析错误」,业务规则 400 属正常。
