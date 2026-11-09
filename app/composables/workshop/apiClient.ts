@@ -5,6 +5,9 @@
  * - 网络层失败(TypeError/断网)→ ApiError('NETWORK'),不再裸奔 "Failed to fetch"
  * - 幂等 GET 可选自动重试(5xx/网络错误;400ms 起退避);写操作永不重试
  */
+import { readAuthToken, handleAuthExpired } from '~/utils/auth-session'
+
+export { isPendingApproval, type PendingApproval } from '~/utils/pending-approval'
 
 export class ApiError extends Error {
   readonly code: string | number
@@ -18,13 +21,11 @@ export class ApiError extends Error {
   }
 }
 
-/** 鉴权头(cookie token → Bearer;与既有会话契约同源) */
+/** 鉴权头(token → Bearer;三通道读取与 axios 侧共用) */
 function authHeaders(json = true): Record<string, string> {
-  const cookieToken = typeof document !== 'undefined'
-    ? (document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? '')
-    : ''
+  const token = readAuthToken()
   const h: Record<string, string> = {}
-  if (cookieToken) h.authorization = `Bearer ${decodeURIComponent(cookieToken)}`
+  if (token) h.authorization = `Bearer ${token}`
   if (json) h['content-type'] = 'application/json'
   return h
 }
@@ -60,6 +61,9 @@ async function attemptOnce<T>(base: string, path: string, init?: RequestInit): P
   catch {
     // 非 JSON 响应(代理/网关 HTML 错误页等)——按状态码归一化
   }
+  // 401 与 axios 路径共用同一收尾:清登录态 + 去重 toast + 打开登录框。
+  // 旧实现只抛 ApiError,65 处 apiFetch 调用点在凭据过期时不会自愈。
+  if (res.status === 401) handleAuthExpired()
   if (!res.ok) {
     throw new ApiError(
       json?.code ?? `HTTP_${res.status}`,

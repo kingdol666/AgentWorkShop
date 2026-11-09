@@ -1,5 +1,6 @@
 import { reactive, ref } from 'vue'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
+import { isPendingApproval } from '~/composables/workshop/apiClient'
 import type { useDcwDetailScope } from './useDcwDetailScope'
 import type { useDcwLineRun } from './useDcwLineRun'
 import type { useDcwProducts } from './useDcwProducts'
@@ -205,6 +206,12 @@ export function useDcwRecipes(
     writeError.value = ''
     try {
       const run = await dcw.applyRecipe(id)
+      // 202 复核挂起:服务端未执行,data 是 {pending:true, requestId},没有 results。
+      // 旧实现直接读 run.results → TypeError,用户看到的是英文崩错而不是"待批核"。
+      if (isPendingApproval(run)) {
+        writeError.value = `整批下发已提交复核(${run.requestId.slice(0, 8)}…),待另一管理员批准后重试`
+        return
+      }
       const ok = run.results.filter(r => r.ok).length
       applyResult.value = { runId: run.id, ok, total: run.results.length }
       if (ok < run.results.length) writeError.value = t('dcwDetail.ks7szkt188', { p0: run.results.filter(r => !r.ok).map(r => r.message).join(';') })

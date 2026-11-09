@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue'
+import { message } from 'ant-design-vue'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 
 /** 优化记录的窗口数采序列(客户端渲染 sparkline 用) */
@@ -70,7 +71,14 @@ export function useDaqOptimizations() {
   }
 
   async function rollbackRecord(id: string): Promise<void> {
-    await dcw.rollbackOptimization(id)
+    try {
+      await dcw.rollbackOptimization(id)
+    }
+    catch (err) {
+      // 回退失败 / 202 待批核:给出可读文案(旧实现直接 reject,点击后没有任何反馈)
+      message.error(err instanceof Error ? err.message : String(err))
+      return
+    }
     await filterOpts()
   }
 
