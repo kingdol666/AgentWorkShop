@@ -31,6 +31,7 @@ import { reflectExperience } from '../memory/reflector'
 import { collectInterventionFact, collectTaskFact, listUnreflectedInterventions } from '../memory/reflect-collector'
 import { registerInterventionAssessmentHook } from '../../aml/intervention-ledger'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { verifyAllPending } from '../../verify/blind-verifier'
 
 /** §7.1 事件名 → 展示标签(tasks 状态机 → 设计文档事件契约) */
 const EVENT_LABELS: Record<string, string> = {
@@ -235,6 +236,13 @@ export abstract class ManagerState extends ManagerContracts {
       }
       catch (err) {
         log.error('[memory] 干预经验补扫异常', err)
+      }
+      // RSI 独立回读验证(WP-C1):对未验证的写入台账做设备侧复读(match/mismatch/inconclusive)
+      try {
+        verifyAllPending(this.deps.db, { perChannel: 20 })
+      }
+      catch (err) {
+        log.error('[verify] 独立回读补扫异常', err)
       }
       // v17 群聊层有界化(outbox / 通知表都会随每次发言+HITL 增长;失败不影响主流程)
       this.runGroupChatMaintenance()
