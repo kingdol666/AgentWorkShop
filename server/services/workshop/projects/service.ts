@@ -29,6 +29,9 @@ import {
 import { createTaskRepo } from '../db/task.repo'
 import { createChannelSessionRepo } from '../db/channel-session.repo'
 import { createProjectKernelRepo } from '../db/project-kernel.repo'
+import { createMemoryRepo } from '../db/memory.repo'
+import { reflectExperience } from '../runtime/memory/reflector'
+import { collectReviewFact } from '../runtime/memory/reflect-collector'
 import type { TaskRow } from '../db/database'
 import { withTransaction } from '../db/transaction'
 import { parseJson } from '../db/database'
@@ -2135,7 +2138,24 @@ export class ProjectService {
       }
       updated = this.results.findById(resultId)!
     })
+    // RSI 经验反射(WP-A2):L1 复核终态即沉淀经验(通过=正向产出,驳回=负向教训)。
+    // 事务外 fire-and-forget:学习环失败绝不回滚复核。
+    this.reflectReviewResult(resultId, decision === 'reviewed' ? 'approved' : 'rejected')
     return updated
+  }
+
+  /**
+   * RSI 经验反射(WP-A2):评审终态 → 经验条目。
+   * 证据锚点=resultId(+taskId/traceId);作用域由 validity_scope(line:<id>/product:<id>)决定,
+   * line/product 一律 candidate(ADR-7),channel 缺省 active。
+   */
+  private reflectReviewResult(resultId: string, verdict: 'approved' | 'rejected'): void {
+    try {
+      const fact = collectReviewFact(this.db, { resultId, verdict })
+      if (!fact) return
+      void reflectExperience(createMemoryRepo(this.db), null, fact).catch(() => {})
+    }
+    catch { /* 学习环故障不影响复核 */ }
   }
 
   requestProjectComplete(id: string, actor: ProjectActor): ProjectApprovalRow {
@@ -2313,6 +2333,11 @@ export class ProjectService {
       this.record(id, approve ? 'approval.approved' : 'approval.rejected', actor, { approvalId, kind: approval.kind, reason }, approval.traceId, approve ? 'approval.approved' : 'approval.rejected', `approval:${approvalId}:${approve ? 'approved' : 'rejected'}`, { approvalId, kind: approval.kind, reason })
       updated = this.approvals.findById(approvalId)!
     })
+    // RSI 经验反射(WP-A2):L2 业务签核终态同样沉淀(通过/驳回各一条 dedupKey 语义 ——
+    // 不同结论并存,负面信号不被覆盖;作用域取成果 validity_scope)。
+    if (approval.kind === 'deliverable_acceptance') {
+      this.reflectReviewResult(approval.subjectId, approve ? 'approved' : 'rejected')
+    }
     return updated
   }
 

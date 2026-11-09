@@ -152,6 +152,14 @@ export function recordIntervention(input: InterventionRecordInput): string | nul
   }
 }
 
+/** verdict 回填后的反射钩子(RSI WP-A2;manager 装配;null = 不反射) */
+let assessmentReflectHook: ((eventId: string) => void) | null = null
+
+/** 注册/注销 verdict 反射钩子(幂等;传 null 注销) */
+export function registerInterventionAssessmentHook(fn: ((eventId: string) => void) | null): void {
+  assessmentReflectHook = fn
+}
+
 /** 回填可辨识性判定(exploration 判读或回填任务调用) */
 export function attachAssessment(
   id: string,
@@ -174,6 +182,12 @@ export function attachAssessment(
         assessment.detail ? JSON.stringify(assessment.detail) : null,
         new Date().toISOString(), id,
       )
+    // RSI 经验反射(WP-A2):verdict 落地即触发经验蒸馏(钩子由 manager 装配;
+    // 未注册时(单测/独立脚本)静默跳过 —— 学习环永不阻断台账写入)
+    try {
+      assessmentReflectHook?.(id)
+    }
+    catch { /* 学习环故障不影响判定回填 */ }
     return true
   }
   catch (err) {

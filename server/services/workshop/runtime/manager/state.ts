@@ -27,6 +27,9 @@ import { rowToMessage } from '../mailbox'
 import { platformNoticeKey, newPlatformNoticeId, setPlatformNoticeSink, type PlatformNotice, type PlatformNoticeSink } from '../platform-notice'
 import { memorySettings, retentionSettings, channelMemoryDigestEnabled } from '../../settings'
 import { parseJson } from '../../db/database'
+import { reflectExperience } from '../memory/reflector'
+import { collectInterventionFact, collectTaskFact, listUnreflectedInterventions } from '../memory/reflect-collector'
+import { registerInterventionAssessmentHook } from '../../aml/intervention-ledger'
 
 /** §7.1 事件名 → 展示标签(tasks 状态机 → 设计文档事件契约) */
 const EVENT_LABELS: Record<string, string> = {
@@ -188,6 +191,19 @@ export abstract class ManagerState extends ManagerContracts {
   constructor(readonly deps: ManagerDeps) {
     super()
     this.wirePlatformNoticeSink()
+    // RSI 经验反射(WP-A2):干预 verdict 回填 → 蒸馏经验(进程级单点注册;学习环故障只记日志)
+    registerInterventionAssessmentHook((eventId) => {
+      try {
+        const fact = collectInterventionFact(this.deps.db, eventId)
+        if (!fact) return
+        void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch((err) => {
+          log.warn('[memory] 干预经验反射失败:', err instanceof Error ? err.message : err)
+        })
+      }
+      catch (err) {
+        log.warn('[memory] 干预经验采集失败:', err instanceof Error ? err.message : err)
+      }
+    })
     // 记忆衰减清理定时器(失败只记日志,绝不抛出;unref 不阻进程退出;非法/非正 env 回退默认)
     this.memoryTimer = setInterval(() => {
       try {
@@ -202,6 +218,13 @@ export abstract class ManagerState extends ManagerContracts {
       }
       catch (err) {
         log.error('[memory] 反思任务异常', err)
+      }
+      // RSI 经验补扫(WP-A2):verdict 已回填但尚无经验行的干预台账(6h 窗口;幂等去重)
+      try {
+        this.reflectPendingInterventions()
+      }
+      catch (err) {
+        log.error('[memory] 干预经验补扫异常', err)
       }
       // v17 群聊层有界化(outbox / 通知表都会随每次发言+HITL 增长;失败不影响主流程)
       this.runGroupChatMaintenance()
@@ -464,6 +487,41 @@ export abstract class ManagerState extends ManagerContracts {
     return cr
   }
 
+  // ===== RSI 经验反射(WP-A2;学习环:失败只记日志,绝不影响任务流)=====
+
+  /** 任务终态 → 经验蒸馏(证据:任务/判据/失败分类;异步 fire-and-forget) */
+  protected reflectTaskTerminal(channelId: string, taskId: string): void {
+    try {
+      const task = this.getTaskEngine().get(taskId)
+      if (!task) return
+      const fact = collectTaskFact(this.deps.db, {
+        channelId,
+        taskId,
+        agentId: task.assigneeId ?? 'system:task',
+      })
+      if (!fact) return
+      void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch((err) => {
+        log.warn('[memory] 任务经验反射失败:', err instanceof Error ? err.message : err)
+      })
+    }
+    catch (err) {
+      log.warn('[memory] 任务经验采集失败:', err instanceof Error ? err.message : err)
+    }
+  }
+
+  /** 干预 verdict 补扫(verdict 回填钩子之外的兜底;dedupKey 保证幂等) */
+  protected reflectPendingInterventions(): void {
+    const since = new Date(Date.now() - 30 * 86_400_000).toISOString()
+    for (const eventId of listUnreflectedInterventions(this.deps.db, { sinceIso: since, limit: 50 })) {
+      try {
+        const fact = collectInterventionFact(this.deps.db, eventId)
+        if (!fact) continue
+        void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch(() => {})
+      }
+      catch { /* 单行失败不阻断批量 */ }
+    }
+  }
+
   protected async processTeamTaskMemoryOutbox(eventId: string, payload: Record<string, unknown>): Promise<void> {
     const channelId = typeof payload.channelId === 'string' ? payload.channelId : ''
     const taskId = typeof payload.taskId === 'string' ? payload.taskId : ''
@@ -517,6 +575,9 @@ export abstract class ManagerState extends ManagerContracts {
    * 任务主流程与 outbox 表结构不变。
    */
   protected recordTeamTaskEvent(channelId: string, e: { taskId: string, state?: TaskState, progress?: number, task?: TaskEventTask, artifactName?: string, reassignFrom?: string, reason?: string }): void {
+    // RSI 经验反射(WP-A2):任务终态 → 蒸馏一条带证据的经验。
+    // 与团队摘要开关解耦(摘要回滚不影响学习),且异步不阻塞任务事件链。
+    if (e.state && TERMINAL_TASK_STATES[e.state]) this.reflectTaskTerminal(channelId, e.taskId)
     if (!channelMemoryDigestEnabled()) return
     const task = e.task ?? this.getTaskEngine().get(e.taskId)
     if (!task) return
