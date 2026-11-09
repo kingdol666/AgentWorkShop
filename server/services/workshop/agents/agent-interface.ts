@@ -137,7 +137,14 @@ export interface AgentWorkspace {
    * scope: auto=私有+公共(默认;sessionId 命中加分) / private / shared / session=仅当前会话行;
    * sessionId = 运行时当前会话(工具桥注入)。返回结构化片段(综合分排序)。
    */
-  recallMemory(input: { query: string, scope?: 'auto' | 'private' | 'shared' | 'session', limit?: number, sessionId?: string | null }): Promise<Array<{
+  recallMemory(input: {
+    query: string
+    scope?: 'auto' | 'private' | 'shared' | 'session'
+    limit?: number
+    sessionId?: string | null
+    /** RSI 作用域上下文(WP-A3):缺省按频道产线绑定自动解析 */
+    scopeContext?: { lineId?: string | null, productId?: string | null }
+  }): Promise<Array<{
     id: string
     kind: string
     title: string
@@ -152,6 +159,11 @@ export interface AgentWorkspace {
     sessionId?: string | null
     rootId?: string | null
     visibility?: 'channel-shared' | 'private' | 'cross-channel'
+    /** RSI 经验元信息(WP-A3;非经验行带默认值) */
+    outcome?: string
+    status?: string
+    scopeKind?: string
+    scopeKey?: string
   }>>
   /**
    * 记忆主动沉淀(save_memory 工具桥):Agent 作业中总结的可复用经验/结论。

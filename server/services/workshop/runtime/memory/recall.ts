@@ -4,11 +4,28 @@
  */
 import { AgentMemoryState } from './state'
 import type { MemoryRow } from '../../db/database'
-import type { MemoryScope, MemorySnippet, RecallOptions } from './types'
-import { CURATED_KINDS, FTS_POOL, MMR_LAMBDA, RECENT_FALLBACK, RELATED_TASK_BOOST, RRF_K, SESSION_RELEVANCE_BOOST, buildMatchQuery, estimateTokens, memoryCfg, unsegmentCJK } from './helpers'
+import type { MemoryScope, MemorySnippet, RecallOptions, ScopeContext } from './types'
+import { CURATED_KINDS, FTS_POOL, MMR_LAMBDA, RECENT_FALLBACK, RELATED_TASK_BOOST, RRF_K, SAME_LINE_BOOST, SAME_PRODUCT_BOOST, SESSION_RELEVANCE_BOOST, buildMatchQuery, estimateTokens, memoryCfg, unsegmentCJK } from './helpers'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 
 export abstract class AgentMemoryRecall extends AgentMemoryState {
+  /**
+   * 作用域上下文(WP-A3):显式入参优先;缺省按频道产线绑定解析(lineId)。
+   * 解析失败/未绑定 → 空上下文(零加分,行为与旧版一致)。
+   */
+  protected resolveScopeContext(given?: ScopeContext): ScopeContext {
+    if (given) return given
+    return this.repo.channelScope(this.opts.channelId)
+  }
+
+  /** 经验作用域加分(WP-A3):同产线 +0.2 / 同产品 +0.1(非经验行/未绑定 → 0) */
+  protected scopeBoost(row: MemoryRow, ctx: ScopeContext): number {
+    if (row.kind !== 'experience' || !row.scopeKind || !row.scopeKey) return 0
+    if (row.scopeKind === 'line' && ctx.lineId && row.scopeKey === ctx.lineId) return SAME_LINE_BOOST
+    if (row.scopeKind === 'product' && ctx.productId && row.scopeKey === ctx.productId) return SAME_PRODUCT_BOOST
+    return 0
+  }
+
   /**
    * 混合检索原始命中(RRF 融合;不排序不 touch)。
    * FTS 榜与向量榜各按名次贡献 1/(k+rank) 累加,再按榜内最高分归一化到 0-1——
@@ -71,20 +88,23 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     if (scope !== 'shared' && scope !== 'session') {
       for (const row of this.repo.listRecent(this.opts.agentId, RECENT_FALLBACK)) {
         if (CURATED_KINDS.has(row.kind)) continue
+        // RSI(WP-A3):时近兜底同样排除退休经验(兜底路径不经 inScope)
+        if (row.status === 'retired') continue
         if (!hits.has(row.id)) hits.set(row.id, { row, relevance: 0.15 })
       }
     }
     return hits
   }
 
-  /** 排序(综合分降序;策展层排除/任务关联加权/session 行加分;不含预算/touch 副作用) */
+  /** 排序(综合分降序;策展层排除/任务关联加权/session 行加分/经验作用域加分;不含预算/touch 副作用) */
   protected async rank(
     query: string,
     scope: MemoryScope,
-    opts: { excludeCurated?: boolean, relatedTaskIds?: string[], sessionId?: string | null } = {},
+    opts: { excludeCurated?: boolean, relatedTaskIds?: string[], sessionId?: string | null, scopeContext?: ScopeContext } = {},
   ): Promise<Array<{ row: MemoryRow, relevance: number, score: number }>> {
     const hits = await this.collectHits(query, scope, opts.sessionId)
     const related = opts.relatedTaskIds && opts.relatedTaskIds.length > 0 ? new Set(opts.relatedTaskIds) : null
+    const scopeCtx = this.resolveScopeContext(opts.scopeContext)
     return [...hits.values()]
       .filter(h => !opts.excludeCurated || !CURATED_KINDS.has(h.row.kind))
       .map((h) => {
@@ -96,6 +116,9 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
         if (opts.sessionId && scope === 'auto' && h.row.sessionId === opts.sessionId) {
           score = Math.min(1, score + SESSION_RELEVANCE_BOOST)
         }
+        // 经验作用域加分(WP-A3):同产线/同产品经验优先(排序偏好,不做跨频道授权)
+        const boost = this.scopeBoost(h.row, scopeCtx)
+        if (boost > 0) score = Math.min(1, score + boost)
         return { ...h, score }
       })
       .sort((a, b) => b.score - a.score)
@@ -116,7 +139,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     const budget = explicit ?? memoryCfg().primer_tokens
     const totalBudget = explicit ?? memoryCfg().inject_total
     const scope = recallOpts.scope ?? 'auto'
-    const scored = await this.rank(query, scope, { excludeCurated: true, relatedTaskIds: recallOpts.relatedTaskIds, sessionId: recallOpts.sessionId })
+    const scored = await this.rank(query, scope, { excludeCurated: true, relatedTaskIds: recallOpts.relatedTaskIds, sessionId: recallOpts.sessionId, scopeContext: recallOpts.scopeContext })
 
     const lines: string[] = []
     const touched: string[] = []
@@ -193,13 +216,13 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
    * 触发 touch(access_count 强化后续召回排序);limit 上限防御;
    * relatedTaskIds 透传任务关联加权(与 recall 同源排序)。
    */
-  async recallRows(query: string, opts: { scope?: MemoryScope, limit?: number, relatedTaskIds?: string[], sessionId?: string | null } = {}): Promise<MemorySnippet[]> {
+  async recallRows(query: string, opts: { scope?: MemoryScope, limit?: number, relatedTaskIds?: string[], sessionId?: string | null, scopeContext?: ScopeContext } = {}): Promise<MemorySnippet[]> {
     const scope = opts.scope ?? 'auto'
     const limit = Math.min(Math.max(opts.limit ?? 5, 1), 20)
     // 召回度量(2026-10-05 记忆治理最小版):hit/miss 计数 —— 72% 记忆从未被召回的
     // 问题先变成可观测数据,再决定是否值得做自动合并。
     const stats = recallStatsOf()
-    const scoredAll = await this.rank(query, scope, { relatedTaskIds: opts.relatedTaskIds, sessionId: opts.sessionId })
+    const scoredAll = await this.rank(query, scope, { relatedTaskIds: opts.relatedTaskIds, sessionId: opts.sessionId, scopeContext: opts.scopeContext })
     if (scoredAll.length > 0) stats.hits++
     else stats.misses++
     const scored = scoredAll.slice(0, limit)
@@ -221,6 +244,11 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
         taskId: s.row.taskId ?? null,
         sessionId: s.row.sessionId ?? null,
         visibility: shared ? 'channel-shared' as const : 'private' as const,
+        // RSI 经验元信息(WP-A3):非经验行带默认值(neutral/session/active),调用方按 kind 判别
+        outcome: s.row.outcome ?? 'neutral',
+        status: s.row.status ?? 'active',
+        scopeKind: s.row.scopeKind ?? 'session',
+        scopeKey: s.row.scopeKey ?? '',
       }
     })
   }

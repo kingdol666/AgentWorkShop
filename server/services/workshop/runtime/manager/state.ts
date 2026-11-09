@@ -212,6 +212,13 @@ export abstract class ManagerState extends ManagerContracts {
       catch (err) {
         log.error('[memory] 维护任务异常', err)
       }
+      // RSI 经验过期退休(WP-A3):expires_at 已到 → status='retired'(检索/注入层已排除)
+      try {
+        this.deps.repos.memories.expireSweep()
+      }
+      catch (err) {
+        log.error('[memory] 经验过期扫描异常', err)
+      }
       // 空闲反思(sleep-time compute):busy runtime 存在即整轮跳过,绝不与作业争抢
       try {
         this.reflectIdleMemories()
