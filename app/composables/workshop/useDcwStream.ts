@@ -6,7 +6,7 @@
  */
 import { reactive } from 'vue'
 import { useTownBus } from './useTownBus'
-import { apiFetch } from './apiClient'
+import { apiFetch, ApiError, isPendingApproval } from './apiClient'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 import { DCW_TEMPLATES, DCW_DRIVERS, type AepDcwControllerState, type AepDcwNodeChange, type AepDcwRead, type AepDcwWritten, type DcwNodeView, type DcwParamLedger, type DcwTemplateDef, type DcwTemplateInput, type LineInput, type LineQueryOpts, type LineQueryResult, type LineRunState, type LineView, type OptimizationRecord, type OptimizationVerdict, type ProductInput, type ProductView, type RecipeInput, type RecipeParam, type RecipeRunView, type RecipeView, type RecipeRunData } from '#shared/dcw-protocol'
 import type { DaqDriverCatalogEntry } from '#shared/daq-protocol'
@@ -16,6 +16,20 @@ export type { DcwNodeView }
 /** 统一客户端:信封解析/业务码保留/GET 幂等重试(5xx 与网络错误;400ms 起退避) */
 const api = <T>(path: string, init?: RequestInit): Promise<T> =>
   apiFetch<T>({ base: '/api/workshop/dcw', path, init, retries: (init?.method ?? 'GET').toUpperCase() === 'GET' ? 2 : 0 })
+
+/**
+ * 202 复核挂起:高危写(删节点/控制网关/回滚/整批下发)开启双人复核时服务端**不执行**,
+ * 只登记审批并返回 {pending:true, requestId}。必须按"已提交待批核"处理 —— 旧实现把
+ * 202 当成功,会把节点从本地列表删掉(服务端还在)、或读 run.results 直接 TypeError。
+ */
+function rejectPending(data: unknown): void {
+  if (!isPendingApproval(data)) return
+  throw new ApiError(
+    'APPROVAL_PENDING',
+    202,
+    `操作已提交复核(${data.requestId.slice(0, 8)}…),待另一管理员批准后重试`,
+  )
+}
 
 export interface DcwWriteOutcomeView { ok: boolean, message: string, raw: number | null, readback: number | null }
 export interface DcwReadOutcomeView { ok: boolean, value: number | null, raw: number | null, message: string, at: string }
@@ -183,7 +197,8 @@ function createStore() {
     },
     /** 执行回退(记录级/节点级) */
     rollbackOptimization: async (id: string): Promise<void> => {
-      await api(`/optimizations/${id}/rollback`, { method: 'POST', body: JSON.stringify({}) })
+      const data = await api<unknown>(`/optimizations/${id}/rollback`, { method: 'POST', body: JSON.stringify({}) })
+      rejectPending(data)
     },
     rollbackNode: async (nodeId: string, to?: string): Promise<void> => {
       await api(`/journal/node/${nodeId}/rollback`, { method: 'POST', body: JSON.stringify({ to }) })
@@ -204,7 +219,8 @@ function createStore() {
       await api(`/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
     },
     removeNode: async (id: string): Promise<void> => {
-      await api(`/${id}`, { method: 'DELETE' })
+      const data = await api<unknown>(`/${id}`, { method: 'DELETE' })
+      rejectPending(data)
       const i = nodes.findIndex(x => x.id === id)
       if (i >= 0) nodes.splice(i, 1)
       nodeIndex.delete(id)
@@ -244,8 +260,9 @@ function createStore() {
       return api<{ test: { ok: boolean, message: string } }>(`/${id}/test`, { method: 'POST' }).then(r => r.test)
     },
     startStop: async (action: 'start' | 'stop' | 'pause' | 'resume'): Promise<void> => {
-      const data = await api<{ controller: AepDcwControllerState }>('/controller', { method: 'POST', body: JSON.stringify({ action }) })
-      Object.assign(controller, data.controller)
+      const data = await api<{ controller?: AepDcwControllerState }>('/controller', { method: 'POST', body: JSON.stringify({ action }) })
+      rejectPending(data)
+      if (data.controller) Object.assign(controller, data.controller)
     },
     createTemplate: async (input: DcwTemplateInput): Promise<DcwTemplateDef> => {
       const data = await api<{ template: DcwTemplateDef }>('/templates', { method: 'POST', body: JSON.stringify(input) })
