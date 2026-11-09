@@ -45,6 +45,11 @@ export interface AgentWorkspace {
   /** 列出本 Channel 同事 */
   listAgents(): Promise<AgentInfo[]>
   /**
+   * (可选)广播目标面:基础成员 + 发起者所属会话的 clone。
+   * 未实现时调用方回退 `listAgents()`(测试替身/单实现不破)。
+   */
+  listBroadcastTargets?(senderAgentId: string): Promise<AgentInfo[]>
+  /**
    * (仅 lead)把一次**人类请求**升级为可追踪的根任务,归属 Lead 自己。
    *
    * 为什么需要它:`dispatch_task` 强制要求 `parent_task_id`,因此从**群聊**收到的

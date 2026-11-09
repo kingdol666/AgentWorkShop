@@ -44,6 +44,10 @@ export async function handleSendMessageToAgent(
     metadata['x-aw-thread-root'] = inReplyTo
   }
   metadata['x-aw-msg-priority'] = priority
+  // 会话戳:接收端 message.ts 用 metadata 的 x-aw-session-id 解析会话上下文
+  // (会话 brief / 记忆召回作用域 / 落库 messages.session_id)。manager 侧投递路径
+  // 本来就盖章,唯独 LLM 工具桥的点对点消息漏了 —— peer 协作第二跳会丢会话。
+  if (state.sessionId) metadata['x-aw-session-id'] = state.sessionId
   try {
     const sent = await ws.sendMessage({ toAgentId, parts: [{ text: message }], metadata })
     state.replyContext = null
@@ -217,6 +221,7 @@ export async function handleReadChannelMail(args: Record<string, unknown>, ws: A
 export async function handleBroadcastMessage(
   args: Record<string, unknown>,
   identity: HostToolBridgeContext['identity'],
+  state: HostToolSessionState,
   ws: AgentWorkspace,
 ): Promise<HostToolResult> {
   const message = args.message as string
@@ -225,7 +230,11 @@ export async function handleBroadcastMessage(
     return { text: 'message 为空 —— 广播内容不能为空串', isError: true }
   }
   const priority = (args.priority as string | undefined) ?? 'task'
-  const agents = await ws.listAgents()
+  // 会话隔离:发起者是会话 clone 时只到「基础成员 + 本会话 clone」(manager 按
+  // memberMap 收窄);未实现该能力面的 workspace(测试替身/单实现)回退全量。
+  const agents = ws.listBroadcastTargets
+    ? await ws.listBroadcastTargets(identity.agentId)
+    : await ws.listAgents()
   const others = agents.filter(a => a.id !== identity.agentId)
   // 2026-10-30 修复:广播是无幂等键的扇出写 —— 原实现中途失败直接抛错,前面成员已
   // 收到而 LLM 见错重试 → 重复投递。改为逐个收集结果,如实回报送达/失败名单,
@@ -237,7 +246,10 @@ export async function handleBroadcastMessage(
       await ws.sendMessage({
         toAgentId: agent.id,
         parts: [{ text: message }],
-        metadata: { 'x-aw-msg-priority': priority },
+        metadata: {
+          'x-aw-msg-priority': priority,
+          ...(state.sessionId ? { 'x-aw-session-id': state.sessionId } : {}),
+        },
       })
       delivered.push(agent.id)
     }

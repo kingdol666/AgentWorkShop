@@ -12,7 +12,7 @@ import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { assertSpawnConfigAllowed, assertSpawnConfigPatchAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
 import { instanceToAgentInfo } from './helpers'
-import { createChannelSession, closeChannelSession } from '../../agents/session-clone'
+import { createChannelSession, closeChannelSession, activeSessionIdOfMember } from '../../agents/session-clone'
 import { createTaskInstanceChannel } from '../../agents/task-channel'
 import type { TaskInstanceDeps } from '../../agents/task-channel'
 import { getAgentNodeBindingRepo } from '../../agents/node-bindings.repo'
@@ -20,6 +20,7 @@ import { createChannelSessionRepo, type ChannelSessionRow } from '../../db/chann
 import type { SessionCloneDeps } from '../../agents/session-clone'
 import { parseJson } from '../../db/database'
 import { createImprovementActionRepo } from '../../db/improvement-action.repo'
+import { selectBroadcastTargets } from './broadcast-targets'
 import { randomUUID } from 'node:crypto'
 
 export abstract class ManagerAdminAgents extends ManagerAdminChannel {
@@ -76,6 +77,24 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
 
   async listChannelAgents(channelId: string): Promise<AgentInfo[]> {
     return this.deps.repos.channelAgents.listByChannel(channelId).map(instanceToAgentInfo)
+  }
+
+  /**
+   * 广播目标面(会话隔离):基础成员 + 发起者所属会话的 clone。
+   * 发起者是基础成员(频道 lead)→ 频道级全量,保持既有语义;是会话 clone →
+   * 按 session memberMap 收窄,不把会话内广播扇出到别的会话。
+   */
+  async listBroadcastTargets(channelId: string, senderAgentId: string): Promise<AgentInfo[]> {
+    const agents = await this.listChannelAgents(channelId)
+    const sessions = createChannelSessionRepo(this.deps.db).listByChannel(channelId)
+    const sessionId = activeSessionIdOfMember(sessions, senderAgentId)
+    const memberIds = sessionId
+      ? new Set(Object.values(parseJson<Record<string, string>>(
+        sessions.find(s => s.id === sessionId)?.memberMapJson ?? '{}',
+        {},
+      )))
+      : null
+    return selectBroadcastTargets(agents, senderAgentId, memberIds)
   }
 
   /** Agent 记忆列表(私有观察面;content 还原为未切分原文,客户端可读):实例须存在于本 channel */
