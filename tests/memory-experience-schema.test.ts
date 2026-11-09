@@ -141,6 +141,20 @@ test('作用域检索：line/product 分档隔离 + retired 缺省排除 + chann
     // 显式包含 retired 才能取到
     assert.equal(repo.listByScope({ scopeKind: 'line', scopeKey: 'line-1', statuses: ['retired'] }).length, 1)
     assert.equal(repo.listByScope({ scopeKind: 'line', scopeKey: 'line-1', channelIds: [] }).length, 0, '空 channel 集 = 空集')
+
+    // 回归：普通记忆（episodic/semantic）即便 scope_kind 命中也不得计入经验域
+    // （实测 live 看板曾把 25 条 episodic 计入 → 29 vs 真实 4）
+    repo.upsert({
+      channelId: 'ch-1', agentId: 'agent-a', kind: 'episodic-task',
+      title: '普通任务记忆', titleFts: '普 通 任 务 记 忆', content: 'x', importance: 0.8,
+      dedupKey: 'task:ep-1',
+    })
+    assert.equal(
+      repo.listByScope({ scopeKind: 'line', scopeKey: 'line-1', channelIds: ['ch-1'] }).length,
+      1,
+      '非经验行不得计入经验域（会话默认 scope_kind 会误命中）',
+    )
+    assert.equal(repo.listByScope({ scopeKind: 'session', channelIds: ['ch-1'] }).length, 0, 'session 档同样只取经验行')
   }
   finally {
     db.close()
