@@ -23,17 +23,21 @@ function load(): { nodes: DcwNode[], migrated: number } {
     let migrated = 0
     const nodes = (parsed as Record<string, unknown>[]).map((r) => {
       const node = DcwNode.fromRow(r)
-      // P0-5 启动迁移:旧命名归一(modbus→modbus-tcp 等);无法归一的未知 kind
-      // 降级 mock 并打标(fail-visible,不砖启动)—— 该节点后续写路径显式失败待重配。
+      // P0-5 启动迁移:旧命名归一(modbus→modbus-tcp 等)。
+      // 2026-11-10 对齐 DAQ S11:未知 kind 保留原名并显式标记不可用,**绝不降级 mock** ——
+      // mock 写入恒 ok + 回读同一 Map,会让坏驱动配置表现为"写成功且设备证实"。
+      // 写路径由 resolveDcwDriver → unavailableDcwDriver 显式失败。
       if (r.driver != null) {
         const m = migrateDcwDriverKind(String(r.driver))
-        if (m.kind !== node.driver) {
+        if (m.unknown) {
           node.driver = m.kind
           migrated++
-          if (m.downgraded) {
-            node.lastError = `驱动「${String(r.driver)}」未注册,已降级 mock —— 请重新配置节点驱动后重写`
-            log.warn(`[dcw] 节点 ${node.id}(${node.name}) 驱动「${String(r.driver)}」未注册,已降级 mock`)
-          }
+          node.lastError = `驱动「${String(r.driver)}」未注册 —— 已拒绝下发,请安装对应驱动插件或重新配置节点驱动`
+          log.warn(`[dcw] 节点 ${node.id}(${node.name}) 驱动「${String(r.driver)}」未注册,已拒绝下发(不降级 mock)`)
+        }
+        else if (m.kind !== node.driver) {
+          node.driver = m.kind
+          migrated++
         }
       }
       return node

@@ -287,6 +287,12 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
       clearInterval(this.outboxTimer)
       this.outboxTimer = null
     }
+    // chat 投递恢复定时器:构造时启动、每 15s 跑一次。漏清会让停服后仍继续访问
+    // 已清空的 channels/agentIndex(靠内部 catch 掩盖),属于静默的关停泄漏。
+    if (this.chatDeliveryTimer) {
+      clearInterval(this.chatDeliveryTimer)
+      this.chatDeliveryTimer = null
+    }
     this.scheduleRuntime?.stop()
     this.scheduleRuntime = null
     await Promise.all([...this.channels.values()].map(cr => cr.stopSchedulersAndWait()))

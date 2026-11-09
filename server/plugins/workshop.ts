@@ -276,7 +276,9 @@ export default function workshopPlugin(nitroApp: {
   })
 
   // 懒加载恢复:仅激活有待办任务的 channel(装配 lead + 调度循环);其余纯持久化
-  manager.restore()
+  // 方法体全同步,但 async 函数的异常仍会变成 rejected promise;本插件是同步函数、
+  // 裸调即 unhandledRejection → dev-stability-guard 可判 fatal 退出(启动崩溃循环)。
+  void manager.restore().catch(err => console.error('[workshop] restore 失败(不阻断启动):', err))
 
   // DAQ 采集恢复(时序竞态补挂):daq 插件按 nitro 装配序先于本插件执行,其 boot
   // startAll 时节点运行时多半尚未从 repo 重建(空集,startAll 空转);本插件此处节点
