@@ -218,6 +218,19 @@ test('采集器：任务事实含判据/失败分类/产线锚点（只读聚合
   }
 })
 
+test('故障注入：仓储写入抛错 → 反射返回 written=false 且不向调用方抛出', async () => {
+  const brokenRepo = {
+    upsertExperience: () => {
+      throw new Error('db down')
+    },
+  } as never
+  const r = await reflectExperience(brokenRepo, null, {
+    source: 'task', channelId: 'ch-1', agentId: 'a', taskId: 't-fault', title: '故障', state: 'COMPLETED', deliverable: '值',
+  })
+  assert.equal(r.written, false)
+  assert.match(String(r.reason), /db down/)
+})
+
 test('采集器：评审事实按 validity_scope 解析 line/product；干预补扫幂等', () => {
   const { db } = fixture()
   try {

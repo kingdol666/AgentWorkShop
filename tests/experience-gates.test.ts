@@ -139,6 +139,15 @@ test('回滚：同频道回退到上一版本；唯一版本/无 active → 拒�
   }
 })
 
+test('故障注入：证据 JSON 损坏 → 门按无锚点拒绝（不抛错、不放行）', () => {
+  const decision = evaluateExperienceGate(
+    { status: 'candidate', outcome: 'positive', evidenceJson: '{not json', expiresAt: null },
+    'validated',
+  )
+  assert.equal(decision.allowed, false)
+  assert.match(decision.reasons.join('；'), /证据锚点缺失|独立任务样本不足/)
+})
+
 test('执行面：promoteProfile 需要 bench；落地后单 active 不变量保持', () => {
   const { db, profiles } = fixture()
   try {

@@ -14,7 +14,7 @@ process.env.AW_HOME = mkdtempSync(join(tmpdir(), 'aw-rsi-c1-'))
 delete process.env.AW_BENCH_MODE
 
 const { openWorkshopDb } = await import('../server/services/workshop/db/database')
-const { verifyInterventionEvent, verifyPendingInterventions, verifyAllPending, listBlindVerifications } = await import('../server/services/workshop/verify/blind-verifier')
+const { verifyInterventionEvent, verifyPendingInterventions, verifyAllPending, listBlindVerifications, blindCheckForTask, blindMetricsForTask } = await import('../server/services/workshop/verify/blind-verifier')
 
 const now = new Date().toISOString()
 
@@ -113,6 +113,112 @@ test('不存在的台账：返回 null 而非抛错', () => {
   const db = fixture()
   try {
     assert.equal(verifyInterventionEvent(db, 'missing'), null)
+  }
+  finally {
+    db.close()
+  }
+})
+
+// ===== WP-C1 → L1/C4 接线：任务归属 / 判定 / 指标 =====
+
+test('任务归属：验证落 task_id；定时器先验后任务终态补归属（不覆盖已有值）', () => {
+  const db = fixture()
+  try {
+    seedEvent(db, 'ie-t1')
+    // 定时器先跑（无任务归属）
+    verifyInterventionEvent(db, 'ie-t1', probeWith(218.5))
+    // 任务终态补扫带 taskId（sinceIso 覆盖定时器已验行）→ 补归属
+    verifyPendingInterventions(db, 'ch-1', { probe: probeWith(218.5), taskId: 't-1', sinceIso: new Date(Date.now() - 3600_000).toISOString() })
+    const row = db.prepare('SELECT task_id AS taskId FROM blind_verifications WHERE event_id = ?').get('ie-t1') as { taskId: string }
+    assert.equal(row.taskId, 't-1')
+
+    seedEvent(db, 'ie-t2')
+    verifyInterventionEvent(db, 'ie-t2', probeWith(218.5), 't-2')
+    assert.equal((db.prepare('SELECT task_id AS taskId FROM blind_verifications WHERE event_id = ?').get('ie-t2') as { taskId: string }).taskId, 't-2')
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('L1 判定：无记录 null；全 match 通过；mismatch/inconclusive 一律阻断（fail-closed）', () => {
+  const db = fixture()
+  try {
+    assert.equal(blindCheckForTask(db, 't-none'), null, '没有设备写验证的任务不虚构 check')
+
+    seedEvent(db, 'ie-t3')
+    verifyInterventionEvent(db, 'ie-t3', probeWith(218.5), 't-ok')
+    const ok = blindCheckForTask(db, 't-ok')!
+    assert.equal(ok.pass, true)
+    assert.match(ok.detail, /全部 match/)
+
+    seedEvent(db, 'ie-t4')
+    verifyInterventionEvent(db, 'ie-t4', probeWith(231), 't-bad')
+    const bad = blindCheckForTask(db, 't-bad')!
+    assert.equal(bad.pass, false)
+    assert.match(bad.detail, /mismatch/)
+
+    seedEvent(db, 'ie-t5')
+    verifyInterventionEvent(db, 'ie-t5', probeWith(null), 't-inc')
+    const inc = blindCheckForTask(db, 't-inc')!
+    assert.equal(inc.pass, false, 'inconclusive ≠ pass')
+    assert.match(inc.detail, /inconclusive/)
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('C4 指标源：从 probe_json 取节点 id/名称 → 实际回读值（非自述）', () => {
+  const db = fixture()
+  try {
+    seedEvent(db, 'ie-t6')
+    verifyInterventionEvent(db, 'ie-t6', probeWith(218.52), 't-metrics')
+    const metrics = blindMetricsForTask(db, 't-metrics')
+    assert.equal(metrics['n-1'], 218.52)
+    assert.equal(metrics['均热段'], 218.52)
+    assert.deepEqual(blindMetricsForTask(db, 't-none'), {}, '无记录 → 空指标（metric 判据仍 fail-closed）')
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('故障注入：探针抛错不阻断批量，且不落任何判定', () => {
+  const db = fixture()
+  try {
+    seedEvent(db, 'ie-fault')
+    const counts = verifyPendingInterventions(db, 'ch-1', {
+      probe: () => {
+        throw new Error('probe exploded')
+      },
+    })
+    assert.deepEqual(counts, { match: 0, mismatch: 0, inconclusive: 0, total: 0 })
+    assert.equal(listBlindVerifications(db, 'ch-1').length, 0)
+    assert.equal(blindCheckForTask(db, 't-fault'), null)
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('迁移幂等/升级：旧表缺 task_id → 补列且不丢行', async () => {
+  const db = fixture()
+  try {
+    const { migrateBlindVerifications } = await import('../server/services/workshop/db/database/migrations-blind-verification')
+    db.exec('DROP TABLE blind_verifications')
+    db.exec(`CREATE TABLE blind_verifications (
+      id TEXT PRIMARY KEY, event_id TEXT NOT NULL UNIQUE, channel_id TEXT NOT NULL DEFAULT '',
+      line_id TEXT NOT NULL DEFAULT '', verdict TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '',
+      probe_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)`)
+    db.prepare(`INSERT INTO blind_verifications (id, event_id, channel_id, line_id, verdict, detail, probe_json, created_at)
+      VALUES ('legacy-bv','ie-legacy','ch-1','line-1','match','旧行','{}',?)`).run(now)
+    migrateBlindVerifications(db)
+    migrateBlindVerifications(db)
+    const cols = db.prepare('PRAGMA table_info(blind_verifications)').all() as Array<{ name: string }>
+    assert.ok(cols.some(c => c.name === 'task_id'))
+    const row = db.prepare(`SELECT task_id AS taskId FROM blind_verifications WHERE id = 'legacy-bv'`).get() as { taskId: string }
+    assert.equal(row.taskId, '', '旧行按默认值解释')
   }
   finally {
     db.close()

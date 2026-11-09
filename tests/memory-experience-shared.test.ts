@@ -272,3 +272,72 @@ test('作用域锚点：product 需 scope_key；global 不需要', () => {
     db.close()
   }
 })
+
+// ===== 权限矩阵补充（计划 WP-A4 要求 ≥12 用例）=====
+
+test('memoryPolicy=session：channel 公共域（shared）写入不受影响（策略只管共享作用域经验）', async () => {
+  const { db, repo } = fixture([{ id: 'ch-1', owner: 'u-1', lineId: 'line-1' }])
+  try {
+    session(db, 'sess-1', 'ch-1', 'session')
+    const m = mem(repo, 'ch-1')
+    const saved = await m.save({ title: '频道经验', content: '仅本频道可见', scope: 'shared', sessionId: 'sess-1', taskId: 't-1' })
+    assert.equal(saved.scope, 'shared')
+    const row = db.prepare('SELECT kind FROM agent_memories WHERE dedup_key = ?').get(saved.dedupKey) as { kind: string } | undefined
+    assert.equal(row?.kind, 'semantic', 'channel 公共域仍走既有语义记忆路径')
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('跨频道授权：非本频道成员不可读（requireMember 先于检索）', () => {
+  const { db, repo } = fixture([
+    { id: 'ch-a', owner: 'u-1', lineId: 'line-1' },
+    { id: 'ch-b', owner: 'u-1', lineId: 'line-1' },
+  ])
+  try {
+    seedExp(repo, { channelId: 'ch-a', scopeKind: 'line', scopeKey: 'line-1' })
+    const mgr = shim(db, repo, { 'ch-b': [{ id: 'worker-1', role: 'worker' }] })
+    assert.throws(
+      () => mgr.searchSharedExperience('ch-b', 'outsider', { query: '均热段 温差', scope: 'line' }),
+      /not a member/,
+    )
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('product 档跨频道：同 product 命中，异 product 零命中', () => {
+  const { db, repo } = fixture([
+    { id: 'ch-a', owner: 'u-1', lineId: 'line-1' },
+    { id: 'ch-b', owner: 'u-1', lineId: 'line-2' },
+  ])
+  try {
+    seedExp(repo, { channelId: 'ch-a', scopeKind: 'product', scopeKey: 'prod-1', dedupKey: 'exp:p1' })
+    const mgr = shim(db, repo, { 'ch-b': [{ id: 'worker-1', role: 'worker' }] })
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-1' }).length, 1)
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-2' }).length, 0)
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('global 档：仅 global 经验跨频道可见，line 经验不受 global 查询污染', () => {
+  const { db, repo } = fixture([
+    { id: 'ch-a', owner: 'u-1', lineId: 'line-1' },
+    { id: 'ch-b', owner: 'u-1', lineId: 'line-2' },
+  ])
+  try {
+    seedExp(repo, { channelId: 'ch-a', scopeKind: 'line', scopeKey: 'line-1', dedupKey: 'exp:line' })
+    seedExp(repo, { channelId: 'ch-a', scopeKind: 'global', dedupKey: 'exp:global' })
+    const mgr = shim(db, repo, { 'ch-b': [{ id: 'worker-1', role: 'worker' }] })
+    const rows = mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'global' })
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0]!['scopeKind'], 'global')
+  }
+  finally {
+    db.close()
+  }
+})

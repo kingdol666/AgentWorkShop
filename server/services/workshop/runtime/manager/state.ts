@@ -31,7 +31,7 @@ import { reflectExperience } from '../memory/reflector'
 import { collectInterventionFact, collectTaskFact, listUnreflectedInterventions } from '../memory/reflect-collector'
 import { registerInterventionAssessmentHook } from '../../aml/intervention-ledger'
 import { getDcwController } from '../../dcw/dcw-controller'
-import { verifyAllPending } from '../../verify/blind-verifier'
+import { verifyAllPending, verifyPendingInterventions } from '../../verify/blind-verifier'
 
 /** §7.1 事件名 → 展示标签(tasks 状态机 → 设计文档事件契约) */
 const EVENT_LABELS: Record<string, string> = {
@@ -521,6 +521,12 @@ export abstract class ManagerState extends ManagerContracts {
       void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch((err) => {
         log.warn('[memory] 任务经验反射失败:', err instanceof Error ? err.message : err)
       })
+      // WP-C1：任务终态先补扫本频道待验证写入并归属到该任务（定时器全库补扫之外的即时路径）。
+      // 学习环失败不影响任务流；归属仅用于 L1/C4 取数，不改变判定口径。
+      try {
+        verifyPendingInterventions(this.deps.db, channelId, { limit: 20, taskId, sinceIso: task.createdAt })
+      }
+      catch { /* 单频道验证失败不阻断任务终态 */ }
     }
     catch (err) {
       log.warn('[memory] 任务经验采集失败:', err instanceof Error ? err.message : err)

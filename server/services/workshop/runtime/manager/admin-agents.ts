@@ -19,6 +19,7 @@ import { getAgentNodeBindingRepo } from '../../agents/node-bindings.repo'
 import { createChannelSessionRepo, type ChannelSessionRow } from '../../db/channel-session.repo'
 import type { SessionCloneDeps } from '../../agents/session-clone'
 import { parseJson } from '../../db/database'
+import { createImprovementActionRepo } from '../../db/improvement-action.repo'
 import { randomUUID } from 'node:crypto'
 
 export abstract class ManagerAdminAgents extends ManagerAdminChannel {
@@ -208,6 +209,17 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
           createdAt: r.createdAt,
         })),
     }
+  }
+
+  /**
+   * RSI 元层成效看板(WP-C3;REST 只读):按 action_kind 聚合成功率(事实计数)。
+   * 口径:accepted+promoted 视为成功;无动作时返回空数组,不报错。
+   */
+  improvementOverview(channelId: string): {
+    channelId: string
+    stats: Array<{ actionKind: string, total: number, success: number, rate: number }>
+  } {
+    return { channelId, stats: createImprovementActionRepo(this.deps.db).stats(channelId) }
   }
 
   // ===== Agent 私有记忆策展(本人或 lead 写/删;kind='semantic' 人工策展)=====
