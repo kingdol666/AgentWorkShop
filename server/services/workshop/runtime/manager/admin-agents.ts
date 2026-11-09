@@ -20,6 +20,7 @@ import { createChannelSessionRepo, type ChannelSessionRow } from '../../db/chann
 import type { SessionCloneDeps } from '../../agents/session-clone'
 import { parseJson } from '../../db/database'
 import { createImprovementActionRepo } from '../../db/improvement-action.repo'
+import { withTransaction } from '../../db/transaction'
 import { selectBroadcastTargets } from './broadcast-targets'
 import { randomUUID } from 'node:crypto'
 
@@ -90,9 +91,9 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     const sessionId = activeSessionIdOfMember(sessions, senderAgentId)
     const memberIds = sessionId
       ? new Set(Object.values(parseJson<Record<string, string>>(
-        sessions.find(s => s.id === sessionId)?.memberMapJson ?? '{}',
-        {},
-      )))
+          sessions.find(s => s.id === sessionId)?.memberMapJson ?? '{}',
+          {},
+        )))
       : null
     return selectBroadcastTargets(agents, senderAgentId, memberIds)
   }
@@ -384,6 +385,8 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
         channelAgents: this.deps.repos.channelAgents as unknown as SessionCloneDeps['channelAgents'],
         tasks: this.getTaskEngine(),
         bindings: getAgentNodeBindingRepo(),
+        // clone 行 + session 行原子落库(绑定面是 JSON 文件,出事务后复制)
+        withTx: fn => withTransaction(this.deps.db, fn),
         unloadAgent: (cid, iid) => this.unloadAgent(cid, iid),
         notify: (cid, payload) => this.notifyMember(cid, { ...payload, enabled: 1, by: 'session', reason: 'session create' }),
       },

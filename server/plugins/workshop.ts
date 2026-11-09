@@ -62,6 +62,8 @@ import { recoverInterruptedJobs, shutdownOrchestrator } from '../services/worksh
 import { envStatus, startCreateVenv } from '../services/workshop/aml/env-manager'
 import { attachOmpPluginBridge } from '../services/workshop/agents/plugin-tools'
 import { initToolRegistrySync } from '../services/workshop/tools/registry'
+import { initToolRegistryDb } from '../services/workshop/db/tool-registry.repo'
+import { initChannelPluginsDb } from '../services/workshop/db/channel-plugins.repo'
 import { startAmlRetentionTimer, stopAmlRetentionTimer } from '../services/workshop/aml/retention'
 import { configureMesDatasets, defaultDatasetsDir } from '../services/workshop/mes/mes-datasets'
 import { configureAnalysisRepo } from '../services/workshop/analysis/analysis.repo'
@@ -121,6 +123,10 @@ export default function workshopPlugin(nitroApp: {
   // 打开(或创建)数据库 → 初始化(建表 + PRAGMA;openWorkshopDb 已内置,显式再调一次保持幂等)
   const db = openWorkshopDb(resolve(dataDir, 'workshop.sqlite'))
   initWorkshopDb(db)
+  // 让自持第二连接的两个仓储复用主连接:同文件双连接会争写锁(busy_timeout 仅 4s),
+  // 备份/批量 channel_events 持锁窗口里保存工具策略或插件开关会 SQLITE_BUSY。
+  initToolRegistryDb(db)
+  initChannelPluginsDb(db)
   // 登记主连接(备份插件 serialize 跑在主连接上,杜绝第二连接失效语句的事故)
   backupRegistry.register(resolve(dataDir, 'workshop.sqlite'), db)
 
