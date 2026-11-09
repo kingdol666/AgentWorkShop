@@ -8,6 +8,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 import { createMemoryRepo } from '../db/memory.repo'
+import { createImprovementActionRepo } from '../db/improvement-action.repo'
 import { recordOps } from '../ops/ops'
 import { createHarnessProfileRepo } from './harness-profile'
 import { evaluateExperienceGate, evaluateProfileGate, rollbackTarget, type PairedBenchResult } from './gates'
@@ -31,6 +32,16 @@ export function promoteExperience(
   const decision = evaluateExperienceGate(row, input.to)
   if (!decision.allowed || !decision.next) return { ok: false, reasons: decision.reasons }
   repo.markStatus(input.memoryId, decision.next)
+  // WP-C3:元层成效入表(哪类改进动作有效,由事实计数回答)
+  createImprovementActionRepo(db).record({
+    actionKind: 'experience_promote',
+    subjectKind: 'experience',
+    subjectId: input.memoryId,
+    channelId: input.channelId,
+    decision: decision.next === 'validated' ? 'promoted' : 'rejected',
+    decidedBy: input.actor,
+    detail: { reasons: decision.reasons, to: decision.next },
+  })
   try {
     recordOps({
       actor: input.actor, actorName: input.actorName ?? input.actor, actorKind: 'agent',
@@ -54,6 +65,16 @@ export function promoteProfile(
   const decision = evaluateProfileGate(row, input.to, input.bench ?? null)
   if (!decision.allowed || !decision.next) return { ok: false, reasons: decision.reasons }
   repo.markStatus(input.profileId, decision.next)
+  createImprovementActionRepo(db).record({
+    actionKind: 'profile_promote',
+    subjectKind: 'harness_profile',
+    subjectId: input.profileId,
+    channelId: input.channelId,
+    decision: decision.next === 'active' ? 'promoted' : 'accepted',
+    outcomeDelta: input.bench?.primaryDelta ?? null,
+    decidedBy: input.actor,
+    detail: { reasons: decision.reasons, to: decision.next, bench: input.bench ?? null },
+  })
   try {
     recordOps({
       actor: input.actor, actorName: input.actorName ?? input.actor, actorKind: 'agent',
@@ -80,6 +101,15 @@ export function rollbackProfile(
   const targetId = rollbackTarget(repo.listByChannel(input.channelId, 50), active.id)
   if (!targetId) return { ok: false, reasons: ['没有更早版本可回滚（唯一版本）'] }
   repo.markStatus(targetId, 'active')
+  createImprovementActionRepo(db).record({
+    actionKind: 'profile_rollback',
+    subjectKind: 'harness_profile',
+    subjectId: targetId,
+    channelId: input.channelId,
+    decision: 'rolled_back',
+    decidedBy: input.actor,
+    detail: { from: active.id, to: targetId, fromVersion: active.version },
+  })
   try {
     recordOps({
       actor: input.actor, actorName: input.actorName ?? input.actor, actorKind: 'agent',

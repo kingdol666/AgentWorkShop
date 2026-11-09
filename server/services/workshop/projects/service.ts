@@ -42,6 +42,7 @@ import { AppError } from '../../../utils/errors'
 import { argsDigest } from './digest'
 import { PROJECT_GATED_WRITE_TOOL_NAMES } from './tool-surface'
 import { evaluateWorkItemReadiness } from './readiness'
+import { evaluateMetricCriterion } from './criteria-metrics'
 import { selectReadyWithContext } from './route-dispatcher'
 import { validateBlueprint, type ProjectBlueprint } from './blueprints.repo'
 
@@ -210,6 +211,8 @@ export function evaluateCriteriaChecks(input: {
   artifacts: ArtifactDigest[]
   payloadJson?: string
   artifactBacked: number
+  /** WP-C4：独立观测指标（回读/DAQ；**不得来自 Agent 自述**）。缺 key → 该判据 fail-closed 阻断 */
+  metrics?: Record<string, number>
 }): CriteriaCheckResult {
   const checks: CriteriaCheckResult['checks'] = []
   const blockingFailures: string[] = []
@@ -253,6 +256,13 @@ export function evaluateCriteriaChecks(input: {
       const pass = String(actual ?? '') === jsonField[2]!.trim()
       checks.push({ criterion: c, pass, detail: `actual=${String(actual ?? '')}` })
       if (!pass) blockingFailures.push(c)
+      continue
+    }
+    // WP-C4:数值判据(独立观测指标;缺失即阻断,不接受自述值)
+    const metric = evaluateMetricCriterion(c, input.metrics)
+    if (metric.matched) {
+      checks.push({ criterion: c, pass: metric.pass, detail: metric.detail })
+      if (!metric.pass) blockingFailures.push(c)
       continue
     }
     // 自然语言标准无法确定性判定 → advisory，交 L1 技术验收/人工。

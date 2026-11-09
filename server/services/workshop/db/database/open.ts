@@ -12,6 +12,7 @@ import { migrateSessionContextColumns, ensureSessionIndexes } from './migrations
 import { migrateExperienceColumns, ensureExperienceIndexes } from './migrations-experience'
 import { migrateImprovementProposals } from './migrations-improvement'
 import { migrateHarnessProfiles } from './migrations-harness-profile'
+import { migrateImprovementActions } from './migrations-improvement-actions'
 import { seedDefaultWorkshopData } from './seed'
 
 export const require = createRequire(import.meta.url)
@@ -93,6 +94,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateImprovementProposals(db)
   // RSI Harness Profile 版本表(WP-B1)；只建表不重建,幂等
   migrateHarnessProfiles(db)
+  // RSI 元层成效表(WP-C3)；只建表不重建,幂等
+  migrateImprovementActions(db)
   migrateGroupChatV17(db)
   migrateAmlTwinProviderColumns(db)
   migrateAmlModelIdentityColumns(db)
