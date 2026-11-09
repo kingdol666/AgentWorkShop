@@ -1,0 +1,7 @@
+
+> agentworkshop@0.10.0 i18n:check
+> node scripts/_i18n-verify-keys.mjs
+
+zh keys: 3291 / en keys: 3291
+used keys: 2873 / unresolved: 0
+PARITY OK

@@ -1,0 +1,357 @@
+{
+  "generatedAt": "2026-11-09T06:08:22.511Z",
+  "base": "http://127.0.0.1:4013",
+  "pid": "b1ac7652-f9eb-4eb2-b7ae-faa3a83470df",
+  "pass": 58,
+  "fail": 0,
+  "results": [
+    {
+      "id": "S0-1",
+      "name": "双账号登录(owner / 独立评审)",
+      "pass": true,
+      "detail": "A=admin B=verify-pitfall"
+    },
+    {
+      "id": "S1-1",
+      "name": "三频道建立(需求/开发/测试;非产线域)",
+      "pass": true,
+      "detail": "req=0f296cab dev=939ba3cc qa=aec47dda"
+    },
+    {
+      "id": "S1-2",
+      "name": "Project 创建(显式 leaderHarness;通用开发域)",
+      "pass": true,
+      "detail": "pid=b1ac7652 ok"
+    },
+    {
+      "id": "S1-3",
+      "name": "负面用例:缺 leaderHarness → 400(P2 去默认生效)",
+      "pass": true,
+      "detail": "status=400 code=VALIDATION_ERROR"
+    },
+    {
+      "id": "S1-4",
+      "name": "三交付物注册",
+      "pass": true,
+      "detail": "ed04a5/22300c/033f4b"
+    },
+    {
+      "id": "S1-5",
+      "name": "依赖链 W1→W2→W3",
+      "pass": true,
+      "detail": "36b66e→25514f→f9cf18"
+    },
+    {
+      "id": "S1-6",
+      "name": "plan 审批(独立 admin)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-d1",
+      "name": "W1 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-d2",
+      "name": "W1 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=65d422fa"
+    },
+    {
+      "id": "W1-d3",
+      "name": "W1 实例 lead 启用",
+      "pass": true,
+      "detail": "lead=885a081e"
+    },
+    {
+      "id": "W1-t1",
+      "name": "W1 规格文档落盘(真实文件)",
+      "pass": true,
+      "detail": "103 bytes"
+    },
+    {
+      "id": "W1-x1",
+      "name": "W1 取消 mock 子任务",
+      "pass": true,
+      "detail": "任务 9dabab3c-2c9a-48ff-b391-08fdf899bda6 已取消并移出 assignee 队列"
+    },
+    {
+      "id": "W1-x2",
+      "name": "W1 自派替代分支",
+      "pass": true,
+      "detail": "781f92a6"
+    },
+    {
+      "id": "W1-x3",
+      "name": "W1 supersede 显式替代",
+      "pass": true,
+      "detail": "分支「W1 需求规格 — worker 执行与交付」(CANCELED)已标记为被 781f92a6 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并 "
+    },
+    {
+      "id": "W1-x4",
+      "name": "W1 收替代分支",
+      "pass": true,
+      "detail": "任务 781f92a6-7aa3-4cce-9a35-23b8bfa66ccf 已是完成状态(可能已被平台收口),无需重复完成。"
+    },
+    {
+      "id": "W1-c1",
+      "name": "W1 实例 lead 收口(真实工件摘要)",
+      "pass": true,
+      "detail": "任务 1fd1cfd3-da78-4b15-b835-989f26574e9e 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W1-c2",
+      "name": "W1 工作项 COMPLETED",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W1-s1",
+      "name": "W1 draft 物化(交付物=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"a4ee4190-60ef-41d7-a148-858f349c28a4\",\"projectId\":\"b1ac7652-f9eb-4eb2-b7ae-faa3a83470df\",\"deliverableId"
+    },
+    {
+      "id": "W1-s2",
+      "name": "W1 owner 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s3",
+      "name": "W1 L1 技术评审",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s4",
+      "name": "W1 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W1-s5",
+      "name": "W1 L2 签核 → approved",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-d1",
+      "name": "W2 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-d2",
+      "name": "W2 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=1b3eb8f8"
+    },
+    {
+      "id": "W2-d3",
+      "name": "W2 实例 lead 启用",
+      "pass": true,
+      "detail": "lead=62c15598"
+    },
+    {
+      "id": "W2-t1",
+      "name": "W2 源码落盘且可执行(python ledger.py summary)",
+      "pass": true,
+      "detail": "{\"count\": 0, \"income\": 0, \"expense\": 0, \"balance\": 0}"
+    },
+    {
+      "id": "W2-x1",
+      "name": "W2 取消 mock 子任务",
+      "pass": true,
+      "detail": "任务 8f672782-37a0-4cb4-af36-66ac5d06cf3e 已取消并移出 assignee 队列"
+    },
+    {
+      "id": "W2-x2",
+      "name": "W2 自派替代分支",
+      "pass": true,
+      "detail": "26281759"
+    },
+    {
+      "id": "W2-x3",
+      "name": "W2 supersede 显式替代",
+      "pass": true,
+      "detail": "分支「W2 源码实现 — worker 执行与交付」(CANCELED)已标记为被 26281759 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并 "
+    },
+    {
+      "id": "W2-x4",
+      "name": "W2 收替代分支",
+      "pass": true,
+      "detail": "任务 26281759-d1ad-4b8f-bf55-3d10dc520f0d 已是完成状态(可能已被平台收口),无需重复完成。"
+    },
+    {
+      "id": "W2-c1",
+      "name": "W2 实例 lead 收口(真实工件摘要)",
+      "pass": true,
+      "detail": "任务 27c7c652-aa73-414c-b938-c64457ae0183 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W2-c2",
+      "name": "W2 工作项 COMPLETED",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W2-s1",
+      "name": "W2 draft 物化(交付物=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"81cc70b0-8eed-4960-858c-28a57bf6663b\",\"projectId\":\"b1ac7652-f9eb-4eb2-b7ae-faa3a83470df\",\"deliverableId"
+    },
+    {
+      "id": "W2-s2",
+      "name": "W2 owner 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s3",
+      "name": "W2 L1 技术评审",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s4",
+      "name": "W2 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W2-s5",
+      "name": "W2 L2 签核 → approved",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-d1",
+      "name": "W3 派发(实例创建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-d2",
+      "name": "W3 实例 Channel+root 在飞",
+      "pass": true,
+      "detail": "inst=311e0da8"
+    },
+    {
+      "id": "W3-d3",
+      "name": "W3 实例 lead 启用",
+      "pass": true,
+      "detail": "lead=deddf3d9"
+    },
+    {
+      "id": "W3-t1",
+      "name": "W3 自动化测试执行并 PASS",
+      "pass": true,
+      "detail": "PASS"
+    },
+    {
+      "id": "W3-x1",
+      "name": "W3 取消 mock 子任务",
+      "pass": true,
+      "detail": "任务 bd293df3-9eb5-4ebf-8aaa-2436e907722f 已取消并移出 assignee 队列"
+    },
+    {
+      "id": "W3-x2",
+      "name": "W3 自派替代分支",
+      "pass": true,
+      "detail": "7b58d975"
+    },
+    {
+      "id": "W3-x3",
+      "name": "W3 supersede 显式替代",
+      "pass": true,
+      "detail": "分支「W3 自动化测试 — worker 执行与交付」(CANCELED)已标记为被 7b58d975 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并"
+    },
+    {
+      "id": "W3-x4",
+      "name": "W3 收替代分支",
+      "pass": true,
+      "detail": "任务 7b58d975-25cb-4727-88a1-95eb2cd66638 已是完成状态(可能已被平台收口),无需重复完成。"
+    },
+    {
+      "id": "W3-c1",
+      "name": "W3 实例 lead 收口(真实工件摘要)",
+      "pass": true,
+      "detail": "任务 0d7880f3-7190-42e6-89e4-6139c2804812 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "W3-c2",
+      "name": "W3 工作项 COMPLETED",
+      "pass": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "id": "W3-s1",
+      "name": "W3 draft 物化(交付物=真实工件)",
+      "pass": true,
+      "detail": "{\"id\":\"fbf9fa7e-e01c-4f69-b587-a889287bf9a1\",\"projectId\":\"b1ac7652-f9eb-4eb2-b7ae-faa3a83470df\",\"deliverableId"
+    },
+    {
+      "id": "W3-s2",
+      "name": "W3 owner 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-s3",
+      "name": "W3 L1 技术评审",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-s4",
+      "name": "W3 L2 申请",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "W3-s5",
+      "name": "W3 L2 签核 → approved",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-1",
+      "name": "项目完成审批创建",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "S3-2",
+      "name": "项目完成签核(独立 admin)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S3-3",
+      "name": "项目终态 completed",
+      "pass": true,
+      "detail": "status=completed"
+    },
+    {
+      "id": "S3-4",
+      "name": "全链审计事件齐备",
+      "pass": true,
+      "detail": "missing="
+    },
+    {
+      "id": "S3-5",
+      "name": "三交付物 approved",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S3-6",
+      "name": "产物文件齐备(4 件)",
+      "pass": true,
+      "detail": "SPEC.md, ledger.py, test_ledger.py, TEST-REPORT.md"
+    }
+  ]
+}

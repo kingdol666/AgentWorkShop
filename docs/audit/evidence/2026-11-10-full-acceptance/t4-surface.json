@@ -1,0 +1,82 @@
+{
+  "at": "2026-11-09T06:18:57.748Z",
+  "base": "http://127.0.0.1:4013",
+  "commit": "91b1f116",
+  "plugins": {
+    "count": 11,
+    "enabled": 11,
+    "failures": [],
+    "withError": 0
+  },
+  "tools": {
+    "total": 148,
+    "builtin": 127,
+    "plugin": 21,
+    "available": 148,
+    "unavailable": 0
+  },
+  "improvementChainTools": [
+    {
+      "name": "improvement_list",
+      "available": true
+    }
+  ],
+  "harnesses": [
+    {
+      "id": "mock",
+      "available": true
+    },
+    {
+      "id": "omp",
+      "available": true
+    },
+    {
+      "id": "opencode",
+      "available": true
+    },
+    {
+      "id": "codex",
+      "available": true
+    },
+    {
+      "id": "dsh",
+      "available": true
+    },
+    {
+      "id": "claude",
+      "available": true
+    },
+    {
+      "id": "gemini",
+      "available": true
+    },
+    {
+      "id": "copilot",
+      "available": true
+    },
+    {
+      "id": "cursor",
+      "available": true
+    },
+    {
+      "id": "crush",
+      "available": true
+    },
+    {
+      "id": "goose",
+      "available": true
+    },
+    {
+      "id": "qwen",
+      "available": true
+    },
+    {
+      "id": "pi",
+      "available": true
+    },
+    {
+      "id": "hermes",
+      "available": true
+    }
+  ]
+}
