@@ -95,12 +95,25 @@ export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping 
       await client.send({ type: 'set_host_tools', tools: hostToolsForAgent(this.selfAgentId, this.agentRole, this.channelId) })
 
       // 上下文治理探测(feature-detect 一次;失败退化被动 usage 跟踪)+ 原生压缩兜底保持开启
-      void this.probeContext(client).catch(() => {})
+      // 会话身份(sessionId)也由 probeContext 取回:必须 **await** —— fire-and-forget 会与
+      // omp 会话 bootstrap 竞态,首回合可能取不到 → continuity 长期 sessionless(实测)。
+      // 探测失败不阻塞建连(旧版 omp 无 get_state),此时由回合落定钩子 probeSessionIdentity 补探。
+      try {
+        await this.probeContext(client)
+      }
+      catch { /* 探测不可用:仅被动 usage 跟踪 */ }
       void client.send({ type: 'set_auto_compaction', enabled: true }).catch(() => {})
 
       this.client = client
       this.hostToolsRegistered = true
     }
+  }
+
+  /** 会话身份兜底探测(覆盖 core 的空实现):回合落定后若无 sessionId,向活客户端补探一次。 */
+  protected override async probeSessionIdentity(): Promise<void> {
+    const client = this.client
+    if (!client || !client.alive) return
+    await this.probeContext(client)
   }
 
   /** 上下文状态探测:get_state 取 contextWindow/sessionId(一次;失败仅损失 percent 精度) */

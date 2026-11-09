@@ -16,6 +16,12 @@ import { randomUUID } from 'node:crypto'
 export abstract class OmpRpcAgentImplCore extends BaseAgentImpl {
   // ── 跨层能力契约(由后面的层实现;见本文件头部说明)──
   protected abstract ensureClient(ctx: AgentRunContext): Promise<void>
+  /**
+   * 会话身份兜底探测(get_state → sessionId)。默认空实现:未覆盖该钩子的层不报错。
+   * 实现在 client 层(那里持有 client 与 probeContext);context-governance 的回合落定
+   * 钩子经本方法补探 —— 客户端重建后 omp 可能在首个 prompt 之后才分配 sessionId。
+   */
+  protected async probeSessionIdentity(): Promise<void> {}
   protected abstract mapOmpEvent(event: AgentSessionEvent, taskId: string | undefined): AgentEvent[]
   /** 构造器里 `liveAgents().add(this)` 需要本能力在**本层**可见(实现在 02-lifecycle)。
    *  必须是 public:结构化类型 `LiveOmpAgent` 只认公开成员,protected 不参与可赋值性判断。 */
