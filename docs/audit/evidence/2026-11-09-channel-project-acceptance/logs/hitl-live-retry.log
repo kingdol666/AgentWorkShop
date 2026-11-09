@@ -1,0 +1,7 @@
+
+━━━ HITL 真实端到端 @ http://127.0.0.1:4013 ━━━
+  FAIL  W1 omp lead channel 创建 — channel=undefined
+  FAIL  W2 提交驻留任务(触发 omp spawn) — task=undefined
+  … 等待 omp spawn(冷启动可达 2-3 分钟)…
+  FAIL  W2b 终端 WS 接入(agentId 寻址)
+FATAL Cannot read properties of null (reading 'send')

@@ -1,0 +1,82 @@
+✔ [S0-1] 双账号登录(owner / 独立评审)
+✔ [S0-2] 现场上下文(一区温度SP)
+✔ [S0-3] setup:批次 A 就绪(owner;line_start 基线下发=平台语义;409=沿用活动批次)
+✔ [S1-1] Project 创建(technical 路由)
+✔ [S1-2] 四频道绑定到 Project(职责分离)
+✔ [S1-3] 四期交付物注册
+✔ [S1-4] 四期依赖链 W1→W2→W3→W4
+✔ [S1-5] Project 激活
+✔ [S1-6] plan 审批(独立 admin)
+✔ [W1-d1] W1 派发(实例创建)
+✔ [W1-d2] W1 实例 Channel+root 在飞
+✔ [W1-d3] W1 实例 lead 启用
+✔ [W1-t1] W1 数采取证(强度/炉温序列)
+✔ [W1-t2] W1 真实统计(Pearson 相关+波动)
+✔ [W1-t3] W1 出口温度交叉取证
+✔ [W1-t4] W1 结论入台账(带真实统计)
+✔ [W1-t5] 分析频道零写档(profile=line-doctor)
+✔ [W1-c1] W1 实例 lead 以真实工件收口 root
+✔ [W1-c2] W1 工作项 COMPLETED
+✔ [W1-s1] W1 draft 物化(证据=真实工件)
+✔ [W1-s2] W1 owner 提交
+✔ [W1-s3] W1 L1 技术评审(独立 admin)
+✔ [W1-s4] W1 L2 申请
+✔ [W1-s5] W1 L2 签核 → approved
+✔ [W2-d1] W2 派发(实例创建)
+✔ [W2-d2] W2 实例 Channel+root 在飞
+✔ [W2-d3] W2 实例 lead 启用
+✔ [W2-t0] W2 治理阴性:无 write_intent 被拒
+✔ [W2-t1] W2 write_intent 申请(lead-only)
+✔ [W2-t2] W2 owner 批准 write_intent
+✔ [W2-card] W2 HITL 卡批准受理(第 1 次尝试)
+✔ [W2-t3] W2 HITL 卡→批准→trial 收口(最终态)
+✔ [W2-t4] W2 设备侧精确生效(=目标±1.0 且低于试验前)
+✔ [W2-t5] W2 工艺惯性后炉温复测(实测窗均值)
+✔ [W2-c1] W2 实例 lead 以真实工件收口 root
+✔ [W2-c2] W2 工作项 COMPLETED
+✔ [W2-s1] W2 draft 物化(证据=真实工件)
+✔ [W2-s2] W2 owner 提交
+✔ [W2-s3] W2 L1 技术评审(独立 admin)
+✔ [W2-s4] W2 L2 申请
+✔ [W2-s5] W2 L2 签核 → approved
+✔ [W3-d1] W3 派发(实例创建)
+✔ [W3-d2] W3 实例 Channel+root 在飞
+✔ [W3-d3] W3 实例 lead 启用
+✔ [W3-t0] AML 档位为频道级(实例不继承;训练走基础 lead)
+✔ [W3-t1] W3 批次收口(run close;零设备写)
+✔ [W3-t2] W3 零写佐证:设备值保持治理值(未被 line.start 回退)
+✖ [W3-t3] W3 治理后数据在场(治理时刻后炉温实测窗;PV 惯性 τ≈75s 容差放宽) — 治理后窗均值=783.2℃(n=14,SP 治理值=778,PV 滞后容差 4.0)
+✔ [W3-t4] W3 aml_dataset_build(含治理后时段)
+✔ [W3-t5] W3 aml_dataset_stats(质量报告)
+✔ [W3-c1] W3 实例 lead 以真实工件收口 root
+✔ [W3-c2] W3 工作项 COMPLETED
+✔ [W3-s1] W3 draft 物化(证据=真实工件)
+✔ [W3-s2] W3 owner 提交
+✔ [W3-s3] W3 L1 技术评审(独立 admin)
+✔ [W3-s4] W3 L2 申请
+✔ [W3-s5] W3 L2 签核 → approved
+✔ [W4-d1] W4 派发(实例创建)
+✔ [W4-d2] W4 实例 Channel+root 在飞
+✔ [W4-d3] W4 实例 lead 启用
+✔ [W4-t0] W4 优化档位就绪(aml_optimization 探索模式)
+  · 文档约束:两次调整间隔 ≥300s,距 W2 下发 32s → 等待 273s
+✔ [W4-s0] setup:批次 B 就绪(owner;line_start 基线下发=平台语义;有效性由探索步运行门实证)
+  · 在线写间隔闸,等待 57s 后重试(第 1 次)
+✔ [W4-t1] W4 有界激励执行(探索档;首次被拒如实记录)
+✔ [W4-t2] W4 无审批产生(HITL 队列无新增+项目审批数无新增)
+✔ [W4-t3] W4 干预台账可查(审批归因面)
+✔ [W4-t4] W4 精确有界生效(Δ=+6±0.5,界内,≤步限)
+✔ [W4-c1] W4 实例 lead 以真实工件收口 root
+✔ [W4-c2] W4 工作项 COMPLETED
+✔ [W4-s1] W4 draft 物化(证据=真实工件)
+✔ [W4-s2] W4 owner 提交
+✔ [W4-s3] W4 L1 技术评审(独立 admin)
+✔ [W4-s4] W4 L2 申请
+✔ [W4-s5] W4 L2 签核 → approved
+✔ [S3-1] 项目完成审批创建
+✔ [S3-2] 项目完成签核(独立 admin)
+✔ [S3-3] 项目终态 completed
+✔ [S3-4] 全链审计事件齐备
+✔ [S3-5] 四期交付物全部 approved
+
+=== CAL3 STAGED pass=77/78 fail=1 ===

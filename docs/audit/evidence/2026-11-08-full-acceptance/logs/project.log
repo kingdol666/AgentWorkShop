@@ -1,0 +1,61 @@
+✔ [S0-1] 双账号登录(owner / 独立评审)
+✔ [S1-1] 三频道建立(需求/开发/测试;非产线域)
+✔ [S1-2] Project 创建(显式 leaderHarness;通用开发域)
+✔ [S1-3] 负面用例:缺 leaderHarness → 400(P2 去默认生效)
+✔ [S1-4] 三交付物注册
+✔ [S1-5] 依赖链 W1→W2→W3
+✔ [S1-6] plan 审批(独立 admin)
+✔ [W1-d1] W1 派发(实例创建)
+✔ [W1-d2] W1 实例 Channel+root 在飞
+✔ [W1-d3] W1 实例 lead 启用
+✔ [W1-t1] W1 规格文档落盘(真实文件)
+✔ [W1-x1] W1 取消 mock 子任务
+✔ [W1-x2] W1 自派替代分支
+✔ [W1-x3] W1 supersede 显式替代
+✔ [W1-x4] W1 收替代分支
+✔ [W1-c1] W1 实例 lead 收口(真实工件摘要)
+✔ [W1-c2] W1 工作项 COMPLETED
+✔ [W1-s1] W1 draft 物化(交付物=真实工件)
+✔ [W1-s2] W1 owner 提交
+✔ [W1-s3] W1 L1 技术评审
+✔ [W1-s4] W1 L2 申请
+✔ [W1-s5] W1 L2 签核 → approved
+✔ [W2-d1] W2 派发(实例创建)
+✔ [W2-d2] W2 实例 Channel+root 在飞
+✔ [W2-d3] W2 实例 lead 启用
+✔ [W2-t1] W2 源码落盘且可执行(python ledger.py summary)
+✔ [W2-x1] W2 取消 mock 子任务
+✔ [W2-x2] W2 自派替代分支
+✔ [W2-x3] W2 supersede 显式替代
+✔ [W2-x4] W2 收替代分支
+✔ [W2-c1] W2 实例 lead 收口(真实工件摘要)
+✔ [W2-c2] W2 工作项 COMPLETED
+✔ [W2-s1] W2 draft 物化(交付物=真实工件)
+✔ [W2-s2] W2 owner 提交
+✔ [W2-s3] W2 L1 技术评审
+✔ [W2-s4] W2 L2 申请
+✔ [W2-s5] W2 L2 签核 → approved
+✔ [W3-d1] W3 派发(实例创建)
+✔ [W3-d2] W3 实例 Channel+root 在飞
+✔ [W3-d3] W3 实例 lead 启用
+✔ [W3-t1] W3 自动化测试执行并 PASS
+✔ [W3-x1] W3 取消 mock 子任务
+✔ [W3-x2] W3 自派替代分支
+✔ [W3-x3] W3 supersede 显式替代
+✔ [W3-x4] W3 收替代分支
+✔ [W3-c1] W3 实例 lead 收口(真实工件摘要)
+✔ [W3-c2] W3 工作项 COMPLETED
+✔ [W3-s1] W3 draft 物化(交付物=真实工件)
+✔ [W3-s2] W3 owner 提交
+✔ [W3-s3] W3 L1 技术评审
+✔ [W3-s4] W3 L2 申请
+✔ [W3-s5] W3 L2 签核 → approved
+✔ [S3-1] 项目完成审批创建
+✔ [S3-2] 项目完成签核(独立 admin)
+✔ [S3-3] 项目终态 completed
+✔ [S3-4] 全链审计事件齐备
+✔ [S3-5] 三交付物 approved
+✔ [S3-6] 产物文件齐备(4 件)
+
+=== BOOKKEEPING PROJECT pass=58/58 fail=0 ===
+PRJ_EXIT=0

@@ -1,0 +1,89 @@
+{
+  "at": "2026-11-09T01:17:00.550Z",
+  "base": "http://127.0.0.1:4013",
+  "plugins": {
+    "count": 11,
+    "enabled": 11,
+    "failures": [],
+    "withError": 0
+  },
+  "tools": {
+    "total": 147,
+    "builtin": 126,
+    "plugin": 21,
+    "available": 147,
+    "unavailable": 0
+  },
+  "harnesses": [
+    {
+      "id": "mock",
+      "available": true,
+      "inprocess": true
+    },
+    {
+      "id": "omp",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "opencode",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "codex",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "dsh",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "claude",
+      "available": true,
+      "inprocess": true
+    },
+    {
+      "id": "gemini",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "copilot",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "cursor",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "crush",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "goose",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "qwen",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "pi",
+      "available": true,
+      "inprocess": false
+    },
+    {
+      "id": "hermes",
+      "available": true,
+      "inprocess": false
+    }
+  ]
+}

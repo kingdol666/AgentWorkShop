@@ -1,0 +1,185 @@
+{
+  "at": "2026-11-08T23:47:34.776Z",
+  "TAG": "mw8hfkjc",
+  "base": "http://127.0.0.1:4013",
+  "pass": 24,
+  "total": 24,
+  "results": [
+    {
+      "id": "H0",
+      "name": "登录 admin",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "H1-mock",
+      "name": "创建频道 lead.harness=mock",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "H2-mock",
+      "name": "activate + 成员可读（mock）",
+      "pass": true,
+      "detail": "activate=200 agents=1 harness=mock"
+    },
+    {
+      "id": "H3-mock",
+      "name": "创建 worker（mock）",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "H1-omp",
+      "name": "创建频道 lead.harness=omp",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "H2-omp",
+      "name": "activate + 成员可读（omp）",
+      "pass": true,
+      "detail": "activate=200 agents=1 harness=omp"
+    },
+    {
+      "id": "H3-omp",
+      "name": "创建 worker（omp）",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "H1-dsh",
+      "name": "创建频道 lead.harness=dsh",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "H2-dsh",
+      "name": "activate + 成员可读（dsh）",
+      "pass": true,
+      "detail": "activate=200 agents=1 harness=dsh"
+    },
+    {
+      "id": "H3-dsh",
+      "name": "创建 worker（dsh）",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "H1-codex",
+      "name": "创建频道 lead.harness=codex",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "H2-codex",
+      "name": "activate + 成员可读（codex）",
+      "pass": true,
+      "detail": "activate=200 agents=1 harness=codex"
+    },
+    {
+      "id": "H3-codex",
+      "name": "创建 worker（codex）",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "H1-opencode",
+      "name": "创建频道 lead.harness=opencode",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "H2-opencode",
+      "name": "activate + 成员可读（opencode）",
+      "pass": true,
+      "detail": "activate=200 agents=1 harness=opencode"
+    },
+    {
+      "id": "H3-opencode",
+      "name": "创建 worker（opencode）",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "H4",
+      "name": "lead agentId 跨频道唯一",
+      "pass": true,
+      "detail": "5/5"
+    },
+    {
+      "id": "H5",
+      "name": "worker agentId 跨频道唯一",
+      "pass": true,
+      "detail": "5/5"
+    },
+    {
+      "id": "H6",
+      "name": "A 频道成员列表不含 B 频道成员",
+      "pass": true,
+      "detail": "A=2"
+    },
+    {
+      "id": "H7",
+      "name": "A 频道删 B 成员被拒（非 2xx）",
+      "pass": true,
+      "detail": "status=404 code=NOT_FOUND"
+    },
+    {
+      "id": "H8",
+      "name": "无 @ 的群聊消息 0 次 Agent 执行",
+      "pass": true,
+      "detail": "deliveries=0 executed=0"
+    },
+    {
+      "id": "H9",
+      "name": "停用成员后 invoke 被拒",
+      "pass": true,
+      "detail": "patch=200 invoke=404 isError=undefined"
+    },
+    {
+      "id": "H10",
+      "name": "删除成员后列表消失",
+      "pass": true,
+      "detail": "delete=200 left=1"
+    },
+    {
+      "id": "H11",
+      "name": "关闭 A 后 B 成员仍 enabled=1",
+      "pass": true,
+      "detail": "delA=200 B=2"
+    }
+  ],
+  "created": [
+    {
+      "h": "mock",
+      "cid": "8dae225a-d04e-4f6d-a657-3ca396332735",
+      "leadId": "0deed84d-1d3e-412e-bc69-ad5279259d8a",
+      "workerId": "5e65bf28-2269-458a-a321-9e7744774f6f"
+    },
+    {
+      "h": "omp",
+      "cid": "870c02cb-a30e-4d1b-9fcd-42f25d933c28",
+      "leadId": "12b1bc7a-faab-4877-8449-5cf608fbe023",
+      "workerId": "ac19d2a2-059c-4735-9a48-3ce504e4fe3a"
+    },
+    {
+      "h": "dsh",
+      "cid": "66bffd66-853c-4624-bfd2-0815dbaeaf02",
+      "leadId": "b4f819a1-ee3b-4059-9ed0-6f39a4ed4822",
+      "workerId": "23dbd0a6-253c-4ede-bfbf-6629d5136d25"
+    },
+    {
+      "h": "codex",
+      "cid": "ebafd284-ec97-414c-8204-90bb455ee30c",
+      "leadId": "c01e0d05-255b-4d16-b1c0-0e48d97f9643",
+      "workerId": "ae6fee44-cbda-4070-a0cb-41c0d2eedead"
+    },
+    {
+      "h": "opencode",
+      "cid": "8b1c4009-e2e2-43b9-ab40-69ba50428de6",
+      "leadId": "cb870bc9-135c-453c-8b6a-3fc1a0875fc2",
+      "workerId": "03b47a80-af80-4320-9a64-e3931cf0f893"
+    }
+  ]
+}

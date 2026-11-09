@@ -1,0 +1,8 @@
+
+━━━ HITL 真实端到端 @ http://127.0.0.1:4013 ━━━
+  PASS  W1 omp lead channel 创建 — channel=c3e5f52d
+  PASS  W2 提交驻留任务(触发 omp spawn) — task=30886573
+  … 等待 omp spawn(冷启动可达 2-3 分钟)…
+  PASS  W2b 终端 WS 接入(agentId 寻址)
+  … 等待 agent 弹出 ask 对话框(目标:options 含 yes/no)…
+FATAL waitUntil timeout: AEP hitl.request 帧(yes/no) (last=null)

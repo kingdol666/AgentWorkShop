@@ -1,0 +1,44 @@
+
+> agentworkshop@0.10.0 test:plugin-lifecycle
+> node scripts/test-plugin-lifecycle.mjs
+
+
+━━━ 1. onDispose 必须转发到宿主回收队列 ━━━
+  PASS  ctx.onDispose(fn) 进入宿主队列
+  PASS  宿主逐个调用后清理真的执行
+
+━━━ 2. ctx.timer 的定时器必须可被关停回收 ━━━
+  PASS  setInterval 自动登记回收
+  PASS  clearInterval 已执行(定时器不再保持事件循环)
+
+━━━ 3. ctx.subscriptions.add 与 onDispose 同队列 ━━━
+  PASS  { dispose() } 形式被执行
+
+━━━ 4. kv 关停兜底必须登记(否则退出前 200ms 写入丢失)━━━
+  PASS  内存态即时可见
+  PASS  防抖期内尚未落盘(证明下面的 flush 来自回收钩子)
+  PASS  执行回收钩子后 kv 已同步落盘
+
+━━━ 5. 无宿主注入口时的本地兜底(单测/独立装配)━━━
+  PASS  无 onDispose 注入时注册不抛错
+
+━━━ 6. ctx.route 返回布尔(与 sdk/index.d.mts 契约一致)━━━
+  PASS  注册成功 → true
+  PASS  首次注册 → true
+  PASS  同键再注册 → true(覆盖语义)
+  PASS  resolve 取到最新 handler
+  PASS  大小写/缺前导斜杠归一化后同键
+  PASS  非法 handler → false
+
+━━━ 7. scope 取值面完整(builtin / project / user)━━━
+  PASS  scope=builtin 原样透出
+  PASS  scope=project 原样透出
+  PASS  scope=user 原样透出
+
+━━━ 8. 生命周期事件清单覆盖真实发射面 ━━━
+  PASS  LIFECYCLE_EVENTS 无缺项
+  PASS  服务端通配是裸 '*'(不是 event:*)
+  PASS  CLIENT_EVENTS 无缺项
+  PASS  客户端通配是 'event:*'(与服务端相反)
+
+✅ 插件生命周期:22 通过 / 0 失败
