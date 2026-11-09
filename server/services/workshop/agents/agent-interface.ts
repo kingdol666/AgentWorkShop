@@ -170,7 +170,39 @@ export interface AgentWorkspace {
    * scope='private' → 本人记忆库;scope='shared' → Channel 公共记忆域(全员可检索);
    * sessionId 给定时记忆带会话作用域(session 档检索可命中)。
    */
-  saveMemory(input: { title: string, content: string, importance?: number, scope: 'private' | 'shared', dedupKey?: string, sessionId?: string | null }): Promise<{ scope: 'private' | 'shared', dedupKey: string }>
+  saveMemory(input: {
+    title: string
+    content: string
+    importance?: number
+    scope: 'private' | 'shared' | 'line' | 'global'
+    dedupKey?: string
+    sessionId?: string | null
+    /** line/global 经验条目的证据锚点(WP-A4;必填,否则拒绝) */
+    taskId?: string | null
+  }): Promise<{ scope: 'private' | 'shared' | 'line' | 'global', dedupKey: string }>
+  /**
+   * 跨 Channel 共享经验检索(WP-A4;成员可调,只读):同 owner 频道的 experience 行,
+   * 按 line/product/global 作用域锚定;仅返回 active/validated(候选经验不外泄)。
+   */
+  searchSharedExperience?(input: {
+    query: string
+    scope: 'line' | 'product' | 'global'
+    scopeKey?: string
+    limit?: number
+  }): Promise<Array<{
+    channelId: string
+    channelName: string
+    title: string
+    content: string
+    outcome: string
+    status: string
+    scopeKind: string
+    scopeKey: string
+    importance: number
+    createdAt: string
+    taskId: string | null
+    visibility: 'channel-shared' | 'private' | 'cross-channel'
+  }>>
   /**
    * 会话压缩摘要入库(harvest 桥;omp compaction 产出的会话摘要 → 本成员持久记忆)。
    * 平台 70% 主动压缩与 omp 原生 auto-compaction 双路统一经此落库(episodic-session)。
