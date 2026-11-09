@@ -1,11 +1,19 @@
 \section{System Design}
 \label{sec:design}
-The runtime exposes named services through two entry paths. Task-mediated calls pass through the collaboration runtime and a registered Agent harness. Direct calls through the Representational State Transfer (REST) API or the standard input/output (stdio) transport for the Model Context Protocol (MCP) enter the shared dispatcher without creating a task turn. Both paths use the same scene configuration for production context, semantic-node mappings, protocol endpoints, objectives, and write limits.
+The runtime exposes named services through two entry paths. Task-mediated calls pass through the collaboration runtime and a registered Agent harness. Direct calls through the Representational State Transfer (REST) API or the standard input/output (stdio) transport for the Model Context Protocol (MCP) enter the shared dispatcher without creating a task turn. Both paths use the scene configuration to resolve production context, semantic-node mappings, protocol endpoints, objectives, and write limits where applicable.
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig-system-runtime-minimal-20261103.pdf}
-\caption{The system routes task-mediated and direct operation calls through shared dispatch and service handlers. Solid arrows show operation flow and configured field mappings; dashed connectors associate the scene configuration with the services that consume it. Named write operations use the shared write controller, while service-owned records keep approvals, command receipts, optional readbacks, and later observations distinct.}
+\includegraphics[width=\textwidth]{resources/redesigned-fig2_runtime_architecture.pdf}
+\caption{The system routes task-mediated and direct operation calls through shared
+dispatch and service handlers. The service boxes show functional groupings
+rather than exclusive driver assignments: a configured MES-REST adapter can
+also implement a write mapping. Solid arrows show operation flow and configured
+field mappings; dashed connectors associate the scene configuration with the
+field mappings it defines; the read/analysis group is a functional grouping, not a claim that every service uses a field driver. Named write operations use the shared write
+controller, while service-owned records keep approvals, command receipts,
+optional readbacks, and later observations distinct. The driver box abstracts protocol adapters; the evaluated scene mappings
+also included HTTP.}
 \label{fig:arch}
 \end{figure*}
 
@@ -16,50 +24,58 @@ provide a stable operation contract for registered harness adapters, and check
 current authority and process limits before each write. It must also distinguish
 command acceptance from later process observations. Scene configuration,
 registered adapters, shared dispatch, route handlers, and service-owned
-records enforce these boundaries. Section~\ref{sec:eval} evaluates selected
-configured simulator paths.
+records enforce these boundaries.
 
 At task start, the context builder assembles the active production tuple and
 relevant process summaries. This context informs a proposal but does not grant
-write authority; each operation resolves live state again at invocation.
+write authority; operation handlers resolve the live state needed by their routes at invocation.
 
 \subsection{Layered Architecture}
 \label{sec:layers}
 Fig.~\ref{fig:arch} shows the system layers and their interfaces. Task and
-chat routes use the collaboration runtime, which provides workspaces,
-channels, task queues, shared memory, mailboxes, task templates, and harness
-adapters. An adapter connects an agent engine to its task interface; its
-binding and channel policy constrain the tools available to that agent.
+chat routes use a collaboration runtime with task coordination and registered
+harness adapters. An adapter presents the agent's scoped tools and task context;
+its binding and channel policy constrain the available operations.
 
 Direct REST calls and the stdio-MCP operation bridge bypass task execution
 and enter the shared dispatcher. They create neither a task nor a harness
 turn; MCP management and task methods remain on their service routes. The
 scene configuration has two consumers: the task route receives active context
 and objectives, while operation services resolve node mappings and guards
-when an operation executes. The service band provides data acquisition (DAQ), write
-control, analysis, retrieval, and optional model services. At the field layer,
-input/output (I/O) mappings connect semantic nodes to built-in or plugin
-drivers for a plant or simulator. Each
+when an operation executes. The service band groups read and analysis services (DAQ, MES data access,
+retrieval, and optional model services) separately from write and recipe
+services. The driver registry can also select a configured MES-REST adapter
+for a write mapping. At the field layer, input/output (I/O) mappings connect
+semantic nodes to built-in or plugin drivers for a plant or simulator. Each
 owning service retains its task, command, observation, or configuration
 records and associates them with the actor and production context where
 supported.
 
 \subsection{Scene Configuration as the Integration Boundary}
 \label{sec:scene-config}
-Scene-specific process semantics are represented in configuration before an
+Scene-specific process semantics are configured before an
 agent task begins. The active line identifies the production context; product
 and recipe records supply applicable targets and limits; the run record
 provides the current operating state. Semantic nodes bind process variables
 to direction-specific acquisition or control mappings, and the driver
-registry resolves each mapping to a supported protocol implementation. The
-agent-facing operation remains named and typed, so a harness does not need to
+registry resolves each mapping to a supported protocol implementation. Here
+\emph{semantic} denotes a named process variable with a direction, unit, and
+configured mapping; it is not an OPC UA or Asset Administration Shell
+information model. Each agent-facing operation is named and typed, so a harness does not need to
 construct protocol-specific messages. A scene using an already registered
 driver can supply different context and node mappings behind the same
 operation contract. A protocol not present in the registry still requires a
 driver adapter; configuration alone does not implement a new protocol.
 
-Table~\ref{tab:scene-config} summarizes how the scene description is consumed
-along the execution path. It distinguishes configuration-time bindings from
+In the cast-film simulator preset, for example, the MQTT command mapping
+\texttt{linespeed-sp} controls line speed in m/min, while the distinct
+\texttt{film-thickness} mapping supplies thickness in $\mu$m. A task can
+refer to both nodes: a candidate is admitted against the control node's
+limits, whereas a later DAQ observation describes thickness. Sharing MQTT does
+not make either signal a substitute for the other.
+
+Table~\ref{tab:scene-config} summarizes how the execution path uses the scene
+description. It distinguishes configuration-time bindings from
 checks against live state. The context assembled for an agent turn is
 descriptive: before a write, the handler resolves the active context again
 and applies the current limits. Approval is bound to the proposal and to the
@@ -108,12 +124,16 @@ declared for operation $u$; it always contains $S$ and $P$. The grant predicate
 $G$ is included when the resolved channel, target line, and owner/grant policy
 require it; explicit exemptions omit it. The binding predicate $B$ is included
 when the operation declares resource references. A declared no-reference
-operation omits $B$. Each included check must pass before
-handler selection. The policy predicate includes channel tool selection,
-profile, and duty-separation checks where configured. After these predicates pass, the selected route applies its operational
-guards and any required approval. The checks performed after approval depend
-on the route; Section~\ref{sec:modules} specifies the single-node and
-recipe-operation paths.
+operation omits $B$. Each included check must pass before handler selection. The policy predicate
+includes channel tool selection, profile, and duty-separation checks where
+configured.
+
+After these predicates pass, the selected route applies its operational
+guards and any required approval. For example, an exploration request checks
+the control binding and DAQ visibility before entering the governed write
+path; an invisible target returns an error before a write. The checks performed
+after approval depend on the route; Section~\ref{sec:modules} specifies the
+single-node and recipe-operation paths.
 
 For a direct REST call, the service establishes $a$ and $c$ before applying
 these checks. An agent token must match the requested agent identifier; an

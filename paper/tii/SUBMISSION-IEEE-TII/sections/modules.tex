@@ -7,7 +7,7 @@ conditional approval, and the records returned by each route.
 \subsection{Scene-Specific Write Admission}
 \label{sec:governed}
 After the shared dispatch checks pass, the selected handler applies the
-limits configured for the target scene and control. Authorization and value
+limits configured for the target scene and control node. Authorization and value
 admission are separate checks. The target band describes a desired process
 outcome; it does not define the admissible write interval. A candidate may
 satisfy all write constraints while the measured process value remains outside
@@ -27,8 +27,10 @@ policy, grant, and binding predicates in Eq.~(\ref{eq:dispatch-contract}).
 Missing optional limits impose no restriction. An empty intersection rejects
 the request and identifies the excluding layer. Recipe dispatch checks a
 replacement recipe against the hard, baseline, and product limits rather than
-the previous recipe's window. Step, interval, and hold-window limits apply
-when configured. These application-level checks complement, but do not
-replace, equipment interlocks.
+the previous recipe's window. Trial overrides are additionally checked against
+the applicable recipe window. Outside benchmark mode, step, interval, and
+hold-window rules apply to writes whose source is agent or manual; recipe and
+rollback sources follow their own paths. These application-level checks
+complement, but do not replace, equipment interlocks.
 
 \input{sections/mechanisms}
