@@ -1,0 +1,22 @@
+✔ [S0-1] owner 登录(admin@awshop.local)
+✔ [S0-2] 产线现场就绪
+✔ [S0-3] 目标线解析(SP/配方/数采)
+✔ [T1] 模板实例化(chtpl-generic-optimize-default: 1 lead+3 worker, 绑线)
+✔ [T2] worker 补 omp 运行时配置 + 频道激活
+✔ [T3] 基础成员绑定(分析师=数采auto, 工艺=SP+配方)
+✔ [M1] 双会话创建(克隆成员,两会话互不相同)
+✔ [M2] 克隆继承绑定面(分析师克隆=数采行, 工艺克隆=dcw+recipe行)
+✔ [P1a] 会话A克隆 daq_query(真实数采样本)
+✔ [P1b] 会话B克隆 line_context(产线全景)
+✔ [P2] 双会话并行真 LLM 对话(独立 runtime 各自消费)
+✔ [W1a] 会话A克隆 recipe_trial 发起 HITL 卡
+✔ [W1b] HITL 批准受理
+✔ [W1c] trial 收口(设备受理)
+✔ [W1d] 设备侧回读收敛(会话内治理写真实生效)
+✔ [C1] 关闭会话B(A 不受影响)
+✔ [C2] 会话B克隆成员全部停用(enabled=0)
+✔ [C3] B克隆身份 invoke 被拒(WP2 生效)
+✔ [C4] 会话A克隆仍可正常作业
+✔ [C5] 基础成员保留(lead+workers enabled, 基础分析师可作业)
+
+判定: PASS (20/20) → D:\codes\ABO\aw-mem-runtime\docs\audit\evidence\2026-11-08-multisession-opt

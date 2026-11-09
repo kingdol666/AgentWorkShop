@@ -302,6 +302,9 @@ async function main() {
   // 断言治理值未被回退:W3 全程设备值保持在治理值(±1.5)
   const spAfterW3 = Number(((await dcwNodes()).find(n => n.id === SP1))?.value ?? Number.NaN)
   step('W3-t2', 'W3 零写佐证:设备值保持治理值(未被 line.start 回退)', Number.isFinite(spAfterW3) && Math.abs(spAfterW3 - targetW2) <= 1.5, `after=${Number.isFinite(spAfterW3) ? spAfterW3.toFixed(1) : '?'} 治理值=${targetW2}`)
+  // 2026-11-09 实测:治理后 28s 窗口仍含一阶瞬态(τ≈75s),先沉降 ≥2τ 再判"治理后数据在场"
+  console.log('  · W3 治理后沉降 150s(PV τ≈75s)再取证')
+  await sleep(150_000)
   // 治理后时段数据在场佐证:治理后窗口炉温实测均值 ≈ 治理值
   const sTreat = await daqSeries(DAQ.zone1, w2WriteAt, Date.now(), 2000)
   const meanTreat = sTreat.length ? sTreat.reduce((a, b) => a + b.v, 0) / sTreat.length : Number.NaN

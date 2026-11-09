@@ -1,0 +1,3 @@
+default aw: /c/nvm4w/nodejs/aw agentworkshop 0.8.7
+isolated registry prefix: agentworkshop 0.10.0
+isolated tarball prefix: agentworkshop 0.10.0

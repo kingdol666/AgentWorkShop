@@ -1,0 +1,4 @@
+T5 fresh-home smoke @ http://127.0.0.1:4014
+GET / -> 200
+GET /api/health -> 200 {"code":0,"message":"ok","data":{"status":"ok","app":"AgentWorkShop","version":"0.10.0","mode":"dev","uptimeMs":1986,"timestamp":"2026-11-09T13:22:21.579+08:00","workshop":"ready","wiredAgents":0,"activeChannels":0,"memory":{"heapUsedMb":37,"heapLimitMb":4288,"rssMb":147,"externalMb":13,"heapRatio":0.0087}}}
+GET /api/workshop/aml (unauth) -> 401 {"code":"USER_UNAUTHORIZED","message":"需要有效的用户 token(Authorization: Bearer <用户token>;经 /api/users/register 或 /api/users/login 获取)","data":null}

@@ -1,0 +1,51 @@
+  账号就绪: alice=20fa53e4 bob=fc44d884 admin=e533fea7
+
+=== A. Agent 模板用户隔离 ===
+PASS  A1 alice 创建私有模板
+PASS  A2 bob 列表不见 alice 私有模板
+PASS  A3 bob 直接读取 → 403 SCOPE_VIOLATION — Agent 模板 不属于当前用户且未公开
+PASS  A4 bob 改/删他人模板 → 403
+PASS  A5 alice 设为公开
+PASS  A6 bob 可见公开模板(含属主名) — ownerName=alice-mw8kqras
+PASS  A7 bob 建 channel
+PASS  A8 bob 可使用他人公开模板克隆实例
+PASS  A9 bob 不能修改公开模板可见性
+PASS  A10 内置模板 user/admin 均不可改删(TEMPLATE_BUILTIN)
+PASS  A11 alice 可见内置模板(公开)
+
+=== B. AgentTeam 用户隔离 ===
+PASS  B1 alice 创建私有编组
+PASS  B2 bob 不见 alice 私有编组
+PASS  B3 公开后 bob 可见
+PASS  B4 公开编组含他人私有成员 → 部署 403 — 成员 Agent 模板 不属于当前用户且未公开
+PASS  B5 内置编组 admin 也不可改
+
+=== C. Channel 模板 ===
+PASS  C1 内置 Channel 模板全员可见(≥2 个) — builtin=10
+PASS  C2 bob 同样可见内置 — builtin=10
+PASS  C3 从 channel 捕获模板(场景/lead/成员)
+PASS  C4 bob 不见 alice 私有 Channel 模板
+PASS  C5 bob 直接读取 → 403
+PASS  C6a alice 将 Channel 模板设为公开 — ok
+PASS  C6 bob 从公开模板实例化并挂载 workspace — {"channelId":"68831758-eeb0-43e5-91e6-5b02bede2e15","workspace":"D:\\codes\\ABO\\aw-mem-runtime\\data\\workspaces\\8d5ba5d4-d7c0-4675-b9df-f
+PASS  C7 挂载反映在 workspace channelIds
+PASS  C8 实例继承场景 prompt + 属主为 bob
+PASS  C9 bob 不可改/删他人公开模板
+PASS  C10 内置 Channel 模板 admin 不可改
+
+=== D. Channel 实例设置热更新 ===
+PASS  D1 scenarioPrompt 热更新生效
+
+=== E. 监控用户级隔离与 admin ===
+PASS  E1 bob 视图 scope=user 且只见本人 channel — channels=2
+PASS  E2 alice 不见 bob 的 channel
+PASS  E3 admin 全量视图(scope=admin)含双方 channel
+PASS  E4 admin 视图附创建者名 — ownerName=alice-mw8kqras
+PASS  E5 非 admin 访问用户管理 → 403
+PASS  E6 admin 用户列表可用
+PASS  E7 admin 可见他人私有模板 + 创建者
+PASS  E8 admin 可见全部编组
+PASS  E9 admin 可见全部 Channel 模板 + 创建者
+PASS  E10 admin 可改他人私有模板
+
+38 pass / 0 fail

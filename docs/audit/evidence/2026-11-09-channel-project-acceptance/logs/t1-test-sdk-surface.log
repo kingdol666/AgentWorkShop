@@ -1,0 +1,26 @@
+
+> agentworkshop@0.10.0 test:sdk-surface
+> node scripts/test-sdk-surface.mjs
+
+
+[1/3] 生命周期事件清单(类型声明 vs 运行时)
+  ✔ LIFECYCLE_EVENTS: 类型声明与运行时一致(11 项)
+  ✔ CLIENT_EVENTS: 类型声明与运行时一致(5 项)
+  ✔ sdk/index.mjs 转出的 LIFECYCLE_EVENTS 与 lifecycle.mjs 同源
+
+[2/3] sdk/client.d.mts 存在性
+  ✔ sdk/client.d.mts 存在
+  ✔ sdk/client.d.mts 声明了 createClientContext
+  ✔ sdk/client.d.mts 声明了 CLIENT_SDK_VERSION
+  ✔ sdk/client.d.mts 声明了 export interface ClientContext
+
+[3/3] package.json exports 目标文件存在性
+  ✔ exports["."].types → ./sdk/index.d.mts
+  ✔ exports["."].default → ./sdk/index.mjs
+  ✔ exports["./sdk"].types → ./sdk/index.d.mts
+  ✔ exports["./sdk"].default → ./sdk/index.mjs
+  ✔ exports["./sdk/client"].types → ./sdk/client.d.mts
+  ✔ exports["./sdk/client"].default → ./sdk/client.mjs
+  ✔ exports["./package.json"] → ./package.json
+
+✅ SDK 出口面校验通过(agentworkshop@0.10.0)

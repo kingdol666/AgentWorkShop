@@ -1,0 +1,35 @@
+=== ① 校验层(400)===
+PASS  任务缺 title → 400
+PASS  search 非法 scope 枚举 → 400
+PASS  search limit 越界(>20)→ 400
+PASS  search 空 query → 400
+PASS  importance 越界(>1)→ 400
+PASS  任务非法 mode 枚举 → 400
+
+=== ② 鉴权层(401)===
+PASS  search 无 token → 401
+PASS  伪 token → 401
+
+=== ③ 作用域(404/403)===
+PASS  不存在 channel 列成员 → 404/401(鉴权先于存在性) — status=401
+PASS  不存在 agent 检索 → 404
+PASS  不存在任务详情 → 404
+PASS  跨 channel search → 403
+PASS  跨 channel 发消息 → 403/404 隔离 — status=404 code=MEMBER_NOT_FOUND
+PASS  非 lead 写团队记忆 → 403
+
+=== ④ 并发(8 任务同 channel)===
+PASS  8 任务并发提交全部 2xx(无 5xx) — statuses=200
+PASS  8 父任务全部闭环 COMPLETED — COMPLETED,COMPLETED,COMPLETED,COMPLETED,COMPLETED,COMPLETED,COMPLETED,COMPLETED
+PASS  并发任务各有唯一子任务(无重复派发) — parents=8
+
+=== ⑤ 幂等(稳定 dedupKey)===
+PASS  同 dedupKey 两次写入 → 单行刷新 — rows=1
+
+=== ⑥ 级联(channel 删除 → 记忆清理 + 无泄漏) ===
+PASS  DELETE channel → 200
+PASS  删除后列成员 → 404/401(鉴权先于存在性) — status=401
+PASS  被删 channel 公共记忆不泄漏进他 channel 检索 — []
+PASS  清理主 channel
+
+ALL PASS

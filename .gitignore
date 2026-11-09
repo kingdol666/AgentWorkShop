@@ -153,3 +153,7 @@ paper/tii/reference-papers-*/
 
 # 隔离演练 home(运行时数据,不入库;2026-11-08)
 .deep-home-*/
+
+# 验收证据日志是审计记录的一部分(2026-11-09):覆盖上面的全局 *.log
+!docs/audit/evidence/**/logs/
+!docs/audit/evidence/**/logs/*.log

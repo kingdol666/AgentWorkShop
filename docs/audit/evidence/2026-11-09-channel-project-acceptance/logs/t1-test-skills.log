@@ -1,0 +1,7 @@
+
+> agentworkshop@0.10.0 test:skills
+> node scripts/test-aw-skills.mjs
+
+
+═══ skill 规范校验:167 PASS / 0 FAIL(skills: aw-doc-to-project, aw-line-onboarding, aw-node-bind, aw-opt-channel, aw-plc-sim-twin, aw-plugin-dev, aw-protocol-onboarding, aw-system-acceptance) ═══
+

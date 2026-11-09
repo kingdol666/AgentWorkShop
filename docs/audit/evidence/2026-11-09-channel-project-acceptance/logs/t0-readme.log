@@ -1,0 +1,8 @@
+
+> agentworkshop@0.10.0 readme:lint
+> node scripts/ui/md-lint.mjs README.md README-zh.md
+
+· README.md
+· README-zh.md
+
+全部通过

@@ -1,0 +1,79 @@
+{
+  "at": "2026-11-09T01:14:21.812Z",
+  "pass": 12,
+  "total": 12,
+  "results": [
+    {
+      "id": "U1",
+      "name": "Channel 控制台加载 + 群聊可见",
+      "pass": true,
+      "detail": "A\n模板多会话-ec4e\n新建 Channel\n搜索\n⌘K\n频道会话列表 · 13\n多会话产线优化-8545\n12 成员"
+    },
+    {
+      "id": "U2",
+      "name": "切换视图:任务板",
+      "pass": true,
+      "detail": "A\n模板多会话-ec4e\n新建 Channel\n搜索\n⌘K\n频道会话列表 · 1"
+    },
+    {
+      "id": "U3",
+      "name": "切换视图:多会话",
+      "pass": true,
+      "detail": "A\n模板多会话-ec4e\n新建 Channel\n搜索\n⌘K\n频道会话列表 · 1"
+    },
+    {
+      "id": "U4",
+      "name": "切换视图:时间线",
+      "pass": true,
+      "detail": "A\n模板多会话-ec4e\n新建 Channel\n搜索\n⌘K\n频道会话列表 · 1"
+    },
+    {
+      "id": "U5",
+      "name": "发言后刷新仍存在(后端持久化)",
+      "pass": true,
+      "detail": "前端演示消息 1794186841459"
+    },
+    {
+      "id": "U6",
+      "name": "全程无 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "U7-overview",
+      "name": "Project tab:overview",
+      "pass": true,
+      "detail": "AgentWorkShop\n记账软件开发 1794130537821\ncompl"
+    },
+    {
+      "id": "U7-plan",
+      "name": "Project tab:plan",
+      "pass": true,
+      "detail": "AgentWorkShop\n记账软件开发 1794130537821\ncompl"
+    },
+    {
+      "id": "U7-deliverables",
+      "name": "Project tab:deliverables",
+      "pass": true,
+      "detail": "AgentWorkShop\n记账软件开发 1794130537821\ncompl"
+    },
+    {
+      "id": "U7-approvals",
+      "name": "Project tab:approvals",
+      "pass": true,
+      "detail": "AgentWorkShop\n记账软件开发 1794130537821\ncompl"
+    },
+    {
+      "id": "U7-events",
+      "name": "Project tab:events",
+      "pass": true,
+      "detail": "AgentWorkShop\n记账软件开发 1794130537821\ncompl"
+    },
+    {
+      "id": "U9",
+      "name": "Project 左侧 testid 齐备",
+      "pass": true,
+      "detail": "tab-*"
+    }
+  ]
+}
