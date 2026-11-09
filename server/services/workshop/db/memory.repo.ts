@@ -239,8 +239,10 @@ export function createMemoryRepo(db: DatabaseSync) {
     },
 
     /**
-     * 按作用域取经验行(跨 Channel 共享检索 / 晋升门 / 看板的数据面)。
-     * channelIds 缺省不限制 channel;statuses 缺省排除 retired(退休经验不再参与注入)。
+     * 按作用域取**经验行**（跨 Channel 共享检索 / 晋升门 / 看板的数据面）。
+     * 恒过滤 kind='experience' —— 普通记忆（episodic/semantic）也有 scope_kind 默认值，
+     * 不过滤会把它们计入经验看板/共享域（实测 live 看板 29 条 vs 真实 4 条）。
+     * channelIds 缺省不限制 channel；statuses 缺省排除 retired（退休经验不再参与注入）。
      */
     listByScope(opts: {
       scopeKind: MemoryScopeKind
@@ -249,7 +251,7 @@ export function createMemoryRepo(db: DatabaseSync) {
       statuses?: MemoryStatus[]
       limit?: number
     }): Array<MemoryRow & { rowid: number }> {
-      const where: string[] = ['m.scope_kind = ?']
+      const where: string[] = [`m.kind = 'experience'`, 'm.scope_kind = ?']
       const args: Array<string | number> = [opts.scopeKind]
       if (opts.scopeKey !== undefined) {
         where.push('m.scope_key = ?')
