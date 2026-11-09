@@ -3,6 +3,14 @@
 > Full release artifacts and per-version notes live on [GitHub Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 > The milestones below each mark an acceptance-verified capability jump; evidence is archived under `docs/audit/`.
 
+## v0.11.0 — Project center × RSI experience evolution × real-model proof (2026-11-09)
+
+- **Project center**: `/projects` is now a first-class destination — sidebar, workspace homepage, command palette and route metadata; the list ships stats / search / status filter / per-project progress / channel and approval chips, with a server-side `summary` on `GET /api/workshop/projects` (zero N+1); the detail uses real channel names, a five-column execution board, three deliverable gates, a cursor-paginated unified timeline, `?tab=` deep links and a mobile layout that wraps instead of clipping. Live acceptance **39/39** (three-channel blueprint → real artifacts → technical 409 gate → L1/L2 → completed, real Chrome).
+- **RSI experience evolution**: capture (task / review / governance write) → fail-closed promotion gate (single-task refusal) → same-line cross-channel sharing (zero hits on another line) → paired-eval Harness Profile `pin → shadow → active` → readback verification (mismatch blocks L1 with 409) → rollback → meta success rate; zero device writes in the learning ring. Live acceptance **32/32**.
+- **Real-model proof (omp / `ustc/deepseek-flash`)**: two sessions in one channel received distinct real replies (`ALPHA-…` / `BETA-…`) with zero leakage; a Project work item dispatched into its task instance and was delivered in 619 s, then reconciled → submitted → L1 → L2 → completed, **13/13**.
+- **Fixes & docs**: a manually created project is `draft`; dispatch requires `activate` + an approved plan v1 (activation itself does not); do not put `work_items/deliverables` in the plan payload (plan alignment would duplicate them); review authority is owner/admin/project leader (`role=user` gets 403); README (EN/ZH) and VitePress gained the [RSI guide](/en/guide/rsi) and a fuller Project guide.
+- **Gates**: unit **1356 pass / 0 fail / 2 skip**; lint 0, typecheck ✔, docs 87/0, i18n 3293/3293, auth-matrix 29/0, REST robustness ALL PASS; 11/11 plugins, 148 tools (127 builtin + 21 plugin) all available.
+
 ## v0.10.0 — Harness console × Channel sessions × Project delivery (2026-11-09)
 
 - **ChatGPT-style harness UI**: Channel console, Project detail and entry pages rebuilt around an 800px reading column, full-width agent blocks, right-aligned user bubbles, a harness chip on every reply, a 26px composer and a black/white send button. Every `data-testid`, shortcut, @-mention, HITL semantic and API is preserved (PRs #107 / #108 / #109).

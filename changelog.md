@@ -4,6 +4,14 @@
 
 以下为核心版本节点——每个节点对应一轮可验收的能力跃迁,验收证据收录于 `docs/audit/`。
 
+## v0.11.0 — 项目中心 × RSI 经验演化 × 真实模型实证（2026-11-09）
+
+- **项目中心**:`/projects` 成为一等入口(侧栏 / 工作台 / 命令面板 / 路由元数据);列表统计/搜索/筛选/每项目进度,`GET /api/workshop/projects` 追加 `summary` 零 N+1;详情真实频道名、五列执行看板、交付物三级门、决策事件统一时间线、`?tab=` 深链。实机 **39/39**。
+- **RSI 经验演化**:沉淀(任务/评审/治理写)→ fail-closed 晋升门(单任务拒)→ 同产线跨 Channel 共享(异线零命中)→ 配对评测 Profile `pin → shadow → active` → 回读验证 mismatch 409 阻断 L1 → 回滚 → 元层成功率;学习环 0 设备写。实机 **32/32**。
+- **真实模型实证(omp / `ustc/deepseek-flash`)**:同 Channel 双会话真实回执零串扰;Project 工作项派发到任务实例,619 秒交付 artifact,对账→L1→L2→completed,**13/13**。
+- **修正与文档**:手工项目须 `activate` + 已批准 plan v1 才可派发(激活本身不要求计划);计划体不要带 `work_items/deliverables`(避免 plan alignment 重复物化);复核权限 owner/admin/project leader;README 中英与 VitePress 新增 RSI 指南并补齐 Project 项目中心/数据面。
+- **质量门**:unit **1356 pass / 0 fail / 2 skip**;lint 0、typecheck ✔、docs 87/0、i18n 3293/3293、auth 29/0、REST ALL PASS;插件 11/11、工具 148(127 builtin + 21 plugin)全 available。
+
 ## v0.10.0 — Harness 控制台 × Channel 多会话 × Project 交付(2026-11-09)
 
 - **ChatGPT 式 Harness UI**:Channel 控制台、Project 详情与入口页统一重排——800px 阅读列、Agent 通栏块、用户右侧浅泡、每条回复带 harness 标识、26px 圆角 Composer、黑白发送钮;全部 `data-testid`、快捷键、@ 提及、HITL 语义与 API 保留。PR #107 / #108 / #109。

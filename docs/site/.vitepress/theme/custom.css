@@ -2652,3 +2652,113 @@ html {
   border-radius: 10px;
   border: 1px solid var(--aw-line);
 }
+
+/* ============================================================
+   v2.1 阅读层打磨（2026-11-09）
+   只做"扫视成本"与"状态可读"的加法：标题锚点、表格悬停、
+   侧栏激活轨、提示块左轨、首页卡片顶部信号线。
+   不改既有令牌与版面尺寸，避免破坏已验收的 87 项文档一致性。
+   ============================================================ */
+
+/* 正文 h2：标题前一条短绿轨，长文里给读者一个可扫的节拍 */
+.vp-doc h2 {
+  position: relative;
+  padding-left: 14px;
+}
+.vp-doc h2::before {
+  position: absolute;
+  top: 0.18em;
+  bottom: 0.18em;
+  left: 0;
+  width: 3px;
+  content: '';
+  background: linear-gradient(180deg, var(--aw-green), var(--aw-green-dim));
+  border-radius: 2px;
+  opacity: 0.8;
+}
+
+/* 侧栏激活项：左侧 2px 信号轨（颜色之外再给一个形状线索） */
+.VPSidebarItem.is-active > .item {
+  position: relative;
+}
+.VPSidebarItem.is-active > .item::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -10px;
+  width: 2px;
+  content: '';
+  background: var(--aw-green);
+  border-radius: 1px;
+}
+
+/* 表格：行悬停给出"正在读这一行"的反馈；数字列等宽对齐 */
+.vp-doc table tbody tr:hover td {
+  background: color-mix(in srgb, var(--aw-green) 5%, transparent);
+}
+.vp-doc table td,
+.vp-doc table th {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 提示块：统一左轨语义色（tip 绿 / warning 琥珀 / danger 红），正文仍用令牌 */
+.vp-doc .custom-block {
+  border: 1px solid var(--aw-line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--aw-panel) 72%, transparent);
+}
+.vp-doc .custom-block.tip { border-left-color: var(--aw-green-dim); }
+.vp-doc .custom-block.warning { border-left-color: var(--aw-amber); }
+.vp-doc .custom-block.danger { border-left-color: var(--aw-danger); }
+.vp-doc .custom-block .custom-block-title { letter-spacing: 0.01em; }
+
+/* 行内代码：给一个比正文更"仪器"的底，避免与普通文本混读 */
+.vp-doc :not(pre) > code {
+  background: color-mix(in srgb, var(--aw-panel-2) 82%, transparent);
+  border: 1px solid var(--aw-line);
+  border-radius: 4px;
+}
+
+/* 首页特性卡：顶部信号线 + 悬停阴影（保留既有 translateY） */
+.hw-f {
+  position: relative;
+  overflow: hidden;
+}
+.hw-f::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 1px;
+  content: '';
+  background: linear-gradient(90deg, var(--aw-green-dim), transparent 70%);
+  opacity: 0.55;
+}
+.hw-f:hover {
+  box-shadow: 0 14px 34px rgb(0 0 0 / 28%);
+}
+.hw-f .tag {
+  letter-spacing: 0.08em;
+}
+
+/* 正文链接：下划线偏移，长文里更容易点中 */
+.vp-doc a:not(.header-anchor):not(.VPButton):not(.hw-btn) {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-f,
+  .hw-f:hover {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* 首页 CTA 分隔线在窄屏换行后会变成一条孤线：直接隐藏 */
+@media (max-width: 640px) {
+  .hw-cta-sep {
+    display: none;
+  }
+}

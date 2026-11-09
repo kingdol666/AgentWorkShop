@@ -63,7 +63,7 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">field protocols</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
-        <div class="hw-stat"><span class="v">126</span><span class="k">runtime settings</span></div>
+        <div class="hw-stat"><span class="v">143</span><span class="k">runtime settings</span></div>
         <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">acceptance assertions</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">task states</span></div>
       </div>
@@ -75,10 +75,10 @@ footer:
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> and
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>.
         The rest are countable facts: 6 driver classes (5 built-in + the serial-bridge plugin) / 4 entry points (WS · MCP · A2A · REST) /
-        14 harnesses (<code>agents/registry.ts</code>) / 128 settings in 19 groups (<code>aw config list</code>) / 7 task states.
+        14 harnesses (<code>agents/registry.ts</code>) / 143 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.10.0</i></span>
+        <span>Version <i>v0.11.0</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -95,37 +95,37 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">RELEASE · v0.10.0</span>
+      <span class="hw-sec-en">RELEASE · v0.11.0</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      Three structural changes in November 2026: the console follows the ChatGPT harness,
-      execution environments are isolated per session, and Projects became delivery contracts.
-      All three were accepted on the main build.
+      Three structural changes in November 2026: the Project center became a first-class entry,
+      RSI made experience promotable and rollback-able, and omp/ustc-deepseek-flash ran Channel
+      and Project tasks for real. All three were accepted on the main build.
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">UI</span>
-        <h3>ChatGPT-style harness console</h3>
-        <p>800px reading column, full-width agent blocks, a harness chip on every reply and a 26px composer; Channel / Project / entry pages rebuilt with every testid and interaction preserved.</p>
-        <p><a href="/AgentWorkShop/en/guide/harness-ui">Harness UI guide →</a></p>
-      </div>
-      <div class="hw-f">
-        <span class="tag">SESS</span>
-        <h3>Channel sessions</h3>
-        <p>Template → channel → session; clone base members with isolated runtime / mailbox / execution lock / memory. Close one session and the others keep working; base members never leave.</p>
-        <p><a href="/AgentWorkShop/en/guide/channels-sessions">Channel sessions guide →</a></p>
-      </div>
-      <div class="hw-f">
         <span class="tag">PRJ</span>
-        <h3>Project delivery mode</h3>
-        <p>Blueprint → plan approval → WBS with dependencies → L1 technical review → L2 owner acceptance → deliverables; observe / supervised / auto, with CAL-3 78/78 on a real line.</p>
+        <h3>Project center: a front door for delivery</h3>
+        <p>Reachable from the sidebar, workspace, command palette and route metadata; stats, search, filters and per-project progress in the list, plus a five-column execution board, three deliverable gates and a unified timeline in the detail.</p>
         <p><a href="/AgentWorkShop/en/guide/projects">Project mode guide →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">RSI</span>
+        <h3>Experience evolution: earned, not asserted</h3>
+        <p>Task/review evidence → fail-closed promotion gate → line-scoped sharing → paired-eval Harness Profile (pin → shadow → active) → readback-verified L1 gate → rollback; zero device writes in the learning ring.</p>
+        <p><a href="/AgentWorkShop/en/guide/rsi">RSI guide →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">LLM</span>
+        <h3>Real-model proof</h3>
+        <p>omp / ustc-deepseek-flash: two sessions in one channel received distinct real replies with zero leakage; a Project work item was delivered in 619 s, then reconciled, L1-reviewed and L2-accepted.</p>
+        <p><a href="/AgentWorkShop/en/guide/channels-sessions">Channel sessions →</a></p>
       </div>
     </div>
     <div class="hw-note">
       <span class="t">Acceptance</span>
-      <p>CAL-3 four-stage loop 78/78 · multi-harness isolation 24/24 · channel multi-session 20/20 · Project delivery 58/58 · UI interaction 12/12 (main build, real line / real Chrome).</p>
+      <p>RSI 32/32 · Project center 39/39 · omp real model 13/13 · CAL-3 78/78 · multi-harness 24/24 · channel multi-session 20/20 · Project 58/58 · UI 12/12 (main build, real Chrome).</p>
     </div>
   </section>
 

@@ -99,12 +99,28 @@ Channel template ── instantiate ──▶ Channel (scene + tool profile + me
 - the template produces the **base channel**; each multi-session clones from its base members;
 - template / channel / session are independent objects: closing a session deletes neither the template nor the channel.
 
+## Task instances: one work item, one execution environment
+
+When a Project dispatches a work item, the kernel creates a **dedicated task-instance channel + session** (`bindingType=task_instance`):
+
+```
+Work item A ──▶ instance channel A (clone of base lead) ──▶ session A ──▶ root task A
+Work item B ──▶ instance channel B (clone of base lead) ──▶ session B ──▶ root task B
+```
+
+- the two instances differ in `channelId / sessionId / taskId`, and their histories never see each other;
+- after the root completes and reconcile runs, the instance channel is disabled and the session archived; the base channel and other tasks are untouched;
+- omp proof: artifacts for A and B contain only their own token (`PROJECT-W1-OK` / `PROJECT-W2-OK`), with no cross-task contamination;
+- a single work item ran end-to-end on a real LLM (omp / `ustc/deepseek-flash`): dispatch → task instance → 619 s delivery → reconcile → L1 → L2 → completed (13/13).
+
 ## Live acceptance
 
 | Check | Result |
 |---|---|
 | Channel template multi-session (two parallel sessions, real LLM, HITL write, closing B leaves A working) | **20/20** |
 | Multi-harness + object isolation (mock / omp / dsh / codex / opencode) | **24/24** |
-| Evidence | [`channel-multisession.json`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-08-multisession-opt/channel-multisession.json) · [`harness-isolation.json`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-08-full-acceptance/harness-isolation.json) |
+| Two-session real-reply isolation (omp / `ustc/deepseek-flash`; A=`ALPHA-…`, B=`BETA-…`, zero leakage) | ✔ |
+| Task-instance isolation (distinct channel / session / task, no artifact bleed) | ✔ |
+| Evidence | [`channel-multisession.json`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-08-multisession-opt/channel-multisession.json) · [`harness-isolation.json`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-08-full-acceptance/harness-isolation.json) · [`2026-11-09-full-acceptance`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-09-full-acceptance/REPORT.md) |
 
 > Related: [Harness console](/en/guide/harness-ui) · [Project mode](/en/guide/projects) · [Multi-harness agent teams](/en/guide/multi-harness)

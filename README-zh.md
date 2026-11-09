@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.10.0</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **ChatGPT 式 Harness 控制台** · **Channel 多会话** · **Project 交付模式** · 126 个宿主工具 · 143 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.11.0</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 143 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [新增功能](#0100-新增了什么) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [新增功能](#0110-新增了什么) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,9 +49,49 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **闭环是真的**：读数 → 分析 → 提案 → 审批 → 写穿 → 回读证实 → 台账留痕，全链有实机验收。
 
-## 0.10.0 新增了什么
+## 0.11.0 新增了什么
 
-三件事定义了这个版本：控制台变得可读、执行环境变得隔离、项目变成了交付契约。
+三处结构性变化：Project 有了真正的门面、RSI 把"经验"变成可晋升可回滚的资产、真实模型 harness 跑通了 Channel 与 Project。
+
+### 项目中心：交付层终于有了门
+
+`/projects` 不再是"知道 URL 才进得去"的孤岛——侧栏、工作台首页、命令面板、路由元数据四处可达。
+
+- **项目列表**：统计带、搜索、状态筛选、每项目进度、频道/交付物/审批 chips；`GET /api/workshop/projects` 服务端附带 `summary`（工作项、已签核交付物、绑定频道、待审批、最近活动），列表零 N+1。
+- **项目详情**：频道全部显示人类可读名（绑定选择器、工作项表、交付物）；五列执行看板（就绪 / 执行中 / 等待 / 阻塞 / 完成与验收链）；交付物三级门（内容 → 技术验收 → 业务签核）；决策与事件统一时间线（游标分页）。
+- **没有死路**：列表走平台壳层，详情保留回平台的面包屑，两页都能直达 Project Leader 办公室频道。
+
+<p align="center">
+  <img src="docs/audit/evidence/2026-11-09-project-landing/ui-projects-list.png" alt="项目中心——统计、筛选与进度卡" width="49%" />
+  <img src="docs/audit/evidence/2026-11-09-project-landing/ui-project-plan.png" alt="项目详情——执行看板与验收链" width="49%" />
+</p>
+
+→ [Project 模式指南](https://kingdol666.github.io/AgentWorkShop/guide/projects) · 实机验收：**39/39**（蓝图 → technical 409 门 → L1/L2 → completed）+ omp / `ustc/deepseek-flash` **13/13**。
+
+### RSI：经验是挣来的，不是声明的
+
+运行时把自身经验闭成 **capture → gate → promote → share → verify** 一圈：
+
+- **沉淀**：任务完成或评审终态写入带任务证据的 scoped 经验行；治理写入落干预台账。
+- **门禁**：单个任务永远不够——晋升 `validated` 需要独立证据（如两个任务），否则 fail-closed。
+- **共享**：同产线的 validated 经验可被其他 Channel 读回，异产线零命中。
+- **演化**：配对评测 → Harness Profile `pin → shadow → active`，带回滚与元层成功率视图。
+- **证实**：独立回读验证器把设备 mismatch 变成 409，直接阻断 L1 复核——设备不同意时"完成"不算数。
+
+→ [RSI 指南](https://kingdol666.github.io/AgentWorkShop/guide/rsi) · 实机验收：**32/32**（生产构建；沉淀、fail-closed 门、HITL 写入、回读阻断、跨频道隔离、Profile 晋升/回滚、元层统计、学习环零设备写）。
+
+### 真实模型实证：omp + `ustc/deepseek-flash`
+
+Channel 与 Project 不只用确定性 mock，也跑了**真实 LLM harness**：
+
+- 同一 Channel 的两个会话各自收到不同的模型回执（`ALPHA-…` / `BETA-…`），**零跨会话串扰**；
+- Project 工作项派发到自己的任务实例 Channel，由模型在 **619 秒**内交付 artifact（`PROJECT-SINGLE-OK`），随后对账、提交、L1 复核、L2 签核并完成。
+
+→ [Channel 多会话](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) · 证据：[`docs/audit/evidence/2026-11-09-full-acceptance/REPORT.md`](docs/audit/evidence/2026-11-09-full-acceptance/REPORT.md)
+
+## 0.10.0 基线：Harness 控制台、多会话、Project 交付
+
+0.10 定义了控制台的形态；0.11 在它之上补上了交付层的门面。
 
 ### 为阅读而生的 Harness 控制台
 
@@ -124,7 +164,8 @@ Project 把**带 Project Leader 的办公室频道**与一个或多个**成员�
 |---|---|---|
 | **Agent 团队运行时** | lead 编排 + worker 交付，7 态任务机、根任务 FIFO 队列、执行租约、过程记忆（FTS5+向量）、群聊与定时任务 | [设计架构](#设计架构) |
 | **Channel 多会话** | 模板 → 频道 → 会话；克隆基础成员并给独立 runtime / mailbox / 执行锁 / 记忆；关一个，其余照常作业 | [Channel 多会话](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) |
-| **Project 交付** | 蓝图 → 计划审批 → 带依赖 WBS → 技术 L1 → Owner L2 → 交付物；observe / supervised / auto | [Project 模式](https://kingdol666.github.io/AgentWorkShop/guide/projects) |
+| **Project 交付** | 蓝图 → 计划审批 → 带依赖 WBS → 技术 L1 → Owner L2 → 交付物；observe / supervised / auto；**项目中心**提供入口、进度与执行看板 | [Project 模式](https://kingdol666.github.io/AgentWorkShop/guide/projects) |
+| **RSI 经验演化** | 任务/评审证据沉淀 → fail-closed 晋升门 → 同产线经验共享 → 配对评测 Harness Profile（pin → shadow → active）→ 回读验证的 L1 门 + 回滚 | [RSI 指南](https://kingdol666.github.io/AgentWorkShop/guide/rsi) |
 | **工业栈** | 五族现场协议（Modbus TCP/RTU · OPC UA · MQTT · HTTP）+ 串口插件 + MES REST（镜像/直连双路径）；数采三节拍、写控四层限界、逐参数 ACK | [协议指南](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) |
 | **Agent × 设备绑定** | 节点级授权三轨（dcw 点位收窄 / recipe 单配方 / line-recipe 产线管理权），语义卡注入提示词，直写恒拒、全部写入过联锁+HITL | [HITL 指南](https://kingdol666.github.io/AgentWorkShop/guide/hitl) |
 | **模型闭环** | AML 自动建模（物理先验+残差+conformal UQ）→ 晋级门禁 → HITL 采纳 → production 投用 → 模型驱动试验 | [AML 手册](./docs/aml.md) |
@@ -290,12 +331,16 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 | 套件 | 结果 | 证据 |
 |---|---|---|
+| **RSI 经验演化**（沉淀 → 门禁 → 共享 → Profile → 回滚，生产构建） | **32/32** | [`2026-11-09-rsi-live-e2e/report.md`](docs/audit/evidence/2026-11-09-rsi-live-e2e/report.md) |
+| **项目中心**（蓝图 → technical 409 → L1/L2 → completed，真实 Chrome） | **39/39** | [`2026-11-09-project-landing`](docs/audit/evidence/2026-11-09-project-landing/project-landing-live.md) |
+| **omp / `ustc/deepseek-flash`**（真实 LLM 交付 Project 工作项，619s） | **13/13** | [`omp-single-report.json`](docs/audit/evidence/2026-11-09-full-acceptance/omp-single-report.json) |
+| **Session 隔离**（双会话、真实模型回执、零串扰） | ✔ | [`2026-11-09-full-acceptance/REPORT.md`](docs/audit/evidence/2026-11-09-full-acceptance/REPORT.md) |
 | CAL-3 四期产线闭环（只读分析 → HITL 写入 → 数据集 → 有界优化） | **78/78** | [`docs/audit/evidence/2026-11-08-industrial-acceptance/REPORT.md`](docs/audit/evidence/2026-11-08-industrial-acceptance/REPORT.md) |
 | 多 harness 隔离（mock / omp / dsh / codex / opencode） | **24/24** | [`harness-isolation.json`](docs/audit/evidence/2026-11-08-full-acceptance/harness-isolation.json) |
 | Channel 模板多会话（并行会话 + HITL 写入） | **20/20** | [`channel-multisession.json`](docs/audit/evidence/2026-11-08-multisession-opt/channel-multisession.json) |
 | Project 模式（记账软件交付，3 频道 / 3 工作项） | **58/58** | [`bookkeeping.json`](docs/audit/evidence/2026-11-08-final-acceptance/bookkeeping.json) |
 | UI 交互（真实 Chrome，12 条断言） | **12/12** | [`ui-results.json`](docs/audit/evidence/2026-11-08-full-acceptance/ui/ui-results.json) |
-| 单测 / typecheck / lint | **1253 通过 · 0 失败 · 2 跳过** / ✔ / 0 error | [`docs/audit/evidence/`](docs/audit/evidence) |
+| 单测 / typecheck / lint | **1356 通过 · 0 失败 · 2 跳过** / ✔ / 0 error | [`docs/audit/evidence/`](docs/audit/evidence) |
 
 历史轮次仍可复跑：2026-10-29 全量轮（**24 项套件/核查、约 1100+ 断言全绿**）、真实设备联动矩阵（`e2e-golive-matrix`）**21/21**——五族真实协议栈接通、平台样本=设备侧真值、四协议写穿、Agent 令牌批量落穿、断链如实失败与自愈；安全加固 **29/29**；对抗性错误处理 **26/26**；2026-10-31 可执行测试卡全层轮：静态论文-代码一致性 **100%**（20 锚点）· 真实五协议层 **13/13** · E1a 治理四臂消融理论模式全对 · api-live **75/75** · 对 20260914 冻结基线逐位复现 ×2。
 
@@ -310,7 +355,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 ## 路线图
 
-已交付：Channel 运行时与四入口、工业五族协议数采/写控、节点绑定与 HITL、配方版本化与回退、AML 建模闭环与优化器、本体服务、插件系统 v2、3D 孪生、定时任务、多 Harness（14 引擎）、**ChatGPT 式 Harness 控制台**、**Channel 多会话**、**Project 交付模式**、双语文档——完整清单见 [更新日志](./changelog.md)。
+已交付：Channel 运行时与四入口、工业五族协议数采/写控、节点绑定与 HITL、配方版本化与回退、AML 建模闭环与优化器、本体服务、插件系统 v2、3D 孪生、定时任务、多 Harness（14 引擎）、**ChatGPT 式 Harness 控制台**、**Channel 多会话**、**Project 交付模式**、**项目中心**、**RSI 经验演化**、双语文档——完整清单见 [更新日志](./changelog.md)。
 
 进行中/规划：**绑定生命周期**（项目完成自动释放）· **持久化项目工作流**（outbox + 幂等消费 + saga）· **节拍感知调度** · **HITL 意图 TTL/幂等** · **harness 监管与卡死实例回收** · **SLO 看板与告警** · **报警外送**（邮件/webhook）· **边缘部署形态**（edge-agent + 中心 broker）· 更多场景模板与基准。
 
@@ -336,7 +381,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前版本：**v0.10.0** —— [版本发布](https://github.com/kingdol666/AgentWorkShop/releases) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前版本：**v0.11.0** —— [版本发布](https://github.com/kingdol666/AgentWorkShop/releases) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

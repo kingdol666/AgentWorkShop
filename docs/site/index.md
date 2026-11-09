@@ -75,7 +75,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 143 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.10.0</i></span>
+        <span>版本 <i>v0.11.0</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -92,36 +92,36 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">WHAT'S NEW · v0.10.0</span>
+      <span class="hw-sec-en">WHAT'S NEW · v0.11.0</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      2026-11 的三处结构变化：控制台按 ChatGPT harness 重排、执行环境可多会话隔离、
-      Project 变成交付契约。三者的验收都在 main 构建上跑过。
+      2026-11 的三处结构变化：项目中心成为一等入口、RSI 让经验可晋升可回滚、
+      omp/ustc-deepseek-flash 真实模型跑通 Channel 与 Project。三者都在 main 构建上跑过。
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">UI</span>
-        <h3>ChatGPT 式 Harness 控制台</h3>
-        <p>800px 阅读列、Agent 通栏块、每条回复带 harness 标识、26px 输入卡；Channel / Project / 入口页统一重排，testid 与交互零删除。</p>
-        <p><a href="/AgentWorkShop/guide/harness-ui">Harness UI 指南 →</a></p>
-      </div>
-      <div class="hw-f">
-        <span class="tag">SESS</span>
-        <h3>Channel 多会话</h3>
-        <p>模板 → 频道 → 会话；克隆基础成员并隔离 runtime / mailbox / 执行锁 / 记忆域。关一个会话，其余照常作业，基础成员永不离开。</p>
-        <p><a href="/AgentWorkShop/guide/channels-sessions">Channel 多会话指南 →</a></p>
-      </div>
-      <div class="hw-f">
         <span class="tag">PRJ</span>
-        <h3>Project 交付模式</h3>
-        <p>蓝图 → 计划审批 → 带依赖 WBS → L1 技术复核 → L2 Owner 验收 → 交付物；observe / supervised / auto 三模式，CAL-3 实机 78/78。</p>
+        <h3>项目中心：交付层的门面</h3>
+        <p>侧栏 / 工作台 / 命令面板 / 路由元数据四处可达；列表统计、搜索、筛选与每项目进度，详情五列执行看板 + 交付物三级门 + 决策事件统一时间线，频道名替换裸 UUID。</p>
         <p><a href="/AgentWorkShop/guide/projects">Project 模式指南 →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">RSI</span>
+        <h3>经验演化：挣来的经验</h3>
+        <p>任务/评审证据沉淀 → fail-closed 晋升门 → 同产线经验共享 → 配对评测 Profile（pin → shadow → active）→ 回读验证阻断 L1 → 回滚；学习环零设备写。</p>
+        <p><a href="/AgentWorkShop/guide/rsi">RSI 指南 →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">LLM</span>
+        <h3>真实模型实证</h3>
+        <p>omp / ustc-deepseek-flash：同 Channel 双会话真实回执零串扰；Project 工作项派发到任务实例，619 秒完成 artifact，对账→L1→L2→completed。</p>
+        <p><a href="/AgentWorkShop/guide/channels-sessions">Channel 多会话 →</a></p>
       </div>
     </div>
     <div class="hw-note">
       <span class="t">验收</span>
-      <p>CAL-3 四期闭环 78/78 · 多 Harness 隔离 24/24 · Channel 多会话 20/20 · Project 交付 58/58 · UI 交互 12/12（main 构建，真实产线 / 真实 Chrome）。</p>
+      <p>RSI 32/32 · 项目中心 39/39 · omp 真实模型 13/13 · CAL-3 78/78 · 多 Harness 24/24 · Channel 多会话 20/20 · Project 58/58 · UI 12/12（main 构建，真实 Chrome）。</p>
     </div>
   </section>
 

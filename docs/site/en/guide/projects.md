@@ -45,7 +45,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/<projectId>/channels \
   -H "authorization: Bearer <token>" -H "content-type: application/json" \
   -d '{"channelId":"<channelId>","charter":"read-only attribution"}'
 
-# 3) Activate (needs ≥1 member channel + ≥1 required deliverable + an approved plan)
+# 3) Activate (needs ≥1 member channel + ≥1 required deliverable)
 curl -X POST http://localhost:3001/api/workshop/projects/<projectId>/activate \
   -H "authorization: Bearer <token>"
 ```
@@ -54,8 +54,11 @@ curl -X POST http://localhost:3001/api/workshop/projects/<projectId>/activate \
 
 1. office channel + Project Leader assembled;
 2. at least one member channel bound, and the channel has a lead;
-3. at least one required deliverable (or an explicit owner waiver);
-4. at least one approved plan version (`observe` may use a draft plan, but nothing is dispatched).
+3. at least one required deliverable (or an explicit owner waiver).
+
+Activation itself does **not** require an approved plan; **dispatching a work item does** (default `planApprovalRequired=1`). Request and approve plan v1 first (`POST /plan/request-approval` → `POST /approvals/:aid/decide`).
+
+> Keep the plan payload factual (e.g. `{ "facts": ["…"] }`). If it also carries `deliverables / work_items`, plan alignment materializes them and duplicates your hand-created rows (observed: 2 manual + 2 aligned = 4 work items).
 
 `leaderHarness` has **no default**: a user must not silently get a mock as a production Leader. Pass `mock`
 explicitly for demos and acceptance.
@@ -154,18 +157,38 @@ industrial writes. A Project Leader can never raise a Channel's write authority.
 | Complete | `POST /projects/:id/complete` | After gates pass, creates a `project_complete` approval |
 | Archive | `POST /projects/:id/archive` | Read-only; binding history retained; hidden from the default list |
 
-## Project page
+## Project center (front-end entry)
 
-The project page is organised around delivery, not chat:
+`/projects` is a first-class destination, not a page you can only reach by typing the URL:
 
-- **Overview**: Leader chat, snapshot (ready/running/waiting/blocked, work-item completion, deliverable sign-off),
-  channel bindings, weekly report;
-- **Plan & work**: plan versions, work-item dependencies, dispatch state;
-- **Deliverables**: deliverables / results / evidence / supersession;
-- **Approvals**: plan, deliverable acceptance, project completion;
-- **Decisions & events**: decision records and the event ledger for reconciliation.
+- **Four entry points**: sidebar "项目中心", workspace homepage pill, command palette, and route metadata (header title / trail);
+- **List page**: stat band (all / active / pending approvals / completed / work items), search, status filter, skeleton cards, two empty states; cards show progress, channel count, deliverable sign-off, pending approvals and last activity; creation is a dialog (Leader engine picker driven by `/workshop/harnesses`, plus blueprint instantiation);
+- **Detail page**: project nav (overview / plan & work / deliverables / approvals / decisions & events) + centre workspace + right snapshot rail (≥1200 px); `?tab=plan` deep links; mobile nav wraps instead of clipping.
 
-See [Harness console & Project detail](/en/guide/harness-ui) for the UI details.
+### Data plane
+
+`GET /api/workshop/projects` now appends a server-side `summary` (additive):
+
+```json
+{
+  "workItems": 3, "completedWorkItems": 3, "progress": 1,
+  "deliverables": 3, "requiredDeliverables": 3, "approvedDeliverables": 3, "acceptanceProgress": 1,
+  "channels": 3, "members": 0, "pendingApprovals": 0,
+  "lastActivityAt": "2026-11-09T18:53:57.837+08:00"
+}
+```
+
+The list renders from it directly — **no per-project observability call (zero N+1)**. `channels` counts execution channels only; task instances (`bindingType=task_instance`) are counted separately so the number is not inflated.
+
+### Five faces of the detail
+
+- **Overview**: progress ring + ready/running/waiting/blocked/sign-off, Leader chat, channel bindings (real names; open office/session), project sessions, weekly report;
+- **Plan & work**: five-column execution board (ready / running / waiting / blocked / completion-and-acceptance), authoritative work-item table (dispatch/retry/cancel), routing log, plan snapshot;
+- **Deliverables**: deliverable cards with the three gates (content → technical → business) and acceptance criteria; results grouped per deliverable (submit/review/request acceptance);
+- **Approvals**: pending cards (plan / deliverable acceptance / project completion) + history;
+- **Decisions & events**: `/observability/activity` cursor pagination, events + decisions on one timeline, `dispatch.proposed` can be applied in place.
+
+See [Harness console & Project detail](/en/guide/harness-ui) for UI details. Live acceptance **39/39** (three-channel blueprint → real artifacts → technical 409 gate → L1/L2 → completed, real Chrome): [`2026-11-09-project-landing`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-09-project-landing/project-landing-live.md).
 
 ## Live scenario: CAL-3 four-stage progression
 
@@ -200,6 +223,9 @@ Result: **78/78**; the 300s inter-adjustment gate and 60s online-write gate real
 | `POST` | `/api/workshop/projects/:id/approvals/:aid/decide` | Approve / reject |
 | `GET` | `/api/workshop/projects/:id/sessions` | Project / task session catalogue (briefs only) |
 | `GET` | `/api/workshop/projects/:id/observability` | Observability (work items, deliverables, budget) |
+| `GET` | `/api/workshop/projects/:id/observability/activity` | Unified activity stream (events + decisions, cursor paginated) |
+| `GET` | `/api/workshop/projects` | List (each row carries `summary`; zero N+1 for the list page) |
+| `POST` | `/api/workshop/projects/:id/plan/request-approval` | Plan gate (approval bumps `planVersion`; dispatch requires it) |
 
 ## Boundaries and known limits
 
@@ -213,6 +239,7 @@ Project mode can carry real delivery, but these boundaries matter:
 - **Rate gates reject after the fact**: the 300s / 60s gates reject plans; the scheduler does not yet reserve windows;
 - **Mock leaders are possible**: `leaderHarness` is explicit, but demos/acceptance may still use mock; real projects
   should use a real engine;
-- **L1/L2 independence**: today it is "technical review + owner acceptance"; multi-reviewer debate is not included.
+- **L1/L2 independence**: today it is "technical review + owner acceptance"; multi-reviewer debate is not included;
+- **Review authority**: only project owner / admin / project leader may review; a plain member (`role=user`) gets 403. For an independent review use an admin account (separate from the submitter, so self-approval is still impossible).
 
 > Related: [Channel sessions & agent lifecycle](/en/guide/channels-sessions) · [Harness console](/en/guide/harness-ui) · [HITL approvals](/en/guide/hitl) · [Line permissions](/en/guide/line-permissions)

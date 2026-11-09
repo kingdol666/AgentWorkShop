@@ -95,12 +95,28 @@ Channel 模板 ── instantiate ──▶ Channel（场景 + 工具档位 + �
 - 模板实例化得到的是**基础频道**；后续每次多会话从基础成员克隆；
 - 模板/频道/会话都是独立对象，关闭会话不删除模板，也不删除频道。
 
+## 任务实例：一个工作项一个执行环境
+
+Project 工作项派发时，内核会为它创建**专属任务实例 Channel + 会话**（`bindingType=task_instance`）：
+
+```
+Work item A ──▶ instance channel A (克隆 base lead) ──▶ session A ──▶ root task A
+Work item B ──▶ instance channel B (克隆 base lead) ──▶ session B ──▶ root task B
+```
+
+- 两个实例的 `channelId / sessionId / taskId` 全部不同，历史上互不可见；
+- root 完成并经对账（reconcile）后，实例 Channel 停用、会话归档，基础频道与其它任务不受影响；
+- omp 验证：工作项 A 与 B 的 artifact 各自只含自己的 token（`PROJECT-W1-OK` / `PROJECT-W2-OK`），无跨任务污染；
+- 单工作项全链用真实 LLM（omp / `ustc/deepseek-flash`）跑通：派发 → 任务实例 → 619 秒交付 → 对账 → L1 → L2 → completed（13/13）。
+
 ## 实机验收
 
 | 项 | 结果 |
 |---|---|
 | Channel 模板多会话（双会话并行、真 LLM、HITL 写、关闭 B 后 A 继续） | **20/20** |
 | 多 harness + 对象隔离（mock / omp / dsh / codex / opencode） | **24/24** |
-| 证据 | [`channel-multisession.json`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-08-multisession-opt/channel-multisession.json) · [`harness-isolation.json`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-08-full-acceptance/harness-isolation.json) |
+| 双会话真实回执隔离（omp / `ustc/deepseek-flash`；A=`ALPHA-…`、B=`BETA-…`，零串扰） | ✔ |
+| 任务实例隔离（不同 Channel / session / task，artifact 不串） | ✔ |
+| 证据 | [`channel-multisession.json`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-08-multisession-opt/channel-multisession.json) · [`harness-isolation.json`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-08-full-acceptance/harness-isolation.json) · [`2026-11-09-full-acceptance`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-09-full-acceptance/REPORT.md) |
 
 > 相关阅读：[Harness 控制台](/guide/harness-ui) · [Project 模式](/guide/projects) · [多 Harness Agent 团队](/guide/multi-harness)

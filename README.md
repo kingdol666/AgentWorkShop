@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.10.0</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **ChatGPT-style harness console** · **Channel multi-session** · **Project delivery mode** · 126 host tools · 143 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.11.0</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · 148 host tools · 143 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[Quick start](#quick-start) · [What's new](#whats-new-in-0100) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [What's new](#whats-new-in-0110) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,9 +49,49 @@ A configuration-driven platform where **AI agent teams** and an **industrial pro
 - **Delivery is a first-class concept**: **Project mode** turns a blueprint into a plan, a WBS with dependencies, L1 technical review, L2 owner acceptance and real deliverables — the project closes only when the deliverables pass;
 - **The loop is real**: read → analyze → propose → approve → write → verify readback → audited ledger, proven by live acceptance runs.
 
-## What's new in 0.10.0
+## What's new in 0.11.0
 
-Three changes define this release: the console became readable, execution environments became isolated, and projects became deliverable contracts.
+Three additions make the delivery layer reachable, self-improving, and provable on a real model harness.
+
+### Project center: the delivery layer gets a front door
+
+`/projects` is now a first-class navigation destination — sidebar, workspace homepage, command palette and route metadata — instead of a page you could only reach by typing the URL.
+
+- **Project list**: stat band, search, status filter, per-project progress, channel / deliverable / approval chips. `GET /api/workshop/projects` now returns a server-side `summary` (work items, signed deliverables, bound channels, pending approvals, last activity), so the list renders without N+1 calls.
+- **Project detail**: real channel names everywhere (binding picker, work-item table, deliverables), a five-column execution board (ready / running / waiting / blocked / completion-and-acceptance), deliverable gates (content → technical → business) and a unified decision-and-event timeline with cursor pagination.
+- **No dead ends**: the list uses the platform shell, the detail keeps a breadcrumb back to the platform, and both expose the Project Leader office channel.
+
+<p align="center">
+  <img src="docs/audit/evidence/2026-11-09-project-landing/ui-projects-list.png" alt="Project center — stats, filters and progress cards" width="49%" />
+  <img src="docs/audit/evidence/2026-11-09-project-landing/ui-project-plan.png" alt="Project detail — execution board and acceptance lane" width="49%" />
+</p>
+
+→ [Project guide](https://kingdol666.github.io/AgentWorkShop/guide/projects) · Live acceptance: **39/39** (blueprint → technical 409 gate → L1/L2 → completed) and **13/13** on omp / `ustc/deepseek-flash`.
+
+### RSI: experience that is earned, not asserted
+
+The runtime now closes a **capture → gate → promote → share → verify** loop around its own experience:
+
+- **Capture** — a completed task or a review outcome writes a scoped experience row with task evidence; a governance write becomes an intervention-ledger row.
+- **Gate** — one task is never enough: promotion to `validated` requires independent evidence (e.g. two tasks), otherwise the gate fails closed.
+- **Share** — validated line-scoped experience is readable by other channels on the same line and invisible to other lines.
+- **Evolve** — paired evaluation → Harness Profile `pin → shadow → active`, with rollback and a meta-layer success-rate view.
+- **Verify** — an independent readback verifier turns device mismatches into a 409 that blocks L1 review: "done" is not accepted when the device disagrees.
+
+→ [RSI guide](https://kingdol666.github.io/AgentWorkShop/guide/rsi) · Live acceptance: **32/32** on a production build (capture, fail-closed gate, HITL writes, readback block, cross-channel isolation, profile promote/rollback, meta stats, zero device writes in the learning ring).
+
+### Real-model proof: omp + `ustc/deepseek-flash`
+
+Channel and Project tests ran with a **real LLM harness**, not only the deterministic mock:
+
+- two sessions in one channel each received a distinct model reply (`ALPHA-…` / `BETA-…`) with **zero cross-session leakage**;
+- a Project work item dispatched into its own task-instance channel was delivered by the model in **619 s** (artifact `PROJECT-SINGLE-OK`), then reconciled, submitted, L1-reviewed, L2-accepted and completed.
+
+→ [Channel sessions](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) · Evidence: [`docs/audit/evidence/2026-11-09-full-acceptance/REPORT.md`](docs/audit/evidence/2026-11-09-full-acceptance/REPORT.md)
+
+## 0.10.0 baseline: harness console, sessions, project mode
+
+The 0.10 release still defines the shape of the console; 0.11 builds the delivery front door on top of it.
 
 ### A harness console built for reading
 
@@ -124,7 +164,8 @@ The four boundaries are deliberate: a Project Leader can never raise a Channel's
 |---|---|---|
 | **Agent team runtime** | lead orchestration + worker delivery; 7-state task machine, FIFO root queue, lease fencing, process memory (FTS5 + vector), group chat & scheduled jobs | [Architecture](#architecture) |
 | **Channel sessions** | template → channel → session; clone base members with their own runtime, mailbox, execution lock and memory; close one and the others keep working | [Channel sessions](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) |
-| **Project delivery** | blueprint → plan approval → WBS with dependencies → technical L1 → owner L2 → deliverables; observe / supervised / auto | [Project mode](https://kingdol666.github.io/AgentWorkShop/guide/projects) |
+| **Project delivery** | blueprint → plan approval → WBS with dependencies → technical L1 → owner L2 → deliverables; observe / supervised / auto; **project center** for entry, progress and the execution board | [Project mode](https://kingdol666.github.io/AgentWorkShop/guide/projects) |
+| **RSI experience evolution** | capture task/review evidence → fail-closed promotion gate → line-scoped sharing → paired-eval Harness Profile (`pin → shadow → active`) → readback-verified L1 gate + rollback | [RSI guide](https://kingdol666.github.io/AgentWorkShop/guide/rsi) |
 | **Industrial stack** | five field protocols (Modbus TCP/RTU · OPC UA · MQTT · HTTP) + serial plugin + MES REST (mirror & live); DAQ cadences, four-layer write limits, per-parameter ACK | [Protocol guide](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) |
 | **Agent × device binding** | three-track node authority (dcw point scoping / recipe / line-recipe management), semantic cards injected into prompts, direct writes always refused, every write passes interlocks + HITL | [HITL guide](https://kingdol666.github.io/AgentWorkShop/guide/hitl) |
 | **Model loop** | AML auto-ML (physics priors + residual ensemble + conformal UQ) → promotion gates → HITL adoption → production deployment → model-driven trials | [AML manual](./docs/aml.md) |
@@ -290,12 +331,16 @@ Every claim above has a re-runnable suite behind it. Acceptance follows the **aw
 
 | Suite | Result | Evidence |
 |---|---|---|
+| **RSI experience evolution** (capture → gate → share → profile → rollback, production build) | **32/32** | [`2026-11-09-rsi-live-e2e/report.md`](docs/audit/evidence/2026-11-09-rsi-live-e2e/report.md) |
+| **Project center** (blueprint → technical 409 → L1/L2 → completed, real Chrome) | **39/39** | [`2026-11-09-project-landing`](docs/audit/evidence/2026-11-09-project-landing/project-landing-live.md) |
+| **omp / `ustc/deepseek-flash`** (Project work item delivered by a real LLM, 619 s) | **13/13** | [`omp-single-report.json`](docs/audit/evidence/2026-11-09-full-acceptance/omp-single-report.json) |
+| **Session isolation** (two sessions, real model replies, zero leakage) | ✔ | [`2026-11-09-full-acceptance/REPORT.md`](docs/audit/evidence/2026-11-09-full-acceptance/REPORT.md) |
 | CAL-3 four-stage industrial loop (read-only → HITL write → dataset → bounded optimization) | **78/78** | [`docs/audit/evidence/2026-11-08-industrial-acceptance/REPORT.md`](docs/audit/evidence/2026-11-08-industrial-acceptance/REPORT.md) |
 | Multi-harness isolation (mock / omp / dsh / codex / opencode) | **24/24** | [`harness-isolation.json`](docs/audit/evidence/2026-11-08-full-acceptance/harness-isolation.json) |
 | Channel template multi-session (parallel sessions + HITL write) | **20/20** | [`channel-multisession.json`](docs/audit/evidence/2026-11-08-multisession-opt/channel-multisession.json) |
 | Project mode (bookkeeping delivery, 3 channels / 3 work items) | **58/58** | [`bookkeeping.json`](docs/audit/evidence/2026-11-08-final-acceptance/bookkeeping.json) |
 | UI interaction (real Chrome, 12 assertions) | **12/12** | [`ui-results.json`](docs/audit/evidence/2026-11-08-full-acceptance/ui/ui-results.json) |
-| Unit / typecheck / lint | **1253 pass · 0 fail · 2 skip** / ✔ / 0 error | [`docs/audit/evidence/`](docs/audit/evidence) |
+| Unit / typecheck / lint | **1356 pass · 0 fail · 2 skip** / ✔ / 0 error | [`docs/audit/evidence/`](docs/audit/evidence) |
 
 Earlier rounds remain reproducible: the 2026-10-29 full round (**24 suites/checks, ~1100+ assertions, all green**), the real-device integration matrix (`e2e-golive-matrix`) **21/21** — five real protocol stacks connected, platform samples equal device-side values, four-protocol write-through, agent-token batch dispatch, honest disconnect failure and self-healing; security hardening **29/29**; adversarial error handling **26/26**; the 2026-10-31 executable test-card round: static paper-code consistency **100%** (20 anchors) · real five-protocol tier **13/13** · E1a governance ablation matches theory · api-live **75/75** · bit-exact reproduction against the 20260914 frozen baseline ×2.
 
@@ -310,7 +355,7 @@ Evidence and reproduction commands: [`docs/audit/evidence/`](./docs/audit/eviden
 
 ## Roadmap
 
-Delivered: channel runtime & four entry points, five-protocol DAQ/write control, node binding & HITL, recipe versioning & rollback, AML model loop & optimizer, ontology service, plugin system v2, 3D twin, scheduled jobs, 14-engine harness registry, **ChatGPT-style harness UI**, **Channel multi-session**, **Project delivery mode**, bilingual docs — the full list lives in the [changelog](./changelog.md).
+Delivered: channel runtime & four entry points, five-protocol DAQ/write control, node binding & HITL, recipe versioning & rollback, AML model loop & optimizer, ontology service, plugin system v2, 3D twin, scheduled jobs, 14-engine harness registry, **ChatGPT-style harness UI**, **Channel multi-session**, **Project delivery mode**, **Project center**, **RSI experience evolution**, bilingual docs — the full list lives in the [changelog](./changelog.md).
 
 In progress / planned: **binding lifecycle** (auto-release on project completion) · **durable project workflow** (outbox + idempotent consumers + saga) · **rate-gate-aware scheduling** · **HITL intent TTL/idempotency** · **harness supervision & stuck-instance reaping** · **SLO dashboards and alerts** · **alarm outbound** (email/webhook) · **edge deployment** (edge-agent + central broker) · more scenario templates & benchmarks.
 
@@ -336,7 +381,7 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current version: **v0.10.0** — [Releases](https://github.com/kingdol666/AgentWorkShop/releases) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current version: **v0.11.0** — [Releases](https://github.com/kingdol666/AgentWorkShop/releases) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

@@ -4,6 +4,7 @@ import { defineConfig } from 'vitepress'
 const zhNav = [
   { text: '指南', link: '/guide/getting-started' },
   { text: 'Project', link: '/guide/projects' },
+  { text: 'RSI', link: '/guide/rsi' },
   { text: '演示', link: '/demo' },
   { text: 'SDK', link: '/sdk/' },
   { text: '插件', link: '/plugins/' },
@@ -14,6 +15,7 @@ const zhNav = [
 const enNav = [
   { text: 'Guide', link: '/en/guide/getting-started' },
   { text: 'Project', link: '/en/guide/projects' },
+  { text: 'RSI', link: '/en/guide/rsi' },
   { text: 'Demo', link: '/en/demo' },
   { text: 'SDK', link: '/en/sdk/' },
   { text: 'Plugins', link: '/en/plugins/' },
@@ -32,6 +34,7 @@ const zhGuide = [
   { text: 'Harness 控制台', link: '/guide/harness-ui' },
   { text: 'Channel 多会话', link: '/guide/channels-sessions' },
   { text: 'Project 模式与交付', link: '/guide/projects' },
+  { text: 'RSI 经验演化', link: '/guide/rsi' },
   { text: 'AML 自动建模', link: '/guide/aml' },
   { text: '本体与 AI 先行模型闭环', link: '/guide/ontology' },
   { text: '数据分析台账', link: '/guide/analysis-reports' },
@@ -52,6 +55,7 @@ const enGuide = [
   { text: 'Harness console', link: '/en/guide/harness-ui' },
   { text: 'Channel sessions', link: '/en/guide/channels-sessions' },
   { text: 'Project mode & delivery', link: '/en/guide/projects' },
+  { text: 'RSI experience evolution', link: '/en/guide/rsi' },
   { text: 'AML auto-modeling', link: '/en/guide/aml' },
   { text: 'Ontology & AI-first model loop', link: '/en/guide/ontology' },
   { text: 'Data-analysis ledger', link: '/en/guide/analysis-reports' },

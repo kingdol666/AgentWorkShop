@@ -44,7 +44,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/<projectId>/channels \
   -H "authorization: Bearer <token>" -H "content-type: application/json" \
   -d '{"channelId":"<channelId>","charter":"只读归因"}'
 
-# 3) 激活（需要 ≥1 成员频道 + ≥1 必选交付物 + 已批准计划）
+# 3) 激活（需要 ≥1 成员频道 + ≥1 必选交付物）
 curl -X POST http://localhost:3001/api/workshop/projects/<projectId>/activate \
   -H "authorization: Bearer <token>"
 ```
@@ -53,8 +53,11 @@ curl -X POST http://localhost:3001/api/workshop/projects/<projectId>/activate \
 
 1. 办公室频道 + Project Leader 已装配；
 2. 至少一个成员 Channel 绑定，且频道有 lead；
-3. 至少一个必选交付物（或 Owner 显式豁免）；
-4. 至少一个已批准的 plan 版本（`observe` 允许 draft 计划，但不派发）。
+3. 至少一个必选交付物（或 Owner 显式豁免）。
+
+激活本身**不要求计划已批准**；但**派发工作项要求已批准的 plan 版本**（默认 `planApprovalRequired=1`）：先 `POST /plan/request-approval` → `POST /approvals/:aid/decide`，`planVersion` 到 1 后才能 dispatch。
+
+> 计划体只放事实说明（如 `{ "facts": ["…"] }`）。若在计划体里再带 `deliverables / work_items`，plan alignment 会把它们物化落库，与手工创建的工作项重复（实机踩坑：2 手工 + 2 对齐 = 4 项）。
 
 `leaderHarness` **没有默认值**：不允许“用户不选就静默得到 mock 做生产 Leader”。演示/验收请显式传 `mock`。
 
@@ -145,17 +148,38 @@ planned ─▶ active ─▶ submitted ─▶ approved / rejected / waived
 | 完成 | `POST /projects/:id/complete` | 门禁通过后创建 `project_complete` 审批 |
 | 归档 | `POST /projects/:id/archive` | 只读；保留绑定历史；列表默认隐藏 |
 
-## 项目页
+## 项目中心（前端入口）
 
-项目页围绕交付而不是聊天组织：
+`/projects` 是 Project 层的正式入口，不再是"知道 URL 才能进"的孤岛：
 
-- **概览**：Leader 对话、项目快照（就绪/执行中/等待/阻塞、工作项完成率、交付物签核率）、频道绑定、周报；
-- **计划与工作**：plan 版本、工作项依赖、派发状态；
-- **交付物**：交付物 / 成果 / 证据 / 取代关系；
-- **审批**：plan、交付物验收、项目完成；
-- **决策与事件**：决策记录与事件账本（可对账）。
+- **四处可达**：全局侧栏「项目中心」、Agent 工作台首页胶囊、命令面板「前往:项目中心」、路由元数据（顶栏标题/航迹）；
+- **列表页**：统计带（全部 / 进行中 / 待审批 / 已完成 / 工作项总量）、搜索、状态分段、6 卡骨架屏、双空态；卡片显示进度条、频道数、交付物签核、待审批与最近活动；创建走对话框（Leader 引擎按 `/workshop/harnesses` 可用性下拉，支持蓝图实例化）；
+- **详情页**：左侧项目导航（概览 / 计划与工作 / 交付物 / 审批 / 决策与事件）+ 中央工作区 + 右侧快照（≥1200px）；`?tab=plan` 深链；移动端导航换行不裁切。
 
-界面细节见 [Harness 控制台与 Project 详情](/guide/harness-ui)。
+### 数据面
+
+`GET /api/workshop/projects` 在项目行上追加 `summary`（additive）：
+
+```json
+{
+  "workItems": 3, "completedWorkItems": 3, "progress": 1,
+  "deliverables": 3, "requiredDeliverables": 3, "approvedDeliverables": 3, "acceptanceProgress": 1,
+  "channels": 3, "members": 0, "pendingApprovals": 0,
+  "lastActivityAt": "2026-11-09T18:53:57.837+08:00"
+}
+```
+
+列表页据此直接渲染，**不再逐项目拉 observability（零 N+1）**。`channels` 只计执行频道，任务实例（`bindingType=task_instance`）单独计数，避免"频道数"虚高。
+
+### 详情页五个面
+
+- **概览**：进度环 + 就绪/执行中/等待/阻塞/签核率、Leader 对话、频道绑定（真实频道名 + 打开办公室/打开会话）、项目会话、周报；
+- **计划与工作**：五列执行看板（就绪 / 执行中 / 等待 / 阻塞 / 完成与验收链）、权威工作项表（派发/重试/取消）、路由与派发日志、计划快照；
+- **交付物**：交付物卡（内容 → 技术验收 → 业务签核三级门 + 验收标准）、成果按交付物分组（提交/复核/申请验收）；
+- **审批**：待审批卡（plan / 交付物验收 / 项目完成）+ 审批历史；
+- **决策与事件**：`/observability/activity` 游标分页，events + decisions 统一时间线，`dispatch.proposed` 可直接应用提案。
+
+界面细节见 [Harness 控制台与 Project 详情](/guide/harness-ui)。实机验收 **39/39**（蓝图三频道 → 真实 artifact → technical 409 门 → L1/L2 → completed，真实 Chrome）：[`2026-11-09-project-landing`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-09-project-landing/project-landing-live.md)。
 
 ## 实机场景：CAL-3 四期递进
 
@@ -185,6 +209,9 @@ planned ─▶ active ─▶ submitted ─▶ approved / rejected / waived
 | `POST` | `/api/workshop/projects/:id/approvals/:aid/decide` | 批准 / 拒绝 |
 | `GET` | `/api/workshop/projects/:id/sessions` | 项目 / 任务会话目录（仅简报） |
 | `GET` | `/api/workshop/projects/:id/observability` | 观测面（工作项、交付物、预算） |
+| `GET` | `/api/workshop/projects/:id/observability/activity` | 统一活动流（events + decisions，游标分页） |
+| `GET` | `/api/workshop/projects` | 列表（每行附带 `summary`，列表页零 N+1） |
+| `POST` | `/api/workshop/projects/:id/plan/request-approval` | 计划门（批准后 `planVersion` +1，才可派发） |
 
 ## 边界与已知限制
 
@@ -195,5 +222,6 @@ Project 模式已经可以承担真实交付，但以下边界必须知道：
 - **节拍闸是“事后拒绝”**：300s / 60s 闸会把计划打回，Agent 只能等待/重试，调度器尚未预留时间窗；
 - **Leader 可用 mock**：`leaderHarness` 已强制显式，但演示/验收仍可能使用 mock；真实项目应选真实引擎；
 - **L1/L2 的独立性**：当前是“技术复核 + Owner 验收”两段，不包含多评审员辩论协议。
+- **复核权限**：只有项目 owner / admin / project leader 可复核；普通成员（`role=user`）会收到 403，需要独立评审时请用 admin 账号（与提交人分离即可满足“不自批”）。
 
 > 相关阅读：[Channel 多会话与 Agent 生命周期](/guide/channels-sessions) · [Harness 控制台](/guide/harness-ui) · [HITL 审批](/guide/hitl) · [产线权限](/guide/line-permissions)
