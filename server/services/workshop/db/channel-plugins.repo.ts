@@ -31,6 +31,30 @@ function getDb(): DatabaseSync {
   return db
 }
 
+/**
+ * 注入主连接(workshop 插件在 openWorkshopDb 之后调用)。
+ * 与 tool-registry 同因:自持第二连接会与主连接争同一文件写锁(busy_timeout 4s),
+ * 备份/批量落库持锁时插件开关保存会 SQLITE_BUSY。
+ */
+export function initChannelPluginsDb(shared: DatabaseSync): void {
+  if (db === shared) return
+  if (db) {
+    try {
+      db.close()
+    }
+    catch { /* 旧自持连接已失效可忽略 */ }
+  }
+  db = shared
+  db.exec(`CREATE TABLE IF NOT EXISTS channel_plugins (
+    channel_id TEXT NOT NULL,
+    plugin     TEXT NOT NULL,
+    enabled    INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (channel_id, plugin)
+  )`)
+  migrateDropChannelFk(db)
+}
+
 /** 早期建表带 REFERENCES channels(id):team 作用域 id 写入会触发 FK 拒绝 → 重建剥壳 */
 function migrateDropChannelFk(db: DatabaseSync): void {
   const fks = db.prepare('PRAGMA foreign_key_list(channel_plugins)').all() as Array<{ table: string }>

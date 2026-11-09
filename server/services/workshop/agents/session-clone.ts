@@ -47,9 +47,16 @@ export interface SessionCloneDeps {
   /** 停用 clone 成员行（enabled=0）：关闭的会话不得再被寻址/惰性重装配。 */
   disableAgent?: (channelId: string, instanceId: string) => void
   notify?: (channelId: string, payload: { op: 'added' | 'updated' | 'removed', agentId: string, name: string, role: 'lead' | 'worker', harness: string }) => void
+  /**
+   * 事务包装(clone 行 + session 行原子落库)。缺省直通 —— 测试替身/无 DB 场景保持可用。
+   * 生产由 manager 注入 `withTransaction(this.deps.db, fn)`(可重入,嵌套走 SAVEPOINT)。
+   */
+  withTx?: <T>(fn: () => T) => T
 }
 
 export const SESSION_MARKER = '·session·'
+/** 进行中的会话关闭(in-process 去重):并发 close 只执行一次级联 */
+const closingSessions = new Set<string>()
 const TERMINAL_TASK_STATES = new Set(['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'])
 
 /** 频道基础成员 = 已启用的 lead/worker（排除项目办公室 leader 与既有 session clone）。 */
@@ -92,54 +99,61 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
     return max + 1
   }
   const usedSeq = new Set<number>()
-  for (const base of bases) {
-    let seq = nextSeqOf(base.name)
-    while (usedSeq.has(seq)) seq += 1
-    usedSeq.add(seq)
-    const cloneName = `${base.name}${SESSION_MARKER}${seq}`
-    const config = parseJson<Record<string, unknown>>(base.configJson ?? '{}', {})
-    const created = deps.channelAgents.create({
-      channelId: input.channelId,
-      templateId: null,
-      name: cloneName,
-      harness: base.harness,
-      config,
-      // clone 统一 worker 定位：会话=执行单元；基础 lead 保持频道协调者身份不变
-      role: 'worker',
-    })
-    memberMap[base.id] = created.id
-    members.push({ baseAgentId: base.id, cloneId: created.id, name: cloneName, role: 'worker' })
-    // 复制基础成员的节点绑定面（daq 读/dcw 写/配方/产线配方管理权）
-    for (const b of deps.bindings.byAgent(base.id)) {
-      deps.bindings.bind(created.id, b.nodeId, b.kind, b.mode)
+  // clone 行 + session 行必须**原子**落库:中途失败会留下无会话归属的孤儿 clone
+  // (可被 resolveMemberRef 寻址,却不受会话守卫保护)。绑定面是 JSON 文件存储
+  // (node-bindings.repo),不参与 sqlite 事务,放到事务提交后复制 —— 失败只留
+  // 孤儿绑定(读侧按 agent 过滤,无害),不会产生孤儿 clone。
+  const withTx = deps.withTx ?? (<T>(fn: () => T): T => fn())
+  const created = withTx(() => {
+    const rows: Array<{ base: typeof bases[number], cloneId: string, name: string }> = []
+    for (const base of bases) {
+      let seq = nextSeqOf(base.name)
+      while (usedSeq.has(seq)) seq += 1
+      usedSeq.add(seq)
+      const cloneName = `${base.name}${SESSION_MARKER}${seq}`
+      const config = parseJson<Record<string, unknown>>(base.configJson ?? '{}', {})
+      const row = deps.channelAgents.create({
+        channelId: input.channelId,
+        templateId: null,
+        name: cloneName,
+        harness: base.harness,
+        config,
+        // clone 统一 worker 定位：会话=执行单元；基础 lead 保持频道协调者身份不变
+        role: 'worker',
+      })
+      memberMap[base.id] = row.id
+      members.push({ baseAgentId: base.id, cloneId: row.id, name: cloneName, role: 'worker' })
+      rows.push({ base, cloneId: row.id, name: cloneName })
     }
-    deps.notify?.(input.channelId, { op: 'added', agentId: created.id, name: cloneName, role: 'worker', harness: base.harness })
-  }
-  const session = input.sessionRepo.create({
-    channelId: input.channelId,
-    title,
-    memberMap,
-    createdBy: input.actorId,
+    const session = input.sessionRepo.create({
+      channelId: input.channelId,
+      title,
+      memberMap,
+      createdBy: input.actorId,
+    })
+    return { rows, sessionId: session.id }
   })
-  return { sessionId: session.id, title, members }
+  // 事务外:复制绑定面 + 广播成员变更(notify 可能触发懒装配/落库,出事务更稳)
+  for (const r of created.rows) {
+    for (const b of deps.bindings.byAgent(r.base.id)) {
+      deps.bindings.bind(r.cloneId, b.nodeId, b.kind, b.mode)
+    }
+    deps.notify?.(input.channelId, { op: 'added', agentId: r.cloneId, name: r.name, role: 'worker', harness: r.base.harness })
+  }
+  return { sessionId: created.sessionId, title, members }
 }
 
-/** 关闭会话：在飞任务按树取消 + clone 实例停用（runtime 卸载）+ 会话 closed。 */
-export async function closeChannelSession(deps: SessionCloneDeps, input: {
-  channelId: string
-  sessionId: string
-  actorId: string
-  reason?: string
-  sessionRepo: { findById(id: string): { status: string, memberMapJson: string } | undefined, close(id: string): boolean }
-}): Promise<{ canceledTasks: number, clones: string[] }> {
-  const session = input.sessionRepo.findById(input.sessionId)
-  if (!session) throw new AppError(404, 'NOT_FOUND', `会话不存在: ${input.sessionId}`)
-  // 幂等语义：已关闭会话重复 close 不再重复取消（cancelTree 二次调用对已终态任务无害，
-  // 但会让审计/返回值失真）。
-  if (session.status === 'closed') return { canceledTasks: 0, clones: [] }
-  const reason = input.reason?.trim() || 'SESSION_CLOSED'
-  const memberMap = parseJson<Record<string, string>>(session.memberMapJson, {})
-  const clones = Object.values(memberMap)
+/**
+ * 会话关闭级联:按 clone 取消在飞任务树 → 打断进行中的 LLM 回合 → 停用成员行 →
+ * 摘除运行时。返回取消的任务数(取消的子任务可能指派给同频道其他 clone,按各自
+ * assignee 的运行时中止)。
+ */
+async function cancelSessionClones(
+  deps: SessionCloneDeps,
+  input: { channelId: string, actorId: string },
+  clones: string[],
+  reason: string,
+): Promise<number> {
   let canceledTasks = 0
   for (const cloneId of clones) {
     for (const t of deps.tasks.list(input.channelId)) {
@@ -164,8 +178,39 @@ export async function closeChannelSession(deps: SessionCloneDeps, input: {
     if (deps.stopAgentRuntime) await deps.stopAgentRuntime(input.channelId, cloneId, reason)
     else await deps.unloadAgent(input.channelId, cloneId, reason)
   }
-  input.sessionRepo.close(input.sessionId)
-  return { canceledTasks, clones }
+  return canceledTasks
+}
+
+/** 关闭会话：在飞任务按树取消 + clone 实例停用（runtime 卸载）+ 会话 closed。 */
+export async function closeChannelSession(deps: SessionCloneDeps, input: {
+  channelId: string
+  sessionId: string
+  actorId: string
+  reason?: string
+  sessionRepo: { findById(id: string): { status: string, memberMapJson: string } | undefined, close(id: string): boolean }
+}): Promise<{ canceledTasks: number, clones: string[] }> {
+  const session = input.sessionRepo.findById(input.sessionId)
+  if (!session) throw new AppError(404, 'NOT_FOUND', `会话不存在: ${input.sessionId}`)
+  // 幂等语义：已关闭会话重复 close 不再重复取消（cancelTree 二次调用对已终态任务无害，
+  // 但会让审计/返回值失真）。
+  if (session.status === 'closed') return { canceledTasks: 0, clones: [] }
+  const reason = input.reason?.trim() || 'SESSION_CLOSED'
+  const memberMap = parseJson<Record<string, string>>(session.memberMapJson, {})
+  const clones = Object.values(memberMap)
+  // 并发去重:CAS 放在**级联之后**(LH-1 不变量:取消 → 强停 → 会话 closed,关闭是
+  // 级联成功的结论而非前提),所以入口用 in-process 在飞集合挡重复级联 —— 旧实现
+  // 两个并发 close 都能通过 status 检查,重复 cancelTree/abort(审计与返回值失真)。
+  // 跨进程由末尾 close() 的条件 UPDATE 兜底(进程内单写者由 data.lock 保证)。
+  if (closingSessions.has(input.sessionId)) return { canceledTasks: 0, clones: [] }
+  closingSessions.add(input.sessionId)
+  try {
+    const canceledTasks = await cancelSessionClones(deps, input, clones, reason)
+    if (!input.sessionRepo.close(input.sessionId)) return { canceledTasks: 0, clones: [] }
+    return { canceledTasks, clones }
+  }
+  finally {
+    closingSessions.delete(input.sessionId)
+  }
 }
 
 /**

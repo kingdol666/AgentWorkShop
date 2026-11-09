@@ -17,10 +17,30 @@
 import { DatabaseSync } from 'node:sqlite'
 import { join } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
+import { withTransaction } from './transaction'
 
 const DB_PATH = join(ensureDataDir(), 'workshop.sqlite')
 
 let db: DatabaseSync | null = null
+
+/**
+ * 注入主连接(workshop 插件在 openWorkshopDb 之后调用)。
+ *
+ * 此前本 repo 自持第二条 `new DatabaseSync(DB_PATH)`:同一 SQLite 文件两个连接各持
+ * 写锁,busy_timeout 只有 4s —— 批量 channel_events 落库 / 备份持锁窗口里 savePolicy
+ * 会直接 SQLITE_BUSY。共享主连接后写锁与事务深度(transaction.ts)单点收敛。
+ */
+export function initToolRegistryDb(shared: DatabaseSync): void {
+  if (db === shared) return
+  if (db) {
+    try {
+      db.close()
+    }
+    catch { /* 旧自持连接已失效可忽略 */ }
+  }
+  db = shared
+  ensureSchema(db)
+}
 
 function ensureSchema(d: DatabaseSync): void {
   d.prepare(`CREATE TABLE IF NOT EXISTS tool_registry (
@@ -213,8 +233,7 @@ export class ToolRegistryRepo {
         WHEN tool_registry.definition_hash <> excluded.definition_hash THEN excluded.updated_at
         ELSE tool_registry.updated_at
       END`)
-    d.prepare('BEGIN IMMEDIATE').run()
-    try {
+    withTransaction(d, () => {
       for (const row of rows) {
         stmt.run(
           row.name,
@@ -233,16 +252,8 @@ export class ToolRegistryRepo {
           now,
         )
       }
-      d.prepare('COMMIT').run()
-      return rows.length
-    }
-    catch (err) {
-      try {
-        d.prepare('ROLLBACK').run()
-      }
-      catch { /* ignore */ }
-      throw err
-    }
+    })
+    return rows.length
   }
 
   /**
@@ -312,8 +323,7 @@ export class ToolRegistryRepo {
     const rows = mode === 'all'
       ? entries.filter(e => e.enabled === false)
       : entries
-    d.prepare('BEGIN IMMEDIATE').run()
-    try {
+    withTransaction(d, () => {
       d.prepare(`INSERT INTO channel_tool_policies (channel_id, mode, updated_by, updated_at)
         VALUES (?, ?, ?, ?)
         ON CONFLICT(channel_id) DO UPDATE SET mode = excluded.mode, updated_by = excluded.updated_by, updated_at = excluded.updated_at`)
@@ -324,32 +334,15 @@ export class ToolRegistryRepo {
       for (const entry of rows) {
         ins.run(channelId, entry.name, entry.enabled ? 1 : 0, updatedBy, now)
       }
-      d.prepare('COMMIT').run()
-    }
-    catch (err) {
-      try {
-        d.prepare('ROLLBACK').run()
-      }
-      catch { /* ignore */ }
-      throw err
-    }
+    })
   }
 
   resetPolicy(channelId: string): void {
     const d = getDb()
-    d.prepare('BEGIN IMMEDIATE').run()
-    try {
+    withTransaction(d, () => {
       d.prepare('DELETE FROM channel_tool_settings WHERE channel_id = ?').run(channelId)
       d.prepare('DELETE FROM channel_tool_policies WHERE channel_id = ?').run(channelId)
-      d.prepare('COMMIT').run()
-    }
-    catch (err) {
-      try {
-        d.prepare('ROLLBACK').run()
-      }
-      catch { /* ignore */ }
-      throw err
-    }
+    })
   }
 
   removeForChannel(channelId: string): void {
