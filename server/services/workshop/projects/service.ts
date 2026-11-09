@@ -1235,6 +1235,15 @@ export class ProjectService {
       wi.deferredUntil = null
       wi.currentAttemptId = null
     }
+    // retry 端点契约：CANCELED/COMPLETED 也支持重派 —— 但仅当计划版本一致（无漂移）。
+    // 版本漂移时不下拉，保留下方 PLAN_VERSION_STALE 拒绝（L8：已执行过的项不得悄然按新计划重跑）。
+    if ((wi.state === 'CANCELED' || wi.state === 'COMPLETED') && !liveAttempt && wi.planVersion === p.planVersion) {
+      this.workItems.update(wi.id, { state: 'DRAFT', stateReason: null, deferredUntil: null, currentAttemptId: null })
+      wi.state = 'DRAFT'
+      wi.stateReason = null
+      wi.deferredUntil = null
+      wi.currentAttemptId = null
+    }
     if (p.planVersion > 0 && wi.planVersion !== p.planVersion) {
       if (wi.state === 'DRAFT') {
         // 审查修复：批准前手建的 DRAFT 工作项派发时自动对齐当前批准版本（避免死锁）；
