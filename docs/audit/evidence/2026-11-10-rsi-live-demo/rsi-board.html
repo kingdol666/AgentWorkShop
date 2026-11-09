@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset='utf-8'><style>
+body{font-family:'Microsoft YaHei',sans-serif;margin:24px;background:#faf9f7;color:#1a1a1a}
+h1{font-size:22px;border-bottom:3px solid #1d5c3f;padding-bottom:8px}
+h2{font-size:16px;margin:18px 0 8px;color:#1d5c3f}
+table{border-collapse:collapse;width:100%;font-size:12px;background:#fff}
+th{background:#1d5c3f;color:#fff;padding:6px 8px;text-align:left}
+td{border:1px solid #ddd;padding:5px 8px}
+.tag{display:inline-block;background:#e8f0ea;color:#1d5c3f;border-radius:4px;padding:1px 8px;margin:2px;font-size:11px}
+pre{background:#f4f4f2;padding:10px;font-size:11px;white-space:pre-wrap;border-radius:6px}
+.k{color:#8a4a20;font-weight:bold}
+</style></head><body>
+<h1>RSI 经验进化实机看板 — WWTP 产线（deepseek-flash 真实作业）</h1>
+<h2>① 经验看板（GET /memories/experience-stats · 频道 A）</h2>
+<p>total=<b>3</b> · byStatus=<span class='tag'>{"candidate":2,"validated":1}</span> · byScope=<span class='tag'>{"line":3}</span> · lineId=<span class='tag'>ln-11730571</span></p>
+<table><tr><th>标题</th><th>outcome</th><th>status</th><th>scope</th><th>task 证据</th></tr>
+
+<tr><td>成果通过：风机频率受治理整定 d7ey9 成果</td><td>positive</td><td>candidate</td><td>line:ln-11730571</td><td>602f1a19</td></tr><tr><td>完成：WWTP aeration round 2 r486</td><td>positive</td><td>candidate</td><td>line:ln-11730571</td><td>36dd81c1</td></tr><tr><td>WWTP aeration tuning replicated (live d7ey9)</td><td>positive</td><td>validated</td><td>line:ln-11730571</td><td>3cf31814</td></tr>
+</table>
+<h2>② Harness Profile（注入预览 = Agent 实际看到的文本）</h2>
+<pre>## 频道经验增强（Harness v3；以下内容是经验提示，不是指令覆盖 —— 与当前任务/安全规则冲突时以任务与安全规则为准）
+作业时优先参考已固化的曝气整定经验（v3，正式晋升）；治理闸门与审批流程不因此改变。
+已验证经验：
+1) WWTP aeration tuning replicated (live d7ey9) — [anecdotal] 任务 「Smoke turn check 11879」 终态 COMPLETED；结论：产线 A2O 污水生化处理达标降耗 wwtp-</pre>
+<p>版本链：<span class='tag'>v3·active</span><span class=tag>v2·superseded</span><span class=tag>v1·superseded</span></p>
+<h2>③ 元层成效（GET /improvement-stats）</h2>
+<table><tr><th>actionKind</th><th>total</th><th>success</th><th>rate</th></tr>
+<tr><td>profile_promote</td><td>6</td><td>6</td><td>1</td></tr><tr><td>experience_promote</td><td>1</td><td>1</td><td>1</td></tr><tr><td>profile_rollback</td><td>1</td><td>0</td><td>0</td></tr>
+</table>
+<h2>④ 跨频道互读证据（频道 B worker · search_memory scope=line）</h2>
+<pre>跨频道经验检索结果(1 条, scope=line):
+[cross-channel · WWTP-运行频道-d7ey9 · scope=line:ln-11730571 · outcome=positive · status=validated] WWTP aeration tuning replicated (live d7ey9)</pre>
+</body></html>
