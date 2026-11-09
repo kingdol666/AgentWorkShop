@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-11-09T03:26:24.358Z",
+  "base": "http://127.0.0.1:3011",
+  "pass": 17,
+  "fail": 0,
+  "results": [
+    {
+      "id": "A0",
+      "name": "登录",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "A1",
+      "name": "夹具建立(项目/频道/交付物/工作项)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "G1",
+      "name": "GET 工作项主路径 200（原 404 非信封）",
+      "pass": true,
+      "detail": "http=200 code=0"
+    },
+    {
+      "id": "G2",
+      "name": "GET 交付物主路径 200",
+      "pass": true,
+      "detail": "http=200"
+    },
+    {
+      "id": "G3",
+      "name": "跨项目/不存在 id → 404 统一信封",
+      "pass": true,
+      "detail": "http=404 code=NOT_FOUND data=null"
+    },
+    {
+      "id": "S1",
+      "name": "dcw 参数写:value 非数值 → 400 且字段精确",
+      "pass": true,
+      "detail": "http=400 msg=value: value 必须是数值(工程量纲)"
+    },
+    {
+      "id": "S2",
+      "name": "dcw 参数写:对象值 → 400（旧实现 Number({})=NaN 会带进控制器）",
+      "pass": true,
+      "detail": "http=400 msg=value: value 必须是数值(工程量纲)"
+    },
+    {
+      "id": "S3",
+      "name": "工具桥:空 agentId → 400 字段精确",
+      "pass": true,
+      "detail": "http=400 msg=agentId: agentId required"
+    },
+    {
+      "id": "S4",
+      "name": "工具桥:非法 tool 名 → 400",
+      "pass": true,
+      "detail": "http=400 msg=tool: tool 名只能是 [a-z0-9_] 且不超过 64 字符"
+    },
+    {
+      "id": "S5",
+      "name": "工具桥:args 非对象 → 400",
+      "pass": true,
+      "detail": "http=400 msg=args: Expected object, received array"
+    },
+    {
+      "id": "S6",
+      "name": "HITL:未知 kind → 400",
+      "pass": true,
+      "detail": "http=400"
+    },
+    {
+      "id": "S7",
+      "name": "权限:非法 mode → 400（原 as string 落库）",
+      "pass": true,
+      "detail": "http=400 msg=grants.0.mode: Invalid enum value. Expected 'readonly' | 'operate', received 'root'"
+    },
+    {
+      "id": "S8",
+      "name": "MES 凭据:空 ref → 400",
+      "pass": true,
+      "detail": "http=400 msg=ref: 缺少凭据引用名 ref"
+    },
+    {
+      "id": "S9",
+      "name": "孪生控制:空 command → 400",
+      "pass": true,
+      "detail": "http=400"
+    },
+    {
+      "id": "H1",
+      "name": "基线:首次 spawn 建立 sessionId",
+      "pass": true,
+      "detail": "{\"sid\":\"01a1be53-8529-7000-a1f1-389a0f994f05\",\"pid\":77452,\"state\":\"busy\"}"
+    },
+    {
+      "id": "H2",
+      "name": "重建后 sessionId 非空（重绑成功）",
+      "pass": true,
+      "detail": "{\"sid\":\"01a1be54-1974-7000-99fe-a9b79948e119\",\"pid\":63724,\"state\":\"busy\"}"
+    },
+    {
+      "id": "H3",
+      "name": "重建后 sessionId ≠ 旧值（无陈旧绑定）",
+      "pass": true,
+      "detail": "old=01a1be53-852 new=01a1be54-197"
+    }
+  ]
+}
