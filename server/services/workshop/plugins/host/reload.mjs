@@ -9,6 +9,7 @@ import { loadAllPlugins } from './load.mjs'
 import { modePaths } from './config.mjs'
 import { readDisabledSet } from './state.mjs'
 import { syncPluginSettings } from './rollback.mjs'
+import { pruneRegistry, restorePluginState, snapshotPluginState, staleNames } from './reload-swap.mjs'
 
 export async function reloadPluginHost() {
   const host = getPluginHost()
@@ -51,29 +52,34 @@ export async function doReload(host) {
     }
   }
   const prevNames = [...host.plugins.keys()]
-  // 插件注册的协议驱动(数采读 + 写控)先清空:停用/卸载的插件驱动立即失效,
-  // 本轮装载成功的插件经 ctx.daq/ctx.dcw 重新注册(同名幂等)。
+  // WP-C0 原子化:装载前**只快照、不清空**驱动/解码器注册表(窗口内始终有一套可用驱动);
+  // 装载成功后按差集剪除「本轮未再注册」的旧项。同名驱动幂等覆盖(后注册者胜)。
+  const beforeDrivers = { daq: [], dcw: [], decoders: [] }
+  let daqDrivers = null
+  let dcwDrivers = null
+  let decoders = null
   try {
-    const daqDrivers = await import('@/server/services/workshop/daq/drivers')
-    daqDrivers.clearPluginDrivers()
+    daqDrivers = await import('@/server/services/workshop/daq/drivers')
+    beforeDrivers.daq = daqDrivers.listPluginDrivers()
   }
-  catch { /* daq 未装载(桥排队中):注册表为空,无需清 */ }
+  catch { /* daq 未装载(桥排队中):注册表为空,无需快照 */ }
   try {
-    const dcwDrivers = await import('@/server/services/workshop/dcw/drivers')
-    dcwDrivers.clearPluginWriteDrivers()
+    dcwDrivers = await import('@/server/services/workshop/dcw/drivers')
+    beforeDrivers.dcw = dcwDrivers.listPluginWriteDrivers()
   }
   catch { /* dcw 未装载:同上 */ }
-  // 插件解码器同样先清空:停用/卸载的 decoder 立即失效,本轮装载成功的插件重新注册
   try {
-    const decoders = await import('@/server/services/workshop/daq/decoders')
-    decoders.clearDecoders()
+    decoders = await import('@/server/services/workshop/daq/decoders')
+    beforeDrivers.decoders = decoders.listDecoders()
   }
-  catch { /* daq 未装载:解码器注册表为空,无需清 */ }
+  catch { /* daq 未装载:同上 */ }
   // 工具注销延后:先装载新集、后清「本轮未再装载」的旧插件工具。
   // 原先在装载前就全部注销 → 重载窗口内(秒级~数十秒)所有插件工具"未知工具",
   // 期间到达的 Agent 工具调用(daq:sample 自动诊断/kb_store 等)被误拒
   // (实测生产闭环 Stage D 撞窗失败)。同名工具装载时按"后注册者胜"覆盖,无残留。
   const ompTools = await import('@/server/services/workshop/agents/plugin-tools').catch(() => null)
+  // 插件表快照(回滚材料):装载失败时恢复旧版,而不是留下半装载状态
+  const snapshot = snapshotPluginState(host)
   host.plugins.clear()
   host.routes = createRouteTable()
   host.failures = []
@@ -84,7 +90,31 @@ export async function doReload(host) {
   // init.mjs 已按 resolveRunMode 解析正确根并存 host.paths;重载必须复用,不得自算。
   const reloadPaths = host.paths
     ?? { home: modePaths(host.cwd).homeDir, configRoot: join(host.cwd, '.AgentWorkShop'), dataDir: join(host.cwd, '.AgentWorkShop', 'data') }
-  await loadAllPlugins(host, { config: host.config, settingsPath: null, paths: reloadPaths })
+  try {
+    await loadAllPlugins(host, { config: host.config, settingsPath: null, paths: reloadPaths })
+  }
+  catch (err) {
+    restorePluginState(host, snapshot)
+    host.logger.warn('插件装载失败,已回滚到上一版插件表:', err?.message)
+    throw err
+  }
+  // load-then-prune:装载成功后再剪除本轮未再注册的旧驱动/解码器(停用插件立即失效,
+  // 但窗口内不会出现"所有插件驱动消失")
+  try {
+    if (daqDrivers) pruneRegistry(daqDrivers.pluginRegistry(), staleNames(beforeDrivers.daq, daqDrivers.listPluginDrivers()))
+  }
+  catch { /* 剪除失败不影响重载结果(残留驱动对已停用插件无调用入口) */ }
+  try {
+    if (dcwDrivers) pruneRegistry(dcwDrivers.pluginRegistry(), staleNames(beforeDrivers.dcw, dcwDrivers.listPluginWriteDrivers()))
+  }
+  catch { /* 同上 */ }
+  try {
+    // 解码器按 owner(插件名)撤销:只清「本轮未再装载」的插件,内置声明式解码不受影响
+    if (decoders) {
+      for (const gone of prevNames.filter(name => !host.plugins.has(name))) decoders.clearDecoders(gone)
+    }
+  }
+  catch { /* 同上 */ }
   // 装载中途失败(setup 抛错)的插件可能留下半注册工具,兜底再清一次
   for (const prev of prevNames) {
     if (!host.plugins.has(prev)) {

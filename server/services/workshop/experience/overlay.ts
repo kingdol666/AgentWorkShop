@@ -12,6 +12,7 @@
 import { getAmlRuntime } from '../aml/runtime'
 import { createMemoryRepo } from '../db/memory.repo'
 import { createHarnessProfileRepo, renderHarnessOverlay } from './harness-profile'
+import { advisoryBlock } from './advisory'
 import { unsegmentCJK } from '../runtime/memory/helpers'
 
 /** 进程内缓存：同一频道 60s 内不重复查库（profile 变更最迟 1 分钟生效，可接受） */
@@ -27,18 +28,24 @@ export function channelOverlayText(channelId: string): string {
   if (!channelId) return ''
   const hit = cache.get(channelId)
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.text
-  let text = ''
+  let text: string
   try {
     const db = getAmlRuntime().db
     const profile = createHarnessProfileRepo(db).activeOf(channelId)
+    const parts: string[] = []
     if (profile) {
       const memRepo = createMemoryRepo(db)
       const pinned = (profile.layers.pins ?? [])
         .map(id => memRepo.getById(id))
         .filter((r): r is NonNullable<typeof r> => !!r && r.status !== 'retired')
         .map(r => ({ title: r.title, content: unsegmentCJK(r.content) }))
-      text = renderHarnessOverlay(profile, pinned)
+      const rendered = renderHarnessOverlay(profile, pinned)
+      if (rendered) parts.push(rendered)
     }
+    // WP-C2:学习性护栏提示（advisory;≤3 条/≤200 tok;与被拒事实挂钩）
+    const advisory = advisoryBlock(db, channelId)
+    if (advisory) parts.push(advisory)
+    text = parts.join('\n\n')
   }
   catch {
     text = ''
