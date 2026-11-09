@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * Project 层生产业务验收（PR3/PR4 范围）。
+ * Project 层生产业务验收（全链；头注释曾声称"不覆盖验收链"，正文 P13-P24 早已覆盖，
+ * 2026-11-10 修正注释并修复 P8b：root task 自 PR#69/#70 起落在任务实例频道，
+ * 从 project_events 的 work.dispatched 载荷取 taskId/instanceChannelId —— 外部观察者权威路径）。
  *
  * 真实链路：
  *   DCW 产线/模板/节点/产品/配方 → 绑线 Channel（mock lead）→ Project（办公室 + project_leader）
- *   → 交付物 → 工作项 → 激活 → 派发 root task → 验证项目上下文/预算/权限/保护。
+ *   → 交付物 → 工作项 → 激活 → 计划门 → 派发 root task（任务实例频道）→ 成果/两级验收
+ *   → 审计/审批幂等 → write_intent → 内核可观测面 → PR20 路由闭环（W1→W2→W3）。
  *
- * 不覆盖（当前未实现，必须标 BLOCKED，不得算通过）：
- *   成果 draft/submit/review/approve、审批、Reconciler、项目 UI、MAST/Live 全量。
+ * 不覆盖：项目 UI、MAST/Live 全量。
  *
  * 运行：node scripts/e2e-project-line-acceptance.mjs
  */
@@ -229,11 +231,32 @@ try {
   // 派发
   const dispatched = await api('POST', `/api/workshop/projects/${project.id}/work-items/${workItem.id}/dispatch`, {}, H())
   ok('P8', '工作项派发（root task）', dispatched.status === 200 && dispatched.data?.state === 'DISPATCHED', `status=${dispatched.status} state=${dispatched.data?.state}`)
-  const tasks = await api('GET', `/api/workshop/channels/${member.channelId}/tasks`, undefined, H())
-  const root = (tasks.data ?? []).find(t => t.projectWorkItemId === workItem.id)
-  ok('P8b', 'root task 带项目上下文',
-    root?.source === 'project' && root?.projectId === project.id && root?.projectWorkItemId === workItem.id && root?.projectAttemptNo === 1 && Boolean(root?.traceId),
-    JSON.stringify(root).slice(0, 600))
+  // PR#69/#70 之后 root task 落在**任务实例频道**(dispatchWorkItemAs ensureTaskInstanceChannel),
+  // 不在成员频道任务列表 —— 从项目事件流取派发事实(taskId + instanceChannelId),
+  // 这也是外部观察者的权威路径(project_events work.dispatched 载荷)。
+  const findProjectRoot = async (projectId, wiId) => {
+    const evts = await api('GET', `/api/workshop/projects/${projectId}/events`, undefined, H())
+    const p = (evts.data ?? [])
+      .filter(e => (e.type === 'work.dispatched' || e.type === 'work.dispatch_auto') && e.workItemId === wiId)
+      .map((e) => {
+        try {
+          return JSON.parse(e.payloadJson ?? '{}')
+        }
+        catch {
+          return null
+        }
+      })
+      .filter(x => x?.taskId && x?.instanceChannelId)
+      .pop()
+    if (!p) return null
+    const list = await api('GET', `/api/workshop/channels/${p.instanceChannelId}/tasks`, undefined, H())
+    return (list.data ?? []).find(t => t.id === p.taskId) ?? null
+  }
+  const root = await findProjectRoot(project.id, workItem.id)
+  ok('P8b', 'root task 带项目上下文（任务实例频道）',
+    Boolean(root)
+    && root?.source === 'project' && root?.projectId === project.id && root?.projectWorkItemId === workItem.id && root?.projectAttemptNo === 1 && Boolean(root?.traceId),
+    `task=${root?.id ?? 'none'} ctx=${JSON.stringify(root ? { source: root.source, projectId: root.projectId, attemptNo: root.projectAttemptNo, traceId: root.traceId, channelId: root.channelId } : null)}`)
   const budgetMs = root?.deadlineAt ? new Date(root.deadlineAt).getTime() - Date.now() : 0
   ok('P8c', '项目预算（60min）未被 900s 覆盖', budgetMs > 30 * 60_000, `remainingMs=${budgetMs}`)
 
@@ -292,8 +315,34 @@ try {
 
   // ── PR5：成果/审批/审计/Reconciler（真实 HTTP）──
   const rotate = await api('POST', `/api/workshop/channels/${member.channelId}/agents/${member.leadAgentId}/rotate-token`, {}, H())
-  const agentToken = rotate.data?.token
-  ok('P13a', '成员 lead token 轮换（完成任务用）', Boolean(agentToken), `status=${rotate.status}`)
+  ok('P13a', '成员 lead token 轮换', Boolean(rotate.data?.token), `status=${rotate.status}`)
+  // root task 属主是**任务实例频道 lead**（PR#69/#70 后每任务独立实例）：
+  // 完成任务必须用实例 lead 的 agent token（成员 lead token 会被 task.complete 403）。
+  const instChan = await api('GET', `/api/workshop/channels/${root.channelId}`, undefined, H())
+  const instLeadId = instChan.data?.leadAgentId
+  const instRotate = instLeadId
+    ? await api('POST', `/api/workshop/channels/${root.channelId}/agents/${instLeadId}/rotate-token`, {}, H())
+    : null
+  const agentToken = instRotate?.data?.token
+  ok('P13a2', '任务实例 lead token 轮换（root 属主）', Boolean(agentToken), `lead=${instLeadId ?? 'none'} status=${instRotate?.status}`)
+
+  // PR8：write_intent 审批链 —— 任务**在飞时**由任务属主（实例 lead）申请
+  // （reconcile 释放实例后 clone 停用，工具路径不可达；真实作业即"作业中申请"）。
+  const writeIntent = await invokeAgentTool(instLeadId, 'project_request_write_intent', {
+    tool: 'recipe_update',
+    args: { nodeId: node, value: 121 },
+    reason: 'E2E 验证 write_intent',
+    task_id: root.id,
+  }, token)
+  const writeIntentBody = parseToolJson(writeIntent)
+  ok('P20a', '任务属主申请 write_intent（pending + args digest）',
+    writeIntent.status === 200 && writeIntent.data?.result?.isError !== true
+    && writeIntentBody?.status === 'pending' && String(writeIntentBody?.digest ?? '').length === 64,
+    `status=${writeIntent.status} text=${toolText(writeIntent).slice(0, 300)}`)
+  const writeIntentDec = writeIntentBody?.approvalId
+    ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${writeIntentBody.approvalId}/decide`, { approve: true, reason: '参数与计划一致' }, H())
+    : null
+  ok('P20b', 'owner 批准 write_intent', writeIntentDec?.status === 200 && writeIntentDec.data?.status === 'approved', `status=${writeIntentDec?.status}`)
 
   const complete = await api('POST', `/api/workshop/tasks/${root.id}/complete`, {
     artifacts: [{
@@ -302,7 +351,7 @@ try {
       parts: [{ text: `产线 ${line} 基线良率 97.9%，窗口 10-30 08:00-12:00` }],
     }],
   }, agentToken)
-  ok('P13b', '成员 lead 完成任务', complete.status === 200 && complete.data?.state === 'COMPLETED', `status=${complete.status} state=${complete.data?.state}`)
+  ok('P13b', '实例频道 lead 完成任务（root 属主）', complete.status === 200 && complete.data?.state === 'COMPLETED', `status=${complete.status} state=${complete.data?.state}`)
 
   const rec = await api('POST', `/api/workshop/projects/${project.id}/reconcile`, {}, H())
   const recItem = (rec.data?.workItems ?? []).find(x => x.id === workItem.id)
@@ -332,15 +381,24 @@ try {
     bResultsView.status === 200 && (bResultsView.data ?? []).length === 0 && (ownerResultsView.data ?? []).length >= 1,
     `viewerRows=${(bResultsView.data ?? []).length} ownerRows=${(ownerResultsView.data ?? []).length}`)
 
-  const submitted = await invokeAgentTool(member.leadAgentId, 'project_submit_result', {
+  // 成果提交的两条设计路径：in-turn = 实例 lead 携活动 root 经工具提交；
+  // reconcile 释放实例后 = owner 经 REST 提交（submit.post.ts）。实例 lead 释放后
+  // clone 已停用（releaseTerminalTaskInstances），工具路径不可达属正常生命周期。
+  // 这里先钉住越权边界：非属主频道 lead 携他人 task_id 必须被拒。
+  const scopeDenied = await invokeAgentTool(member.leadAgentId, 'project_submit_result', {
     result_id: draft.id,
+    task_id: root.id,
+  }, token)
+  ok('P13d0', '越权边界：非属主 lead 携他人任务提交 → PROJECT_TASK_SCOPE_VIOLATION',
+    scopeDenied.status === 200 && String(toolText(scopeDenied)).includes('PROJECT_TASK_SCOPE_VIOLATION'),
+    `text=${toolText(scopeDenied).slice(0, 200)}`)
+  const submitted = await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/submit`, {
     summary: '基线良率 97.9%，数据窗口完整',
     method: '按产线/产品/配方取数',
-  }, token)
-  const submittedBody = parseToolJson(submitted)
-  ok('P13d', '成果 submit（channel lead 工具）',
-    submitted.status === 200 && submitted.data?.result?.isError !== true && submittedBody?.result?.status === 'submitted',
-    `status=${submitted.status} text=${toolText(submitted).slice(0, 300)}`)
+  }, H())
+  ok('P13d', '成果 submit（owner REST；实例释放后的设计路径）',
+    submitted.status === 200 && submitted.data?.status === 'submitted',
+    `status=${submitted.status} state=${submitted.data?.status} msg=${submitted.message ?? ''}`)
 
   const reviewed = await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/review`, { decision: 'reviewed' }, H())
   ok('P13e', '成果 review（owner/leader）', reviewed.status === 200 && reviewed.data?.status === 'reviewed', `status=${reviewed.status}`)
@@ -349,8 +407,16 @@ try {
   const approval = acceptanceReq.data
   ok('P14', '成果验收审批已创建 pending', acceptanceReq.status === 200 && approval?.status === 'pending', `status=${acceptanceReq.status}`)
 
-  const decided = await api('POST', `/api/workshop/projects/${project.id}/approvals/${approval.id}/decide`, { approve: true, reason: '证据完整' }, H())
-  ok('P14b', 'owner 批准成果验收', decided.status === 200 && decided.data?.status === 'approved', `status=${decided.status}`)
+  // maker-checker：owner 经 REST 提交成果（authorUserId=owner）后**不能自批**——
+  // 决策交给已授权的 approver 成员 B（团队协作决策面）。决策人必须能看到成果产线
+  // （C11 line grant：assertResultLineVisible），先授只读权。
+  await api('PUT', '/api/workshop/permissions', { userId: bUserId, grants: [{ lineId: line, mode: 'readonly' }] }, H())
+  await api('POST', `/api/workshop/projects/${project.id}/members`, { userId: bUserId, role: 'approver' }, H())
+  const selfDecide = await api('POST', `/api/workshop/projects/${project.id}/approvals/${approval.id}/decide`, { approve: true }, H())
+  ok('P14a', '提交者自批 → 403 SELF_APPROVAL_FORBIDDEN（maker-checker）',
+    selfDecide.status === 403 && selfDecide.code === 'SELF_APPROVAL_FORBIDDEN', `status=${selfDecide.status} code=${selfDecide.code}`)
+  const decided = await api('POST', `/api/workshop/projects/${project.id}/approvals/${approval.id}/decide`, { approve: true, reason: '证据完整' }, bToken)
+  ok('P14b', 'approver 成员批准成果验收', decided.status === 200 && decided.data?.status === 'approved', `status=${decided.status} code=${decided.code}`)
 
   const results2 = await api('GET', `/api/workshop/projects/${project.id}/results`, undefined, H())
   const approvedResult = (results2.data ?? []).find(x => x.id === draft.id)
@@ -369,7 +435,7 @@ try {
     && decisionsData.every(d => d.argsSha256?.length === 64) && eventsData.every(e => Boolean(e.eventKey)),
     `decisions=${decisionsData.length} events=${eventsData.length}`)
 
-  const repeatDecide = await api('POST', `/api/workshop/projects/${project.id}/approvals/${approval.id}/decide`, { approve: true }, H())
+  const repeatDecide = await api('POST', `/api/workshop/projects/${project.id}/approvals/${approval.id}/decide`, { approve: true }, bToken)
   ok('P14d', '审批重复决策 → 409', repeatDecide.status === 409, `status=${repeatDecide.status} code=${repeatDecide.code}`)
 
   const leaderPlanName = `Leader计划交付物-${TAG}`
@@ -402,22 +468,8 @@ try {
     && (afterPlanDeliverables.data ?? []).some(d => d.name === leaderPlanName),
     `memUp=${memUp.status} planDec=${planDec?.status} version=${afterPlan.data?.planVersion} deliverables=${(afterPlanDeliverables.data ?? []).length}`)
 
-  // PR8：write_intent 审批链（项目来源任务默认不可直写）
-  const writeIntent = await invokeAgentTool(member.leadAgentId, 'project_request_write_intent', {
-    tool: 'recipe_update',
-    args: { nodeId: node, value: 121 },
-    reason: 'E2E 验证 write_intent',
-    task_id: root.id,
-  }, token)
-  const writeIntentBody = parseToolJson(writeIntent)
-  ok('P20a', 'channel lead 申请 write_intent（pending + args digest）',
-    writeIntent.status === 200 && writeIntent.data?.result?.isError !== true
-    && writeIntentBody?.status === 'pending' && String(writeIntentBody?.digest ?? '').length === 64,
-    `status=${writeIntent.status} text=${toolText(writeIntent).slice(0, 300)}`)
-  const writeIntentDec = writeIntentBody?.approvalId
-    ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${writeIntentBody.approvalId}/decide`, { approve: true, reason: '参数与计划一致' }, H())
-    : null
-  ok('P20b', 'owner 批准 write_intent', writeIntentDec?.status === 200 && writeIntentDec.data?.status === 'approved', `status=${writeIntentDec?.status}`)
+  // （write_intent 链已前移到任务在飞时：见 P13a2 之后的 P20a/P20b —— 实例释放后
+  // 工具路径不可达，真实作业即"作业中申请"。）
 
   // ── PR14：plan §7.1 API 补全（update/retry/snapshot/trace/审批历史）──
   const patchProject = await api('PATCH', `/api/workshop/projects/${project.id}`, { description: 'PR14 更新的描述', mode: 'supervised' }, H())
@@ -437,20 +489,34 @@ try {
     deliverableId: deliverable.id, channelId: member.channelId, title: `PR14 重试项-${TAG}`, brief: 'x', dedupeKey: `pr14-retry:${TAG}`,
   }, H())).data
   await api('POST', `/api/workshop/projects/${project.id}/work-items/${retryWi.id}/dispatch`, {}, H())
-  const retryTasks = await api('GET', `/api/workshop/channels/${member.channelId}/tasks`, undefined, H())
-  const retryRoot = (retryTasks.data ?? []).find(t => t.projectWorkItemId === retryWi.id)
-  const retryRotate = await api('POST', `/api/workshop/channels/${member.channelId}/agents/${member.leadAgentId}/rotate-token`, {}, H())
-  await api('POST', `/api/workshop/tasks/${retryRoot.id}/complete`, { state: 'FAILED', closeReason: 'pr14 drill' }, retryRotate.data?.token).catch(async () => {
-    // complete 接口不接受 state 参数时走 update 语义：忽略，改用 cancel/reconcile 路径
-  })
-  // 用 cancel+reconcile 保证 FAILED 终态（complete API 语义以 P13b 为准）
-  const failedNow = await api('POST', `/api/workshop/projects/${project.id}/work-items/${retryWi.id}/cancel`, { reason: 'pr14 retry drill' }, H())
+  // root 落任务实例频道（同 P8b），属主是实例频道 lead
+  const retryRoot = await findProjectRoot(project.id, retryWi.id)
+  if (retryRoot) {
+    const rChan = await api('GET', `/api/workshop/channels/${retryRoot.channelId}`, undefined, H())
+    const rLead = rChan.data?.leadAgentId
+    const rTok = rLead
+      ? (await api('POST', `/api/workshop/channels/${retryRoot.channelId}/agents/${rLead}/rotate-token`, {}, H())).data?.token
+      : null
+    await api('POST', `/api/workshop/tasks/${retryRoot.id}/complete`, { state: 'FAILED', closeReason: 'pr14 drill' }, rTok).catch(() => {
+      // complete 接口不接受 state 参数时走 update 语义：忽略，改用 cancel/reconcile 路径
+    })
+  }
+  // mock lead 可能秒完成 retry 项（终态先到）：等终态再 retry（retry 契约支持
+  // FAILED/CANCELED/COMPLETED 重派；cancel 对已终态项是幂等 no-op）。
+  let failedNow = { status: 0 }
+  for (let i = 0; i < 20; i++) {
+    await sleep(1500)
+    const st = (await api('GET', `/api/workshop/projects/${project.id}/work-items`, undefined, H())).data
+      ?.find(x => x.id === retryWi.id)?.state
+    if (['COMPLETED', 'FAILED', 'CANCELED'].includes(st ?? '')) break
+    failedNow = await api('POST', `/api/workshop/projects/${project.id}/work-items/${retryWi.id}/cancel`, { reason: 'pr14 retry drill' }, H())
+  }
   const retryResp = await api('POST', `/api/workshop/projects/${project.id}/work-items/${retryWi.id}/retry`, {}, H())
   const retryAttempts = await api('GET', `/api/workshop/projects/${project.id}/work-items`, undefined, H())
   const retryTarget = (retryAttempts.data ?? []).find(x => x.id === retryWi.id)
-  ok('P23c', 'retry 重派工作项（cancel→retry attempt 递增）',
-    failedNow.status === 200 && retryResp.status === 200 && retryResp.data?.state === 'DISPATCHED' && Boolean(retryTarget?.currentAttemptId),
-    `cancel=${failedNow.status} retry=${retryResp.status} state=${retryResp.data?.state}`)
+  ok('P23c', 'retry 重派工作项（终态→retry attempt 递增）',
+    retryResp.status === 200 && retryResp.data?.state === 'DISPATCHED' && Boolean(retryTarget?.currentAttemptId),
+    `cancel=${failedNow.status} retry=${retryResp.status} code=${retryResp.code ?? ''} state=${retryResp.data?.state}`)
 
   const snapshot = await api('GET', `/api/workshop/projects/${project.id}/snapshot`, undefined, H())
   ok('P23d', 'snapshot 聚合（project/workItems/results/approvals+report）',
@@ -536,6 +602,9 @@ try {
   }, H())).data
   const rProject = (await api('POST', '/api/workshop/projects', {
     name: `Route闭环项目-${TAG}`, objective: 'route 自动派发闭环验收', leaderHarness: 'mock', autoDispatch: true,
+    // 路由机制验收用 legacy：technical 口径要求上游成果先 submit→L1 review 才放行下游
+    // （那是验收链的职责，P13e/P14 已覆盖）；本节验证的是「完成 → 回调 → 自动派发」机制。
+    routingPolicy: 'legacy',
   }, H())).data
   const rBind = await api('POST', `/api/workshop/projects/${rProject.id}/channels`, { channelId: rChannel.channelId }, H())
   const rDeliverable = (await api('POST', `/api/workshop/projects/${rProject.id}/deliverables`, {
