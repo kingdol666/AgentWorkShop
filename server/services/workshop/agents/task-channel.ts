@@ -21,6 +21,7 @@
 import { randomUUID } from 'node:crypto'
 import { parseJson } from '../db/database'
 import { AppError } from '../../../utils/errors'
+import { inheritChannelProfile } from './task-channel-profile'
 
 export const TASK_INSTANCE_MARKER = '·任务·'
 const EXCLUDED_NAME_MARKERS = [TASK_INSTANCE_MARKER, '·session·']
@@ -162,5 +163,7 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
     createdByKind: 'project',
     instanceKind: 'task',
   })
+  // 5) RSI WP-D5:继承母频道 AML profile（降档 + 不继承模型绑定；legacy 不写）
+  inheritChannelProfile(input.templateChannelId, created.channelId)
   return { sessionId: session.id, channelId: created.channelId, leadAgentId: created.leadAgentId, members }
 }
