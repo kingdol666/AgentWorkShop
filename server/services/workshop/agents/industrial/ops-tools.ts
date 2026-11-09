@@ -22,6 +22,8 @@ import { RECOVERY_RETRY_HINT, RECOVERY_TRACE_HINT, RECOVERY_VERIFY_HINT } from '
 import { approvalOnlyTrialReceipt, sameApprovalOnlyTrialReceipt, type ApprovalOnlyTrialReceipt } from './bench-approval-only'
 import { currentToolInvocation } from '../governance-harness-audit'
 import { executionModeOfAgent } from '../execution-mode'
+import { getAmlRuntime } from '../../aml/runtime'
+import { markRecipeProposalsAccepted } from '../../db/improvement.repo'
 
 // ================================================================
 // 运维日志 / Recipe 变更史查询(Agent 自查面:负责产线 scoped)
@@ -870,6 +872,11 @@ export async function toolRecipeUpdate(agentId: string, args: {
       return `${node?.name ?? p.node_id} ${before ?? '?'}→${Number(p.value)}`
     }).join(';')
     const droppedNote = dropped.length > 0 ? `\n注意:已自动剔除失效参数(${dropped.join('、')}:节点已删除或改挂其他产线),这些参数不再属于本配方。` : ''
+    // WP-D2:配方固化成功后,把该配方的 pending 改进提案收口为 accepted(提案≠写,只反映处理结果)
+    try {
+      markRecipeProposalsAccepted(getAmlRuntime().db, recipeId, agentBadgeLabel(agentId))
+    }
+    catch { /* 提案收口失败不影响配方保存 */ }
     return {
       text: `已保存为 v${updated.version ?? 1}:「${updated.name}」参数 ${changedNodes};原因:${reason}。${droppedNote}${hitlNote}\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。`,
     }

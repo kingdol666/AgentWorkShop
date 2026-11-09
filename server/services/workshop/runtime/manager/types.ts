@@ -13,6 +13,7 @@ import type { ChatMessageRepo } from '../../db/chat-message.repo'
 import type { DatabaseSync } from 'node:sqlite'
 import type { HitlRequestRepo } from '../../db/hitl-request.repo'
 import type { MemoryRepo } from '../../db/memory.repo'
+import type { ImprovementRepo } from '../../db/improvement.repo'
 import type { MessageRepo } from '../../db/message.repo'
 import type { NotificationRepo } from '../../db/notification.repo'
 import type { OutboxRepo } from '../../db/outbox.repo'
@@ -50,6 +51,8 @@ export interface AllRepos {
   outbox?: OutboxRepo
   /** v17 HITL 持久化事实源 */
   hitlRequests?: HitlRequestRepo
+  /** RSI 改进提案(WP-D2;旧测试脚手架缺省时相关路径已守卫) */
+  improvements?: ImprovementRepo
 }
 
 /** Manager 依赖 */

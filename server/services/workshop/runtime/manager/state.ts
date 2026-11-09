@@ -30,6 +30,7 @@ import { parseJson } from '../../db/database'
 import { reflectExperience } from '../memory/reflector'
 import { collectInterventionFact, collectTaskFact, listUnreflectedInterventions } from '../memory/reflect-collector'
 import { registerInterventionAssessmentHook } from '../../aml/intervention-ledger'
+import { getDcwController } from '../../dcw/dcw-controller'
 
 /** §7.1 事件名 → 展示标签(tasks 状态机 → 设计文档事件契约) */
 const EVENT_LABELS: Record<string, string> = {
@@ -199,6 +200,8 @@ export abstract class ManagerState extends ManagerContracts {
         void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch((err) => {
           log.warn('[memory] 干预经验反射失败:', err instanceof Error ? err.message : err)
         })
+        // WP-D2:显著正效应 → 产出「配方固化」改进提案(只描述,执行仍走 recipe_update HITL)
+        this.maybeProposeImprovement(fact)
       }
       catch (err) {
         log.warn('[memory] 干预经验采集失败:', err instanceof Error ? err.message : err)
@@ -524,9 +527,56 @@ export abstract class ManagerState extends ManagerContracts {
         const fact = collectInterventionFact(this.deps.db, eventId)
         if (!fact) continue
         void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch(() => {})
+        this.maybeProposeImprovement(fact)
       }
       catch { /* 单行失败不阻断批量 */ }
     }
+  }
+
+  /**
+   * WP-D2：显著正效应 → 配方固化提案。
+   * 纪律：仅 `identifiable_effect` 且 effect≠0 才产提案；提案只是候选，
+   * 执行仍必须走 recipe_update 的 HITL 审批链（本方法绝不直接写配方）。
+   */
+  protected maybeProposeImprovement(fact: ReturnType<typeof collectInterventionFact>): void {
+    if (!fact || fact.source !== 'intervention') return
+    if (fact.verdict !== 'identifiable_effect' || (fact.effect ?? 0) === 0) return
+    const repo = this.deps.repos.improvements
+    if (!repo) return
+    try {
+      // recipeId 由批次反查（干预台账只存 runId）；反查失败留空，提案仍可见但不会自动收口
+      let recipeId = ''
+      if (fact.recipeRunId) {
+        try {
+          recipeId = getDcwController().listRuns().find(r => r.id === fact.recipeRunId)?.recipeId ?? ''
+        }
+        catch { recipeId = '' }
+      }
+      repo.create({
+        kind: 'recipe_update',
+        channelId: fact.channelId,
+        lineId: fact.lineId ?? '',
+        recipeId,
+        sourceKind: 'intervention',
+        sourceId: fact.eventId,
+        title: `配方固化候选：${fact.nodeName ?? '节点'} ${fact.fromValue ?? '?'}→${fact.toValue ?? '?'}`,
+        detail: `判定 ${fact.verdict}，effect=${fact.effect ?? '?'}；建议用 recipe_update 固化（需 HITL 审批）`,
+        evidence: {
+          interventionEventId: fact.eventId,
+          ...(fact.recipeRunId ? { recipeRunId: fact.recipeRunId } : {}),
+          ...(fact.effect !== null && fact.effect !== undefined ? { metrics: { effect: fact.effect } } : {}),
+          ...(fact.criterion ? { criterion: fact.criterion } : {}),
+        },
+      })
+    }
+    catch (err) {
+      log.warn('[memory] 改进提案写入失败:', err instanceof Error ? err.message : err)
+    }
+  }
+
+  /** 改进提案列表(WP-D2;工具/REST 读面;旧脚手架缺省仓储时返回空) */
+  listImprovementProposals(channelId: string, opts: { status?: 'pending' | 'accepted' | 'rejected' | 'expired', limit?: number } = {}) {
+    return this.deps.repos.improvements?.listByChannel(channelId, opts) ?? []
   }
 
   protected async processTeamTaskMemoryOutbox(eventId: string, payload: Record<string, unknown>): Promise<void> {
