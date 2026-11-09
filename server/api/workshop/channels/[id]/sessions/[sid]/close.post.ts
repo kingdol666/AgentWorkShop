@@ -16,7 +16,8 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const channelId = getRouterParam(event, 'id')!
   const sessionId = getRouterParam(event, 'sid')!
-  const body = await readValidatedBody(event, zValidator(schema)).catch(() => ({ reason: undefined }))
+  // 空 body 合法:同 sessions/index.post.ts,不用 catch 吞掉 reason>300 的校验错误
+  const body = await readValidatedBody(event, zValidator(schema.default({})))
   return getWorkshopManager().closeChannelSession({
     channelId,
     sessionId,
