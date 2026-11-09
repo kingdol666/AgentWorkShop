@@ -6,7 +6,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, StatementSync } from 'node:sqlite'
-import type { MemoryKind, MemoryRow } from './database'
+import type { MemoryKind, MemoryOutcome, MemoryRow, MemoryScopeKind, MemoryStatus } from './database'
 
 /** 团队共享记忆域 sentinel(单 channel 内全员可读) */
 export const TEAM_AGENT_ID = '__team__'
@@ -36,9 +36,79 @@ export interface MemoryUpsertInput {
 
 export type MemoryRepo = ReturnType<typeof createMemoryRepo>
 
+/**
+ * 经验证据链契约(WP-A1;序列化进 evidence_json)。
+ * 至少一个锚点必填 —— 无锚点的因果断言只允许以 anecdotal/unknown 形式进入(调用方决定)。
+ * 解析失败/空对象的事件由 upsertExperience 直接拒绝(fail-closed)。
+ */
+export interface ExperienceEvidence {
+  /** 任务锚点(任务终态触发) */
+  taskIds?: string[]
+  traceId?: string
+  /** 配方试验批次(recipe_trial 回执 runId) */
+  runId?: string
+  recipeRunId?: string
+  /** 干预台账行(verdict 来源) */
+  interventionEventId?: string
+  /** 项目成果(评审终态触发) */
+  resultId?: string
+  /** 可观测指标快照(如 { iae: 12.3, pv: 220.5 }) */
+  metrics?: Record<string, number>
+  /** 机器可读判据(metric/op/threshold/mde) */
+  criterion?: Record<string, unknown>
+}
+
+/** 经验条目写入入参(区别于普通 upsert:强制证据校验与生命周期字段) */
+export interface ExperienceUpsertInput extends MemoryUpsertInput {
+  outcome?: MemoryOutcome
+  /** 结构化的证据对象(序列化后落库;同时接受已序列化字符串供重放) */
+  evidence?: ExperienceEvidence | string
+  scopeKind?: MemoryScopeKind
+  scopeKey?: string
+  status?: MemoryStatus
+  expiresAt?: string | null
+}
+
+/** 证据对象里"至少一个"的锚点键(空值不计) */
+const EVIDENCE_ANCHOR_KEYS = ['taskIds', 'traceId', 'runId', 'recipeRunId', 'interventionEventId', 'resultId'] as const
+
+/**
+ * 规范化并校验证据 JSON:非法 JSON / 非对象 / 无任何锚点 → 抛错(fail-closed)。
+ * 返回可直接落库的紧凑 JSON 字符串。
+ */
+export function normalizeExperienceEvidence(evidence: ExperienceEvidence | string | undefined): string {
+  if (evidence === undefined || evidence === '') {
+    throw new Error('experience evidence required: at least one anchor (taskIds/traceId/runId/recipeRunId/interventionEventId/resultId)')
+  }
+  let parsed: unknown = evidence
+  if (typeof evidence === 'string') {
+    try {
+      parsed = JSON.parse(evidence)
+    }
+    catch {
+      throw new Error('invalid experience evidence: not valid JSON')
+    }
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('invalid experience evidence: expected object')
+  }
+  const obj = parsed as Record<string, unknown>
+  const hasAnchor = EVIDENCE_ANCHOR_KEYS.some((k) => {
+    const v = obj[k]
+    if (Array.isArray(v)) return v.some(x => typeof x === 'string' && x.length > 0)
+    return typeof v === 'string' && v.length > 0
+  })
+  if (!hasAnchor) {
+    throw new Error('invalid experience evidence: no anchor provided')
+  }
+  return JSON.stringify(obj)
+}
+
 const COLS = `m.id, m.channel_id AS channelId, m.agent_id AS agentId, m.kind, m.title, m.content, m.dedup_key AS dedupKey, m.title_fts AS titleFts,
   m.importance, m.task_id AS taskId, m.session_id AS sessionId, m.access_count AS accessCount,
-  m.last_accessed_at AS lastAccessedAt, m.created_at AS createdAt`
+  m.last_accessed_at AS lastAccessedAt, m.created_at AS createdAt,
+  m.outcome, m.evidence_json AS evidenceJson, m.scope_kind AS scopeKind, m.scope_key AS scopeKey,
+  m.status, m.expires_at AS expiresAt`
 
 export function createMemoryRepo(db: DatabaseSync) {
   const upsertStmt = db.prepare(
@@ -64,25 +134,16 @@ export function createMemoryRepo(db: DatabaseSync) {
      ORDER BY f.rank LIMIT ?`,
   )
   const listRecentStmt = db.prepare(
-    `SELECT id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
-            importance, task_id AS taskId, session_id AS sessionId, access_count AS accessCount,
-            last_accessed_at AS lastAccessedAt, created_at AS createdAt
-     FROM agent_memories WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?`,
+    `SELECT ${COLS} FROM agent_memories m WHERE m.agent_id = ? ORDER BY m.created_at DESC LIMIT ?`,
   )
   const findByDedupStmt = db.prepare(
     `SELECT id, rowid FROM agent_memories WHERE channel_id = ? AND agent_id = ? AND dedup_key = ?`,
   )
   const listByAgentChannelStmt = db.prepare(
-    `SELECT id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
-       importance, task_id AS taskId, session_id AS sessionId, access_count AS accessCount,
-       last_accessed_at AS lastAccessedAt, created_at AS createdAt
-     FROM agent_memories WHERE channel_id = ? AND agent_id = ? ORDER BY created_at DESC LIMIT ?`,
+    `SELECT ${COLS} FROM agent_memories m WHERE m.channel_id = ? AND m.agent_id = ? ORDER BY m.created_at DESC LIMIT ?`,
   )
   const listByAgentRowidStmt = db.prepare(
-    `SELECT rowid, id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
-       importance, task_id AS taskId, session_id AS sessionId, access_count AS accessCount,
-       last_accessed_at AS lastAccessedAt, created_at AS createdAt
-     FROM agent_memories WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?`,
+    `SELECT m.rowid, ${COLS} FROM agent_memories m WHERE m.agent_id = ? ORDER BY m.created_at DESC LIMIT ?`,
   )
   const touchStmt = db.prepare(
     `UPDATE agent_memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`,
@@ -95,10 +156,25 @@ export function createMemoryRepo(db: DatabaseSync) {
     `SELECT DISTINCT channel_id AS channelId FROM agent_memories`,
   )
   const getByIdStmt = db.prepare(
-    `SELECT id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
-       importance, task_id AS taskId, session_id AS sessionId, access_count AS accessCount,
-       last_accessed_at AS lastAccessedAt, created_at AS createdAt
-     FROM agent_memories WHERE id = ?`,
+    `SELECT ${COLS} FROM agent_memories m WHERE m.id = ?`,
+  )
+  // 经验条目写入(WP-A1):kind 恒 'experience';conflict 时刷新证据/作用域/生命周期(access_count 保留)
+  const upsertExperienceStmt = db.prepare(
+    `INSERT INTO agent_memories
+       (id, channel_id, agent_id, kind, title, title_fts, content, importance, task_id, session_id, dedup_key,
+        access_count, last_accessed_at, created_at, outcome, evidence_json, scope_kind, scope_key, status, expires_at)
+     VALUES (?, ?, ?, 'experience', ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(agent_id, dedup_key, channel_id) DO UPDATE SET
+      channel_id = excluded.channel_id, kind = 'experience', title = excluded.title, title_fts = excluded.title_fts,
+      content = excluded.content, importance = excluded.importance, task_id = excluded.task_id,
+      session_id = excluded.session_id, outcome = excluded.outcome, evidence_json = excluded.evidence_json,
+      scope_kind = excluded.scope_kind, scope_key = excluded.scope_key, status = excluded.status,
+      expires_at = excluded.expires_at, created_at = excluded.created_at`,
+  )
+  const markStatusStmt = db.prepare(`UPDATE agent_memories SET status = ? WHERE id = ?`)
+  const expireSweepStmt = db.prepare(
+    `UPDATE agent_memories SET status = 'retired'
+      WHERE expires_at IS NOT NULL AND expires_at != '' AND expires_at <= ? AND status != 'retired'`,
   )
   // ===== 向量方法(P1;vec0 分区表 + mem_rowid 辅助列映射)=====
   // 已实测事实:
@@ -141,6 +217,77 @@ export function createMemoryRepo(db: DatabaseSync) {
         input.title, input.titleFts, input.content, input.importance,
         input.taskId ?? null, input.sessionId ?? '', input.dedupKey, new Date().toISOString(),
       )
+    },
+
+    /**
+     * 经验条目写入(WP-A1;RSI 证据链唯一写入口)。
+     * 强制证据锚点校验:非法 JSON / 无锚点 → 抛错且不落行(fail-closed,绝不产生无证据经验)。
+     * conflict 语义:同 (agent, dedup, channel) 刷新证据与生命周期,access_count 保留。
+     */
+    upsertExperience(input: ExperienceUpsertInput): { id: string } {
+      const evidenceJson = normalizeExperienceEvidence(input.evidence)
+      upsertExperienceStmt.run(
+        randomUUID(), input.channelId, input.agentId,
+        input.title, input.titleFts, input.content, input.importance,
+        input.taskId ?? null, input.sessionId ?? '', input.dedupKey, new Date().toISOString(),
+        input.outcome ?? 'neutral', evidenceJson,
+        input.scopeKind ?? 'session', input.scopeKey ?? '',
+        input.status ?? 'active', input.expiresAt ?? null,
+      )
+      const at = findByDedupStmt.get(input.channelId, input.agentId, input.dedupKey) as { id: string } | undefined
+      return { id: at?.id ?? '' }
+    },
+
+    /**
+     * 按作用域取经验行(跨 Channel 共享检索 / 晋升门 / 看板的数据面)。
+     * channelIds 缺省不限制 channel;statuses 缺省排除 retired(退休经验不再参与注入)。
+     */
+    listByScope(opts: {
+      scopeKind: MemoryScopeKind
+      scopeKey?: string
+      channelIds?: string[]
+      statuses?: MemoryStatus[]
+      limit?: number
+    }): Array<MemoryRow & { rowid: number }> {
+      const where: string[] = ['m.scope_kind = ?']
+      const args: Array<string | number> = [opts.scopeKind]
+      if (opts.scopeKey !== undefined) {
+        where.push('m.scope_key = ?')
+        args.push(opts.scopeKey)
+      }
+      const statuses = opts.statuses ?? ['active', 'candidate', 'validated', 'contested']
+      where.push(`m.status IN (${statuses.map(() => '?').join(', ')})`)
+      args.push(...statuses)
+      if (opts.channelIds !== undefined) {
+        if (opts.channelIds.length === 0) return []
+        where.push(`m.channel_id IN (${opts.channelIds.map(() => '?').join(', ')})`)
+        args.push(...opts.channelIds)
+      }
+      args.push(Math.min(Math.max(opts.limit ?? 50, 1), 500))
+      return db.prepare(
+        `SELECT m.rowid, ${COLS} FROM agent_memories m
+          WHERE ${where.join(' AND ')}
+          ORDER BY m.created_at DESC LIMIT ?`,
+      ).all(...args) as unknown as Array<MemoryRow & { rowid: number }>
+    },
+
+    /** 生命周期迁移(candidate→validated / →retired;门与人工审批调用);返回是否命中行 */
+    markStatus(id: string, status: MemoryStatus): boolean {
+      return Number(markStatusStmt.run(status, id).changes ?? 0) > 0
+    },
+
+    /** 过期扫描:expires_at <= now 且未退休 → status='retired';返回迁移行数(维护定时器调用) */
+    expireSweep(nowIso = new Date().toISOString()): number {
+      return Number(expireSweepStmt.run(nowIso).changes ?? 0)
+    },
+
+    /** 经验状态分布(看板/门统计;可按作用域收窄) */
+    experienceStats(opts: { scopeKind?: MemoryScopeKind } = {}): Array<{ status: string, n: number }> {
+      const rows = opts.scopeKind
+        ? db.prepare(`SELECT status, COUNT(*) AS n FROM agent_memories WHERE kind = 'experience' AND scope_kind = ? GROUP BY status`)
+            .all(opts.scopeKind)
+        : db.prepare(`SELECT status, COUNT(*) AS n FROM agent_memories WHERE kind = 'experience' GROUP BY status`).all()
+      return (rows as Array<{ status: string, n: number }>).map(r => ({ status: r.status, n: Number(r.n) }))
     },
 
     /** bm25 检索(恒含 team 共享行;matchQuery 为 OR 连接切分词;sessionId 给定→仅该 session 作用域行) */
@@ -190,10 +337,7 @@ export function createMemoryRepo(db: DatabaseSync) {
       if (rowids.length === 0) return []
       const placeholders = rowids.map(() => '?').join(', ')
       return db.prepare(
-        `SELECT rowid, id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
-           importance, task_id AS taskId, session_id AS sessionId, access_count AS accessCount,
-           last_accessed_at AS lastAccessedAt, created_at AS createdAt
-         FROM agent_memories WHERE rowid IN (${placeholders})`,
+        `SELECT m.rowid, ${COLS} FROM agent_memories m WHERE m.rowid IN (${placeholders})`,
       ).all(...rowids.map(BigInt)) as unknown as Array<MemoryRow & { rowid: number }>
     },
 

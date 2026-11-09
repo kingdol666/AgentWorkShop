@@ -136,4 +136,7 @@ const main = async () => {
   process.exitCode = summary.fail > 0 ? 1 : 0
 }
 const wiSafe = s => String(s ?? '').slice(0, 90)
-main().catch(e => { console.error('验收异常:', String(e).slice(0, 300)); process.exit(1) })
+main().catch((e) => {
+  console.error('验收异常:', String(e).slice(0, 300))
+  process.exit(1)
+})

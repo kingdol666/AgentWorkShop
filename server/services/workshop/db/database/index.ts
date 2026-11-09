@@ -13,6 +13,6 @@
  *   migrations.ts          历史库迁移(v17 群聊、补列、外键、遗留 schema)
  *   json.ts                JSON 列读写小工具
  */
-export type { ChannelRow, ChannelMemberRow, ChatMessageRow, ChatDeliveryRow, UserNotificationRow, OutboxEventRow, HitlRequestRow, UserRow, ChannelEventRow, WorkspaceRow, AgentRow, TeamRow, ChannelTemplateRow, TeamMemberRow, MemoryKind, MemoryRow, ChannelAgentRow, MessageRow, SubscriptionRow, TaskRow, ScheduledTaskRow, ScheduledTaskRunRow } from './rows'
+export type { ChannelRow, ChannelMemberRow, ChatMessageRow, ChatDeliveryRow, UserNotificationRow, OutboxEventRow, HitlRequestRow, UserRow, ChannelEventRow, WorkspaceRow, AgentRow, TeamRow, ChannelTemplateRow, TeamMemberRow, MemoryKind, MemoryOutcome, MemoryStatus, MemoryScopeKind, MemoryRow, ChannelAgentRow, MessageRow, SubscriptionRow, TaskRow, ScheduledTaskRow, ScheduledTaskRunRow } from './rows'
 export { openWorkshopDb, initWorkshopDb } from './open'
 export { parseJson } from './json'

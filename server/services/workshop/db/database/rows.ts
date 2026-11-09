@@ -233,8 +233,8 @@ export interface TeamMemberRow {
 
 /**
  * 记忆类别:episodic-task/episodic-peer/episodic-session/episodic-team-task(harvest 族,
- * 参与过期+淘汰)/ semantic(知识,免衰减)/ brief/chronicle/reflection(策展层,
- * 免向量化免维护)。TEXT 自由列(无 CHECK),联合类型仅约束调用面。
+ * 参与过期+淘汰)/ semantic(知识,免衰减)/ experience(RSI 经验,带证据链与生命周期)/
+ * brief/chronicle/reflection(策展层,免向量化免维护)。TEXT 自由列(无 CHECK),联合类型仅约束调用面。
  */
 export type MemoryKind
   = | 'episodic-task'
@@ -242,9 +242,22 @@ export type MemoryKind
     | 'episodic-session'
     | 'episodic-team-task'
     | 'semantic'
+    | 'experience'
     | 'brief'
     | 'chronicle'
     | 'reflection'
+
+/** 经验结果极性:positive/negative=有 verdict 背书;unknown=无证据叙述(anecdotal);neutral=未评估 */
+export type MemoryOutcome = 'positive' | 'negative' | 'neutral' | 'unknown'
+
+/**
+ * 经验生命周期:candidate(待验证,line/global 写入默认)→ validated(过门/多任务复认)
+ * → retired(过期或劣化回滚);contested=与既有条目数值矛盾(两条并存显式化)。
+ */
+export type MemoryStatus = 'active' | 'candidate' | 'validated' | 'contested' | 'retired'
+
+/** 可共享作用域粒度:session 仅会话 / channel 本频道 / line 同产线 / product 同产品 / global 全局 */
+export type MemoryScopeKind = 'session' | 'channel' | 'line' | 'product' | 'global'
 
 /** agent_memories 表行(content 为已 CJK 切分存储文本;agentId='__team__' 为团队共享行) */
 export interface MemoryRow {
@@ -265,6 +278,13 @@ export interface MemoryRow {
   accessCount: number
   lastAccessedAt: string | null
   createdAt: string
+  /** 经验证据链(RSI;老行经迁移获得默认值):极性 / 证据 JSON / 作用域 / 生命周期 / 过期时刻 */
+  outcome?: MemoryOutcome
+  evidenceJson?: string
+  scopeKind?: MemoryScopeKind
+  scopeKey?: string
+  status?: MemoryStatus
+  expiresAt?: string | null
 }
 /** channel_agents 表行(Channel 中的 Agent 实例:独立身份 id + 复制自模板的字段) */
 export interface ChannelAgentRow {
