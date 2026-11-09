@@ -207,8 +207,20 @@ export abstract class OmpRpcAgentImplContextGovernance extends OmpRpcAgentImplCo
     }
   }
 
-  /** 回合落定钩子(AgentRuntime 在信箱空时调用):后台压缩检查,自守卫不抛错 */
+  /**
+   * 回合落定钩子(AgentRuntime 在信箱空时调用):会话身份兜底探测 + 后台压缩检查。
+   *
+   * 会话身份:建连时已 await 一次 probeContext,但 omp 可能在**首个 prompt 之后**才分配
+   * sessionId —— 回合结束时补探一次,保证重建后的会话最终一定有身份(否则 continuity
+   * 长期 sessionless,卸载/预算/救援决策都基于错误状态)。探测失败静默。
+   */
   async onTurnSettled(): Promise<void> {
+    if (!this.sessionId) {
+      try {
+        await this.probeSessionIdentity()
+      }
+      catch { /* 探测不可用:保持 null,不阻塞 */ }
+    }
     await this.contextGate('post-settle')
   }
 }

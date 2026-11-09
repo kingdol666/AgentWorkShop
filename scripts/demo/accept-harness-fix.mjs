@@ -91,6 +91,39 @@ const main = async () => {
   const twinBad = await call('POST', '/api/workshop/device-twins/x/control', { command: '' }, token)
   ok('S9', '孪生控制:空 command → 400', twinBad.http === 400, `http=${twinBad.http}`)
 
+  /* ===== PR-6：剩余四个子资源 GET（404 一律统一信封；不存在的 id 即可验证路由存在） ===== */
+  const missingId = 'no-such-id-acceptance'
+  const g1 = await call('GET', `/api/workshop/aml/models/${missingId}`, null, token)
+  ok('G4', 'GET /aml/models/:id 路由存在（404 统一信封，非 h3 默认体）',
+    g1.http === 404 && g1.code === 'AML_MODEL_MISSING' && g1.data === null, `http=${g1.http} code=${g1.code}`)
+  const g2 = await call('GET', `/api/workshop/aml/training-plans/${missingId}`, null, token)
+  ok('G5', 'GET /aml/training-plans/:id 路由存在（404 统一信封）',
+    g2.http === 404 && g2.code === 'TRAINING_PLAN_MISSING' && g2.data === null, `http=${g2.http} code=${g2.code}`)
+  const g3 = await call('GET', `/api/workshop/dcw/${missingId}`, null, token)
+  ok('G6', 'GET /dcw/:id 路由存在（404 统一信封）',
+    g3.http === 404 && g3.code === 'NOT_FOUND', `http=${g3.http} code=${g3.code}`)
+  const g4 = await call('GET', `/api/workshop/daq/${missingId}`, null, token)
+  ok('G7', 'GET /daq/:id 路由存在（404 统一信封）',
+    g4.http === 404 && g4.code === 'NOT_FOUND', `http=${g4.http} code=${g4.code}`)
+  // 列表端点仍可用（query schema 不误伤合法请求）
+  // 注:line_id/node_ids 至少一个是既有业务规则(DataQueryError),与 query schema 无关;
+  // 这里只断言「不再出现字段级解析错误」,业务规则 400 属正常。
+  const listDaq = await call('GET', '/api/workshop/daq/query?line_id=no-such-line&last_minutes=5', null, token)
+  ok('Q1', 'GET /daq/query 合法 last_minutes 不被 schema 误拒',
+    !/^last_minutes:/.test(String(listDaq.message ?? '')), `http=${listDaq.http} msg=${wiSafe(listDaq.message)}`)
+  const badNum = await call('GET', '/api/workshop/daq/query?line_id=L&last_minutes=abc', null, token)
+  ok('Q2', 'GET /daq/query 非法数值 → 400 精确到字段',
+    badNum.http === 400 && /last_minutes/.test(String(badNum.message ?? '')), `http=${badNum.http} msg=${wiSafe(badNum.message)}`)
+  const badAgg = await call('GET', '/api/workshop/daq/query?line_id=L&agg=bogus', null, token)
+  ok('Q3', 'GET /daq/query 非法 agg → 400', badAgg.http === 400, `http=${badAgg.http}`)
+  const emptyOk = await call('GET', '/api/workshop/daq/query?line_id=L&last_minutes=', null, token)
+  ok('Q4', 'GET /daq/query 空串参数=未提供（旧语义保持）',
+    !/^last_minutes:/.test(String(emptyOk.message ?? '')), `http=${emptyOk.http} msg=${wiSafe(emptyOk.message)}`)
+  const ds = await call('GET', '/api/workshop/aml/datasets?lineId=&productId=', null, token)
+  ok('Q5', 'GET /aml/datasets 空串过滤不误拒', ds.http === 200, `http=${ds.http} code=${ds.code}`)
+  const jobs = await call('GET', '/api/workshop/aml/jobs?status=&datasetId=', null, token)
+  ok('Q6', 'GET /aml/jobs 空串过滤不误拒', jobs.http === 200, `http=${jobs.http} code=${jobs.code}`)
+
   /* ===== PR-1：omp 会话身份（terminate → 重建 → sessionId 非空且不等于旧值） ===== */
   const chOmp = (await call('POST', '/api/workshop/channels', {
     name: `身份验收-${Date.now().toString(36).slice(-4)}`, scenarioPrompt: 'x',
