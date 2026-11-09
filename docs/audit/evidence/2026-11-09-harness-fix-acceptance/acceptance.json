@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-11-09T03:26:24.358Z",
-  "base": "http://127.0.0.1:3011",
-  "pass": 17,
+  "generatedAt": "2026-11-09T17:26:01.844Z",
+  "base": "http://127.0.0.1:3020",
+  "pass": 34,
   "fail": 0,
   "results": [
     {
@@ -89,22 +89,124 @@
       "detail": "http=400"
     },
     {
+      "id": "S10",
+      "name": "dcw 核心写:{value:null} → 400（旧实现 Number(null)=0 会下发 0）",
+      "pass": true,
+      "detail": "http=400 msg=value: value 必须是数值(工程量纲)"
+    },
+    {
+      "id": "S11",
+      "name": "dcw 参数写:{value:[]} → 400（coerce 折叠 0 链已堵）",
+      "pass": true,
+      "detail": "http=400 msg=value: value 必须是数值(工程量纲)"
+    },
+    {
+      "id": "S12",
+      "name": "复核裁决:缺 approved → 400（旧实现 {} 也算批准）",
+      "pass": true,
+      "detail": "http=400 msg=approved: Required"
+    },
+    {
+      "id": "C1",
+      "name": "GET /plugins 已走统一信封（data.plugins）",
+      "pass": true,
+      "detail": "http=200 code=0 keys=plugins,failures,initedAt"
+    },
+    {
+      "id": "C2",
+      "name": "GET /harnesses 下发 toolSurface（dsh/hermes/crush 标 manual）",
+      "pass": true,
+      "detail": "manual=[crush,dsh,hermes] total=14"
+    },
+    {
+      "id": "C3",
+      "name": "停机端点未持令牌时拒绝（404 未启用 / 403 令牌无效）",
+      "pass": true,
+      "detail": "http=404 code=NOT_FOUND"
+    },
+    {
+      "id": "G4",
+      "name": "GET /aml/models/:id 路由存在（404 统一信封，非 h3 默认体）",
+      "pass": true,
+      "detail": "http=404 code=AML_MODEL_MISSING"
+    },
+    {
+      "id": "G5",
+      "name": "GET /aml/training-plans/:id 路由存在（404 统一信封）",
+      "pass": true,
+      "detail": "http=404 code=TRAINING_PLAN_MISSING"
+    },
+    {
+      "id": "G6",
+      "name": "GET /dcw/:id 路由存在（404 统一信封）",
+      "pass": true,
+      "detail": "http=404 code=NOT_FOUND"
+    },
+    {
+      "id": "G7",
+      "name": "GET /daq/:id 路由存在（404 统一信封）",
+      "pass": true,
+      "detail": "http=404 code=NOT_FOUND"
+    },
+    {
+      "id": "G8",
+      "name": "GET /dcw/lines/:id 产线详情路由存在（404 统一信封）",
+      "pass": true,
+      "detail": "http=404 code=NOT_FOUND"
+    },
+    {
+      "id": "Q1",
+      "name": "GET /daq/query 合法 last_minutes 不被 schema 误拒",
+      "pass": true,
+      "detail": "http=400 msg=没有可查询的节点。"
+    },
+    {
+      "id": "Q2",
+      "name": "GET /daq/query 非法数值 → 400 精确到字段",
+      "pass": true,
+      "detail": "http=400 msg=last_minutes: 必须是数值"
+    },
+    {
+      "id": "Q3",
+      "name": "GET /daq/query 非法 agg → 400",
+      "pass": true,
+      "detail": "http=400"
+    },
+    {
+      "id": "Q4",
+      "name": "GET /daq/query 空串参数=未提供（旧语义保持）",
+      "pass": true,
+      "detail": "http=400 msg=没有可查询的节点。"
+    },
+    {
+      "id": "Q5",
+      "name": "GET /aml/datasets 空串过滤不误拒",
+      "pass": true,
+      "detail": "http=200 code=0"
+    },
+    {
+      "id": "Q6",
+      "name": "GET /aml/jobs 空串过滤不误拒",
+      "pass": true,
+      "detail": "http=200 code=0"
+    },
+    {
       "id": "H1",
       "name": "基线:首次 spawn 建立 sessionId",
       "pass": true,
-      "detail": "{\"sid\":\"01a1be53-8529-7000-a1f1-389a0f994f05\",\"pid\":77452,\"state\":\"busy\"}"
+      "detail": "{\"sid\":\"01a1c153-4e01-7000-83ad-ba8bd5f4da37\",\"pid\":94416,\"state\":\"busy\"}"
     },
     {
       "id": "H2",
       "name": "重建后 sessionId 非空（重绑成功）",
       "pass": true,
-      "detail": "{\"sid\":\"01a1be54-1974-7000-99fe-a9b79948e119\",\"pid\":63724,\"state\":\"busy\"}"
+      "detail": "{\"sid\":\"01a1c154-cc6e-7000-949a-ee55103f6e5a\",\"pid\":60984,\"state\":\"busy\"}"
     },
     {
       "id": "H3",
       "name": "重建后 sessionId ≠ 旧值（无陈旧绑定）",
       "pass": true,
-      "detail": "old=01a1be53-852 new=01a1be54-197"
+      "detail": "old=01a1c153-4e0 new=01a1c154-cc6"
     }
   ]
 }
