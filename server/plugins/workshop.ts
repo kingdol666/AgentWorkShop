@@ -35,6 +35,7 @@ import { createChatMessageRepo } from '../services/workshop/db/chat-message.repo
 import { createNotificationRepo } from '../services/workshop/db/notification.repo'
 import { createOutboxRepo } from '../services/workshop/db/outbox.repo'
 import { createHitlRequestRepo } from '../services/workshop/db/hitl-request.repo'
+import { createImprovementRepo } from '../services/workshop/db/improvement.repo'
 import { initProjectService } from '../services/workshop/projects/service'
 import { startProjectReconciler } from '../services/workshop/projects/reconciler'
 import { initProjectKernel } from '../services/workshop/projects/kernel'
@@ -145,6 +146,8 @@ export default function workshopPlugin(nitroApp: {
     notifications: createNotificationRepo(db),
     outbox: createOutboxRepo(db),
     hitlRequests: createHitlRequestRepo(db),
+    // RSI 改进提案(WP-D2;学习环与写治理的唯一交接面)
+    improvements: createImprovementRepo(db),
   }
   // S4/S5/R1/R3:合规三表仓储接线(审批历史/报警事件/审计日志/高危复核)
   bindOpsRepos({

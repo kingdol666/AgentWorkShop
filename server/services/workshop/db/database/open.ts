@@ -10,6 +10,7 @@ import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTe
 import { migrateProjectColumns, ensureProjectIndexes, migrateApprovedSlotScope } from './migrations-project'
 import { migrateSessionContextColumns, ensureSessionIndexes } from './migrations-session'
 import { migrateExperienceColumns, ensureExperienceIndexes } from './migrations-experience'
+import { migrateImprovementProposals } from './migrations-improvement'
 import { seedDefaultWorkshopData } from './seed'
 
 export const require = createRequire(import.meta.url)
@@ -87,6 +88,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   ensureProjectIndexes(db)
   ensureSessionIndexes(db)
   ensureExperienceIndexes(db)
+  // RSI 改进提案表(WP-D2)；只建表不重建,幂等
+  migrateImprovementProposals(db)
   migrateGroupChatV17(db)
   migrateAmlTwinProviderColumns(db)
   migrateAmlModelIdentityColumns(db)

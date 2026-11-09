@@ -181,6 +181,23 @@ export interface AgentWorkspace {
     taskId?: string | null
   }): Promise<{ scope: 'private' | 'shared' | 'line' | 'global', dedupKey: string }>
   /**
+   * 改进提案读面（WP-D2；只读）：本 channel 的「带证据候选」（改配方/入知识/补 runbook）。
+   * 执行永远走各自 HITL 工具，本方法不产生任何写动作。
+   */
+  listImprovementProposals?(input: { status?: 'pending' | 'accepted' | 'rejected' | 'expired', limit?: number }): Promise<Array<{
+    id: string
+    kind: string
+    lineId: string
+    recipeId: string
+    sourceKind: string
+    sourceId: string
+    title: string
+    detail: string
+    status: string
+    decidedAt: string | null
+    createdAt: string
+  }>>
+  /**
    * 跨 Channel 共享经验检索(WP-A4;成员可调,只读):同 owner 频道的 experience 行,
    * 按 line/product/global 作用域锚定;仅返回 active/validated(候选经验不外泄)。
    */

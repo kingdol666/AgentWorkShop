@@ -58,6 +58,20 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
       },
       // 跨 Channel 共享经验(WP-A4;成员可调,同 owner 授权在 manager 层)
       searchSharedExperience: async input => this.searchSharedExperience(channelId, agent.id, input),
+      // 改进提案读面(WP-D2;只读,执行走 HITL)
+      listImprovementProposals: async input => this.listImprovementProposals(channelId, input).map(r => ({
+        id: r.id,
+        kind: r.kind,
+        lineId: r.lineId,
+        recipeId: r.recipeId,
+        sourceKind: r.sourceKind,
+        sourceId: r.sourceId,
+        title: r.title,
+        detail: r.detail,
+        status: r.status,
+        decidedAt: r.decidedAt,
+        createdAt: r.createdAt,
+      })),
       // 会话压缩摘要入库(harvest 桥):omp 压缩产出 → 本成员 episodic-session 记忆。
       // omp 内部 session 与平台 cs-* 未打通,运行时不知道平台会话 id —— 在桥内按
       // memberMap 反查本实例所属 active 会话补齐(排除 project 恒等映射)。

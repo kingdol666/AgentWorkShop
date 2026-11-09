@@ -508,6 +508,34 @@
     "riskClass": "read"
   },
   {
+    "name": "improvement_list",
+    "label": "Improvement Proposals",
+    "description": "List evidence-backed improvement proposals produced by the RSI reflector for this channel (recipe updates to solidify, knowledge-base ingests, runbook additions). READ-ONLY: proposals are only candidates with evidence; executing them always requires the corresponding HITL tool (e.g. recipe_update) and human approval. Use this before planning a recipe change to see whether a verified candidate already exists.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "accepted",
+            "rejected",
+            "expired"
+          ],
+          "description": "按处理状态过滤（缺省全部）"
+        },
+        "limit": {
+          "type": "number",
+          "description": "最多返回条数（默认 20，上限 100）"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
     "name": "create_team_agent",
     "label": "Create Team Agent",
     "description": "(Lead only) Create a NEW worker only when capability/load evidence shows existing members cannot handle the work. Reuse existing workers first. The platform enforces a per-Channel worker roster cap, including disabled members; do not retry with another name after TEAM_WORKER_LIMIT.",
