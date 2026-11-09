@@ -13,8 +13,9 @@ import assert from 'node:assert/strict'
 
 process.env.AGENTWORKSHOP_TEST = '1'
 
-const { HARNESS_REGISTRY } = await import('../server/services/workshop/agents/registry.ts')
+const { HARNESS_REGISTRY, harnessMetas } = await import('../server/services/workshop/agents/registry.ts')
 const { createAgentImpl } = await import('../server/services/workshop/agents/factory.ts')
+const { checkAllHarnessAvailability } = await import('../server/services/workshop/agents/harness-availability.ts')
 
 /** HARNESS_REGISTRY 是 Record<id, HarnessDef>(非数组) */
 const ALL = Object.keys(HARNESS_REGISTRY)
@@ -54,6 +55,33 @@ describe('引擎构造契约 · registry 全集', () => {
       // 反射读取 protected 字段(测试专用;生产调用方不需要)
       const id = impl.bridgeCtx?.identity?.harness
       assert.equal(id, harness, `${harness}: identity.harness 应为 '${harness}',实际 '${id ?? ''}'`)
+    }
+  })
+
+  it('能力声明 ↔ 方法存在性(2026-11-10 D4:徽标不得承诺平台做不到的事)', () => {
+    // 单向断言:声明 true 就必须有实现。反向不断言 —— 保守声明(有 stub 但声明 false)
+    // 是允许的,例如 dsh/hermes 的 steer 恒返回 deferred。
+    for (const harness of ALL) {
+      const caps = HARNESS_REGISTRY[harness]!.capabilities
+      const impl = createAgentImpl(baseConfig(harness) as never) as unknown as Record<string, unknown>
+      if (caps.steer) assert.equal(typeof impl.steer, 'function', `${harness}: 声明 steer:true 却没有 steer()`)
+      if (caps.compact) assert.equal(typeof impl.onTurnSettled, 'function', `${harness}: 声明 compact:true 却没有 onTurnSettled()`)
+      if (caps.contextStats) assert.equal(typeof impl.getContextStats, 'function', `${harness}: 声明 contextStats:true 却没有 getContextStats()`)
+    }
+  })
+
+  it('D5:工具面需手工接入的引擎被如实标注(并给出配置指引)', () => {
+    const metas = harnessMetas()
+    const manual = metas.filter(m => m.toolSurface === 'manual').map(m => m.id).sort()
+    assert.deepEqual(manual, ['crush', 'dsh', 'hermes'], '手工接入引擎必须显式标注,否则"没有平台工具"无从判断')
+    assert.equal(metas.find(m => m.id === 'omp')!.toolSurface, 'bridge')
+    assert.equal(metas.find(m => m.id === 'mock')!.toolSurface, 'none')
+
+    const rows = checkAllHarnessAvailability()
+    for (const id of manual) {
+      const row = rows.find(r => r.id === id)!
+      assert.equal(row.toolSurface, 'manual')
+      assert.ok(row.toolSurfaceHint, `${id} 必须给出配置指引`)
     }
   })
 })

@@ -27,22 +27,27 @@ export function useAgentHarnessOptions() {
     (harnesses.value.length > 0
       ? harnesses.value
       : [
-          { id: 'mock', label: tt('agents.hMock'), description: '', capabilities: { steer: true, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
-          { id: 'omp', label: tt('agents.hOmp'), description: '', capabilities: { steer: true, supervise: true, hitl: true, terminal: true, contextStats: true, compact: true } },
-          { id: 'claude', label: 'claude', description: '', capabilities: { steer: false, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false } },
+          // 回退表仅在 /harnesses 探测不可用时使用;能力值必须与 registry.ts 一致,
+          // 否则引擎未装/接口失败时徽标会谎报(旧表把 claude 写成全 false)。
+          { id: 'mock', label: tt('agents.hMock'), description: '', capabilities: { steer: false, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false }, toolSurface: 'none' },
+          { id: 'omp', label: tt('agents.hOmp'), description: '', capabilities: { steer: true, supervise: true, hitl: true, terminal: true, contextStats: true, compact: true }, toolSurface: 'bridge' },
+          { id: 'claude', label: 'claude', description: '', capabilities: { steer: true, supervise: true, hitl: true, terminal: false, contextStats: true, compact: false }, toolSurface: 'bridge' },
         ] as HarnessMetaDto[]).map((h) => {
       const unavailable = h.available === false
       return { value: h.id, label: unavailable ? `${h.label}(${tt('agents.notInstalled')})` : h.label, disabled: unavailable }
     }),
   )
   const capBadges = (id: string): string[] => {
-    const caps = harnesses.value.find(h => h.id === id)?.capabilities
+    const meta = harnesses.value.find(h => h.id === id)
+    const caps = meta?.capabilities
     if (!caps) return []
     const out: string[] = []
     if (caps.steer) out.push('steer')
     if (caps.supervise) out.push('lead')
     if (caps.hitl) out.push('HITL')
     if (caps.compact) out.push('compact')
+    // 工具面需手工接入:明确标出来,否则 Agent"没有平台工具"时用户无从判断
+    if (meta?.toolSurface === 'manual') out.push(meta.toolSurfaceReady === false ? 'tool:missing' : 'tool:manual')
     return out
   }
   const loadHarnesses = async (): Promise<void> => {

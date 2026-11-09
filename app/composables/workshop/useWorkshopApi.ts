@@ -54,6 +54,12 @@ export interface HarnessMetaDto {
   }
   /** 环境探测:引擎可立即使用(进程内引擎恒 true;进程型引擎 = CLI 在 PATH 中) */
   available?: boolean
+  /** 工具面接入方式:bridge=平台自动挂;manual=需仓库外手工配置;none=无工具 */
+  toolSurface?: 'bridge' | 'manual' | 'none'
+  /** manual 模式是否检测到已接入;null=无法机器判定 */
+  toolSurfaceReady?: boolean | null
+  /** manual 模式的配置指引/告警 */
+  toolSurfaceHint?: string | null
   /** 进程内引擎(无外部 CLI) */
   inprocess?: boolean
   /** 进程型引擎声明将拉起的命令 */

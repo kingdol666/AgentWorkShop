@@ -78,7 +78,9 @@ export interface HarnessProbe {
 }
 
 const mockCaps: HarnessCapabilities = {
-  steer: true, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false,
+  // mock 没有 steer 实现(runtime 按 impl 方法存在性守卫,紧急消息本来就走信箱);
+  // 如实声明,避免前端能力徽标承诺运行期做不到的事。
+  steer: false, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false,
 }
 const ompCaps: HarnessCapabilities = {
   steer: true, supervise: true, hitl: true, terminal: true, contextStats: true, compact: true,
@@ -93,13 +95,17 @@ const dshCaps: HarnessCapabilities = {
   steer: false, supervise: true, hitl: true, terminal: false, contextStats: true, compact: false,
 }
 const claudeCaps: HarnessCapabilities = {
-  steer: true, supervise: true, hitl: true, terminal: false, contextStats: true, compact: true,
+  // claude 没有 onTurnSettled(SDK 控制面只有 interrupt/setModel 等,无 compact API),
+  // 平台主动压缩不触发;SDK 原生 auto-compact 仍在跑,但摘要不入平台记忆。
+  // 如实声明 false:能力徽标不能承诺平台做不到的事。
+  steer: true, supervise: true, hitl: true, terminal: false, contextStats: true, compact: false,
 }
 const geminiCaps: HarnessCapabilities = {
   steer: false, supervise: true, hitl: false, terminal: false, contextStats: true, compact: false,
 }
 const copilotCaps: HarnessCapabilities = {
-  steer: false, supervise: true, hitl: false, terminal: false, contextStats: false, compact: false,
+  // copilot 走一次性 CLI 基座,基座从 stream 事件聚合 usage 并上报(getContextStats)
+  steer: false, supervise: true, hitl: false, terminal: false, contextStats: true, compact: false,
 }
 const cursorCaps: HarnessCapabilities = {
   steer: false, supervise: true, hitl: false, terminal: false, contextStats: false, compact: false,
@@ -275,11 +281,32 @@ export function isKnownHarness(harness: string): boolean {
   return harness in HARNESS_REGISTRY
 }
 
+/**
+ * 工具面接入方式(审计 D5):
+ *   - bridge:平台自动挂 aw 桥(MCP 配置/in-process 注册),开箱有工具;
+ *   - manual:依赖仓库外/用户级手工配置(dsh 的 profile patch、hermes 的
+ *     `hermes mcp add aw`、crush 的 .crushrc),平台不做校验时 Agent 会"没有工具也不知情";
+ *   - none:进程内测试引擎(无工具面)。
+ */
+export type HarnessToolSurface = 'bridge' | 'manual' | 'none'
+
+const TOOL_SURFACE: Record<string, HarnessToolSurface> = {
+  mock: 'none',
+  dsh: 'manual',
+  hermes: 'manual',
+  crush: 'manual',
+}
+
+export function harnessToolSurface(harness: string): HarnessToolSurface {
+  return TOOL_SURFACE[harness] ?? 'bridge'
+}
+
 /** registry 元信息(前端下拉/能力徽标;不含实现) */
-export function harnessMetas(): Array<{ id: string, label: string, description: string, capabilities: HarnessCapabilities, continuityMode: HarnessContinuityMode, homepage: string }> {
+export function harnessMetas(): Array<{ id: string, label: string, description: string, capabilities: HarnessCapabilities, continuityMode: HarnessContinuityMode, toolSurface: HarnessToolSurface, homepage: string }> {
   return Object.values(HARNESS_REGISTRY).map(({ id, label, description, capabilities, continuityMode, homepage }) => ({
     id, label, description, continuityMode, homepage,
     capabilities: { ...capabilities, toolRefresh: toolRefreshOf(id) },
+    toolSurface: harnessToolSurface(id),
   }))
 }
 
