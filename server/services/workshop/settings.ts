@@ -135,6 +135,8 @@ export interface WorkshopSettings {
   dispatch_per_tick: number
   /** WP8：Harness 回合静默看门狗（ms；缺省 600s，per-agent promptTimeoutMs 可覆盖） */
   harness_stall_timeout_ms: number
+  /** 每频道活动会话上限（每会话克隆全部基础成员并各起 runtime/进程；0=不限，缺省 8） */
+  max_active_sessions_per_channel: number
 }
 export interface BackupSettings {
   disabled: boolean

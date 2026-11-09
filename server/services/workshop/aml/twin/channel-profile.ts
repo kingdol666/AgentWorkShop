@@ -54,7 +54,10 @@ export function getChannelTwinProfile(channelId: string): HybridChannelProfile {
     const executionMode = row.executionMode === 'observe' || row.executionMode === 'manual' ? (row.executionMode as 'observe' | 'manual' | 'auto') : 'auto'
     return { channelId, profile, capability: JSON.parse(String(row.capabilityJson ?? '{}')), sceneId: row.sceneId ? String(row.sceneId) : undefined, sceneVersion: row.sceneVersion ? String(row.sceneVersion) : undefined, sceneContract: JSON.parse(String(row.sceneContractJson ?? '{}')), objective: JSON.parse(String(row.objectiveJson ?? '{}')), controlPolicy: (['recommendation_only', 'hitl_governed', 'bounded_auto'] as const).includes(row.controlPolicy as never) ? row.controlPolicy as HybridChannelProfile['controlPolicy'] : 'recommendation_only', providerId: row.providerId ? String(row.providerId) : undefined, providerVersion: row.providerVersion ? String(row.providerVersion) : undefined, providerHash: row.providerHash ? String(row.providerHash) : undefined, scenePackId: row.scenePackId ? String(row.scenePackId) : undefined, providerGeneration: row.providerGeneration != null ? Number(row.providerGeneration) : undefined, boundModelId: row.boundModelId ? String(row.boundModelId) : undefined, boundAt: row.boundAt ? String(row.boundAt) : undefined, optimizationMode: mode, executionMode }
   }
-  catch {
+  catch (err) {
+    // 档位读失败按 legacy+auto 兜底(写侧仍受线/绑定 manual 与 grant-guard 约束),
+    // 但这是"observe 频道短暂恢复写面"的唯一入口,必须留痕而不是静默。
+    console.error(`[channel-profile] 频道 ${channelId} 档位读取失败,按 legacy/auto 兜底:`, err)
     return { channelId, profile: 'legacy', capability: {}, controlPolicy: 'recommendation_only', executionMode: 'auto' }
   }
 }
