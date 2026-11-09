@@ -36,6 +36,7 @@ export default {
     ontology: '本体模型',
     dashboard: '仪表盘',
     workshop: 'Agent 工作台',
+    projects: '项目中心',
     town: '数字孪生',
     tokens: 'API Token',
     daq: '数采中心',
@@ -2213,6 +2214,7 @@ export default {
   commandPalette: {
     gotoTeams: '前往:AgentTeam 编组库',
     gotoSchedules: '前往:定时任务中心',
+    gotoProjects: '前往:项目中心(Project)',
     viewLanes: '视图:Agent lanes',
     actA2a: '动作:A2A RPC/SSE 调试器',
     k1nz14ux013: '切换 Channel:{p0}',

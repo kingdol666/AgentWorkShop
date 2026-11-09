@@ -82,6 +82,26 @@ export interface ProjectWriteVerdict {
   approvalId?: string
 }
 
+/**
+ * 项目列表派生摘要（GET /projects 追加字段，additive）。
+ * 列表页据此渲染进度/审批/频道数，不必对每个项目再打 observability（N+1）。
+ */
+export interface ProjectListSummary {
+  workItems: number
+  completedWorkItems: number
+  /** 0–1，完成工作项 / 全部工作项 */
+  progress: number
+  deliverables: number
+  requiredDeliverables: number
+  approvedDeliverables: number
+  /** 0–1，签核交付物 / 全部交付物 */
+  acceptanceProgress: number
+  channels: number
+  members: number
+  pendingApprovals: number
+  lastActivityAt: string
+}
+
 /** 项目持续开发：owner 在项目页把补充需求发给同一个 Project Leader。 */
 export interface ProjectContinuationResult {
   project: ProjectRow
@@ -577,8 +597,36 @@ export class ProjectService {
     this.kernelRepo = createProjectKernelRepo(db)
   }
 
-  list(actor: ProjectActor): ProjectRow[] {
-    return actor.role === 'admin' ? this.projects.listAll() : this.projects.listByOwner(actor.id)
+  /**
+   * 项目列表。原行字段保持不变，追加列表页摘要（工作项/交付物/频道/待审批/最近活动）。
+   * 意图：项目中心首屏一屏说清"每个项目走到哪了"，前端不再逐项目拉 observability。
+   */
+  list(actor: ProjectActor): Array<ProjectRow & { summary: ProjectListSummary }> {
+    const rows = actor.role === 'admin' ? this.projects.listAll() : this.projects.listByOwner(actor.id)
+    return rows.map((p) => {
+      const items = this.workItems.listByProject(p.id)
+      const deliverables = this.deliverables.listByProject(p.id)
+      const channels = this.bindings.listByProject(p.id)
+      const events = this.events.listByProject(p.id)
+      const completed = items.filter(w => w.state === 'COMPLETED').length
+      const approved = deliverables.filter(d => d.status === 'approved' || d.status === 'waived').length
+      return {
+        ...p,
+        summary: {
+          workItems: items.length,
+          completedWorkItems: completed,
+          progress: items.length > 0 ? Math.round((completed / items.length) * 100) / 100 : 0,
+          deliverables: deliverables.length,
+          requiredDeliverables: deliverables.filter(d => d.required === 1).length,
+          approvedDeliverables: approved,
+          acceptanceProgress: deliverables.length > 0 ? Math.round((approved / deliverables.length) * 100) / 100 : 0,
+          channels: channels.filter(c => c.bindingType !== 'task_instance').length,
+          members: this.members.listByProject(p.id).length,
+          pendingApprovals: this.approvals.listPending(p.id).length,
+          lastActivityAt: events.length > 0 ? events[events.length - 1]!.createdAt : p.updatedAt,
+        },
+      }
+    })
   }
 
   get(id: string, actor: ProjectActor): ProjectRow {

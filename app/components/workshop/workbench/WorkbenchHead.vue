@@ -72,13 +72,24 @@ const emit = defineEmits<{
           {{ $t('wsHome.k484e7015') }}
         </button>
       </div>
-      <button
-        class="aw-pill im"
-        @click="emit('newWorkspace')"
-      >
-        <span class="i-tabler-plus im-pop" />
-        {{ $t('wsHome.newWs') }}
-      </button>
+      <div class="head-cta">
+        <!-- 项目中心：Project 层的前端入口（与"新建工作区"并置，工作台首页即可达） -->
+        <button
+          class="aw-pill outline im"
+          data-testid="goto-projects"
+          @click="navigateTo('/projects')"
+        >
+          <span class="i-tabler-briefcase im-pop" />
+          项目中心
+        </button>
+        <button
+          class="aw-pill im"
+          @click="emit('newWorkspace')"
+        >
+          <span class="i-tabler-plus im-pop" />
+          {{ $t('wsHome.newWs') }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -95,6 +106,23 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: 10px;
   align-items: flex-end;
+}
+
+/* 主 CTA 行：项目中心（outline）+ 新建工作区（实心）并排，窄屏平分整行 */
+.head-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .head-cta {
+    width: 100%;
+  }
+
+  .head-cta .aw-pill {
+    flex: 1 1 0;
+  }
 }
 
 /* 窄屏:页头已经纵向堆叠(见 main.css v5),这一组也必须改成"左对齐 + 按钮满行"。

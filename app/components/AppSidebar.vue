@@ -42,6 +42,8 @@ const menuGroups = computed<MenuGroup[]>(() => [
     items: [
       { key: '/', icon: 'i-tabler-layout-dashboard', label: t('menu.dashboard'), motion: 'im-pop' },
       { key: '/workshop', icon: 'i-tabler-box', label: t('menu.workshop'), motion: 'im-pop' },
+      // 项目中心：Project 层入口（工作台管"频道会话"，项目中心管"目标→交付→验收"）
+      { key: '/projects', icon: 'i-tabler-briefcase', label: t('menu.projects'), motion: 'im-pop' },
       { key: '/town', icon: 'i-tabler-map-2', label: t('menu.town'), motion: 'im-pop' },
       { key: '/daq', icon: 'i-tabler-activity', label: t('menu.daq'), motion: 'im-pop' },
       { key: '/dcw', icon: 'i-tabler-settings-automation', label: t('menu.dcw'), motion: 'im-pop' },

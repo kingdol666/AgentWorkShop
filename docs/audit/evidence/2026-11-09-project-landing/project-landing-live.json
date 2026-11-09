@@ -1,0 +1,258 @@
+{
+  "generatedAt": "2026-11-09T11:21:24.447Z",
+  "base": "http://127.0.0.1:3099",
+  "projectId": "f4cc1169-8dab-4957-ab6a-36ff121bbb89",
+  "verdict": "PASS",
+  "pass": 39,
+  "fail": 0,
+  "results": [
+    {
+      "id": "E0",
+      "name": "隔离实例启动（.output + 全新 AW_HOME）",
+      "pass": true,
+      "detail": "port=3099"
+    },
+    {
+      "id": "E1a",
+      "name": "owner 注册（首用户 admin）",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "E1b",
+      "name": "独立评审账号（admin 建号 + 登录）",
+      "pass": true,
+      "detail": "create=200 login=200"
+    },
+    {
+      "id": "E2",
+      "name": "命名蓝图保存",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "E3",
+      "name": "蓝图实例化 → 建频道/绑定/物化计划",
+      "pass": true,
+      "detail": "project=f4cc1169-8dab-4957-ab6a-36ff121bbb89 status=active workItems=3"
+    },
+    {
+      "id": "E4",
+      "name": "Channel 真实绑定（3 个，非手填 UUID）",
+      "pass": true,
+      "detail": "064130:user_bound d94cac:user_bound f9301e:user_bound"
+    },
+    {
+      "id": "E5",
+      "name": "项目为 active + technical 路由",
+      "pass": true,
+      "detail": "status=active policy=technical"
+    },
+    {
+      "id": "E6",
+      "name": "工作项物化（3 个，含 dependsOn 链）",
+      "pass": true,
+      "detail": "信息架构与视觉方向 | 落地页 HTML/CSS 实现 | 桌面与移动端走查"
+    },
+    {
+      "id": "E7",
+      "name": "W1 派发（design 频道）",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "E8",
+      "name": "W1 作业面完成（artifact=设计规范）",
+      "pass": true,
+      "detail": "task=02ce6b32 complete=200 ok"
+    },
+    {
+      "id": "E9",
+      "name": "W1 对账 → COMPLETED + 成果 draft",
+      "pass": true,
+      "detail": "state=COMPLETED result=draft"
+    },
+    {
+      "id": "E10",
+      "name": "technical 门：未复核时 W2 派发被拒（409）",
+      "pass": true,
+      "detail": "status=409 工作项未就绪(RESULT_SUBMISSION)：上游「信息架构与视觉方向」尚未产出可验收成果"
+    },
+    {
+      "id": "E11a",
+      "name": "W1 成果提交（submitted）",
+      "pass": true,
+      "detail": "submit=200 ok"
+    },
+    {
+      "id": "E11b",
+      "name": "W1 L1 技术复核通过",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "E12",
+      "name": "W2 派发放行（上游已复核）",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "E13",
+      "name": "W2 作业面完成（artifact=落地页 HTML）",
+      "pass": true,
+      "detail": "task=c1ba485c complete=200 ok"
+    },
+    {
+      "id": "E14",
+      "name": "W2 对账 → COMPLETED + 成果 draft",
+      "pass": true,
+      "detail": "state=COMPLETED result=draft"
+    },
+    {
+      "id": "E15",
+      "name": "W2 成果提交 + L1 复核",
+      "pass": true,
+      "detail": "submit=200 ok review=200"
+    },
+    {
+      "id": "E16",
+      "name": "W3 派发放行",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "E17",
+      "name": "W3 作业面完成（artifact=走查报告）",
+      "pass": true,
+      "detail": "task=3bbe0f27 complete=200 ok"
+    },
+    {
+      "id": "E18",
+      "name": "W3 对账 → COMPLETED",
+      "pass": true,
+      "detail": "state=COMPLETED result=draft"
+    },
+    {
+      "id": "E19",
+      "name": "W3 成果提交 + L1 复核",
+      "pass": true,
+      "detail": "submit=200 ok review=200"
+    },
+    {
+      "id": "E20",
+      "name": "L2 签核 → 项目 completed",
+      "pass": true,
+      "detail": "approvals=3 complete=200 status=completed"
+    },
+    {
+      "id": "E21",
+      "name": "列表 API 附带摘要（进度/签核/频道/审批）",
+      "pass": true,
+      "detail": "{\"workItems\":3,\"completedWorkItems\":3,\"progress\":1,\"deliverables\":3,\"requiredDeliverables\":3,\"approvedDeliverables\":3,\"acceptanceProgress\":1,\"channels\":3,\"members\":0,\"pendingApprovals\":0,\"lastActivityAt\":\"2026-11-09T19:21:07.324+08:00\"}"
+    },
+    {
+      "id": "E22",
+      "name": "observability：3 泳道 + 3 交付物门 + accepted 工作项",
+      "pass": true,
+      "detail": "channels=3 deliverables=3 stages=accepted,accepted,accepted"
+    },
+    {
+      "id": "E23",
+      "name": "统一活动流（events + decisions 游标）",
+      "pass": true,
+      "detail": "items=57 hasMore=false"
+    },
+    {
+      "id": "U1",
+      "name": "Agent 工作台首页出现「项目中心」入口",
+      "pass": true,
+      "detail": "text=true btn=true"
+    },
+    {
+      "id": "U2",
+      "name": "侧栏「项目中心」可点且当前高亮",
+      "pass": true,
+      "detail": "active=true"
+    },
+    {
+      "id": "U3",
+      "name": "列表页渲染项目卡 + 统计带 + 新建入口",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n项目中心\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.10.0\n/\ndev\nAgent 工作台\n项目中心\n简体中文\nL\nlanding-owner"
+    },
+    {
+      "id": "U3b",
+      "name": "项目卡显示绑定频道数与交付物进度",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n项目中心\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.10.0\n/\ndev\nAgent 工作台\n项目中心\n简体中文\nL\nlanding-owner\nADMIN\n\nWORKSHOP / PROJECTS\n\n项目中心\n\n目标 → 计划 → 派发 → 交付 → 验收：Pr"
+    },
+    {
+      "id": "U4",
+      "name": "点卡进入详情（概览：快照/对话/频道/周报）",
+      "pass": true,
+      "detail": "AgentWorkShop\nPROJECT\n落地设计页开发-b94867\n已完成\nadmin\nv1\n\n为 AgentWorkShop 做一版可验收的落地页：设计稿 → 前端实现 → 双端走查\n\n项目导航\n概览\n计划与工作\n3\n交付物\n3\n审批\n决策与事件\n57\n生命周期\n继续开发\n对账\n归档\nplan v1 · leader 2f387e07\ntechnical\n项目中心\n/\n概览\n实时快照 19:21:14\n打开办公室\n刷新\n100%\n工作项\n0\n就绪\n0\n执行中\n0\n等待"
+    },
+    {
+      "id": "U4b",
+      "name": "频道显示人类可读名（非裸 UUID 列）",
+      "pass": true,
+      "detail": "true/true/true"
+    },
+    {
+      "id": "U5",
+      "name": "计划 tab：执行看板五列 + 工作项/派发 + 计划快照",
+      "pass": true,
+      "detail": "AgentWorkShop\nPROJECT\n落地设计页开发-b94867\n已完成\nadmin\nv1\n\n为 AgentWorkShop 做一版可验收的落地页：设计稿 → 前端实现 → 双端走查\n\n项目导航\n概览\n计划与工作\n3\n交付物\n3\n审批\n决策与事件\n57\n生命周期\n继续开发\n对账\n归档\nplan v1 · leader 2f387e07\ntechnical\n项目中心\n/\n计划与工作\n实时快照 19:21:14\n打开办公室\n刷新\n执行工作台\n快照 19:21:14 · 5s 轮询\n自动派发\ntechnical\nadmin\n0 就绪\n0 执行中\n0 等待\n0 阻塞/返工\n100% 工作项完成"
+    },
+    {
+      "id": "U5b",
+      "name": "看板卡片显示已验收终态",
+      "pass": true,
+      "detail": "AgentWorkShop\nPROJECT\n落地设计页开发-b94867\n已完成\nadmin\nv1\n\n为 AgentWorkShop 做一版可验收的落地页：设计稿 → 前端实现 → 双端走查\n\n项目导航\n概览\n计划与工作\n3\n交付物\n3\n审批\n决策与事件\n57\n生命周期\n继续开发\n对账\n归档\nplan v1 · leader 2f387e07\ntechnical\n项目中心\n/\n计划与工作\n实时快照 19:21:14\n打开办公室\n刷新\n执行工作台\n快照 19:21:14 · 5s 轮询\n自动派发\ntechnical\nadmin\n0 就绪\n0 执行中\n0 等待\n0 阻塞/返工\n100% 工作项完成"
+    },
+    {
+      "id": "U6",
+      "name": "交付物 tab：交付物卡 + 三级门 + 成果分组",
+      "pass": true,
+      "detail": "AgentWorkShop\nPROJECT\n落地设计页开发-b94867\n已完成\nadmin\nv1\n\n为 AgentWorkShop 做一版可验收的落地页：设计稿 → 前端实现 → 双端走查\n\n项目导航\n概览\n计划与工作\n3\n交付物\n3\n审批\n决策与事件\n57\n生命周期\n继续开发\n对账\n归档\nplan v1 · leader 2f387e07\ntechnical\n项目中心\n/\n交付物\n实时快照 19:21:14\n打开办公室\n刷新\n交付物\n3 项 · 必选 3\n落地页设计稿\na8c42051\n已签核\n必选\n内容\n技术验收\n业务签核\n首屏价值主张 ≤ 16 字\n给出桌面 1440 与移动 390 "
+    },
+    {
+      "id": "U7",
+      "name": "审批 tab：待审批 + 审批历史 + 已批准状态",
+      "pass": true,
+      "detail": "AgentWorkShop\nPROJECT\n落地设计页开发-b94867\n已完成\nadmin\nv1\n\n为 AgentWorkShop 做一版可验收的落地页：设计稿 → 前端实现 → 双端走查\n\n项目导航\n概览\n计划与工作\n3\n交付物\n3\n审批\n决策与事件\n57\n生命周期\n继续开发\n对账\n归档\nplan v1 · leader 2f387e07\ntechnical\n项目中心\n/\n审批\n实时快照 19:21:19\n打开办公室\n刷新\n待审批\n0 项待决定\n\n无待审批。\n\n审批历史\n5 条\n项目完成\nf4cc1169\n已签核\n{\"deliverables\":[{\"id\":\"a8c42051-afe3-"
+    },
+    {
+      "id": "U8",
+      "name": "决策与事件：统一时间线（events + decisions）",
+      "pass": true,
+      "detail": "AgentWorkShop\nPROJECT\n落地设计页开发-b94867\n已完成\nadmin\nv1\n\n为 AgentWorkShop 做一版可验收的落地页：设计稿 → 前端实现 → 双端走查\n\n项目导航\n概览\n计划与工作\n3\n交付物\n3\n审批\n决策与事件\n57\n生命周期\n继续开发\n对账\n归档\nplan v1 · leader 2f387e07\ntechnical\n项目中心\n/\n决策与事件\n实时快照 19:21:19\n打开办公室\n刷新\n决策与事件\n57 条 · events + decisions 统一时间线\n刷新\nplan.requested\ndecision\napplied\n刚刚\ntrace"
+    },
+    {
+      "id": "U9",
+      "name": "移动端 390px：无横向滚动",
+      "pass": true,
+      "detail": "overflow=0px"
+    },
+    {
+      "id": "U10",
+      "name": "页面无未捕获异常",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "ui": {
+    "screenshots": [
+      "ui-workshop-entry.png",
+      "ui-projects-list.png",
+      "ui-project-overview.png",
+      "ui-project-plan.png",
+      "ui-project-deliverables.png",
+      "ui-project-approvals.png",
+      "ui-project-events.png",
+      "ui-project-mobile.png"
+    ],
+    "url": "http://127.0.0.1:3099/projects/f4cc1169-8dab-4957-ab6a-36ff121bbb89?tab=events",
+    "errors": []
+  }
+}

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 /**
- * /projects/:id —— 项目详情（2026-11-07 控制台 ChatGPT 化三区重建）。
- * 覆盖：概览、频道、计划/交付物、工作项派发、成果提交/复核/验收、审计。
+ * /projects/:id —— 项目详情（Project 工作台）。
  *
- * 布局：裸 console 布局下的三区应用框 —— 左侧导航(分组条目,tab 语义原样保留
- * data-testid=tab-*)+ 中央列(标题条 + 卡片分区)+ 右侧项目快照(≥1200px 常驻)。
- * 交互契约:全部 data-testid 原位保留(projects-smoke/interactions 依赖);
- * 数据逻辑零改动,本轮只动模板外壳与样式声部。
+ * 布局：裸 console 布局下的三区应用框 —— 左导航（tab/生命周期）+ 中央工作区
+ * （概览 / 计划与工作 / 交付物 / 审批 / 决策与事件）+ 右侧上下文（快照/泳道/成员/健康）。
+ * 交互契约：data-testid=tab-* 等既有锚点原位保留（projects-smoke 依赖）；
+ * 数据层：GET /projects/:id 八路并发 + observability(5s) + activity 游标分页
+ * + /channels 目录（频道名/可绑定频道，2026-11-09）。
  */
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { mdLite } from '@/app/composables/workshop/useEventBlocks'
 import { useUserStore } from '~/stores/workshop/user'
 import type { AepChatMessage } from '#shared/workshop-protocol'
@@ -27,8 +27,10 @@ interface ProjectDto {
   name: string
   description: string
   objective: string
+  successCriteriaJson?: string
   status: string
   mode: string
+  routingPolicy?: string
   ownerUserId: string
   officeChannelId: string | null
   leadAgentId: string | null
@@ -44,11 +46,14 @@ interface ResultDto { id: string, deliverableId: string, channelId: string, titl
 interface ApprovalDto { id: string, kind: string, subjectId: string, status: string, expiresAt: string | null, payloadJson?: string, reason?: string, argsDigest?: string }
 interface DecisionDto { id: string, seq: number, decisionType: string, state: string, outcome: string, traceId: string, createdAt: string }
 interface EventDto { id: string, seq: number, type: string, eventKey: string, traceId: string, createdAt: string }
+interface MemberDto { projectId: string, userId: string, role: string, addedBy?: string, addedAt?: string }
+interface ChannelCatalogDto { id: string, name: string, leadAgentId: string | null, enabled: number, permissions?: { canManage?: boolean } | null }
 
 const route = useRoute()
 const id = String(route.params.id)
 const http = useHttp()
 const loading = ref(false)
+const bootstrapLoading = ref(true)
 const error = ref('')
 const project = ref<ProjectDto | null>(null)
 const channels = ref<ChannelBindingDto[]>([])
@@ -58,13 +63,22 @@ const results = ref<ResultDto[]>([])
 const approvals = ref<ApprovalDto[]>([])
 const decisions = ref<DecisionDto[]>([])
 const events = ref<EventDto[]>([])
+const members = ref<MemberDto[]>([])
+const channelCatalog = ref<ChannelCatalogDto[]>([])
 
-const bindForm = reactive({ channelId: '', charter: '' })
+const bindForm = reactive({ channelId: '', charter: '', manual: '' })
+const bindManual = ref(false)
 const deliverableForm = reactive({ name: '', ownerChannelId: '', acceptance: '' })
 const workForm = reactive({ deliverableId: '', channelId: '', title: '', brief: '', execBudgetMinutes: 60 })
 
 const pendingApprovals = computed(() => approvals.value.filter(a => a.status === 'pending'))
 const currentResults = computed(() => results.value)
+/** 任务实例绑定（每工作项一个专属 Channel）——与执行频道分开计数，避免"频道数"虚高。 */
+const taskInstanceCount = computed(() => channels.value.filter(c => c.bindingType === 'task_instance').length)
+
+const errMsg = (e: unknown): string =>
+  (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+  ?? (e instanceof Error ? e.message : '操作失败')
 
 async function run<T>(fn: () => Promise<T>): Promise<T | undefined> {
   loading.value = true
@@ -73,7 +87,7 @@ async function run<T>(fn: () => Promise<T>): Promise<T | undefined> {
     return await fn()
   }
   catch (e) {
-    error.value = e instanceof Error ? e.message : '操作失败'
+    error.value = errMsg(e)
     return undefined
   }
   finally {
@@ -105,31 +119,56 @@ async function load(): Promise<void> {
     if (!workForm.channelId && channels.value[0]) workForm.channelId = channels.value[0].channelId
     if (!deliverableForm.ownerChannelId && channels.value[0]) deliverableForm.ownerChannelId = channels.value[0].channelId
   })
-  void loadProjectSessions()
+}
+
+/** 频道目录：给"ID → 名称"和"可绑定候选"提供人类可读数据（失败不影响主视图）。 */
+async function loadChannelCatalog(): Promise<void> {
+  try {
+    const r = await http.get<{ data: ChannelCatalogDto[] }>('/workshop/channels')
+    channelCatalog.value = r.data ?? []
+  }
+  catch {
+    channelCatalog.value = []
+  }
+}
+
+async function loadMembers(): Promise<void> {
+  try {
+    const r = await http.get<{ data: MemberDto[] }>(`/workshop/projects/${id}/members`)
+    members.value = r.data ?? []
+  }
+  catch {
+    members.value = []
+  }
 }
 
 async function lifecycle(action: 'activate' | 'pause' | 'resume' | 'archive' | 'reconcile'): Promise<void> {
+  if (action === 'archive' && !window.confirm('归档后项目只读，确定归档？')) return
   await run(async () => {
     if (action === 'reconcile') await http.post(`/workshop/projects/${id}/reconcile`, {})
     else await http.post(`/workshop/projects/${id}/${action}`, {})
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
 async function completeProject(): Promise<void> {
+  if (!window.confirm('完成项目会走完成门（必选交付物必须签核）。确定继续？')) return
   await run(async () => {
     await http.post(`/workshop/projects/${id}/complete`, {})
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
+/** 绑定频道：优先下拉选择（真实频道目录），保留手动填 ID 的兜底通道。 */
 async function bindChannel(): Promise<void> {
-  if (!bindForm.channelId.trim()) return
+  const channelId = (bindForm.channelId || bindForm.manual).trim()
+  if (!channelId) return
   await run(async () => {
-    await http.post(`/workshop/projects/${id}/channels`, { channelId: bindForm.channelId.trim(), charter: bindForm.charter.trim() })
+    await http.post(`/workshop/projects/${id}/channels`, { channelId, charter: bindForm.charter.trim() })
     bindForm.channelId = ''
+    bindForm.manual = ''
     bindForm.charter = ''
-    await load()
+    await Promise.all([load(), loadObservability(), loadChannelCatalog(), loadActivity(true)])
   })
 }
 
@@ -143,7 +182,7 @@ async function createDeliverable(): Promise<void> {
     })
     deliverableForm.name = ''
     deliverableForm.acceptance = ''
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
@@ -160,14 +199,14 @@ async function createWorkItem(): Promise<void> {
     })
     workForm.title = ''
     workForm.brief = ''
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
 async function dispatch(workItemId: string): Promise<void> {
   await run(async () => {
     await http.post(`/workshop/projects/${id}/work-items/${workItemId}/dispatch`, {})
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
@@ -198,45 +237,48 @@ async function openTaskSession(wi: WorkItemObs): Promise<void> {
   if (wi.instanceChannelId) await openSessionConsole(wi.instanceChannelId)
 }
 
+/** 打开项目办公室（Leader 频道），走与任务会话相同的 workspace 挂载逻辑。 */
+async function openOffice(): Promise<void> {
+  if (project.value?.officeChannelId) await openSessionConsole(project.value.officeChannelId)
+}
+
 async function submitResult(result: ResultDto): Promise<void> {
   await run(async () => {
     await http.post(`/workshop/projects/${id}/results/${result.id}/submit`, {
       summary: result.summary || '（由成果页提交）',
     })
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
 async function review(result: ResultDto, decision: 'reviewed' | 'rejected'): Promise<void> {
   await run(async () => {
     await http.post(`/workshop/projects/${id}/results/${result.id}/review`, { decision })
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
 async function requestAcceptance(result: ResultDto): Promise<void> {
   await run(async () => {
     await http.post(`/workshop/projects/${id}/results/${result.id}/request-acceptance`, {})
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
 async function decide(approval: ApprovalDto, approve: boolean): Promise<void> {
   await run(async () => {
     await http.post(`/workshop/projects/${id}/approvals/${approval.id}/decide`, { approve })
-    await load()
+    await Promise.all([load(), loadObservability(), loadHistory(), loadActivity(true)])
   })
 }
 
 /** owner 应用 project leader 的派发提案（decision.state='proposed'）。 */
-async function applyProposal(decision: DecisionDto): Promise<void> {
+async function applyProposal(decisionId: string): Promise<void> {
   await run(async () => {
-    await http.post(`/workshop/projects/${id}/proposals/${decision.id}/apply`, {})
-    await load()
+    await http.post(`/workshop/projects/${id}/proposals/${decisionId}/apply`, {})
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
-
-onMounted(load)
 
 /** PR11 周报：拉取 + JSON 导出（与库同源的数字）。 */
 interface ReportDto {
@@ -269,7 +311,6 @@ function exportReport(): void {
   a.click()
   URL.revokeObjectURL(url)
 }
-onMounted(loadReport)
 
 /** Session Context：project/task session 目录（brief 预览；不拉原始 transcript） */
 const projectSessions = ref<ProjectSessionObs[]>([])
@@ -282,7 +323,6 @@ async function loadProjectSessions(): Promise<void> {
     projectSessions.value = []
   }
 }
-onMounted(loadProjectSessions)
 
 // ===== 持续开发：项目办公室 Leader 对话 =====
 const chatMessages = ref<AepChatMessage[]>([])
@@ -346,7 +386,7 @@ async function loadChat(): Promise<void> {
     chatInitialized.value = true
   }
   catch (e) {
-    if (!chatMessages.value.length) chatError.value = e instanceof Error ? e.message : '对话加载失败'
+    if (!chatMessages.value.length) chatError.value = errMsg(e)
   }
   finally {
     chatLoading.value = false
@@ -378,11 +418,11 @@ async function sendContinuation(): Promise<void> {
     chatNotice.value = res.data.reopened
       ? `项目已重新打开；需求已发给 Project Leader（已投递 ${delivered} 个目标），批准增量计划后继续派发。`
       : `需求已发给 Project Leader（已投递 ${delivered} 个目标）。`
-    await Promise.all([load(), loadChat(), loadObservability()])
+    await Promise.all([load(), loadChat(), loadObservability(), loadActivity(true)])
     scrollChatToBottom(true)
   }
   catch (e) {
-    chatError.value = e instanceof Error ? e.message : '发送失败'
+    chatError.value = errMsg(e)
   }
   finally {
     chatSending.value = false
@@ -401,6 +441,27 @@ const tabs: Array<{ key: TabKey, label: string, icon: string }> = [
   { key: 'approvals', label: '审批', icon: 'i-tabler-circle-check' },
   { key: 'events', label: '决策与事件', icon: 'i-tabler-history' },
 ]
+const tabCount = (key: TabKey): number => {
+  if (key === 'plan') return workItems.value.length
+  if (key === 'deliverables') return deliverables.value.length
+  if (key === 'approvals') return pendingApprovals.value.length
+  if (key === 'events') return decisions.value.length + events.value.length
+  return 0
+}
+
+/** 深链：?tab=plan 直达；切 tab 写回 query（不产生历史堆栈）。 */
+function syncTabFromQuery(): void {
+  const q = String(route.query.tab ?? '')
+  if (tabs.some(t => t.key === q)) activeTab.value = q as TabKey
+}
+watch(activeTab, (k) => {
+  const query = { ...route.query }
+  if (k === 'overview') delete query.tab
+  else query.tab = k
+  void navigateTo({ path: route.path, query }, { replace: true })
+  if (k === 'approvals') void loadHistory()
+  if (k === 'events') void loadActivity(true)
+})
 
 /** 审批历史（scope=all）。 */
 const approvalHistory = ref<ApprovalDto[]>([])
@@ -410,7 +471,6 @@ async function loadHistory(): Promise<void> {
     approvalHistory.value = r.data ?? []
   })
 }
-onMounted(loadHistory)
 
 /** 成果按交付物分组（成果 Map）。 */
 const resultsByDeliverable = computed(() => deliverables.value.map(d => ({
@@ -430,12 +490,22 @@ const planJsonPretty = computed(() => {
   }
 })
 const planDecisions = computed(() => decisions.value.filter(d => d.decisionType.includes('plan')).slice(-10))
+const successCriteria = computed<string[]>(() => {
+  if (obs.value?.project.successCriteria?.length) return obs.value.project.successCriteria
+  try {
+    const parsed = JSON.parse(project.value?.successCriteriaJson ?? '[]')
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  }
+  catch {
+    return []
+  }
+})
 
 /** 重派工作项（FAILED/CANCELED 后新 attempt）。 */
 async function retryWorkItem(workItemId: string): Promise<void> {
   await run(async () => {
     await http.post(`/workshop/projects/${id}/work-items/${workItemId}/retry`, {})
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
@@ -445,7 +515,7 @@ async function cancelWorkItem(workItemId: string): Promise<void> {
   if (!reason.trim()) return
   await run(async () => {
     await http.post(`/workshop/projects/${id}/work-items/${workItemId}/cancel`, { reason })
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
@@ -455,7 +525,7 @@ async function waiveDeliverable(deliverableId: string): Promise<void> {
   if (!reason.trim()) return
   await run(async () => {
     await http.post(`/workshop/projects/${id}/deliverables/${deliverableId}/waive`, { reason })
-    await load()
+    await Promise.all([load(), loadObservability(), loadActivity(true)])
   })
 }
 
@@ -523,8 +593,9 @@ interface ProjectSessionObs {
 }
 interface ChannelObs { channelId: string, name: string, enabled: number, leadAgentId: string | null, status: string, workItems: number, inFlight: number, ready: number, blocked: number, sessions?: TaskSessionObs[] }
 interface DeliverableObs { id: string, name: string, status: string, required: boolean, dependsOn: string[], acceptanceCriteria: string[], contentReady: boolean, technicalAccepted: boolean, businessApproved: boolean, resultCount: number, currentResultId: string | null }
+interface HealthRow { component?: string, status?: string, consecutiveFailures?: number, lastError?: string | null, lastHeartbeatAt?: string | null }
 interface ObservabilityDto {
-  project: ProjectDto & { autoDispatch: boolean, routingPolicy: string }
+  project: ProjectDto & { autoDispatch: boolean, routingPolicy: string, successCriteria?: string[] }
   access: { role: string, canManage: boolean, canDecide: boolean }
   summary: Record<string, number | Record<string, number>>
   channels: ChannelObs[]
@@ -540,7 +611,7 @@ interface ObservabilityDto {
     waiting: Array<{ id: string, title: string, stage: string, waitingOn: string, reason: string }>
     blocked: Array<{ id: string, title: string, stage: string, reason: string | null }>
   }
-  kernel: { health: Array<Record<string, unknown>>, effects: Record<string, number>, planApprovedVersion: number | null, ledger: { count: number, lastAt: string | null } }
+  kernel: { health: HealthRow[], effects: Record<string, number>, planApprovedVersion: number | null, ledger: { count: number, lastAt: string | null } }
   generatedAt: string
 }
 interface DetailDto {
@@ -563,6 +634,21 @@ interface DetailDto {
   events: Array<{ id: string, type: string, at: string, traceId: string, payload: Record<string, unknown> }>
 }
 
+/** 统一活动流（events + decisions，keyset 游标）。 */
+interface ActivityItem {
+  id: string
+  kind: 'event' | 'decision'
+  type: string
+  at: string
+  traceId?: string
+  state?: string
+  reason?: string
+  actorKind?: string
+  payload?: Record<string, unknown>
+  workItemId?: string | null
+  channelId?: string | null
+}
+
 const obs = ref<ObservabilityDto | null>(null)
 const obsLoading = ref(false)
 const selectedWorkItemId = ref('')
@@ -570,6 +656,11 @@ const detail = ref<DetailDto | null>(null)
 const detailLoading = ref(false)
 const lastObsAt = ref('')
 let obsTimer: ReturnType<typeof setInterval> | null = null
+
+const activity = ref<ActivityItem[]>([])
+const activityCursor = ref<string | null>(null)
+const activityHasMore = ref(false)
+const activityLoading = ref(false)
 
 const stageLabels: Record<string, string> = {
   ready: '就绪待派发',
@@ -607,19 +698,201 @@ const itemsByChannel = computed(() => obs.value?.channels.map(c => ({
   channel: c,
   items: (obs.value?.workItems ?? []).filter(w => w.channelId === c.channelId),
 })) ?? [])
-/** 绑定行的人类可读频道名(observability 快照为单一事实源;未命中退回短 id) */
+const catalogNameOf = (channelId: string): string | undefined =>
+  channelCatalog.value.find(c => c.id === channelId)?.name
+/** 绑定行的人类可读频道名（observability → 频道目录 → 短 id 三级回退） */
 const channelNameOf = (channelId: string): string =>
-  obs.value?.channels.find(c => c.channelId === channelId)?.name ?? channelId.slice(0, 8)
+  obs.value?.channels.find(c => c.channelId === channelId)?.name
+  ?? catalogNameOf(channelId)
+  ?? channelId.slice(0, 8)
 /** 任务实例行的可读标签:charter 里带着「任务实例: W1 …」,比裸 UUID 有信息量 */
 const bindingLabel = (c: { channelId: string, bindingType: string, charter?: string }): string =>
   c.bindingType === 'task_instance'
     ? (c.charter || '任务实例')
     : channelNameOf(c.channelId)
+/** 可绑定频道：目录中尚未绑定的频道（避免 select 里出现必然 409 的选项） */
+const bindableChannels = computed(() => {
+  const bound = new Set(channels.value.map(c => c.channelId))
+  return channelCatalog.value.filter(c => !bound.has(c.id))
+})
 const dispatchLog = computed(() => events.value
   .filter(e => ['work.dispatched', 'work.dispatch_auto', 'work.retry_scheduled', 'work.retried', 'work.rework', 'route.deferred', 'route.escalated'].includes(e.type))
   .slice(-30)
   .reverse())
 const routeDecisions = computed(() => decisions.value.filter(d => d.decisionType === 'route.proposed').slice(-20).reverse())
+
+/** 执行看板列（后端派生 stage → 列；前端只分组，不改语义）。 */
+interface BoardColumn { key: string, label: string, icon: string, tone: string, items: WorkItemObs[] }
+const boardColumns = computed<BoardColumn[]>(() => {
+  const items = obs.value?.workItems ?? []
+  const pick = (pred: (w: WorkItemObs) => boolean) => items.filter(pred)
+  const doneStages = ['completed_pending_result', 'result_pending_submit', 'result_pending_review', 'result_pending_acceptance', 'result_rejected', 'accepted', 'failed', 'canceled', 'superseded']
+  return [
+    { key: 'ready', label: '就绪待派发', icon: 'i-tabler-send', tone: 'blue', items: pick(w => w.stage === 'ready') },
+    { key: 'running', label: '执行中', icon: 'i-tabler-player-play', tone: 'green', items: pick(w => ['dispatching', 'dispatched', 'running'].includes(w.stage)) },
+    { key: 'waiting', label: '等待', icon: 'i-tabler-hourglass-high', tone: 'amber', items: pick(w => w.stage.startsWith('waiting') || w.stage === 'deferred') },
+    { key: 'blocked', label: '阻塞 / 返工', icon: 'i-tabler-alert-octagon', tone: 'red', items: pick(w => ['blocked', 'rework'].includes(w.stage)) },
+    { key: 'done', label: '完成 / 验收链', icon: 'i-tabler-circle-check', tone: 'gray', items: pick(w => doneStages.includes(w.stage)) },
+  ]
+})
+const boardTotal = computed(() => boardColumns.value.reduce((n, c) => n + c.items.length, 0))
+
+/** 交付物卡片：优先用 observability 的门禁投影，回退到原始行。 */
+interface DeliverableCard {
+  id: string
+  name: string
+  status: string
+  required: boolean
+  ownerChannelId: string | null
+  acceptanceCriteria: string[]
+  dependsOn: string[]
+  contentReady: boolean
+  technicalAccepted: boolean
+  businessApproved: boolean
+  resultCount: number
+}
+const deliverableCards = computed<DeliverableCard[]>(() => {
+  if (obs.value?.deliverables?.length) {
+    return obs.value.deliverables.map(d => ({
+      id: d.id,
+      name: d.name,
+      status: d.status,
+      required: d.required,
+      ownerChannelId: deliverables.value.find(x => x.id === d.id)?.ownerChannelId ?? null,
+      acceptanceCriteria: d.acceptanceCriteria ?? [],
+      dependsOn: d.dependsOn ?? [],
+      contentReady: d.contentReady,
+      technicalAccepted: d.technicalAccepted,
+      businessApproved: d.businessApproved,
+      resultCount: d.resultCount,
+    }))
+  }
+  return deliverables.value.map((d) => {
+    let criteria: string[] = []
+    try {
+      const parsed = JSON.parse(d.acceptanceCriteriaJson || '[]')
+      if (Array.isArray(parsed)) criteria = parsed.filter((x): x is string => typeof x === 'string')
+    }
+    catch { /* 容错：坏 JSON 当空标准 */ }
+    return {
+      id: d.id,
+      name: d.name,
+      status: d.status,
+      required: d.required === 1,
+      ownerChannelId: d.ownerChannelId,
+      acceptanceCriteria: criteria,
+      dependsOn: [],
+      contentReady: results.value.some(r => r.deliverableId === d.id),
+      technicalAccepted: results.value.some(r => r.deliverableId === d.id && ['reviewed', 'approved'].includes(r.status)),
+      businessApproved: d.status === 'approved' || d.status === 'waived',
+      resultCount: results.value.filter(r => r.deliverableId === d.id).length,
+    }
+  })
+})
+const deliverableName = (deliverableId: string): string =>
+  deliverables.value.find(d => d.id === deliverableId)?.name ?? deliverableId.slice(0, 8)
+
+/** 可重试口径：失败/取消/成果被驳回/任务完成但尚未生成成果；已验收不再给"重试"。 */
+const retryableStages = ['failed', 'canceled', 'completed_pending_result', 'result_rejected']
+const canRetryRow = (w: WorkItemDto): boolean => {
+  const stage = obs.value?.workItems.find(x => x.id === w.id)?.stage
+  return stage ? retryableStages.includes(stage) : ['FAILED', 'CANCELED'].includes(w.state)
+}
+
+const statusLabels: Record<string, string> = {
+  draft: '草稿',
+  active: '进行中',
+  paused: '已暂停',
+  completed: '已完成',
+  archived: '已归档',
+  planned: '待生产',
+  submitted: '待复核',
+  reviewed: '待验收',
+  approved: '已签核',
+  rejected: '已驳回',
+  waived: '已豁免',
+  superseded: '已替代',
+  pending: '待决定',
+}
+const statusLabel = (s: string): string => statusLabels[s] ?? s
+
+const approvalKindLabels: Record<string, string> = {
+  plan_approval: '计划审批',
+  deliverable_acceptance: '交付物验收',
+  project_complete: '项目完成',
+  production_write: '生产写授权',
+}
+const approvalKind = (kind: string): string => approvalKindLabels[kind] ?? kind
+
+const eventLabels: Record<string, string> = {
+  'project.created': '项目创建',
+  'project.activated': '项目激活',
+  'project.paused': '项目暂停',
+  'project.resumed': '项目恢复',
+  'project.completed': '项目完成',
+  'project.reopened': '项目重开',
+  'project.reconciled': '对账完成',
+  'channel.bound': '频道绑定',
+  'channel.unbound': '频道解绑',
+  'deliverable.created': '交付物新增',
+  'deliverable.status': '交付物状态',
+  'work.created': '工作项新增',
+  'work.dispatched': '工作项派发',
+  'work.dispatch_auto': '自动派发',
+  'work.retried': '工作项重试',
+  'work.completed': '工作项完成',
+  'work.blocked': '工作项阻塞',
+  'result.draft': '成稿生成',
+  'result.submitted': '成果提交',
+  'result.reviewed': '成果复核',
+  'result.accepted': '成果签核',
+  'result.rejected': '成果驳回',
+  'route.proposed': '路由提案',
+  'route.deferred': '路由延后',
+  'route.escalated': '路由升级',
+}
+const eventLabel = (type: string): string => eventLabels[type] ?? type
+
+/** 进度百分比（summary 里 0–1 还是 0–100 都兼容）。 */
+const pct = (v: unknown): number => {
+  const n = Number(v ?? 0)
+  if (!Number.isFinite(n)) return 0
+  return Math.round(n <= 1 ? n * 100 : n)
+}
+const projectProgress = computed(() => pct(obs.value?.summary.progress))
+const acceptanceProgress = computed(() => pct(obs.value?.summary.acceptanceProgress))
+const ringDash = computed(() => {
+  const circ = 2 * Math.PI * 18
+  return `${(circ * projectProgress.value) / 100} ${circ}`
+})
+
+function relTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const ms = Date.now() - Date.parse(iso)
+  if (!Number.isFinite(ms)) return '—'
+  const min = Math.floor(ms / 60000)
+  if (min < 1) return '刚刚'
+  if (min < 60) return `${min} 分钟前`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `${h} 小时前`
+  const d = Math.floor(h / 24)
+  if (d < 30) return `${d} 天前`
+  return new Date(iso).toLocaleDateString()
+}
+function prettyJson(raw: string | undefined): string {
+  if (!raw) return ''
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2)
+  }
+  catch {
+    return raw
+  }
+}
+const approvalPayload = (a: ApprovalDto): string => {
+  const pretty = prettyJson(a.payloadJson)
+  if (!pretty || pretty === '{}') return a.reason ?? ''
+  return pretty.length > 320 ? `${pretty.slice(0, 320)}…` : pretty
+}
 
 async function loadObservability(): Promise<void> {
   obsLoading.value = true
@@ -631,10 +904,31 @@ async function loadObservability(): Promise<void> {
   }
   catch (e) {
     // 轮询失败不覆盖主错误条（页面可能正处于长操作）
-    if (!obs.value) error.value = e instanceof Error ? e.message : '执行快照加载失败'
+    if (!obs.value) error.value = errMsg(e)
   }
   finally {
     obsLoading.value = false
+  }
+}
+
+/** 活动流：首屏 80 条，页尾"加载更多"按游标续取。 */
+async function loadActivity(reset = true): Promise<void> {
+  activityLoading.value = true
+  try {
+    const after = !reset && activityCursor.value ? `&after=${encodeURIComponent(activityCursor.value)}` : ''
+    const r = await http.get<{ data: { items: ActivityItem[], cursor: string | null, hasMore: boolean } }>(
+      `/workshop/projects/${id}/observability/activity?limit=80${after}`,
+    )
+    const items = r.data?.items ?? []
+    activity.value = reset ? items : [...activity.value, ...items]
+    activityCursor.value = r.data?.cursor ?? null
+    activityHasMore.value = r.data?.hasMore === true
+  }
+  catch {
+    if (reset) activity.value = []
+  }
+  finally {
+    activityLoading.value = false
   }
 }
 
@@ -647,7 +941,7 @@ async function openWorkItem(workItemId: string): Promise<void> {
     detail.value = r.data ?? null
   }
   catch (e) {
-    error.value = e instanceof Error ? e.message : '执行链加载失败'
+    error.value = errMsg(e)
   }
   finally {
     detailLoading.value = false
@@ -666,8 +960,19 @@ async function toggleAutoDispatch(): Promise<void> {
   })
 }
 
-onMounted(() => {
-  void loadObservability()
+onMounted(async () => {
+  syncTabFromQuery()
+  await Promise.all([
+    load(),
+    loadChannelCatalog(),
+    loadMembers(),
+    loadReport(),
+    loadProjectSessions(),
+    loadObservability(),
+    loadActivity(true),
+  ])
+  bootstrapLoading.value = false
+  void loadChat()
   obsTimer = setInterval(() => {
     void loadObservability()
   }, 5000)
@@ -685,34 +990,54 @@ onUnmounted(() => {
 
 <template>
   <div class="page">
-    <!-- ══ 左区:项目导航侧栏(ChatGPT 侧栏声部;tab/生命周期入口全部在此) ══ -->
+    <!-- ══ 左区：项目导航（tab / 生命周期 / 返回平台） ══ -->
     <aside class="side">
       <div class="side-head">
         <button
           class="back"
           type="button"
-          title="项目列表"
+          title="返回项目中心"
+          aria-label="返回项目中心"
           @click="navigateTo('/projects')"
         >
-          <span class="i-tabler-arrow-right" />
+          <span class="i-tabler-arrow-left" />
         </button>
-        <span class="brand">AgentWorkShop</span>
+        <button
+          class="brand"
+          type="button"
+          title="返回 Agent 工作台"
+          @click="navigateTo('/workshop')"
+        >
+          <span
+            class="brand-dot"
+            aria-hidden="true"
+          />
+          AgentWorkShop
+        </button>
+        <span class="side-version">project</span>
       </div>
 
       <div class="proj-id">
-        <div class="proj-name">
-          {{ project?.name ?? '项目' }}
+        <div
+          class="proj-name"
+          :title="project?.name"
+        >
+          {{ project?.name ?? '加载中…' }}
         </div>
         <div class="proj-tags">
           <span
             v-if="project"
             class="badge"
             :class="project.status"
-          >{{ project.status }}</span>
+          >{{ statusLabel(project.status) }}</span>
           <span
             v-if="obs"
             class="badge gray"
           >{{ obs.access.role }}</span>
+          <span
+            v-if="project"
+            class="badge mono"
+          >v{{ project.planVersion }}</span>
         </div>
         <p
           v-if="project?.objective"
@@ -740,9 +1065,10 @@ onUnmounted(() => {
           <span :class="t.icon" />
           <span class="side-item-label">{{ t.label }}</span>
           <span
-            v-if="t.key === 'approvals' && pendingApprovals.length"
+            v-if="tabCount(t.key)"
             class="side-count"
-          >{{ pendingApprovals.length }}</span>
+            :class="{ alert: t.key === 'approvals' }"
+          >{{ tabCount(t.key) }}</span>
         </button>
       </nav>
 
@@ -810,1122 +1136,1588 @@ onUnmounted(() => {
       </div>
 
       <div class="side-foot">
-        <span class="side-meta">plan v{{ project?.planVersion ?? 0 }} · leader {{ project?.leadAgentId?.slice(0, 8) ?? '-' }}</span>
+        <span class="side-meta mono">plan v{{ project?.planVersion ?? 0 }} · leader {{ project?.leadAgentId?.slice(0, 8) ?? '-' }}</span>
+        <span class="side-meta">{{ project?.routingPolicy ?? obs?.project.routingPolicy ?? 'technical' }}</span>
       </div>
     </aside>
 
-    <!-- ══ 中区:主列(标题条 + 卡片分区) ══ -->
+    <!-- ══ 中区：工作区 ══ -->
     <div class="main-col">
       <header class="top">
         <div class="crumb">
-          <span class="crumb-root">{{ project?.name ?? '项目' }}</span>
+          <button
+            class="crumb-link"
+            type="button"
+            @click="navigateTo('/projects')"
+          >
+            项目中心
+          </button>
           <span class="crumb-sep">/</span>
           <h1>{{ activeTabLabel }}</h1>
         </div>
-        <p class="sub">
-          plan v{{ project?.planVersion ?? 0 }} · 待审批 {{ pendingApprovals.length }} 项 · leader {{ project?.leadAgentId?.slice(0, 8) ?? '-' }}
-        </p>
+        <div class="top-actions">
+          <span
+            v-if="obs"
+            class="live-pill"
+            :class="{ on: !obsLoading, loading: obsLoading }"
+          >
+            <i aria-hidden="true" />
+            实时快照 {{ lastObsAt || '—' }}
+          </span>
+          <button
+            v-if="project?.officeChannelId"
+            class="btn small ghost"
+            data-testid="open-office"
+            @click="openOffice"
+          >
+            <span class="i-tabler-message-2" />
+            打开办公室
+          </button>
+          <button
+            class="btn small ghost"
+            :disabled="loading"
+            @click="load(); loadObservability(); loadActivity(true)"
+          >
+            <span
+              class="i-tabler-refresh"
+              :class="{ spin: loading }"
+            />
+            刷新
+          </button>
+        </div>
       </header>
 
       <p
         v-if="error"
         class="error"
+        role="alert"
       >
+        <span class="i-tabler-alert-triangle" />
         {{ error }}
       </p>
 
-      <section
-        v-show="activeTab === 'overview'"
-        class="card chat-card"
-        data-testid="project-leader-chat"
+      <!-- 首载骨架 -->
+      <div
+        v-if="bootstrapLoading && !project"
+        class="skeleton-wrap"
+        aria-busy="true"
       >
-        <header class="chat-head">
-          <div class="leader-id">
-            <span
-              class="leader-avatar"
+        <div class="sk-hero" />
+        <div class="sk-card" />
+        <div class="sk-card short" />
+      </div>
+
+      <!-- ══ 概览 ══ -->
+      <template v-else>
+        <section
+          v-show="activeTab === 'overview'"
+          class="hero"
+        >
+          <div class="hero-ring">
+            <svg
+              viewBox="0 0 44 44"
               aria-hidden="true"
-            >PL</span>
-            <div class="leader-copy">
-              <h2>Project Leader 对话</h2>
-              <p>
-                项目办公室
-                <template v-if="project?.officeChannelId">
-                  · <code>{{ project.officeChannelId.slice(0, 8) }}…</code>
-                </template>
-              </p>
-            </div>
-          </div>
-          <div class="chat-head-actions">
-            <span class="muted">{{ chatMessages.length }} 条对话</span>
-            <button
-              type="button"
-              class="btn small ghost"
-              :disabled="chatLoading"
-              @click="loadChat"
             >
-              刷新
-            </button>
-          </div>
-        </header>
-
-        <p
-          v-if="project?.status === 'completed'"
-          class="chat-hint"
-        >
-          项目已完成。<b>发送补充需求会自动重新打开项目</b>；Leader 会先读现状，再提出增量计划（plan vN+1），owner 批准后继续派发、验收，不需要新建项目。
-        </p>
-        <p
-          v-else-if="project?.status === 'paused'"
-          class="chat-hint"
-        >
-          项目已暂停；发送补充需求会自动恢复为进行中，再交给同一个 Project Leader 评估。
-        </p>
-        <p
-          v-else
-          class="chat-hint"
-        >
-          消息直接进入项目办公室，由同一个 Project Leader 接收；适合补充 bug 复现、变更需求和验收反馈。
-        </p>
-
-        <div
-          ref="chatThread"
-          class="chat-thread"
-          data-testid="project-leader-thread"
-        >
-          <div
-            v-if="!chatMessages.length && !chatLoading"
-            class="chat-empty"
-          >
-            <strong>还没有对话</strong>
-            <span>可以直接描述 bug、复现步骤或下一轮需求。</span>
-          </div>
-          <div
-            v-else-if="chatLoading && !chatMessages.length"
-            class="chat-empty"
-          >
-            <span class="muted">正在同步对话…</span>
-          </div>
-          <div
-            v-for="m in chatMessages"
-            :key="m.id"
-            class="chat-row"
-            :class="m.senderType"
-            :data-testid="`project-chat-${m.senderType}`"
-          >
-            <span
-              v-if="m.senderType !== 'user'"
-              class="chat-avatar"
-              aria-hidden="true"
-            >PL</span>
-            <div class="chat-bubble-wrap">
-              <div class="chat-meta">
-                <strong>{{ m.senderType === 'user' ? '你' : m.senderName }}</strong>
-                <span>{{ formatChatTime(m.createdAt) }}</span>
-              </div>
-              <!-- eslint-disable vue/no-v-html -- mdLite 先 escapeHtml，仅注入受控标记 -->
-              <div
-                class="chat-body"
-                v-html="mdLite(m.text)"
+              <circle
+                class="ring-bg"
+                cx="22"
+                cy="22"
+                r="18"
               />
-              <!-- eslint-enable vue/no-v-html -->
+              <circle
+                class="ring-fg"
+                cx="22"
+                cy="22"
+                r="18"
+                :style="{ strokeDasharray: ringDash }"
+              />
+            </svg>
+            <div class="ring-label">
+              <b>{{ projectProgress }}%</b>
+              <span>工作项</span>
             </div>
           </div>
-        </div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <b>{{ obs?.summary.ready ?? 0 }}</b>
+              <span>就绪</span>
+            </div>
+            <div class="hero-stat">
+              <b>{{ obs?.summary.inFlight ?? 0 }}</b>
+              <span>执行中</span>
+            </div>
+            <div class="hero-stat">
+              <b>{{ obs?.summary.waiting ?? 0 }}</b>
+              <span>等待</span>
+            </div>
+            <div
+              class="hero-stat"
+              :class="{ danger: Number(obs?.summary.blocked ?? 0) > 0 }"
+            >
+              <b>{{ obs?.summary.blocked ?? 0 }}</b>
+              <span>阻塞</span>
+            </div>
+            <div class="hero-stat">
+              <b>{{ acceptanceProgress }}%</b>
+              <span>交付签核</span>
+            </div>
+          </div>
+          <div
+            v-if="successCriteria.length"
+            class="hero-criteria"
+          >
+            <span class="hero-criteria-label">成功标准</span>
+            <span
+              v-for="(c, i) in successCriteria.slice(0, 4)"
+              :key="i"
+              class="criteria-chip"
+            >{{ c }}</span>
+          </div>
+        </section>
 
-        <p
-          v-if="chatError"
-          class="error"
+        <!-- Project Leader 对话 -->
+        <section
+          v-show="activeTab === 'overview'"
+          class="card chat-card"
+          data-testid="project-leader-chat"
         >
-          {{ chatError }}
-        </p>
-        <p
-          v-if="chatNotice"
-          class="muted"
-        >
-          {{ chatNotice }}
-        </p>
-
-        <div class="chat-compose">
-          <textarea
-            ref="chatInput"
-            v-model="chatText"
-            rows="2"
-            maxlength="8000"
-            data-testid="project-continue-input"
-            :disabled="!canContinueProject"
-            :placeholder="canContinueProject
-              ? '例如：游戏在移动端无法操作；第 2 关闪电伤害判定偏大；请修复并补回归验证。'
-              : '只有项目 owner 可以在这里继续开发。'"
-            @keydown.ctrl.enter.prevent="sendContinuation"
-            @keydown.meta.enter.prevent="sendContinuation"
-          />
-          <div class="chat-compose-actions">
-            <span class="composer-hint">
-              Ctrl/⌘ + Enter 发送
-              <template v-if="!canContinueProject">
-                · 只有项目 owner 可继续开发
-              </template>
-            </span>
-            <div class="composer-right">
-              <span class="muted mono">{{ chatText.length }} / 8000</span>
+          <header class="chat-head">
+            <div class="leader-id">
+              <span
+                class="leader-avatar"
+                aria-hidden="true"
+              >PL</span>
+              <div class="leader-copy">
+                <h2>Project Leader 对话</h2>
+                <p>
+                  项目办公室
+                  <template v-if="project?.officeChannelId">
+                    · <code>{{ channelNameOf(project.officeChannelId) }}</code>
+                  </template>
+                </p>
+              </div>
+            </div>
+            <div class="chat-head-actions">
+              <span class="muted">{{ chatMessages.length }} 条对话</span>
               <button
-                class="btn small"
-                data-testid="project-continue-send"
-                :disabled="chatSending || !chatText.trim() || !canContinueProject"
-                @click="sendContinuation"
+                type="button"
+                class="btn small ghost"
+                :disabled="chatLoading"
+                @click="loadChat"
               >
-                {{ chatSending ? '发送中…' : '发送并继续开发' }}
+                刷新
+              </button>
+            </div>
+          </header>
+
+          <p
+            v-if="project?.status === 'completed'"
+            class="chat-hint"
+          >
+            项目已完成。<b>发送补充需求会自动重新打开项目</b>；Leader 会先读现状，再提出增量计划（plan vN+1），owner 批准后继续派发、验收，不需要新建项目。
+          </p>
+          <p
+            v-else-if="project?.status === 'paused'"
+            class="chat-hint"
+          >
+            项目已暂停；发送补充需求会自动恢复为进行中，再交给同一个 Project Leader 评估。
+          </p>
+          <p
+            v-else
+            class="chat-hint"
+          >
+            消息直接进入项目办公室，由同一个 Project Leader 接收；适合补充 bug 复现、变更需求和验收反馈。
+          </p>
+
+          <div
+            ref="chatThread"
+            class="chat-thread"
+            data-testid="project-leader-thread"
+          >
+            <div
+              v-if="!chatMessages.length && !chatLoading"
+              class="chat-empty"
+            >
+              <strong>还没有对话</strong>
+              <span>可以直接描述 bug、复现步骤或下一轮需求。</span>
+            </div>
+            <div
+              v-else-if="chatLoading && !chatMessages.length"
+              class="chat-empty"
+            >
+              <span class="muted">正在同步对话…</span>
+            </div>
+            <div
+              v-for="m in chatMessages"
+              :key="m.id"
+              class="chat-row"
+              :class="m.senderType"
+              :data-testid="`project-chat-${m.senderType}`"
+            >
+              <span
+                v-if="m.senderType !== 'user'"
+                class="chat-avatar"
+                aria-hidden="true"
+              >PL</span>
+              <div class="chat-bubble-wrap">
+                <div class="chat-meta">
+                  <strong>{{ m.senderType === 'user' ? '你' : m.senderName }}</strong>
+                  <span>{{ formatChatTime(m.createdAt) }}</span>
+                </div>
+                <!-- eslint-disable vue/no-v-html -- mdLite 先 escapeHtml，仅注入受控标记 -->
+                <div
+                  class="chat-body"
+                  v-html="mdLite(m.text)"
+                />
+                <!-- eslint-enable vue/no-v-html -->
+              </div>
+            </div>
+          </div>
+
+          <p
+            v-if="chatError"
+            class="error inline"
+          >
+            {{ chatError }}
+          </p>
+          <p
+            v-if="chatNotice"
+            class="muted"
+          >
+            {{ chatNotice }}
+          </p>
+
+          <div class="chat-compose">
+            <textarea
+              ref="chatInput"
+              v-model="chatText"
+              rows="2"
+              maxlength="8000"
+              data-testid="project-continue-input"
+              :disabled="!canContinueProject"
+              :placeholder="canContinueProject
+                ? '例如：游戏在移动端无法操作；第 2 关闪电伤害判定偏大；请修复并补回归验证。'
+                : '只有项目 owner 可以在这里继续开发。'"
+              @keydown.ctrl.enter.prevent="sendContinuation"
+              @keydown.meta.enter.prevent="sendContinuation"
+            />
+            <div class="chat-compose-actions">
+              <span class="composer-hint">
+                Ctrl/⌘ + Enter 发送
+                <template v-if="!canContinueProject">
+                  · 只有项目 owner 可继续开发
+                </template>
+              </span>
+              <div class="composer-right">
+                <span class="muted mono">{{ chatText.length }} / 8000</span>
+                <button
+                  class="btn small"
+                  data-testid="project-continue-send"
+                  :disabled="chatSending || !chatText.trim() || !canContinueProject"
+                  @click="sendContinuation"
+                >
+                  {{ chatSending ? '发送中…' : '发送并继续开发' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 频道 -->
+        <section
+          v-show="activeTab === 'overview'"
+          class="card"
+        >
+          <header class="card-head">
+            <h2>频道</h2>
+            <span class="muted">{{ channels.length }} 个绑定<template v-if="taskInstanceCount"> · {{ taskInstanceCount }} 个任务实例</template></span>
+          </header>
+          <p
+            v-if="!channels.length"
+            class="muted"
+          >
+            尚未绑定成员 Channel。绑定后 Leader 才能把工作项派发到执行频道。
+          </p>
+          <ul class="chan-list">
+            <li
+              v-for="c in channels"
+              :key="c.channelId"
+              class="chan-row"
+            >
+              <span
+                class="chan-avatar"
+                aria-hidden="true"
+              >
+                <span class="i-tabler-antenna" />
+              </span>
+              <div class="chan-main">
+                <strong>{{ bindingLabel(c) }}</strong>
+                <span class="chan-meta mono">{{ c.channelId.slice(0, 8) }}</span>
+              </div>
+              <span
+                class="badge"
+                :class="{ protected: c.bindingType === 'user_bound' }"
+                data-testid="protected-badge"
+              >
+                {{ c.bindingType === 'user_bound' ? '用户绑定 · 受保护' : c.bindingType }}
+              </span>
+              <span class="chan-charter">{{ c.charter || '无 charter' }}</span>
+              <button
+                class="btn small ghost"
+                @click="openSessionConsole(c.channelId)"
+              >
+                打开
+              </button>
+            </li>
+          </ul>
+          <div class="form-grid bind-grid">
+            <label class="span2">
+              <span>绑定已有 Channel</span>
+              <select v-model="bindForm.channelId">
+                <option value="">
+                  {{ bindableChannels.length ? '选择可绑定频道' : '没有可绑定的频道（可手动填写 ID）' }}
+                </option>
+                <option
+                  v-for="c in bindableChannels"
+                  :key="c.id"
+                  :value="c.id"
+                >
+                  {{ c.name }} · {{ c.id.slice(0, 8) }}
+                </option>
+              </select>
+            </label>
+            <label class="span2">
+              <span>该频道在项目中的使命（charter，可选）</span>
+              <input
+                v-model="bindForm.charter"
+                placeholder="例如：负责落地页视觉与前端实现"
+              >
+            </label>
+            <label class="check-row">
+              <input
+                v-model="bindManual"
+                type="checkbox"
+              >
+              <span>手动填写 Channel ID</span>
+            </label>
+            <label v-show="bindManual">
+              <span>Channel ID</span>
+              <input
+                v-model="bindForm.manual"
+                data-testid="bind-channel-id"
+                placeholder="粘贴 Channel ID"
+              >
+            </label>
+            <div class="span2 form-actions">
+              <button
+                class="btn"
+                :disabled="loading || (!bindForm.channelId && !bindForm.manual.trim())"
+                @click="bindChannel"
+              >
+                绑定频道
               </button>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section
-        v-show="activeTab === 'overview'"
-        class="card"
-      >
-        <div class="row actions">
-          <h2>频道</h2>
-          <a
-            v-if="project?.officeChannelId"
-            class="link"
-            :href="`/workshop`"
-            data-testid="open-office"
-          >
-            在 Agent 工作台打开办公室频道（{{ project.officeChannelId.slice(0, 8) }}…）
-          </a>
-        </div>
-        <p
-          v-if="!channels.length"
-          class="muted"
-        >
-          尚未绑定成员 Channel。
-        </p>
-        <ul class="list">
-          <li
-            v-for="c in channels"
-            :key="c.channelId"
-          >
-            <span class="chan-name">{{ bindingLabel(c) }}</span>
-            <code class="chan-id">{{ c.channelId.slice(0, 8) }}</code>
-            <span
-              class="badge"
-              :class="{ protected: c.bindingType === 'user_bound' }"
-              data-testid="protected-badge"
-            >
-              {{ c.bindingType === 'user_bound' ? '用户绑定 · 受保护' : c.bindingType }}
-            </span>
-            <span class="muted">{{ c.charter || '无 charter' }}</span>
-          </li>
-        </ul>
-        <div class="form">
-          <input
-            v-model="bindForm.channelId"
-            data-testid="bind-channel-id"
-            placeholder="Channel ID（owner 自己的、已有 lead）"
-          >
-          <input
-            v-model="bindForm.charter"
-            placeholder="该频道在项目中的使命（可选）"
-          >
-          <button
-            class="btn"
-            :disabled="loading"
-            @click="bindChannel"
-          >
-            绑定
-          </button>
-        </div>
-      </section>
-
-      <section
-        v-show="activeTab === 'deliverables'"
-        class="card"
-      >
-        <h2>交付物</h2>
-        <p
-          v-if="!deliverables.length"
-          class="muted"
-        >
-          至少一个必选交付物才能激活。
-        </p>
-        <ul class="list">
-          <li
-            v-for="d in deliverables"
-            :key="d.id"
-          >
-            <strong>{{ d.name }}</strong>
-            <span
-              class="badge"
-              :class="d.status"
-            >{{ d.status }}</span>
-            <span class="muted">{{ d.required ? '必选' : '可选' }}</span>
-          </li>
-        </ul>
-        <div class="form">
-          <input
-            v-model="deliverableForm.name"
-            data-testid="deliverable-name"
-            placeholder="交付物名称"
-          >
-          <select v-model="deliverableForm.ownerChannelId">
-            <option value="">
-              选择所属频道
-            </option>
-            <option
-              v-for="c in channels"
-              :key="c.channelId"
-              :value="c.channelId"
-            >
-              {{ c.channelId }}
-            </option>
-          </select>
-          <textarea
-            v-model="deliverableForm.acceptance"
-            rows="2"
-            placeholder="验收标准（每行一条）"
-          />
-          <button
-            class="btn"
-            :disabled="loading"
-            @click="createDeliverable"
-          >
-            新增交付物
-          </button>
-        </div>
-      </section>
-
-      <section
-        v-show="activeTab === 'plan'"
-        class="card exec-workbench"
-        data-testid="exec-workbench"
-      >
-        <div class="row actions">
-          <h2 style="margin:0">
-            执行工作台
-          </h2>
-          <span
-            class="live-dot"
-            :class="{ on: obsLoading }"
-          />
-          <span class="muted">快照 {{ lastObsAt || '—' }} · 5s 轮询</span>
-          <label
-            v-if="obs?.access.canManage"
-            class="muted inline-check"
-          >
-            <input
-              type="checkbox"
-              data-testid="toggle-auto-dispatch"
-              :checked="obs?.project.autoDispatch"
-              @change="toggleAutoDispatch"
-            >
-            自动派发
-          </label>
-          <span
-            v-if="obs"
-            class="badge"
-            :class="obs.project.routingPolicy"
-          >{{ obs.project.routingPolicy }}</span>
-          <span
-            v-if="obs"
-            class="badge"
-          >{{ obs.access.role }}</span>
-        </div>
-
+        <!-- 项目会话 + 周报 -->
         <div
-          v-if="obs"
-          class="stat-strip"
-          data-testid="exec-summary"
+          v-show="activeTab === 'overview'"
+          class="two-col"
         >
-          <span class="stat"><b>{{ obs.summary.ready }}</b> 就绪</span>
-          <span class="stat"><b>{{ obs.summary.inFlight }}</b> 执行中</span>
-          <span class="stat"><b>{{ obs.summary.waiting }}</b> 等待</span>
-          <span class="stat"><b>{{ obs.summary.blocked }}</b> 阻塞/返工</span>
-          <span class="stat"><b>{{ Math.round(Number(obs.summary.progress ?? 0) * 100) }}%</b> 工作项完成</span>
-          <span class="stat"><b>{{ Math.round(Number(obs.summary.acceptanceProgress ?? 0) * 100) }}%</b> 交付物签核</span>
-        </div>
-
-        <div
-          v-if="obs"
-          class="lanes"
-        >
-          <div
-            v-for="lane in itemsByChannel"
-            :key="lane.channel.channelId"
-            class="lane"
-            :data-testid="`channel-lane-${lane.channel.channelId}`"
+          <section
+            class="card"
+            data-testid="project-sessions"
           >
-            <div class="lane-head">
-              <strong>{{ lane.channel.name }}</strong>
-              <span
-                class="badge"
-                :class="lane.channel.enabled ? 'active' : 'archived'"
-              >{{ lane.channel.enabled ? '启用' : '停用' }}</span>
-              <span class="muted">{{ lane.channel.inFlight }} 执行 · {{ lane.channel.ready }} 就绪<template v-if="lane.channel.sessions?.length"> · {{ lane.channel.sessions.length }} 任务会话</template></span>
-            </div>
+            <header class="card-head">
+              <h2>项目会话</h2>
+              <span class="muted">{{ projectSessions.length }} 个 session</span>
+              <span class="spacer" />
+              <button
+                class="btn small ghost"
+                :disabled="loading"
+                @click="loadProjectSessions"
+              >
+                刷新会话
+              </button>
+            </header>
             <p
-              v-if="!lane.items.length"
+              v-if="!projectSessions.length"
               class="muted"
             >
-              无工作项
+              暂无会话。项目创建会生成 project session；工作项派发会生成 task session。
             </p>
-            <div
-              v-for="w in lane.items"
-              :key="w.id"
-              class="exec-card"
-              role="button"
-              tabindex="0"
-              :data-testid="`exec-work-item-${w.id}`"
-              @click="openWorkItem(w.id)"
-              @keydown.enter="openWorkItem(w.id)"
+            <ul
+              v-else
+              class="session-list"
             >
-              <span class="row">
-                <strong>{{ w.title }}</strong>
-                <span
-                  class="badge"
-                  :class="stageTone(w.stage)"
-                >{{ stageLabel(w.stage) }}</span>
-              </span>
-              <span class="muted">attempt {{ w.attemptCount }}/{{ w.maxAttempts }} · 成果 {{ w.lastResultStatus || '—' }}<template v-if="w.reworkCount"> · rework {{ w.reworkCount }}</template></span>
-              <!-- 任务实例（2026-11-07）：每任务一个专属 Channel + 会话，点击直达会话视图 -->
-              <span
-                v-if="w.sessionId || w.instanceChannelId"
-                class="task-session-row"
+              <li
+                v-for="s in projectSessions"
+                :key="s.id"
+                class="session-row"
               >
+                <span class="badge blue">{{ s.kind }}</span>
+                <div class="session-main">
+                  <strong>{{ s.title }}</strong>
+                  <span class="muted">{{ s.currentTask || s.summary || '—' }}</span>
+                </div>
                 <span
                   class="badge"
-                  :class="w.sessionStatus === 'active' ? 'active' : 'archived'"
-                  :data-testid="`task-session-${w.id}`"
-                >{{ w.sessionStatus === 'active' ? '任务会话 · 进行中' : '任务会话 · 已归档' }}</span>
-                <span class="muted mono">{{ (w.sessionId || '—').slice(0, 14) }}</span>
+                  :class="s.status === 'active' ? 'active' : 'archived'"
+                >{{ s.status }}</span>
                 <a-button
-                  v-if="w.instanceChannelId"
                   size="small"
                   type="link"
-                  :data-testid="`open-task-session-${w.id}`"
-                  @click.stop="openTaskSession(w)"
+                  :data-testid="`open-project-session-${s.id}`"
+                  @click="openSessionConsole(s.channelId)"
                 >
                   打开会话
                 </a-button>
-              </span>
-              <span
-                v-if="w.waitingReason"
-                class="muted"
-              >{{ w.waitingOn }}: {{ w.waitingReason }}</span>
-              <span
-                v-else-if="w.stateReason"
-                class="muted"
-              >{{ w.stateReason }}</span>
+              </li>
+            </ul>
+          </section>
+
+          <section class="card">
+            <header class="card-head">
+              <h2>周报</h2>
+              <span class="muted">{{ report?.generatedAt ? relTime(report.generatedAt) : '未加载' }}</span>
+            </header>
+            <p
+              v-if="!report"
+              class="muted"
+            >
+              周报未加载。
+            </p>
+            <div
+              v-else
+              class="report-grid"
+            >
+              <div class="report-stat">
+                <b>{{ report.progress?.completedWorkItems ?? 0 }}/{{ report.progress?.scoreableWorkItems ?? 0 }}</b>
+                <span>工作项</span>
+              </div>
+              <div class="report-stat">
+                <b>{{ report.deliverables?.requiredApproved ?? 0 }}/{{ report.deliverables?.requiredTotal ?? 0 }}</b>
+                <span>必选签核</span>
+              </div>
+              <div class="report-stat">
+                <b>{{ report.results?.total ?? 0 }}</b>
+                <span>成果</span>
+              </div>
+              <div class="report-stat">
+                <b :class="{ 'tone-warn': Number(report.workItems?.blocked ?? 0) > 0 }">{{ report.workItems?.blocked ?? 0 }}</b>
+                <span>阻塞</span>
+              </div>
             </div>
-          </div>
-        </div>
-        <p
-          v-else
-          class="muted"
-        >
-          执行快照加载中…
-        </p>
-
-        <div
-          v-if="obs"
-          class="route-strip"
-          data-testid="route-strip"
-        >
-          <span>routeGate <b>{{ obs.route.routeGate }}</b></span>
-          <span>mode <b>{{ obs.route.mode }}</b></span>
-          <span>plan v<b>{{ obs.route.planVersion }}</b></span>
-          <span>effects <b>{{ obs.kernel.effects.pending ?? 0 }}</b> pending</span>
-          <span>ledger <b>{{ obs.kernel.ledger.count }}</b></span>
-        </div>
-      </section>
-
-      <section
-        v-show="activeTab === 'plan'"
-        class="card"
-        data-testid="route-log"
-      >
-        <h2>路由与派发日志</h2>
-        <div class="grid2">
-          <div>
-            <h3>派发 / 重试 / 返工 / 升级</h3>
             <p
-              v-if="!dispatchLog.length"
-              class="muted"
+              v-if="report"
+              class="muted report-line"
             >
-              暂无派发记录。
+              近 7 天事件 {{ report.recentEvents?.count ?? 0 }} · 待审批 {{ report.approvals?.pending ?? 0 }} · generatedAt {{ report.generatedAt }}
             </p>
-            <ul class="list">
-              <li
-                v-for="e in dispatchLog"
-                :key="e.id"
+            <div class="row actions">
+              <button
+                class="btn small ghost"
+                data-testid="btn-report-refresh"
+                :disabled="loading"
+                @click="loadReport"
               >
-                <span>{{ e.type }}</span>
-                <code>{{ e.traceId }}</code>
-                <span class="muted">{{ e.createdAt }}</span>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h3>Leader 路由提案</h3>
-            <p
-              v-if="!routeDecisions.length"
-              class="muted"
-            >
-              暂无 route 提案。
-            </p>
-            <ul class="list">
-              <li
-                v-for="d in routeDecisions"
-                :key="d.id"
+                刷新周报
+              </button>
+              <button
+                class="btn small"
+                data-testid="btn-report-export"
+                :disabled="loading || !report"
+                @click="exportReport"
               >
-                <span>#{{ d.seq }} {{ d.decisionType }}</span>
-                <span class="badge">{{ d.state }}</span>
-                <code>{{ d.traceId }}</code>
-              </li>
-            </ul>
-          </div>
+                导出周报
+              </button>
+            </div>
+          </section>
         </div>
-        <div
-          v-if="obs?.route.waiting.length"
-          class="waiting-box"
-        >
-          <h3>等待原因（后端派生）</h3>
-          <ul class="list">
-            <li
-              v-for="w in obs.route.waiting"
-              :key="w.id"
-            >
-              <span>{{ w.title }}</span>
-              <span class="badge amber">{{ stageLabel(w.stage) }}</span>
-              <span class="muted">{{ w.waitingOn }} · {{ w.reason }}</span>
-            </li>
-          </ul>
-        </div>
-      </section>
 
-      <section
-        v-show="activeTab === 'plan'"
-        class="card"
-      >
-        <h2>计划快照（当前 v{{ project?.planVersion ?? 0 }}）</h2>
-        <pre
-          v-if="project"
-          class="plan-json"
-        >{{ planJsonPretty }}</pre>
-        <p
-          v-else
-          class="muted"
+        <!-- ══ 计划与工作 ══ -->
+        <section
+          v-show="activeTab === 'plan'"
+          class="card exec-workbench"
+          data-testid="exec-workbench"
         >
-          加载中。
-        </p>
-        <h3>计划决策快照（decisions.args_json）</h3>
-        <ul class="list">
-          <li
-            v-for="pd in planDecisions"
-            :key="pd.id"
+          <header class="card-head">
+            <h2>执行工作台</h2>
+            <span
+              class="live-dot"
+              :class="{ on: obsLoading }"
+              aria-hidden="true"
+            />
+            <span class="muted">快照 {{ lastObsAt || '—' }} · 5s 轮询</span>
+            <span class="spacer" />
+            <label
+              v-if="obs?.access.canManage"
+              class="muted inline-check"
+            >
+              <input
+                type="checkbox"
+                data-testid="toggle-auto-dispatch"
+                :checked="obs?.project.autoDispatch"
+                @change="toggleAutoDispatch"
+              >
+              自动派发
+            </label>
+            <span
+              v-if="obs"
+              class="badge mono"
+            >{{ obs.project.routingPolicy }}</span>
+            <span
+              v-if="obs"
+              class="badge"
+            >{{ obs.access.role }}</span>
+          </header>
+
+          <div
+            v-if="obs"
+            class="stat-strip"
+            data-testid="exec-summary"
           >
-            <span>{{ pd.decisionType }}</span>
-            <span class="badge">{{ pd.state }}</span>
-            <code class="muted">{{ pd.traceId }}</code>
-          </li>
-        </ul>
-      </section>
+            <span class="stat"><b>{{ obs.summary.ready }}</b> 就绪</span>
+            <span class="stat"><b>{{ obs.summary.inFlight }}</b> 执行中</span>
+            <span class="stat"><b>{{ obs.summary.waiting }}</b> 等待</span>
+            <span class="stat"><b>{{ obs.summary.blocked }}</b> 阻塞/返工</span>
+            <span class="stat"><b>{{ projectProgress }}%</b> 工作项完成</span>
+            <span class="stat"><b>{{ acceptanceProgress }}%</b> 交付物签核</span>
+          </div>
 
-      <section
-        v-show="activeTab === 'plan'"
-        class="card"
-      >
-        <h2>工作项 / 派发</h2>
-        <table>
-          <thead><tr><th>标题</th><th>频道</th><th>状态</th><th>预算</th><th /></tr></thead>
-          <tbody>
-            <tr
-              v-for="w in workItems"
-              :key="w.id"
+          <!-- 执行看板：后端 stage → 列 -->
+          <div
+            v-if="obs"
+            class="board"
+            :class="{ empty: boardTotal === 0 }"
+          >
+            <div
+              v-for="col in boardColumns"
+              :key="col.key"
+              class="board-col"
+              :class="`tone-${col.tone}`"
             >
-              <td>
-                {{ w.title }}<div
-                  v-if="w.stateReason"
-                  class="muted"
+              <header class="board-col-head">
+                <span
+                  :class="col.icon"
+                  aria-hidden="true"
+                />
+                <span class="board-col-label">{{ col.label }}</span>
+                <span class="board-col-count">{{ col.items.length }}</span>
+              </header>
+              <p
+                v-if="!col.items.length"
+                class="board-empty"
+              >
+                空
+              </p>
+              <div
+                v-for="w in col.items"
+                :key="w.id"
+                class="wc"
+                role="button"
+                tabindex="0"
+                :data-testid="`exec-work-item-${w.id}`"
+                @click="openWorkItem(w.id)"
+                @keydown.enter="openWorkItem(w.id)"
+              >
+                <div class="wc-top">
+                  <strong>{{ w.title }}</strong>
+                  <span
+                    class="badge"
+                    :class="stageTone(w.stage)"
+                  >{{ stageLabel(w.stage) }}</span>
+                </div>
+                <div class="wc-meta">
+                  <span class="wc-chan">
+                    <span
+                      class="i-tabler-antenna"
+                      aria-hidden="true"
+                    />
+                    {{ channelNameOf(w.channelId) }}
+                  </span>
+                  <span class="wc-deliv">{{ deliverableName(w.deliverableId) }}</span>
+                </div>
+                <div class="wc-foot">
+                  <span class="mono">attempt {{ w.attemptCount }}/{{ w.maxAttempts }}</span>
+                  <span
+                    v-if="w.lastResultStatus"
+                    class="muted"
+                  >成果 {{ statusLabel(w.lastResultStatus) }}</span>
+                  <span
+                    v-if="w.reworkCount"
+                    class="badge red"
+                  >rework {{ w.reworkCount }}</span>
+                </div>
+                <div
+                  v-if="w.waitingReason"
+                  class="wc-wait"
+                >
+                  {{ w.waitingOn }} · {{ w.waitingReason }}
+                </div>
+                <div
+                  v-else-if="w.stateReason"
+                  class="wc-wait"
                 >
                   {{ w.stateReason }}
                 </div>
-              </td>
-              <td><code>{{ w.channelId }}</code></td>
-              <td>
-                <span
-                  class="badge"
-                  :class="w.state.toLowerCase()"
-                >{{ w.state }}</span>
-              </td>
-              <td>{{ w.execBudgetMinutes }}m</td>
-              <td>
-                <button
-                  class="btn small"
-                  :disabled="loading || Boolean(w.currentAttemptId)"
-                  @click="dispatch(w.id)"
+                <div
+                  v-if="w.sessionId || w.instanceChannelId"
+                  class="task-session-row"
                 >
-                  派发
-                </button>
-                <button
-                  v-if="['FAILED', 'CANCELED', 'COMPLETED'].includes(w.state)"
-                  class="btn small ghost"
-                  data-testid="btn-retry"
-                  :disabled="loading"
-                  @click="retryWorkItem(w.id)"
-                >
-                  重试
-                </button>
-                <button
-                  v-if="!['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(w.state)"
-                  class="btn small danger"
-                  :disabled="loading"
-                  @click="cancelWorkItem(w.id)"
-                >
-                  取消
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="form inline">
-          <select
-            v-model="workForm.deliverableId"
-            data-testid="select-work-deliverable"
-          >
-            <option value="">
-              选择交付物
-            </option>
-            <option
-              v-for="d in deliverables"
-              :key="d.id"
-              :value="d.id"
-            >
-              {{ d.name }}
-            </option>
-          </select>
-          <select
-            v-model="workForm.channelId"
-            data-testid="select-work-channel"
-          >
-            <option value="">
-              选择频道
-            </option>
-            <option
-              v-for="c in channels"
-              :key="c.channelId"
-              :value="c.channelId"
-            >
-              {{ c.channelId }}
-            </option>
-          </select>
-          <input
-            v-model="workForm.title"
-            data-testid="input-work-title"
-            placeholder="工作项标题"
-          >
-          <input
-            v-model="workForm.brief"
-            data-testid="input-work-brief"
-            placeholder="给 Channel lead 的 brief"
-          >
-          <input
-            v-model.number="workForm.execBudgetMinutes"
-            type="number"
-            min="1"
-            max="1440"
-          >
-          <button
-            class="btn"
-            :disabled="loading"
-            @click="createWorkItem"
-          >
-            新增
-          </button>
-        </div>
-      </section>
-
-      <section
-        v-show="activeTab === 'deliverables'"
-        class="card"
-      >
-        <h2>成果（按交付物分组）</h2>
-        <p
-          v-if="!currentResults.length"
-          class="muted"
-        >
-          Channel root task COMPLETED 后，点“对账”会自动生成 draft。
-        </p>
-        <template
-          v-for="group in resultsByDeliverable"
-          :key="group.deliverable.id"
-        >
-          <div
-            v-if="group.results.length"
-            class="group-head"
-          >
-            <strong>{{ group.deliverable.name }}</strong>
-            <span
-              class="badge"
-              :class="group.deliverable.status"
-            >{{ group.deliverable.status }}</span>
-            <button
-              v-if="group.deliverable.status === 'planned'"
-              class="btn small ghost"
-              :disabled="loading"
-              @click="waiveDeliverable(group.deliverable.id)"
-            >
-              豁免
-            </button>
-          </div>
-          <article
-            v-for="r in group.results"
-            :key="r.id"
-            class="result"
-          >
-            <div class="row">
-              <strong>{{ r.title }}</strong>
-              <span
-                class="badge"
-                :class="r.status"
-              >{{ r.status }}</span>
-              <span class="muted">v{{ r.version }}</span>
-            </div>
-            <p class="summary">
-              {{ r.summary }}
-            </p>
-            <div class="muted">
-              evidence: {{ r.evidenceJson }}
-            </div>
-            <div class="row actions">
-              <button
-                v-if="r.status === 'draft' || r.status === 'rejected'"
-                class="btn small"
-                :disabled="loading"
-                @click="submitResult(r)"
-              >
-                提交
-              </button>
-              <button
-                v-if="r.status === 'submitted'"
-                class="btn small ghost"
-                :disabled="loading"
-                @click="review(r, 'reviewed')"
-              >
-                复核通过
-              </button>
-              <button
-                v-if="r.status === 'submitted'"
-                class="btn small danger"
-                :disabled="loading"
-                @click="review(r, 'rejected')"
-              >
-                驳回
-              </button>
-              <button
-                v-if="r.status === 'reviewed'"
-                class="btn small"
-                :disabled="loading"
-                @click="requestAcceptance(r)"
-              >
-                申请验收
-              </button>
-            </div>
-          </article>
-        </template>
-      </section>
-
-      <section
-        v-show="activeTab === 'overview'"
-        class="card"
-      >
-        <h2>周报</h2>
-        <p
-          v-if="!report"
-          class="muted"
-        >
-          周报未加载。
-        </p>
-        <template v-else>
-          <p class="sub">
-            进度 {{ report.progress?.ratio ?? 0 }}（{{ report.progress?.completedWorkItems ?? 0 }}/{{ report.progress?.scoreableWorkItems ?? 0 }} 工作项） ·
-            交付物 {{ report.deliverables?.total ?? 0 }}（必选验收 {{ report.deliverables?.requiredApproved ?? 0 }}/{{ report.deliverables?.requiredTotal ?? 0 }}） ·
-            成果 {{ report.results?.total ?? 0 }} · 阻塞 {{ report.workItems?.blocked ?? 0 }} · 近 7 天事件 {{ report.recentEvents?.count ?? 0 }}
-          </p>
-          <p class="muted">
-            generatedAt: {{ report.generatedAt }}
-          </p>
-        </template>
-        <div class="row actions">
-          <button
-            class="btn small ghost"
-            data-testid="btn-report-refresh"
-            :disabled="loading"
-            @click="loadReport"
-          >
-            刷新周报
-          </button>
-          <button
-            class="btn small"
-            data-testid="btn-report-export"
-            :disabled="loading || !report"
-            @click="exportReport"
-          >
-            导出周报
-          </button>
-        </div>
-      </section>
-
-      <section
-        v-show="activeTab === 'overview'"
-        class="card"
-        data-testid="project-sessions"
-      >
-        <div class="row actions">
-          <h2 style="margin:0">
-            项目会话
-          </h2>
-          <span class="muted">{{ projectSessions.length }} 个 session</span>
-          <span style="flex:1" />
-          <button
-            class="btn small ghost"
-            :disabled="loading"
-            @click="loadProjectSessions"
-          >
-            刷新会话
-          </button>
-        </div>
-        <p
-          v-if="!projectSessions.length"
-          class="muted"
-        >
-          暂无会话。项目创建会生成 project session；工作项派发会生成 task session。
-        </p>
-        <ul
-          v-else
-          class="list"
-        >
-          <li
-            v-for="s in projectSessions"
-            :key="s.id"
-          >
-            <span class="badge blue">{{ s.kind }}</span>
-            <strong>{{ s.title }}</strong>
-            <span
-              class="badge"
-              :class="s.status === 'active' ? 'active' : 'archived'"
-            >{{ s.status }}</span>
-            <span class="muted">{{ s.currentTask || s.summary || '—' }}</span>
-            <a-button
-              size="small"
-              type="link"
-              :data-testid="`open-project-session-${s.id}`"
-              @click="openSessionConsole(s.channelId)"
-            >
-              打开会话
-            </a-button>
-          </li>
-        </ul>
-      </section>
-
-      <section
-        v-show="activeTab === 'approvals'"
-        class="card"
-      >
-        <h2>待审批</h2>
-        <p
-          v-if="!pendingApprovals.length"
-          class="muted"
-        >
-          无待审批。
-        </p>
-        <ul class="list">
-          <li
-            v-for="a in pendingApprovals"
-            :key="a.id"
-          >
-            <span>{{ a.kind }} · {{ a.subjectId }}</span>
-            <span
-              v-if="a.payloadJson && a.payloadJson !== '{}'"
-              class="muted"
-            >
-              payload: {{ a.payloadJson.slice(0, 180) }}{{ a.payloadJson.length > 180 ? '…' : '' }}
-            </span>
-            <span
-              v-else-if="a.reason"
-              class="muted"
-            >
-              {{ a.reason }}
-            </span>
-            <button
-              class="btn small green"
-              :disabled="loading"
-              @click="decide(a, true)"
-            >
-              批准
-            </button>
-            <button
-              class="btn small danger"
-              :disabled="loading"
-              @click="decide(a, false)"
-            >
-              拒绝
-            </button>
-          </li>
-        </ul>
-      </section>
-
-      <section
-        v-show="activeTab === 'approvals'"
-        class="card"
-      >
-        <h2>审批历史</h2>
-        <p
-          v-if="!approvalHistory.length"
-          class="muted"
-        >
-          暂无审批记录。
-        </p>
-        <ul class="list">
-          <li
-            v-for="h in approvalHistory.slice(0, 50)"
-            :key="h.id"
-          >
-            <span>{{ h.kind }} · {{ h.subjectId }}</span>
-            <span
-              class="badge"
-              :class="h.status"
-            >{{ h.status }}</span>
-            <span
-              v-if="h.payloadJson && h.payloadJson !== '{}'"
-              class="muted"
-            >
-              payload: {{ h.payloadJson.slice(0, 140) }}{{ h.payloadJson.length > 140 ? '…' : '' }}
-            </span>
-            <code class="muted">{{ h.expiresAt ?? '' }}</code>
-          </li>
-        </ul>
-      </section>
-
-      <section
-        v-show="activeTab === 'events'"
-        class="grid2"
-      >
-        <div class="card">
-          <h2>决策（最近 50）</h2>
-          <ul class="list">
-            <li
-              v-for="d in decisions.slice(-50)"
-              :key="d.id"
-            >
-              <span>#{{ d.seq }} {{ d.decisionType }}</span>
-              <span class="badge">{{ d.state }}</span>
-              <button
-                v-if="d.decisionType === 'dispatch.proposed' && d.state === 'proposed'"
-                class="btn small green"
-                :disabled="loading"
-                @click="applyProposal(d)"
-              >
-                应用提案
-              </button>
-              <code>{{ d.traceId }}</code>
-            </li>
-          </ul>
-        </div>
-        <div class="card">
-          <h2>事件（最近 50）</h2>
-          <ul class="list">
-            <li
-              v-for="e in events.slice(-50)"
-              :key="e.id"
-            >
-              <span>#{{ e.seq }} {{ e.type }}</span>
-              <span class="muted">{{ e.eventKey }}</span>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div
-        v-if="selectedWorkItemId"
-        class="drawer-mask"
-        @click.self="closeDrawer"
-      >
-        <aside
-          class="drawer"
-          data-testid="exec-drawer"
-        >
-          <header class="row actions">
-            <h2 style="margin:0">
-              执行链
-            </h2>
-            <span class="muted">{{ selectedWorkItemId.slice(0, 8) }}…</span>
-            <button
-              class="btn small ghost"
-              @click="closeDrawer"
-            >
-              关闭
-            </button>
-          </header>
-          <p
-            v-if="detailLoading"
-            class="muted"
-          >
-            加载执行链…
-          </p>
-          <template v-else-if="detail">
-            <h3>{{ detail.workItem.title }}</h3>
-            <div class="row">
-              <span
-                class="badge"
-                :class="stageTone(detail.workItem.stage)"
-              >{{ stageLabel(detail.workItem.stage) }}</span>
-              <span class="muted">{{ detail.workItem.state }} · attempt {{ detail.workItem.attemptCount }}/{{ detail.workItem.maxAttempts }}</span>
-            </div>
-            <p
-              v-if="detail.workItem.readiness.reason"
-              class="muted"
-            >
-              {{ detail.workItem.readiness.waitingOn }} · {{ detail.workItem.readiness.reason }}
-            </p>
-            <p
-              v-if="detail.workItem.acceptance.length"
-              class="muted"
-            >
-              验收标准：{{ detail.workItem.acceptance.join('；') }}
-            </p>
-
-            <h4>尝试链</h4>
-            <p
-              v-if="!detail.attempts.length"
-              class="muted"
-            >
-              尚未派发。
-            </p>
-            <div
-              v-for="a in detail.attempts"
-              :key="a.id"
-              class="attempt"
-              :data-testid="`exec-attempt-${a.attemptNo}`"
-            >
-              <div class="row">
-                <strong>Attempt #{{ a.attemptNo }}</strong>
-                <span class="badge">{{ a.state }}</span>
-                <code>{{ a.channelTaskId ? a.channelTaskId.slice(0, 8) : 'no-task' }}</code>
-                <span
-                  v-if="a.failureClass"
-                  class="badge red"
-                >{{ a.failureClass }}</span>
-                <span class="muted">{{ a.createdAt }}</span>
-              </div>
-              <template v-if="a.task">
-                <div class="muted">
-                  root {{ a.task.state }} · {{ a.task.progress }}% · assignee {{ a.task.assigneeId.slice(0, 8) }}{{ a.task.closeReason ? ` · ${a.task.closeReason}` : '' }}
-                </div>
-                <ul
-                  v-if="a.task.artifacts.length"
-                  class="artifact-list"
-                >
-                  <li
-                    v-for="art in a.task.artifacts"
-                    :key="art.artifactId"
+                  <span
+                    class="badge"
+                    :class="w.sessionStatus === 'active' ? 'active' : 'archived'"
+                    :data-testid="`task-session-${w.id}`"
+                  >{{ w.sessionStatus === 'active' ? '任务会话 · 进行中' : '任务会话 · 已归档' }}</span>
+                  <span class="muted mono">{{ (w.sessionId || '—').slice(0, 14) }}</span>
+                  <a-button
+                    v-if="w.instanceChannelId"
+                    size="small"
+                    type="link"
+                    :data-testid="`open-task-session-${w.id}`"
+                    @click.stop="openTaskSession(w)"
                   >
-                    <code>{{ art.name || art.artifactId }}</code>
-                    <span class="muted">{{ art.bytes }}B · sha {{ art.sha256.slice(0, 12) }}…</span>
-                  </li>
-                </ul>
-                <p
-                  v-else
-                  class="muted"
-                >
-                  无 artifact
-                </p>
-              </template>
-              <div
-                v-if="a.workers.length"
-                class="workers"
-              >
-                <div class="muted">
-                  worker 子任务（{{ a.workers.length }}）
+                    打开会话
+                  </a-button>
                 </div>
                 <div
-                  v-for="w in a.workers"
-                  :key="w.id"
-                  class="worker"
+                  class="wc-actions"
+                  @click.stop
                 >
-                  <span>{{ w.title }}</span>
-                  <span class="badge">{{ w.state }}</span>
-                  <span class="muted">{{ w.progress }}% · {{ w.artifacts.length }} artifacts</span>
+                  <button
+                    v-if="w.stage === 'ready'"
+                    class="btn tiny"
+                    :disabled="loading || Boolean(w.currentAttempt?.id)"
+                    @click="dispatch(w.id)"
+                  >
+                    派发
+                  </button>
+                  <button
+                    v-if="['failed', 'canceled', 'completed_pending_result', 'result_rejected'].includes(w.stage)"
+                    class="btn tiny ghost"
+                    data-testid="btn-retry"
+                    :disabled="loading"
+                    @click="retryWorkItem(w.id)"
+                  >
+                    重试
+                  </button>
+                  <button
+                    v-if="!['accepted', 'failed', 'canceled', 'superseded'].includes(w.stage)"
+                    class="btn tiny danger"
+                    :disabled="loading"
+                    @click="cancelWorkItem(w.id)"
+                  >
+                    取消
+                  </button>
                 </div>
               </div>
             </div>
+          </div>
+          <p
+            v-else
+            class="muted"
+          >
+            执行快照加载中…
+          </p>
 
-            <h4>成果与验收链</h4>
-            <p
-              v-if="!detail.results.length"
+          <div
+            v-if="obs"
+            class="route-strip"
+            data-testid="route-strip"
+          >
+            <span>routeGate <b>{{ obs.route.routeGate }}</b></span>
+            <span>mode <b>{{ obs.route.mode }}</b></span>
+            <span>plan v<b>{{ obs.route.planVersion }}</b></span>
+            <span>effects <b>{{ obs.kernel.effects.pending ?? 0 }}</b> pending</span>
+            <span>ledger <b>{{ obs.kernel.ledger.count }}</b></span>
+            <span>生成于 <b>{{ relTime(obs.generatedAt) }}</b></span>
+          </div>
+        </section>
+
+        <!-- 权威表：工作项 / 派发（精确操作面） -->
+        <section
+          v-show="activeTab === 'plan'"
+          class="card"
+        >
+          <header class="card-head">
+            <h2>工作项 / 派发</h2>
+            <span class="muted">{{ workItems.length }} 项</span>
+          </header>
+          <table class="table">
+            <thead><tr><th>标题</th><th>频道</th><th>交付物</th><th>状态</th><th>预算</th><th class="col-actions" /></tr></thead>
+            <tbody>
+              <tr
+                v-for="w in workItems"
+                :key="w.id"
+              >
+                <td>
+                  <button
+                    class="link-strong"
+                    @click="openWorkItem(w.id)"
+                  >
+                    {{ w.title }}
+                  </button>
+                  <div
+                    v-if="w.stateReason"
+                    class="muted"
+                  >
+                    {{ w.stateReason }}
+                  </div>
+                </td>
+                <td>{{ channelNameOf(w.channelId) }}</td>
+                <td>{{ deliverableName(w.deliverableId) }}</td>
+                <td>
+                  <span
+                    class="badge"
+                    :class="stageTone(obs?.workItems.find(x => x.id === w.id)?.stage ?? '')"
+                  >{{ obs?.workItems.find(x => x.id === w.id)?.stage ? stageLabel(obs.workItems.find(x => x.id === w.id)!.stage) : w.state }}</span>
+                </td>
+                <td class="mono">
+                  {{ w.execBudgetMinutes }}m
+                </td>
+                <td class="col-actions">
+                  <button
+                    v-if="w.state === 'DRAFT'"
+                    class="btn tiny"
+                    :disabled="loading || Boolean(w.currentAttemptId)"
+                    @click="dispatch(w.id)"
+                  >
+                    派发
+                  </button>
+                  <button
+                    v-if="canRetryRow(w)"
+                    class="btn tiny ghost"
+                    data-testid="btn-retry"
+                    :disabled="loading"
+                    @click="retryWorkItem(w.id)"
+                  >
+                    重试
+                  </button>
+                  <button
+                    v-if="!['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(w.state)"
+                    class="btn tiny danger"
+                    :disabled="loading"
+                    @click="cancelWorkItem(w.id)"
+                  >
+                    取消
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!workItems.length">
+                <td
+                  colspan="6"
+                  class="muted"
+                >
+                  还没有工作项。在下方新增，或让 Project Leader 出计划后自动生成。
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="form-grid work-grid">
+            <label>
+              <span>交付物</span>
+              <select
+                v-model="workForm.deliverableId"
+                data-testid="select-work-deliverable"
+              >
+                <option value="">
+                  选择交付物
+                </option>
+                <option
+                  v-for="d in deliverables"
+                  :key="d.id"
+                  :value="d.id"
+                >
+                  {{ d.name }}
+                </option>
+              </select>
+            </label>
+            <label>
+              <span>执行频道</span>
+              <select
+                v-model="workForm.channelId"
+                data-testid="select-work-channel"
+              >
+                <option value="">
+                  选择频道
+                </option>
+                <option
+                  v-for="c in channels"
+                  :key="c.channelId"
+                  :value="c.channelId"
+                >
+                  {{ bindingLabel(c) }}
+                </option>
+              </select>
+            </label>
+            <label>
+              <span>工作项标题</span>
+              <input
+                v-model="workForm.title"
+                data-testid="input-work-title"
+                placeholder="例如：落地页视觉稿"
+              >
+            </label>
+            <label>
+              <span>给 Channel lead 的 brief</span>
+              <input
+                v-model="workForm.brief"
+                data-testid="input-work-brief"
+                placeholder="范围、约束、验收线索"
+              >
+            </label>
+            <label>
+              <span>执行预算（分钟）</span>
+              <input
+                v-model.number="workForm.execBudgetMinutes"
+                type="number"
+                min="1"
+                max="1440"
+              >
+            </label>
+            <div class="form-actions">
+              <button
+                class="btn"
+                :disabled="loading"
+                @click="createWorkItem"
+              >
+                新增工作项
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 路由与派发日志 -->
+        <section
+          v-show="activeTab === 'plan'"
+          class="card"
+          data-testid="route-log"
+        >
+          <header class="card-head">
+            <h2>路由与派发日志</h2>
+          </header>
+          <div class="grid2">
+            <div>
+              <h3>派发 / 重试 / 返工 / 升级</h3>
+              <p
+                v-if="!dispatchLog.length"
+                class="muted"
+              >
+                暂无派发记录。
+              </p>
+              <ul class="timeline">
+                <li
+                  v-for="e in dispatchLog"
+                  :key="e.id"
+                  class="timeline-row"
+                >
+                  <span
+                    class="timeline-dot"
+                    aria-hidden="true"
+                  />
+                  <span class="timeline-main">
+                    <b>{{ eventLabel(e.type) }}</b>
+                    <span class="mono">{{ e.traceId }}</span>
+                  </span>
+                  <span class="timeline-at">{{ relTime(e.createdAt) }}</span>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3>Leader 路由提案</h3>
+              <p
+                v-if="!routeDecisions.length"
+                class="muted"
+              >
+                暂无 route 提案。
+              </p>
+              <ul class="timeline">
+                <li
+                  v-for="d in routeDecisions"
+                  :key="d.id"
+                  class="timeline-row"
+                >
+                  <span
+                    class="timeline-dot"
+                    aria-hidden="true"
+                  />
+                  <span class="timeline-main">
+                    <b>#{{ d.seq }} {{ d.decisionType }}</b>
+                    <span class="badge">{{ d.state }}</span>
+                    <span class="mono">{{ d.traceId }}</span>
+                  </span>
+                  <span class="timeline-at">{{ relTime(d.createdAt) }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div
+            v-if="obs?.route.waiting.length"
+            class="waiting-box"
+          >
+            <h3>等待原因（后端派生）</h3>
+            <ul class="list">
+              <li
+                v-for="w in obs.route.waiting"
+                :key="w.id"
+              >
+                <span>{{ w.title }}</span>
+                <span class="badge amber">{{ stageLabel(w.stage) }}</span>
+                <span class="muted">{{ w.waitingOn }} · {{ w.reason }}</span>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 计划快照 -->
+        <section
+          v-show="activeTab === 'plan'"
+          class="card"
+        >
+          <header class="card-head">
+            <h2>计划快照（当前 v{{ project?.planVersion ?? 0 }}）</h2>
+          </header>
+          <details
+            class="plan-details"
+            open
+          >
+            <summary>plan JSON</summary>
+            <pre class="plan-json">{{ planJsonPretty }}</pre>
+          </details>
+          <h3>计划决策快照（decisions.args_json）</h3>
+          <ul class="list">
+            <li
+              v-for="pd in planDecisions"
+              :key="pd.id"
+            >
+              <span>{{ pd.decisionType }}</span>
+              <span class="badge">{{ pd.state }}</span>
+              <code class="muted">{{ pd.traceId }}</code>
+            </li>
+            <li
+              v-if="!planDecisions.length"
               class="muted"
             >
-              尚无成果（root 完成后自动生成 draft）。
-            </p>
+              暂无计划决策。
+            </li>
+          </ul>
+        </section>
+
+        <!-- ══ 交付物 ══ -->
+        <section
+          v-show="activeTab === 'deliverables'"
+          class="card"
+        >
+          <header class="card-head">
+            <h2>交付物</h2>
+            <span class="muted">{{ deliverableCards.length }} 项 · 必选 {{ deliverableCards.filter(d => d.required).length }}</span>
+          </header>
+          <p
+            v-if="!deliverableCards.length"
+            class="muted"
+          >
+            至少一个必选交付物才能激活。可在下方新增。
+          </p>
+          <div class="deliv-grid">
+            <article
+              v-for="d in deliverableCards"
+              :key="d.id"
+              class="deliv"
+              :class="{ done: d.businessApproved }"
+            >
+              <header class="deliv-head">
+                <div class="deliv-title">
+                  <strong>{{ d.name }}</strong>
+                  <span class="mono">{{ d.id.slice(0, 8) }}</span>
+                </div>
+                <span
+                  class="badge"
+                  :class="d.status"
+                >{{ statusLabel(d.status) }}</span>
+                <span
+                  v-if="d.required"
+                  class="badge amber"
+                >必选</span>
+              </header>
+              <div class="gates">
+                <span
+                  class="gate"
+                  :class="{ on: d.contentReady }"
+                >
+                  <span
+                    v-if="d.contentReady"
+                    class="i-tabler-check"
+                    aria-hidden="true"
+                  />内容
+                </span>
+                <span
+                  class="gate"
+                  :class="{ on: d.technicalAccepted }"
+                >
+                  <span
+                    v-if="d.technicalAccepted"
+                    class="i-tabler-check"
+                    aria-hidden="true"
+                  />技术验收
+                </span>
+                <span
+                  class="gate"
+                  :class="{ on: d.businessApproved }"
+                >
+                  <span
+                    v-if="d.businessApproved"
+                    class="i-tabler-check"
+                    aria-hidden="true"
+                  />业务签核
+                </span>
+              </div>
+              <div
+                v-if="d.acceptanceCriteria.length"
+                class="criteria"
+              >
+                <span
+                  v-for="(c, i) in d.acceptanceCriteria"
+                  :key="i"
+                  class="criteria-item"
+                >
+                  <span
+                    class="i-tabler-check"
+                    aria-hidden="true"
+                  />{{ c }}
+                </span>
+              </div>
+              <div class="deliv-foot">
+                <span class="muted">
+                  {{ d.ownerChannelId ? channelNameOf(d.ownerChannelId) : '未指派频道' }}
+                  · {{ d.resultCount }} 个成果
+                </span>
+                <button
+                  v-if="d.status === 'planned'"
+                  class="btn tiny ghost"
+                  :disabled="loading"
+                  @click="waiveDeliverable(d.id)"
+                >
+                  豁免
+                </button>
+              </div>
+            </article>
+          </div>
+
+          <div class="form-grid deliv-grid-form">
+            <label>
+              <span>交付物名称</span>
+              <input
+                v-model="deliverableForm.name"
+                data-testid="deliverable-name"
+                placeholder="例如：落地页设计稿"
+              >
+            </label>
+            <label>
+              <span>所属频道</span>
+              <select v-model="deliverableForm.ownerChannelId">
+                <option value="">
+                  选择所属频道
+                </option>
+                <option
+                  v-for="c in channels"
+                  :key="c.channelId"
+                  :value="c.channelId"
+                >
+                  {{ bindingLabel(c) }}
+                </option>
+              </select>
+            </label>
+            <label class="span2">
+              <span>验收标准（每行一条）</span>
+              <textarea
+                v-model="deliverableForm.acceptance"
+                rows="2"
+                placeholder="例如：首屏 3 秒内可读&#10;移动端 390px 无横向滚动"
+              />
+            </label>
+            <div class="span2 form-actions">
+              <button
+                class="btn"
+                :disabled="loading"
+                @click="createDeliverable"
+              >
+                新增交付物
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 成果按交付物分组 -->
+        <section
+          v-show="activeTab === 'deliverables'"
+          class="card"
+        >
+          <header class="card-head">
+            <h2>成果（按交付物分组）</h2>
+            <span class="muted">{{ results.length }} 个成果</span>
+          </header>
+          <p
+            v-if="!currentResults.length"
+            class="muted"
+          >
+            Channel root task COMPLETED 后，点“对账”会自动生成 draft。
+          </p>
+          <template
+            v-for="group in resultsByDeliverable"
+            :key="group.deliverable.id"
+          >
             <div
-              v-for="r in detail.results"
+              v-if="group.results.length"
+              class="group-head"
+            >
+              <strong>{{ group.deliverable.name }}</strong>
+              <span
+                class="badge"
+                :class="group.deliverable.status"
+              >{{ statusLabel(group.deliverable.status) }}</span>
+              <button
+                v-if="group.deliverable.status === 'planned'"
+                class="btn tiny ghost"
+                :disabled="loading"
+                @click="waiveDeliverable(group.deliverable.id)"
+              >
+                豁免
+              </button>
+            </div>
+            <article
+              v-for="r in group.results"
               :key="r.id"
               class="result"
-              :data-testid="`exec-result-${r.version}`"
             >
-              <div class="row">
-                <strong>v{{ r.version }} {{ r.title }}</strong>
+              <div class="result-head">
+                <strong>{{ r.title }}</strong>
                 <span
                   class="badge"
                   :class="r.status"
-                >{{ r.status }}</span>
-                <span
-                  v-if="r.reworkRequired"
-                  class="badge red"
-                >需返工</span>
-                <span
-                  v-if="r.supersedesId"
-                  class="muted"
-                >supersedes {{ r.supersedesId.slice(0, 8) }}…</span>
+                  :data-state="r.status"
+                >{{ statusLabel(r.status) }}</span>
+                <span class="muted mono">v{{ r.version }}</span>
               </div>
               <p class="summary">
-                {{ r.summary.slice(0, 800) }}
+                {{ r.summary }}
               </p>
-              <div class="muted">
-                evidence {{ r.evidence.length }} · sha {{ r.contentSha256.slice(0, 12) }}… · verified {{ r.evidenceVerifiedAt ?? '—' }}
+              <details class="evidence">
+                <summary>evidence · {{ r.evidenceJson?.slice(0, 60) ?? '—' }}</summary>
+                <pre>{{ prettyJson(r.evidenceJson) }}</pre>
+              </details>
+              <div class="row actions">
+                <button
+                  v-if="r.status === 'draft' || r.status === 'rejected'"
+                  class="btn small"
+                  :disabled="loading"
+                  @click="submitResult(r)"
+                >
+                  提交
+                </button>
+                <button
+                  v-if="r.status === 'submitted'"
+                  class="btn small ghost"
+                  :disabled="loading"
+                  @click="review(r, 'reviewed')"
+                >
+                  复核通过
+                </button>
+                <button
+                  v-if="r.status === 'submitted'"
+                  class="btn small danger"
+                  :disabled="loading"
+                  @click="review(r, 'rejected')"
+                >
+                  驳回
+                </button>
+                <button
+                  v-if="r.status === 'reviewed'"
+                  class="btn small"
+                  :disabled="loading"
+                  @click="requestAcceptance(r)"
+                >
+                  申请验收
+                </button>
               </div>
-              <div
-                v-for="rv in r.reviews"
-                :key="String(rv.id)"
-                class="muted"
-              >
-                L1 {{ rv.verdict }} · {{ rv.reviewerKind }} · {{ rv.reviewerChannelId }} · {{ rv.note || '' }}
-              </div>
-              <div
-                v-if="r.inputs.length"
-                class="muted"
-              >
-                消费上游：{{ r.inputs.map(i => String(i.inputResultId)).join(', ') }}
-              </div>
-            </div>
-
-            <h4>事件</h4>
-            <ul class="list">
-              <li
-                v-for="e in detail.events.slice(-20)"
-                :key="e.id"
-              >
-                <span>{{ e.type }}</span>
-                <span class="muted">{{ e.at }}</span>
-              </li>
-            </ul>
+            </article>
           </template>
-        </aside>
-      </div>
+        </section>
+
+        <!-- ══ 审批 ══ -->
+        <section
+          v-show="activeTab === 'approvals'"
+          class="card"
+        >
+          <header class="card-head">
+            <h2>待审批</h2>
+            <span class="muted">{{ pendingApprovals.length }} 项待决定</span>
+          </header>
+          <p
+            v-if="!pendingApprovals.length"
+            class="muted"
+          >
+            无待审批。
+          </p>
+          <div class="approval-grid">
+            <article
+              v-for="a in pendingApprovals"
+              :key="a.id"
+              class="approval"
+            >
+              <header class="approval-head">
+                <span class="badge amber">{{ approvalKind(a.kind) }}</span>
+                <span class="mono muted">{{ a.subjectId.slice(0, 8) }}</span>
+                <span
+                  v-if="a.expiresAt"
+                  class="muted expiry"
+                >到期 {{ relTime(a.expiresAt) }}</span>
+              </header>
+              <pre
+                v-if="approvalPayload(a)"
+                class="approval-payload"
+              >{{ approvalPayload(a) }}</pre>
+              <div class="row actions">
+                <button
+                  class="btn small"
+                  :disabled="loading"
+                  @click="decide(a, true)"
+                >
+                  批准
+                </button>
+                <button
+                  class="btn small danger"
+                  :disabled="loading"
+                  @click="decide(a, false)"
+                >
+                  拒绝
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          v-show="activeTab === 'approvals'"
+          class="card"
+        >
+          <header class="card-head">
+            <h2>审批历史</h2>
+            <span class="muted">{{ approvalHistory.length }} 条</span>
+          </header>
+          <p
+            v-if="!approvalHistory.length"
+            class="muted"
+          >
+            暂无审批记录。
+          </p>
+          <ul class="list">
+            <li
+              v-for="h in approvalHistory.slice(0, 50)"
+              :key="h.id"
+            >
+              <span class="badge gray">{{ approvalKind(h.kind) }}</span>
+              <span class="mono muted">{{ h.subjectId.slice(0, 8) }}</span>
+              <span
+                class="badge"
+                :class="h.status"
+              >{{ statusLabel(h.status) }}</span>
+              <span
+                v-if="h.payloadJson && h.payloadJson !== '{}'"
+                class="muted ellipsis ap-payload"
+              >
+                {{ h.payloadJson.slice(0, 140) }}{{ h.payloadJson.length > 140 ? '…' : '' }}
+              </span>
+              <code class="muted ap-time">{{ h.expiresAt ? relTime(h.expiresAt) : '' }}</code>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ══ 决策与事件（统一活动流） ══ -->
+        <section
+          v-show="activeTab === 'events'"
+          class="card"
+        >
+          <header class="card-head">
+            <h2>决策与事件</h2>
+            <span class="muted">{{ activity.length }} 条 · events + decisions 统一时间线</span>
+            <span class="spacer" />
+            <button
+              class="btn small ghost"
+              :disabled="activityLoading"
+              @click="loadActivity(true)"
+            >
+              刷新
+            </button>
+          </header>
+          <p
+            v-if="!activity.length && !activityLoading"
+            class="muted"
+          >
+            暂无活动记录。
+          </p>
+          <ul class="timeline activity">
+            <li
+              v-for="item in activity"
+              :key="`${item.kind}-${item.id}`"
+              class="timeline-row"
+            >
+              <span
+                class="timeline-dot"
+                :class="item.kind"
+                aria-hidden="true"
+              />
+              <div class="timeline-main">
+                <div class="timeline-line">
+                  <b>{{ eventLabel(item.type) }}</b>
+                  <span class="badge gray mono">{{ item.kind }}</span>
+                  <span
+                    v-if="item.state"
+                    class="badge"
+                  >{{ item.state }}</span>
+                  <button
+                    v-if="item.kind === 'decision' && item.type === 'dispatch.proposed' && item.state === 'proposed'"
+                    class="btn tiny green"
+                    :disabled="loading"
+                    @click="applyProposal(item.id)"
+                  >
+                    应用提案
+                  </button>
+                  <span class="timeline-at">{{ relTime(item.at) }}</span>
+                </div>
+                <div class="timeline-sub">
+                  <span
+                    v-if="item.channelId"
+                    class="mono"
+                  >{{ channelNameOf(item.channelId) }}</span>
+                  <span
+                    v-if="item.workItemId"
+                    class="mono"
+                  >work {{ item.workItemId.slice(0, 8) }}</span>
+                  <span
+                    v-if="item.reason"
+                    class="muted"
+                  >{{ item.reason }}</span>
+                  <span
+                    v-if="item.traceId"
+                    class="mono faint"
+                  >trace {{ item.traceId.slice(0, 10) }}</span>
+                </div>
+                <details
+                  v-if="item.payload && Object.keys(item.payload).length"
+                  class="payload"
+                >
+                  <summary>payload</summary>
+                  <pre>{{ JSON.stringify(item.payload, null, 2) }}</pre>
+                </details>
+              </div>
+            </li>
+          </ul>
+          <div class="row actions">
+            <button
+              v-if="activityHasMore"
+              class="btn small ghost"
+              :disabled="activityLoading"
+              @click="loadActivity(false)"
+            >
+              {{ activityLoading ? '加载中…' : '加载更多' }}
+            </button>
+            <span
+              v-else-if="activity.length"
+              class="muted"
+            >已经到底了</span>
+          </div>
+        </section>
+
+        <!-- 执行链抽屉 -->
+        <div
+          v-if="selectedWorkItemId"
+          class="drawer-mask"
+          @click.self="closeDrawer"
+        >
+          <aside
+            class="drawer"
+            data-testid="exec-drawer"
+          >
+            <header class="drawer-head">
+              <h2>执行链</h2>
+              <span class="muted mono">{{ selectedWorkItemId.slice(0, 8) }}…</span>
+              <span class="spacer" />
+              <button
+                class="btn small ghost"
+                @click="closeDrawer"
+              >
+                关闭
+              </button>
+            </header>
+            <p
+              v-if="detailLoading"
+              class="muted"
+            >
+              加载执行链…
+            </p>
+            <template v-else-if="detail">
+              <h3>{{ detail.workItem.title }}</h3>
+              <div class="row">
+                <span
+                  class="badge"
+                  :class="stageTone(detail.workItem.stage)"
+                >{{ stageLabel(detail.workItem.stage) }}</span>
+                <span class="muted">{{ detail.workItem.state }} · attempt {{ detail.workItem.attemptCount }}/{{ detail.workItem.maxAttempts }}</span>
+                <span class="muted mono">{{ channelNameOf(detail.workItem.channelId) }}</span>
+              </div>
+              <p
+                v-if="detail.workItem.readiness.reason"
+                class="muted"
+              >
+                {{ detail.workItem.readiness.waitingOn }} · {{ detail.workItem.readiness.reason }}
+              </p>
+              <p
+                v-if="detail.workItem.acceptance.length"
+                class="muted"
+              >
+                验收标准：{{ detail.workItem.acceptance.join('；') }}
+              </p>
+              <p
+                v-if="detail.workItem.brief"
+                class="drawer-brief"
+              >
+                {{ detail.workItem.brief }}
+              </p>
+
+              <h4>尝试链</h4>
+              <p
+                v-if="!detail.attempts.length"
+                class="muted"
+              >
+                尚未派发。
+              </p>
+              <div
+                v-for="a in detail.attempts"
+                :key="a.id"
+                class="attempt"
+                :data-testid="`exec-attempt-${a.attemptNo}`"
+              >
+                <div class="row">
+                  <strong>Attempt #{{ a.attemptNo }}</strong>
+                  <span class="badge">{{ a.state }}</span>
+                  <code>{{ a.channelTaskId ? a.channelTaskId.slice(0, 8) : 'no-task' }}</code>
+                  <span
+                    v-if="a.failureClass"
+                    class="badge red"
+                  >{{ a.failureClass }}</span>
+                  <span class="muted">{{ relTime(a.createdAt) }}</span>
+                </div>
+                <template v-if="a.task">
+                  <div class="muted">
+                    root {{ a.task.state }} · {{ a.task.progress }}% · assignee {{ a.task.assigneeId.slice(0, 8) }}{{ a.task.closeReason ? ` · ${a.task.closeReason}` : '' }}
+                  </div>
+                  <ul
+                    v-if="a.task.artifacts.length"
+                    class="artifact-list"
+                  >
+                    <li
+                      v-for="art in a.task.artifacts"
+                      :key="art.artifactId"
+                    >
+                      <code>{{ art.name || art.artifactId }}</code>
+                      <span class="muted">{{ art.bytes }}B · sha {{ art.sha256.slice(0, 12) }}…</span>
+                    </li>
+                  </ul>
+                  <p
+                    v-else
+                    class="muted"
+                  >
+                    无 artifact
+                  </p>
+                </template>
+                <div
+                  v-if="a.workers.length"
+                  class="workers"
+                >
+                  <div class="muted">
+                    worker 子任务（{{ a.workers.length }}）
+                  </div>
+                  <div
+                    v-for="w in a.workers"
+                    :key="w.id"
+                    class="worker"
+                  >
+                    <span>{{ w.title }}</span>
+                    <span class="badge">{{ w.state }}</span>
+                    <span class="muted">{{ w.progress }}% · {{ w.artifacts.length }} artifacts</span>
+                  </div>
+                </div>
+              </div>
+
+              <h4>成果与验收链</h4>
+              <p
+                v-if="!detail.results.length"
+                class="muted"
+              >
+                尚无成果（root 完成后自动生成 draft）。
+              </p>
+              <div
+                v-for="r in detail.results"
+                :key="r.id"
+                class="result"
+                :data-testid="`exec-result-${r.version}`"
+              >
+                <div class="row">
+                  <strong>v{{ r.version }} {{ r.title }}</strong>
+                  <span
+                    class="badge"
+                    :class="r.status"
+                  >{{ statusLabel(r.status) }}</span>
+                  <span
+                    v-if="r.reworkRequired"
+                    class="badge red"
+                  >需返工</span>
+                  <span
+                    v-if="r.supersedesId"
+                    class="muted"
+                  >supersedes {{ r.supersedesId.slice(0, 8) }}…</span>
+                </div>
+                <p class="summary">
+                  {{ r.summary.slice(0, 800) }}
+                </p>
+                <div class="muted">
+                  evidence {{ r.evidence.length }} · sha {{ r.contentSha256.slice(0, 12) }}… · verified {{ r.evidenceVerifiedAt ?? '—' }}
+                </div>
+                <div
+                  v-for="rv in r.reviews"
+                  :key="String(rv.id)"
+                  class="muted"
+                >
+                  L1 {{ rv.verdict }} · {{ rv.reviewerKind }} · {{ rv.reviewerChannelId }} · {{ rv.note || '' }}
+                </div>
+                <div
+                  v-if="r.inputs.length"
+                  class="muted"
+                >
+                  消费上游：{{ r.inputs.map(i => String(i.inputResultId)).join(', ') }}
+                </div>
+              </div>
+
+              <h4>事件</h4>
+              <ul class="list">
+                <li
+                  v-for="e in detail.events.slice(-20)"
+                  :key="e.id"
+                >
+                  <span>{{ eventLabel(e.type) }}</span>
+                  <span class="muted">{{ relTime(e.at) }}</span>
+                </li>
+              </ul>
+            </template>
+          </aside>
+        </div>
+      </template>
     </div>
 
-    <!-- ══ 右区:项目快照(ChatGPT 上下文卡;纯附加,不含任何 data-testid) ══ -->
+    <!-- ══ 右区：上下文（≥1200px 常驻；纯附加信息） ══ -->
     <aside
       v-if="obs"
       class="ctx"
@@ -1933,7 +2725,7 @@ onUnmounted(() => {
       <div class="ctx-card">
         <div class="ctx-head">
           项目快照
-          <span class="badge gray">{{ obs.project.routingPolicy }}</span>
+          <span class="badge mono">{{ obs.project.routingPolicy }}</span>
         </div>
         <div class="ctx-stats">
           <div class="ctx-stat">
@@ -1952,18 +2744,23 @@ onUnmounted(() => {
         <div class="ctx-progress">
           <div class="ctx-progress-row">
             <span>工作项完成</span>
-            <b>{{ Math.round(Number(obs.summary.progress ?? 0) * 100) }}%</b>
+            <b>{{ projectProgress }}%</b>
           </div>
           <div class="ctx-bar">
-            <i :style="{ width: `${Math.round(Number(obs.summary.progress ?? 0) * 100)}%` }" />
+            <i :style="{ width: `${projectProgress}%` }" />
           </div>
           <div class="ctx-progress-row">
             <span>交付物签核</span>
-            <b>{{ Math.round(Number(obs.summary.acceptanceProgress ?? 0) * 100) }}%</b>
+            <b>{{ acceptanceProgress }}%</b>
           </div>
           <div class="ctx-bar">
-            <i :style="{ width: `${Math.round(Number(obs.summary.acceptanceProgress ?? 0) * 100)}%` }" />
+            <i :style="{ width: `${acceptanceProgress}%` }" />
           </div>
+        </div>
+        <div class="ctx-foot">
+          <span>plan v{{ obs.project.planVersion }}</span>
+          <span>ledger {{ obs.kernel.ledger.count }}</span>
+          <span>{{ relTime(obs.generatedAt) }}</span>
         </div>
       </div>
 
@@ -2001,6 +2798,79 @@ onUnmounted(() => {
               :class="stageTone(w.stage)"
             >{{ stageLabel(w.stage) }}</span>
           </div>
+          <p
+            v-if="!lane.items.length"
+            class="ctx-empty"
+          >
+            无工作项
+          </p>
+        </div>
+      </div>
+
+      <div class="ctx-card">
+        <div class="ctx-head">
+          成员
+          <span class="badge gray">{{ members.length }}</span>
+        </div>
+        <div class="member-row">
+          <span class="member-avatar">OW</span>
+          <div class="member-main">
+            <strong>owner</strong>
+            <span class="mono">{{ project?.ownerUserId?.slice(0, 8) }}</span>
+          </div>
+        </div>
+        <div
+          v-for="m in members"
+          :key="m.userId"
+          class="member-row"
+        >
+          <span class="member-avatar gray">{{ m.role.slice(0, 2).toUpperCase() }}</span>
+          <div class="member-main">
+            <strong>{{ m.role }}</strong>
+            <span class="mono">{{ m.userId.slice(0, 8) }}</span>
+          </div>
+        </div>
+        <p
+          v-if="!members.length"
+          class="ctx-empty"
+        >
+          仅 owner（成员可读，审批权可由 approver 持有）
+        </p>
+      </div>
+
+      <div class="ctx-card">
+        <div class="ctx-head">
+          项目健康
+          <span class="badge gray mono">kernel</span>
+        </div>
+        <div
+          v-for="h in obs.kernel.health"
+          :key="String(h.component)"
+          class="health-row"
+        >
+          <span
+            class="health-dot"
+            :class="h.status === 'ok' ? 'ok' : 'bad'"
+            aria-hidden="true"
+          />
+          <span class="health-name">{{ h.component }}</span>
+          <span class="health-status mono">{{ h.status }}</span>
+        </div>
+        <p
+          v-if="!obs.kernel.health.length"
+          class="ctx-empty"
+        >
+          暂无心跳（项目激活后内核组件会写入）
+        </p>
+        <div
+          v-if="obs.kernel.effects && Object.keys(obs.kernel.effects).length"
+          class="ctx-effects"
+        >
+          <span
+            v-for="(n, k) in obs.kernel.effects"
+            :key="k"
+            class="effect-chip"
+          >{{ k }} {{ n }}</span>
         </div>
       </div>
     </aside>
@@ -2008,7 +2878,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* ═══ 三区应用框(ChatGPT 声部;令牌 = --chat-* 家族,2026-11-07) ═══ */
+/* ═══ 三区应用框（令牌 = --chat-* 家族） ═══ */
 .page {
   display: flex;
   flex: 1 1 auto;
@@ -2018,14 +2888,57 @@ onUnmounted(() => {
   background: var(--chat-canvas);
 }
 
-/* ── 左区:导航侧栏 ── */
+/* 共享：按钮 */
+.btn {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 13px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--chat-canvas);
+  cursor: pointer;
+  background: var(--chat-ink);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  transition: opacity var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+.btn:hover { opacity: 0.9; }
+.btn:disabled { cursor: not-allowed; opacity: 0.45; }
+.btn.small { min-height: 30px; padding: 5px 10px; font-size: 12px; }
+.btn.tiny { min-height: 26px; padding: 3px 8px; font-size: 11.5px; border-radius: 7px; }
+.btn.ghost {
+  color: var(--chat-ink);
+  background: transparent;
+  border-color: var(--chat-line-strong);
+}
+.btn.ghost:hover { background: var(--chat-surface-raised); opacity: 1; }
+.btn.danger {
+  color: var(--tone-danger-dot);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--tone-danger-dot) 35%, transparent);
+}
+.btn.danger:hover { background: var(--tone-danger-bg); opacity: 1; }
+.btn.green {
+  color: var(--tone-success-dot);
+  background: var(--tone-success-bg);
+  border-color: transparent;
+}
+.btn.green:hover { background: color-mix(in srgb, var(--tone-success-dot) 18%, var(--tone-success-bg)); opacity: 1; }
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══ 左区 ═══ */
 .side {
   display: flex;
-  flex: 0 0 264px;
+  flex: 0 0 252px;
   flex-direction: column;
   min-height: 0;
-  padding: 14px 12px 12px;
-  overflow: hidden;
+  padding: 14px 12px 10px;
+  overflow-y: auto;
   background: var(--chat-surface-raised);
   border-right: 1px solid var(--chat-line);
 }
@@ -2033,76 +2946,80 @@ onUnmounted(() => {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 0 4px 10px;
+  padding: 2px 4px 14px;
 }
 .back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   font-size: 15px;
-  color: var(--chat-ink-faint);
+  color: var(--chat-ink-soft);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--chat-line);
+  border-radius: 8px;
+}
+.back:hover { color: var(--chat-ink); border-color: var(--chat-line-strong); }
+.brand {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 0;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--chat-ink);
   cursor: pointer;
   background: transparent;
   border: 0;
-  border-radius: 8px;
-  transition: color var(--transition-fast), background var(--transition-fast);
 }
-.back:hover {
-  color: var(--chat-ink);
-  background: color-mix(in srgb, var(--chat-ink) 6%, transparent);
+.brand:hover { opacity: .8; }
+.brand-dot {
+  width: 9px;
+  height: 9px;
+  background: var(--chat-accent);
+  border-radius: 3px;
 }
-.back .i-tabler-arrow-right { transform: rotate(180deg); }
-.brand {
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
+.side-version {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
   color: var(--chat-ink-faint);
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
-.proj-id {
-  padding: 8px 6px 12px;
-  border-bottom: 1px solid var(--chat-line);
-}
+
+.proj-id { padding: 4px 6px 14px; }
 .proj-name {
   overflow: hidden;
   font-size: 16px;
   font-weight: 650;
-  letter-spacing: -0.01em;
+  color: var(--chat-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
-.proj-tags {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin-top: 6px;
-}
+.proj-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .proj-obj {
   display: -webkit-box;
-  margin: 8px 0 0;
+  margin: 9px 0 0;
   overflow: hidden;
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: 11.5px;
+  line-height: 1.5;
   color: var(--chat-ink-faint);
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 }
-.side-nav {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 2px;
-  min-height: 0;
-  margin-top: 12px;
-  overflow-y: auto;
-}
+
+.side-nav { display: flex; flex-direction: column; gap: 2px; }
 .side-label {
-  padding: 0 8px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  padding: 10px 8px 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
   color: var(--chat-ink-faint);
+  letter-spacing: .1em;
+  text-transform: uppercase;
 }
 .side-item {
   display: flex;
@@ -2110,608 +3027,970 @@ onUnmounted(() => {
   align-items: center;
   width: 100%;
   padding: 8px 10px;
-  font-size: 13px;
+  font-family: inherit;
+  font-size: 12.5px;
   color: var(--chat-ink-soft);
+  text-align: left;
   cursor: pointer;
   background: transparent;
   border: 0;
-  border-radius: 10px;
+  border-radius: 9px;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
-.side-item:hover { background: color-mix(in srgb, var(--chat-ink) 5%, transparent); }
+.side-item span[class^='i-tabler'] { font-size: 15px; color: var(--chat-ink-faint); }
+.side-item:hover { color: var(--chat-ink); background: color-mix(in srgb, var(--chat-ink) 4%, transparent); }
 .side-item.active {
-  color: var(--chat-ink);
   font-weight: 600;
-  background: color-mix(in srgb, var(--chat-ink) 9%, transparent);
+  color: var(--chat-ink);
+  background: color-mix(in srgb, var(--chat-ink) 7%, transparent);
 }
-.side-item .i-tabler-dashboard,
-.side-item .i-tabler-route,
-.side-item .i-tabler-package,
-.side-item .i-tabler-circle-check,
-.side-item .i-tabler-history { font-size: 15px; color: var(--chat-ink-faint); }
-.side-item.active .i-tabler-dashboard,
-.side-item.active .i-tabler-route,
-.side-item.active .i-tabler-package,
-.side-item.active .i-tabler-circle-check,
-.side-item.active .i-tabler-history { color: var(--chat-accent); }
-.side-item-label {
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.side-item.active span[class^='i-tabler'] { color: var(--chat-accent); }
+.side-item-label { flex: 1 1 auto; }
 .side-count {
-  padding: 0 7px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 18px;
-  color: var(--chat-accent-strong);
-  background: var(--chat-accent-soft);
-  border-radius: var(--radius-pill);
+  min-width: 18px;
+  padding: 0 5px;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--chat-ink-faint);
+  text-align: center;
+  background: color-mix(in srgb, var(--chat-ink) 6%, transparent);
+  border-radius: 999px;
 }
-.side-life {
-  padding: 12px 0 4px;
+.side-count.alert { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
+
+.side-life { padding-top: 6px; }
+.life-grid { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 4px; }
+.side-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 8px 2px;
+  margin-top: auto;
   border-top: 1px solid var(--chat-line);
 }
-.life-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 0 2px;
-}
-.life-grid .btn { width: 100%; }
-.side-foot {
-  padding: 10px 6px 0;
-}
-.side-meta {
-  display: block;
-  overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--chat-ink-faint);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.side-meta { font-size: 10.5px; color: var(--chat-ink-faint); }
 
-/* ── 中区:主列 ── */
+/* ═══ 中区 ═══ */
 .main-col {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  gap: 14px;
   min-width: 0;
   min-height: 0;
+  padding: 18px 24px 36px;
   overflow-y: auto;
-  padding: 0 32px 40px;
-}
-/* 阅读列上限:与 Channel 控制台同一行宽纪律(卡片不拉满整屏) */
-.main-col > * {
-  width: 100%;
-  max-width: 880px;
-  margin-left: auto;
-  margin-right: auto;
 }
 .top {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 4px 14px;
-  margin: 0 0 4px;
-  background: var(--chat-canvas);
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--chat-line);
 }
-h1 {
+.crumb { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.crumb-link {
   padding: 0;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--chat-ink-faint);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+.crumb-link:hover { color: var(--chat-ink); text-decoration: underline; text-underline-offset: 3px; }
+.crumb-sep { color: var(--chat-ink-faint); }
+.crumb h1 {
   margin: 0;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 650;
+  color: var(--chat-ink);
   letter-spacing: -0.015em;
 }
-.crumb { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.crumb-root {
-  max-width: 46%;
-  overflow: hidden;
-  font-size: 12px;
+.top-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.live-pill {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 9px;
+  font-size: 10.5px;
   color: var(--chat-ink-faint);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  background: var(--chat-surface-raised);
+  border-radius: 999px;
 }
-.crumb-sep { color: var(--chat-line-strong); }
-h2 { font-size: 15px; font-weight: 650; margin: 0 0 12px; }
-h3 { font-size: 13.5px; font-weight: 600; margin: 14px 0 8px; }
-h4 { font-size: 13px; font-weight: 600; margin: 16px 0 8px; }
-.sub { color: var(--chat-ink-faint); margin: 0; font-size: 12.5px; }
-.link { background: none; border: 0; color: var(--chat-accent-strong); cursor: pointer; padding: 0; }
-.row, .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.live-pill i {
+  width: 6px;
+  height: 6px;
+  background: var(--tone-neutral-dot);
+  border-radius: 50%;
+}
+.live-pill.on i { background: var(--tone-success-dot); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone-success-dot) 18%, transparent); }
+.live-pill.loading i { animation: live-pulse 1s ease-in-out infinite; }
+@keyframes live-pulse {
+  50% { opacity: .35; }
+}
 
-/* 卡片:白面发丝线圆角(ChatGPT 卡片声部) */
+.error {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 12px;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--tone-danger-dot);
+  background: var(--tone-danger-bg);
+  border-radius: 9px;
+}
+.error.inline { margin-top: 8px; }
+
+/* 卡片 */
 .card {
-  padding: 18px 20px;
-  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: 14px;
+}
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.card-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--chat-ink);
+  letter-spacing: -0.01em;
+}
+.card-head .muted { font-size: 11.5px; }
+.spacer { flex: 1 1 auto; }
+h3 { margin: 4px 0 0; font-size: 12.5px; font-weight: 650; color: var(--chat-ink-soft); }
+h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-ink-soft); }
+.muted { color: var(--chat-ink-faint); font-size: 12px; }
+.mono { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); }
+.faint { opacity: .7; }
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 徽标 */
+.badge {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--chat-ink-soft);
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--chat-ink) 6%, transparent);
+  border-radius: 999px;
+}
+.badge.mono { font-family: var(--font-mono, monospace); font-weight: 500; }
+.badge.gray { color: var(--chat-ink-faint); }
+.badge.blue { color: var(--tone-info-dot); background: var(--tone-info-bg); }
+.badge.green, .badge.active, .badge.approved { color: var(--tone-success-dot); background: var(--tone-success-bg); }
+.badge.amber, .badge.draft, .badge.paused, .badge.pending, .badge.planned, .badge.submitted, .badge.reviewed { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
+.badge.red, .badge.blocked, .badge.failed, .badge.rejected { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+.badge.completed { color: var(--tone-success-dot); background: var(--tone-success-bg); }
+.badge.archived, .badge.waived, .badge.superseded, .badge.canceled { color: var(--chat-ink-faint); }
+.badge.protected { color: var(--tone-info-dot); background: var(--tone-info-bg); }
+
+/* Hero */
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  padding: 16px 20px;
   background: var(--chat-surface);
   border: 1px solid var(--chat-line);
   border-radius: 16px;
 }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.group-head {
+.hero-ring { position: relative; flex: 0 0 auto; width: 76px; height: 76px; }
+.hero-ring svg { width: 76px; height: 76px; transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: var(--chat-line); stroke-width: 4; }
+.ring-fg {
+  fill: none;
+  stroke: var(--chat-accent);
+  stroke-linecap: round;
+  stroke-width: 4;
+  transition: stroke-dasharray var(--transition-base);
+}
+.ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+  justify-content: center;
+}
+.ring-label b { font-family: var(--font-mono, monospace); font-size: 16px; font-weight: 650; color: var(--chat-ink); }
+.ring-label span { font-size: 9px; color: var(--chat-ink-faint); }
+.hero-stats { display: flex; flex: 1 1 auto; flex-wrap: wrap; gap: 8px 26px; }
+.hero-stat { display: flex; flex-direction: column; gap: 1px; }
+.hero-stat b {
+  font-family: var(--font-mono, monospace);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--chat-ink);
+  letter-spacing: -0.02em;
+}
+.hero-stat span { font-size: 10.5px; color: var(--chat-ink-faint); }
+.hero-stat.danger b { color: var(--tone-danger-dot); }
+.hero-criteria {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--chat-line);
+}
+.hero-criteria-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  color: var(--chat-ink-faint);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.criteria-chip {
+  padding: 3px 9px;
+  font-size: 11px;
+  color: var(--chat-ink-soft);
+  background: var(--chat-surface-raised);
+  border-radius: 7px;
+}
+
+/* 对话 */
+.chat-card { gap: 10px; }
+.chat-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.leader-id { display: flex; gap: 10px; align-items: center; }
+.leader-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--chat-canvas);
+  background: var(--chat-ink);
+  border-radius: 9px;
+}
+.leader-copy h2 { margin: 0; font-size: 13.5px; font-weight: 650; }
+.leader-copy p { margin: 1px 0 0; font-size: 11px; color: var(--chat-ink-faint); }
+.leader-copy code { font-family: var(--font-mono, monospace); }
+.chat-head-actions { display: flex; gap: 10px; align-items: center; }
+.chat-hint {
+  padding: 8px 11px;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--chat-ink-soft);
+  background: var(--chat-surface-raised);
+  border-radius: 9px;
+}
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 340px;
+  padding: 4px 2px;
+  overflow-y: auto;
+}
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  padding: 26px 12px;
+  font-size: 11.5px;
+  color: var(--chat-ink-faint);
+  border: 1px dashed var(--chat-line-strong);
+  border-radius: 10px;
+}
+.chat-empty strong { font-size: 12.5px; color: var(--chat-ink-soft); }
+.chat-row { display: flex; gap: 8px; align-items: flex-start; }
+.chat-row.user { flex-direction: row-reverse; }
+.chat-avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--chat-ink-soft);
+  background: var(--chat-surface-raised);
+  border: 1px solid var(--chat-line);
+  border-radius: 7px;
+}
+.chat-bubble-wrap { display: flex; flex-direction: column; gap: 3px; max-width: min(78%, 680px); }
+.chat-row.user .chat-bubble-wrap { align-items: flex-end; }
+.chat-meta { display: flex; gap: 7px; align-items: baseline; font-size: 10.5px; color: var(--chat-ink-faint); }
+.chat-meta strong { font-size: 11px; color: var(--chat-ink-soft); }
+.chat-body {
+  padding: 9px 12px;
+  font-size: 12.5px;
+  line-height: 1.62;
+  color: var(--chat-ink);
+  word-break: break-word;
+  white-space: pre-wrap;
+  background: var(--chat-surface-raised);
+  border-radius: 12px;
+}
+.chat-row.user .chat-body { color: var(--chat-user-ink); background: var(--chat-user-bubble); }
+.chat-body :deep(p) { margin: 0 0 6px; }
+.chat-body :deep(p:last-child) { margin-bottom: 0; }
+.chat-body :deep(code) {
+  padding: 1px 4px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  background: color-mix(in srgb, var(--chat-ink) 7%, transparent);
+  border-radius: 4px;
+}
+.chat-compose { display: flex; flex-direction: column; gap: 6px; }
+.chat-compose textarea {
+  width: 100%;
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--chat-ink);
+  resize: vertical;
+  background: var(--chat-canvas);
+  border: 1px solid var(--chat-line-strong);
+  border-radius: 10px;
+  outline: none;
+}
+.chat-compose textarea:focus { border-color: var(--chat-ink-faint); }
+.chat-compose textarea:disabled { background: var(--chat-surface-raised); }
+.chat-compose-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.composer-hint { font-size: 10.5px; color: var(--chat-ink-faint); }
+.composer-right { display: flex; gap: 10px; align-items: center; }
+
+/* 频道 */
+.chan-list { display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.chan-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 11px;
+  background: var(--chat-surface-raised);
+  border-radius: 10px;
+}
+.chan-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  color: var(--chat-ink-soft);
+  background: var(--chat-canvas);
+  border: 1px solid var(--chat-line);
+  border-radius: 8px;
+}
+.chan-main { display: flex; flex-direction: column; gap: 1px; min-width: 140px; }
+.chan-main strong { font-size: 12.5px; color: var(--chat-ink); }
+.chan-meta { font-size: 10px; color: var(--chat-ink-faint); }
+.chan-charter {
+  flex: 1 1 160px;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--chat-ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 表单 */
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.form-grid .span2 { grid-column: 1 / -1; }
+.form-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--chat-ink-faint); }
+.form-grid input, .form-grid select, .form-grid textarea {
+  width: 100%;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--chat-ink);
+  background: var(--chat-canvas);
+  border: 1px solid var(--chat-line);
+  border-radius: 9px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.form-grid input:focus, .form-grid select:focus, .form-grid textarea:focus { border-color: var(--chat-ink-faint); }
+.form-grid textarea { resize: vertical; }
+.form-actions { display: flex; align-items: flex-end; }
+.bind-grid { padding-top: 10px; border-top: 1px solid var(--chat-line); }
+.work-grid, .deliv-grid-form { padding-top: 12px; border-top: 1px solid var(--chat-line); }
+.check-row { flex-direction: row !important; gap: 7px !important; align-items: center; font-size: 11.5px !important; color: var(--chat-ink-soft) !important; }
+.check-row input { width: auto; }
+.inline-check { display: inline-flex; gap: 5px; align-items: center; font-size: 11.5px; }
+.inline-check input { width: auto; }
+
+/* 双列 */
+.two-col { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 14px; }
+.session-list { display: flex; flex-direction: column; gap: 5px; padding: 0; margin: 0; list-style: none; }
+.session-row {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin: 14px 0 6px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--chat-line);
-}
-.plan-json {
-  padding: 12px;
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  padding: 7px 9px;
   font-size: 12px;
-  max-height: 320px;
-  overflow: auto;
-  white-space: pre-wrap;
-  background: color-mix(in srgb, var(--chat-ink) 4%, transparent);
-  border: 1px solid var(--chat-line);
-  border-radius: 10px;
+  background: var(--chat-surface-raised);
+  border-radius: 9px;
 }
-.list { list-style: none; padding: 0; margin: 0 0 10px; display: flex; flex-direction: column; gap: 8px; }
-.list li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--chat-ink); }
-.chan-name { font-weight: 550; }
-.chan-id {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--chat-ink-faint);
-}
-.form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-.form.inline { flex-direction: row; flex-wrap: wrap; }
-input, select, textarea {
-  padding: 8px 10px;
-  font-size: 13px;
-  color: var(--chat-ink);
-  background: var(--chat-surface);
-  border: 1px solid var(--chat-line);
-  border-radius: 10px;
-  transition: border-color var(--transition-fast);
-}
-input:focus, select:focus, textarea:focus {
-  border-color: var(--chat-line-strong);
-  outline: none;
-}
-input::placeholder, textarea::placeholder { color: var(--chat-ink-faint); }
-
-/* 按钮:反色主钮(前景取画布色;暗色自动翻为黑字白底)+ 幽灵/语义色 */
-.btn {
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--chat-canvas);
-  cursor: pointer;
-  background: var(--chat-ink);
-  border: 0;
-  border-radius: 10px;
-  transition: opacity var(--transition-fast);
-}
-.btn:hover { opacity: 0.88; }
-.btn.small { padding: 5px 10px; font-size: 12px; }
-.btn.ghost {
-  color: var(--chat-ink);
-  background: transparent;
-  border: 1px solid var(--chat-line);
-}
-.btn.ghost:hover { opacity: 1; border-color: var(--chat-line-strong); }
-.btn.green { background: var(--tone-success-dot); }
-.btn.danger { background: var(--tone-danger-dot); }
-.btn:disabled { opacity: .5; cursor: not-allowed; }
-
-/* 徽标:tinted pill(tone 语义沿用全局令牌) */
-.badge {
-  padding: 2px 9px;
-  font-size: 11px;
-  line-height: 16px;
-  color: var(--chat-ink-soft);
-  background: color-mix(in srgb, var(--chat-ink) 6%, transparent);
-  border-radius: 999px;
-}
-.badge.active, .badge.approved, .badge.completed, .badge.reviewed {
-  color: var(--tone-success-dot);
-  background: var(--tone-success-bg);
-}
-.badge.paused, .badge.blocked, .badge.draft, .badge.submitted, .badge.planned {
-  color: var(--tone-warning-dot);
-  background: var(--tone-warning-bg);
-}
-.badge.failed, .badge.rejected {
-  color: var(--tone-danger-dot);
-  background: var(--tone-danger-bg);
-}
-.badge.archived, .badge.superseded, .badge.canceled {
-  color: var(--chat-ink-faint);
-  background: color-mix(in srgb, var(--chat-ink) 6%, transparent);
-}
-.badge.protected { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
-.muted { color: var(--chat-ink-faint); font-size: 12px; }
-.error { color: var(--tone-danger-dot); }
-.result { padding: 12px 0; border-top: 1px solid var(--chat-line); }
-.summary { color: var(--chat-ink-soft); font-size: 13px; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { padding: 8px; text-align: left; border-bottom: 1px solid var(--chat-line); vertical-align: top; }
-code {
-  padding: 1px 5px;
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 11px;
-  color: var(--chat-accent-strong);
-  background: var(--chat-accent-soft);
-  border-radius: 5px;
-}
-
-/* Router v3 执行工作台 */
-.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--chat-line-strong); display: inline-block; }
-.live-dot.on { background: var(--tone-success-dot); box-shadow: 0 0 8px var(--tone-success-dot); }
-.inline-check { display: inline-flex; gap: 6px; align-items: center; }
-.stat-strip { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
-.stat {
-  padding: 7px 11px;
-  font-size: 12px;
-  color: var(--chat-ink-faint);
-  background: color-mix(in srgb, var(--chat-ink) 3%, transparent);
-  border: 1px solid var(--chat-line);
-  border-radius: 10px;
-}
-.stat b { margin-right: 4px; font-size: 15px; color: var(--chat-ink); }
-.lanes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
-.lane {
-  padding: 14px;
-  background: color-mix(in srgb, var(--chat-ink) 3%, transparent);
-  border: 1px solid var(--chat-line);
-  border-radius: 12px;
-}
-.lane-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-.exec-card {
+.session-main { display: flex; flex: 1 1 auto; flex-direction: column; gap: 1px; min-width: 0; }
+.session-main strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.session-main .muted { overflow: hidden; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+.report-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.report-stat {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  width: 100%;
-  padding: 11px 12px;
-  margin-bottom: 8px;
+  gap: 1px;
+  padding: 8px 10px;
+  background: var(--chat-surface-raised);
+  border-radius: 9px;
+}
+.report-stat b { font-family: var(--font-mono, monospace); font-size: 15px; color: var(--chat-ink); }
+.report-stat span { font-size: 10px; color: var(--chat-ink-faint); }
+.tone-warn { color: var(--tone-warning-dot) !important; }
+.report-line { margin: 0; font-size: 10.5px; }
+.row.actions { display: flex; gap: 8px; align-items: center; }
+
+/* 执行看板 */
+.stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding: 9px 12px;
+  font-size: 11.5px;
+  color: var(--chat-ink-faint);
+  background: var(--chat-surface-raised);
+  border-radius: 9px;
+}
+.stat b { font-family: var(--font-mono, monospace); font-size: 13px; color: var(--chat-ink); }
+.live-dot { width: 7px; height: 7px; background: var(--chat-ink-faint); border-radius: 50%; }
+.live-dot.on { background: var(--tone-success-dot); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone-success-dot) 16%, transparent); }
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+.board.empty { display: none; }
+/* 最后列（完成/验收链）在换行时占满剩余宽度：避免 3+2 布局留下空洞列 */
+.board-col:last-child { grid-column: span 2; }
+.board-col {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 90px;
+  padding: 9px;
+  background: var(--chat-surface-raised);
+  border-radius: 11px;
+  border-top: 2px solid var(--chat-line-strong);
+}
+.board-col.tone-blue { border-top-color: var(--tone-info-dot); }
+.board-col.tone-green { border-top-color: var(--tone-success-dot); }
+.board-col.tone-amber { border-top-color: var(--tone-warning-dot); }
+.board-col.tone-red { border-top-color: var(--tone-danger-dot); }
+.board-col.tone-gray { border-top-color: var(--chat-ink-faint); }
+.board-col-head { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--chat-ink-soft); }
+.board-col-head span[class^='i-tabler'] { font-size: 13px; color: var(--chat-ink-faint); }
+.board-col-label { flex: 1 1 auto; font-weight: 600; }
+.board-col-count {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: var(--chat-ink-faint);
+}
+.board-empty { margin: 0; padding: 8px 2px; font-size: 10.5px; color: var(--chat-ink-faint); }
+
+.wc {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  cursor: pointer;
+  background: var(--chat-canvas);
+  border: 1px solid var(--chat-line);
+  border-radius: 9px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.wc:hover { border-color: var(--chat-line-strong); box-shadow: 0 6px 16px rgb(12 10 9 / 6%); }
+.wc:focus-visible { outline: 2px solid var(--chat-accent); outline-offset: 1px; }
+.wc-top { display: flex; gap: 6px; align-items: flex-start; justify-content: space-between; }
+.wc-top strong { font-size: 12px; font-weight: 600; line-height: 1.35; color: var(--chat-ink); }
+.wc-meta { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 10.5px; color: var(--chat-ink-faint); }
+.wc-chan { display: inline-flex; gap: 4px; align-items: center; }
+.wc-chan span[class^='i-tabler'] { font-size: 11px; }
+.wc-deliv { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wc-foot { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 10px; color: var(--chat-ink-faint); }
+.wc-wait {
+  padding: 4px 6px;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--tone-warning-dot);
+  background: var(--tone-warning-bg);
+  border-radius: 6px;
+}
+.task-session-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; font-size: 10px; }
+.wc-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.route-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 8px 12px;
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  color: var(--chat-ink-faint);
+  background: var(--chat-surface-raised);
+  border-radius: 9px;
+}
+.route-strip b { color: var(--chat-ink-soft); }
+
+/* 表格 */
+.table { width: 100%; font-size: 12px; border-collapse: collapse; }
+.table th {
+  padding: 7px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--chat-ink-faint);
+  text-align: left;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--chat-line);
+}
+.table td { padding: 8px; color: var(--chat-ink-soft); vertical-align: top; border-bottom: 1px solid var(--chat-line); }
+.table tr:last-child td { border-bottom: 0; }
+.col-actions { text-align: right; }
+.col-actions .btn + .btn { margin-left: 4px; }
+.link-strong {
+  padding: 0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--chat-ink);
   text-align: left;
   cursor: pointer;
-  background: var(--chat-surface);
-  border: 1px solid var(--chat-line);
-  border-radius: 12px;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  background: transparent;
+  border: 0;
 }
-.exec-card:hover {
-  border-color: var(--chat-line-strong);
-  box-shadow: 0 6px 18px rgb(12 10 9 / 6%);
-}
-.exec-card strong { font-size: 13px; }
-/* 任务实例：任务卡内的会话行（徽标 + 会话 id + 直达入口） */
-.task-session-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
-.task-session-row :deep(.ant-btn-link) { padding: 0; height: auto; font-size: 12px; }
-.mono { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); }
-.route-strip {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding-top: 10px;
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--chat-ink-faint);
-  border-top: 1px dashed var(--chat-line);
-}
-.route-strip b { color: var(--chat-ink); }
-.badge.blue { color: var(--tone-info-dot); background: var(--tone-info-bg); }
-.badge.amber { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
-.badge.red { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
-.badge.green { color: var(--tone-success-dot); background: var(--tone-success-bg); }
-.badge.gray { color: var(--chat-ink-faint); background: color-mix(in srgb, var(--chat-ink) 6%, transparent); }
-.waiting-box { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--chat-line); }
+.link-strong:hover { text-decoration: underline; text-underline-offset: 3px; }
 
-/* 执行链抽屉:白面(右侧滑入) */
+/* 时间线 */
+.timeline { display: flex; flex-direction: column; gap: 0; padding: 0; margin: 0; list-style: none; }
+.timeline-row {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--chat-line);
+}
+.timeline-row:last-child { border-bottom: 0; }
+.timeline-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  background: var(--chat-ink-faint);
+  border-radius: 50%;
+}
+.timeline-dot.decision { background: var(--tone-info-dot); }
+.timeline-dot.event { background: var(--chat-ink-faint); }
+.timeline-main { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+.timeline-line { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+.timeline-line b { font-weight: 600; color: var(--chat-ink); }
+.timeline-at { margin-left: auto; font-size: 10px; color: var(--chat-ink-faint); }
+.timeline-sub { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 10px; color: var(--chat-ink-faint); }
+.payload summary, .evidence summary {
+  font-size: 10.5px;
+  color: var(--chat-ink-faint);
+  cursor: pointer;
+}
+.payload pre, .evidence pre {
+  max-height: 220px;
+  padding: 8px 10px;
+  margin: 4px 0 0;
+  overflow: auto;
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--chat-ink-soft);
+  background: var(--chat-surface-raised);
+  border-radius: 8px;
+}
+
+/* 交付物 */
+.deliv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.deliv {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--chat-surface-raised);
+  border: 1px solid var(--chat-line);
+  border-radius: 11px;
+}
+.deliv.done { border-color: color-mix(in srgb, var(--tone-success-dot) 30%, var(--chat-line)); }
+.deliv-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.deliv-title { display: flex; flex: 1 1 auto; flex-direction: column; gap: 1px; min-width: 0; }
+.deliv-title strong { font-size: 12.5px; color: var(--chat-ink); }
+.deliv-title span { font-size: 9.5px; color: var(--chat-ink-faint); }
+.gates { display: flex; gap: 6px; }
+.gate {
+  display: inline-flex;
+  flex: 1 1 0;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0;
+  font-size: 10px;
+  color: var(--chat-ink-faint);
+  text-align: center;
+  background: var(--chat-canvas);
+  border: 1px dashed var(--chat-line-strong);
+  border-radius: 6px;
+}
+.gate span[class^='i-tabler'] { font-size: 10px; }
+.gate.on {
+  color: var(--tone-success-dot);
+  font-weight: 600;
+  background: var(--tone-success-bg);
+  border: 1px solid transparent;
+}
+.criteria { display: flex; flex-direction: column; gap: 3px; }
+.criteria-item {
+  display: flex;
+  gap: 5px;
+  align-items: flex-start;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--chat-ink-soft);
+}
+.criteria-item span[class^='i-tabler'] { flex: 0 0 auto; margin-top: 2px; font-size: 11px; color: var(--tone-success-dot); }
+.deliv-foot { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+
+/* 成果 */
+.group-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0 0;
+  margin-top: 4px;
+  border-top: 1px solid var(--chat-line);
+}
+.group-head strong { font-size: 12.5px; color: var(--chat-ink); }
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 11px 12px;
+  background: var(--chat-surface-raised);
+  border-radius: 10px;
+}
+.result-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.result-head strong { font-size: 12.5px; color: var(--chat-ink); }
+.summary { margin: 0; font-size: 12px; line-height: 1.55; color: var(--chat-ink-soft); white-space: pre-wrap; }
+
+/* 审批 */
+.approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.approval {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--chat-surface-raised);
+  border: 1px solid var(--chat-line);
+  border-radius: 11px;
+}
+.approval-head { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.approval-head .expiry { margin-left: auto; font-size: 10px; }
+.approval-payload {
+  max-height: 180px;
+  padding: 8px 10px;
+  margin: 0;
+  overflow: auto;
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--chat-ink-soft);
+  background: var(--chat-canvas);
+  border-radius: 8px;
+}
+
+/* 列表 / 等待箱 */
+.list { display: flex; flex-direction: column; gap: 5px; padding: 0; margin: 0; list-style: none; }
+.list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 9px;
+  font-size: 12px;
+  background: var(--chat-surface-raised);
+  border-radius: 8px;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ap-payload { flex: 1 1 200px; min-width: 0; }
+.ap-time { flex: 0 0 auto; margin-left: auto; }
+.waiting-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--tone-warning-bg) 55%, transparent);
+  border-radius: 10px;
+}
+
+/* 计划 */
+.plan-details summary {
+  font-size: 11px;
+  color: var(--chat-ink-faint);
+  cursor: pointer;
+}
+.plan-json {
+  max-height: 320px;
+  padding: 10px 12px;
+  margin: 6px 0 0;
+  overflow: auto;
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--chat-ink-soft);
+  background: var(--chat-surface-raised);
+  border-radius: 9px;
+}
+
+/* 骨架 */
+.skeleton-wrap { display: flex; flex-direction: column; gap: 14px; }
+.sk-hero, .sk-card {
+  background: linear-gradient(90deg, var(--chat-surface-raised) 25%, var(--chat-line) 50%, var(--chat-surface-raised) 75%);
+  background-size: 200% 100%;
+  border-radius: 14px;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.sk-hero { height: 110px; }
+.sk-card { height: 220px; }
+.sk-card.short { height: 140px; }
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 抽屉 */
 .drawer-mask {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 60;
   display: flex;
   justify-content: flex-end;
-  background: rgb(12 10 9 / 32%);
+  background: rgb(12 10 9 / 24%);
+  backdrop-filter: blur(2px);
 }
 .drawer {
-  width: min(720px, 94vw);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(520px, 92vw);
   height: 100%;
-  padding: 20px;
-  overflow: auto;
-  color: var(--chat-ink);
-  background: var(--chat-surface);
+  padding: 18px 20px 40px;
+  overflow-y: auto;
+  background: var(--chat-canvas);
   border-left: 1px solid var(--chat-line);
-  box-shadow: -24px 0 60px rgb(12 10 9 / 12%);
+  box-shadow: var(--chat-shadow);
 }
-.drawer h3 { font-size: 15px; margin: 4px 0 8px; }
-.drawer h4 { font-size: 13px; margin: 18px 0 8px; color: var(--chat-ink-soft); }
-.attempt { padding: 10px 0; border-top: 1px solid var(--chat-line); }
-.artifact-list { list-style: none; padding: 0; margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
-.artifact-list li { display: flex; gap: 8px; align-items: center; font-size: 12px; }
-.workers { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.drawer-head { display: flex; gap: 10px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--chat-line); }
+.drawer-head h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.drawer-brief {
+  padding: 8px 10px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--chat-ink-soft);
+  white-space: pre-wrap;
+  background: var(--chat-surface-raised);
+  border-radius: 8px;
+}
+.attempt {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--chat-surface-raised);
+  border-radius: 9px;
+}
+.attempt code { font-family: var(--font-mono, monospace); font-size: 10.5px; }
+.artifact-list { display: flex; flex-direction: column; gap: 3px; padding: 0; margin: 2px 0; list-style: none; }
+.artifact-list li { display: flex; gap: 8px; font-size: 11px; }
+.artifact-list code { font-family: var(--font-mono, monospace); }
+.workers { display: flex; flex-direction: column; gap: 4px; padding-top: 4px; }
 .worker {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 6px 9px;
-  font-size: 12px;
-  background: color-mix(in srgb, var(--chat-ink) 3%, transparent);
-  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 11px;
+  background: var(--chat-canvas);
+  border-radius: 7px;
 }
 
-/* ── 右区:项目快照上下文卡(ChatGPT 右栏同位;≥1200px 常驻) ── */
+/* ═══ 右区 ═══ */
 .ctx {
   display: flex;
-  flex: 0 0 312px;
+  flex: 0 0 300px;
   flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-  padding: 16px 14px;
+  gap: 10px;
+  padding: 18px 16px 32px;
   overflow-y: auto;
   background: var(--chat-surface-raised);
   border-left: 1px solid var(--chat-line);
 }
 .ctx-card {
-  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
   background: var(--chat-surface);
   border: 1px solid var(--chat-line);
-  border-radius: 14px;
+  border-radius: 11px;
 }
-.ctx-head {
+.ctx-head { display: flex; gap: 8px; align-items: center; font-size: 11.5px; font-weight: 650; color: var(--chat-ink-soft); }
+.ctx-head > :last-child { margin-left: auto; }
+.ctx-lane-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ctx-stat { display: flex; flex-direction: column; gap: 1px; }
+.ctx-stat b { font-family: var(--font-mono, monospace); font-size: 15px; color: var(--chat-ink); }
+.ctx-stat span { font-size: 9.5px; color: var(--chat-ink-faint); }
+.ctx-progress { display: flex; flex-direction: column; gap: 4px; }
+.ctx-progress-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--chat-ink-faint); }
+.ctx-progress-row b { font-family: var(--font-mono, monospace); color: var(--chat-ink-soft); }
+.ctx-bar { height: 3px; overflow: hidden; background: var(--chat-line); border-radius: 999px; }
+.ctx-bar i { display: block; height: 100%; background: var(--chat-accent); border-radius: inherit; }
+.ctx-foot {
   display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  font-size: 13px;
-  font-weight: 650;
-}
-.ctx-lane-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ctx-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.ctx-stat {
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-  padding: 8px 10px;
-  background: color-mix(in srgb, var(--chat-ink) 3%, transparent);
-  border-radius: 10px;
-}
-.ctx-stat b { font-size: 16px; }
-.ctx-stat span { font-size: 11px; color: var(--chat-ink-faint); }
-.ctx-progress { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
-.ctx-progress-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 6px;
-  font-size: 11.5px;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding-top: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
   color: var(--chat-ink-faint);
+  border-top: 1px solid var(--chat-line);
 }
-.ctx-progress-row b { color: var(--chat-ink); }
-.ctx-meta { margin-bottom: 8px; font-size: 11px; color: var(--chat-ink-faint); }
+.ctx-meta { font-size: 10px; color: var(--chat-ink-faint); }
 .ctx-items { display: flex; flex-direction: column; gap: 4px; }
 .ctx-item {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
-  font-size: 12px;
+  padding: 5px 7px;
   cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  transition: background var(--transition-fast);
+  background: var(--chat-surface-raised);
+  border-radius: 7px;
 }
-.ctx-item:hover { background: color-mix(in srgb, var(--chat-ink) 5%, transparent); }
-.ctx-item-name {
-  overflow: hidden;
-  color: var(--chat-ink-soft);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* 徽标不换行(窄卡里"成果待提交"会被压成竖排) */
-.ctx-item .badge {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-/* 自绘进度条(antd 默认蓝不属本声部;发丝线槽 + 油墨填充) */
-.ctx-bar {
-  height: 6px;
-  overflow: hidden;
-  margin-top: 6px;
-  background: color-mix(in srgb, var(--chat-ink) 8%, transparent);
-  border-radius: 999px;
-}
-.ctx-bar i {
-  display: block;
-  height: 100%;
-  background: var(--chat-ink);
-  border-radius: inherit;
-  transition: width var(--transition-slow);
-}
+.ctx-item:hover { background: var(--chat-canvas); }
+.ctx-item-name { overflow: hidden; font-size: 11px; color: var(--chat-ink-soft); text-overflow: ellipsis; white-space: nowrap; }
+.ctx-empty { margin: 0; font-size: 10.5px; color: var(--chat-ink-faint); }
 
-/* ── 响应式 ── */
-@media (max-width: 1199.98px) {
-  .ctx { display: none; }
-}
-@media (max-width: 860px) {
-  .page { flex-direction: column; overflow-y: auto; }
-  .side {
-    flex: 0 0 auto;
-    padding: 12px;
-    border-right: 0;
-    border-bottom: 1px solid var(--chat-line);
-  }
-  .proj-obj { display: none; }
-  .side-nav { flex-direction: row; flex-wrap: wrap; overflow-x: auto; }
-  .side-nav .side-label { display: none; }
-  .side-item { width: auto; }
-  .side-life, .side-foot { display: none; }
-  .main-col { padding: 0 12px 40px; }
-  .grid2 { grid-template-columns: 1fr; }
-  .drawer { width: 100vw; }
-}
-
-/* ── Project Leader 对话（持续开发）────────────────────────────── */
-.chat-card { display: flex; flex-direction: column; gap: 16px; }
-.chat-head {
-  display: flex;
-  justify-content: space-between;
+.member-row { display: flex; gap: 8px; align-items: center; }
+.member-avatar {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--chat-line);
-}
-.leader-id { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.leader-avatar {
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  font-size: 12px;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
   font-weight: 700;
   color: var(--chat-canvas);
   background: var(--chat-ink);
-  border-radius: 50%;
+  border-radius: 7px;
 }
-.leader-copy h2 { margin: 0; font-size: 15px; font-weight: 650; }
-.leader-copy p { margin: 2px 0 0; font-size: 12px; color: var(--chat-ink-faint); }
-.chat-head-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-.chat-hint {
-  margin: 0;
-  padding: 10px 12px;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--chat-ink-soft);
-  background: color-mix(in srgb, var(--chat-ink) 4%, transparent);
-  border-radius: 10px;
-}
-.chat-thread {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 420px;
-  overflow-y: auto;
-  padding: 4px 2px;
-}
-.chat-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 28px 12px;
-  font-size: 13px;
-  color: var(--chat-ink-faint);
-  text-align: center;
-}
-.chat-empty strong { font-size: 14px; color: var(--chat-ink-soft); }
-.chat-row { display: flex; gap: 11px; align-items: flex-start; padding: 13px 0; }
-.chat-row.user { justify-content: flex-end; }
-.chat-avatar {
-  flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
+.member-avatar.gray { color: var(--chat-ink-soft); background: var(--chat-surface-raised); border: 1px solid var(--chat-line); }
+.member-main { display: flex; flex: 1 1 auto; flex-direction: column; gap: 0; }
+.member-main strong { font-size: 11px; color: var(--chat-ink-soft); }
+.member-main span { font-size: 9.5px; color: var(--chat-ink-faint); }
+
+.health-row { display: flex; gap: 7px; align-items: center; font-size: 11px; color: var(--chat-ink-soft); }
+.health-dot { width: 7px; height: 7px; border-radius: 50%; }
+.health-dot.ok { background: var(--tone-success-dot); }
+.health-dot.bad { background: var(--tone-danger-dot); }
+.health-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.health-status { font-size: 9.5px; color: var(--chat-ink-faint); }
+.ctx-effects { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 4px; border-top: 1px solid var(--chat-line); }
+.effect-chip {
+  padding: 2px 7px;
+  font-family: var(--font-mono, monospace);
   font-size: 9.5px;
-  font-weight: 600;
-  color: var(--chat-ink-soft);
-  background: color-mix(in srgb, var(--chat-ink) 7%, transparent);
-  border-radius: 50%;
-}
-.chat-bubble-wrap { max-width: min(80%, 640px); min-width: 0; }
-.chat-row.agent .chat-bubble-wrap { flex: 1 1 auto; }
-.chat-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 3px;
-  font-size: 11px;
   color: var(--chat-ink-faint);
+  background: var(--chat-surface-raised);
+  border-radius: 5px;
 }
-.chat-row.user .chat-meta { justify-content: flex-end; }
-.chat-meta strong { font-size: 12px; color: var(--chat-ink-soft); }
-.chat-body {
-  padding: 0;
-  font-size: 14px;
-  line-height: 1.72;
-  color: var(--chat-ink);
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  overflow-wrap: anywhere;
+
+/* ═══ 响应式 ═══ */
+@media (max-width: 1280px) {
+  .ctx { display: none; }
 }
-.chat-row.agent .chat-body { color: var(--chat-ink); }
-.chat-row.user .chat-body {
-  padding: 9px 14px;
-  font-size: 13.5px;
-  line-height: 1.66;
-  background: var(--chat-user-bubble);
-  border-radius: 16px 16px 4px 16px;
+
+@media (max-width: 1024px) {
+  .side { flex-basis: 208px; }
+  .board { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 }
-.chat-body :deep(p) { margin: 0 0 6px; }
-.chat-body :deep(p:last-child) { margin-bottom: 0; }
-.chat-body :deep(ul),
-.chat-body :deep(ol) { margin: 6px 0; padding-left: 18px; }
-.chat-body :deep(code) {
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 12px;
-  background: color-mix(in srgb, var(--chat-ink) 6%, transparent);
-  border-radius: 4px;
-  padding: 1px 4px;
+
+@media (max-width: 900px) {
+  .page { flex-direction: column; }
+  .side {
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--chat-line);
+  }
+  .side-head { width: 100%; padding: 0 0 4px; }
+  .proj-id { width: 100%; padding: 0; }
+  .side-version, .proj-obj, .side-foot, .side-label { display: none; }
+  .proj-name { font-size: 13px; }
+  .side-nav {
+    flex: 1 1 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .side-item { flex: 1 1 auto; width: auto; padding: 6px 9px; white-space: nowrap; }
+  .side-item-label { flex: 0 0 auto; }
+  .side-life { width: 100%; }
+  .main-col { padding: 14px 14px 32px; }
+  .two-col, .grid2 { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .hero-stats { gap: 8px 18px; }
+  .hero-stat b { font-size: 17px; }
+  .report-grid { grid-template-columns: repeat(2, 1fr); }
+  .board { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .board-col:last-child { grid-column: 1 / -1; }
 }
-.chat-body :deep(pre) {
-  margin: 6px 0;
-  padding: 8px 10px;
-  overflow-x: auto;
-  background: color-mix(in srgb, var(--chat-ink) 5%, transparent);
-  border-radius: 8px;
-}
-.chat-body :deep(pre code) { background: transparent; padding: 0; }
-.chat-compose { display: flex; flex-direction: column; gap: 8px; }
-.chat-compose textarea {
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 13px;
-  font-family: inherit;
-  line-height: 1.6;
-  color: var(--chat-ink);
-  background: var(--chat-canvas);
-  border: 1px solid var(--chat-line);
-  border-radius: 12px;
-  resize: vertical;
-  transition: border-color var(--transition-fast);
-}
-.chat-compose textarea:focus { border-color: var(--chat-line-strong); outline: none; }
-.chat-compose textarea:disabled { opacity: 0.6; cursor: not-allowed; }
-.chat-compose-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-.composer-hint { font-size: 11px; color: var(--chat-ink-faint); }
-.composer-right { display: flex; align-items: center; gap: 10px; }
-.mono { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 11px; }
-@media (max-width: 860px) {
-  .chat-bubble-wrap { max-width: 86%; }
-  .chat-compose-actions { flex-direction: column; align-items: stretch; }
-  .composer-right { justify-content: space-between; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-hero, .sk-card, .spin { animation: none; }
 }
 </style>

@@ -36,6 +36,7 @@ export default {
     ontology: 'Ontology Model',
     dashboard: 'Dashboard',
     workshop: 'Agent Harness',
+    projects: 'Projects',
     town: 'Digital Twin',
     tokens: 'API Tokens',
     daq: 'DAQ Console',
@@ -2213,6 +2214,7 @@ export default {
   commandPalette: {
     gotoTeams: 'Go to: AgentTeam groups',
     gotoSchedules: 'Go to: Scheduled Task Hub',
+    gotoProjects: 'Go to: Projects',
     viewLanes: 'View: Agent lanes',
     actA2a: 'Action: A2A RPC/SSE debugger',
     k1nz14ux013: 'Switch Channel: {p0}',

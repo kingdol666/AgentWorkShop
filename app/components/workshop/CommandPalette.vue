@@ -34,6 +34,7 @@ const selected = ref(0)
 const commands = computed<Command[]>(() => {
   const list: Command[] = [
     { key: 'nav-home', label: t('commandPalette.kmxxk3u006'), hint: '/workshop', run: () => navigateTo('/workshop') },
+    { key: 'nav-projects', label: t('commandPalette.gotoProjects'), hint: '/projects', run: () => navigateTo('/projects') },
     { key: 'nav-agents', label: t('commandPalette.k4s8e5q007'), hint: '/workshop/agents', run: () => navigateTo('/workshop/agents') },
     { key: 'nav-teams', label: t('commandPalette.gotoTeams'), hint: '/workshop/teams', run: () => navigateTo('/workshop/teams') },
     { key: 'nav-channel-templates', label: t('commandPalette.k1ezz11x008'), hint: '/workshop/channel-templates', run: () => navigateTo('/workshop/channel-templates') },

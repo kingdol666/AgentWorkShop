@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentWorkShop — 把目标写成可验收的交付</title>
+<style>
+  :root{
+    --canvas:#FBF9F6; --ink:#14110E; --ink-soft:#5C564E; --ink-faint:#8C857A;
+    --line:#E7E1D8; --accent:#E06A35; --accent-soft:#FBEEE4;
+    --serif:"Source Serif 4",Georgia,serif; --sans:Inter,system-ui,"Segoe UI",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--canvas);color:var(--ink);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+  header{display:flex;align-items:center;justify-content:space-between;padding:22px 0;border-bottom:1px solid var(--line)}
+  .brand{display:flex;gap:10px;align-items:center;font-weight:650;letter-spacing:-.01em}
+  .mark{width:22px;height:22px;border-radius:7px;background:var(--accent)}
+  nav{display:flex;gap:22px;font-size:14px;color:var(--ink-soft)}
+  nav a{color:inherit;text-decoration:none}
+  nav a:hover{color:var(--ink)}
+  .hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:64px;align-items:center;padding:76px 0 64px}
+  .kicker{font:11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  h1{font:600 clamp(32px,4.2vw,56px)/1.08 var(--serif);letter-spacing:-.02em;margin:0 0 20px}
+  h1 em{font-style:normal;color:var(--accent)}
+  .lede{font-size:17px;color:var(--ink-soft);max-width:46ch;margin:0 0 30px}
+  .cta{display:flex;flex-wrap:wrap;gap:12px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border-radius:10px;font:600 14px/1 var(--sans);text-decoration:none;border:1px solid transparent}
+  .btn.primary{background:var(--ink);color:var(--canvas)}
+  .btn.ghost{border-color:var(--line);color:var(--ink)}
+  .flow{border:1px solid var(--line);border-radius:14px;padding:22px;background:#fff}
+  .flow-hd{display:flex;justify-content:space-between;font:10px/1 var(--mono);color:var(--ink-faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+  .step{display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:center;padding:13px 0;border-top:1px solid var(--line)}
+  .step:first-of-type{border-top:0}
+  .step .n{font:11px/1 var(--mono);color:var(--ink-faint)}
+  .step b{display:block;font-size:14px}
+  .step span{font-size:12px;color:var(--ink-faint)}
+  .pill{font:10px/1 var(--mono);padding:5px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+  section{padding:56px 0;border-top:1px solid var(--line)}
+  h2{font:600 28px/1.2 var(--serif);letter-spacing:-.01em;margin:0 0 8px}
+  .sub{color:var(--ink-soft);margin:0 0 28px}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .card{border:1px solid var(--line);border-radius:14px;padding:20px;background:#fff}
+  .card h3{margin:0 0 6px;font-size:15px}
+  .card p{margin:0;font-size:13px;color:var(--ink-faint)}
+  .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+  .stat b{display:block;font:600 30px/1 var(--mono);letter-spacing:-.02em}
+  .stat span{font-size:11px;color:var(--ink-faint)}
+  footer{padding:30px 0 44px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;font-size:12px;color:var(--ink-faint)}
+  footer a{color:inherit}
+  @media (max-width:760px){
+    .hero{grid-template-columns:1fr;gap:34px;padding:46px 0 40px}
+    nav{display:none}
+    .btn{flex:1 1 100%}
+    .grid,.stats{grid-template-columns:1fr 1fr}
+    h1{font-size:32px}
+  }
+  @media (max-width:420px){
+    .grid,.stats{grid-template-columns:1fr}
+    .wrap{padding:0 18px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="mark"></span>AgentWorkShop</div>
+    <nav><a href="#flow">流程</a><a href="#cap">能力</a><a href="#evidence">证据</a><a href="#docs">文档</a></nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <p class="kicker">agent harness / project layer</p>
+      <h1>把目标写成<br><em>可验收的交付</em></h1>
+      <p class="lede">一个目标、一组交付物、一个 Project Leader。执行交给 Channel，成果逐级复核与签核，进度与证据全程可追溯。</p>
+      <div class="cta">
+        <a class="btn primary" href="/projects">进入项目中心</a>
+        <a class="btn ghost" href="/workshop">打开工作台</a>
+      </div>
+    </div>
+    <div class="flow" id="flow" aria-label="项目流程示意">
+      <div class="flow-hd"><span>project pipeline</span><span>5 stages</span></div>
+      <div class="step"><span class="n">01</span><div><b>建项目</b><span>目标 / 成功标准 / Leader 引擎</span></div><span class="pill">owner</span></div>
+      <div class="step"><span class="n">02</span><div><b>绑频道</b><span>用户绑定受保护，执行频道独立</span></div><span class="pill">channel</span></div>
+      <div class="step"><span class="n">03</span><div><b>下发工作项</b><span>technical 门按依赖放行</span></div><span class="pill">kernel</span></div>
+      <div class="step"><span class="n">04</span><div><b>成果复核</b><span>L1 技术验收 → L2 业务签核</span></div><span class="pill">review</span></div>
+      <div class="step"><span class="n">05</span><div><b>项目完成</b><span>必选交付物全部签核</span></div><span class="pill">done</span></div>
+    </div>
+  </div>
+
+  <section id="cap">
+    <h2>三个不妥协</h2>
+    <p class="sub">不是"再包一层聊天"，而是把交付物当一等公民。</p>
+    <div class="grid">
+      <div class="card"><h3>可验收</h3><p>每个交付物有验收标准与三级门：内容、技术验收、业务签核。</p></div>
+      <div class="card"><h3>可追溯</h3><p>决策与事件统一时间线，traceId 串起派发、重试与返工。</p></div>
+      <div class="card"><h3>可继续</h3><p>完成后发补充需求自动重开项目，增量计划接在同一 Log 上。</p></div>
+    </div>
+  </section>
+
+  <section id="evidence">
+    <h2>运行证据</h2>
+    <p class="sub">数字来自本次实机运行的项目内核，不是市场文案。</p>
+    <div class="stats">
+      <div class="stat"><b>03</b><span>执行频道</span></div>
+      <div class="stat"><b>03</b><span>工作项</span></div>
+      <div class="stat"><b>03/03</b><span>交付物签核</span></div>
+      <div class="stat"><b>100%</b><span>完成度</span></div>
+    </div>
+  </section>
+
+  <footer id="docs">
+    <span>AgentWorkShop · Project Layer</span>
+    <span><a href="/projects">项目中心</a> · <a href="/workshop">Agent 工作台</a></span>
+  </footer>
+</div>
+</body>
+</html>

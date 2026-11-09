@@ -18,6 +18,7 @@ export function useRouteMeta() {
   const staticMap: Record<string, { key: string, icon: string }> = {
     '/': { key: 'menu.dashboard', icon: 'i-tabler-layout-dashboard' },
     '/workshop': { key: 'menu.workshop', icon: 'i-tabler-box' },
+    '/projects': { key: 'menu.projects', icon: 'i-tabler-briefcase' },
 
     '/workshop/agents': { key: 'meta.agents', icon: 'i-tabler-users' },
 
