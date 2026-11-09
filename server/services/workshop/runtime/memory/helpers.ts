@@ -25,6 +25,10 @@ export const MMR_LAMBDA = 0.7
 export const RELATED_TASK_BOOST = 0.3
 /** session 行加分(auto 档):当前会话作用域记忆的排序偏好(不过滤) */
 export const SESSION_RELEVANCE_BOOST = 0.15
+/** RSI 经验作用域加分(WP-A3):同产线经验排序偏好(不过滤,跨频道共享层仍单独授权) */
+export const SAME_LINE_BOOST = 0.2
+/** RSI 经验作用域加分(WP-A3):同产品经验排序偏好(弱于产线:产线粒度更贴工况) */
+export const SAME_PRODUCT_BOOST = 0.1
 /** 策展层 kind(确定性 L0/按 key 直取;不进 L1 排名防双份注入,search_memory 仍可命中) */
 export const CURATED_KINDS = new Set(['brief', 'chronicle', 'reflection'])
 /** kind 感知时近衰减半衰期(天;0 = 不衰减) */

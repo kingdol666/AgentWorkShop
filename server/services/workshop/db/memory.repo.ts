@@ -290,6 +290,21 @@ export function createMemoryRepo(db: DatabaseSync) {
       return (rows as Array<{ status: string, n: number }>).map(r => ({ status: r.status, n: Number(r.n) }))
     },
 
+    /**
+     * 频道的作用域上下文(WP-A3):line 绑定来自 channels.line_id(迁移列)。
+     * product 目前无频道级绑定列 → 恒 null,由调用方显式传 scopeContext.productId 覆盖。
+     * 查询失败(极端旧库)返回空对象,不阻断召回。
+     */
+    channelScope(channelId: string): { lineId: string | null, productId: string | null } {
+      try {
+        const row = db.prepare('SELECT line_id AS lineId FROM channels WHERE id = ?').get(channelId) as { lineId?: string } | undefined
+        return { lineId: row?.lineId || null, productId: null }
+      }
+      catch {
+        return { lineId: null, productId: null }
+      }
+    },
+
     /** bm25 检索(恒含 team 共享行;matchQuery 为 OR 连接切分词;sessionId 给定→仅该 session 作用域行) */
     search(agentId: string, matchQuery: string, limit: number, opts: { sessionId?: string } = {}): Array<MemoryRow & { bm25: number }> {
       if (opts.sessionId) {

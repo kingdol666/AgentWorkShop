@@ -29,6 +29,8 @@ export abstract class AgentMemoryState extends AgentMemoryContracts {
 
   /** scope 过滤:private 仅本人行;shared 仅本 channel 的 team 行;session 仅本人/本 channel 的当前会话行;auto 双域 */
   protected inScope(row: MemoryRow, scope: MemoryScope, sessionId?: string | null): boolean {
+    // RSI(WP-A3):retired 经验不参与任何档位检索/注入(过期或劣化回滚后的行只保留审计价值)
+    if (row.status === 'retired') return false
     const isTeam = row.agentId === TEAM_AGENT_ID
     if (isTeam && row.channelId !== this.opts.channelId) return false
     if (scope === 'session') {

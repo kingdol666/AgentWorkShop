@@ -23,6 +23,17 @@ export interface RecallOptions {
   sessionId?: string | null
   /** 任务关联集(自身+父+兄弟 ≤20):命中行终分 +RELATED_TASK_BOOST(任务需求驱动的相关性) */
   relatedTaskIds?: string[]
+  /**
+   * 作用域上下文(WP-A3):经验行 scopeKey 命中时加分(同产线 +0.2 / 同产品 +0.1)。
+   * 缺省由 repo.channelScope(channelId) 自动解析 lineId(channels.line_id)。
+   */
+  scopeContext?: ScopeContext
+}
+
+/** 作用域上下文(产线/产品锚点;null/空串 = 该维度不参与加分) */
+export interface ScopeContext {
+  lineId?: string | null
+  productId?: string | null
 }
 
 /**
@@ -51,4 +62,9 @@ export interface MemorySnippet {
   sessionId?: string | null
   rootId?: string | null
   visibility?: 'channel-shared' | 'private' | 'cross-channel'
+  /** RSI 经验元信息(WP-A3;非经验行缺省):极性 / 生命周期 / 作用域 */
+  outcome?: string
+  status?: string
+  scopeKind?: string
+  scopeKey?: string
 }

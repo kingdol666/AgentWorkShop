@@ -18,11 +18,16 @@ export async function handleSearchMemory(args: Record<string, unknown>, ws: Agen
   }
   const lines = snippets.map((s) => {
     // §7.4:每条记忆标注来源 Channel / task / session / 可见性,便于判断可信来源
+    // WP-A3:经验行额外标注作用域/极性/生命周期(scope=line:x · outcome=positive · status=validated)
+    const isExperience = s.kind === 'experience'
     const provenance = [
       s.source,
       s.kind,
       `score=${s.score}`,
       s.visibility ?? '',
+      isExperience && s.scopeKind ? `scope=${s.scopeKind}${s.scopeKey ? `:${s.scopeKey}` : ''}` : '',
+      isExperience && s.outcome ? `outcome=${s.outcome}` : '',
+      isExperience && s.status ? `status=${s.status}` : '',
       s.channelId ? `channel=${s.channelId.slice(0, 8)}` : '',
       s.taskId ? `task=${s.taskId.slice(0, 8)}` : '',
       s.sessionId ? `session=${s.sessionId.slice(0, 8)}` : '',
