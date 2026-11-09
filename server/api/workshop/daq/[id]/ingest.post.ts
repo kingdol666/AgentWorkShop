@@ -199,7 +199,13 @@ export default defineApiHandler(async (event) => {
     if (valueDomain !== 'engineering') {
       throw new AppError(400, 'VALIDATION_ERROR', `valueDomain 仅支持 "engineering"(REST ingest 按契约接收物理值、不做 transform);收到 "${String(body.valueDomain)}"。`)
     }
-    const value = Number(body.value)
+    // 值形状:契约允许 number 或数值字符串(外部采集器常发字符串),但**不得**让
+    // null/""/false/[] 经 Number() 折叠成 0 —— 0 会被当作合法样本写入时序,
+    // 进而流入 AML 数据集与探索判读(数据污染,不会报错)。
+    const rawValue = body.value
+    const value = typeof rawValue === 'number'
+      ? rawValue
+      : (typeof rawValue === 'string' && rawValue.trim() !== '' ? Number(rawValue) : Number.NaN)
     if (!Number.isFinite(value)) throw new AppError(400, 'VALIDATION_ERROR', '标量节点的载荷必须提供数值 value。')
     // 非恒等 transform 提醒(kind='none'/缺省=透传即恒等;kind='linear' 且 scale≠1∨offset≠0 才非恒等):
     // 按契约本端点不做转换 —— 打 warn 提示调用方确认传入的已是物理值。

@@ -42,3 +42,24 @@ test('write-audit: recipe fallback in src resolution keeps ops log action accura
   assert.equal(opsWriteMemo.get('dw-src')?.eng, 1)
   opsWriteMemo.clear()
 })
+
+test('write-audit: 不同操作者/审批单同值不互相节流(第二笔必须留审计)', () => {
+  opsWriteMemo.clear()
+  recordDcwWriteOps({ ...base, eng: 160, src: 'agent', meta: { source: 'agent', actor: 'agent-A' } })
+  const first = opsWriteMemo.get('dw-audit-test')
+  assert.ok(first, '首次写入必须登记节流表')
+
+  // 换操作者、同值、窗内:不得被当作"重试回执"吞掉
+  recordDcwWriteOps({ ...base, eng: 160, src: 'agent', meta: { source: 'agent', actor: 'agent-B' } })
+  const second = opsWriteMemo.get('dw-audit-test')
+  assert.notEqual(second?.sig, first?.sig, '不同操作者必须各自入册(旧实现只比 eng,第二笔丢审计)')
+
+  // 同操作者、同值、窗内:仍按重试回执去重
+  recordDcwWriteOps({ ...base, eng: 160, src: 'agent', meta: { source: 'agent', actor: 'agent-B' } })
+  assert.deepEqual(opsWriteMemo.get('dw-audit-test'), second)
+
+  // 不同审批单(同一操作者)也必须各自入册
+  recordDcwWriteOps({ ...base, eng: 160, src: 'agent', meta: { source: 'agent', actor: 'agent-B', approvalId: 'ap-2' } })
+  assert.notEqual(opsWriteMemo.get('dw-audit-test')?.sig, second?.sig, '不同审批单是两笔独立下发')
+  opsWriteMemo.clear()
+})

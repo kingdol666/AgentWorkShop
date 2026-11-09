@@ -11,8 +11,8 @@ import { opsActorKindOf } from './helpers'
 import { recordOps } from '../../ops/ops'
 import { recordIntervention } from '../../aml/intervention-ledger'
 
-/** 同节点写入去重节流表(eng+10s 窗内视为同一次下发的重试回执) */
-export const opsWriteMemo = new Map<string, { eng: number, at: number }>()
+/** 同节点写入去重节流表(10s 窗内同签名视为同一次下发的重试回执) */
+export const opsWriteMemo = new Map<string, { eng: number, sig: string, at: number }>()
 
 export function recordDcwWriteOps(args: {
   id: string
@@ -26,8 +26,12 @@ export function recordDcwWriteOps(args: {
 }): void {
   const memo = opsWriteMemo.get(args.id)
   const now = Date.now()
-  if (memo && memo.eng === args.eng && now - memo.at <= 10_000) return
-  opsWriteMemo.set(args.id, { eng: args.eng, at: now })
+  // 去重签名必须带操作者/审批单/批次:两个不同 Agent(或同一 Agent 的两张审批单)在 10s 内
+  // 写同一个值是两笔独立下发,各自都要有审计。旧实现只比 eng,第二笔的 recordOps 与
+  // 干预台账被整段跳过 —— 事故复盘会出现"设备已变、台账无行"。
+  const sig = `${args.eng}|${args.meta?.actor ?? ''}|${args.meta?.approvalId ?? ''}|${args.recipeRunId ?? ''}`
+  if (memo && memo.sig === sig && now - memo.at <= 10_000) return
+  opsWriteMemo.set(args.id, { eng: args.eng, sig, at: now })
   if (opsWriteMemo.size > 500)
     opsWriteMemo.clear()
   const runNow = getActiveLineRun(args.node.lineId)
