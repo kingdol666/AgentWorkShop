@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-11-09T13:41:40.436Z",
+  "base": "http://127.0.0.1:3001",
+  "version": "0.11.0",
+  "projectId": "4e9a9fad-45c2-4ab1-87b8-119e4ba73427",
+  "channelId": "8bbf52d8-4c3a-4b7f-b18a-8506d5b519a7",
+  "results": [
+    {
+      "id": "G1",
+      "name": "全局安装实例健康",
+      "pass": true,
+      "detail": "version=0.11.0"
+    },
+    {
+      "id": "G2",
+      "name": "账号（owner + 独立 admin 评审）",
+      "pass": true,
+      "detail": "create=200"
+    },
+    {
+      "id": "G3",
+      "name": "Channel 创建（mock lead）",
+      "pass": true,
+      "detail": "channel=8bbf52d8-4c3a-4b7f-b18a-8506d5b519a7"
+    },
+    {
+      "id": "G4",
+      "name": "Project 创建（Leader=mock）",
+      "pass": true,
+      "detail": "project=4e9a9fad-45c2-4ab1-87b8-119e4ba73427"
+    },
+    {
+      "id": "G5",
+      "name": "交付物 + 工作项",
+      "pass": true,
+      "detail": "wi=2d071cc1-9b66-474d-96fd-813292c3f7ed"
+    },
+    {
+      "id": "G6",
+      "name": "激活 + 计划门通过",
+      "pass": true,
+      "detail": "status=active plan=v1"
+    },
+    {
+      "id": "G7",
+      "name": "工作项派发（任务实例）",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "G8",
+      "name": "任务实例 Channel + session 已建立",
+      "pass": true,
+      "detail": "inst=c822c10f sess=cs-f50e5a2f"
+    },
+    {
+      "id": "G9",
+      "name": "作业面交付 artifact",
+      "pass": true,
+      "detail": "complete=200"
+    },
+    {
+      "id": "G10",
+      "name": "对账生成成果 draft",
+      "pass": true,
+      "detail": "status=draft"
+    },
+    {
+      "id": "G11",
+      "name": "成果闭环 → 项目 completed",
+      "pass": true,
+      "detail": "submit=200 review=200 final=completed"
+    },
+    {
+      "id": "G12",
+      "name": "列表 summary（前端数据面）",
+      "pass": true,
+      "detail": "{\"workItems\":1,\"completedWorkItems\":1,\"progress\":1,\"deliverables\":1,\"requiredDeliverables\":1,\"approvedDeliverables\":1,\"acceptanceProgress\":1,\"channels\":1,\"members\":0,\"pendingApprovals\":0,\"lastActivityAt\":\"2026-11-09T21:41:39.399+08:00\"}"
+    }
+  ]
+}

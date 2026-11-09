@@ -1,7 +1,25 @@
 {
-  "generatedAt": "2026-11-07T11:27:38.918Z",
+  "generatedAt": "2026-11-07T16:47:12.575Z",
   "base": "http://127.0.0.1:3995",
   "results": [
+    {
+      "id": "UI-1",
+      "name": "项目页渲染(Leader 对话/项目会话/快照面板,三区壳)",
+      "pass": true,
+      "detail": "project-page-desktop.png;工作项 70%/交付物 50%;频道卡含全部 10 个工作项状态(含已验收)"
+    },
+    {
+      "id": "UI-4",
+      "name": "落地页可渲染(真实引擎文案+平台验收链产物)",
+      "pass": true,
+      "detail": "landing-page-desktop.png;hero/卖点/FAQ/CTA 全部呈现"
+    },
+    {
+      "id": "UI-5",
+      "name": "落地页移动端无横向溢出",
+      "pass": true,
+      "detail": "landing-page-mobile.png;overflow=false"
+    },
     {
       "id": "UI-0",
       "name": "workspace 就绪(目标频道已挂载)",
@@ -17,24 +35,6 @@
     {
       "id": "UI-3",
       "name": "移动端会话视图(390x844)无横向溢出",
-      "pass": true,
-      "detail": "overflow=false"
-    },
-    {
-      "id": "UI-1",
-      "name": "项目页渲染(Leader 对话/项目会话/快照面板)",
-      "pass": true,
-      "detail": "DOM probe"
-    },
-    {
-      "id": "UI-4",
-      "name": "落地页可渲染(真实引擎文案产物;hero/卖点/FAQ/CTA)",
-      "pass": true,
-      "detail": "DOM probe"
-    },
-    {
-      "id": "UI-5",
-      "name": "落地页移动端(390x844)无横向溢出",
       "pass": true,
       "detail": "overflow=false"
     }

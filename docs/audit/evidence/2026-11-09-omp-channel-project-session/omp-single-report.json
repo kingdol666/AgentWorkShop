@@ -1,0 +1,89 @@
+{
+  "generatedAt": "2026-11-09T12:26:46.057Z",
+  "base": "http://127.0.0.1:3157",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-omp-single-20261109121624",
+  "harness": "omp/ustc/deepseek-flash effort=low",
+  "verdict": "PASS",
+  "pass": 13,
+  "fail": 0,
+  "results": [
+    {
+      "id": "S1",
+      "name": "隔离实例启动",
+      "pass": true,
+      "detail": "port=3157"
+    },
+    {
+      "id": "S2",
+      "name": "owner/reviewer 账号",
+      "pass": true,
+      "detail": "create=200"
+    },
+    {
+      "id": "S3",
+      "name": "omp Channel（deepseek-flash / effort=low）",
+      "pass": true,
+      "detail": "channel=31b56f95-af46-4f6a-97fe-a163ff6a7e64"
+    },
+    {
+      "id": "S4",
+      "name": "Project（Leader=omp/deepseek-flash）",
+      "pass": true,
+      "detail": "project=4a3bd8de-2035-483e-bd7a-c1dfd2881a24"
+    },
+    {
+      "id": "S5",
+      "name": "交付物+工作项创建",
+      "pass": true,
+      "detail": "wi=535637aa-824e-493b-a29b-17c9aae4ce97"
+    },
+    {
+      "id": "S6",
+      "name": "项目激活",
+      "pass": true,
+      "detail": "active"
+    },
+    {
+      "id": "S7",
+      "name": "计划门通过（planVersion=1）",
+      "pass": true,
+      "detail": "request=200"
+    },
+    {
+      "id": "S8",
+      "name": "工作项派发（任务实例）",
+      "pass": true,
+      "detail": "status=200 ok"
+    },
+    {
+      "id": "S9",
+      "name": "omp 真实执行：工作项 COMPLETED",
+      "pass": true,
+      "detail": "elapsed=619s"
+    },
+    {
+      "id": "S10",
+      "name": "对账生成成果 draft",
+      "pass": true,
+      "detail": "status=draft"
+    },
+    {
+      "id": "S11",
+      "name": "artifact 含 PROJECT-SINGLE-OK",
+      "pass": true,
+      "detail": "[{\"id\":\"19caab47-7b3f-423e-8513-898b3a756c3a\",\"attemptNo\":1,\"state\":\"CLOSED\",\"channelId\":\"4c9f337c-08b8-4fad-86d4-d66c8b2604e6\",\"channelTaskId\":\"2b3dc2eb-711d-465f-beb9-3a5ae34b60f2\",\"sourceKey\":\"pw:5"
+    },
+    {
+      "id": "S12",
+      "name": "成果提交+L1复核",
+      "pass": true,
+      "detail": "submit=200 review=200"
+    },
+    {
+      "id": "S13",
+      "name": "Project completed",
+      "pass": true,
+      "detail": "complete=200"
+    }
+  ]
+}

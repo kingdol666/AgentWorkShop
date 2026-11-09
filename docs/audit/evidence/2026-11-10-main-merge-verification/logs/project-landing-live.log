@@ -1,0 +1,44 @@
+
+=== 落地设计页 Project 实机 E2E · port=3099 · AW_HOME=C:\Users\87287\AppData\Local\Temp\aw-project-landing-20261109162252 ===
+
+✔ [E0] 隔离实例启动（.output + 全新 AW_HOME）
+✔ [E1a] owner 注册（首用户 admin）
+✔ [E1b] 独立评审账号（admin 建号 + 登录）
+✔ [E2] 命名蓝图保存
+✔ [E3] 蓝图实例化 → 建频道/绑定/物化计划
+✔ [E4] Channel 真实绑定（3 个，非手填 UUID）
+✔ [E5] 项目为 active + technical 路由
+✔ [E6] 工作项物化（3 个，含 dependsOn 链）
+✔ [E7] W1 派发（design 频道）
+✔ [E8] W1 作业面完成（artifact=设计规范）
+✔ [E9] W1 对账 → COMPLETED + 成果 draft
+✔ [E10] technical 门：未复核时 W2 派发被拒（409）
+✔ [E11a] W1 成果提交（submitted）
+✔ [E11b] W1 L1 技术复核通过
+✔ [E12] W2 派发放行（上游已复核）
+✔ [E13] W2 作业面完成（artifact=落地页 HTML）
+✔ [E14] W2 对账 → COMPLETED + 成果 draft
+✔ [E15] W2 成果提交 + L1 复核
+✔ [E16] W3 派发放行
+✔ [E17] W3 作业面完成（artifact=走查报告）
+✔ [E18] W3 对账 → COMPLETED
+✔ [E19] W3 成果提交 + L1 复核
+✔ [E20] L2 签核 → 项目 completed
+✔ [E21] 列表 API 附带摘要（进度/签核/频道/审批）
+✔ [E22] observability：3 泳道 + 3 交付物门 + accepted 工作项
+✔ [E23] 统一活动流（events + decisions 游标）
+✔ [U1] Agent 工作台首页出现「项目中心」入口
+✔ [U2] 侧栏「项目中心」可点且当前高亮
+✔ [U3] 列表页渲染项目卡 + 统计带 + 新建入口
+✔ [U3b] 项目卡显示绑定频道数与交付物进度
+✔ [U4] 点卡进入详情（概览：快照/对话/频道/周报）
+✔ [U4b] 频道显示人类可读名（非裸 UUID 列）
+✔ [U5] 计划 tab：执行看板五列 + 工作项/派发 + 计划快照
+✔ [U5b] 看板卡片显示已验收终态
+✔ [U6] 交付物 tab：交付物卡 + 三级门 + 成果分组
+✔ [U7] 审批 tab：待审批 + 审批历史 + 已批准状态
+✔ [U8] 决策与事件：统一时间线（events + decisions）
+✔ [U9] 移动端 390px：无横向滚动
+✔ [U10] 页面无未捕获异常
+
+=== PROJECT LANDING E2E PASS pass=39 fail=0 ===

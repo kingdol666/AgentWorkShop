@@ -1,0 +1,5 @@
+
+> agentworkshop@0.11.0 lint
+> node scripts/check-rsi-redline.mjs && eslint .
+
+PASS RSI 红线：18 个学习环文件 0 处设备写调用
