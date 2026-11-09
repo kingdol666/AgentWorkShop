@@ -20,14 +20,16 @@ import { AppError } from '../server/utils/errors'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-/** 高危写面(安全敏感:凭据/物理设备/工具桥/设备控制)—— 必须 schema 校验 */
+/** 高危写面(安全敏感:凭据/物理设备/工具桥/设备控制/审批裁决)—— 必须 schema 校验 */
 const GUARDED_WRITE_ENDPOINTS = [
   'server/api/workshop/mes/secrets/index.put.ts',
+  'server/api/workshop/dcw/[id]/write.post.ts',
   'server/api/workshop/dcw/params/[id]/write.post.ts',
   'server/api/workshop/device-twins/[id]/control.post.ts',
   'server/api/workshop/agent-tools/invoke.post.ts',
   'server/api/workshop/hitl/respond.post.ts',
   'server/api/workshop/permissions/index.put.ts',
+  'server/api/workshop/approvals/[id]/decide.post.ts',
 ]
 
 test('高危写面全部走 readValidatedBody + zValidator', () => {
@@ -67,9 +69,42 @@ test('zValidator 通过时返回解析后的数据(含 trim 与 coerce 语义)',
 })
 
 test('zValidator 拒绝非有限数值(NaN/Infinity/非数值对象不得抵达业务层)', () => {
-  const validate = zValidator(z.object({ value: z.coerce.number().finite() }))
-  // 注:[] 经 Number([])===0 与旧 Number(body.value) 语义一致,不在拒绝清单(保持行为对齐)。
-  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, 'abc', {}]) {
-    assert.throws(() => validate({ value: bad }), /value:/, `应拒绝 ${String(bad)}`)
+  // 物理写面用严格 z.number():不得 coerce。Number(null)/Number("")/Number(false)/
+  // Number([]) 全都等于 0 —— coerce 会把"漏传/误传"变成一次真实的 0 设定下发,
+  // 而四层限界只挡越界不挡 0。2026-11-10 复核后放弃与旧 Number() 行为对齐。
+  const validate = zValidator(z.object({ value: z.number().finite() }))
+  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, 'abc', {}, null, '', false, []]) {
+    assert.throws(() => validate({ value: bad }), /value:/, `应拒绝 ${JSON.stringify(bad)}`)
   }
+  // 合法数值仍然通过(含 0 与负数 —— 0 是合法设定值,只是不能由 null/""/[] 变来)
+  assert.deepEqual(validate({ value: 0 }), { value: 0 })
+  assert.deepEqual(validate({ value: -12.5 }), { value: -12.5 })
+})
+
+/** 去掉块注释与整行 // 注释后再做源码契约断言(避免注释里提到禁用写法就误报) */
+function codeOnly(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter(line => !line.trim().startsWith('//'))
+    .join('\n')
+}
+
+test('物理写面源码契约:必须 z.number,禁止 z.coerce.number(防回归)', () => {
+  for (const rel of [
+    'server/api/workshop/dcw/[id]/write.post.ts',
+    'server/api/workshop/dcw/params/[id]/write.post.ts',
+  ]) {
+    const src = codeOnly(readFileSync(join(ROOT, rel), 'utf-8'))
+    assert.doesNotMatch(src, /z\.coerce\.number/, `${rel} 不得使用 z.coerce.number(会把 null/""/[] 折叠成 0)`)
+    assert.match(src, /z\.number\(\{ invalid_type_error/, `${rel} 必须用 z.number 且带中文 invalid_type_error`)
+  }
+})
+
+test('审批裁决源码契约:approved 必须是显式 z.boolean(防 fail-open 回归)', () => {
+  const rel = 'server/api/workshop/approvals/[id]/decide.post.ts'
+  const src = codeOnly(readFileSync(join(ROOT, rel), 'utf-8'))
+  assert.match(src, /approved:\s*z\.boolean\(/, `${rel} 必须用 z.boolean 声明 approved`)
+  assert.doesNotMatch(src, /approved\s*!==\s*false/, `${rel} 不得用 approved !== false(缺省即批准)`)
+  assert.match(src, /if \(!decided\)/, `${rel} 必须判 decide 返回空(并发裁决不得留下假审计)`)
 })
