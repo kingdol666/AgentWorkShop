@@ -28,6 +28,8 @@ export interface AnalysisSaveInput {
   line_id?: string
   recipe_id?: string
   recipe_version?: string
+  /** RSI WP-D1：关联配方试验批次(dcw-runs.runId)，把分析结论挂进证据链 */
+  recipe_run_id?: string
   window_from?: string
   window_to?: string
   data_sources?: string
@@ -163,6 +165,7 @@ export async function toolAnalysisSave(agentId: string, args: AnalysisSaveInput,
     metrics: (args.metrics && typeof args.metrics === 'object' && !Array.isArray(args.metrics) ? args.metrics : {}) as Record<string, unknown>,
     recipeId,
     recipeVersion,
+    recipeRunId: String(args.recipe_run_id ?? '').trim(),
     windowFrom,
     windowTo,
     dataSources: String(args.data_sources ?? ''),
