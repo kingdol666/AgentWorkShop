@@ -27,6 +27,10 @@ export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping 
       if (this.client) this.harnessRestartReason = 'PROCESS_EXIT'
       this.client = null
       this.hostToolsRegistered = false
+      // 会话身份随进程失效:新进程是**新会话**,旧 sessionId 残留会被
+      // noteHarnessUse 绑到新 pid(continuity 报假身份,比 null 更危险)。
+      // 置空后由下方 probeContext 从新进程 get_state 重新取回。
+      this.sessionId = null
       const command = this.config.command ?? 'omp'
       const client = new OmpRpcClient({
         command,
