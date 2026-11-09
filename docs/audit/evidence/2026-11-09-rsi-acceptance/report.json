@@ -1,0 +1,60 @@
+{
+  "suite": "rsi-acceptance",
+  "date": "2026-11-09",
+  "repoHead": "2a640dff",
+  "prs": {
+    "merged": [118, 119, 121, 122, 123, 125, 126, 128, 129, 130, 131, 132],
+    "openUnrelated": [21]
+  },
+  "layers": {
+    "T0": { "lint": { "errors": 0 }, "typecheck": "PASS", "docsCheck": { "pass": 87, "fail": 0 }, "i18n": { "zh": 3291, "en": 3291, "unresolved": 0 }, "readmeLint": "PASS" },
+    "T1": {
+      "unit": { "tests": 1325, "pass": 1323, "fail": 0, "skipped": 2, "suites": 45 },
+      "mcp": { "pass": 14, "fail": 0 },
+      "twinProvider": { "pass": 5, "fail": 0 },
+      "pluginLifecycle": { "pass": 22, "fail": 0 },
+      "sdkSurface": "PASS",
+      "skills": { "pass": 167, "fail": 0 }
+    },
+    "T2": {
+      "scientificLoop": { "pass": 20, "fail": 0 },
+      "scientificFullchain": { "pass": 21, "fail": 0 },
+      "lineGovernance": { "pass": 44, "fail": 0 },
+      "injection": { "status": "NOT_RUN", "reason": "AW_TOKEN_ENV_MISSING" }
+    },
+    "T3": {
+      "authMatrix": { "negativesPass": 15, "failures": 1, "reason": "security.allowRegistration=false blocks extra user registration (harness prerequisite)" },
+      "toolSurfaceMultiAgent": { "pass": 37, "fail": 0 }
+    },
+    "T4": { "plugins": { "enabled": 11, "failures": [] }, "tools": { "total": 148, "builtin": 127, "unavailable": 0, "hasImprovementList": true } },
+    "T5": { "build": "EXIT_0", "smoke": { "root": 200, "unauthApi": 401, "missingSessionPassword": "REFUSED_EXIT_1" } }
+  },
+  "rsiLive": {
+    "port": 3105,
+    "checks": [
+      { "id": "R1", "desc": "experience-stats unauth", "expected": 401, "actual": 401, "pass": true },
+      { "id": "R2", "desc": "experience-stats with token", "pass": true, "total": 0 },
+      { "id": "R3", "desc": "create profile activate", "pass": true, "version": 1, "status": "active" },
+      { "id": "R4", "desc": "GET profiles active", "pass": true, "activeVersion": 1 },
+      { "id": "R5", "desc": "candidate->active rejected", "pass": true, "reasons": ["仅 shadow 可晋级 active（当前 candidate）"] },
+      { "id": "R6", "desc": "candidate->shadow", "pass": true },
+      { "id": "R7", "desc": "shadow->active without bench rejected", "pass": true, "reasons": ["缺少配对评测结果（WP-B2），不得晋级"] },
+      { "id": "R8", "desc": "shadow->active with bench", "pass": true, "pValue": 0.01, "primaryDelta": 0.12 },
+      { "id": "R9", "desc": "single active invariant", "pass": true, "versions": ["2:active", "1:superseded"] },
+      { "id": "R10", "desc": "rollback", "pass": true, "versions": ["1:active", "2:superseded"] },
+      { "id": "R11", "desc": "experience promote weak evidence rejected", "pass": true, "reasons": ["独立任务样本不足：1/2"] },
+      { "id": "R12", "desc": "experience promote 2 tasks", "pass": true },
+      { "id": "R13", "desc": "stats re-read", "pass": true, "total": 2, "byStatus": { "candidate": 1, "validated": 1 }, "byScope": { "line": 2 } }
+    ],
+    "db": {
+      "improvementActions": 3,
+      "harnessProfiles": "v1 active / v2 superseded",
+      "auditEvents": ["harness.profile.shadow", "harness.profile.active", "harness.profile.rollback"],
+      "memoryNewColumns": 6,
+      "newTables": 3
+    }
+  },
+  "offlineGate1A": { "pass": 13, "fail": 0 },
+  "planCompletion": { "total": 18, "done": 14, "remaining": ["B2", "C0", "C1", "C2"] },
+  "security": { "mimosa": "INCONCLUSIVE", "claimSafe": false }
+}

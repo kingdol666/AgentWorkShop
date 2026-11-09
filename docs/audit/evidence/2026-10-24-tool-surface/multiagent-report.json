@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-31T18:46:22.118Z",
+  "at": "2026-11-09T06:34:23.134Z",
   "port": 3993,
   "results": [
     {
@@ -24,13 +24,13 @@
       "id": "T2",
       "name": "建两条线/三数采节点/数控/产品/配方",
       "pass": true,
-      "detail": "{\"lineA\":\"ln-ce1a45f4\",\"lineB\":\"ln-f0571f62\",\"dnA1\":\"dn-97e8ef5a\",\"dnA2\":\"dn-bd3805a7\",\"dnB1\":\"dn-56f09e13\",\"dcwA\":\"dw-39914ca4\",\"recipeA\":\"rc-0dfd9168\"}"
+      "detail": "{\"lineA\":\"ln-a597838c\",\"lineB\":\"ln-bfd20df8\",\"dnA1\":\"dn-d9ea9e58\",\"dnA2\":\"dn-87cf5eb0\",\"dnB1\":\"dn-7480e250\",\"dcwA\":\"dw-a03bcb77\",\"recipeA\":\"rc-92aea1ae\"}"
     },
     {
       "id": "T3",
       "name": "频道创建 + 绑 A 线 + 两个 worker",
       "pass": true,
-      "detail": "{\"channelId\":\"b61c64e8-dd8c-4478-928b-270c53423cc5\",\"agentA\":\"faa5c3cc-5418-4f11-90be-4164aee2eb67\",\"agentB\":\"d1040f80-e107-4b8e-a2a4-077e5787f263\"}"
+      "detail": "{\"channelId\":\"069e8d4a-4758-4da1-88b3-36094b084182\",\"agentA\":\"afb81195-2ab4-4355-bef0-c1cbac7ded33\",\"agentB\":\"67f0197c-4aaf-404a-a577-c391a2d3610c\"}"
     },
     {
       "id": "T4",
@@ -42,7 +42,7 @@
       "id": "T4c",
       "name": "频道绑 A 线 → 成员绑 B 线节点被拒(403 产线隔离)",
       "pass": true,
-      "detail": "status=403 code=LINE_SCOPE_MISMATCH msg=该频道已绑定产线「ln-ce1a45f4」,成员 agent 只能绑定同产线的节点/配方(目标 dn-56f09e13 属于产线「ln-f0571f62」)。请改绑同产线对象,或将频道解绑/换绑。"
+      "detail": "status=403 code=LINE_SCOPE_MISMATCH msg=该频道已绑定产线「ln-a597838c」,成员 agent 只能绑定同产线的节点/配方(目标 dn-7480e250 属于产线「ln-bfd20df8」)。请改绑同产线对象,或将频道解绑/换绑。"
     },
     {
       "id": "T4b",
@@ -54,25 +54,25 @@
       "id": "T5a",
       "name": "两 Agent 工具面非空(同一份目录装配)",
       "pass": true,
-      "detail": "A=77 B=77"
+      "detail": "A=81 B=81"
     },
     {
       "id": "T5b",
       "name": "A1 绑定段含 dnA1、不含 dnA2",
       "pass": true,
-      "detail": "A1专属数采-ts4udw(dn-97e8ef5a,℃)"
+      "detail": "A1专属数采-tsy445(dn-d9ea9e58,℃)"
     },
     {
       "id": "T5c",
       "name": "A2 绑定段含 dnA2、不含 dnA1",
       "pass": true,
-      "detail": "A2专属数采-ts4udw(dn-bd3805a7,℃)"
+      "detail": "A2专属数采-tsy445(dn-87cf5eb0,℃)"
     },
     {
       "id": "T5d",
       "name": "配方绑定只进 A1 描述(A2 无配方段)",
       "pass": true,
-      "detail": "A=工具面配方-ts4udw(rc-0dfd9168,v1;参数:A线数控-ts4udw(dw-39914ca4)) B="
+      "detail": "A=工具面配方-tsy445(rc-92aea1ae,v1;参数:A线数控-tsy445(dw-a03bcb77)) B="
     },
     {
       "id": "T5e",
@@ -90,79 +90,79 @@
       "id": "T6",
       "name": "工具面 ETag + If-None-Match → 304 空体",
       "pass": true,
-      "detail": "etag=W/\"3aebb96f4828c9f5c5448eb8936f7356\" status=304"
+      "detail": "etag=W/\"69592de7730da4b68bdb305c30e7490a\" status=304"
     },
     {
       "id": "T7a",
       "name": "A1 查自己绑定节点 → 放行",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点):\n\n■ A1专属数采-ts4udw[id=dn-97e8ef5a](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 offline,时间窗 2026-11-01T02:16 ~ 2026-11"
+      "detail": "数采数据查询结果(1 个节点):\n\n■ A1专属数采-tsy445[id=dn-d9ea9e58](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 offline,时间窗 2026-11-09T14:04 ~ 2026-11"
     },
     {
       "id": "T7b",
       "name": "A1 查他线节点 → 拒绝(引用校验,越线)",
       "pass": true,
-      "detail": "工具调用被拒(引用校验,daq_query):node_id = 「dn-56f09e13」不在你的授权范围内(节点「B线数采-ts4udw」,归属产线 ln-f0571f62)。\n该节点不在你的绑定范围内。你的绑定节点:dn-97e8ef5a, dw-39914ca4;频道绑线「ln-ce1a45f4」只读数采节点:dn-97e8ef5a, dn-bd3805a7。如需访问,请让用户或 lead"
+      "detail": "工具调用被拒(引用校验,daq_query):node_id = 「dn-7480e250」不在你的授权范围内(节点「B线数采-tsy445」,归属产线 ln-bfd20df8)。\n该节点不在你的绑定范围内。你的绑定节点:dn-d9ea9e58, dw-a03bcb77;频道绑线「ln-a597838c」只读数采节点:dn-d9ea9e58, dn-87cf5eb0。如需访问,请让用户或 lead"
     },
     {
       "id": "T7c",
       "name": "A2 查自己绑定节点 → 放行",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点):\n\n■ A2专属数采-ts4udw[id=dn-bd3805a7](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 offline,时间窗 2026-11-01T02:16 ~ 2026-11"
+      "detail": "数采数据查询结果(1 个节点):\n\n■ A2专属数采-tsy445[id=dn-87cf5eb0](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 offline,时间窗 2026-11-09T14:04 ~ 2026-11"
     },
     {
       "id": "T7d",
       "name": "频道绑线只读扩权:A2 可读 A 线未绑定节点",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点):\n\n■ A1专属数采-ts4udw[id=dn-97e8ef5a](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 offline,时间窗 2026-11-01T02:16 ~ 2026-11"
+      "detail": "数采数据查询结果(1 个节点):\n\n■ A1专属数采-tsy445[id=dn-d9ea9e58](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 offline,时间窗 2026-11-09T14:04 ~ 2026-11"
     },
     {
       "id": "T8a",
       "name": "A2(未绑配方)recipe_trial → 绑定门拒绝(未进入审批)",
       "pass": true,
-      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-39914ca4」不在你的写授权面内(节点「A线数控-ts4udw」,归属产线 ln-ce1a45f4)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:(无)。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
+      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-a03bcb77」不在你的写授权面内(节点「A线数控-tsy445」,归属产线 ln-a597838c)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:(无)。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
     },
     {
       "id": "T8b",
       "name": "A1(已绑配方)通过绑定门、被更深层运行门拒绝(未绑定者到不了该门)",
       "pass": true,
-      "detail": "配方「工具面配方-ts4udw」当前未在执行(产线上没有本配方的活动批次),按运行门约束试验下发被拒。请先由用户在产线开跑本配方,再进行参数写入/下发。"
+      "detail": "配方「工具面配方-tsy445」当前未在执行(产线上没有本配方的活动批次),按运行门约束试验下发被拒。请先由用户在产线开跑本配方,再进行参数写入/下发。"
     },
     {
       "id": "T9a",
       "name": "MCP tools/list 返回 per-agent 工具面(≥20)",
       "pass": true,
-      "detail": "count=77"
+      "detail": "count=81"
     },
     {
       "id": "T9b",
       "name": "MCP 描述与原生注入面同源(A1 绑定段含 dnA1)",
       "pass": true,
-      "detail": "节点附带库内最新样本时间与滞后秒数,可用于判断 MQTT 等推送协议是否仍在收数。\n\n本 Agent 直接绑定的数采节点(仅这些可查):A1专属数采-ts4udw(dn-97e8ef5a,℃)\n频道绑线只读数采节点(可查):A2专属数采-ts4udw(dn-bd3805a7,℃)"
+      "detail": "节点附带库内最新样本时间与滞后秒数,可用于判断 MQTT 等推送协议是否仍在收数。\n\n本 Agent 直接绑定的数采节点(仅这些可查):A1专属数采-tsy445(dn-d9ea9e58,℃)\n频道绑线只读数采节点(可查):A2专属数采-tsy445(dn-87cf5eb0,℃)"
     },
     {
       "id": "T9c",
       "name": "MCP tools/call 自己节点 → 成功",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点):\n\n■ A1专属数采-ts4udw[id=dn-97e8ef5a](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 offline,时间窗 2026-11-01T02:16 ~ 2026-11"
+      "detail": "数采数据查询结果(1 个节点):\n\n■ A1专属数采-tsy445[id=dn-d9ea9e58](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 offline,时间窗 2026-11-09T14:04 ~ 2026-11"
     },
     {
       "id": "T9d",
       "name": "MCP tools/call 他线节点 → 同链拒绝(与原生一致)",
       "pass": true,
-      "detail": "工具调用被拒(引用校验,daq_query):node_id = 「dn-56f09e13」不在你的授权范围内(节点「B线数采-ts4udw」,归属产线 ln-f0571f62)。\n该节点不在你的绑定范围内。你的绑定节点:dn-97e8ef5a, dw-39914ca4;频道绑线「ln-ce1a45f4」只读数采节点:dn-97e8ef5a, dn-bd3805a7。如需访问,请让用户或 lead"
+      "detail": "工具调用被拒(引用校验,daq_query):node_id = 「dn-7480e250」不在你的授权范围内(节点「B线数采-tsy445」,归属产线 ln-bfd20df8)。\n该节点不在你的绑定范围内。你的绑定节点:dn-d9ea9e58, dw-a03bcb77;频道绑线「ln-a597838c」只读数采节点:dn-d9ea9e58, dn-87cf5eb0。如需访问,请让用户或 lead"
     },
     {
       "id": "T9e",
       "name": "industrial_resources 经 MCP 可用(分页绑定面)",
       "pass": true,
-      "detail": "绑定面资源(kind=all;offset=0 limit=10):\n- [daq] A1专属数采-ts4udw(dn-97e8ef5a) — 绑定数采节点,单位 ℃\n- [line-daq] A2专属数采-ts4udw(dn-bd3805a7) — 频道绑线只读,单位 ℃\n- [recipe] 工具面配方-ts4ud"
+      "detail": "绑定面资源(kind=all;offset=0 limit=10):\n- [daq] A1专属数采-tsy445(dn-d9ea9e58) — 绑定数采节点,单位 ℃\n- [line-daq] A2专属数采-tsy445(dn-87cf5eb0) — 频道绑线只读,单位 ℃\n- [recipe] 工具面配方-tsy44"
     },
     {
       "id": "T10a",
       "name": "普通用户(无产线授权)推送 → 403 LINE_FORBIDDEN",
       "pass": true,
-      "detail": "status=403 code=LINE_FORBIDDEN msg=无该产线权限:请联系管理员在「权限管理」中授予(产线 ln-ce1a45f4)"
+      "detail": "status=403 code=LINE_FORBIDDEN msg=无该产线权限:请联系管理员在「权限管理」中授予(产线 ln-a597838c)"
     },
     {
       "id": "T10b",
@@ -186,19 +186,19 @@
       "id": "T11b",
       "name": "旧 token 宽限窗内仍可用(桥重连过渡)",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点):\n\n■ A1专属数采-ts4udw[id=dn-97e8ef5a](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 offline,时间窗 2026-1"
+      "detail": "数采数据查询结果(1 个节点):\n\n■ A1专属数采-tsy445[id=dn-d9ea9e58](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 alarm,时间窗 2026-11-"
     },
     {
       "id": "T11c",
       "name": "新 token 立即生效",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点):\n\n■ A1专属数采-ts4udw[id=dn-97e8ef5a](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 alarm,时间窗 2026-11-"
+      "detail": "数采数据查询结果(1 个节点):\n\n■ A1专属数采-tsy445[id=dn-d9ea9e58](熔体/箱体温度)单位 ℃,正常量程 150~185℃,当前状态 alarm,时间窗 2026-11-"
     },
     {
       "id": "T11d",
       "name": "列表接口不回全量 token(只回 tokenTail)",
       "pass": true,
-      "detail": "{\"id\":\"faa5c3cc-5418-4f11-90be-4164aee2eb67\",\"channelId\":\"b61c64e8-dd8c-4478-928b-270c53423cc5\",\"role\":\"worker\",\"tokenTail\":\"fafd\"}"
+      "detail": "{\"id\":\"afb81195-2ab4-4355-bef0-c1cbac7ded33\",\"channelId\":\"069e8d4a-4758-4da1-88b3-36094b084182\",\"role\":\"worker\",\"tokenTail\":\"cebb\"}"
     },
     {
       "id": "T12",
@@ -210,19 +210,19 @@
       "id": "T13a",
       "name": "作业A 闭环(查数+留痕)成功",
       "pass": true,
-      "detail": "分析报告已留痕:ar-20c5edf7。产线「工具面线A-ts4udw」,结论 0 条,配方 未关联。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-20c5edf7\") 查回全文。"
+      "detail": "分析报告已留痕:ar-26e88d52。产线「工具面线A-tsy445」,结论 0 条,配方 未关联。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-26e88d52\") 查回全文。"
     },
     {
       "id": "T13b",
       "name": "作业B 闭环(查数+留痕)成功",
       "pass": true,
-      "detail": "分析报告已留痕:ar-7f0f832e。产线「工具面线A-ts4udw」,结论 0 条,配方 未关联。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-7f0f832e\") 查回全文。"
+      "detail": "分析报告已留痕:ar-2f42aa91。产线「工具面线A-tsy445」,结论 0 条,配方 未关联。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-2f42aa91\") 查回全文。"
     },
     {
       "id": "T13c",
       "name": "两份作业产物均落分析台账(可读回)",
       "pass": true,
-      "detail": "共 2 条分析报告(新→旧):\n[ar-7f0f832e] 11-01 02:46:22 | 工具面线A-ts4udw | 作业B-节点健康巡检-ts4udw(general)\n    AgentA2 基于 dnA2 窗口数据完成巡检留痕(作业闭环验证) —— 工具面频道-ts4udw/AgentA2-ts4udw @「工具面频道-ts4udw」\n[ar-20c5edf7] 11-01 02:46:22 | 工具面线A-ts4udw |"
+      "detail": "共 2 条分析报告(新→旧):\n[ar-2f42aa91] 11-09 14:34:23 | 工具面线A-tsy445 | 作业B-节点健康巡检-tsy445(general)\n    AgentA2 基于 dnA2 窗口数据完成巡检留痕(作业闭环验证) —— 工具面频道-tsy445/AgentA2-tsy445 @「工具面频道-tsy445」\n[ar-26e88d52] 11-09 14:34:23 | 工具面线A-tsy445 |"
     }
   ],
   "pass": 37,
