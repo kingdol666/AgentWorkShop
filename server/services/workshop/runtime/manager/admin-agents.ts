@@ -21,6 +21,7 @@ import type { SessionCloneDeps } from '../../agents/session-clone'
 import { parseJson } from '../../db/database'
 import { createImprovementActionRepo } from '../../db/improvement-action.repo'
 import { withTransaction } from '../../db/transaction'
+import { workshopSettings } from '../../settings'
 import { selectBroadcastTargets } from './broadcast-targets'
 import { randomUUID } from 'node:crypto'
 
@@ -376,10 +377,18 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     channelId: string
     actor: { id: string, role: string }
     title?: string
+    /** 会话记忆策略(缺省 session):shared 允许写 line/global 经验 */
+    memoryPolicy?: 'session' | 'shared'
   }): Promise<{ sessionId: string, title: string, members: Array<{ baseAgentId: string, cloneId: string, name: string, role: string }> }> {
     const channel = this.deps.repos.channels.findById(input.channelId)
     if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${input.channelId}`)
     this.requireWritable(channel.ownerUserId, input.actor, 'channel')
+    // 并发上限:每个会话克隆全部基础成员(各起独立 runtime/进程),无上限是资源放大器
+    const limit = workshopSettings().max_active_sessions_per_channel
+    const active = createChannelSessionRepo(this.deps.db).listActive(input.channelId).length
+    if (limit > 0 && active >= limit) {
+      throw new AppError(429, 'SESSION_LIMIT', `该频道活动会话已达上限(${active}/${limit});请先关闭不用的会话,或调高 workshop.max_active_sessions_per_channel`)
+    }
     const result = await createChannelSession(
       {
         channelAgents: this.deps.repos.channelAgents as unknown as SessionCloneDeps['channelAgents'],
@@ -394,6 +403,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
         channelId: input.channelId,
         actorId: input.actor.id,
         title: input.title,
+        memoryPolicy: input.memoryPolicy,
         sessionRepo: createChannelSessionRepo(this.deps.db),
       },
     )

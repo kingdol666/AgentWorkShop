@@ -28,7 +28,10 @@ export function executionModeOfChannel(channelId: string): ExecutionMode {
   try {
     return normalizeExecutionMode(getChannelTwinProfile(channelId).executionMode)
   }
-  catch {
+  catch (err) {
+    // 静默降级会让 observe 频道的"物理零写"承诺在 DB 抖动时短暂失效:
+    // 档位不变(仍 auto 中性,线/绑定层 manual 兜底),但必须可观测。
+    console.error(`[execution-mode] 频道 ${channelId} 档位读取失败,按 auto 兜底:`, err)
     return 'auto'
   }
 }
@@ -41,7 +44,8 @@ export function executionModeOfAgent(agentId: string): ExecutionMode {
     const channelId = g.__workshopManager?.channelIdOfAgent(agentId) ?? null
     return channelId ? executionModeOfChannel(channelId) : 'auto'
   }
-  catch {
+  catch (err) {
+    console.error(`[execution-mode] agent ${agentId} 归属解析失败,按 auto 兜底:`, err)
     return 'auto'
   }
 }

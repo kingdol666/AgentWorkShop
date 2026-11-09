@@ -74,7 +74,9 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
   channelId: string
   actorId: string
   title?: string
-  sessionRepo: { create(input: { channelId: string, title?: string, memberMap: Record<string, string>, createdBy?: string }): { id: string } }
+  /** 会话记忆策略(缺省 session):shared 允许写 line/global 经验 */
+  memoryPolicy?: 'session' | 'shared'
+  sessionRepo: { create(input: { channelId: string, title?: string, memberMap: Record<string, string>, createdBy?: string, memoryPolicy?: string }): { id: string } }
 }): { sessionId: string, title: string, members: Array<{ baseAgentId: string, cloneId: string, name: string, role: string }> } {
   const bases = baseMembersOf(deps, input.channelId)
   if (bases.length === 0) {
@@ -130,6 +132,7 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
       title,
       memberMap,
       createdBy: input.actorId,
+      memoryPolicy: input.memoryPolicy,
     })
     return { rows, sessionId: session.id }
   })
