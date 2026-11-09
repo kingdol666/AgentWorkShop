@@ -9,6 +9,7 @@ import { createRequire } from 'node:module'
 import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateAmlChannelOptimizationColumns, migrateAmlModelIdentityColumns, migrateAnalysisEditColumns, migrateApprovalPayloadColumns, migrateAuditQueryIndexes, migrateAuditScopeColumn, migrateChannelExecutionModeColumn, migrateDropOwnerFks, migrateDualDriveColumns, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns, migrateOptimizerFoundationColumns, migrateAgentTokenGraceColumns } from './migrations'
 import { migrateProjectColumns, ensureProjectIndexes, migrateApprovedSlotScope } from './migrations-project'
 import { migrateSessionContextColumns, ensureSessionIndexes } from './migrations-session'
+import { migrateExperienceColumns, ensureExperienceIndexes } from './migrations-experience'
 import { seedDefaultWorkshopData } from './seed'
 
 export const require = createRequire(import.meta.url)
@@ -43,6 +44,9 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateApprovedSlotScope(db)
   // Session Context：同样必须先于 tasks legacy rebuild 补列；rebuild 列清单已带 session_id。
   migrateSessionContextColumns(db)
+  // RSI 经验层(2026-11-09)：agent_memories 证据链/作用域/生命周期列 + analysis_reports.recipe_run_id。
+  // 只加列不重建；必须在 ensureExperienceIndexes 之前(缺列建索引会中断)。
+  migrateExperienceColumns(db)
   migrateLegacySchema(db)
   migrateAddColumn(db, 'channels', 'scenario_prompt', 'TEXT NOT NULL DEFAULT \'\'')
   // v11:channel 级默认 LLM(四引擎统一注入面;成员 config 显式指定时优先)
@@ -82,6 +86,7 @@ export function initWorkshopDb(db: DatabaseSync): void {
   // tasks rebuild 会丢索引；重建后再补一次项目索引（幂等）。
   ensureProjectIndexes(db)
   ensureSessionIndexes(db)
+  ensureExperienceIndexes(db)
   migrateGroupChatV17(db)
   migrateAmlTwinProviderColumns(db)
   migrateAmlModelIdentityColumns(db)

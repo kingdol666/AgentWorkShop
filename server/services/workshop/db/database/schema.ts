@@ -131,9 +131,11 @@ CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members(team_id);
 
 -- v6:Agent 持久记忆(agent_memories)+ FTS5 全文索引。
 -- per-agent 记忆域(agent_id 过滤隔离);团队共享行 agent_id='__team__'(常量 TEAM_AGENT_ID)。
--- dedup_key 唯一约束去重(含 channel_id:team 哨兵行跨 channel 各自独立):任务 'task:<id>' / 协作 'peer:<msgId>' / 策展 'manual:<uuid>' / 团队任意。
--- kind:episodic-task/episodic-peer(harvest)/semantic(REST 人工策展,衰减豁免)。
+-- dedup_key 唯一约束去重(含 channel_id:team 哨兵行跨 channel 各自独立):任务 'task:<id>' / 协作 'peer:<msgId>' / 策展 'manual:<uuid>' / 团队任意 / 经验 'exp:*'。
+-- kind:episodic-task/episodic-peer(harvest)/semantic(REST 人工策展,衰减豁免)/experience(RSI 证据链条目)。
 -- vec0 向量表不在此建:需 sqlite-vec 扩展且维度运行时才知(P1 Task 7 延迟建)。
+-- v34(RSI 2026-11-09):outcome/evidence_json/scope_kind/scope_key/status/expires_at —— 经验条目的
+-- 证据链与作用域(见 migrations-experience.ts;既有库经 ALTER TABLE 补列,默认值与这里逐字一致)。
 
 CREATE TABLE IF NOT EXISTS agent_memories (
   id               TEXT PRIMARY KEY,
@@ -150,6 +152,12 @@ CREATE TABLE IF NOT EXISTS agent_memories (
   access_count     INTEGER NOT NULL DEFAULT 0,
   last_accessed_at TEXT,
   created_at       TEXT NOT NULL,
+  outcome          TEXT NOT NULL DEFAULT 'neutral',   -- positive|negative|neutral|unknown
+  evidence_json    TEXT NOT NULL DEFAULT '',          -- ExperienceEvidence(非法 JSON 写入被 repo 拒绝)
+  scope_kind       TEXT NOT NULL DEFAULT 'session',   -- session|channel|line|product|global
+  scope_key        TEXT NOT NULL DEFAULT '',          -- lineId/productId(其余档为空串)
+  status           TEXT NOT NULL DEFAULT 'active',    -- active|candidate|validated|contested|retired
+  expires_at       TEXT,
   UNIQUE(agent_id, dedup_key, channel_id)
 );
 CREATE INDEX IF NOT EXISTS idx_memories_agent ON agent_memories(agent_id, created_at DESC);
