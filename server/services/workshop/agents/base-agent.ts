@@ -29,6 +29,7 @@ import type {
   SupervisionSnapshot,
 } from './agent-interface'
 import { createSessionState, dispatchHostTool, type HostToolBridgeContext, type HostToolSessionState } from './host-tool-bridge'
+import { channelOverlayText } from '../experience/overlay'
 import {
   contextPrefix as buildContextPrefix,
   createRosterCache,
@@ -264,7 +265,12 @@ export abstract class BaseAgentImpl implements AgentInterface {
       agentId: this.selfAgentId,
       roster: await this.roster.roster(),
     })
-    return this.currentSessionBlock ? `${base}\n\n${this.currentSessionBlock}` : base
+    return [
+      base,
+      this.currentSessionBlock,
+      // WP-B1:频道 Harness overlay（仅 active profile；无 profile → ''，prompt 与现状逐字节一致）
+      channelOverlayText(this.channelId),
+    ].filter(part => !!part).join('\n\n')
   }
 
   /** 消息/任务 parts 拼文本(worker/peer 共用) */
