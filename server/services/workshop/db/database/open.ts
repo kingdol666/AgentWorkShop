@@ -13,6 +13,7 @@ import { migrateExperienceColumns, ensureExperienceIndexes } from './migrations-
 import { migrateImprovementProposals } from './migrations-improvement'
 import { migrateHarnessProfiles } from './migrations-harness-profile'
 import { migrateImprovementActions } from './migrations-improvement-actions'
+import { migrateBlindVerifications } from './migrations-blind-verification'
 import { seedDefaultWorkshopData } from './seed'
 
 export const require = createRequire(import.meta.url)
@@ -96,6 +97,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateHarnessProfiles(db)
   // RSI 元层成效表(WP-C3)；只建表不重建,幂等
   migrateImprovementActions(db)
+  // RSI 独立回读验证表(WP-C1)；只建表不重建,幂等
+  migrateBlindVerifications(db)
   migrateGroupChatV17(db)
   migrateAmlTwinProviderColumns(db)
   migrateAmlModelIdentityColumns(db)
