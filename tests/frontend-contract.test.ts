@@ -51,3 +51,20 @@ test('B5: apiFetch 与 axios 共用 401 收尾与三通道 token 读取', () => 
   assert.match(util, /localStorage\.getItem\('aw\.token'\)/, '三通道读取必须保留 localStorage 兜底')
   assert.match(util, /openLogin\('expired'\)/, '401 收尾必须给登录入口')
 })
+
+test('B3: 会话清单用 Summary 类型(列表只回 4 字段),详情才用完整 brief', () => {
+  const api = read('app/composables/workshop/useWorkshopApi.ts')
+  assert.match(api, /interface ChannelSessionSummaryDto/, '必须拆出列表行类型')
+  assert.match(api, /listChannelSessions: \(id: string\) => http\.get<\{ data: ChannelSessionSummaryDto\[\] \}>/, '列表必须用 Summary 类型')
+})
+
+test('B4: /workshop/plugins 已收口信封,前端不再双形状兼容', () => {
+  const srv = read('server/api/workshop/plugins/index.get.ts')
+  assert.match(srv, /defineApiHandler/, '端点必须走统一信封')
+  assert.ok(!/defineEventHandler/.test(srv), '不得保留裸 defineEventHandler')
+
+  const admin = read('app/composables/workshop/usePluginAdmin.ts')
+  assert.ok(!/res\?\.plugins \?\?/.test(admin), '不得再保留非信封兜底分支')
+  const page = read('app/pages/plugins/index.vue')
+  assert.match(page, /d\.data\?\.plugins/, '消费方必须读信封的 data')
+})

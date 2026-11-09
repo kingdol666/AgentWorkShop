@@ -24,8 +24,8 @@ export function useTeamCreateDialog(options: TeamCreateDialogOptions) {
   const loadPlatformPlugins = async (): Promise<void> => {
     try {
       const res = await api.listPlugins()
-      // 顶层 plugins key(非信封);兼容 {code,data} 信封;只取平台已启用的插件
-      const list = res?.plugins ?? (res as { data?: { plugins?: WorkshopPluginDto[] } })?.data?.plugins ?? []
+      // 统一信封:{ code, message, data: { plugins } };只取平台已启用的插件
+      const list = res?.data?.plugins ?? []
       const enabled = (Array.isArray(list) ? list : []).filter(p => p.enabled !== false)
       platformPlugins.value = enabled
       const sel: Record<string, boolean> = {}

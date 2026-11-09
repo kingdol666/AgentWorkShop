@@ -36,8 +36,8 @@ export function usePluginAdmin(activeTab: Ref<string>) {
     pluginsLoading.value = true
     try {
       const res = await api.listPlugins()
-      // 顶层 plugins key(非信封);兼容 {code,data} 信封
-      const list = res?.plugins ?? (res as { data?: { plugins?: WorkshopPluginDto[] } })?.data?.plugins ?? []
+      // 统一信封:{ code, message, data: { plugins, failures, initedAt } }
+      const list = res?.data?.plugins ?? []
       plugins.value = Array.isArray(list) ? list : []
       pluginsLoaded.value = true
     }

@@ -52,9 +52,10 @@ function authHeaders(): Record<string, string> {
 async function load() {
   loading.value = true
   try {
-    const d = await narrowFetch<{ plugins: PluginInfo[], failures: Array<{ source: string, error: string }> }>('/api/workshop/plugins', { headers: authHeaders() })
-    plugins.value = d.plugins ?? []
-    failures.value = d.failures ?? []
+    // 统一信封(narrowFetch 不解包):{ code, message, data: { plugins, failures } }
+    const d = await narrowFetch<{ code: number, message: string, data: { plugins: PluginInfo[], failures: Array<{ source: string, error: string }> } }>('/api/workshop/plugins', { headers: authHeaders() })
+    plugins.value = d.data?.plugins ?? []
+    failures.value = d.data?.failures ?? []
   }
   catch (err) {
     message.error(apiErrorMessage(err, t('plugins.loadFail')))

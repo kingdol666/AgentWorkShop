@@ -6,7 +6,7 @@
  * 数据自持:仅跟随聚焦 channelId 拉取(轻量 REST,不订阅 WS —— 多会话视图
  * 内已有完整实时流,这里只是导航入口,不需要第二份实时状态)。
  */
-import { useWorkshopApi, type ChannelSessionDto } from '@/app/composables/workshop/useWorkshopApi'
+import { useWorkshopApi, type ChannelSessionSummaryDto } from '@/app/composables/workshop/useWorkshopApi'
 
 const props = defineProps<{ channelId?: string }>()
 
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const api = useWorkshopApi()
-const sessions = ref<ChannelSessionDto[]>([])
+const sessions = ref<ChannelSessionSummaryDto[]>([])
 const loading = ref(false)
 
 const load = async (): Promise<void> => {
@@ -45,7 +45,7 @@ const load = async (): Promise<void> => {
 watch(() => props.channelId, load, { immediate: true })
 defineExpose({ refresh: load })
 
-const onPick = (s: ChannelSessionDto): void => {
+const onPick = (s: ChannelSessionSummaryDto): void => {
   emit('open', s.id)
 }
 </script>
