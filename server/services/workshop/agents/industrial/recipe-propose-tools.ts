@@ -28,6 +28,7 @@ import { evaluateRecipeParamLimits } from '../../dcw/dcw-controller/write'
 import { GOVERNED_DISPATCH_HINT, RECOVERY_RETRY_HINT, RECOVERY_TRACE_HINT, RECOVERY_VERIFY_HINT } from './fallback-hints'
 import { amlActivityForLine } from './aml-activity'
 import { agentOpsScope, revalidateApprovedAction } from './ops-tools'
+import { recipeEvidenceText } from '../../dcw/recipe-evidence'
 
 /** 候选包上限(防审批卡被刷屏;1~3 套) */
 const MAX_PACKAGES = 3
@@ -353,7 +354,11 @@ export async function toolRecipePropose(agentId: string, args: {
     return `- ${label} ${change}${node?.unit ?? ''}${ackTagOf(r)}${r.ok ? '' : ` 被拒:${String(r.message).slice(0, 80)}`}`
   })
   const feedback = decision.comment ? `\n[人工反馈] ${decision.comment}` : ''
-  const runIdNote = `runId:${run.id}(后续轮次按此回访效果并回写经验)`
+  // RSI WP-D1:回执附证据链(批次成效由 verdict 聚合,取代"自行回访"的提示词纪律)
+  const evidenceBlock = recipeEvidenceText(recipeId, { limit: 3 })
+  const runIdNote = evidenceBlock
+    ? `runId:${run.id}(后续轮次按此回访效果并回写经验)\n\n${evidenceBlock}`
+    : `runId:${run.id}(后续轮次按此回访效果并回写经验)`
   // 全失败:响亮失败(isError;统一回退指引,口径 mirror recipe_trial/recipe_rollback)
   if (run.results.length > 0 && okN === 0) {
     return {

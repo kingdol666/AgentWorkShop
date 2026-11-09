@@ -55,6 +55,8 @@ export interface AnalysisReportInput {
   metrics: Record<string, unknown>
   recipeId: string
   recipeVersion: string
+  /** RSI WP-D1：关联的配方试验批次(dcw-runs.runId)；空串=未关联 */
+  recipeRunId?: string
   windowFrom: string | null
   windowTo: string | null
   dataSources: string
@@ -82,7 +84,7 @@ export interface AnalysisReportFilter {
 
 const COLS = `id, line_id AS lineId, line_name AS lineName, title, category, summary,
   conclusions_json AS conclusionsJson, report, metrics_json AS metricsJson,
-  recipe_id AS recipeId, recipe_version AS recipeVersion,
+  recipe_id AS recipeId, recipe_version AS recipeVersion, recipe_run_id AS recipeRunId,
   window_from AS windowFrom, window_to AS windowTo, data_sources AS dataSources,
   context_json AS contextJson, channel_id AS channelId, channel_name AS channelName,
   actor, actor_name AS actorName, created_at AS createdAt,
@@ -108,10 +110,10 @@ function rowToReport(r: Record<string, unknown>): AnalysisReportRow {
 export function createAnalysisRepo(db: DatabaseSync) {
   const insertStmt = db.prepare(
     `INSERT INTO analysis_reports (id, line_id, line_name, title, category, summary,
-       conclusions_json, report, metrics_json, recipe_id, recipe_version,
+       conclusions_json, report, metrics_json, recipe_id, recipe_version, recipe_run_id,
        window_from, window_to, data_sources, context_json,
        channel_id, channel_name, actor, actor_name, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   // v27 人工修订:读改写单条全量 UPDATE(patch 在调用方合并,语句一次 prepare)
   const updateStmt = db.prepare(
@@ -130,7 +132,7 @@ export function createAnalysisRepo(db: DatabaseSync) {
       insertStmt.run(
         row.id, row.lineId, row.lineName, row.title, row.category, row.summary,
         JSON.stringify(row.conclusions ?? []), row.report ?? '', JSON.stringify(row.metrics ?? {}),
-        row.recipeId ?? '', row.recipeVersion ?? '',
+        row.recipeId ?? '', row.recipeVersion ?? '', row.recipeRunId ?? '',
         row.windowFrom ?? null, row.windowTo ?? null, row.dataSources ?? '', JSON.stringify(row.context ?? {}),
         row.channelId ?? '', row.channelName ?? '', row.actor ?? '', row.actorName ?? '', row.createdAt,
       )
