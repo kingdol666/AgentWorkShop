@@ -12,10 +12,11 @@ import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
 
-// 物理设备写面:value 必须是有限数值。coerce 保留既有宽松输入(前端表单字符串 "12.5"),
-// 但拒绝 NaN/Infinity/对象/数组 —— 这些过去会带着 NaN 抵达控制器,violating 契约前移到入口。
+// 物理设备写面:value 必须是有限数值。**不用 coerce** —— z.coerce.number() 会把
+// null/""/false/[] 一律折叠成 0 并放行(Number(null)===0 等),0 若落在量程内就是
+// 一次真实的 0 设定下发。字符串数字由调用方自行转换(UI/MCP 均已发 number)。
 const schema = z.object({
-  value: z.coerce.number({ invalid_type_error: 'value 必须是数值(工程量纲)' })
+  value: z.number({ invalid_type_error: 'value 必须是数值(工程量纲)' })
     .finite('value 必须是有限数值'),
 })
 
