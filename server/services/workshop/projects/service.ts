@@ -30,6 +30,7 @@ import { createTaskRepo } from '../db/task.repo'
 import { createChannelSessionRepo } from '../db/channel-session.repo'
 import { createProjectKernelRepo } from '../db/project-kernel.repo'
 import { createMemoryRepo } from '../db/memory.repo'
+import { createImprovementRepo } from '../db/improvement.repo'
 import { reflectExperience } from '../runtime/memory/reflector'
 import { collectReviewFact } from '../runtime/memory/reflect-collector'
 import type { TaskRow } from '../db/database'
@@ -2154,8 +2155,44 @@ export class ProjectService {
       const fact = collectReviewFact(this.db, { resultId, verdict })
       if (!fact) return
       void reflectExperience(createMemoryRepo(this.db), null, fact).catch(() => {})
+      // WP-D3:通过成果 → 知识入库候选(不自动写 KB;kb_agent ingest 自带 HITL)
+      if (verdict === 'approved') {
+        createImprovementRepo(this.db).create({
+          kind: 'kb_ingest',
+          channelId: fact.channelId,
+          lineId: fact.lineId ?? '',
+          sourceKind: 'review',
+          sourceId: resultId,
+          title: `知识入库候选：${fact.title}`,
+          detail: `项目成果已通过评审（${fact.summary?.slice(0, 120) ?? '无摘要'}）；建议经 kb_agent ingest 入知识库（需人工审批）`,
+          evidence: { resultId, ...(fact.taskId ? { taskIds: [fact.taskId] } : {}), ...(fact.traceId ? { traceId: fact.traceId } : {}) },
+        })
+      }
     }
     catch { /* 学习环故障不影响复核 */ }
+  }
+
+  /**
+   * WP-D4：返工教训 → runbook 补充候选。
+   * 触发点 = markResultRework（L1 驳回 / 上游 supersede 导致的下游返工）；
+   * 失败分类 CONTENT/CONTRACT 这类"内容/契约"返工最具写进 runbook 的价值。
+   */
+  private proposeRunbookFromRework(resultId: string, reason: string): void {
+    try {
+      const result = this.results.findById(resultId)
+      if (!result) return
+      createImprovementRepo(this.db).create({
+        kind: 'runbook',
+        channelId: result.channelId,
+        lineId: result.lineId ?? '',
+        sourceKind: 'rework',
+        sourceId: resultId,
+        title: `runbook 补充候选：${result.title} 返工教训`,
+        detail: `返工原因：${reason.slice(0, 200)}`,
+        evidence: { resultId, ...(result.sourceTaskId ? { taskIds: [result.sourceTaskId] } : {}), ...(result.traceId ? { traceId: result.traceId } : {}) },
+      })
+    }
+    catch { /* 学习环故障不影响返工流程 */ }
   }
 
   requestProjectComplete(id: string, actor: ProjectActor): ProjectApprovalRow {
@@ -2411,6 +2448,8 @@ export class ProjectService {
   /** L1 驳回：成果标记返工，工作项回到 REWORK（可经 route retry/rework 重新派发）。 */
   private markResultRework(result: ProjectResultRow, actor: ProjectActor, reason: string): void {
     this.results.markReworkRequired(result.id, true)
+    // WP-D4:返工教训 → runbook 补充候选(学习环;失败只影响提案,不影响返工)
+    this.proposeRunbookFromRework(result.id, reason)
     const wi = this.workItems.findById(result.workItemId)
     if (wi && wi.state === 'COMPLETED') {
       this.workItems.update(wi.id, {
