@@ -162,6 +162,9 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
       `- 作业中发现可复用的结论、约定、教训 → 立即 save_memory 沉淀:scope=private 存个人经验,scope=shared 发布到 Channel 公共记忆供全员复用。`,
     ].join('\n')
     const tipsCost = estimateTokens(tipsText)
+    // 注入块头部(标题行)也计费:否则硬顶被标题突破(A-5.1 实测 527>500)
+    const headerText = `## 相关记忆(自动召回的高相关/最近线索摘要;与当前任务冲突时,以当前任务为准)`
+    const headerCost = estimateTokens(headerText)
     // MMR 装配:逐条贪心选 λ×相关性 − (1−λ)×与已选集最大相似 的最大者(多样性,防近重复挤占)
     const candidates = scored.slice()
     const tokenSet = (row: MemoryRow): Set<string> =>
@@ -194,8 +197,8 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
       const [c] = candidates.splice(bestIdx, 1)
       const line = this.formatLine(c!.row)
       const cost = estimateTokens(line)
-      // 双预算:L1 引子预算(budget)+ 注入总预算(total,含 brief);超预算跳过但继续找更短行
-      if (usedPrimer + tipsCost + cost > budget || usedTotal + cost + tipsCost > totalBudget) continue
+      // 双预算:L1 引子预算(budget)+ 注入总预算(total,含 brief/头部/提示);超预算跳过但继续找更短行
+      if (usedPrimer + tipsCost + headerCost + cost > budget || usedTotal + cost + tipsCost + headerCost > totalBudget) continue
       usedPrimer += cost
       usedTotal += cost
       lines.push(line)
@@ -205,7 +208,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     if (lines.length === 0) return null
     for (const id of touched) this.repo.touch(id)
     return [
-      `## 相关记忆(自动召回的高相关/最近线索摘要;与当前任务冲突时,以当前任务为准)`,
+      headerText,
       ...lines,
       tipsText,
     ].join('\n')

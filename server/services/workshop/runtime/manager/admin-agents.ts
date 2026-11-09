@@ -152,8 +152,62 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
   }
 
   /** 手动触发记忆衰减清理(REST 透传;策略与定时器同一函数) */
-  runMemoryMaintenanceNow(): MaintenanceResult {
-    return runMemoryMaintenance(this.deps.repos.memories)
+  runMemoryMaintenanceNow(): MaintenanceResult & { retiredByExpiry: number } {
+    const result = runMemoryMaintenance(this.deps.repos.memories)
+    // RSI(WP-A5):同一次维护顺带执行经验过期退休(与定时器口径一致)
+    const retiredByExpiry = this.deps.repos.memories.expireSweep()
+    return { ...result, retiredByExpiry }
+  }
+
+  /**
+   * RSI 经验看板(WP-A5;REST 只读):本 channel 经验条目的生命周期/作用域/极性分布 +
+   * 最近条目摘要。数据面 = agent_memories.kind='experience'(WP-A1/A2 产出)。
+   */
+  experienceOverview(channelId: string): {
+    lineId: string | null
+    total: number
+    byStatus: Record<string, number>
+    byScope: Record<string, number>
+    byOutcome: Record<string, number>
+    recent: Array<{ id: string, title: string, outcome: string, status: string, scopeKind: string, scopeKey: string, taskId: string | null, createdAt: string }>
+  } {
+    const statuses = ['active', 'candidate', 'validated', 'contested', 'retired'] as const
+    const scopeKinds = ['session', 'channel', 'line', 'product', 'global'] as const
+    const rows = scopeKinds.flatMap(scopeKind => this.deps.repos.memories.listByScope({
+      scopeKind,
+      channelIds: [channelId],
+      statuses: [...statuses],
+      limit: 500,
+    }))
+    const count = (pick: (r: (typeof rows)[number]) => string): Record<string, number> => {
+      const out: Record<string, number> = {}
+      for (const r of rows) {
+        const k = pick(r)
+        out[k] = (out[k] ?? 0) + 1
+      }
+      return out
+    }
+    return {
+      lineId: this.deps.repos.memories.channelScope(channelId).lineId,
+      total: rows.length,
+      byStatus: count(r => r.status ?? 'active'),
+      byScope: count(r => r.scopeKind ?? 'session'),
+      byOutcome: count(r => r.outcome ?? 'neutral'),
+      recent: rows
+        .slice()
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 20)
+        .map(r => ({
+          id: r.id,
+          title: r.title,
+          outcome: r.outcome ?? 'neutral',
+          status: r.status ?? 'active',
+          scopeKind: r.scopeKind ?? 'session',
+          scopeKey: r.scopeKey ?? '',
+          taskId: r.taskId,
+          createdAt: r.createdAt,
+        })),
+    }
   }
 
   // ===== Agent 私有记忆策展(本人或 lead 写/删;kind='semantic' 人工策展)=====
