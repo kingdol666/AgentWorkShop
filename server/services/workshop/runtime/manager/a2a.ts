@@ -338,6 +338,67 @@ export abstract class ManagerA2A extends ManagerTasks {
   }
 
   /**
+   * 跨 Channel 共享经验检索(WP-A4;**成员可调**,只读)。
+   * 与 recallOtherTeamsMemory(lead-only / __team__ 行)的分工:
+   *  - 这里读 **experience 行**(带证据与生命周期),按 scope_kind + scope_key 锚定产线/产品;
+   *  - 授权口径一致:仅**同 owner 且启用**的其他 channel(无主 channel 不参与);
+   *  - 只返回 status ∈ {active, validated} 的行(candidate 未经验证不外泄,retired 不返回)。
+   */
+  searchSharedExperience(channelId: string, agentId: string, input: {
+    query: string
+    scope: 'line' | 'product' | 'global'
+    scopeKey?: string
+    limit?: number
+  }): Array<{
+    channelId: string
+    channelName: string
+    title: string
+    content: string
+    outcome: string
+    status: string
+    scopeKind: string
+    scopeKey: string
+    importance: number
+    createdAt: string
+    taskId: string | null
+    visibility: MemoryVisibility
+  }> {
+    this.requireMember(channelId, agentId)
+    const q = input.query.trim()
+    if (!q) return []
+    const others = this.otherSameOwnerChannels(channelId)
+    if (others.length === 0) return []
+    // line 档:未显式给 key 时用本 channel 的产线绑定;product 必须显式给 key;global 不需要 key
+    let scopeKey = input.scopeKey?.trim() ?? ''
+    if (!scopeKey && input.scope === 'line') {
+      const self = this.deps.repos.channels.findById(channelId)
+      scopeKey = (self as unknown as { lineId?: string } | undefined)?.lineId ?? ''
+    }
+    const matchQuery = segmentCJK(q).split(/\s+/).filter(Boolean).join(' OR ')
+    if (!matchQuery) return []
+    const rows = this.deps.repos.memories.searchExperienceAcross(
+      matchQuery,
+      others.map(c => c.id),
+      { scopeKinds: [input.scope], scopeKey: scopeKey || undefined, limit: input.limit },
+    )
+    for (const r of rows) this.deps.repos.memories.touch(r.id)
+    return rows.map(r => ({
+      channelId: r.channelId,
+      channelName: others.find(c => c.id === r.channelId)?.name ?? r.channelId,
+      title: r.title,
+      content: unsegmentCJK(r.content).slice(0, 400),
+      outcome: r.outcome ?? 'neutral',
+      status: r.status ?? 'active',
+      scopeKind: r.scopeKind ?? input.scope,
+      scopeKey: r.scopeKey ?? '',
+      importance: r.importance,
+      createdAt: r.createdAt,
+      taskId: r.taskId ?? null,
+      visibility: 'cross-channel' as MemoryVisibility,
+    }))
+  }
+
+  /**
    * 同主且启用的其他 channel 列表(跨团队可见性的作用域)。
    *
    * §7.4 修复:旧判据 `self.owner == null || c.owner == null || c.owner === self.owner`

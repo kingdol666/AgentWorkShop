@@ -14,8 +14,27 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
    * Agent 主动沉淀(save_memory 工具):把作业过程中的可复用结论/经验写入记忆库。
    * scope='private' → 本人 semantic 域;scope='shared' → Channel 公共域(全员可检索;
    * dedupKey 按来源 Agent 命名空间隔离,避免多 Agent 同 key 互相覆盖)。写入后自动向量化。
+   *
+   * RSI(WP-A4)扩展:scope='line'|'global' → **经验条目**(kind=experience)。
+   *  - 必须带 taskId 锚点(无锚点自述不配进跨频道经验层,fail-closed);
+   *  - 需要会话 memoryPolicy='shared'(否则拒绝,不静默降级);
+   *  - line 需要频道已绑定产线(scope_key=channels.line_id);
+   *  - 一律 status='candidate'(先验证再晋级,ADR-7),outcome='unknown'。
    */
-  async save(input: { title: string, content: string, importance?: number, scope: 'private' | 'shared', dedupKey?: string, sessionId?: string | null }): Promise<{ scope: 'private' | 'shared', dedupKey: string }> {
+  async save(input: {
+    title: string
+    content: string
+    importance?: number
+    scope: 'private' | 'shared' | 'line' | 'global'
+    dedupKey?: string
+    sessionId?: string | null
+    /** 跨频道经验的证据锚点(scope=line|global 必填) */
+    taskId?: string | null
+  }): Promise<{ scope: 'private' | 'shared' | 'line' | 'global', dedupKey: string }> {
+    if (input.scope === 'line' || input.scope === 'global') {
+      const expScope: 'line' | 'global' = input.scope
+      return this.saveExperience({ ...input, scope: expScope })
+    }
     const shared = input.scope === 'shared'
     const rawKey = input.dedupKey?.trim() || `agent-save:${randomUUID().slice(0, 8)}`
     // 共享域命名空间:同 channel 多 agent 各自的沉淀互不覆盖
@@ -93,6 +112,54 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     // 共享约定进入简报"团队共享约定"行
     if (shared) await this.updateBrief()
     return { scope: input.scope, dedupKey: finalKey }
+  }
+
+  /**
+   * 跨频道经验写入(line/global 档;WP-A4)。
+   * 纪律:策略门(shared)→ 产线绑定门(line)→ 证据锚点门(taskId)→ 一律 candidate。
+   */
+  protected async saveExperience(input: {
+    title: string
+    content: string
+    importance?: number
+    scope: 'line' | 'global'
+    dedupKey?: string
+    sessionId?: string | null
+    taskId?: string | null
+  }): Promise<{ scope: 'line' | 'global', dedupKey: string }> {
+    const policy = this.repo.sessionMemoryPolicy(input.sessionId ?? '')
+    if (policy !== 'shared') {
+      throw new Error(`memory policy "${policy}" 不允许写入 ${input.scope} 作用域经验(需会话 memoryPolicy=shared)`)
+    }
+    if (!input.taskId) {
+      throw new Error(`${input.scope} 作用域经验必须带 taskId 锚点(无证据的自述不进入跨频道经验层)`)
+    }
+    let scopeKey = ''
+    if (input.scope === 'line') {
+      scopeKey = this.repo.channelScope(this.opts.channelId).lineId ?? ''
+      if (!scopeKey) throw new Error('line 作用域经验需要频道已绑定产线(channels.line_id 为空)')
+    }
+    const rawKey = input.dedupKey?.trim() || `agent-save:${randomUUID().slice(0, 8)}`
+    const dedupKey = `exp:${input.scope}:${this.opts.agentId}:${rawKey}`
+    this.repo.upsertExperience({
+      channelId: this.opts.channelId,
+      agentId: this.opts.agentId,
+      kind: 'experience',
+      title: input.title,
+      titleFts: segmentCJK(input.title),
+      content: segmentCJK(input.content).slice(0, CONTENT_STORE_LIMIT),
+      importance: input.importance ?? 0.7,
+      taskId: input.taskId,
+      sessionId: input.sessionId ?? '',
+      dedupKey,
+      outcome: 'unknown',
+      evidence: { taskIds: [input.taskId] },
+      scopeKind: input.scope,
+      scopeKey,
+      status: 'candidate',
+    })
+    await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, this.opts.agentId, dedupKey, input.content)
+    return { scope: input.scope, dedupKey }
   }
 
   /** run 后(任务路径;仅终态调用):harvest TaskEngine 终态 + deliverable,并刷新 L0 简报 */

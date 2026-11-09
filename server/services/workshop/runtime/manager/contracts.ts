@@ -156,6 +156,29 @@ export abstract class ManagerContracts {
     rootId?: string | null
     visibility?: 'channel-shared' | 'private' | 'cross-channel'
   }>
+  /**
+   * 跨 Channel 共享经验检索(WP-A4;由 a2a.ts 实现,workspace 闭包经此契约调用)。
+   * 只读;同 owner 授权与 status 过滤在实现层。
+   */
+  abstract searchSharedExperience(channelId: string, agentId: string, input: {
+    query: string
+    scope: 'line' | 'product' | 'global'
+    scopeKey?: string
+    limit?: number
+  }): Array<{
+    channelId: string
+    channelName: string
+    title: string
+    content: string
+    outcome: string
+    status: string
+    scopeKind: string
+    scopeKey: string
+    importance: number
+    createdAt: string
+    taskId: string | null
+    visibility: 'channel-shared' | 'private' | 'cross-channel'
+  }>
   abstract refuseTask(
     channelId: string,
     refuserId: string,

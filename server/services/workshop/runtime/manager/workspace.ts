@@ -53,9 +53,11 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
       saveMemory: async (input) => {
         this.requireMember(channelId, agent.id)
         const saved = await memory.save(input)
-        this.buses.get(channelId)?.notifyMemory({ agentId: agent.id, scope: input.scope, title: input.title, dedupKey: saved.dedupKey })
+        this.buses.get(channelId)?.notifyMemory({ agentId: agent.id, scope: input.scope === 'line' || input.scope === 'global' ? 'shared' : input.scope, title: input.title, dedupKey: saved.dedupKey })
         return saved
       },
+      // 跨 Channel 共享经验(WP-A4;成员可调,同 owner 授权在 manager 层)
+      searchSharedExperience: async input => this.searchSharedExperience(channelId, agent.id, input),
       // 会话压缩摘要入库(harvest 桥):omp 压缩产出 → 本成员 episodic-session 记忆。
       // omp 内部 session 与平台 cs-* 未打通,运行时不知道平台会话 id —— 在桥内按
       // memberMap 反查本实例所属 active 会话补齐(排除 project 恒等映射)。

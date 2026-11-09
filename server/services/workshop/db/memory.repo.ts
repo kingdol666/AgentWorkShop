@@ -339,6 +339,61 @@ export function createMemoryRepo(db: DatabaseSync) {
       )
     },
 
+    /**
+     * 跨 Channel 经验检索(WP-A4;只读)。
+     * 与 searchTeamSharedAcross 的差别:读 **experience 行**(不限 agent_id/__team__),
+     * 但强制 scope_kind 白名单 + status ∈ {active, validated}(candidate/retired 不外泄),
+     * channel 集合由调用方(manager)按同 owner 授权给出。
+     * line/product 档必须给 scopeKey(产线/产品锚点),否则返回空集(不做无边界的"全产线"泄露)。
+     */
+    searchExperienceAcross(
+      matchQuery: string,
+      channelIds: string[],
+      opts: { scopeKinds: MemoryScopeKind[], scopeKey?: string, limit?: number },
+    ): Array<MemoryRow & { bm25: number }> {
+      if (channelIds.length === 0 || opts.scopeKinds.length === 0) return []
+      const where: string[] = [
+        `agent_memories_fts MATCH ?`,
+        `m.kind = 'experience'`,
+        `m.status IN ('active', 'validated')`,
+        `m.scope_kind IN (${opts.scopeKinds.map(() => '?').join(', ')})`,
+        `m.channel_id IN (${channelIds.map(() => '?').join(', ')})`,
+      ]
+      const args: Array<string | number> = [matchQuery, ...opts.scopeKinds, ...channelIds]
+      // line/product 是带锚点的作用域:无锚点即无命中(global 不需要 key)
+      const keyedScopes = opts.scopeKinds.filter(s => s === 'line' || s === 'product')
+      if (keyedScopes.length > 0) {
+        if (!opts.scopeKey) return []
+        where.push(`(m.scope_kind NOT IN ('line', 'product') OR m.scope_key = ?)`)
+        args.push(opts.scopeKey)
+      }
+      args.push(Math.min(Math.max(opts.limit ?? 5, 1), 20))
+      return db.prepare(
+        `SELECT ${COLS}, f.rank AS bm25
+         FROM agent_memories_fts f
+         JOIN agent_memories m ON m.rowid = f.memory_rowid
+         WHERE ${where.join(' AND ')}
+         ORDER BY f.rank LIMIT ?`,
+      ).all(...args) as unknown as Array<MemoryRow & { bm25: number }>
+    },
+
+    /**
+     * 会话的记忆写入策略(channel_sessions.memory_policy;缺省 session)。
+     * 未找到会话/旧库 → 'session'(最保守),失败不抛出。
+     */
+    sessionMemoryPolicy(sessionId: string): 'session' | 'channel' | 'shared' {
+      if (!sessionId) return 'session'
+      try {
+        const row = db.prepare(`SELECT memory_policy AS policy FROM channel_sessions WHERE id = ?`)
+          .get(sessionId) as { policy?: string } | undefined
+        const p = row?.policy
+        return p === 'shared' || p === 'channel' ? p : 'session'
+      }
+      catch {
+        return 'session'
+      }
+    },
+
     listRecent(agentId: string, limit: number): MemoryRow[] {
       return listRecentStmt.all(agentId, limit) as unknown as MemoryRow[]
     },
