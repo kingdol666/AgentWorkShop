@@ -80,6 +80,7 @@ export function verifyInterventionEvent(
   db: DatabaseSync,
   eventId: string,
   probe: BlindProbe = readbackProbe,
+  taskId = '',
 ): BlindVerificationResult | null {
   const event = db.prepare(
     `SELECT id, channel_id AS channelId, line_id AS lineId, node_id AS nodeId, node_name AS nodeName,
@@ -98,9 +99,16 @@ export function verifyInterventionEvent(
   if (!event) return null
 
   const existing = db.prepare(
-    `SELECT verdict, detail FROM blind_verifications WHERE event_id = ?`,
-  ).get(eventId) as { verdict: BlindVerdict, detail: string } | undefined
+    `SELECT verdict, detail, task_id AS taskId FROM blind_verifications WHERE event_id = ?`,
+  ).get(eventId) as { verdict: BlindVerdict, detail: string, taskId: string } | undefined
   if (existing) {
+    // 补归属：定时器先验、任务终态后到（不覆盖已有归属）
+    if (taskId && !existing.taskId) {
+      try {
+        db.prepare('UPDATE blind_verifications SET task_id = ? WHERE event_id = ?').run(taskId, eventId)
+      }
+      catch { /* 旧库缺列：跳过归属 */ }
+    }
     return { eventId, verdict: existing.verdict, detail: `${existing.detail}（既有判定，幂等）`, probe: { values: [], detail: existing.detail } }
   }
 
@@ -114,11 +122,11 @@ export function verifyInterventionEvent(
   const verdict = verdictOf(result)
   try {
     db.prepare(
-      `INSERT INTO blind_verifications (id, event_id, channel_id, line_id, verdict, detail, probe_json, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO blind_verifications (id, event_id, channel_id, line_id, task_id, verdict, detail, probe_json, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       `bv-${randomUUID().replace(/-/g, '').slice(0, 12)}`,
-      eventId, event.channelId, event.lineId, verdict, result.detail,
+      eventId, event.channelId, event.lineId, taskId, verdict, result.detail,
       JSON.stringify({ values: result.values, recipeRunId: event.recipeRunId }),
       new Date().toISOString(),
     )
@@ -130,13 +138,24 @@ export function verifyInterventionEvent(
 /**
  * 批量验证本频道的待验证干预（写入台账最近 N 条，尚未验证的）。
  * 返回按判定分组的计数；失败单条不阻断整批。
+ * `taskId + sinceIso`：把本次周期内**已由定时器验证但未归属**的行补归属到该任务
+ * （定时器可能先于任务终态运行；补归属只影响 L1/C4 取数，不改判定）。
  */
 export function verifyPendingInterventions(
   db: DatabaseSync,
   channelId: string,
-  opts: { limit?: number, probe?: BlindProbe } = {},
+  opts: { limit?: number, probe?: BlindProbe, taskId?: string, sinceIso?: string } = {},
 ): { match: number, mismatch: number, inconclusive: number, total: number } {
   const limit = Math.min(Math.max(opts.limit ?? 20, 1), 100)
+  if (opts.taskId && opts.sinceIso) {
+    try {
+      db.prepare(
+        `UPDATE blind_verifications SET task_id = ?
+          WHERE channel_id = ? AND task_id = '' AND created_at >= ?`,
+      ).run(opts.taskId, channelId, opts.sinceIso)
+    }
+    catch { /* 旧库缺列：跳过归属 */ }
+  }
   const rows = db.prepare(
     `SELECT e.id FROM intervention_events e
       WHERE e.channel_id = ?
@@ -146,7 +165,7 @@ export function verifyPendingInterventions(
   const counts = { match: 0, mismatch: 0, inconclusive: 0, total: 0 }
   for (const r of rows) {
     try {
-      const res = verifyInterventionEvent(db, r.id, opts.probe ?? readbackProbe)
+      const res = verifyInterventionEvent(db, r.id, opts.probe ?? readbackProbe, opts.taskId ?? '')
       if (!res) continue
       counts[res.verdict] += 1
       counts.total += 1
@@ -203,4 +222,70 @@ export function listBlindVerifications(db: DatabaseSync, channelId: string, limi
   catch {
     return []
   }
+}
+
+/** L1 复核用的单条判定（无验证记录 → null，不虚构通过） */
+export interface BlindTaskCheck {
+  criterion: 'blind.readback'
+  pass: boolean
+  detail: string
+}
+
+/**
+ * 按任务取独立回读判定（WP-C1 → L1 接线）。
+ * - 无记录 → null（该任务没有设备写，不产生 check）；
+ * - 全部 match → pass；
+ * - 任一 mismatch / inconclusive → fail（**inconclusive ≠ pass**，fail-closed）。
+ */
+export function blindCheckForTask(db: DatabaseSync, taskId: string): BlindTaskCheck | null {
+  if (!taskId) return null
+  let rows: Array<{ verdict: BlindVerdict, detail: string }>
+  try {
+    rows = db.prepare(
+      `SELECT verdict, detail FROM blind_verifications WHERE task_id = ? ORDER BY created_at ASC`,
+    ).all(taskId) as Array<{ verdict: BlindVerdict, detail: string }>
+  }
+  catch {
+    return null
+  }
+  if (rows.length === 0) return null
+  const bad = rows.filter(r => r.verdict !== 'match')
+  if (bad.length === 0) {
+    return { criterion: 'blind.readback', pass: true, detail: `${rows.length} 条独立回读全部 match` }
+  }
+  return {
+    criterion: 'blind.readback',
+    pass: false,
+    detail: `${bad.length}/${rows.length} 条未证实：${bad.map(r => `${r.verdict}（${r.detail}）`).join('；')}`,
+  }
+}
+
+/**
+ * 按任务取独立回读指标（WP-C4 判据取数）：节点 id/名称 → 设备实时值。
+ * 只暴露 probe_json 里的独立回读值，不接收 Agent 自述；无记录返回空对象。
+ */
+export function blindMetricsForTask(db: DatabaseSync, taskId: string): Record<string, number> {
+  if (!taskId) return {}
+  let rows: Array<{ probeJson: string }>
+  try {
+    rows = db.prepare(
+      `SELECT probe_json AS probeJson FROM blind_verifications WHERE task_id = ? ORDER BY created_at DESC`,
+    ).all(taskId) as Array<{ probeJson: string }>
+  }
+  catch {
+    return {}
+  }
+  const metrics: Record<string, number> = {}
+  for (const r of rows) {
+    try {
+      const parsed = JSON.parse(r.probeJson || '{}') as { values?: Array<{ nodeId?: string, nodeName?: string, actual?: number }> }
+      for (const v of parsed.values ?? []) {
+        if (typeof v.actual !== 'number' || !Number.isFinite(v.actual)) continue
+        if (v.nodeId) metrics[v.nodeId] ??= v.actual
+        if (v.nodeName) metrics[v.nodeName] ??= v.actual
+      }
+    }
+    catch { /* 单行损坏不阻断 */ }
+  }
+  return metrics
 }

@@ -100,3 +100,18 @@ test('注入对抗：恶意"护栏文本"不能携带可执行指令', () => {
     db.close()
   }
 })
+
+test('故障注入：库不可用（prepare 抛错）→ advisoryBlock 返回空串，不阻断回合装配', () => {
+  const brokenDb = {
+    prepare: () => {
+      throw new Error('db unavailable')
+    },
+  } as never
+  assert.equal(advisoryBlock(brokenDb, 'ch-1'), '')
+})
+
+test('故障注入：AML 运行时未装配 → overlay 返回空串（无 profile 时 prompt 零改动）', async () => {
+  const { channelOverlayText, resetHarnessOverlayCache } = await import('../server/services/workshop/experience/overlay')
+  resetHarnessOverlayCache()
+  assert.equal(channelOverlayText('ch-not-configured'), '')
+})

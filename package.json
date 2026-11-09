@@ -72,7 +72,7 @@
     "tui": "node tui/aw-tui.mjs",
     "postinstall": "node scripts/home-bootstrap.mjs",
     "prepublishOnly": "node bin/aw.mjs build",
-    "lint": "eslint .",
+    "lint": "node scripts/check-rsi-redline.mjs && eslint .",
     "lint:fix": "eslint . --fix",
     "check:cssvars": "node scripts/check-css-vars.mjs",
     "typecheck": "node scripts/typecheck.mjs",

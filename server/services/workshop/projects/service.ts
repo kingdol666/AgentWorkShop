@@ -33,6 +33,7 @@ import { createMemoryRepo } from '../db/memory.repo'
 import { createImprovementRepo } from '../db/improvement.repo'
 import { reflectExperience } from '../runtime/memory/reflector'
 import { collectReviewFact } from '../runtime/memory/reflect-collector'
+import { blindCheckForTask, blindMetricsForTask } from '../verify/blind-verifier'
 import type { TaskRow } from '../db/database'
 import { withTransaction } from '../db/transaction'
 import { parseJson } from '../db/database'
@@ -2446,13 +2447,26 @@ export class ProjectService {
       ...parseJson<string[]>(deliverable?.acceptanceCriteriaJson ?? '[]', []),
       ...parseJson<string[]>(wi?.acceptanceJson ?? '[]', []),
     ]
-    return evaluateCriteriaChecks({
+    // WP-C1/C4：独立回读值作 metric.* 判据的指标源；缺记录的 metric 判据仍 fail-closed。
+    const metrics = blindMetricsForTask(this.db, result.sourceTaskId)
+    const evaluated = evaluateCriteriaChecks({
       criteria,
       artifacts: [...artifactDigests(task?.artifactsJson ?? '[]').values()],
       payloadJson: result.payloadJson,
       artifactBacked: parseJson<Array<Record<string, unknown>>>(result.evidenceJson, [])
         .filter(e => String(e.artifactId ?? '')).length,
+      ...(Object.keys(metrics).length > 0 ? { metrics } : {}),
     })
+    // WP-C1：本任务有设备写验证记录时必须进 L1 checks；inconclusive 按未证实阻断（≠ pass）。
+    const blind = blindCheckForTask(this.db, result.sourceTaskId)
+    if (blind) {
+      evaluated.checks.push({ criterion: blind.criterion, pass: blind.pass, detail: blind.detail })
+      if (!blind.pass) {
+        evaluated.blockingFailures.push(blind.criterion)
+        evaluated.ok = false
+      }
+    }
+    return evaluated
   }
 
   /** L1 驳回：成果标记返工，工作项回到 REWORK（可经 route retry/rework 重新派发）。 */

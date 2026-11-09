@@ -249,7 +249,8 @@ export NUXT_SESSION_PASSWORD="aw-bench-isolated-2026"
 ### E5 · Harness × 模型可替换性（可选）
 
 - **因子**：Harness {omp, opencode} × 模型 {lm-studio/qwen3.5-9b-64k, ustc/deepseek-flash}；审批固定 ON。
-- **状态**：`NOT-IMPLEMENTED`。四个组合的资格检查必须先跑；只有两个对角组合通过时，只能报「组合可行性」。
+- **状态**：`IMPLEMENTED(lite)` — RSI WP-B2 产出 `bench/experiment/harness-ab.mjs`（同 seed 配对臂 + 配对 t 检验，输出 `PairedBenchResult` 供晋升门）。CI 可跑 `--self-test`（8/8，含 t 分布真值对齐）与 static 臂；LLM `--live` 臂仍需平台 + 场景 runner（`--cmd-a/--cmd-b` 契约已定义）。
+- **夹具要求（D8）**：`auto` 模式 + 审批 ON 的组合会退化为“假 2×2”（审批成为唯一写路径），因此 E5 只允许在**审批 OFF 的 static 臂**或**场景 runner 自带写路径隔离**时对比 harness 差异；auto+审批 ON 不得作为 harness 可替换性证据。
 - **论文位置**：仅当 E1–E4 完成后才有版面；否则列入 future work。
 
 ---

@@ -189,6 +189,24 @@ test('生命周期：markStatus 迁移 + expireSweep 退休过期行', () => {
   }
 })
 
+test('证据锚点：traceId/resultId/recipeRunId 任一即可入库，metrics 原样保留', () => {
+  const { db, repo } = fixture()
+  try {
+    for (const [dedup, evidence] of [
+      ['exp:trace', { traceId: 'tr-1' }],
+      ['exp:result', { resultId: 'r-1' }],
+      ['exp:recipe', { recipeRunId: 'run-1', metrics: { iae: -12.5 } }],
+    ] as const) {
+      const row = repo.upsertExperience({ ...baseExp, dedupKey: dedup, evidence })
+      const stored = JSON.parse(repo.getById(row.id)!.evidenceJson ?? '{}') as Record<string, unknown>
+      assert.deepEqual(stored, evidence)
+    }
+  }
+  finally {
+    db.close()
+  }
+})
+
 test('既有库升级：先建旧表结构再迁移，行数不变且新列按默认值解释', () => {
   const db = openWorkshopDb(':memory:')
   try {
