@@ -21,18 +21,29 @@ function isLoopback(addr: string | undefined): boolean {
   return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1'
 }
 
-/** 跑 close 钩子(插件销毁链),超时兜底退出 */
+/**
+ * 跑 close 钩子(插件销毁链),超时兜底退出。
+ *
+ * 实测(2026-11-10 验收):close 链上的 handler 可能永不 resolve(某个 shutdown 在等
+ * 一个不会结束的回合/计时器),现象是"插件清理完成、进程仍在监听 200"——半停比不停
+ * 更危险。所以**先武装强制退出**,再等钩子;钩子正常收口则提前退出。
+ */
 function shutdown(): void {
+  const force = setTimeout(() => {
+    console.error('[shutdown] close 钩子未在 8s 内收口,强制退出(清理链已尽力执行)')
+    process.exit(0)
+  }, 8000)
+  force.unref?.()
   setTimeout(() => {
     void (async () => {
       try {
         await useNitroApp().hooks.callHook('close')
+        console.log('[shutdown] close 钩子执行完成,退出')
       }
       catch (err) {
         console.error('[shutdown] close 钩子执行失败:', err)
       }
-      // close 链可能因某个插件挂住:再给 5s 后强制退出,避免"停不掉"
-      setTimeout(() => process.exit(0), 5000).unref?.()
+      clearTimeout(force)
       process.exit(0)
     })()
   }, 50).unref?.()

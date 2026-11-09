@@ -91,6 +91,38 @@ const main = async () => {
   const twinBad = await call('POST', '/api/workshop/device-twins/x/control', { command: '' }, token)
   ok('S9', '孪生控制:空 command → 400', twinBad.http === 400, `http=${twinBad.http}`)
 
+  /* ===== 2026-11-10 P0：写值形状 + 审批显式布尔 ===== */
+  // 旧实现 Number(null)===0 → 真实的 0 设定下发;现必须 400 且字段精确
+  const nullWrite = await call('POST', '/api/workshop/dcw/no-such-node/write', { value: null }, token)
+  ok('S10', 'dcw 核心写:{value:null} → 400（旧实现 Number(null)=0 会下发 0）',
+    nullWrite.http === 400 && /^value:/.test(String(nullWrite.message ?? '')),
+    `http=${nullWrite.http} msg=${wiSafe(nullWrite.message)}`)
+  const arrWrite = await call('POST', '/api/workshop/dcw/params/no-such-param/write', { value: [] }, token)
+  ok('S11', 'dcw 参数写:{value:[]} → 400（coerce 折叠 0 链已堵）',
+    arrWrite.http === 400 && /^value:/.test(String(arrWrite.message ?? '')),
+    `http=${arrWrite.http} msg=${wiSafe(arrWrite.message)}`)
+  // approved 必须显式布尔:{} / "false" / 0 一律 400(fail-open 回归守卫)
+  const decideEmpty = await call('POST', '/api/workshop/approvals/no-such-approval/decide', {}, token)
+  ok('S12', '复核裁决:缺 approved → 400（旧实现 {} 也算批准）',
+    decideEmpty.http === 400 && /^approved:/.test(String(decideEmpty.message ?? '')),
+    `http=${decideEmpty.http} msg=${wiSafe(decideEmpty.message)}`)
+
+  /* ===== 2026-11-10 契约：plugins 信封 / harness 工具面 / 停机端点 ===== */
+  const plugins = await call('GET', '/api/workshop/plugins', null, token)
+  ok('C1', 'GET /plugins 已走统一信封（data.plugins）',
+    plugins.http === 200 && plugins.code === 0 && Array.isArray(plugins.data?.plugins),
+    `http=${plugins.http} code=${plugins.code} keys=${Object.keys(plugins.data ?? {}).join(',')}`)
+  const harnesses = await call('GET', '/api/workshop/harnesses', null, token)
+  const hlist = Array.isArray(harnesses.data) ? harnesses.data : (harnesses.data?.harnesses ?? [])
+  const manualSurface = hlist.filter(h => h?.toolSurface === 'manual').map(h => h.id).sort()
+  ok('C2', 'GET /harnesses 下发 toolSurface（dsh/hermes/crush 标 manual）',
+    manualSurface.join(',') === 'crush,dsh,hermes', `manual=[${manualSurface.join(',')}] total=${hlist.length}`)
+  // 无令牌/无头 → 绝不允许 200(dev 实例 404;aw start 实例 403)
+  const shutdownNoAuth = await call('POST', '/api/system/shutdown', {}, token)
+  ok('C3', '停机端点未持令牌时拒绝（404 未启用 / 403 令牌无效）',
+    [403, 404].includes(shutdownNoAuth.http) && shutdownNoAuth.code !== 0,
+    `http=${shutdownNoAuth.http} code=${shutdownNoAuth.code}`)
+
   /* ===== PR-6：剩余四个子资源 GET（404 一律统一信封；不存在的 id 即可验证路由存在） ===== */
   const missingId = 'no-such-id-acceptance'
   const g1 = await call('GET', `/api/workshop/aml/models/${missingId}`, null, token)
