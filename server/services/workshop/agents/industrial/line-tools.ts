@@ -56,6 +56,12 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
   if (recipe.lineId !== lineId) return { text: `配方「${recipe.name}」不属于本频道绑定的产线「${lineName}」,不能用于开线。`, isError: true }
   if (recipe.params.length === 0) return { text: `配方「${recipe.name}」没有工艺参数,不能开线。请先在配方中保存可下发参数。`, isError: true }
+  // 二级认证门(与 recipe_apply 同口径):requireAuth=true 时只有 authorizedAgentIds 内的
+  // Agent 可操作。line_start 会把同批参数整批写入设备,不能绕过这道门;
+  // 恒 HITL 是兜底(人工过卡),不是"仅授权 Agent 可操作"这一用户意图的替代。
+  if (recipe.access?.requireAuth && !(recipe.access.authorizedAgentIds ?? []).includes(agentId)) {
+    return { text: `配方「${recipe.name}」已开启二级认证,你不在其授权 Agent 清单内,开线下发被拒。请让用户在配方编辑中把你的 Agent 加入授权清单(或关闭认证)后再开线。`, isError: true }
+  }
   // 审批快照:人工批准的是「这个版本 + 这组参数」;审批期间配方被改必须重新申请
   const approvedVersion = recipe.version ?? 1
   const approvedParams = JSON.stringify(recipe.params.map(p => ({ nodeId: p.nodeId, value: p.value })))
@@ -91,6 +97,10 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
   const recipeNow = ctrl.listRecipes().find(r => r.id === recipeId)
   if (!recipeNow || recipeNow.lineId !== lineId) {
     return { text: `审批通过后复核失败:配方「${recipe.name}」已删除或不再属于产线「${lineName}」,本次未开线。`, isError: true }
+  }
+  // 审批期间 access 可能被开启、授权清单可能被改:批后按当前配方口径复核
+  if (recipeNow.access?.requireAuth && !(recipeNow.access.authorizedAgentIds ?? []).includes(agentId)) {
+    return { text: `审批通过后复核失败:配方「${recipeNow.name}」在审批期间开启了二级认证且你不在授权清单内,本次未开线。`, isError: true }
   }
   const versionNow = recipeNow.version ?? 1
   const paramsNow = JSON.stringify(recipeNow.params.map(p => ({ nodeId: p.nodeId, value: p.value })))

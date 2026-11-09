@@ -28,6 +28,7 @@ import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getActiveLineRun } from '../../dcw/line-run'
 import { executionModeOfAgent } from '../execution-mode'
+import { settingOf } from '../../settings'
 
 export type RecipeOp = 'update' | 'dispatch' | 'trial' | 'rollback' | 'create'
 
@@ -152,9 +153,10 @@ export function assertRecipeOperation(
   //    'auto'(中性缺省)/'observe'(分发层已拒写,不可达)不改变本判定。
   const lineManual = recipe.lineId ? getDcwLineRepo().controlModeOf(recipe.lineId) === 'manual' : false
   const channelManual = executionModeOfAgent(agentId) === 'manual'
-  // ⑤ 全局开关兼容位:security.recipeDispatchApproval 开启时即便 auto 也挂审批(保留语义)
-  const globalGate = false // 由调用方按 settingOf('security.recipeDispatchApproval') 叠加(本模块不依赖设置服务)
-  void globalGate
+  // ⑤ 全局开关:security.recipeDispatchApproval(设置页「配方下发人工审批」)开启时,
+  //    dispatch/trial 即便 auto 绑定也挂审批 —— 与设置项声明的语义一致
+  //    (trial/apply 下发前挂起;update/rollback 不写设备,不受此闸影响)。
+  const globalGate = (op === 'dispatch' || op === 'trial') && settingOf('security.recipeDispatchApproval') === true
   // dcw 点位轨的 manual 语义:覆盖本次批点的 dcw 绑定任一 manual 即挂审批(fail-safe)
   const nodeManual = coveringBindings.some(b => b.mode === 'manual')
   const binding = recipeLevelGrant ?? coveringBindings[0]
@@ -162,7 +164,7 @@ export function assertRecipeOperation(
     // 理论上不可达(配方级授权或全部覆盖必有其一);fail-closed 防实现漂移
     return { ok: false, text: `无权${opLabel}配方「${recipe.name}」:未找到有效授权绑定。` }
   }
-  return { ok: true, binding, hitlRequired: binding.mode === 'manual' || nodeManual || lineManual || channelManual, activeContext: run }
+  return { ok: true, binding, hitlRequired: binding.mode === 'manual' || nodeManual || lineManual || channelManual || globalGate, activeContext: run }
 }
 
 /** 新建配方的授权门(尚无 recipe 可绑定):要求 Agent 在该线至少有一个授权锚

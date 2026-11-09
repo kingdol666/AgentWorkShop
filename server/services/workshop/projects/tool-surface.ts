@@ -72,6 +72,9 @@ export const PROJECT_GATED_WRITE_TOOL_NAMES: ReadonlySet<string> = new Set([
   'recipe_rollback',
   'recipe_trial',
   'recipe_apply',
+  // 探索式写:经 dcwControlGovernedInternal 真实写 PLC(permission-scope 同列高危),
+  // 项目来源任务必须与其它直写面一样先取 owner 的 write_intent。
+  'optimization_explore',
   'line_start',
   'line_stop',
 ])

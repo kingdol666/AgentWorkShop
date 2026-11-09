@@ -205,8 +205,9 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
       try {
         recordDcwWriteOps({ id, node, eng, prevValue, outcome, src: srcForLock as DcwWriteMeta['source'], meta, recipeRunId })
       }
-      catch {
-        // 日志失败不影响写结果
+      catch (err) {
+        // 仍不改变写结果语义,但必须留痕:静默吞掉会让"设备已变、台账无行"无从排查
+        console.error('[dcw] 写控运维入册失败(不影响写结果):', err)
       }
     }
     return outcome

@@ -392,3 +392,26 @@ test('tool-verify:管理线配方参数进入写授权面,配方外节点仍不�
   })
   assert.ok(denied?.isError, '配方外参数节点应被拒(候选只能覆盖配方内参数)')
 })
+
+test('全局开关 security.recipeDispatchApproval:开启后 dispatch/trial 即便 auto 也挂审批', (t) => {
+  const f = fixture('global-dispatch-gate')
+  t.after(f.cleanup)
+  getAgentNodeBindingRepo().bind(f.agentId, f.recipe.id, 'recipe', 'auto')
+  const g = globalThis as { __systemConfig?: unknown }
+  const prev = g.__systemConfig
+  try {
+    g.__systemConfig = {
+      ready: true,
+      snapshot: () => ({ effective: { 'security.recipeDispatchApproval': true } }),
+    }
+    assert.equal(expectOk(assertRecipeOperation(f.agentId, f.recipe, 'dispatch')).hitlRequired, true,
+      '开关开启后 dispatch 必须挂人工审批(设置页文案承诺的行为)')
+    assert.equal(expectOk(assertRecipeOperation(f.agentId, f.recipe, 'trial')).hitlRequired, true,
+      'trial 同样属于"下发前挂起"')
+    assert.equal(expectOk(assertRecipeOperation(f.agentId, f.recipe, 'update')).hitlRequired, false,
+      'update 不写设备,不受该闸影响')
+  }
+  finally {
+    g.__systemConfig = prev
+  }
+})
