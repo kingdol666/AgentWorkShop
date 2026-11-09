@@ -10,6 +10,7 @@
  */
 import { getToolApprovals } from '../tool-approvals'
 import { agentBadgeLabel } from '../agent-badge'
+import { currentToolInvocation } from '../governance-harness-audit'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { recordOps } from '../../ops/ops'
@@ -103,7 +104,16 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
     return { text: `审批通过后复核失败:产线「${lineName}」已在运行(批次 ${ctrl.lineState(lineId).runId}),本次未重复开线。`, isError: true }
   }
   try {
-    const run = await ctrl.lineStart(lineId, recipeId)
+    // 归因：line_start 的逐参数写入必须携带频道/任务锚点，否则干预台账 channel 为空，
+    // C1 独立回读的任务终态补扫（按 channel 取 pending）永远看不到这批写入。
+    const invocation = currentToolInvocation()
+    const run = await ctrl.lineStart(lineId, recipeId, {
+      source: 'recipe',
+      actor: agentId,
+      actorName: agentBadgeLabel(agentId),
+      channelId: channelId ?? '',
+      ...(invocation?.taskId ? { taskId: invocation.taskId } : {}),
+    })
     const results = run.results ?? []
     const failed = results.filter(r => !r.ok)
     const unverified = results.filter(r => r.ok && r.verify?.verdict !== 'verified' && r.ack !== 'readback-verified')

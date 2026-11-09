@@ -3,7 +3,7 @@
  * (拆分层,承 DcwControllerRecipes;方法体与原文件逐行一致)
  */
 import { DcwControllerRecipes } from './recipes'
-import type { LineInput, LineQueryOpts, LineQueryResult, LineRunState, LineView } from '../../../../../shared/dcw-protocol'
+import type { DcwWriteMeta, LineInput, LineQueryOpts, LineQueryResult, LineRunState, LineView } from '../../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { clearActiveLineRun, getActiveLineRun, getAllActiveLineRuns, setActiveLineRun } from '../line-run'
 import { daqRuntimeSettings } from '../../settings'
@@ -75,7 +75,7 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
    * 产线开跑:选定产品+配方 → 下发配方参数 → 创建批次并激活**该产线**窗口。
    * 门控:配方必归属本产线的产品且含工艺参数 —— 未设定配方不可开跑数据采集。
    */
-  async lineStart(lineId: string, recipeId: string) {
+  async lineStart(lineId: string, recipeId: string, writeMeta?: DcwWriteMeta) {
     this.ensureLoop()
     if (!this.running) {
       throw new AppError(409, ErrorCodes.CONFLICT, '控制网关已暂停(暂停全部控制):开跑需下发配方参数,请先「恢复全部控制」')
@@ -131,7 +131,7 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
       startedAt: run.startedAt,
       taggedSamples: 0,
     })
-    await this.writeRecipeParams(recipe, run)
+    await this.writeRecipeParams(recipe, run, writeMeta ? { writeMeta } : {})
     this.broadcast?.('dcw.controller', this.controllerState())
     return run
   }

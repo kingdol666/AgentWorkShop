@@ -27,7 +27,7 @@ import { recordOps } from '../../ops/ops'
 import { evaluateRecipeParamLimits } from '../../dcw/dcw-controller/write'
 import { GOVERNED_DISPATCH_HINT, RECOVERY_RETRY_HINT, RECOVERY_TRACE_HINT, RECOVERY_VERIFY_HINT } from './fallback-hints'
 import { amlActivityForLine } from './aml-activity'
-import { agentOpsScope, revalidateApprovedAction } from './ops-tools'
+import { agentOpsScope, channelIdOfAgent, revalidateApprovedAction } from './ops-tools'
 import { recipeEvidenceText } from '../../dcw/recipe-evidence'
 
 /** 候选包上限(防审批卡被刷屏;1~3 套) */
@@ -307,6 +307,7 @@ export async function toolRecipePropose(agentId: string, args: {
         actor: agentId,
         actorName: agentBadgeLabel(agentId),
         hypothesis: chosen.name,
+        channelId: invocation?.channelId || channelIdOfAgent(agentId),
         ...(invocation?.agentId === agentId && invocation.taskId ? { taskId: invocation.taskId } : {}),
         executionMode: executionModeOfAgent(agentId),
       },
