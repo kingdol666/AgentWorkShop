@@ -18,6 +18,7 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
     const channelId = agent.channelId
     return {
       listAgents: () => this.listChannelAgents(channelId),
+      listBroadcastTargets: senderAgentId => this.listBroadcastTargets(channelId, senderAgentId),
       dispatchTask: input => this.dispatchTask(channelId, agent.id, input),
       listTasks: () => this.listTasks(channelId, agent.id),
       getTask: taskId => this.getTask(channelId, agent.id, taskId),

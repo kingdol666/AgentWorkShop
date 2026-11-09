@@ -115,6 +115,8 @@ export abstract class ManagerContracts {
   protected abstract ensureAgentRuntime(channelId: string, agentId: string): AgentRuntime | undefined
   abstract getTask(channelId: string, callerAgentId: string, taskId: string): Promise<WorkspaceTask>
   abstract listChannelAgents(channelId: string): Promise<AgentInfo[]>
+  /** 广播目标面(会话隔离):基础成员 + 发起者所属会话的 clone;由 admin-agents 实现 */
+  abstract listBroadcastTargets(channelId: string, senderAgentId: string): Promise<AgentInfo[]>
   abstract listChannelMail(
     channelId: string,
     callerAgentId: string,

@@ -49,7 +49,7 @@ export interface SessionCloneDeps {
   notify?: (channelId: string, payload: { op: 'added' | 'updated' | 'removed', agentId: string, name: string, role: 'lead' | 'worker', harness: string }) => void
 }
 
-const SESSION_MARKER = '·session·'
+export const SESSION_MARKER = '·session·'
 const TERMINAL_TASK_STATES = new Set(['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'])
 
 /** 频道基础成员 = 已启用的 lead/worker（排除项目办公室 leader 与既有 session clone）。 */
@@ -76,10 +76,27 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
   const title = (input.title ?? '').trim() || `会话-${randomUUID().slice(0, 6)}`
   const memberMap: Record<string, string> = {}
   const members: Array<{ baseAgentId: string, cloneId: string, name: string, role: string }> = []
-  let n = 0
+  // clone 名必须**跨会话唯一**:旧实现每个会话从 1 重计,并存会话里会同时存在
+  // `Alice·session·1` × N;resolveMemberRef 按名字精确匹配取第一个(created_at ASC),
+  // LLM 按名册寻址会恒投到最早那个会话的 clone。
+  const existing = deps.channelAgents.listByChannel(input.channelId)
+  const nextSeqOf = (baseName: string): number => {
+    const prefix = `${baseName}${SESSION_MARKER}`
+    let max = 0
+    for (const m of existing) {
+      const name = String(m.name ?? '')
+      if (!name.startsWith(prefix)) continue
+      const seq = Number(name.slice(prefix.length))
+      if (Number.isInteger(seq) && seq > max) max = seq
+    }
+    return max + 1
+  }
+  const usedSeq = new Set<number>()
   for (const base of bases) {
-    n += 1
-    const cloneName = `${base.name}${SESSION_MARKER}${n}`
+    let seq = nextSeqOf(base.name)
+    while (usedSeq.has(seq)) seq += 1
+    usedSeq.add(seq)
+    const cloneName = `${base.name}${SESSION_MARKER}${seq}`
     const config = parseJson<Record<string, unknown>>(base.configJson ?? '{}', {})
     const created = deps.channelAgents.create({
       channelId: input.channelId,

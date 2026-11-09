@@ -388,7 +388,7 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
       case 'read_channel_mail':
         return await handleReadChannelMail(args, ws)
       case 'broadcast_message':
-        return await handleBroadcastMessage(args, identity, ws)
+        return await handleBroadcastMessage(args, identity, state, ws)
       case 'list_channel_tasks':
         return await handleListChannelTasks(ws)
       case 'get_my_task_queue':
