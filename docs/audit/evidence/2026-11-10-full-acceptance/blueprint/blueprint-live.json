@@ -1,0 +1,92 @@
+{
+  "at": "2026-11-09T06:09:25.564Z",
+  "base": "http://127.0.0.1:4013",
+  "verdict": "PASS",
+  "steps": [
+    {
+      "name": "S1-auth",
+      "ok": true,
+      "detail": "admin/owner token ok; reviewer=true"
+    },
+    {
+      "name": "S2-blueprint-save",
+      "ok": true,
+      "detail": "save=200 name=四频道协同模板-d029d ok"
+    },
+    {
+      "name": "S3-blueprint-listed",
+      "ok": true,
+      "detail": "清单含 四频道协同模板-d029d"
+    },
+    {
+      "name": "S4-instantiate",
+      "ok": true,
+      "detail": "project=5e380aeb-5661-4b06-8220-02b430b14468 status=active workItems=3 ok"
+    },
+    {
+      "name": "S5-technical-policy",
+      "ok": true,
+      "detail": "routingPolicy=technical"
+    },
+    {
+      "name": "S6-dispatch-W1",
+      "ok": true,
+      "detail": "dispatch=200 ok"
+    },
+    {
+      "name": "S7-root-done-W1",
+      "ok": true,
+      "detail": "work item=COMPLETED"
+    },
+    {
+      "name": "S8-submit-W1",
+      "ok": true,
+      "detail": "owner 提交=200 ok"
+    },
+    {
+      "name": "A1-gate-unreviewed",
+      "ok": true,
+      "detail": "未 review 时 W2 dispatch=409 工作项未就绪(TECHNICAL_REVIEW)：上游「W1 守卫编译」成果待技术验收（应 409）"
+    },
+    {
+      "name": "S9-W2-chain",
+      "ok": true,
+      "detail": "review=200 dispatch W2=200"
+    },
+    {
+      "name": "S10-root-done-W2",
+      "ok": true,
+      "detail": "work item=COMPLETED"
+    },
+    {
+      "name": "S11-submit-W2",
+      "ok": true,
+      "detail": "owner 提交=200 ok"
+    },
+    {
+      "name": "S12-W3-chain",
+      "ok": true,
+      "detail": "review=200 dispatch W3=200"
+    },
+    {
+      "name": "S13-root-done-W3",
+      "ok": true,
+      "detail": "work item=COMPLETED"
+    },
+    {
+      "name": "S14-submit-W3",
+      "ok": true,
+      "detail": "owner 提交=200 ok"
+    },
+    {
+      "name": "S15-review-W3",
+      "ok": true,
+      "detail": "review=200"
+    },
+    {
+      "name": "S16-l2-complete",
+      "ok": true,
+      "detail": "L2 批 3 complete=200 final=completed"
+    }
+  ]
+}

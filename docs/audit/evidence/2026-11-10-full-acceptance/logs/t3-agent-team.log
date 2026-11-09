@@ -1,0 +1,33 @@
+━━━ 1. 创建 Agent 模板(mock harness)━━━
+  PASS  创建 3 个模板 — lead=b2e05a97…
+━━━ 2. AgentTeam CRUD + 成员管理 ━━━
+  PASS  创建 team — team=382589bd…
+  PASS  加入 lead 成员
+  PASS  加入 2 个 worker 成员 — members=3
+  PASS  重复加入 → 409 ALREADY_MEMBER
+  PASS  重复 lead → 409 — code=ALREADY_MEMBER
+  PASS  加入不存在的模板 → 404
+  PASS  GET team 详情
+  PASS  GET team 成员列表
+  PASS  GET teams 列表含新 team
+━━━ 3. 批量部署 AgentTeam → Channel ━━━
+  PASS  创建空 channel — channel=f5c727b9…
+  PASS  一次部署 3 实例 — ["team-lead:lead","team-worker-1:worker","team-worker-2:worker"]
+  PASS  部署结果含 lead 实例
+  PASS  channel 含 3 个 agent 实例
+  PASS  channel leadAgentId 已设定
+  PASS  二次部署 → 409 LEAD_EXISTS
+  PASS  部署不存在的 team → 404
+━━━ 4. 通过 channel 提交任务 → 真实执行 ━━━
+  PASS  提交任务到 channel — task=da474cd5…
+  PASS  任务真实执行至 COMPLETED — state=COMPLETED
+  task: state=COMPLETED progress=100 artifacts=1 history=0
+  PASS  lead 分发子任务且 worker 完成 — completed children=2
+━━━ 5. 成员移除 + team 更新/删除 ━━━
+  PASS  移除成员 → 剩 2 个
+  PASS  再删同成员 → 404
+  PASS  PATCH team 改名
+  PASS  DELETE team
+  PASS  删除后 GET → 404
+
+━━━ 结果: PASS=25 FAIL=0 ━━━

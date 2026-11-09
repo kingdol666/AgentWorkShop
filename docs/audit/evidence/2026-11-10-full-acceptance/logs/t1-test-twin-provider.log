@@ -1,0 +1,17 @@
+
+> agentworkshop@0.10.0 test:twin-provider
+> tsx --test tests/aml-twin-provider-registry.test.ts
+
+✔ registers providers, computes stable hashes, and is idempotent (8.258ms)
+✔ resolves a lease and drains old generation without invalidating in-flight work (1.0621ms)
+✔ retire waits for references and health marks failed providers unavailable (0.6215ms)
+✔ legacy injection provider can be registered without changing physics-runtime (0.2692ms)
+✔ global twin bridge replays pending operations and forwards live operations (0.6388ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 220.2524
