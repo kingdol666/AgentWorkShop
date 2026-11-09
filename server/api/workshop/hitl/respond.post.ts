@@ -22,37 +22,35 @@
  * 幂等:待办不在登记处且无持久化行 → 409 ALREADY_RESOLVED。
  * 鉴权:用户 token + Channel 成员/审批策略(hitl-decision.assertCanDecideHitlChannel)。
  */
-import { readBody } from 'h3'
+import { readValidatedBody } from 'h3'
+import { z } from 'zod'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
-import { AppError } from '@/server/utils/errors'
+import { zValidator } from '@/server/utils/validate'
 import { decideHitlRequest } from '@/server/services/workshop/agents/hitl-decision'
 
 const RESPONDABLE_KINDS = ['omp-dialog', 'dcw-approval', 'codex-approval', 'opencode-permission', 'dsh-permission', 'claude-permission', 'qwen-permission', 'hermes-permission'] as const
 
-interface RespondBody {
-  kind?: string
-  id?: string
-  value?: string
-  /** 结构化多问题答案(question 型;id 缺省按下标对齐) */
-  answers?: Array<{ id?: string, answer: string }>
-  confirmed?: boolean
-  cancelled?: boolean
-  /** 引擎原生选项(opencode permission:once|always|reject;未知枚举一律 400) */
-  response?: string
-  comment?: string
-  /** 多方案裁决序号(dcw-approval 结构化审批单:批准时选定的包下标;缺省由 fail-closed 归一收敛为拒绝) */
-  choice?: number
-}
+// 入参形状契约:kind 必须命中可应答枚举,id 非空;其余字段只校验类型。
+// 业务裁决(pending→resolving 原子抢占、fail-closed 归一)仍全部在 hitl-decision,
+// 此处**不**放宽也不收紧任何裁决语义 —— 过去这些字段是裸 readBody 透传。
+const respondSchema = z.object({
+  kind: z.enum(RESPONDABLE_KINDS),
+  id: z.string().trim().min(1, 'id 必填'),
+  value: z.string().optional(),
+  answers: z.array(z.object({ id: z.union([z.string(), z.number()]).optional(), answer: z.unknown() })).optional(),
+  confirmed: z.boolean().optional(),
+  cancelled: z.boolean().optional(),
+  response: z.string().optional(),
+  comment: z.string().optional(),
+  choice: z.number().int().optional(),
+})
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
-  const body = await readBody<RespondBody>(event) ?? {}
+  const body = await readValidatedBody(event, zValidator(respondSchema))
   const kind = body.kind
-  const id = String(body.id ?? '')
-  if (!kind || !(RESPONDABLE_KINDS as readonly string[]).includes(kind) || !id) {
-    throw new AppError(400, 'BAD_REQUEST', `body 需要 { kind: ${RESPONDABLE_KINDS.join('|')}, id, value?/answers?/confirmed?/cancelled?/response?/comment? }`)
-  }
+  const id = body.id
 
   // 结构化答案归一(id 缺省留空,由决策服务按下标对齐问题)
   const answers = Array.isArray(body.answers)

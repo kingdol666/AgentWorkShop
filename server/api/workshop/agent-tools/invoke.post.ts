@@ -13,12 +13,25 @@
  * 校验被整段跳过,于是**任意登录用户可冒用任意 agent 调工具**(继承其节点绑定与 channel)。
  * body: { agentId, tool, args }
  */
-import { readBody, getHeader } from 'h3'
+import { readValidatedBody, getHeader } from 'h3'
+import { z } from 'zod'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { AppError } from '@/server/utils/errors'
+import { zValidator } from '@/server/utils/validate'
 import { getWorkshopManager } from '@/server/plugins/workshop'
 import type { AgentChannelManager } from '@/server/services/workshop/runtime/manager'
+
+/**
+ * 工具桥入参:agentId/tool 形状是硬契约(非空;tool 名只允许 [a-z0-9_])。
+ * args 保持开放对象(各工具自有 schema,由 host-tool-bridge 逐工具校验),
+ * 但拒绝数组/标量 —— 过去会被当作对象透传进 dispatch。
+ */
+const invokeSchema = z.object({
+  agentId: z.string().trim().min(1, 'agentId required'),
+  tool: z.string().trim().min(1, 'tool required').regex(/^[a-z0-9_]{1,64}$/, 'tool 名只能是 [a-z0-9_] 且不超过 64 字符'),
+  args: z.record(z.string(), z.unknown()).optional().default({}),
+})
 
 /**
  * manager 依赖仓储视图。
@@ -37,12 +50,7 @@ export default defineApiHandler(async (event) => {
   // 用户路径:必须校验「该用户可支配该 agent」(桥路径由 token 自证兜底)
   let user = null
   if (!agentToken) user = resolveUser(event)
-  const body = await readBody<{ agentId?: string, tool?: string, args?: Record<string, unknown> }>(event) ?? {}
-  const agentId = String(body.agentId ?? '')
-  const tool = String(body.tool ?? '')
-  const args = body.args ?? {}
-  if (!agentId) throw createError({ statusCode: 400, statusMessage: 'agentId required' })
-  if (!tool) throw createError({ statusCode: 400, statusMessage: 'tool required' })
+  const { agentId, tool, args } = await readValidatedBody(event, zValidator(invokeSchema))
   const manager = getWorkshopManager()
   if (agentToken) {
     const resolved = manager.resolveAgentByToken(String(agentToken))
