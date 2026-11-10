@@ -254,6 +254,39 @@ test('S7 watchdog：budget_burn/no_progress/repeated_decision + 通知去重（�
   }
 })
 
+test('S7b watchdog：无在飞但仍有开放项 → no_progress（旧实现全盲）', async () => {
+  const s = await activeProject()
+  try {
+    // 工作项停在 DRAFT（无在飞），项目账本静默：旧实现 inflight=0 → 零 finding。
+    const wd = createProjectWatchdog(s.db, s.kernel, { noProgressMs: -1 })
+    const types = wd.scanProject(s.p.id, 1).map(f => f.type)
+    assert.ok(types.includes('no_progress'), `无在飞停滞必须被发现，实际 [${types.join(',')}]`)
+    const finding = wd.scanProject(s.p.id, 1).find(f => f.type === 'no_progress')!
+    assert.match(finding.detail, /无在飞工作项但仍有/, '文案须点明"无在飞"这一区别')
+    // 全部终态后不得再报（避免噪音）
+    s.db.prepare(`UPDATE project_work_items SET state = 'COMPLETED' WHERE project_id = ?`).run(s.p.id)
+    const after = wd.scanProject(s.p.id, 1).map(f => f.type)
+    assert.ok(!after.includes('no_progress'), '全部终态后不应再报停滞')
+  }
+  finally {
+    s.db.close()
+  }
+})
+
+test('S7c work.failed 进慢路径（leader 对上游失败不再失聪）', async () => {
+  const s = await activeProject()
+  try {
+    const ingress = createEventIngress(s.db, s.kernel, { minSlowIntervalMs: 0 })
+    appendEvent(s, s.p.id, 'work.failed', 'evt-failed-1')
+    const r = ingress.process(s.p.id)
+    assert.ok(r.fastCount > 0, 'work.failed 仍需 reconcile（fast）')
+    assert.ok(r.slowCount > 0, 'work.failed 必须进慢路径（leader 语义评估）')
+  }
+  finally {
+    s.db.close()
+  }
+})
+
 test('kernel tick：fast 事件→reconcile、slow 事件→mailbox 投递、健康心跳与 dead-man', async () => {
   const s = await activeProject()
   try {

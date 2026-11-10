@@ -20,7 +20,10 @@ const FAST_TYPES = new Set([
 
 /** 语义事件：需要 leader 评估（是否重规划/是否接受/是否换频道）。 */
 const SLOW_TYPES = new Set([
-  'work.blocked', 'work.overdue', 'result.submitted', 'channel.proposed', 'channel.apply_failed', 'plan.apply_failed',
+  // work.failed 与 result.submitted 一样是「双身份」:既要 reconcile 收敛(fast),
+  // 也要 leader 语义评估 —— 上游执行失败时下游会静默停在 DEPENDENCY_NOT_STARTED,
+  // 不进慢路径等于 leader 对失败"失聪"(2026-11-10 审计)。
+  'work.failed', 'work.blocked', 'work.overdue', 'result.submitted', 'channel.proposed', 'channel.apply_failed', 'plan.apply_failed',
 ])
 
 const EVT_COLS = 'id, project_id AS projectId, seq, type, event_key AS eventKey, payload_json AS payloadJson, trace_id AS traceId, created_at AS createdAt'
@@ -100,6 +103,9 @@ export function createEventIngress(db: DatabaseSync, kernel: ProjectKernelRepo, 
               kind: 'mailbox',
               payload: { events: slowIds, windowSeq: minSeq },
             })
+            // 新批入队也要计入 slowCount:旧实现只在"并入已有批"时统计,首次投递恒为 0,
+            // 观测面(日志/指标)因此看不到慢路径实际投递了多少事件。
+            result.slowCount = slowIds.length
           }
           else {
             result.deferred = slowIds.length
