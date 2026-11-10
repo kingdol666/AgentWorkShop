@@ -885,44 +885,85 @@ export class ProjectService {
   terminate(id: string, actor: ProjectActor, reason: string): ProjectRow {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
-    if (p.status === 'canceled') return this.projects.findById(id)!
     if (p.status === 'completed' || p.status === 'archived') {
       throw new AppError(409, 'PROJECT_STATE_INVALID', `项目 ${p.status} 不可终止`)
     }
     if (!reason.trim()) throw new AppError(400, 'BAD_REQUEST', '终止必须给出理由')
-    const engineAccess = (this.manager as unknown as { getTaskEngine?: () => { cancelTree?: (taskId: string, by: string, reason: string) => Array<{ id: string, state: string }> } }).getTaskEngine
-    const engine = typeof engineAccess === 'function' ? engineAccess.call(this.manager) : undefined
     const items = this.workItems.listByProject(id)
     const canceledTasks: Array<{ taskId: string, state: string }> = []
     withTransaction(this.db, () => {
       for (const wi of items) {
-        if (['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(wi.state)) continue
-        this.workItems.update(wi.id, {
-          state: 'CANCELED',
-          stateReason: 'PROJECT_TERMINATED',
-          closedAt: new Date().toISOString(),
-          closeReason: 'PROJECT_TERMINATED',
-        })
-        if (wi.currentAttemptId) {
-          const attempt = this.attempts.findById(wi.currentAttemptId)
-          if (attempt && !attempt.closedAt) this.attempts.close(attempt.id, 'CLOSED', 'PROJECT_TERMINATED')
-          if (attempt?.channelTaskId && engine?.cancelTree) {
-            try {
-              for (const t of engine.cancelTree(attempt.channelTaskId, actor.id, `PROJECT_TERMINATED: ${reason}`)) {
-                canceledTasks.push({ taskId: t.id, state: t.state })
-              }
-            }
-            catch { /* 任务可能已终态——工作项侧已终结，容忍 */ }
+        const terminal = ['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(wi.state)
+        if (!terminal) {
+          this.workItems.update(wi.id, {
+            state: 'CANCELED',
+            stateReason: 'PROJECT_TERMINATED',
+            closedAt: new Date().toISOString(),
+            closeReason: 'PROJECT_TERMINATED',
+          })
+          this.record(id, 'work.canceled', actor, { workItemId: wi.id, reason: `PROJECT_TERMINATED: ${reason}` }, wi.traceId, 'work.canceled', `work:${wi.id}:terminated`, { workItemId: wi.id, reason })
+        }
+        // H0 幂等扫尾：即使工作项已是 CANCELED，attempt 可能仍挂着在飞任务
+        // （取消竞态/重复 terminate）。只要 task 未终态就取消并 abort，不能因
+        // 工作项终态而跳过。
+        const attempt = wi.currentAttemptId ? this.attempts.findById(wi.currentAttemptId) : undefined
+        if (attempt && !attempt.closedAt) this.attempts.close(attempt.id, 'CLOSED', 'PROJECT_TERMINATED')
+        if (attempt?.channelTaskId) {
+          for (const t of this.cancelTaskTreeForProject(attempt.channelTaskId, actor.id, `PROJECT_TERMINATED: ${reason}`)) {
+            canceledTasks.push({ taskId: t.id, state: t.state })
           }
         }
-        this.record(id, 'work.canceled', actor, { workItemId: wi.id, reason: `PROJECT_TERMINATED: ${reason}` }, wi.traceId, 'work.canceled', `work:${wi.id}:terminated`, { workItemId: wi.id })
       }
       this.approvals.expire(id)
       this.approvals.expireAllPending(id)
-      this.projects.update(id, { status: 'canceled' })
-      this.record(id, 'project.terminated', actor, { reason, canceledWorkItems: items.length, canceledTasks: canceledTasks.length }, '', 'project.terminated', `project:${id}:terminated`, { reason, canceledTasks })
+      if (p.status !== 'canceled') {
+        this.projects.update(id, { status: 'canceled' })
+        this.record(id, 'project.terminated', actor, { reason, canceledWorkItems: items.length, canceledTasks: canceledTasks.length }, '', 'project.terminated', `project:${id}:terminated`, { reason, canceledTasks })
+      }
     })
     return this.projects.findById(id)!
+  }
+
+  /** H0 内部取消任务树：优先走 manager 的 cancelTaskTreeInternal（含 abort）；替身降级为 engine.cancelTree。 */
+  private cancelTaskTreeForProject(taskId: string, by: string, reason: string): Array<{ id: string, state: string }> {
+    const mgr = this.manager as unknown as { cancelTaskTreeInternal?: (taskId: string, by: string, reason: string) => Array<{ id: string, state: string }> }
+    if (typeof mgr.cancelTaskTreeInternal === 'function') {
+      try {
+        return mgr.cancelTaskTreeInternal(taskId, by, reason) ?? []
+      }
+      catch {
+        return []
+      }
+    }
+    const engineAccess = (this.manager as unknown as { getTaskEngine?: () => { cancelTree?: (taskId: string, by: string, reason: string) => Array<{ id: string, state: string }> } }).getTaskEngine
+    const engine = typeof engineAccess === 'function' ? engineAccess.call(this.manager) : undefined
+    try {
+      return engine?.cancelTree?.(taskId, by, reason) ?? []
+    }
+    catch {
+      return []
+    }
+  }
+
+  /**
+   * H0 开工栅栏：project 来源任务进入 WORKING 前复核项目/工作项/attempt 仍可执行。
+   * 组合根把它注入 TaskEngine；取消/终止后即使任务已被唤醒也无法开工。
+   */
+  isProjectTaskRunnable(projectId: string, taskId: string): boolean {
+    const p = this.projects.findById(projectId)
+    if (!p || p.status !== 'active') return false
+    const task = this.tasks.findById(taskId)
+    if (!task) return false
+    if (task.projectWorkItemId) {
+      const wi = this.workItems.findById(task.projectWorkItemId)
+      if (!wi) return false
+      if (['CANCELED', 'COMPLETED', 'FAILED', 'SUPERSEDED'].includes(wi.state)) return false
+      if (wi.currentAttemptId) {
+        const attempt = this.attempts.findById(wi.currentAttemptId)
+        if (attempt && task.projectAttemptNo != null && attempt.attemptNo !== task.projectAttemptNo) return false
+      }
+    }
+    return true
   }
 
   archive(id: string, actor: ProjectActor): ProjectRow {
@@ -1027,6 +1068,10 @@ export class ProjectService {
       if (wi.currentAttemptId) {
         const attempt = this.attempts.findById(wi.currentAttemptId)
         if (attempt && !attempt.closedAt) this.attempts.close(attempt.id, 'CLOSED', reason)
+        // H0：关闭 attempt 不等于停止回合——同事务内取消任务树（含 abort）。
+        if (attempt?.channelTaskId) {
+          this.cancelTaskTreeForProject(attempt.channelTaskId, actor.id, `OWNER_CANCELED: ${reason}`)
+        }
       }
       this.record(id, 'work.canceled', actor, { workItemId, reason }, wi.traceId, 'work.canceled', `work:${workItemId}:canceled`, { workItemId, reason })
     })
@@ -1328,6 +1373,39 @@ export class ProjectService {
         execBudgetMinutes: wi.execBudgetMinutes,
         parts: [{ text: handoff.text }],
       })
+      // H0 派发后栅栏：submitProjectRoot 在返回前已创建任务并可能唤醒 Agent。
+      // 因此返回后必须重读项目/工作项/attempt，确认本次 claim 仍是唯一有效代次；
+      // 若期间被 pause/terminate/cancelWorkItem 或新 attempt 抢占，立即取消任务树
+      // 并闭合 attempt。真正防执行由 TaskEngine 的开工栅栏兜底（见 transition.ts）。
+      const freshProject = this.projects.findById(id)
+      const freshItem = this.workItems.findById(wi.id)
+      const ownsClaim = !!attempt && freshItem?.currentAttemptId === attempt.id
+      const canCommit = freshProject?.status === 'active'
+        && freshItem?.state === 'DISPATCHING'
+        && ownsClaim
+      if (!canCommit) {
+        this.cancelTaskTreeForProject(task.id, 'system', 'PROJECT_STATE_CHANGED_DURING_DISPATCH')
+        if (attempt && !attempt.closedAt) {
+          this.attempts.closeWithFailure(attempt.id, {
+            reason: 'PROJECT_STATE_CHANGED_DURING_DISPATCH',
+            failureClass: 'CONTRACT',
+            retryable: false,
+            nextRetryAt: null,
+          })
+        }
+        const projectCanceled = freshProject?.status === 'canceled'
+        this.workItems.update(wi.id, {
+          state: projectCanceled ? 'CANCELED' : 'DRAFT',
+          stateReason: 'PROJECT_STATE_CHANGED_DURING_DISPATCH',
+          currentAttemptId: null,
+          closedAt: projectCanceled ? new Date().toISOString() : null,
+          closeReason: projectCanceled ? 'PROJECT_TERMINATED' : null,
+        })
+        this.record(id, 'work.dispatch_aborted', actor, {
+          workItemId: wi.id, taskId: task.id, attemptNo, reason: 'PROJECT_STATE_CHANGED_DURING_DISPATCH',
+        }, traceId, 'work.dispatch_aborted', `work:${wi.id}:dispatch-aborted:a${attemptNo}`, { workItemId: wi.id, taskId: task.id })
+        throw new AppError(409, 'PROJECT_STATE_CHANGED', '派发期间项目状态已变更，本次任务已取消')
+      }
       this.attempts.setDispatched(attempt!.id, task.id)
       const evtType = opts.auto ? 'work.dispatch_auto' : 'work.dispatched'
       this.record(id, evtType, actor, { workItemId: wi.id, taskId: task.id, attemptNo, instanceChannelId, inputResultIds: handoff.upstream.map(r => r.id) }, traceId, evtType, `work:${wi.id}:${opts.auto ? 'auto' : 'dispatched'}:a${attemptNo}`, { workItemId: wi.id, taskId: task.id, attemptNo, auto: opts.auto, inputResultIds: handoff.upstream.map(r => r.id), planVersion: p.planVersion, channelId: wi.channelId, instanceChannelId })
@@ -1344,6 +1422,9 @@ export class ProjectService {
       const message = err instanceof Error ? err.message : String(err)
       const code = (err as { code?: string }).code ?? ''
       const errno = (err as { errno?: number }).errno
+      // H0 派发后栅栏已把本次 attempt/工作项收敛到终态或 DRAFT，不能再走通用
+      // close/回落逻辑覆盖（否则 CANCELED 会被改回 DRAFT/BLOCKED）。
+      if (code === 'PROJECT_STATE_CHANGED') throw err
       // WP1：并发派发冲突（claim 未赢 / attempt 序号唯一索引撞车）→ 可重试语义，绝不下 BLOCKED。
       const attemptConflict = code === 'WORK_ITEM_IN_FLIGHT'
         || (/UNIQUE constraint failed/i.test(message) && /attempt|project_work_item/i.test(message))

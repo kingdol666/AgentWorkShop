@@ -526,6 +526,24 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
   }
 
   /**
+   * H0 内部治理取消：ProjectService 在 terminate / cancelWorkItem / 派发回滚时调用。
+   * 调用方已完成 owner/system 授权，这里不再做调用者权限判定；取消任务树并
+   * 对每个被取消任务发 abort（abort 只是中断信号，是否已停止由 runtime 回执观测）。
+   * 已 COMPLETED/FAILED 的根不重复取消，但返回空数组；已 CANCELED 的根为幂等空操作。
+   */
+  cancelTaskTreeInternal(taskId: string, by: string, reason: string): WorkspaceTask[] {
+    const task = this.getTaskEngine().get(taskId)
+    if (!task) return []
+    if (task.state === 'COMPLETED' || task.state === 'FAILED') return []
+    const canceled = this.getTaskEngine().cancelTree(taskId, by, reason)
+    for (const c of canceled) {
+      this.runtimeOf(c.channelId, c.assigneeId)?.abortTask(c.id)
+      this.wakeAgent(c.channelId, c.assigneeId)
+    }
+    return canceled
+  }
+
+  /**
    * HITL:前端独立中断指定成员运行时(worker 或 lead)。
    *  - worker:强制 stop + detach(中断当前 run/杀子进程),成员行保留 enabled=1,
    *    后续任务投递按需重新装配(interrupt 语义,不删成员)。

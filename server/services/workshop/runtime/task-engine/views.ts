@@ -22,6 +22,12 @@ export abstract class TaskEngineViews extends TaskEngineContracts {
        * 统一触发)。状态/进度的实时同步唯一出口 —— 前端/WS/monitor 据此对齐实体。
        */
       onTaskChange?(e: { taskId: string, channelId: string, state?: TaskState, progress?: number, agentId?: string, task?: WorkspaceTask, artifactName?: string, artifactId?: string, reassignFrom?: string, reason?: string }): void
+      /**
+       * 开工栅栏（H0）：project 来源任务进入 WORKING 前由组合根校验项目/工作项/attempt
+       * 仍可执行。返回 false 时 transition 抛 PROJECT_NOT_ACTIVE，任务保持原状态，
+       * 防止"取消/终止后才被领取"的任务真正执行。未注入时保持既有行为（测试替身）。
+       */
+      guardProjectTaskStart?(task: WorkspaceTask): boolean
     },
   ) {
     super()

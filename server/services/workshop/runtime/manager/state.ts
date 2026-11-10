@@ -102,10 +102,20 @@ export abstract class ManagerState extends ManagerContracts {
    * 交给上层；回调异常必须被吞掉，不能影响任务状态机。
    */
   protected projectTaskChangeSink?: (e: { taskId: string, channelId: string, state: string }) => void
+  /**
+   * H0 开工栅栏（插件装配）：project 来源任务进入 WORKING 前由 ProjectService
+   * 复核项目/工作项/attempt 仍可执行。返回 false 时拒绝开工（任务保持原状态）。
+   */
+  protected projectTaskRunnableGuard?: (projectId: string, taskId: string) => boolean
 
   /** 装配 Project 任务回调（project service 初始化后调用；传 null 解除）。 */
   setProjectTaskChangeSink(sink: ((e: { taskId: string, channelId: string, state: string }) => void) | null): void {
     this.projectTaskChangeSink = sink ?? undefined
+  }
+
+  /** 装配 Project 任务开工栅栏（project service 初始化后调用；传 null 解除）。 */
+  setProjectTaskRunnableGuard(guard: ((projectId: string, taskId: string) => boolean) | null): void {
+    this.projectTaskRunnableGuard = guard ?? undefined
   }
 
   protected idleSweeperTimer: NodeJS.Timeout | null = null
@@ -481,6 +491,10 @@ export abstract class ManagerState extends ManagerContracts {
           const cr = this.channels.get(e.channelId)
           if (cr?.scheduler) cr.scheduler.wake()
           else if (e.state === 'SUBMITTED' || e.state === 'ASSIGNED') ((this as unknown) as { ensureChannelActive: (channelId: string) => void }).ensureChannelActive(e.channelId)
+        },
+        guardProjectTaskStart: (task) => {
+          if (!task.projectId) return true
+          return this.projectTaskRunnableGuard?.(task.projectId, task.id) ?? true
         },
       }))
       this.taskEngine = factory({ tasks: this.deps.repos.tasks, messages: this.deps.repos.messages })
