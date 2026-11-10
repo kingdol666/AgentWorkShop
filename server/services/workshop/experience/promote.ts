@@ -20,9 +20,68 @@ export interface PromoteResult<S extends string> {
   reasons: string[]
 }
 
-/** 经验条目晋升（candidate→validated）或退休（→retired） */
-export function promoteExperience(
+/**
+ * 经验合并(2026-11-10 审计):把同一结论的多条候选经验合并成一条证据并集。
+ *
+ * 为什么需要它:反射器"一任务一条经验"(evidence.taskIds 单元素),而晋升门要求
+ * ≥2 个独立任务样本 —— 没有合并端点时,自动产物永远停在 candidate("先验证再晋级"
+ * 退化为"永不晋级")。现场此前只能靠裸 SQL 手工合并,而这恰好绕过了
+ * upsert 的状态单调性(把 validated 打回 candidate)。
+ *
+ * 语义:取第一条为基行,evidence.taskIds 取并集;不自动晋级 —— 晋升仍走
+ * promoteExperience(门判定 + 人审批)。
+ */
+export function mergeExperiences(
   db: DatabaseSync,
+  input: { channelId: string, memoryIds: string[], actor: string, actorName?: string },
+): { ok: boolean, memoryId?: string, taskIds?: string[], reasons: string[] } {
+  const ids = [...new Set((input.memoryIds ?? []).map(String).filter(Boolean))]
+  if (ids.length < 2) return { ok: false, reasons: ['至少选择 2 条经验才能合并'] }
+  const repo = createMemoryRepo(db)
+  const rows = ids.map(id => repo.getById(id))
+  const invalid = rows.find(r => !r || r.channelId !== input.channelId || r.kind !== 'experience')
+  if (invalid !== undefined) return { ok: false, reasons: ['存在不属于该频道的经验条目'] }
+  const base = rows[0]!
+  const taskIds = [...new Set(rows.flatMap((r) => {
+    const ev = JSON.parse(String(r!.evidenceJson || '{}')) as { taskIds?: unknown }
+    return Array.isArray(ev.taskIds) ? ev.taskIds.map(String) : []
+  }))].filter(Boolean)
+  if (taskIds.length < 2) return { ok: false, reasons: [`合并后独立任务样本仍不足（${taskIds.length} < 2）`] }
+
+  const baseEvidence = JSON.parse(String(base.evidenceJson || '{}')) as Record<string, unknown>
+  repo.upsertExperience({
+    channelId: base.channelId,
+    agentId: base.agentId,
+    kind: 'experience',
+    title: base.title,
+    titleFts: base.titleFts ?? '',
+    content: base.content,
+    importance: base.importance,
+    taskId: base.taskId ?? null,
+    sessionId: base.sessionId ?? '',
+    dedupKey: base.dedupKey ?? '',
+    outcome: base.outcome ?? 'neutral',
+    evidence: { ...baseEvidence, taskIds },
+    scopeKind: base.scopeKind,
+    scopeKey: base.scopeKey,
+    // 单调性:已晋级/退休的行保持原状态(upsert 也不会降级,这里显式传原值)
+    status: base.status,
+    expiresAt: base.expiresAt ?? null,
+  })
+  try {
+    recordOps({
+      actor: input.actor, actorName: input.actorName ?? input.actor, actorKind: 'agent',
+      action: 'experience.merge',
+      kind: 'system', targetKind: 'memory', targetId: base.id,
+      summary: `经验合并 ${ids.length} 条 → ${base.id.slice(0, 8)}（独立任务样本 ${taskIds.length}）`,
+    })
+  }
+  catch { /* 审计失败不影响合并 */ }
+  return { ok: true, memoryId: base.id, taskIds, reasons: [`已合并 ${ids.length} 条经验的证据锚点`] }
+}
+
+/** 经验条目晋升（candidate→validated）或退休（→retired） */
+export function promoteExperience(db: DatabaseSync,
   input: { memoryId: string, channelId: string, to: 'validated' | 'retired', actor: string, actorName?: string },
 ): PromoteResult<'validated' | 'retired'> {
   const repo = createMemoryRepo(db)
