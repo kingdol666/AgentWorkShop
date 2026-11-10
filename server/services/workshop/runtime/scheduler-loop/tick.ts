@@ -18,6 +18,13 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
   protected async runRound(): Promise<void> {
     this.running = true
     try {
+      // P1(2026-11-10 实测复现):过期收口此前在 tickRound 内(持 lead execLock)——
+      // lead 监督回合(真实 LLM)长时间持锁或被反复外部取消重启时,过期判定被饿死:
+      // deadline 已过 30+ 分钟的 WORKING 根永不 ROOT_TIMEOUT(报告 round2 §2 带 deadline 证据)。
+      // 过期判定不依赖 LLM,也不需要 lead 执行锁 —— 解耦到锁外本地执行;
+      // 本轮有收口动作则跳过监督回合(收口本身会触发任务事件唤醒下一轮)。
+      const snapshot = this.collectSnapshot()
+      if (await this.enforceRootDeadlines(snapshot)) return
       await this.lead.withExecLock(() => this.tickRound())
     }
     catch (err) {
@@ -42,14 +49,17 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
     }
   }
 
-  protected async tickRound(): Promise<void> {
-    this.tick += 1
-    const snapshot = this.collectSnapshot()
-    // 普通根任务绝对 deadline 优先于 Lead supervise，防止旧决策在超时后继续派发。
-    // 排队根豁免(2026-10-05 实测缺陷修复):deadline 语义是「执行预算」而非「提交后总时长」,
-    // 预算刷新发生在入场(dispatch SUBMITTED→WORKING)时刻 —— 因此**从未入场的排队根**
-    // (SUBMITTED 且非 activeRoot)不应参与过期判定,否则前序根占住执行位时,
-    // 后面从未运行的任务会被静默判死(实测:同一工作包两次入队两次 ROOT_TIMEOUT)。
+  /**
+   * 根任务过期收口(锁外本地执行,不依赖 lead 监督回合):
+   * 普通根任务绝对 deadline 优先于 Lead supervise，防止旧决策在超时后继续派发。
+   * 排队根豁免(2026-10-05 实测缺陷修复):deadline 语义是「执行预算」而非「提交后总时长」,
+   * 预算刷新发生在入场(dispatch SUBMITTED→WORKING)时刻 —— 因此**从未入场的排队根**
+   * (SUBMITTED 且非 activeRoot)不应参与过期判定,否则前序根占住执行位时,
+   * 后面从未运行的任务会被静默判死(实测:同一工作包两次入队两次 ROOT_TIMEOUT)。
+   *
+   * 返回 true = 本轮有收口/顺延动作(调用方据此跳过监督回合)。
+   */
+  protected async enforceRootDeadlines(snapshot: SupervisionSnapshot): Promise<boolean> {
     const expiredRoots = snapshot.tasks.filter(task =>
       isOrdinaryRoot(task)
       && !TERMINAL_TASK_STATES[task.state]
@@ -62,71 +72,75 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
       // ROOT_TIMEOUT 收口,与 D1 入场缺陷叠加成"必死"组合。入场兜底见 manager
       // rescueStaleRoots:两者配合后,SUBMITTED 根要么被兜底唤醒入场,要么被用户显式处理。
       && task.state !== 'SUBMITTED')
-    if (expiredRoots.length > 0) {
-      // HITL 等待豁免(鲁棒性增强):频道内有待批审批(整包方案/单参下发)时,根任务
-      // 执行预算顺延一个 root_timeout,不做 ROOT_TIMEOUT 收口 —— 审批自身有 fail-closed
-      // 超时(security.recipe_dispatch_timeout_ms),人类思考期不应处决整棵任务树。
-      // 豁免仅在「有待批」时生效;审批落定(批准执行/超时关闭)后预算仍耗尽则照常收口。
-      // 2026-10-28:此前的 listPending() 无任何过滤 —— 任意 channel 的一张待批单都会让
-      // 本 channel 的每个超期根每 tick 顺延并提前 return(不派发/不判超时);hold 模式下
-      // 一张无人处理的单可让全平台调度永久停摆。现在只统计本 channel 成员的待批。
-      const hitlPending = await (async () => {
-        try {
-          const { getToolApprovals } = await import('../../agents/tool-approvals')
-          const memberIds = new Set(snapshot.members.map(m => m.agentId))
-          return getToolApprovals().listPending().some(a => memberIds.has(a.agentId))
-        }
-        catch { return false }
-      })()
-      const MAX_HITL_DEFERRALS = 3
-      const deferrable = hitlPending
-        ? expiredRoots.filter(r => (this.hitlDeferrals.get(r.id) ?? 0) < MAX_HITL_DEFERRALS)
-        : []
-      if (deferrable.length > 0) {
-        // 2026-10-30 修复:原实现要求「全部可顺延」(deferrable.length === expiredRoots.length)
-        // 才顺延 —— 只要有一根达顺延上限,连仍受审批保护的根一起 ROOT_TIMEOUT 处决,
-        // 留下悬空审批单(人类随后批准,决议落在已死树上,审批面无任务可归)。
-        // 改为逐根分流:可顺延的刷新预算(消耗一次顺延),已达上限的照常收口 ——
-        // 与"人类思考期不应处决受审批保护的树"语义逐根对齐。
-        const budget = new Date(Date.now() + (Number(workshopSettings().root_timeout_ms) || 900_000)).toISOString()
-        const deferredIds = new Set(deferrable.map(r => r.id))
-        for (const root of deferrable) {
-          this.hitlDeferrals.set(root.id, (this.hitlDeferrals.get(root.id) ?? 0) + 1)
-          if (!this.hitlDeferred.has(root.id)) {
-            this.hitlDeferred.add(root.id)
-            log.warn(`[SchedulerLoop:${this.lead.agentId}] 根任务 ${root.id.slice(0, 8)} 预算耗尽,但本频道有 HITL 待批 —— 执行预算顺延至 ${budget}(第 ${this.hitlDeferrals.get(root.id)}/${MAX_HITL_DEFERRALS} 次)`)
-          }
-          try {
-            // 能力探测(mirror execute.ts):极简 TaskEngine 替身可能缺 refreshDeadline,缺失时跳过
-            const engine = this.lead.taskEngine as { refreshDeadline?: (id: string, iso: string) => unknown }
-            engine.refreshDeadline?.(root.id, budget)
-          }
-          catch { /* 任务恰好终态:下一 tick 自然收敛 */ }
-        }
-        for (const root of expiredRoots) {
-          if (deferredIds.has(root.id)) continue
-          const closed = this.lead.taskEngine.timeoutTree(root.id, this.lead.agentId)
-          for (const task of closed) {
-            this.channelRuntime.getAgents().find(a => a.agentId === task.assigneeId)?.abortTask?.(task.id)
-          }
-          // 已收口的根清掉顺延记账(与下方全清语义一致,只是范围收窄到本轮处决的根)
-          this.hitlDeferrals.delete(root.id)
-          this.hitlDeferred.delete(root.id)
-        }
-        this.lead.refreshStatus()
-        return
+    if (expiredRoots.length === 0) return false
+    // HITL 等待豁免(鲁棒性增强):频道内有待批审批(整包方案/单参下发)时,根任务
+    // 执行预算顺延一个 root_timeout,不做 ROOT_TIMEOUT 收口 —— 审批自身有 fail-closed
+    // 超时(security.recipe_dispatch_timeout_ms),人类思考期不应处决整棵任务树。
+    // 豁免仅在「有待批」时生效;审批落定(批准执行/超时关闭)后预算仍耗尽则照常收口。
+    // 2026-10-28:此前的 listPending() 无任何过滤 —— 任意 channel 的一张待批单都会让
+    // 本 channel 的每个超期根每 tick 顺延并提前 return(不派发/不判超时);hold 模式下
+    // 一张无人处理的单可让全平台调度永久停摆。现在只统计本 channel 成员的待批。
+    const hitlPending = await (async () => {
+      try {
+        const { getToolApprovals } = await import('../../agents/tool-approvals')
+        const memberIds = new Set(snapshot.members.map(m => m.agentId))
+        return getToolApprovals().listPending().some(a => memberIds.has(a.agentId))
       }
-      this.hitlDeferred.clear()
-      this.hitlDeferrals.clear()
+      catch { return false }
+    })()
+    const MAX_HITL_DEFERRALS = 3
+    const deferrable = hitlPending
+      ? expiredRoots.filter(r => (this.hitlDeferrals.get(r.id) ?? 0) < MAX_HITL_DEFERRALS)
+      : []
+    if (deferrable.length > 0) {
+      // 2026-10-30 修复:原实现要求「全部可顺延」(deferrable.length === expiredRoots.length)
+      // 才顺延 —— 只要有一根达顺延上限,连仍受审批保护的根一起 ROOT_TIMEOUT 处决,
+      // 留下悬空审批单(人类随后批准,决议落在已死树上,审批面无任务可归)。
+      // 改为逐根分流:可顺延的刷新预算(消耗一次顺延),已达上限的照常收口 ——
+      // 与"人类思考期不应处决受审批保护的树"语义逐根对齐。
+      const budget = new Date(Date.now() + (Number(workshopSettings().root_timeout_ms) || 900_000)).toISOString()
+      const deferredIds = new Set(deferrable.map(r => r.id))
+      for (const root of deferrable) {
+        this.hitlDeferrals.set(root.id, (this.hitlDeferrals.get(root.id) ?? 0) + 1)
+        if (!this.hitlDeferred.has(root.id)) {
+          this.hitlDeferred.add(root.id)
+          log.warn(`[SchedulerLoop:${this.lead.agentId}] 根任务 ${root.id.slice(0, 8)} 预算耗尽,但本频道有 HITL 待批 —— 执行预算顺延至 ${budget}(第 ${this.hitlDeferrals.get(root.id)}/${MAX_HITL_DEFERRALS} 次)`)
+        }
+        try {
+          // 能力探测(mirror execute.ts):极简 TaskEngine 替身可能缺 refreshDeadline,缺失时跳过
+          const engine = this.lead.taskEngine as { refreshDeadline?: (id: string, iso: string) => unknown }
+          engine.refreshDeadline?.(root.id, budget)
+        }
+        catch { /* 任务恰好终态:下一 tick 自然收敛 */ }
+      }
       for (const root of expiredRoots) {
+        if (deferredIds.has(root.id)) continue
         const closed = this.lead.taskEngine.timeoutTree(root.id, this.lead.agentId)
         for (const task of closed) {
           this.channelRuntime.getAgents().find(a => a.agentId === task.assigneeId)?.abortTask?.(task.id)
         }
+        // 已收口的根清掉顺延记账(与下方全清语义一致,只是范围收窄到本轮处决的根)
+        this.hitlDeferrals.delete(root.id)
+        this.hitlDeferred.delete(root.id)
       }
       this.lead.refreshStatus()
-      return
+      return true
     }
+    this.hitlDeferred.clear()
+    this.hitlDeferrals.clear()
+    for (const root of expiredRoots) {
+      const closed = this.lead.taskEngine.timeoutTree(root.id, this.lead.agentId)
+      for (const task of closed) {
+        this.channelRuntime.getAgents().find(a => a.agentId === task.assigneeId)?.abortTask?.(task.id)
+      }
+    }
+    this.lead.refreshStatus()
+    return true
+  }
+
+  protected async tickRound(): Promise<void> {
+    this.tick += 1
+    const snapshot = this.collectSnapshot()
     // 状态 Map 生命周期修剪:终态/已删任务的条目随轮清理(长会话内存有界)。
     // progressSeen 全程只增不减;notified/lastProgress/loopCompletedTaskIds 统一按任务集收敛。
     const liveIds = new Set(snapshot.tasks.map(t => t.id))
