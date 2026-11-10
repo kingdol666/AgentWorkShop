@@ -74,7 +74,13 @@ export function evaluateEligibilityFromDataset(input: EvaluateEligibilityInput):
   // 聚合取最保守:含 unverified/transport-ack(未生效/仅链路受理)→ ack_only;无记录 → unknown。
   const actionEvidence: ActionEvidence = scope === 'simulation'
     ? 'simulation_commanded'
-    : deriveActionEvidenceFromLedger(getAmlRuntime().db, spec.lineId, dataset.runIds)
+    : deriveActionEvidenceFromLedger(
+        getAmlRuntime().db,
+        spec.lineId,
+        dataset.runIds,
+        // 证据按本模型的 MV 节点收窄:同批次其他参数的 ACK 不污染本模型证据
+        spec.variables.filter(v => v.role === 'mv').map(v => v.nodeId),
+      )
   const report = evaluateEligibility({
     spec, scope, conditionId: spec.conditions[0]?.id ?? '',
     series,
@@ -100,14 +106,21 @@ export function deriveActionEvidenceFromLedger(
   db: DatabaseSync,
   lineId: string,
   runIds: string[],
+  mvNodeIds: string[] = [],
 ): ActionEvidence {
   if (runIds.length === 0) return 'unknown'
   try {
-    const placeholders = runIds.map(() => '?').join(',')
+    // 证据按**本模型的 MV 节点**收窄(P1 复验修正,2026-11-11):同批次内其他参数的
+    // ACK 等级不得污染本模型的动作证据(实测:influent-flow 的 transport-ack 曾把
+    // readback-verified 的 MV 证据拉低成 ack_only)。无 MV 声明时退回全节点口径。
+    const runPlaceholders = runIds.map(() => '?').join(',')
+    const nodeFilter = mvNodeIds.length > 0
+      ? ` AND node_id IN (${mvNodeIds.map(() => '?').join(',')})`
+      : ''
     const rows = db.prepare(
       `SELECT DISTINCT ack FROM intervention_events
-        WHERE line_id = ? AND recipe_run_id IN (${placeholders})`,
-    ).all(lineId, ...runIds) as Array<{ ack: string }>
+        WHERE line_id = ? AND recipe_run_id IN (${runPlaceholders})${nodeFilter}`,
+    ).all(lineId, ...runIds, ...mvNodeIds) as Array<{ ack: string }>
     if (rows.length === 0) return 'unknown'
     const acks = new Set(rows.map(r => r.ack))
     if (acks.has('unverified')) return 'ack_only'
