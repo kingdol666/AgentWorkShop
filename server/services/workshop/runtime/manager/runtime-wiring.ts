@@ -179,7 +179,15 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // 停机窗口墓碑:既不返回半关闭的旧运行时,也不重建新运行时(否则消息进闭箱)
     if (this.stoppingAgents.has(key) || this.channels.get(channelId)?.schedulerStoppingInProgress) return undefined
     const existing = this.agentIndex.get(key)
-    if (existing) return existing
+    if (existing) {
+      // 活性守卫(2026-11-10 P1):已停止的实例不能直接复用 —— 旧实现无条件返回它,
+      // route 只 enqueue/wake,永远不会再 start(AgentRuntime.start 在 started=true
+      // 时早退,而 stop() 不复位),表现为"群聊 delivered/consumed 但没有回合"。
+      if (String(existing.getState?.() ?? '') !== 'stopped') return existing
+      log.warn(`[AgentChannelManager] 命中已停止的运行时,摘除后重装配 ${channelId.slice(0, 8)}/${agentId.slice(0, 8)}`)
+      this.agentIndex.delete(key)
+      this.channels.get(channelId)?.detachAgent(agentId)
+    }
     const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
     if (!m || m.enabled !== 1) return undefined
     // WP2 守卫 A：频道已停用（任务实例终态回收/频道关闭）→ 拒绝按需重装配，
@@ -351,6 +359,11 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       if (getToolApprovals().listPending(agentId).length > 0) return
     }
     catch { /* 审批面未装配(测试/降级)→ 按原语义放行 */ }
+    // 检查-卸载竞态:上面有 await(动态 import),期间 route 可能把群聊消息投进这个
+    // 信箱并标记 delivered,随后 stopAndDetach 关箱 → 消息永久滞留。卸载前**重新**
+    // 校验同一判据(廉价,且不改变五重闸门语义)。
+    if (this.deps.repos.messages.listPendingByChannelAgent(channelId, agentId).length > 0) return
+    if (this.runtimeOf(channelId, agentId)?.getState() !== 'idle') return
     // §6.1 Runtime 卸载闸门(五条件)。§11 harness_continuity_enabled=false 时退回
     // 旧行为(只看 runtime idle),仅用于异常回滚 —— 默认必须走完整闸门。
     if (harnessContinuityEnabled()) {
@@ -456,12 +469,21 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
         roots = this.deps.repos.tasks.listRoots(channel.id)
       }
       catch { continue }
-      // 入场资格 = 队头**开放**根本身是滞留的 SUBMITTED lead 根:rootQueue 语义里「队头
-      // 非终态根即 activeRoot」,因此不能用 activeRootOf 判空(它对卡死场景恒真,救援会
-      // 成死代码);必须先滤掉终态根(FAILED 旧根占着 seq=1 会挡住重开的 seq=2 根,实测)。
-      // 队头若是 WORKING/WAITING 说明有根在跑,绝不插入。
+      // 入场资格 = 队头**开放**根。两种滞留形态都要覆盖:
+      //  ① SUBMITTED(assign 消息已投但没人消费);
+      //  ② WAITING 且**无开放子任务、无在飞监督尝试** —— 2026-11-10 现场盲区:
+      //     这种 root 既不触发 shouldSupervise(只认 SUBMITTED/WORKING),规则引擎
+      //     对 children=0 直接 continue,deadline 未到也不收口 → 40 分钟无人发现。
+      // 必须先滤掉终态根(FAILED 旧根占着 seq=1 会挡住重开的 seq=2 根,实测)。
       const head = roots.find(r => !TERMINAL_TASK_STATES[r.state as TaskState])
-      if (!head || head.state !== 'SUBMITTED' || head.assigneeId !== channel.leadAgentId) continue
+      if (!head || head.assigneeId !== channel.leadAgentId) continue
+      const openChildren = this.getTaskEngine().list(channel.id)
+        .filter(t => t.parentId === head.id && !TERMINAL_TASK_STATES[t.state as TaskState])
+      const leadRtPre = this.runtimeOf(channel.id, channel.leadAgentId)
+      const orphanWaiting = head.state === 'WAITING'
+        && openChildren.length === 0
+        && !leadRtPre?.hasActiveSupervisionAttempt?.()
+      if (head.state !== 'SUBMITTED' && !orphanWaiting) continue
       if (now - Date.parse(head.createdAt) < RESCUE_STALE_MS) continue
       // 忙碌 lead 不救援：root 仍是 SUBMITTED 可能只是「消息已消费、回合尚未把状态推进」，
       // 此时卸载会打断正在生成的长任务（D1 反复卸载的直接根因）。
@@ -490,8 +512,11 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
         // 与其猜状态,不如给一次干净的 stop→dispose→重新 wire→start()。
         // 救援路径本身罕见(90s 滞留 + 10min 冷却),omp 冷启动 30~90s 代价可接受。
         if (this.runtimeOf(channel.id, channel.leadAgentId)) {
-          log.warn(`[AgentChannelManager] D1 兜底:卸载既有 lead 运行时后重组(消费循环可疑失活)`)
-          await this.unloadAgent(channel.id, channel.leadAgentId)
+          log.warn(`[AgentChannelManager] D1 兜底:强制摘除既有 lead 运行时后重组(消费循环可疑失活)`)
+          // 必须走强制摘除:unloadAgent 的五重闸门里 hasAssignedWork 会看到"这个滞留
+          // root 本身就是 lead 的非终态任务"而直接 return —— 注释里的"卸载重组"在
+          // SUBMITTED root 场景永远是空操作(2026-11-10 实测确认)。
+          await this.stopAndDetach(channel.id, channel.leadAgentId)
         }
         this.ensureChannelActive(channel.id)
         // 入场即刷新执行预算(deadline 语义=执行预算,预算从入场起算):滞留根的旧预算
