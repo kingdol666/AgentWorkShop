@@ -3,6 +3,7 @@
  * 不接受 Agent 自报指标;序列来自不可变数据集工件。
  */
 import { AppError } from '../../../utils/errors'
+import type { DatabaseSync } from 'node:sqlite'
 import { getAmlRuntime } from '../aml/runtime'
 import { readDataset, pvX, pvY } from './trainers/dataset-reader'
 import { evaluateEligibility, getEligibilityRepo, type ActionEvidence, type EligibilitySeries } from './eligibility'
@@ -66,9 +67,14 @@ export function evaluateEligibilityFromDataset(input: EvaluateEligibilityInput):
     }
     series.push({ variableId: variable.id, role: variable.role, values })
   }
-  // 动作证据不从调用方读取:模拟产线视为 simulation_commanded;真实线在动作账本
-  // 接入前保持 unknown(fail-closed,不允许 Agent 自报 observed)。
-  const actionEvidence: ActionEvidence = scope === 'simulation' ? 'simulation_commanded' : 'unknown'
+  // 动作证据不从调用方读取:模拟产线视为 simulation_commanded;真实线由**干预台账派生**
+  // (P1-C 修复,2026-11-11:此前硬编码 unknown → real 线恒不可获优化资格,"动作账本接入"
+  // 正是计划遗留项)。台账是机器事实源:ack=readback-verified 即"请求+生效+回读"三证齐备
+  // (不允许 Agent 自报 observed 的纪律不变——这里读的是台账,不是自述)。
+  // 聚合取最保守:含 unverified/transport-ack(未生效/仅链路受理)→ ack_only;无记录 → unknown。
+  const actionEvidence: ActionEvidence = scope === 'simulation'
+    ? 'simulation_commanded'
+    : deriveActionEvidenceFromLedger(getAmlRuntime().db, spec.lineId, dataset.runIds)
   const report = evaluateEligibility({
     spec, scope, conditionId: spec.conditions[0]?.id ?? '',
     series,
@@ -80,4 +86,35 @@ export function evaluateEligibilityFromDataset(input: EvaluateEligibilityInput):
   // D20:资格行携带 dataset 谱系(dataset_id+hash),solve 按"模型的训练数据集"精确取用
   const id = getEligibilityRepo().save(spec.id, spec.version, report, { datasetId: dataset.id, datasetHash: dataset.sha256 })
   return { ...report, evidenceVersion: report.evidenceVersion || id }
+}
+
+/**
+ * 从干预台账派生真实线的动作证据(按数据集覆盖的批次过滤,最保守聚合)。
+ *  - 全部 readback-verified → 'observed'(请求/生效/回读三证齐备);
+ *  - 任一 transport-ack/unverified(仅链路受理/未证实)→ 'ack_only';
+ *  - 批次内无任何写入记录 → 'unknown'(fail-closed:不能拿无动作窗口当优化样本);
+ *  - 台账不可读 → 'unknown'(fail-closed)。
+ * 拒绝路径不入台账(write-audit 只记已受理下发),故 'failed' 不由本函数产出。
+ */
+export function deriveActionEvidenceFromLedger(
+  db: DatabaseSync,
+  lineId: string,
+  runIds: string[],
+): ActionEvidence {
+  if (runIds.length === 0) return 'unknown'
+  try {
+    const placeholders = runIds.map(() => '?').join(',')
+    const rows = db.prepare(
+      `SELECT DISTINCT ack FROM intervention_events
+        WHERE line_id = ? AND recipe_run_id IN (${placeholders})`,
+    ).all(lineId, ...runIds) as Array<{ ack: string }>
+    if (rows.length === 0) return 'unknown'
+    const acks = new Set(rows.map(r => r.ack))
+    if (acks.has('unverified')) return 'ack_only'
+    if (acks.has('transport-ack')) return 'ack_only'
+    return acks.has('readback-verified') ? 'observed' : 'unknown'
+  }
+  catch {
+    return 'unknown'
+  }
 }
