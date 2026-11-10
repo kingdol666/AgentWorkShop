@@ -27,13 +27,19 @@ export type AbortCancelDecision = Extract<SupervisionDecision, { kind: 'cancel' 
 /** 中止原因是否属于「必须收口在办任务」的硬中止 */
 export function isHardAbortReason(reason: string): boolean {
   const r = String(reason ?? '').trim()
-  return r === 'external cancel' || r.startsWith('hard timeout')
+  // 硬超时**不再**算收口语义:慢回合是常态,超时只说明这一轮监督没跑完,
+  // 任务本身可能完全健康。取消任务属治理决定(owner/deadline),不是超时的副作用。
+  return r === 'external cancel'
 }
 
 /**
  * 中止 → 决策:
  *  - 非硬中止 / 无在办任务 → null(调用方按「本轮无动作」返回空决策);
- *  - 硬中止 + 在办任务 → cancel 决策(reason 完整保留中止原因)。
+ *  - 外部取消 + 在办任务 → cancel 决策(reason 完整保留中止原因)。
+ *
+ * 硬超时一律返回 null:下一 tick 会重新监督;真停滞由 deadline / watchdog /
+ * D1 救援收口,而不是每次超时都合成一条 cancel(项目 root 上这条 cancel 永远
+ * 被 execute.ts 治理护栏拦截,只会产生不可见的死循环)。
  */
 export function abortToCancelDecision(input: AbortDecisionInput): AbortCancelDecision | null {
   const reason = String(input.reason ?? '').trim()

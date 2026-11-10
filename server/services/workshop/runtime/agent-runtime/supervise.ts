@@ -67,7 +67,10 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
       ? setTimeout(() => {
           this.supervisionAttempt = { ...this.supervisionAttempt, state: 'ABORT_REQUESTED' }
           this.refreshStatus()
-          controller.abort()
+          // 传 reason:impl 据此区分「硬超时」与「外部取消」,不再把超时伪装成
+          // external cancel 并合成 cancel 决策(2026-11-10 P1:项目 root 每 6 分钟被
+          // 中止一次、cancel 被治理护栏拦截、40 分钟不推进)。
+          controller.abort(new Error(`supervise hard timeout(${policy.hardTimeoutMs}ms)`))
         }, Math.max(policy.watchdogMs + 1_000, policy.hardTimeoutMs))
       : null
     let watchdogFired = false
