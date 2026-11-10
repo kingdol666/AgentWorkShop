@@ -24,6 +24,10 @@ export const PROFILE_GATE = {
   /** shadow → active 需要配对显著性（p < 0.05）或"无回归 + 成本非劣" */
   significanceP: 0.05,
   maxCostDelta: 0.05,
+  /** 有效配对下限：低于它的"显著性"没有统计意义（2026-11-10 审计） */
+  minPairs: 3,
+  /** 证据新鲜度：超过该天数的配对结果不再作为晋升依据 */
+  maxAgeDays: 7,
 } as const
 
 export interface GateDecision<S extends string> {
@@ -142,9 +146,11 @@ export function evaluateProfileGate(
 export function rollbackTarget(versions: Array<Pick<HarnessProfileRow, 'id' | 'version' | 'status'>>, currentActiveId: string): string | null {
   const current = versions.find(v => v.id === currentActiveId)
   if (!current) return null
-  // 回滚目标是「更早的任意版本」——superseded 正是被取代的前一版,必须可选（否则回滚永远为空）
+  // 回滚目标只能是「曾经 active 过、现被取代」的版本:superseded 正是被取代的前一版。
+  // 旧实现不按 status 过滤,会把从未 shadow、从未 bench 的 candidate 经"回滚"直接激活
+  // —— 一条完整的晋升门旁路(2026-11-10 审计)。
   const candidates = versions
-    .filter(v => v.version < current.version)
+    .filter(v => v.version < current.version && v.status === 'superseded')
     .sort((a, b) => b.version - a.version)
   return candidates[0]?.id ?? null
 }

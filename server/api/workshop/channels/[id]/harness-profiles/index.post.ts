@@ -1,8 +1,11 @@
 /**
  * POST /api/workshop/channels/:id/harness-profiles —— 新建 Harness Profile 版本（WP-B1）。
  *
- * body: { overlay?: string, pins?: string[], origin?: object, activate?: boolean }
- * 权限：channel owner/admin。缺省落 candidate；activate=true 直接激活（同频道旧 active 自动 supersede）。
+ * body: { overlay?: string, pins?: string[], origin?: object }
+ * 权限：channel owner/admin。**一律落 candidate** —— active 只能经 promote（→shadow→active，
+ * 且 active 必须引用已落库的 benchRunId）。
+ * 旧实现接受 activate:true 直接写 active，绕过 candidate→shadow→active 与 bench 门，
+ * 还会跳过 supersedeActive 造成同频道双 active（2026-11-10 审计）。
  * 纪律：超限（overlay>800 字符 / pins>5）→ 400 拒绝，不静默截断。
  */
 import { z } from 'zod'
@@ -19,7 +22,6 @@ const schema = z.object({
   overlay: z.string().max(OVERLAY_MAX_CHARS, `overlay 上限 ${OVERLAY_MAX_CHARS} 字符`).optional(),
   pins: z.array(z.string().min(1)).max(PINS_MAX, `pins 上限 ${PINS_MAX} 条`).optional(),
   origin: z.record(z.string(), z.unknown()).optional(),
-  activate: z.boolean().optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -36,7 +38,7 @@ export default defineApiHandler(async (event) => {
       layers: { overlay: body.overlay ?? '', pins: body.pins ?? [] },
       origin: { source: 'rest', ...(body.origin ?? {}) },
       createdBy: user.id,
-      status: body.activate ? 'active' : 'candidate',
+      status: 'candidate',
     })
     return { profile: created }
   }

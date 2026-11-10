@@ -12,6 +12,7 @@ import { migrateSessionContextColumns, ensureSessionIndexes } from './migrations
 import { migrateExperienceColumns, ensureExperienceIndexes } from './migrations-experience'
 import { migrateImprovementProposals } from './migrations-improvement'
 import { migrateHarnessProfiles } from './migrations-harness-profile'
+import { migrateHarnessBenchRuns } from './migrations-harness-bench'
 import { migrateImprovementActions } from './migrations-improvement-actions'
 import { migrateBlindVerifications } from './migrations-blind-verification'
 import { seedDefaultWorkshopData } from './seed'
@@ -95,6 +96,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateImprovementProposals(db)
   // RSI Harness Profile 版本表(WP-B1)；只建表不重建,幂等
   migrateHarnessProfiles(db)
+  // RSI 配对评测台账(2026-11-10 bench 门 provenance)；只建表/补列,幂等
+  migrateHarnessBenchRuns(db)
   // RSI 元层成效表(WP-C3)；只建表不重建,幂等
   migrateImprovementActions(db)
   // RSI 独立回读验证表(WP-C1)；只建表不重建,幂等

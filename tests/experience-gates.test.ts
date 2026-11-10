@@ -18,6 +18,7 @@ const { createMemoryRepo } = await import('../server/services/workshop/db/memory
 const { createHarnessProfileRepo } = await import('../server/services/workshop/experience/harness-profile')
 const { evaluateExperienceGate, evaluateProfileGate, rollbackTarget } = await import('../server/services/workshop/experience/gates')
 const { promoteExperience, promoteProfile, rollbackProfile } = await import('../server/services/workshop/experience/promote')
+const { recordBenchRun } = await import('../server/services/workshop/experience/bench-run')
 
 function fixture() {
   const db = openWorkshopDb(':memory:')
@@ -154,14 +155,69 @@ test('执行面：promoteProfile 需要 bench；落地后单 active 不变量保
     const p = profiles.create({ channelId: 'ch-1', layers: { overlay: 'x' } })
     assert.equal(promoteProfile(db, { profileId: p.id, channelId: 'ch-1', to: 'active', actor: 'u-1' }).ok, false, '非 shadow 直接登 active 被拒')
     assert.equal(promoteProfile(db, { profileId: p.id, channelId: 'ch-1', to: 'shadow', actor: 'u-1' }).ok, true)
+    // 2026-11-10:active 必须引用已落库的 benchRunId,不再接受客户端自报三个数字
     assert.equal(promoteProfile(db, {
       profileId: p.id, channelId: 'ch-1', to: 'active', actor: 'u-1',
       bench: { pValue: 0.02, primaryDelta: 0.12, costDelta: 0.01 },
-    }).ok, true)
+    }).ok, false, '自报 bench 不得登 active(provenance 缺失)')
+    const run = recordBenchRun(db, {
+      channelId: 'ch-1', actor: 'u-1',
+      artifact: { profileId: p.id, pValue: 0.02, perSeed: [{ seed: 1, a: 1.12, b: 1 }, { seed: 2, a: 1.12, b: 1 }, { seed: 3, a: 1.12, b: 1 }] },
+    })
+    assert.equal(run.ok, true, run.ok ? '' : run.reasons.join('；'))
+    const promoted = promoteProfile(db, {
+      profileId: p.id, channelId: 'ch-1', to: 'active', actor: 'u-1', benchRunId: (run as { run: { id: string } }).run.id,
+    })
+    assert.equal(promoted.ok, true, promoted.reasons.join('；'))
     assert.equal(profiles.activeOf('ch-1')!.id, p.id)
     assert.equal(profiles.listByChannel('ch-1').filter(x => x.status === 'active').length, 1)
+    // 采纳证据绑定到 profile 行
+    const bound = db.prepare('SELECT bench_run_id AS id, promoted_at AS at FROM channel_harness_profiles WHERE id = ?').get(p.id) as { id?: string, at?: string }
+    assert.equal(bound.id, (run as { run: { id: string } }).run.id)
+    assert.ok(bound.at, 'promoted_at 必须落值')
   }
   finally {
     db.close()
   }
+})
+
+test('bench 台账:汇总值必须与 perSeed 复算一致 + 样本量下限 + 不可重复导入', () => {
+  const { db, profiles } = fixture()
+  try {
+    const p = profiles.create({ channelId: 'ch-1', layers: { overlay: 'y' } })
+    // 自报 primaryDelta 与 perSeed 不符 → 拒绝
+    const mismatch = recordBenchRun(db, {
+      channelId: 'ch-1', actor: 'u-1',
+      artifact: { profileId: p.id, primaryDelta: 99, perSeed: [{ seed: 1, a: 1, b: 1 }, { seed: 2, a: 1, b: 1 }, { seed: 3, a: 1, b: 1 }] },
+    })
+    assert.equal(mismatch.ok, false)
+    assert.match((mismatch as { reasons: string[] }).reasons.join('；'), /不一致/)
+    // 样本量不足 → 拒绝
+    const few = recordBenchRun(db, {
+      channelId: 'ch-1', actor: 'u-1',
+      artifact: { profileId: p.id, perSeed: [{ seed: 1, a: 1, b: 1 }] },
+    })
+    assert.equal(few.ok, false)
+    assert.match((few as { reasons: string[] }).reasons.join('；'), /下限/)
+    // 同 artifact 重复导入 → 拒绝(UNIQUE(profile_id, artifact_sha256))
+    const artifact = { profileId: p.id, perSeed: [{ seed: 1, a: 1.1, b: 1 }, { seed: 2, a: 1.1, b: 1 }, { seed: 3, a: 1.1, b: 1 }] }
+    assert.equal(recordBenchRun(db, { channelId: 'ch-1', actor: 'u-1', artifact }).ok, true)
+    assert.equal(recordBenchRun(db, { channelId: 'ch-1', actor: 'u-1', artifact }).ok, false, '重复导入必须拒绝')
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('回滚目标只能是曾被取代的版本(candidate 不可经回滚直接激活)', () => {
+  const versions = [
+    { id: 'v1', version: 1, status: 'candidate' as const },
+    { id: 'v2', version: 2, status: 'active' as const },
+  ]
+  assert.equal(rollbackTarget(versions as never, 'v2'), null, '从未晋升的 candidate 不能被回滚激活')
+  const withSuperseded = [
+    { id: 'v1', version: 1, status: 'superseded' as const },
+    { id: 'v2', version: 2, status: 'active' as const },
+  ]
+  assert.equal(rollbackTarget(withSuperseded as never, 'v2'), 'v1')
 })
