@@ -119,6 +119,17 @@ export default defineApiHandler(async (event) => {
     throw new AppError(409, 'ALREADY_RESOLVED', err instanceof Error ? err.message : String(err))
   }
 
+  // 持久化收口(2026-11-10):本入口直接走 tool-approvals.decide(只 resolve 内存),
+  // 不经过 hitl-decision/decide → hitl_requests 行会停在 pending,随后被幻影清账置
+  // failed。这里补 finalize,让"解析后留行"在两条入口都成立(decision_json 记 via)。
+  try {
+    manager.groupChat.hitl.finalize(id, normalized.approved ? 'approved' : 'rejected', {
+      decision: { via: 'agent-tools/decide', approved: normalized.approved, comment, choice: normalized.choice ?? null },
+      nativeConfirmed: true,
+    })
+  }
+  catch { /* 持久化失败不影响已生效的审批(内存态已 resolve) */ }
+
   // R1:HITL 裁决审计(闭环中的人为决策留痕;choice 与 fail-closed 收敛随行落审计)
   audit({
     actor: user.id,

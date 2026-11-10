@@ -474,7 +474,13 @@ class HitlRegistryService {
   /** 持久化事实行(失败只降级:旧脚手架无群聊层仓储时 register 必须照常工作) */
   private persist(item: AepHitlItem, snapshot: HitlPolicySnapshot | null): void {
     const manager = resolveHitlRuntime()
-    if (!manager || !item.channelId) return
+    if (!manager || !item.channelId) {
+      // 降级必须可观测:旧实现静默 return,现场表现为"审批卡处理完 hitl_requests 里没有行"
+      // —— 工具审批登记时不带 channelId,依赖 resolver 反查;任务实例 Channel 回收/
+      // Agent 行缺失时就会走到这里(2026-11-10 取证)。
+      log.warn(`[hitl] 跳过持久化登记(kind=${item.kind} id=${String(item.id).slice(0, 12)} channelId=${item.channelId || '(空)'} manager=${manager ? 'ok' : 'missing'})`)
+      return
+    }
     const key = this.key(item.kind, item.id)
     if (this.persisted.has(key)) return
     try {
