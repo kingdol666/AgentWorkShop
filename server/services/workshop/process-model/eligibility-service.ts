@@ -78,8 +78,13 @@ export function evaluateEligibilityFromDataset(input: EvaluateEligibilityInput):
         getAmlRuntime().db,
         spec.lineId,
         dataset.runIds,
-        // 证据按本模型的 MV 节点收窄:同批次其他参数的 ACK 不污染本模型证据
-        spec.variables.filter(v => v.role === 'mv').map(v => v.nodeId),
+        // 证据按本模型的 MV 执行节点收窄:同批次其他参数的 ACK 不污染本模型证据。
+        // 台账记录的是写控执行节点(DCW),spec 的 MV 引用可能是 DAQ 镜像 ——
+        // 两者都纳入过滤集(controlNodeId 优先,nodeId 兜底)。
+        [...new Set(spec.variables
+          .filter(v => v.role === 'mv')
+          .flatMap(v => [v.controlNodeId, v.nodeId])
+          .filter((id): id is string => typeof id === 'string' && id.length > 0))],
       )
   const report = evaluateEligibility({
     spec, scope, conditionId: spec.conditions[0]?.id ?? '',
