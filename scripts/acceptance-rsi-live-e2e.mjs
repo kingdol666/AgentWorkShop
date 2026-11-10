@@ -500,12 +500,21 @@ try {
   }, H()), 'data.profile')
   const shadow1 = await api('POST', `/api/workshop/channels/${chE.channelId}/harness-profiles/promote`, { profileId: prof1.id, to: 'shadow' }, H())
   const activeNoBench = await api('POST', `/api/workshop/channels/${chE.channelId}/harness-profiles/promote`, { profileId: prof1.id, to: 'active' }, H())
+  // 2026-11-10 契约收紧:active 只认已落库的 benchRunId(自报三个数字不再放行)。
+  // 服务端用 perSeed 复算 delta,所以这里把 harness-ab 的逐 seed 明细一并提交。
+  const benchRun1 = await api('POST', `/api/workshop/channels/${chE.channelId}/harness-bench-runs`, {
+    profileId: prof1.id, pValue: bench.pValue, primaryDelta: bench.primaryDelta, costDelta: bench.costDelta, perSeed: bench.perSeed,
+  }, H())
   const active1 = await api('POST', `/api/workshop/channels/${chE.channelId}/harness-profiles/promote`, {
+    profileId: prof1.id, to: 'active', benchRunId: benchRun1.data?.runId,
+  }, H())
+  // 自报 bench 必须被拒(BENCH_PROVENANCE_REQUIRED)
+  const activeSelfReport = await api('POST', `/api/workshop/channels/${chE.channelId}/harness-profiles/promote`, {
     profileId: prof1.id, to: 'active', bench: { pValue: bench.pValue, primaryDelta: bench.primaryDelta, costDelta: bench.costDelta },
   }, H())
-  ok('E24', 'B3 门：shadow 放行 / 无 bench 拒 active / 带配对结果放行',
-    shadow1.data?.ok === true && activeNoBench.data?.ok === false && active1.data?.ok === true,
-    `shadow=${shadow1.data?.ok} noBench=${activeNoBench.data?.ok} withBench=${active1.data?.ok}`)
+  ok('E24', 'B3 门：shadow 放行 / 无 benchRunId 拒 active / 自报 bench 被拒 / benchRunId 放行',
+    shadow1.data?.ok === true && activeNoBench.data?.ok === false && activeSelfReport.data?.ok === false && active1.data?.ok === true,
+    `shadow=${shadow1.data?.ok} noBenchId=${activeNoBench.data?.ok} selfReport=${activeSelfReport.data?.ok} withRun=${active1.data?.ok} run=${benchRun1.data?.runId ?? benchRun1.message}`)
 
   // 缓存 TTL 60s：等待后读取真实注入文本
   await sleep(61_000)
@@ -521,8 +530,11 @@ try {
     pins: [captureRows[0].id],
   }, H()), 'data.profile')
   await api('POST', `/api/workshop/channels/${chE.channelId}/harness-profiles/promote`, { profileId: prof2.id, to: 'shadow' }, H())
+  const benchRun2 = await api('POST', `/api/workshop/channels/${chE.channelId}/harness-bench-runs`, {
+    profileId: prof2.id, pValue: bench.pValue, primaryDelta: bench.primaryDelta, costDelta: bench.costDelta, perSeed: bench.perSeed,
+  }, H())
   const active2 = await api('POST', `/api/workshop/channels/${chE.channelId}/harness-profiles/promote`, {
-    profileId: prof2.id, to: 'active', bench: { pValue: bench.pValue, primaryDelta: bench.primaryDelta, costDelta: bench.costDelta },
+    profileId: prof2.id, to: 'active', benchRunId: benchRun2.data?.runId,
   }, H())
   const rollback = await api('POST', `/api/workshop/channels/${chE.channelId}/harness-profiles/promote`, { rollback: true }, H())
   const activeAfter = (await api('GET', `/api/workshop/channels/${chE.channelId}/harness-profiles`, undefined, H())).data?.active
