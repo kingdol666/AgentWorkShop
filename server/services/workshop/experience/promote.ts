@@ -12,6 +12,7 @@ import { createImprovementActionRepo } from '../db/improvement-action.repo'
 import { recordOps } from '../ops/ops'
 import { createHarnessProfileRepo } from './harness-profile'
 import { evaluateExperienceGate, evaluateProfileGate, rollbackTarget, type PairedBenchResult } from './gates'
+import { resolveBenchRunForPromote } from './bench-run'
 
 export interface PromoteResult<S extends string> {
   ok: boolean
@@ -57,23 +58,55 @@ export function promoteExperience(
 /** Harness Profile 晋升（→shadow / →active，active 需配对结果） */
 export function promoteProfile(
   db: DatabaseSync,
-  input: { profileId: string, channelId: string, to: 'shadow' | 'active', actor: string, actorName?: string, bench?: PairedBenchResult | null },
+  input: {
+    profileId: string
+    channelId: string
+    to: 'shadow' | 'active'
+    actor: string
+    actorName?: string
+    /**
+     * 配对评测的**台账 id**（promote→active 唯一合法证据来源）。
+     * 旧接口直接收 body.bench 三个数字 —— 与任何一次运行都没有绑定,
+     * 同一份数字可喂给任意 profile 并双双过门(2026-11-10 审计)。
+     */
+    benchRunId?: string
+    /** @deprecated 仅供测试/历史兼容;to='active' 时不再接受 */
+    bench?: PairedBenchResult | null
+  },
 ): PromoteResult<'shadow' | 'active' | 'superseded'> {
   const repo = createHarnessProfileRepo(db)
   const row = repo.get(input.profileId)
   if (!row || row.channelId !== input.channelId) return { ok: false, reasons: ['profile 不存在或不属于该频道'] }
-  const decision = evaluateProfileGate(row, input.to, input.bench ?? null)
+
+  let bench = input.bench ?? null
+  let benchRunId: string | null = null
+  if (input.to === 'active') {
+    if (!input.benchRunId) {
+      return { ok: false, reasons: ['BENCH_PROVENANCE_REQUIRED: 晋级 active 必须引用已落库的 benchRunId（不接受客户端自报数字）'] }
+    }
+    const resolved = resolveBenchRunForPromote(db, { channelId: input.channelId, profileId: input.profileId, benchRunId: input.benchRunId })
+    if (!resolved.ok) return { ok: false, reasons: resolved.reasons }
+    benchRunId = resolved.run.id
+    bench = { pValue: resolved.run.pValue, primaryDelta: resolved.run.primaryDelta, costDelta: resolved.run.costDelta }
+  }
+
+  const decision = evaluateProfileGate(row, input.to, bench)
   if (!decision.allowed || !decision.next) return { ok: false, reasons: decision.reasons }
   repo.markStatus(input.profileId, decision.next)
+  if (benchRunId) {
+    // 采纳证据绑定到 profile:审计/复盘可追溯到具体一次配对评测
+    db.prepare('UPDATE channel_harness_profiles SET bench_run_id = ?, promoted_at = ? WHERE id = ?')
+      .run(benchRunId, new Date().toISOString(), input.profileId)
+  }
   createImprovementActionRepo(db).record({
     actionKind: 'profile_promote',
     subjectKind: 'harness_profile',
     subjectId: input.profileId,
     channelId: input.channelId,
     decision: decision.next === 'active' ? 'promoted' : 'accepted',
-    outcomeDelta: input.bench?.primaryDelta ?? null,
+    outcomeDelta: bench?.primaryDelta ?? null,
     decidedBy: input.actor,
-    detail: { reasons: decision.reasons, to: decision.next, bench: input.bench ?? null },
+    detail: { reasons: decision.reasons, to: decision.next, bench: bench ?? null, benchRunId },
   })
   try {
     recordOps({

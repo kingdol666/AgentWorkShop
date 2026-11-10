@@ -1,9 +1,10 @@
 /**
  * POST /api/workshop/channels/:id/harness-profiles/promote —— Profile 晋升/回滚（WP-B3/B4）。
  *
- * body: { profileId?: string, to?: 'shadow'|'active', bench?: PairedBenchResult } | { rollback: true }
+ * body: { profileId, to: 'shadow' } | { profileId, to: 'active', benchRunId } | { rollback: true }
  * 权限：channel owner/admin（人审批；Agent 工具面不可达）。
- * 纪律：shadow→active 必须带配对结果（WP-B2）；无结果 → 409 附理由。
+ * 纪律：shadow→active **必须**引用已落库的 benchRunId（POST .../harness-bench-runs）——
+ *       旧接口直接收 body.bench 三个数字，与任何一次运行都没有绑定（2026-11-10 审计）。
  */
 import { z } from 'zod'
 import { getRouterParam, readValidatedBody } from 'h3'
@@ -18,6 +19,9 @@ const schema = z.object({
   profileId: z.string().min(1).optional(),
   to: z.enum(['shadow', 'active']).optional(),
   rollback: z.boolean().optional(),
+  /** 配对评测台账 id（promote→active 必填） */
+  benchRunId: z.string().trim().min(1).optional(),
+  /** @deprecated 仅 shadow 阶段兼容;active 不再接受自报数字 */
   bench: z.object({
     pValue: z.number().nullable(),
     primaryDelta: z.number(),
@@ -43,6 +47,7 @@ export default defineApiHandler(async (event) => {
     channelId,
     to: body.to,
     actor: user.id,
+    benchRunId: body.benchRunId,
     bench: body.bench ?? null,
   })
 })
