@@ -18,7 +18,7 @@ const { deriveActionEvidenceFromLedger } = await import('../server/services/work
 
 const now = new Date().toISOString()
 
-function fixture(rows: Array<{ ack: string, runId?: string }>) {
+function fixture(rows: Array<{ ack: string, runId?: string, nodeId?: string }>) {
   const db = openWorkshopDb(':memory:')
   initWorkshopDb(db)
   db.exec('PRAGMA foreign_keys = OFF')
@@ -26,8 +26,8 @@ function fixture(rows: Array<{ ack: string, runId?: string }>) {
   for (const r of rows) {
     i += 1
     db.prepare(`INSERT INTO intervention_events (id, ts, line_id, node_id, node_name, from_value, to_value, ack, path, channel_id, verdict, recipe_run_id, created_at, updated_at)
-      VALUES (?,?, 'ln-r','n-1','节点', 10, 11, ?, 'agent', 'ch-1', 'unassessed', ?, ?, ?)`)
-      .run(`ie-${i}`, now, r.ack, r.runId ?? 'run-1', now, now)
+      VALUES (?,?, 'ln-r',?, '节点', 10, 11, ?, 'agent', 'ch-1', 'unassessed', ?, ?, ?)`)
+      .run(`ie-${i}`, now, r.nodeId ?? 'n-1', r.ack, r.runId ?? 'run-1', now, now)
   }
   return db
 }
@@ -73,6 +73,23 @@ test('runIds 过滤生效：证据只来自数据集覆盖的批次（谱系精�
   try {
     assert.equal(deriveActionEvidenceFromLedger(db, 'ln-r', ['run-a']), 'observed', '仅 run-a 在数据集内')
     assert.equal(deriveActionEvidenceFromLedger(db, 'ln-r', ['run-b']), 'ack_only')
+  }
+  finally { db.close() }
+})
+
+test('MV 节点收窄：同批次其他参数的 transport-ack 不污染本模型证据', () => {
+  // P1 复验修正(2026-11-11):证据按 spec 的 MV 节点收窄 ——
+  // 实测:influent-flow 的 transport-ack 曾把 blower(本模型 MV)的
+  // readback-verified 证据拉低成 ack_only,real 资格被误拒。
+  const db = fixture([
+    { ack: 'readback-verified', runId: 'run-1', nodeId: 'n-1' },
+    { ack: 'transport-ack', runId: 'run-1', nodeId: 'n-other' },
+  ])
+  try {
+    // 无 MV 声明 → 全节点口径(最保守:ack_only)
+    assert.equal(deriveActionEvidenceFromLedger(db, 'ln-r', ['run-1']), 'ack_only')
+    // 声明 MV 节点 n-1(readback-verified) → 其他节点的 transport-ack 不污染
+    assert.equal(deriveActionEvidenceFromLedger(db, 'ln-r', ['run-1'], ['n-1']), 'observed')
   }
   finally { db.close() }
 })
