@@ -158,7 +158,10 @@ export function createMemoryRepo(db: DatabaseSync) {
   const getByIdStmt = db.prepare(
     `SELECT ${COLS} FROM agent_memories m WHERE m.id = ?`,
   )
-  // 经验条目写入(WP-A1):kind 恒 'experience';conflict 时刷新证据/作用域/生命周期(access_count 保留)
+  // 经验条目写入(WP-A1):kind 恒 'experience';conflict 时刷新证据/作用域/生命周期(access_count 保留)。
+  // **状态单调性**(2026-11-10 审计):validated/retired 是人类策展结果,重放/重存不得把它
+  // 打回 candidate,也不得覆盖其证据(旧实现无条件写 status/evidence_json ——
+  // 任何一次反射器重放都会抹掉人工合并的成果)。
   const upsertExperienceStmt = db.prepare(
     `INSERT INTO agent_memories
        (id, channel_id, agent_id, kind, title, title_fts, content, importance, task_id, session_id, dedup_key,
@@ -167,8 +170,12 @@ export function createMemoryRepo(db: DatabaseSync) {
     ON CONFLICT(agent_id, dedup_key, channel_id) DO UPDATE SET
       channel_id = excluded.channel_id, kind = 'experience', title = excluded.title, title_fts = excluded.title_fts,
       content = excluded.content, importance = excluded.importance, task_id = excluded.task_id,
-      session_id = excluded.session_id, outcome = excluded.outcome, evidence_json = excluded.evidence_json,
-      scope_kind = excluded.scope_kind, scope_key = excluded.scope_key, status = excluded.status,
+      session_id = excluded.session_id, outcome = excluded.outcome,
+      evidence_json = CASE WHEN agent_memories.status IN ('validated', 'retired')
+        THEN agent_memories.evidence_json ELSE excluded.evidence_json END,
+      scope_kind = excluded.scope_kind, scope_key = excluded.scope_key,
+      status = CASE WHEN agent_memories.status IN ('validated', 'retired')
+        THEN agent_memories.status ELSE excluded.status END,
       expires_at = excluded.expires_at, created_at = excluded.created_at`,
   )
   const markStatusStmt = db.prepare(`UPDATE agent_memories SET status = ? WHERE id = ?`)

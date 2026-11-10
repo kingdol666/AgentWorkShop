@@ -57,10 +57,26 @@ export type ImprovementRepo = ReturnType<typeof createImprovementRepo>
 export function markRecipeProposalsAccepted(db: DatabaseSync, recipeId: string, decidedBy: string): number {
   if (!recipeId) return 0
   const now = new Date().toISOString()
+  // 按源收口(2026-11-10 审计):旧实现把该配方**所有** pending 一把收 accepted ——
+  // 内容毫不相干的 kb_ingest/runbook 提案也被记成"已采纳",污染 C3 元层成功率。
+  // 只有 recipe_update 类提案能由"配方版本固化成功"这件事收口。
   return Number(db.prepare(
     `UPDATE improvement_proposals SET status = 'accepted', decided_by = ?, decided_at = ?, updated_at = ?
-      WHERE recipe_id = ? AND status = 'pending'`,
+      WHERE recipe_id = ? AND status = 'pending' AND kind = 'recipe_update'`,
   ).run(decidedBy, now, now, recipeId).changes ?? 0)
+}
+
+/**
+ * 过期清理(2026-11-10 审计):`expired` 状态此前全库无写者,提案只进不退。
+ * 超过保留期的 pending 提案转 expired(保守:只动 pending,终态不动)。
+ */
+export function expireStaleProposals(db: DatabaseSync, olderThanDays = 30): number {
+  const days = Number.isFinite(olderThanDays) && olderThanDays > 0 ? olderThanDays : 30
+  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString()
+  return Number(db.prepare(
+    `UPDATE improvement_proposals SET status = 'expired', updated_at = ?
+      WHERE status = 'pending' AND created_at <= ?`,
+  ).run(new Date().toISOString(), cutoff).changes ?? 0)
 }
 
 export function createImprovementRepo(db: DatabaseSync) {
