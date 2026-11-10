@@ -27,6 +27,10 @@ export interface WatchdogFinding {
 const WI_INFLIGHT = `SELECT id, title, state, deadline_at AS deadlineAt, exec_budget_minutes AS execBudgetMinutes, trace_id AS traceId FROM project_work_items
   WHERE project_id = ? AND state IN ('DISPATCHED','RUNNING','DISPATCHING')`
 
+/** 仍"开放"(非终态)的工作项 —— 无在飞停滞检测用 */
+const WI_OPEN = `SELECT id, title, state FROM project_work_items
+  WHERE project_id = ? AND state NOT IN ('COMPLETED','FAILED','CANCELED','SUPERSEDED')`
+
 const DECISION_COUNTS = `SELECT decision_type AS type, COUNT(*) AS n FROM project_decisions
   WHERE project_id = ? AND created_at >= ? GROUP BY decision_type HAVING n >= ?`
 
@@ -73,6 +77,28 @@ export function createProjectWatchdog(db: DatabaseSync, kernel: ProjectKernelRep
           detail: `在飞 ${inflight.length} 项但账本已 ${Math.round(quietMs / 60_000)} 分钟无进展（阈值 ${Math.round(thresholdMs / 60_000)} 分钟）`,
           evidence: [{ lastLedgerAt: lastAt, inflight: inflight.length, thresholdMs }],
         })
+      }
+    }
+
+    // 无在飞停滞(P1,2026-11-10):最危险的停滞恰恰是"没有任何在飞项" —— 旧实现
+    // no_progress 以 inflight>0 为前提,全 BLOCKED / DRAFT-用尽 / FAILED 的项目三个
+    // finding 都不触发、零通知(现场 40 分钟不推进无人发现)。这里补"仍有开放工作项
+    // 但无在飞、账本长期无更新"的停滞 finding。
+    if (inflight.length === 0) {
+      const open = db.prepare(WI_OPEN).all(projectId) as Array<{ id: string, title: string, state: string }>
+      if (open.length > 0) {
+        const lastAt = kernel.ledger.lastAt(projectId)
+        // 无账本条目时以项目创建时间起算,避免新项目第一次扫描就误报
+        const created = db.prepare('SELECT created_at AS at FROM projects WHERE id = ?').get(projectId) as { at?: string } | undefined
+        const anchor = lastAt ?? created?.at
+        const quietMs = nowMs() - (anchor ? Date.parse(anchor) : nowMs())
+        if (quietMs > noProgressMs) {
+          findings.push({
+            type: 'no_progress',
+            detail: `无在飞工作项但仍有 ${open.length} 个开放项停滞 ${Math.round(quietMs / 60_000)} 分钟（阈值 ${Math.round(noProgressMs / 60_000)} 分钟）`,
+            evidence: [{ lastLedgerAt: lastAt, open: open.map(w => ({ workItemId: w.id, title: w.title, state: w.state })), thresholdMs: noProgressMs }],
+          })
+        }
       }
     }
 

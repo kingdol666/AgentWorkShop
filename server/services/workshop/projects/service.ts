@@ -2165,6 +2165,15 @@ export class ProjectService {
     if (decision === 'reviewed' && criteriaCheck && !criteriaCheck.ok) {
       throw new AppError(409, 'ACCEPTANCE_CRITERIA_FAILED', `复核不能通过：${criteriaCheck.blockingFailures.join('；')}`)
     }
+    // P0-8 补口(2026-11-10):agent 技术验收路径有 content_sha256 复算(防 submit→review
+    // 窗口篡改),owner/leader 兜底复核没有 —— 防御强度取决于最弱的合法路径,而这条
+    // 路径权限最高。这里补齐同口径复算(历史 backfill 窗口除外,与 agent 路径一致)。
+    if (decision === 'reviewed' && p.routingPolicy === 'technical' && !backfill && result.contentSha256) {
+      const recomputed = sha256Hex(`${result.summary ?? ''}\n${result.payloadJson ?? ''}\n${JSON.stringify(parseJson<Array<Record<string, unknown>>>(result.evidenceJson ?? '[]', []))}`)
+      if (recomputed !== result.contentSha256) {
+        throw new AppError(409, 'RESULT_EVIDENCE_TAMPERED', `成果内容哈希不符(提交后被改动)：拒绝复核 result=${result.id}`)
+      }
+    }
     // B8：复核迁移 + 审计同事务。
     let updated!: ProjectResultRow
     withTransaction(this.db, () => {
