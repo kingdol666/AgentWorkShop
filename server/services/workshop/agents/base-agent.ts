@@ -202,7 +202,22 @@ export abstract class BaseAgentImpl implements AgentInterface {
     // supervise 是唯一不经 run() 的回合入口 —— 缺这一步,全新 lead 的每轮监督都会在
     // streamTurn 处以"会话未就绪"瞬间失败,而异常被下方 catch 吞掉 → 根任务永远
     // SUBMITTED 直到超时(实测 codex lead 复现)。能力探测:无 ensureClient 的实现跳过。
-    await (this as { ensureClient?: (c: AgentRunContext) => Promise<void> }).ensureClient?.(ctx)
+    // P1(2026-11-10):ensureClient 的 await 此前**不在任何超时保护内**——引擎侧
+    // 挂死(spawn 卡住/握手无响应)会让监督回合永久持有 execLock,饿死整个
+    // 消费循环(实测:空闲 lead 群聊消息 consuming 永滞)。加 120s 上限,失败按
+    // 决策失败走既有 catch(可见、本轮空决策,锁正常释放)。
+    {
+      const ensure = (this as { ensureClient?: (c: AgentRunContext) => Promise<void> }).ensureClient?.(ctx)
+      if (ensure) {
+        await Promise.race([
+          ensure,
+          new Promise<never>((_, reject) => {
+            const t = setTimeout(() => reject(new Error('ensureClient 超时(120s):harness 会话建立挂死')), 120_000)
+            t.unref?.()
+          }),
+        ])
+      }
+    }
     this.currentSessionBlock = ctx.session?.block ?? null
     this.toolState.sessionId = ctx.session?.id ?? null
     const prompt = supervisePrompt({

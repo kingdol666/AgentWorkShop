@@ -181,11 +181,34 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
       if (this.getState() === 'stopped' || msg === null) break
       // 单条 run 抛错不阻塞下一条
       try {
-        await this.withExecLock(() => this.processMessage(msg))
+        await this.withMessageWatchdog(msg, () => this.withExecLock(() => this.processMessage(msg)))
       }
       catch (err) {
         log.error(`[AgentRuntime:${this.agentId}] run 失败:`, err)
       }
     }
+  }
+
+  /**
+   * 消息级活性看门狗(P1 修复,2026-11-10 实测复现):被 claim 的消息若超过停滞阈值
+   * 仍未结束回合 → abort 当前 run/监督回合 + 消息重投(attempts+1,≥3→dead,与 P3-4 同语义)。
+   *
+   * 为什么需要:workerTurn 有停滞看门狗,但 peer/监督回合没有;ensureClient 的 await
+   * 也不在超时保护内 —— 任一处挂死都会**永久持有 execLock**:状态恒 idle、消息恒
+   * consuming、无任何日志(实测:群聊消息对空闲 lead 卡死 3+ 分钟且不可自愈)。
+   * race 败者不清理状态:原回合若最终完成,按其自身路径 markConsumed
+   * (repo requeue 的 WHERE state='consuming' 守卫使双重消费收敛为 no-op)。
+   */
+  protected withMessageWatchdog(msg: { messageId: string }, fn: () => Promise<void>): Promise<void> {
+    const stallMs = Math.max(60_000, Number(workshopSettings().harness_stall_timeout_ms) || 600_000)
+    const timer = setTimeout(() => {
+      log.warn(`[AgentRuntime:${this.agentId}] 消息 ${msg.messageId.slice(0, 8)} 超过停滞阈值(${stallMs}ms)未结束 → abort 当前回合并重投(state=${this.state})`)
+      this.abortCurrent()
+      // 重投(条件更新:仅 consuming 可重投);原回合若最终完成,其 markConsumed
+      // 与本 requeue 以 WHERE state='consuming' 互斥,不产生双重消费。
+      if (this.deps.mailbox.requeue(msg.messageId)) this.deps.mailbox.wake()
+    }, stallMs)
+    timer.unref?.()
+    return fn().finally(() => clearTimeout(timer))
   }
 }
