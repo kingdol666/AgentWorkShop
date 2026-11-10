@@ -222,6 +222,8 @@ export default function workshopPlugin(nitroApp: {
   })
   // Router v3 P0：tasks 状态机 → 项目回调（durable outbox + 立即收敛；tick/30s 兜底）。
   manager.setProjectTaskChangeSink(e => projectService.onTaskStateChange(e.taskId, e.state))
+  // H0 开工栅栏：project 来源任务进入 WORKING 前复核项目/工作项/attempt 仍有效。
+  manager.setProjectTaskRunnableGuard((projectId, taskId) => projectService.isProjectTaskRunnable(projectId, taskId))
   const projectReconciler = startProjectReconciler(projectService)
   // PR17 M4 调度内核：事件分级消费 + effects outbox + watchdog（10s tick，watchdog 每 3 tick）。
   const projectKernel = initProjectKernel(

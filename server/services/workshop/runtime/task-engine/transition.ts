@@ -27,6 +27,15 @@ export abstract class TaskEngineTransition extends TaskEngineCreate {
     if (!allowed.includes(state)) {
       throw new AppError(400, 'INVALID_TRANSITION', `非法状态迁移: ${current} → ${state}`)
     }
+    // H0 开工栅栏：project 来源任务在真正进入 WORKING 前复核治理状态。
+    // 取消/终止可能发生在 submit 返回之后、Agent 领取之前；仅靠派发侧补偿
+    // 不能阻止已被唤醒的回合执行，因此把最终开工判定放在状态机唯一入口。
+    if (state === 'WORKING' && current !== 'WORKING' && row.source === 'project' && row.projectId) {
+      const guard = this.hooks?.guardProjectTaskStart
+      if (guard && !guard(rowToTask(row))) {
+        throw new AppError(409, 'PROJECT_NOT_ACTIVE', `项目 ${row.projectId.slice(0, 8)} 已不可执行，拒绝任务 ${taskId.slice(0, 8)} 开工`)
+      }
+    }
     // 单 WORKING 不变量(软守卫):同一 assignee 同时只应有一个 WORKING 任务。
     // 消费循环串行结构上已保证;此处观测异常路径(调度竞态/恢复残留)并告警,
     // 不阻断迁移(阻断会让恢复路径卡死,告警 + 事件可观测足以及时纠偏)。
