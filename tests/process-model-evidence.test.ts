@@ -93,3 +93,15 @@ test('MV 节点收窄：同批次其他参数的 transport-ack 不污染本模�
   }
   finally { db.close() }
 })
+
+test('MV 执行节点映射：controlNodeId(DCW) 与 nodeId(DAQ 镜像) 都纳入过滤集', () => {
+  // 台账记录的是写控执行节点(DCW dw-...),spec 的 MV 引用可能是 DAQ 镜像(dn-...)
+  const db = fixture([
+    { ack: 'readback-verified', runId: 'run-1', nodeId: 'dw-exec' },
+    { ack: 'transport-ack', runId: 'run-1', nodeId: 'n-other' },
+  ])
+  try {
+    assert.equal(deriveActionEvidenceFromLedger(db, 'ln-r', ['run-1'], ['dn-mirror', 'dw-exec']), 'observed')
+  }
+  finally { db.close() }
+})
