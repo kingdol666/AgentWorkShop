@@ -17,23 +17,28 @@ import { resolveUser } from '../../../caller'
 import { getAmlRuntime } from '../../../../../services/workshop/aml/runtime'
 import { recordBenchRun } from '../../../../../services/workshop/experience/bench-run'
 
+// harness-ab 的 seeds 是 CLI 字符串切分结果(`split(',')` 未转 Number),perSeed[].seed
+// 因此可能是 "1" 而非 1。这里是**评测证据数据**(不是物理设定值),用 coerce 兼容
+// 新旧 artifact;物理写面仍严格 z.number(见 dcw write)。
+const numeric = z.coerce.number().finite()
+
 const seedRow = z.object({
-  seed: z.number(),
-  a: z.number(),
-  b: z.number(),
-  costA: z.number().optional(),
-  costB: z.number().optional(),
+  seed: numeric,
+  a: numeric,
+  b: numeric,
+  costA: numeric.optional(),
+  costB: numeric.optional(),
 })
 
 const schema = z.object({
   profileId: z.string().trim().min(1, 'profileId required'),
   baselineProfileId: z.string().trim().optional(),
-  pValue: z.number().min(0).max(1).nullable().optional(),
-  primaryDelta: z.number().optional(),
-  costDelta: z.number().optional(),
-  seeds: z.array(z.number()).optional(),
+  pValue: numeric.min(0).max(1).nullable().optional(),
+  primaryDelta: numeric.optional(),
+  costDelta: numeric.optional(),
+  seeds: z.array(numeric).optional(),
   perSeed: z.array(seedRow).min(1, 'perSeed 不能为空'),
-  excluded: z.number().int().nonnegative().optional(),
+  excluded: z.coerce.number().int().nonnegative().optional(),
 })
 
 export default defineApiHandler(async (event) => {
