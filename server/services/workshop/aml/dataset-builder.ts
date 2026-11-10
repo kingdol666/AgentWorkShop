@@ -318,15 +318,25 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
     }
     const rows = new Map<string, number[]>()
     let missingTotal = 0
+    // D-P1(2026-11-11 实测修复):对齐必须是**最近邻 + 容差**,不能精确毫秒匹配。
+    // 独立 DAQ 节点各自轮询,采样相位永不共线 —— 精确匹配会让其他节点整列 NaN
+    // (实测:双节点真实产线网格缺失率恰 50.0%:锚定节点对齐自己,另一节点 0 命中)。
+    // 容差 = spec.cleaning.maxInterpMs(缺省一个 beat);越容差才计缺失。
+    const alignTol = Math.max(1, spec.cleaning?.maxInterpMs ?? beat)
     for (const n of order) {
       const s = series.get(n.nodeId) ?? []
-      const byTime = new Map(s.map(p => [p.at, p.value]))
       const col: number[] = []
       let miss = 0
+      let ptr = 0
       for (let i = 0; i < steps; i++) {
         const t = g0 + i * beat
-        const v = byTime.get(t)
-        if (v === undefined) {
+        // 指针单调前移:t 单调递增;先前进到 |s[ptr+1].at - t| < |s[ptr].at - t| 为止
+        while (ptr + 1 < s.length && Math.abs(s[ptr + 1]!.at - t) < Math.abs(s[ptr]!.at - t)) ptr++
+        // t 回退容错(理论上不发生;防御 phase 抖动)
+        while (ptr > 0 && Math.abs(s[ptr - 1]!.at - t) <= Math.abs(s[ptr]!.at - t)) ptr--
+        const near = s[ptr]
+        const v = near && Math.abs(near.at - t) <= alignTol ? near.value : undefined
+        if (v === undefined || !Number.isFinite(v)) {
           col.push(Number.NaN)
           miss++
         }
