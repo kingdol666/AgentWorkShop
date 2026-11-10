@@ -59,19 +59,19 @@ const EVENT_LABELS: Record<string, string> = {
 
 /** Lead 决策类型 → §7.1 事件名(仅这四类进记忆) */
 const LEAD_DECISION_EVENTS: Record<string, string> = {
-  wait: 'lead.wait',
-  guide: 'lead.guide',
-  reassign: 'lead.reassign',
-  cancel: 'lead.cancel',
+  'wait': 'lead.wait',
+  'guide': 'lead.guide',
+  'reassign': 'lead.reassign',
+  'cancel': 'lead.cancel',
   // 项目 root 的 cancel 被治理护栏拦截时必须可见:旧实现没有该映射,
   // noteLeadDecision 静默 return —— "每 6 分钟一次无效 cancel" 在审计里完全不存在。
   'cancel-blocked': 'lead.cancel_blocked',
 }
 const LEAD_DECISION_LABELS: Record<string, string> = {
-  wait: 'Lead 显式等待',
-  guide: 'Lead 指引',
-  reassign: 'Lead 改派',
-  cancel: 'Lead 取消',
+  'wait': 'Lead 显式等待',
+  'guide': 'Lead 指引',
+  'reassign': 'Lead 改派',
+  'cancel': 'Lead 取消',
   'cancel-blocked': 'Lead 取消被拦截',
 }
 
