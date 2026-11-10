@@ -13,6 +13,10 @@ import { randomUUID } from 'node:crypto'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { rootQueueEnabled, workshopSettings } from '../../settings'
 
+/** 项目 root 的 cancel 拦截提示节流(每 task 5 分钟一次);小模型周期性 cancel 不得刷屏 */
+const cancelBlockedNotedAt = new Map<string, number>()
+const CANCEL_BLOCKED_NOTE_COOLDOWN_MS = 5 * 60_000
+
 export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
   /** 执行单条决策(身份=lead,经 TaskEngine 与 ChannelRuntime) */
   protected execute(decision: SchedulerDecision): void {
@@ -128,7 +132,15 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
         // PR16 治理护栏（与 manager.cancelTask 同语义）：lead 不可自行取消项目来源 root。
         // 小模型在长任务上会周期性输出 cancel 决策 —— 项目工作项的放弃属 owner 决定。
         if (task.source === 'project' && !task.parentId) {
-          this.noteLeadDecision({ decision: 'cancel-blocked', taskId: task.id, reason: `PROJECT_ROOT_CANCEL_FORBIDDEN: ${decision.reason ?? 'LEAD_CANCEL'}` })
+          // 拦截必须可见且不刷屏:同一 root 5 分钟内只记一次(2026-11-10 P1 ——
+          // 现场每 6 分钟一次无效 cancel、40 分钟无推进,审计里却一条都没有)。
+          const now = Date.now()
+          if (now - (cancelBlockedNotedAt.get(task.id) ?? 0) >= CANCEL_BLOCKED_NOTE_COOLDOWN_MS) {
+            if (cancelBlockedNotedAt.size > 500) cancelBlockedNotedAt.clear()
+            cancelBlockedNotedAt.set(task.id, now)
+            this.noteLeadDecision({ decision: 'cancel-blocked', taskId: task.id, reason: `PROJECT_ROOT_CANCEL_FORBIDDEN: ${decision.reason ?? 'LEAD_CANCEL'}` })
+            log.warn(`[scheduler] 项目 root 的 lead cancel 已被治理护栏拦截 task=${task.id.slice(0, 8)}(${decision.reason ?? 'LEAD_CANCEL'})—— 项目工作项放弃需 owner 决定`)
+          }
           break
         }
         this.lead.taskEngine.cancel(decision.taskId, this.lead.agentId, decision.reason ?? 'LEAD_CANCEL')

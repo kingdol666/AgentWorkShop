@@ -30,6 +30,7 @@ import type {
 } from './agent-interface'
 import { createSessionState, dispatchHostTool, type HostToolBridgeContext, type HostToolSessionState } from './host-tool-bridge'
 import { channelOverlayText } from '../experience/overlay'
+import { workshopSettings } from '../settings'
 import {
   contextPrefix as buildContextPrefix,
   createRosterCache,
@@ -236,14 +237,29 @@ export abstract class BaseAgentImpl implements AgentInterface {
     }
   }
 
+  /**
+   * 监督回合的看门狗/硬超时策略。
+   *
+   * 优先级:实例 config(per-agent 覆盖) > 运行期设置(supervise_watchdog_ms /
+   * supervise_hard_timeout_ms,默认 90s/900s) > 兜底。
+   *
+   * 旧实现第三级是 `Math.max(300_000, watchdogMs*4)` —— 硬编码 360s,把配置项
+   * `workshop.supervise_hard_timeout_ms`(默认 900s)整个架空。真实 supervise 超过
+   * 6 分钟(大上下文/慢 provider 很常见)必被硬中止,omp 再把原因记成
+   * "external cancel" → 合成 cancel 决策 → 项目 root 被拦截 → 每 6 分钟循环一次、
+   * 40 分钟不推进(2026-11-10 现场:P1)。
+   */
   getSupervisionPolicy(): { watchdogMs: number, hardTimeoutMs: number } {
     const configured = Number(this.configRecord().superviseTimeoutMs)
     const watchdog = Number(this.configRecord().superviseWatchdogMs)
+    const settings = workshopSettings()
     const watchdogMs = Number.isFinite(watchdog) && watchdog > 0
       ? watchdog
-      : (Number.isFinite(configured) && configured > 0 ? configured : 90_000)
+      : (Number.isFinite(configured) && configured > 0 ? configured : settings.supervise_watchdog_ms)
     const hard = Number(this.configRecord().superviseHardTimeoutMs)
-    const hardTimeoutMs = Number.isFinite(hard) && hard > 0 ? hard : Math.max(300_000, watchdogMs * 4)
+    const hardTimeoutMs = Number.isFinite(hard) && hard > 0
+      ? hard
+      : Math.max(settings.supervise_hard_timeout_ms, watchdogMs + 1_000)
     return { watchdogMs, hardTimeoutMs }
   }
 

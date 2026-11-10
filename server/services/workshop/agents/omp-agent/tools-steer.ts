@@ -264,7 +264,14 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
           resolve([])
           return
         }
-        const onAbort = (): void => abortTurn('external cancel')
+        const onAbort = (): void => {
+          // 区分外部取消与硬超时:supervise.ts 用 controller.abort(reason) 传因。
+          // 硬超时不该被当成"外部取消"去合成 cancel 决策 —— 慢回合(大上下文/慢
+          // provider)是常态,取消任务属越权收口(2026-11-10 P1)。
+          const why = (opts.signal as AbortSignal & { reason?: unknown })?.reason
+          const reasonText = why instanceof Error ? why.message : String(why ?? '')
+          abortTurn(reasonText.includes('hard timeout') ? reasonText : 'external cancel')
+        }
         opts.signal.addEventListener('abort', onAbort, { once: true })
         signalUnsub = () => opts.signal?.removeEventListener('abort', onAbort)
       }
