@@ -127,7 +127,7 @@ test('H0 派发后 CAS：submit 期间 terminate → 不落 DISPATCHED、任务�
   const f = fixture()
   const s = await activeProject(f)
   f.setOnSubmit(async () => {
-    f.svc.terminate(s.p.id, s.owner, 'submit 窗口取消')
+    await f.svc.terminate(s.p.id, s.owner, 'submit 窗口取消')
   })
   await assert.rejects(
     () => f.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner),
@@ -162,6 +162,6 @@ test('H0 terminate 幂等扫尾：工作项已 CANCELED 但任务仍在飞，重
   // 模拟取消竞态残留：工作项已终态，但任务仍非终态。
   f.db.prepare(`UPDATE project_work_items SET state='CANCELED', closed_at=?, close_reason='OWNER_CANCELED' WHERE id=?`).run(new Date().toISOString(), s.w.id)
   f.cancelCalls.length = 0
-  f.svc.terminate(s.p.id, s.owner, '重复终止扫尾')
+  await f.svc.terminate(s.p.id, s.owner, '重复终止扫尾')
   assert.ok(f.cancelCalls.some(c => c.taskId === attempt.taskId), '重复 terminate 必须扫尾在飞任务')
 })
