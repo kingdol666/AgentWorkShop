@@ -22,7 +22,8 @@ export type EventFilter = 'all' | 'messages' | 'tasks' | 'team' | 'errors' | 'ke
 /** 过滤器 → 允许的事件类型集合(key = 档位过滤:只看注意级+终局级,open-tag deliveryTier)。导出供回归测试复用。 */
 export const FILTER_TYPES: Record<EventFilter, string[] | null> = {
   all: null,
-  messages: ['agent.message', 'agent.delta', 'agent.status.message', 'a2a.message'],
+  // agent.block 与其文本孪生 agent.status.message 同组:结构块不过滤则「消息」档只剩文本帧(不对称)
+  messages: ['agent.message', 'agent.delta', 'agent.status.message', 'agent.block', 'a2a.message'],
   tasks: ['task.status', 'task.progress', 'a2a.artifact'],
   team: ['agent.member', 'task.status'],
   errors: ['error'],

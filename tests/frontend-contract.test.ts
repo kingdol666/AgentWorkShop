@@ -68,3 +68,15 @@ test('B4: /workshop/plugins 已收口信封,前端不再双形状兼容', () => 
   const page = read('app/pages/plugins/index.vue')
   assert.match(page, /d\.data\?\.plugins/, '消费方必须读信封的 data')
 })
+
+test('H10/H9: agent.block 前端面与文本孪生同组可见 + 组件侧载荷防御', () => {
+  const store = read('app/stores/workshop/events.ts')
+  assert.match(
+    store,
+    /messages: \[[^\]]*'agent\.block'[^\]]*\]/,
+    '「消息」过滤必须收录 agent.block(与文本孪生 agent.status.message 同组,过滤面不对称=工具帧消失)',
+  )
+  const tool = read('app/components/workshop/blocks/ClusterTool.vue')
+  assert.match(tool, /isAgentToolBlock\(/, '结构块渲染前必须过 isAgentToolBlock(回放路径载荷原样进组件)')
+  assert.match(tool, /#shared\/agent-blocks/, '防御判别必须从 shared 协议模块导入(与服务端同源)')
+})

@@ -36,9 +36,10 @@ export function envelopeTier(e: AepEnvelope): AttentionTier {
     }
     case 'agent.delta':
     case 'agent.status.message':
+    case 'agent.block':
     case 'task.progress':
     case 'memory.saved':
-      // 过程性噪声:打字机增量 / 工具文本 / 进度 / 记忆沉淀
+      // 过程性噪声:打字机增量 / 工具调用(结构块与文本孪生同档,2026-11-11 H11 对齐) / 进度 / 记忆沉淀
       return 'silent'
     case 'agent.status':
     case 'agent.member':
