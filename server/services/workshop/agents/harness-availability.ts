@@ -13,7 +13,7 @@
  *     探测磁盘上的真实可执行文件;找不到 = 未安装。
  * 探测结果按「引擎+命令」缓存 30s(fs 探测廉价但热路径避抖);refresh=1 强制重探。
  */
-import { accessSync, constants, existsSync, readFileSync, statSync } from 'node:fs'
+import { accessSync, constants, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { AppError } from '../../../utils/errors'
 import { resolveOnPath } from './adapters/line-spawn'
@@ -39,38 +39,18 @@ export interface HarnessAvailability {
 }
 
 /**
- * 工具面状态(D5):dsh/hermes/crush 的工具由仓库外/用户级配置提供,平台不校验时
- * Agent 会"没有任何平台工具也不知情"。这里给出可展示的指引;crush 可机器检测
- * (.crushrc 是否含 aw 条目),dsh/hermes 只能提示人工确认。
+ * 工具面状态(D5;2026-11-11 对齐装配事实):manual 仅 dsh/hermes —— 工具由仓库外/用户级
+ * 配置提供,平台无法机器校验,只给出可展示指引。crush 已归 bridge(ensureCrushConfig 会在
+ * .crushrc 缺失时自动整份写入 aw 桥,幂等),走 bridge 分支恒 ready。
  */
 function toolSurfaceState(harnessId: string): Pick<HarnessAvailability, 'toolSurface' | 'toolSurfaceReady' | 'toolSurfaceHint'> {
   const toolSurface = harnessToolSurface(harnessId)
   if (toolSurface === 'none') return { toolSurface, toolSurfaceReady: true, toolSurfaceHint: null }
   if (toolSurface === 'bridge') return { toolSurface, toolSurfaceReady: true, toolSurfaceHint: null }
-  if (harnessId === 'crush') {
-    const ready = detectCrushBridge()
-    return {
-      toolSurface,
-      toolSurfaceReady: ready,
-      toolSurfaceHint: ready ? null : 'crush 需在 .crushrc 中接入 aw 桥(平台不自动写入);当前未检测到 aw 条目 —— Agent 将看不到平台工具',
-    }
-  }
   if (harnessId === 'hermes') {
     return { toolSurface, toolSurfaceReady: null, toolSurfaceHint: 'hermes 需由用户执行一次 `hermes mcp add aw ...`(用户级配置);平台无法自动校验' }
   }
   return { toolSurface, toolSurfaceReady: null, toolSurfaceHint: 'dsh 需在 profile 中挂载 aw mcp-client;平台无法自动校验' }
-}
-
-/** crush:检测工作区 .crushrc 是否已含 aw 桥条目(读失败按未接入) */
-function detectCrushBridge(): boolean {
-  try {
-    const file = join(process.cwd(), '.crushrc')
-    if (!existsSync(file)) return false
-    return readFileSync(file, 'utf-8').includes('aw')
-  }
-  catch {
-    return false
-  }
 }
 
 const isPlainFile = (p: string): boolean => {

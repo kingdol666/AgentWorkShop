@@ -39,6 +39,8 @@ export interface HitlCapabilityRecord extends HitlCapabilityFacets {
   label: string
   /** providerKind(登记进 hitl-registry 的 kind:codex-approval / opencode-permission / …) */
   providerKind: HitlKind | ''
+  /** 条件能力标注(如 omp 的 rpcMode 依赖;无 = undefined) */
+  configNote?: string
   /** 引擎是否安装(PATH 探测);进程内引擎恒 true */
   installed: boolean
   /** 当前环境可用(checkHarnessAvailability;未安装含人话原因) */
@@ -74,10 +76,15 @@ export interface HitlVerification {
 interface HitlDeclaration {
   providerKind: HitlKind | ''
   facets: HitlCapabilityFacets
-  /** 静态证据(file:line) */
+  /**
+   * 静态证据,机检格式:`path:line keyword`(漂移守卫测试逐条校验文件存在 + 关键字在
+   * 行 ±25 内 —— 适配器目录化重构后必须回填,防"证据指向不存在的文件")。
+   */
   evidence: string[]
   /** 不支持的原因(全 false 时必填) */
   unsupportedReason?: string
+  /** 条件能力标注(如 omp:仅 rpcMode=rpc-ui 缺省才有对话框 HITL) */
+  configNote?: string
 }
 
 const NO_HITL = (reason: string): HitlDeclaration => ({
@@ -85,46 +92,48 @@ const NO_HITL = (reason: string): HitlDeclaration => ({
   facets: {
     approval: false, question: false, multiQuestion: false, structuredResponse: false, cancel: false,
   },
-  evidence: ['server/services/workshop/agents/registry.ts:62-103(能力声明 hitl:false,适配器无 register/resolve 调用)'],
+  evidence: ['server/services/workshop/agents/registry.ts:83 hitl: false'],
   unsupportedReason: reason,
 })
 
-/** harness → 声明(缺省 = 无 HITL) */
-const DECLARATIONS: Record<string, HitlDeclaration> = {
+/** harness → 声明(缺省 = 无 HITL)。导出供漂移守卫测试机检 evidence。 */
+export const DECLARATIONS: Record<string, HitlDeclaration> = {
   omp: {
     providerKind: 'omp-dialog',
     facets: { approval: true, question: true, multiQuestion: false, structuredResponse: false, cancel: true },
     evidence: [
-      'server/services/workshop/agents/harness-terminal.ts:273(extension_ui_request → registry.register)',
-      'server/services/workshop/agents/harness-terminal.ts:624(extension_ui_response → resolve answered/cancelled)',
-      'server/services/workshop/agents/harness-terminal.ts:416(omp 撤销 → cancelled)',
+      'server/services/workshop/agents/harness-terminal/api.ts:96 omp-dialog',
+      'server/services/workshop/agents/harness-terminal/io.ts:119 omp-dialog',
+      'server/services/workshop/agents/harness-terminal/session.ts:104 omp-dialog',
+      'server/services/workshop/agents/harness-terminal/park.ts:46 omp-dialog',
     ],
+    configNote: 'HITL/terminal 依赖 omp rpcMode=rpc-ui(缺省);实例显式 config.rpcMode=rpc 时不弹对话框,紧急消息走信箱',
   },
   codex: {
     providerKind: 'codex-approval',
     facets: { approval: true, question: true, multiQuestion: true, structuredResponse: true, cancel: true },
     evidence: [
-      'server/services/workshop/agents/codex-agent.ts:545(item/commandExecution|fileChange/requestApproval → registerApprovalHitl)',
-      'server/services/workshop/agents/codex-agent.ts:585(tool/requestUserInput → registerUserInputHitl,全量 questions)',
-      'server/services/workshop/agents/codex-agent.ts:625(respondUserInput:client.respond(rpcId,{answers}))',
-      'server/services/workshop/agents/codex-agent.ts:202(respondHitl:question→answers / approval→decision)',
+      'server/services/workshop/agents/codex-agent/client.ts:89 registerApprovalHitl',
+      'server/services/workshop/agents/codex-agent/client.ts:93 registerUserInputHitl',
+      'server/services/workshop/agents/codex-agent/hitl.ts:24 registerApprovalHitl',
+      'server/services/workshop/agents/codex-agent/turn.ts:37 respondHitl',
     ],
   },
   opencode: {
     providerKind: 'opencode-permission',
     facets: { approval: true, question: true, multiQuestion: true, structuredResponse: true, cancel: true },
     evidence: [
-      'server/services/workshop/agents/opencode-agent.ts:703(permission.asked|permission.v2.asked → registerPermissionHitl)',
-      'server/services/workshop/agents/opencode-agent.ts:708(question.asked → registerQuestionHitl,全量 questions)',
-      'server/services/workshop/agents/opencode-agent.ts:241(respondHitl:POST /session/:id/permissions,POST /question/:id/reply|reject)',
+      'server/services/workshop/agents/opencode-agent/turn.ts:253 permission.asked',
+      'server/services/workshop/agents/opencode-agent/turn.ts:258 question.asked',
+      'server/services/workshop/agents/opencode-agent/engine-agnostic.ts:54 respondHitl',
     ],
   },
   dsh: {
     providerKind: 'dsh-permission',
     facets: { approval: true, question: false, multiQuestion: false, structuredResponse: true, cancel: true },
     evidence: [
-      'server/services/workshop/agents/dsh-agent.ts:552(session/request_permission → registry.register)',
-      'server/services/workshop/agents/dsh-agent.ts:162(respondHitl:selected optionId / cancelled;fail-closed)',
+      'server/services/workshop/agents/dsh-agent.ts:552 registry.register',
+      'server/services/workshop/agents/dsh-agent.ts:162 respondHitl',
     ],
     unsupportedReason: 'ACP 只有权限请求,无自由提问通道(question=false)',
   },
@@ -132,8 +141,9 @@ const DECLARATIONS: Record<string, HitlDeclaration> = {
     providerKind: 'claude-permission',
     facets: { approval: true, question: false, multiQuestion: false, structuredResponse: false, cancel: true },
     evidence: [
-      'server/services/workshop/agents/claude-agent.ts:543(canUseTool → registry.register)',
-      'server/services/workshop/agents/claude-agent.ts:167(respondHitl:PermissionVerdict allow/deny;超时 deny)',
+      'server/services/workshop/agents/claude-agent.ts:513 canUseTool',
+      'server/services/workshop/agents/claude-agent.ts:543 getHitlRegistry',
+      'server/services/workshop/agents/claude-agent.ts:167 respondHitl',
     ],
     unsupportedReason: 'SDK 只有 canUseTool 裁决,无提问通道(question=false)',
   },
@@ -141,8 +151,8 @@ const DECLARATIONS: Record<string, HitlDeclaration> = {
     providerKind: 'qwen-permission',
     facets: { approval: true, question: false, multiQuestion: false, structuredResponse: false, cancel: true },
     evidence: [
-      'server/services/workshop/agents/qwen-agent.ts:523(旧版 ACP requestToolCallConfirmation → register)',
-      'server/services/workshop/agents/qwen-agent.ts:182(respondHitl:allow/reject/cancelled)',
+      'server/services/workshop/agents/qwen-agent.ts:523 getHitlRegistry',
+      'server/services/workshop/agents/qwen-agent.ts:182 respondHitl',
     ],
     unsupportedReason: 'ACP 只有工具确认,无提问通道(question=false)',
   },
@@ -150,8 +160,8 @@ const DECLARATIONS: Record<string, HitlDeclaration> = {
     providerKind: 'hermes-permission',
     facets: { approval: true, question: false, multiQuestion: false, structuredResponse: true, cancel: true },
     evidence: [
-      'server/services/workshop/agents/hermes-agent.ts:508(session/request_permission → register)',
-      'server/services/workshop/agents/hermes-agent.ts:143(respondHitl:selected optionId / cancelled)',
+      'server/services/workshop/agents/hermes-agent.ts:508 getHitlRegistry',
+      'server/services/workshop/agents/hermes-agent.ts:143 respondHitl',
     ],
     unsupportedReason: 'ACP 只有权限确认,无提问通道(question=false)',
   },
@@ -159,9 +169,9 @@ const DECLARATIONS: Record<string, HitlDeclaration> = {
     providerKind: 'dcw-approval',
     facets: { approval: true, question: false, multiQuestion: false, structuredResponse: false, cancel: true },
     evidence: [
-      'server/services/workshop/agents/tool-approvals.ts:63(request → registry.register)',
-      'server/services/workshop/agents/tool-approvals.ts:88(decide:approved+comment)',
-      'server/services/workshop/agents/tool-approvals.ts:112(cancelPendingFor → cancelled)',
+      'server/services/workshop/agents/tool-approvals.ts:95 getHitlRegistry',
+      'server/services/workshop/agents/tool-approvals.ts:225 decide',
+      'server/services/workshop/agents/tool-approvals.ts:275 cancelPendingFor',
     ],
     unsupportedReason: '数控下发审批只有批准/拒绝二值,无提问通道(question=false)',
   },
@@ -251,6 +261,7 @@ export function hitlCapabilityOf(harness: string, opts: { refresh?: boolean } = 
     harness,
     label: def?.label ?? harness,
     providerKind: decl?.providerKind ?? '',
+    ...(decl?.configNote ? { configNote: decl.configNote } : {}),
     ...facets,
     installed: availability.available,
     available: availability.available,

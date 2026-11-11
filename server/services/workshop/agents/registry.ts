@@ -78,9 +78,9 @@ export interface HarnessProbe {
 }
 
 const mockCaps: HarnessCapabilities = {
-  // mock 没有 steer 实现(runtime 按 impl 方法存在性守卫,紧急消息本来就走信箱);
-  // 如实声明,避免前端能力徽标承诺运行期做不到的事。
-  steer: false, supervise: false, hitl: false, terminal: false, contextStats: false, compact: false,
+  // mock 有 supervise 剧本(mock-agent.supervise,模式感知)且被 lead 调度循环真实消费 ——
+  // 必须声明 true,否则前端能力徽标对 mock lead 失真(2026-11-11 H6 与实现对齐)。
+  steer: false, supervise: true, hitl: false, terminal: false, contextStats: false, compact: false,
 }
 const ompCaps: HarnessCapabilities = {
   steer: true, supervise: true, hitl: true, terminal: true, contextStats: true, compact: true,
@@ -282,10 +282,11 @@ export function isKnownHarness(harness: string): boolean {
 }
 
 /**
- * 工具面接入方式(审计 D5):
+ * 工具面接入方式(审计 D5;2026-11-11 对齐自动装配事实):
  *   - bridge:平台自动挂 aw 桥(MCP 配置/in-process 注册),开箱有工具;
+ *     crush 属此类 —— ensureCrushConfig 在 .crushrc 缺失时自动整份写入(幂等,删后重建);
  *   - manual:依赖仓库外/用户级手工配置(dsh 的 profile patch、hermes 的
- *     `hermes mcp add aw`、crush 的 .crushrc),平台不做校验时 Agent 会"没有工具也不知情";
+ *     `hermes mcp add aw`),平台不做校验时 Agent 会"没有工具也不知情";
  *   - none:进程内测试引擎(无工具面)。
  */
 export type HarnessToolSurface = 'bridge' | 'manual' | 'none'
@@ -294,7 +295,6 @@ const TOOL_SURFACE: Record<string, HarnessToolSurface> = {
   mock: 'none',
   dsh: 'manual',
   hermes: 'manual',
-  crush: 'manual',
 }
 
 export function harnessToolSurface(harness: string): HarnessToolSurface {
