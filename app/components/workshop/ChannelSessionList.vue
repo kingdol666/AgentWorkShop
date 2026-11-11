@@ -185,6 +185,7 @@ const goTemplates = (): void => {
           :key="ch.id"
           class="channel-item"
           :class="{ active: workspace?.activeChannelId === ch.id }"
+          :aria-current="workspace?.activeChannelId === ch.id ? 'true' : undefined"
           @click="select(ch.id)"
         >
           <div class="row1">
@@ -380,15 +381,18 @@ const goTemplates = (): void => {
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 600;
-  /* 反色主钮:前景取画布色(亮色=白字黑底 / 暗色=黑字白底,ChatGPT dark 同构) */
-  color: var(--chat-canvas);
+  /* ChatGPT New chat 同位:surface + 发丝边,不再用整块反色压过会话列表 */
+  color: var(--chat-accent-strong);
   cursor: pointer;
-  background: var(--chat-ink);
-  border: 0;
+  background: var(--chat-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--chat-accent) 28%, transparent);
   border-radius: 10px;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
-.new-channel:hover { opacity: 0.88; }
+.new-channel:hover {
+  background: color-mix(in srgb, var(--chat-accent-soft) 70%, var(--chat-surface));
+  border-color: color-mix(in srgb, var(--chat-accent) 45%, transparent);
+}
 .new-channel:active { transform: scale(0.99); }
 .search-btn {
   display: inline-flex;

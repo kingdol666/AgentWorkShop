@@ -67,6 +67,10 @@ const toggleRight = (): void => {
       >{{ wsName ?? $t('wsView.unknownWs') }}</span>
     </div>
     <div class="right">
+      <!-- 审批待办:裸控制台也保留全局 HITL 入口(否则聊天中收不到审批) -->
+      <ClientOnly>
+        <HitlBell />
+      </ClientOnly>
       <!-- 窄屏:频道会话列表入口(覆盖式抽屉;该页一次只看一区) -->
       <button
         class="pane-toggle im toggle-left-narrow"

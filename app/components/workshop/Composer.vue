@@ -421,6 +421,7 @@ const placeholder = computed(() => {
       />
 
       <StatusChip
+        v-if="mode !== 'chat' || draftAgentMentions.length > 0"
         :mode="mode"
         :draft-agent-mentions="draftAgentMentions"
         :draft-user-mentions="draftUserMentions"
@@ -447,6 +448,7 @@ const placeholder = computed(() => {
         class="composer-input"
         rows="1"
         :placeholder="placeholder"
+        :aria-label="placeholder"
         @input="detectMention"
         @keydown="onKeydown"
         @blur="mentionOpen = false"
@@ -532,7 +534,12 @@ const placeholder = computed(() => {
   resize: none;
   background: transparent;
   border: 0;
-  outline: none;
+}
+/* 焦点由父容器 border 表达;键盘用户仍需要可辨的焦点环 */
+.composer-input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: 6px;
 }
 .composer-input::placeholder { color: var(--chat-ink-faint); }
 
@@ -544,7 +551,7 @@ const placeholder = computed(() => {
   max-width: 800px;
   padding: 0 10px;
   margin: 7px auto 0;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--chat-ink-faint);
 }
 .composer-hint > span {

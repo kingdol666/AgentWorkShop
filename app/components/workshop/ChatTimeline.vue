@@ -109,6 +109,22 @@ function harnessOf(m: AepChatMessage): string {
   return entities.agents[props.channelId]?.find(a => a.agentId === m.senderId)?.harness ?? ''
 }
 
+/**
+ * 连续同发送者消息折叠(5 分钟窗口内、无引用/操作事件):
+ * 只在轮次首条显示头像与 sender/harness/role,后续消息直接续写正文 ——
+ * 这是 ChatGPT 的阅读节奏,避免每条消息重复一遍元信息。
+ */
+const GROUP_WINDOW_MS = 5 * 60 * 1000
+function isGrouped(m: AepChatMessage, index: number): boolean {
+  if (index <= 0) return false
+  const prev = visibleMessages.value[index - 1]
+  if (!prev || prev.senderType !== m.senderType || prev.senderId !== m.senderId) return false
+  if (m.replyToId || prev.replyToId) return false
+  if (operationOf(m) || operationOf(prev)) return false
+  const delta = new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime()
+  return Number.isFinite(delta) && delta >= 0 && delta < GROUP_WINDOW_MS
+}
+
 function renderText(m: AepChatMessage): string {
   return mdLiteMentions(m.text, mentionMembers.value)
 }
@@ -297,117 +313,60 @@ watch(() => props.channelId, async () => {
         </div>
 
         <div
-          v-for="m in visibleMessages"
-          :key="m.id"
-          class="ct-row"
-          :class="[m.senderType, operationOf(m) ? 'op-' + operationOf(m)!.kind : '']"
-          :data-operation="operationOf(m)?.kind"
-          :data-operation-severity="operationOf(m)?.severity"
+          class="ct-log"
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions"
+          :aria-label="$t('chat.title')"
         >
-          <template v-if="m.senderType === 'system'">
-            <div class="ct-system">
-              {{ m.text }}
-            </div>
-          </template>
+          <div
+            v-for="(m, i) in visibleMessages"
+            :key="m.id"
+            class="ct-row"
+            :class="[m.senderType, { 'ct-grouped': isGrouped(m, i) }, operationOf(m) ? 'op-' + operationOf(m)!.kind : '']"
+            :data-operation="operationOf(m)?.kind"
+            :data-operation-severity="operationOf(m)?.severity"
+          >
+            <template v-if="m.senderType === 'system'">
+              <div class="ct-system">
+                {{ m.text }}
+              </div>
+            </template>
 
-          <template v-else-if="m.senderType === 'user'">
-            <div class="ct-user-wrap">
-              <div
-                v-if="m.replyToId"
-                class="ct-replyto"
-              >
-                <span class="i-tabler-corner-down-right" />
-                {{ $t('chat.reply') }} <b>{{ replyAnchorName(m) }}</b>
-              </div>
-              <div
-                v-if="operationOf(m)"
-                class="ct-operation-badge"
-                :class="operationOf(m)!.kind"
-              >
-                <span :class="operationOf(m)!.icon" />
-                {{ operationOf(m)!.label }}
-              </div>
-              <!-- eslint-disable vue/no-v-html -- mdLite escapes first -->
-              <div
-                class="ct-user-bubble"
-                @click="onTextClick"
-                v-html="renderText(m)"
-              />
-              <!-- eslint-enable vue/no-v-html -->
-              <div class="ct-user-meta">
-                <span class="ct-user-label">{{ $t('chat.you') }}</span>
-                <span class="ct-time">{{ formatLocalClock(m.createdAt, false) }}</span>
-                <button
-                  type="button"
-                  class="ct-action"
-                  :title="$t('chat.replyTitle')"
-                  @click="setReply(m)"
+            <template v-else-if="m.senderType === 'user'">
+              <div class="ct-user-wrap">
+                <div
+                  v-if="m.replyToId"
+                  class="ct-replyto"
                 >
-                  <span class="i-tabler-arrow-back-up" />
-                </button>
-                <button
-                  type="button"
-                  class="ct-action"
-                  :title="$t('chat.copy')"
-                  @click="copyMessage(m)"
+                  <span class="i-tabler-corner-down-right" />
+                  {{ $t('chat.reply') }} <b>{{ replyAnchorName(m) }}</b>
+                </div>
+                <div
+                  v-if="operationOf(m)"
+                  class="ct-operation-badge"
+                  :class="operationOf(m)!.kind"
                 >
-                  <span class="i-tabler-copy" />
-                </button>
-              </div>
-              <div
-                v-if="m.mentions.length > 0"
-                class="ct-mentions"
-              >
-                <span
-                  v-for="mm in m.mentions"
-                  :key="`${mm.type}:${mm.id}`"
-                  class="ct-mention-chip"
-                  :class="mm.type"
-                  :data-agent-id="mm.type === 'agent' ? mm.id : undefined"
-                  :title="mm.type === 'agent' ? $t('chat.mentionAgentTitle') : $t('chat.mentionMemberTitle')"
-                  @click="mm.type === 'agent' && openAgent({ channelId, agentId: mm.id })"
+                  <span :class="operationOf(m)!.icon" />
+                  {{ operationOf(m)!.label }}
+                </div>
+                <!-- eslint-disable vue/no-v-html -- mdLite escapes first -->
+                <div
+                  class="ct-user-bubble"
+                  @click="onTextClick"
+                  v-html="renderText(m)"
+                />
+                <!-- eslint-enable vue/no-v-html -->
+                <div
+                  v-if="!isGrouped(m, i)"
+                  class="ct-user-meta"
                 >
-                  <span :class="mm.type === 'agent' ? 'i-tabler-robot' : 'i-tabler-user'" />
-                  @{{ mm.label || (mm.type === 'agent' ? entities.agentName(channelId, mm.id) : mm.id.slice(0, 8)) }}
-                </span>
-              </div>
-              <div
-                v-if="deliveriesOf(m).length > 0"
-                class="ct-deliveries"
-              >
-                <span
-                  v-for="d in deliveriesOf(m)"
-                  :key="d.deliveryId"
-                  class="ct-delivery"
-                  :data-tone="DELIVERY_TONE[d.status] ?? 'pending'"
-                  :title="d.error || `deliveryId: ${d.deliveryId}`"
-                >
-                  <span class="cd-dot" />@{{ entities.agentName(channelId, d.targetAgentId) }} · {{ deliveryLabels[d.status] ?? d.status }}
-                </span>
-              </div>
-            </div>
-          </template>
-
-          <template v-else>
-            <span
-              class="aw-avatar ct-ava is-agent"
-              :style="{ '--av': agentHueColor(m.senderId) }"
-            >{{ avatarText(m) }}</span>
-            <div class="ct-body">
-              <div class="ct-meta">
-                <span class="ct-sender">{{ senderNameOf(m) }}</span>
-                <span
-                  v-if="harnessOf(m)"
-                  class="ct-harness"
-                >{{ harnessOf(m) }}</span>
-                <span class="ct-role">
-                  {{ entities.agents[channelId]?.find(a => a.agentId === m.senderId)?.role ?? 'agent' }}
-                </span>
-                <span class="ct-time">{{ formatLocalClock(m.createdAt, false) }}</span>
-                <span class="ct-actions">
+                  <span class="ct-user-label">{{ $t('chat.you') }}</span>
+                  <span class="ct-time">{{ formatLocalClock(m.createdAt, false) }}</span>
                   <button
                     type="button"
                     class="ct-action"
+                    :aria-label="$t('chat.replyTitle')"
                     :title="$t('chat.replyTitle')"
                     @click="setReply(m)"
                   >
@@ -416,84 +375,166 @@ watch(() => props.channelId, async () => {
                   <button
                     type="button"
                     class="ct-action"
+                    :aria-label="$t('chat.copy')"
                     :title="$t('chat.copy')"
                     @click="copyMessage(m)"
                   >
                     <span class="i-tabler-copy" />
                   </button>
-                </span>
-              </div>
-
-              <div
-                v-if="m.replyToId"
-                class="ct-replyto"
-              >
-                <span class="i-tabler-corner-down-right" />
-                {{ $t('chat.reply') }} <b>{{ replyAnchorName(m) }}</b>
-              </div>
-
-              <div
-                v-if="operationOf(m)"
-                class="ct-operation-badge"
-                :class="operationOf(m)!.kind"
-              >
-                <span :class="operationOf(m)!.icon" />
-                {{ operationOf(m)!.label }}
-              </div>
-
-              <!-- eslint-disable vue/no-v-html -- mdLite escapes first -->
-              <div
-                class="ct-text"
-                @click="onTextClick"
-                v-html="renderText(m)"
-              />
-              <!-- eslint-enable vue/no-v-html -->
-
-              <div
-                v-if="m.mentions.length > 0"
-                class="ct-mentions"
-              >
-                <span
-                  v-for="mm in m.mentions"
-                  :key="`${mm.type}:${mm.id}`"
-                  class="ct-mention-chip"
-                  :class="mm.type"
-                  :data-agent-id="mm.type === 'agent' ? mm.id : undefined"
-                  :title="mm.type === 'agent' ? $t('chat.mentionAgentTitle') : $t('chat.mentionMemberTitle')"
-                  @click="mm.type === 'agent' && openAgent({ channelId, agentId: mm.id })"
+                </div>
+                <div
+                  v-if="m.mentions.length > 0"
+                  class="ct-mentions"
                 >
-                  <span :class="mm.type === 'agent' ? 'i-tabler-robot' : 'i-tabler-user'" />
-                  @{{ mm.label || (mm.type === 'agent' ? entities.agentName(channelId, mm.id) : mm.id.slice(0, 8)) }}
-                </span>
-              </div>
-
-              <div
-                v-if="deliveriesOf(m).length > 0"
-                class="ct-deliveries"
-              >
-                <span
-                  v-for="d in deliveriesOf(m)"
-                  :key="d.deliveryId"
-                  class="ct-delivery"
-                  :data-tone="DELIVERY_TONE[d.status] ?? 'pending'"
-                  :title="d.error || `deliveryId: ${d.deliveryId}`"
+                  <component
+                    :is="mm.type === 'agent' ? 'button' : 'span'"
+                    v-for="mm in m.mentions"
+                    :key="`${mm.type}:${mm.id}`"
+                    class="ct-mention-chip"
+                    :class="mm.type"
+                    :type="mm.type === 'agent' ? 'button' : undefined"
+                    :data-agent-id="mm.type === 'agent' ? mm.id : undefined"
+                    :aria-label="mm.type === 'agent' ? $t('chat.mentionAgentTitle') : undefined"
+                    :title="mm.type === 'agent' ? $t('chat.mentionAgentTitle') : $t('chat.mentionMemberTitle')"
+                    @click="mm.type === 'agent' && openAgent({ channelId, agentId: mm.id })"
+                  >
+                    <span :class="mm.type === 'agent' ? 'i-tabler-robot' : 'i-tabler-user'" />
+                    @{{ mm.label || (mm.type === 'agent' ? entities.agentName(channelId, mm.id) : mm.id.slice(0, 8)) }}
+                  </component>
+                </div>
+                <div
+                  v-if="deliveriesOf(m).length > 0"
+                  class="ct-deliveries"
                 >
-                  <span class="cd-dot" />@{{ entities.agentName(channelId, d.targetAgentId) }} · {{ deliveryLabels[d.status] ?? d.status }}
-                </span>
+                  <span
+                    v-for="d in deliveriesOf(m)"
+                    :key="d.deliveryId"
+                    class="ct-delivery"
+                    :data-tone="DELIVERY_TONE[d.status] ?? 'pending'"
+                    :title="d.error || `deliveryId: ${d.deliveryId}`"
+                  >
+                    <span class="cd-dot" />@{{ entities.agentName(channelId, d.targetAgentId) }} · {{ deliveryLabels[d.status] ?? d.status }}
+                  </span>
+                </div>
               </div>
+            </template>
 
-              <div
-                v-if="m.senderType === 'agent' && m.sourceChatMessageId"
-                class="ct-source"
-              >
-                <span class="i-tabler-link" />
-                {{ $t('chat.answeredFrom', { p0: m.sourceChatMessageId.slice(0, 8) }) }}
-                <template v-if="m.requesterUserId">
-                  {{ $t('chat.askedBy', { p0: m.requesterUserId.slice(0, 8) }) }}
-                </template>
+            <template v-else>
+              <span
+                v-if="!isGrouped(m, i)"
+                class="aw-avatar ct-ava is-agent"
+                :style="{ '--av': agentHueColor(m.senderId) }"
+              >{{ avatarText(m) }}</span>
+              <div class="ct-body">
+                <div
+                  v-if="!isGrouped(m, i)"
+                  class="ct-meta"
+                >
+                  <span class="ct-sender">{{ senderNameOf(m) }}</span>
+                  <span
+                    v-if="harnessOf(m)"
+                    class="ct-harness"
+                  >{{ harnessOf(m) }}</span>
+                  <span class="ct-role">
+                    {{ entities.agents[channelId]?.find(a => a.agentId === m.senderId)?.role ?? 'agent' }}
+                  </span>
+                  <span class="ct-time">{{ formatLocalClock(m.createdAt, false) }}</span>
+                  <span class="ct-actions">
+                    <button
+                      type="button"
+                      class="ct-action"
+                      :aria-label="$t('chat.replyTitle')"
+                      :title="$t('chat.replyTitle')"
+                      @click="setReply(m)"
+                    >
+                      <span class="i-tabler-arrow-back-up" />
+                    </button>
+                    <button
+                      type="button"
+                      class="ct-action"
+                      :aria-label="$t('chat.copy')"
+                      :title="$t('chat.copy')"
+                      @click="copyMessage(m)"
+                    >
+                      <span class="i-tabler-copy" />
+                    </button>
+                  </span>
+                </div>
+
+                <div
+                  v-if="m.replyToId"
+                  class="ct-replyto"
+                >
+                  <span class="i-tabler-corner-down-right" />
+                  {{ $t('chat.reply') }} <b>{{ replyAnchorName(m) }}</b>
+                </div>
+
+                <div
+                  v-if="operationOf(m)"
+                  class="ct-operation-badge"
+                  :class="operationOf(m)!.kind"
+                >
+                  <span :class="operationOf(m)!.icon" />
+                  {{ operationOf(m)!.label }}
+                </div>
+
+                <!-- eslint-disable vue/no-v-html -- mdLite escapes first -->
+                <div
+                  class="ct-text"
+                  @click="onTextClick"
+                  v-html="renderText(m)"
+                />
+                <!-- eslint-enable vue/no-v-html -->
+
+                <div
+                  v-if="m.mentions.length > 0"
+                  class="ct-mentions"
+                >
+                  <component
+                    :is="mm.type === 'agent' ? 'button' : 'span'"
+                    v-for="mm in m.mentions"
+                    :key="`${mm.type}:${mm.id}`"
+                    class="ct-mention-chip"
+                    :class="mm.type"
+                    :type="mm.type === 'agent' ? 'button' : undefined"
+                    :data-agent-id="mm.type === 'agent' ? mm.id : undefined"
+                    :aria-label="mm.type === 'agent' ? $t('chat.mentionAgentTitle') : undefined"
+                    :title="mm.type === 'agent' ? $t('chat.mentionAgentTitle') : $t('chat.mentionMemberTitle')"
+                    @click="mm.type === 'agent' && openAgent({ channelId, agentId: mm.id })"
+                  >
+                    <span :class="mm.type === 'agent' ? 'i-tabler-robot' : 'i-tabler-user'" />
+                    @{{ mm.label || (mm.type === 'agent' ? entities.agentName(channelId, mm.id) : mm.id.slice(0, 8)) }}
+                  </component>
+                </div>
+
+                <div
+                  v-if="deliveriesOf(m).length > 0"
+                  class="ct-deliveries"
+                >
+                  <span
+                    v-for="d in deliveriesOf(m)"
+                    :key="d.deliveryId"
+                    class="ct-delivery"
+                    :data-tone="DELIVERY_TONE[d.status] ?? 'pending'"
+                    :title="d.error || `deliveryId: ${d.deliveryId}`"
+                  >
+                    <span class="cd-dot" />@{{ entities.agentName(channelId, d.targetAgentId) }} · {{ deliveryLabels[d.status] ?? d.status }}
+                  </span>
+                </div>
+
+                <div
+                  v-if="m.senderType === 'agent' && m.sourceChatMessageId"
+                  class="ct-source"
+                >
+                  <span class="i-tabler-link" />
+                  {{ $t('chat.answeredFrom', { p0: m.sourceChatMessageId.slice(0, 8) }) }}
+                  <template v-if="m.requesterUserId">
+                    {{ $t('chat.askedBy', { p0: m.requesterUserId.slice(0, 8) }) }}
+                  </template>
+                </div>
               </div>
-            </div>
-          </template>
+            </template>
+          </div>
         </div>
 
         <div
@@ -534,6 +575,7 @@ watch(() => props.channelId, async () => {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--chat-glow), var(--chat-canvas);
   scroll-behavior: smooth;
 }
@@ -669,11 +711,13 @@ watch(() => props.channelId, async () => {
   display: flex;
   gap: 13px;
   padding: 18px 0;
-  animation: ct-rise 0.32s var(--ease-out-quart) both;
 }
 .ct-row.agent { align-items: flex-start; }
 .ct-row.user { align-items: flex-end; justify-content: flex-end; }
 .ct-row.system { justify-content: center; padding: 8px 0; }
+/* 连续同发送者:续写正文,不再重复头像/元信息(轮次语义) */
+.ct-row.ct-grouped { padding-top: 2px; }
+.ct-row.ct-grouped.agent .ct-body { margin-left: 41px; }
 .ct-system {
   max-width: 82%;
   padding: 5px 12px;
@@ -752,6 +796,11 @@ watch(() => props.channelId, async () => {
 }
 .ct-row:hover .ct-actions,
 .ct-row:focus-within .ct-actions { opacity: 1; }
+/* 触控没有 hover:操作按钮常显,否则复制/回复不可达 */
+@media (hover: none), (pointer: coarse) {
+  .ct-actions,
+  .ct-user-wrap .ct-actions { opacity: 1; }
+}
 .ct-action {
   display: inline-flex;
   align-items: center;
@@ -773,8 +822,8 @@ watch(() => props.channelId, async () => {
 }
 .ct-text {
   margin-top: 6px;
-  font-size: 14.5px;
-  line-height: 1.74;
+  font-size: 15.5px;
+  line-height: 1.75;
   color: var(--chat-ink);
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -883,11 +932,9 @@ watch(() => props.channelId, async () => {
 .ct-operation-badge.aml { color: #7657ad; background: color-mix(in srgb, #7657ad 10%, transparent); }
 .ct-operation-badge.twin { color: #3978b8; background: color-mix(in srgb, #3978b8 10%, transparent); }
 .ct-operation-badge.safety { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
-.ct-row[data-operation='dcw'] { background: color-mix(in srgb, #c98922 4%, transparent); }
-.ct-row[data-operation='daq'] { background: color-mix(in srgb, #159f9a 3%, transparent); }
-.ct-row[data-operation='aml'] { background: color-mix(in srgb, #7657ad 3%, transparent); }
-.ct-row[data-operation='twin'] { background: color-mix(in srgb, #3978b8 3%, transparent); }
-.ct-row[data-operation='safety'] { background: color-mix(in srgb, var(--tone-danger-dot) 5%, transparent); }
+/* 操作事件只保留 badge,不再给整行叠 3–5% 底色:
+ * 底色会让每次工具调用看起来像"另一张卡",破坏 ChatGPT 的连续阅读。 */
+.ct-row[data-operation] { background: transparent; }
 
 .ct-mentions {
   display: flex;
@@ -900,8 +947,10 @@ watch(() => props.channelId, async () => {
   gap: 4px;
   align-items: center;
   padding: 1px 7px;
+  font-family: inherit;
   font-size: 11px;
   font-weight: 600;
+  border: 0;
   border-radius: var(--radius-pill);
 }
 .ct-mention-chip.agent {

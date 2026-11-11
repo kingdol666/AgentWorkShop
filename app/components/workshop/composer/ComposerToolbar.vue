@@ -35,12 +35,16 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
 <template>
   <div class="composer-bar">
     <div class="cb-left">
-      <div class="aw-seg">
+      <div
+        class="aw-seg"
+        role="group"
+      >
         <!-- 群聊入口只在真的能发言时提供(否则是死按钮) -->
         <button
           v-if="canPost || !perms"
           type="button"
           :class="{ on: mode === 'chat' }"
+          :aria-pressed="mode === 'chat'"
           :title="$t('chat.toolbarChatTitle')"
           @click="emit('pick', 'chat')"
         >
@@ -50,6 +54,7 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
           v-if="canManage || !perms || !canPost"
           type="button"
           :class="{ on: mode === 'task' }"
+          :aria-pressed="mode === 'task'"
           @click="emit('pick', 'task')"
         >
           {{ $t('composer.k3wcox005') }}
@@ -58,6 +63,7 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
           v-if="canManage || !perms || !canPost"
           type="button"
           :class="{ on: mode === 'message' }"
+          :aria-pressed="mode === 'message'"
           @click="emit('pick', 'message')"
         >
           {{ $t('composer.k41ykc007') }}
@@ -70,6 +76,7 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
         v-model:value="toAgentId"
         size="small"
         class="target"
+        :aria-label="$t('composer.k41ykc007')"
         :options="workersAndLead.map(a => ({ value: a.agentId, label: `@ ${a.name}${a.role === 'lead' ? ' · lead' : ''}` }))"
       />
 
@@ -130,6 +137,7 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
           type="button"
           class="chip-toggle"
           :class="{ on: requireReply }"
+          :aria-pressed="requireReply"
           :title="$t('composer.k195594v003')"
           @click="requireReply = !requireReply"
         >
@@ -144,6 +152,7 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
         type="button"
         class="send-btn im"
         :disabled="sendLoading || !input.trim() || (mode === 'chat' && !canPost)"
+        :aria-label="$t('composer.sendTitle')"
         :title="$t('composer.sendTitle')"
         @click="emit('send')"
       >
