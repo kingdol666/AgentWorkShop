@@ -31,14 +31,21 @@ export function channelOverlayText(channelId: string): string {
   let text: string
   try {
     const db = getAmlRuntime().db
-    const profile = createHarnessProfileRepo(db).activeOf(channelId)
-    const parts: string[] = []
-    if (profile) {
-      const memRepo = createMemoryRepo(db)
-      const pinned = (profile.layers.pins ?? [])
-        .map(id => memRepo.getById(id))
-        .filter((r): r is NonNullable<typeof r> => !!r && r.status !== 'retired')
-        .map(r => ({ title: r.title, content: unsegmentCJK(r.content) }))
+      const profile = createHarnessProfileRepo(db).activeOf(channelId)
+      const parts: string[] = []
+      if (profile) {
+        const memRepo = createMemoryRepo(db)
+        const scope = memRepo.channelScope(channelId)
+        const pinned = (profile.layers.pins ?? [])
+          .map(id => memRepo.getById(id))
+          .filter((r): r is NonNullable<typeof r> => {
+            if (!r || r.channelId !== channelId || r.kind !== 'experience' || r.status !== 'validated') return false
+            if (r.scopeKind === 'line') return Boolean(scope.lineId && r.scopeKey === scope.lineId)
+            if (r.scopeKind === 'product') return Boolean(scope.productId && r.scopeKey === scope.productId)
+            if (r.scopeKind === 'channel') return !r.scopeKey || r.scopeKey === channelId
+            return false
+          })
+          .map(r => ({ title: r.title, content: unsegmentCJK(r.content) }))
       const rendered = renderHarnessOverlay(profile, pinned)
       if (rendered) parts.push(rendered)
     }

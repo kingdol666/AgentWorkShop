@@ -42,6 +42,26 @@ export interface BenchArtifactInput {
 const mean = (xs: number[]): number => (xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length)
 const round = (x: number): number => Math.round(x * 1e6) / 1e6
 
+/** Deterministic one-sided paired sign-test p-value; client-supplied pValue is never trusted. */
+function pairedSignPValue(rows: BenchSeedRow[]): number {
+  const deltas = rows.map(r => Number(r.a) - Number(r.b)).filter(Number.isFinite)
+  const nonTies = deltas.filter(d => d !== 0)
+  if (nonTies.length === 0) return 1
+  const positives = nonTies.filter(d => d > 0).length
+  let probability = 0
+  for (let k = positives; k <= nonTies.length; k++) {
+    probability += factorial(nonTies.length) / (factorial(k) * factorial(nonTies.length - k))
+      * (0.5 ** nonTies.length)
+  }
+  return round(Math.min(1, probability))
+}
+
+function factorial(n: number): number {
+  let out = 1
+  for (let i = 2; i <= n; i++) out *= i
+  return out
+}
+
 export function recordBenchRun(
   db: DatabaseSync,
   input: { channelId: string, actor: string, artifact: BenchArtifactInput },
@@ -83,7 +103,7 @@ export function recordBenchRun(
       baselineProfileId: a.baselineProfileId ?? '',
       kind: 'harness-ab-paired',
       status: 'completed',
-      pValue,
+      pValue: pairedSignPValue(rows),
       primaryDelta,
       costDelta,
       pairs: rows.length,

@@ -36,6 +36,31 @@ export interface GateDecision<S extends string> {
   reasons: string[]
 }
 
+export interface ExperienceTaskEvidence {
+  id: string
+  channelId: string
+  projectId?: string | null
+  state: string
+  sessionId?: string | null
+}
+
+export function evaluateExperienceTaskEvidence(
+  taskIds: string[],
+  tasks: ExperienceTaskEvidence[],
+  context: { channelId: string, projectId?: string | null },
+): { valid: boolean, reasons: string[] } {
+  const byId = new Map(tasks.map(t => [t.id, t]))
+  const reasons: string[] = []
+  for (const id of [...new Set(taskIds)]) {
+    const task = byId.get(id)
+    if (!task) reasons.push(`任务证据不存在：${id}`)
+    else if (task.channelId !== context.channelId) reasons.push(`任务证据不属于当前频道：${id}`)
+    else if (context.projectId !== undefined && task.projectId !== context.projectId) reasons.push(`任务证据不属于当前项目：${id}`)
+    else if (task.state !== 'COMPLETED') reasons.push(`任务证据未完成：${id}`)
+  }
+  return { valid: reasons.length === 0, reasons }
+}
+
 /** 解析证据 JSON（失败 → 空对象；门按"无锚点"处理） */
 export function evidenceOf(row: Pick<MemoryRow, 'evidenceJson'>): {
   taskIds: string[]
