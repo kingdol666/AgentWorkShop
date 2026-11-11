@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.11.0</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.11.1</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -48,6 +48,19 @@
 - **Agent 不是聊天装饰**：14 个执行引擎可混编（omp / codex / opencode / claude / gemini / …），7 态任务机 + 根任务队列 + HITL 审批，并用 **Channel → Session → Agent** 三层对象模型保证团队隔离；
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **闭环是真的**：读数 → 分析 → 提案 → 审批 → 写穿 → 回读证实 → 台账留痕，全链有实机验收。
+
+## 0.11.1 新增了什么
+
+一次加固版本：2026-11-11 全系统验收提出的所有发现全部在 main 收口，1508 项单元测试与一轮生产式隔离验收（9 套件 0 FAIL）背书。
+
+- **取消/终止硬停**（#176）：canceled 项目不可变——全部写/审批/提案入口 fail-closed；runtime 取消能力缺失时终止以 503 回滚而非静默跳过；孤立任务实例频道在同一事务内取消并回收；解绑先停 runtime 再单事务收口数据库。
+- **RSI 证据完整性**（#180）：bench pValue 由服务端按 perSeed 重算；经验晋级必须锚定真实已完成的本频道任务；Harness Profile pin 只渲染本频道 validated 且 scope 匹配的行；生命周期迁移全部 expected-state CAS。
+- **Session 幂等与停机**（#181）：会话消息获得 actor 维度的持久 `clientMessageId`（原子 INSERT 冲突回读；载荷变化确定性 409）；DAQ 帧全链携带 `lineId`；runtime stop 等待消费循环与 dispose，停机不再与数据库关库竞态。
+- **升级安全**（#182）：存量库平滑升级——messages 幂等索引改为补列之后再建（此前会让 0.11.1 之前的库启动即崩）。
+- **UI P0 三批**（#177–#179）：壳层/令牌/导航无障碍、ChatGPT 式群聊节奏、仪表盘班次状态带 + 真实告警队列。
+- 同批合入：AML 数据集最近邻对齐（#166）、动作证据按 MV 收窄（#167/#168）、锁外根任务过期收口（#169）、agent.block 协议面端到端（#170/#172/#173）、harness 能力声明对齐事实（#171）、OMP identity 补 harness（#174）、ACP HITL 应答映射抽纯函数（#175）。
+
+验证：unit **1508/1508**，lint/typecheck/i18n/docs 0 失败；隔离生产构建实机验收 **9 套件 0 FAIL**——PLC 孪生 V1–V6 **14/14**、Agent 治理写 **8/8**、REST/WS/MCP **75/75**、Project 跨频道派发 **14/14**、RSI 演化 **32/32**。证据：`docs/audit/evidence/2026-11-12-main-acceptance/`。
 
 ## 0.11.0 新增了什么
 
@@ -381,7 +394,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前版本：**v0.11.0** —— [版本发布](https://github.com/kingdol666/AgentWorkShop/releases) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前版本：**v0.11.1** —— [版本发布](https://github.com/kingdol666/AgentWorkShop/releases) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

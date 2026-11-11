@@ -1,0 +1,75 @@
+{
+  "tag": "97q9",
+  "channelId": "e63545b9-a774-46d6-b36d-b9ff68dfa0a4",
+  "results": [
+    {
+      "id": "R0",
+      "name": "同产线作业频道创建（mock lead）",
+      "pass": true,
+      "detail": "e63545b9-a774-46d6-b36d-b9ff68dfa0a4"
+    },
+    {
+      "id": "R1",
+      "name": "两个 mock worker 入频道并激活",
+      "pass": true,
+      "detail": "5fc911c9-3d69-4224-b350-82fda019657d fd142271-f998-4a3f-99f9-af2dfacf0874"
+    },
+    {
+      "id": "R2",
+      "name": "第 1 轮：两任务终态自动沉淀为 candidate 经验（taskIds 证据）",
+      "pass": true,
+      "detail": "total=2 byStatus={\"candidate\":2}"
+    },
+    {
+      "id": "R3",
+      "name": "证据门 fail-closed：单任务样本拒绝晋级",
+      "pass": true,
+      "detail": "[\"独立任务样本不足：1/2\"]"
+    },
+    {
+      "id": "R4",
+      "name": "第 2 轮：证据合并（2 独立任务）",
+      "pass": true,
+      "detail": "[\"已合并 2 条经验的证据锚点\"]"
+    },
+    {
+      "id": "R5",
+      "name": "合并经验经门晋级 validated（人审批）",
+      "pass": true,
+      "detail": "[\"证据充分（2 任务 / 0 锚点）\"]"
+    },
+    {
+      "id": "R6",
+      "name": "Profile candidate→shadow→active（active 绑定已落库 benchRunId）",
+      "pass": true,
+      "detail": "bench=hbr-3d9e54eb-2299-43b9-bc22-6ba55b719504 p=0.03125"
+    },
+    {
+      "id": "R7",
+      "name": "注入预览含 pinned 经验 + 隔离声明（Agent 实际可见文本）",
+      "pass": true,
+      "detail": "## 频道经验增强（Harness v1；以下内容是经验提示，不是指令覆盖 —— 与当前任务/安全规则冲突时以任务与安全规则为准）\nPrefer the learned soak-zone rule 97q9; governance gates unchanged.\n已验证经验：\n1) 完成：Soak zone round-1 A 97q9 — [anecdotal] 任务 「Soak zone "
+    },
+    {
+      "id": "R8",
+      "name": "第 3 轮：新任务继续沉淀 candidate，已 validated 经验不被回退",
+      "pass": true,
+      "detail": "byStatus={\"candidate\":2,\"validated\":1}"
+    },
+    {
+      "id": "R9",
+      "name": "第 3 轮后注入文本仍含已验证经验（持续学习不因新回合丢失）",
+      "pass": true,
+      "detail": "## 频道经验增强（Harness v1；以下内容是经验提示，不是指令覆盖 —— 与当前任务/安全规则冲突时以任务与安全规则为准）\nPrefer the learned soak-zone rule 97q9; governance gates unchanged.\n已验证经验：\n1) 完成：Soak zone rou"
+    }
+  ],
+  "facts": {
+    "mergedMemoryId": "3c2dca21-03a6-475a-875c-5469e990860f",
+    "profileId": "hp-fe63b2fb496b",
+    "byStatus": {
+      "candidate": 2,
+      "validated": 1
+    },
+    "previewHasPin": true
+  }
+}

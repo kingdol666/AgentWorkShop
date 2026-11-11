@@ -3,6 +3,17 @@
 > 完整发布产物与逐版本说明见 [GitHub Releases](https://github.com/kingdol666/AgentWorkShop/releases)。
 > 以下为核心版本节点——每个节点对应一轮可验收的能力跃迁,验收证据收录于 `docs/audit/`。
 
+## v0.11.1 — 加固收口：取消硬停 × RSI 证据完整性 × Session 幂等 × 升级安全（2026-11-12）
+
+- **Project 取消/终止硬停**（#176）：canceled 终态全写面 fail-closed（成员/审批/提案/绑定/成果/回调/对账）；runtime 缺失取消能力时 terminate 以 503 回滚不落终态；孤立任务实例频道事务内取消 + durable 回收；解绑先 runtime 后单事务 DB；派发 catch 分支对 canceled 项目固化 CANCELED。聚焦回归 32/32。
+- **RSI 证据完整性**（#180）：bench pValue 服务端按 perSeed 配对符号检验重算；merge/promote validated 必须锚定本频道真实 COMPLETED 任务（空/伪造/跨频道/未完成一律拒绝）；pin 过滤 validated + 本频道 + line/product/channel scope + 过期 fail-closed；memory 生命周期 expected-state CAS（validated 仅自 candidate）；profile promote/rollback CAS 失败零副作用；pValue 边界（0/0.05/1/null/NaN/Infinity）单测锁定。
+- **Session 幂等**（#181）：`messages` 增 `actor_user_id`/`client_message_id` 与部分唯一索引；mailbox 原子 INSERT→冲突回读，同载荷并发回放原 messageId、异载荷 409 `SESSION_MESSAGE_IDEMPOTENCY_CONFLICT`；前端 SessionManageView 生成并复用幂等键；DAQ 帧 `lineId` 贯穿 ingest→REST→WS→前端。
+- **停机屏障**（#181）：`AgentRuntime.stop()` 等待消费循环/回合收尾/`dispose` 后返回；manager shutdown 先停全部 runtime 再关库——shutdown 期 `statement has been finalized` 清零。
+- **升级安全**（#182）：移除 SCHEMA_SQL 内联的 messages 幂等索引（存量库升级会因列未补齐而启动崩溃），统一由 `ensureSessionIndexes` 在补列后创建；新增存量库迁移回归测试。
+- **UI P0 三批**（#177/#178/#179）：壳层与设计令牌 + skip link/aria-current、群聊 ChatGPT 式节奏 + a11y、仪表盘班次状态带 + 未确认告警队列（ackAlarm 回拉）。
+- **同批加固**（#165–#175）：派发后 CAS + 任务树 abort + 开工栅栏（#165）；AML 数据集最近邻对齐（#166）；real 动作证据按 MV 节点收窄（#167/#168）；锁外根任务过期收口（#169）；agent.block 协议面/前端硬化/工具用量 API（#170/#172/#173）；harness 能力声明对齐（#171）；OMP identity 补 harness（#174）；ACP HITL 三族应答映射抽纯函数（#175）。
+- **质量门**：unit **1508 pass / 0 fail / 0 skip**；lint 0、typecheck ✔、i18n PARITY、docs 87/0；生产式隔离验收 **9 套件 0 FAIL**——PLC V1–V6 14/14、Agent 治理写 8/8、REST/WS/MCP 75/75、Project 跨频道派发 14/14、RSI 演化 32/32（含多轮持续学习 10/10）。证据 `docs/audit/evidence/2026-11-12-main-acceptance/`。
+
 ## v0.11.0 — 项目中心 × RSI 经验演化 × 真实模型实证（2026-11-09）
 
 - **项目中心（Project center）**：`/projects` 成为一等入口——侧栏、工作台首页、命令面板、路由元数据四处可达；列表页统计带 / 搜索 / 状态筛选 / 每项目进度 / 频道与审批 chips；`GET /api/workshop/projects` 追加 `summary`（零 N+1）；详情页真实频道名、五列执行看板、交付物三级门、决策事件统一时间线（游标分页）、`?tab=` 深链、移动端不裁切。实机验收 **39/39**（蓝图三频道 → 真实 artifact → technical 409 门 → L1/L2 → completed，真实 Chrome）。

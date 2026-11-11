@@ -75,7 +75,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.11.0</i></span>
+        <span>版本 <i>v0.11.1</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -92,12 +92,14 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">WHAT'S NEW · v0.11.0</span>
+      <span class="hw-sec-en">WHAT'S NEW · v0.11.1</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      2026-11 的三处结构变化：项目中心成为一等入口、RSI 让经验可晋升可回滚、
-      omp/ustc-deepseek-flash 真实模型跑通 Channel 与 Project。三者都在 main 构建上跑过。
+      0.11.1 是一次加固版本：取消/终止硬停、RSI 证据完整性、Session 幂等与停机屏障、
+      存量库升级安全全部在 main 收口。生产式隔离验收 9 套件 0 FAIL（PLC 孪生 V1–V6 14/14、
+      Agent 治理写 8/8、Project 跨频道派发 14/14、RSI 演化 32/32），unit 1508/1508。
+      0.11 的三处结构变化——项目中心一等入口、RSI 经验可晋升可回滚、真实模型跑通——继续生效。
     </p>
     <div class="hw-feats">
       <div class="hw-f">
