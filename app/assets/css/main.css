@@ -45,13 +45,15 @@ html.dark {
    * 全站文字用法已收敛到 --ink-faint;此处保留令牌是因为"装饰线就该淡",
    * 把发丝线拉到 4.5:1 会让界面布满抢眼的线条(装饰变噪音)。 */
   --ink-fainter: #93a0b1;
-  --paper: #eef1f5;
+  --paper: #f2f5f9;
   /* 键盘焦点环:工业蓝,画布/卡片上均 ≥ 3:1 */
   --focus-ring: #2563eb;
   --paper-raised: #ffffff;
   --paper-deep: #f4f6f9;
   --paper-tint: #e5eaf1;
-  --line: #dde3ea;
+  --line: #d8e1ea;
+  /* 蓝图纸网格:亮色收敛到 2.5%,避免画布被网格抢走层级;暗色单独覆盖 */
+  --grid-ink: color-mix(in srgb, var(--ink) 2.5%, transparent);
   --line-strong: #c3ccda;
   --divider-hair: rgb(14 21 32 / 8%);
   --hover-tint: rgb(14 21 32 / 4%);
@@ -141,9 +143,13 @@ html.dark {
 
   /* 动效(transform/opacity only) */
   --ease-out-quart: cubic-bezier(0.22, 1, 0.36, 1);
+  /* 语义别名:进/出/抽屉;新增动效一律引用这三个,不再手写曲线 */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --transition-fast: 120ms cubic-bezier(0.22, 1, 0.36, 1);
   --transition-base: 200ms cubic-bezier(0.22, 1, 0.36, 1);
-  --transition-slow: 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-slow: 240ms cubic-bezier(0.22, 1, 0.36, 1);
   /* 图标微交互专用回弹(仅 hover/focus 反馈) */
   --im-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
@@ -249,6 +255,8 @@ html.dark {
   --paper-deep: #0a111b;
   --paper-tint: #152133;
   --line: #1d2a3d;
+  /* 暗色网格保留 4%:深底需要稍强的刻度才可见,但仍低于正文层级 */
+  --grid-ink: color-mix(in srgb, var(--ink) 4%, transparent);
   --line-strong: #2c405b;
   --divider-hair: rgb(233 239 248 / 7%);
   --hover-tint: rgb(233 239 248 / 4%);
@@ -378,6 +386,13 @@ body,
   min-height: 100%;
 }
 
+/* 触控:去掉双击缩放的 300ms 延迟;命中区由各组件的 44px 规约负责 */
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
+}
+
 body {
   font-family: var(--font-body);
   font-size: 0.875rem;
@@ -412,8 +427,8 @@ body::before {
   background:
     radial-gradient(1200px 560px at 16% -14%, var(--aurora-a), transparent 64%),
     radial-gradient(960px 520px at 102% -4%, var(--aurora-b), transparent 66%),
-    linear-gradient(to right, color-mix(in srgb, var(--ink) 4%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--ink) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(to right, var(--grid-ink) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-ink) 1px, transparent 1px),
     var(--aurora-veil);
   background-size: auto, auto, 32px 32px, 32px 32px, auto;
   -webkit-mask-image: linear-gradient(180deg, #000 0 62%, transparent 100%);
@@ -2468,9 +2483,10 @@ html.dark .aw-gauge-band {
 }
 
 .page-fade-leave-active {
+  /* 退出应比进入快,但不要用 ease-in:它会延迟用户最关注的起始瞬间 */
   transition:
-    opacity 80ms ease-in,
-    transform 80ms ease-in;
+    opacity 120ms var(--ease-out),
+    transform 120ms var(--ease-out);
 }
 
 .page-fade-enter-from {
@@ -2503,7 +2519,7 @@ html.dark .aw-gauge-band {
 }
 
 ::view-transition-old(root) {
-  animation: aw-vt-out 140ms ease-in both;
+  animation: aw-vt-out 120ms var(--ease-out) both;
 }
 
 ::view-transition-new(root) {

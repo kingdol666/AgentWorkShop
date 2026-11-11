@@ -53,6 +53,8 @@ const goOverview = (): void => {
         class="rail-btn"
         :class="{ off: !leftOpen }"
         type="button"
+        :aria-label="$t('wsView.k1tsy2e4002')"
+        :aria-pressed="leftOpen"
         :title="$t('wsView.k1tsy2e4002')"
         @click="leftOpen = !leftOpen"
       >
@@ -61,6 +63,7 @@ const goOverview = (): void => {
       <button
         class="rail-btn rail-brand"
         type="button"
+        aria-label="AgentWorkShop 工作区总览"
         title="AgentWorkShop"
         @click="goOverview"
       >
@@ -69,6 +72,7 @@ const goOverview = (): void => {
       <button
         class="rail-btn"
         type="button"
+        :aria-label="$t('wsView.k1cvg8sb004')"
         :title="$t('wsView.k1cvg8sb004')"
         @click="emit('openPalette')"
       >
@@ -88,6 +92,7 @@ const goOverview = (): void => {
         :disabled="!channelId"
         :title="$t(it.key)"
         :aria-label="$t(it.key)"
+        :aria-current="view === it.value ? 'page' : undefined"
         @click="view = it.value"
       >
         <span :class="[it.icon, 'im-pop']" />
@@ -100,6 +105,7 @@ const goOverview = (): void => {
       <button
         class="rail-btn"
         type="button"
+        :aria-label="$t('wsView.a2aTitle')"
         :title="$t('wsView.a2aTitle')"
         @click="emit('openA2a')"
       >

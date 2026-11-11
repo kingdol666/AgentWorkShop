@@ -71,6 +71,8 @@ const toggleRight = (): void => {
       <button
         class="pane-toggle im toggle-left-narrow"
         :class="{ off: !leftOpen }"
+        :aria-label="$t('wsView.channelListTitle')"
+        :aria-pressed="leftOpen"
         :title="$t('wsView.channelListTitle')"
         @click="leftOpen = !leftOpen"
       >
@@ -89,6 +91,8 @@ const toggleRight = (): void => {
       <button
         class="pane-toggle im toggle-right-desk"
         :class="{ off: !rightOpen }"
+        :aria-label="$t('wsView.k1tx0ppf003')"
+        :aria-pressed="rightOpen"
         :title="$t('wsView.k1tx0ppf003')"
         @click="toggleRight"
       >
@@ -96,6 +100,7 @@ const toggleRight = (): void => {
       </button>
       <button
         class="pane-toggle im"
+        :aria-label="$t('wsView.a2aTitle')"
         :title="$t('wsView.a2aTitle')"
         @click="emit('openA2a')"
       >
@@ -103,6 +108,7 @@ const toggleRight = (): void => {
       </button>
       <button
         class="pane-toggle im toggle-palette-narrow"
+        :aria-label="$t('wsView.k1cvg8sb004')"
         :title="$t('wsView.k1cvg8sb004')"
         @click="emit('openPalette')"
       >
@@ -117,6 +123,7 @@ const toggleRight = (): void => {
       size="small"
       :options="viewOptions"
       class="view-switch"
+      :aria-label="$t('wsView.kqwckjr001')"
       :title="$t('wsView.kqwckjr001')"
       @keydown="emit('viewKey', $event)"
     />
