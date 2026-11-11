@@ -15,6 +15,7 @@ delete process.env.AW_BENCH_MODE
 
 const { openWorkshopDb } = await import('../server/services/workshop/db/database')
 const { createMemoryRepo } = await import('../server/services/workshop/db/memory.repo')
+const { createTaskRepo } = await import('../server/services/workshop/db/task.repo')
 const { createHarnessProfileRepo } = await import('../server/services/workshop/experience/harness-profile')
 const { evaluateExperienceGate, evaluateProfileGate, rollbackTarget } = await import('../server/services/workshop/experience/gates')
 const { promoteExperience, promoteProfile, rollbackProfile } = await import('../server/services/workshop/experience/promote')
@@ -75,7 +76,9 @@ test('经验门：退休判定（过期/人工）+ 幂等拒绝', () => {
 test('执行面：promoteExperience 落库 + 审计；非本频道/非经验行拒绝', () => {
   const { db, repo } = fixture()
   try {
-    const a = seedExp(repo, {})
+    const tasks = createTaskRepo(db)
+    const taskIds = ['t-1', 't-2'].map(id => tasks.create({ channelId: 'ch-1', assigneeId: 'agent-a', creatorId: 'agent-a', title: id, state: 'COMPLETED', source: 'channel' }).id)
+    const a = seedExp(repo, { taskIds })
     const wrongChannel = promoteExperience(db, { memoryId: a.id, channelId: 'ch-2', to: 'validated', actor: 'u-1' })
     assert.equal(wrongChannel.ok, false)
     const ok = promoteExperience(db, { memoryId: a.id, channelId: 'ch-1', to: 'validated', actor: 'u-1' })

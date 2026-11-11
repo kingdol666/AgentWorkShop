@@ -11,7 +11,7 @@ import { createMemoryRepo } from '../db/memory.repo'
 import { createImprovementActionRepo } from '../db/improvement-action.repo'
 import { recordOps } from '../ops/ops'
 import { createHarnessProfileRepo } from './harness-profile'
-import { evaluateExperienceGate, evaluateExperienceTaskEvidence, evaluateProfileGate, rollbackTarget, type PairedBenchResult } from './gates'
+import { evaluateExperienceGate, evaluateExperienceTaskEvidence, evidenceOf, evaluateProfileGate, rollbackTarget, type PairedBenchResult } from './gates'
 import { resolveBenchRunForPromote } from './bench-run'
 
 export interface PromoteResult<S extends string> {
@@ -21,16 +21,13 @@ export interface PromoteResult<S extends string> {
 }
 
 function validateTaskEvidence(db: DatabaseSync, channelId: string, taskIds: string[]): string[] {
-  if (taskIds.length === 0) return []
-  const placeholders = taskIds.map(() => '?').join(', ')
+  const ids = [...new Set(taskIds.filter(id => typeof id === 'string' && id.length > 0))]
+  if (ids.length === 0) return ['经验必须包含至少一个任务证据']
+  const placeholders = ids.map(() => '?').join(', ')
   const rows = db.prepare(
     `SELECT id, channel_id AS channelId, project_id AS projectId, state FROM tasks WHERE id IN (${placeholders})`,
-  ).all(...taskIds) as Array<{ id: string, channelId: string, projectId: string | null, state: string }>
-  // Test-only/minimal memory fixtures may not create tasks; production databases do.
-  // When the table has task rows, every evidence id must resolve and be completed.
-  const anyTasks = Number((db.prepare('SELECT COUNT(*) AS n FROM tasks').get() as { n?: number } | undefined)?.n ?? 0) > 0
-  if (!anyTasks) return []
-  return evaluateExperienceTaskEvidence(taskIds, rows, { channelId }).reasons
+  ).all(...ids) as Array<{ id: string, channelId: string, projectId: string | null, state: string }>
+  return evaluateExperienceTaskEvidence(ids, rows, { channelId }).reasons
 }
 
 
@@ -57,12 +54,12 @@ export function mergeExperiences(
   if (invalid !== undefined) return { ok: false, reasons: ['存在不属于该频道的经验条目'] }
   const base = rows[0]!
   const taskIds = [...new Set(rows.flatMap((r) => {
-    const ev = JSON.parse(String(r!.evidenceJson || '{}')) as { taskIds?: unknown }
-    return Array.isArray(ev.taskIds) ? ev.taskIds.map(String) : []
-  }))].filter(Boolean)
-  if (taskIds.length < 2) return { ok: false, reasons: [`合并后独立任务样本仍不足（${taskIds.length} < 2）`] }
+    const ev = evidenceOf(r!)
+    return ev.taskIds
+  }))]
   const evidenceReasons = validateTaskEvidence(db, input.channelId, taskIds)
   if (evidenceReasons.length > 0) return { ok: false, reasons: evidenceReasons }
+  if (taskIds.length < 2) return { ok: false, reasons: [`合并后独立任务样本仍不足（${taskIds.length} < 2）`] }
 
   const baseEvidence = JSON.parse(String(base.evidenceJson || '{}')) as Record<string, unknown>
   repo.upsertExperience({
@@ -104,6 +101,11 @@ export function promoteExperience(db: DatabaseSync,
   const row = repo.getById(input.memoryId)
   if (!row || row.channelId !== input.channelId || row.kind !== 'experience') {
     return { ok: false, reasons: ['经验条目不存在或不属于该频道'] }
+  }
+  if (input.to === 'validated') {
+    const taskIds = evidenceOf(row).taskIds
+    const evidenceReasons = validateTaskEvidence(db, input.channelId, taskIds)
+    if (evidenceReasons.length > 0) return { ok: false, reasons: evidenceReasons }
   }
   const decision = evaluateExperienceGate(row, input.to)
   if (!decision.allowed || !decision.next) return { ok: false, reasons: decision.reasons }

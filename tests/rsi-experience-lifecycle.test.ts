@@ -22,6 +22,9 @@ delete process.env.AW_BENCH_MODE
 
 const { openWorkshopDb } = await import('../server/services/workshop/db/database')
 const { createMemoryRepo } = await import('../server/services/workshop/db/memory.repo')
+const { createTaskRepo } = await import('../server/services/workshop/db/task.repo')
+const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
+const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
 const { mergeExperiences, promoteExperience } = await import('../server/services/workshop/experience/promote')
 const { createImprovementRepo, markRecipeProposalsAccepted, expireStaleProposals } = await import('../server/services/workshop/db/improvement.repo')
 
@@ -31,11 +34,22 @@ const fixture = () => {
   return { db, repo: createMemoryRepo(db) }
 }
 
+const completedTasks = (db: ReturnType<typeof openWorkshopDb>, channelId: string, count: number) => {
+  const channels = createChannelRepo(db)
+  const agents = createChannelAgentRepo(db)
+  const tasks = createTaskRepo(db)
+  const channel = channels.findById(channelId)
+  const agent = agents.create({ channelId: channel?.id ?? channelId, templateId: null, name: 'lead', harness: 'mock', role: 'lead' })
+  return Array.from({ length: count }, (_, i) => tasks.create({
+    channelId, assigneeId: agent.id, creatorId: agent.id, title: `done-${i + 1}`, state: 'COMPLETED', source: 'channel',
+  }))
+}
+
 const seed = (repo: ReturnType<typeof fixture>['repo'], dedupKey: string, taskIds: string[], status: 'candidate' | 'validated' = 'candidate') =>
   repo.upsertExperience({
     channelId: 'ch-1', agentId: 'agent-a', kind: 'experience',
     title: `经验-${dedupKey}`, titleFts: '经 验', content: '同结论', importance: 0.8,
-    dedupKey, outcome: 'positive', evidence: { taskIds },
+    dedupKey, outcome: 'positive', evidence: taskIds.length > 0 ? { taskIds } : { taskIds: [], traceId: `empty-${dedupKey}` },
     scopeKind: 'line', scopeKey: 'line-1', status, expiresAt: null,
   })
 
@@ -57,11 +71,12 @@ test('状态单调性:重放/重存不得把 validated 打回 candidate,也不�
 test('合并端点:证据并集 + 不自动晋级(人审批)', () => {
   const { db, repo } = fixture()
   try {
-    const a = seed(repo, 'exp:m1', ['t-1'])
-    const b = seed(repo, 'exp:m2', ['t-2'])
+    const tasks = completedTasks(db, 'ch-1', 2)
+    const a = seed(repo, 'exp:m1', [tasks[0]!.id])
+    const b = seed(repo, 'exp:m2', [tasks[1]!.id])
     const merged = mergeExperiences(db, { channelId: 'ch-1', memoryIds: [a.id, b.id], actor: 'u-1' })
     assert.equal(merged.ok, true, merged.reasons.join('；'))
-    assert.deepEqual([...(merged.taskIds ?? [])].sort(), ['t-1', 't-2'])
+    assert.deepEqual([...(merged.taskIds ?? [])].sort(), [tasks[0]!.id, tasks[1]!.id].sort())
     const row = repo.getById(merged.memoryId!)!
     assert.equal(row.status, 'candidate', '合并本身不晋级')
     // 证据并集后达到门要求(≥2 独立任务) → 人可晋升
@@ -73,12 +88,29 @@ test('合并端点:证据并集 + 不自动晋级(人审批)', () => {
   }
 })
 
-test('合并端点:跨频道/不足 2 条 一律拒绝', () => {
+test('合并端点:跨频道/空、伪造、未完成证据一律拒绝', () => {
   const { db, repo } = fixture()
   try {
-    const a = seed(repo, 'exp:x1', ['t-1'])
-    assert.equal(mergeExperiences(db, { channelId: 'ch-1', memoryIds: [a.id], actor: 'u-1' }).ok, false)
-    assert.equal(mergeExperiences(db, { channelId: 'ch-other', memoryIds: [a.id, a.id], actor: 'u-1' }).ok, false)
+    const channels = createChannelRepo(db)
+    const agents = createChannelAgentRepo(db)
+    const tasks = createTaskRepo(db)
+    const a = channels.create({ name: 'A' })
+    const b = channels.create({ name: 'B' })
+    const leadA = agents.create({ channelId: a.id, templateId: null, name: 'A lead', harness: 'mock', role: 'lead' })
+    const leadB = agents.create({ channelId: b.id, templateId: null, name: 'B lead', harness: 'mock', role: 'lead' })
+    const completedA = tasks.create({ channelId: a.id, assigneeId: leadA.id, creatorId: leadA.id, title: 'done-a', state: 'COMPLETED', source: 'channel' })
+    const completedB = tasks.create({ channelId: b.id, assigneeId: leadB.id, creatorId: leadB.id, title: 'done-b', state: 'COMPLETED', source: 'channel' })
+    const workingA = tasks.create({ channelId: a.id, assigneeId: leadA.id, creatorId: leadA.id, title: 'working-a', state: 'WORKING', source: 'channel' })
+    const empty = seed(repo, 'exp:empty', [])
+    const fake = seed(repo, 'exp:fake', ['fake-task'])
+    const nonCompleted = seed(repo, 'exp:working', [workingA.id])
+    const crossChannel = seed(repo, 'exp:cross', [completedB.id])
+    const completed = seed(repo, 'exp:completed', [completedA.id])
+    assert.equal(mergeExperiences(db, { channelId: a.id, memoryIds: [empty.id, completed.id], actor: 'u-1' }).ok, false)
+    assert.equal(mergeExperiences(db, { channelId: a.id, memoryIds: [fake.id, completed.id], actor: 'u-1' }).ok, false)
+    assert.equal(mergeExperiences(db, { channelId: a.id, memoryIds: [nonCompleted.id, completed.id], actor: 'u-1' }).ok, false)
+    assert.equal(mergeExperiences(db, { channelId: a.id, memoryIds: [crossChannel.id, completed.id], actor: 'u-1' }).ok, false)
+    assert.equal(mergeExperiences(db, { channelId: a.id, memoryIds: [completed.id], actor: 'u-1' }).ok, false)
   }
   finally {
     db.close()

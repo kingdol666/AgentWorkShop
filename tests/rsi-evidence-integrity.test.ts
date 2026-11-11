@@ -24,8 +24,12 @@ function experience(repo: ReturnType<typeof createMemoryRepo>, channelId: string
   return repo.upsertExperience({
     channelId, agentId: 'agent-a', kind: 'experience', title: dedupKey, titleFts: dedupKey,
     content: `内容-${dedupKey}`, importance: 0.8, dedupKey, outcome: 'positive',
-    evidence: { taskIds }, scopeKind: 'line', scopeKey: 'line-1', status,
+    evidence: taskIds.length > 0 ? { taskIds } : { taskIds: [], traceId: `empty-${dedupKey}` }, scopeKind: 'line', scopeKey: 'line-1', status,
   })
+}
+
+function task(tasks: ReturnType<typeof createTaskRepo>, channelId: string, assigneeId: string, title: string, state: string = 'COMPLETED') {
+  return tasks.create({ channelId, assigneeId, creatorId: assigneeId, title, state, source: 'channel' })
 }
 
 test('RSI bench ignores client pValue and derives a conservative paired value', () => {
@@ -54,14 +58,23 @@ test('RSI evidence merge rejects fake and cross-channel task IDs when task data 
     const b = channels.create({ name: 'B' })
     const leadA = agents.create({ channelId: a.id, templateId: null, name: 'A lead', harness: 'mock', role: 'lead' })
     const leadB = agents.create({ channelId: b.id, templateId: null, name: 'B lead', harness: 'mock', role: 'lead' })
-    const task = tasks.create({ channelId: a.id, assigneeId: leadA.id, creatorId: leadA.id, title: 'done', state: 'COMPLETED', source: 'channel' })
+    const completedA1 = task(tasks, a.id, leadA.id, 'done-a1')
+    const completedA2 = task(tasks, a.id, leadA.id, 'done-a2')
+    const completedB1 = task(tasks, b.id, leadB.id, 'done-b1')
+    const workingA = task(tasks, a.id, leadA.id, 'working-a', 'WORKING')
     const repo = createMemoryRepo(db)
-    const first = experience(repo, a.id, 'one', [task.id])
-    const fake = experience(repo, a.id, 'two', ['fake-task'])
+    const first = experience(repo, a.id, 'one', [completedA1.id])
+    const second = experience(repo, a.id, 'two', [completedA2.id])
+    const fake = experience(repo, a.id, 'fake', ['fake-task'])
+    const empty = experience(repo, a.id, 'empty', [])
     assert.equal(mergeExperiences(db, { channelId: a.id, memoryIds: [first.id, fake.id], actor: 'u-1' }).ok, false)
-    const foreign = experience(repo, b.id, 'foreign', [task.id])
-    assert.equal(mergeExperiences(db, { channelId: b.id, memoryIds: [foreign.id, foreign.id], actor: 'u-1' }).ok, false)
-    assert.ok(leadB.id)
+    assert.equal(mergeExperiences(db, { channelId: a.id, memoryIds: [first.id, empty.id], actor: 'u-1' }).ok, false)
+    assert.equal(mergeExperiences(db, { channelId: a.id, memoryIds: [first.id, workingA.id], actor: 'u-1' }).ok, false)
+    const foreign = experience(repo, a.id, 'foreign-task', [completedB1.id])
+    assert.equal(mergeExperiences(db, { channelId: a.id, memoryIds: [first.id, foreign.id], actor: 'u-1' }).ok, false)
+    const merged = mergeExperiences(db, { channelId: a.id, memoryIds: [first.id, second.id], actor: 'u-1' })
+    assert.equal(merged.ok, true, merged.reasons.join('；'))
+    assert.ok(completedA1.id && completedA2.id && completedB1.id && workingA.id && leadB.id)
   }
   finally { db.close() }
 })
@@ -92,12 +105,49 @@ test('RSI overlay renders only validated same-line experience pins', () => {
 test('RSI memory status CAS cannot overwrite validated with a stale write', () => {
   const db = openWorkshopDb(':memory:')
   try {
+    const channels = createChannelRepo(db)
+    const agents = createChannelAgentRepo(db)
+    const tasks = createTaskRepo(db)
+    const a = channels.create({ name: 'A' })
+    const lead = agents.create({ channelId: a.id, templateId: null, name: 'A lead', harness: 'mock', role: 'lead' })
+    const completedA1 = task(tasks, a.id, lead.id, 'done-a1')
+    const completedA2 = task(tasks, a.id, lead.id, 'done-a2')
     const repo = createMemoryRepo(db)
-    const row = experience(repo, 'ch-1', 'cas', ['t-1', 't-2'])
+    const row = experience(repo, a.id, 'cas', [completedA1.id, completedA2.id])
     assert.equal(repo.markStatus(row.id, 'validated'), true)
     assert.equal(repo.markStatus(row.id, 'candidate'), false)
     assert.equal(repo.getById(row.id)?.status, 'validated')
-    assert.equal(promoteExperience(db, { memoryId: row.id, channelId: 'ch-1', to: 'validated', actor: 'u-1' }).ok, false)
+    assert.equal(promoteExperience(db, { memoryId: row.id, channelId: a.id, to: 'validated', actor: 'u-1' }).ok, false)
+  }
+  finally { db.close() }
+})
+
+test('RSI direct validated promotion rejects empty, fake, non-completed, and cross-channel evidence', () => {
+  const db = openWorkshopDb(':memory:')
+  try {
+    const channels = createChannelRepo(db)
+    const agents = createChannelAgentRepo(db)
+    const tasks = createTaskRepo(db)
+    const a = channels.create({ name: 'A' })
+    const b = channels.create({ name: 'B' })
+    const leadA = agents.create({ channelId: a.id, templateId: null, name: 'A lead', harness: 'mock', role: 'lead' })
+    const leadB = agents.create({ channelId: b.id, templateId: null, name: 'B lead', harness: 'mock', role: 'lead' })
+    const completedA1 = task(tasks, a.id, leadA.id, 'done-a1')
+    const completedA2 = task(tasks, a.id, leadA.id, 'done-a2')
+    const completedB1 = task(tasks, b.id, leadB.id, 'done-b1')
+    const workingA = task(tasks, a.id, leadA.id, 'working-a', 'WORKING')
+    const repo = createMemoryRepo(db)
+    for (const [key, taskIds] of [
+      ['empty', []],
+      ['fake', ['fake-task']],
+      ['working', [workingA.id, completedA1.id]],
+      ['foreign', [completedB1.id, completedA1.id]],
+    ] as Array<[string, string[]]>) {
+      const row = experience(repo, a.id, `promote-${key}`, taskIds)
+      assert.equal(promoteExperience(db, { memoryId: row.id, channelId: a.id, to: 'validated', actor: 'u-1' }).ok, false, key)
+    }
+    const valid = experience(repo, a.id, 'promote-valid', [completedA1.id, completedA2.id])
+    assert.equal(promoteExperience(db, { memoryId: valid.id, channelId: a.id, to: 'validated', actor: 'u-1' }).ok, true)
   }
   finally { db.close() }
 })
