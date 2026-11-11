@@ -120,3 +120,31 @@ test('enforceRootDeadlines:模式任务(modeTask)不参与过期判定', async (
   assert.equal(acted, false, '模式任务由 LoopController 管理,不被过期收口')
   assert.deepEqual(rec.timeouts, [])
 })
+
+test('runRound 顺序回归:withExecLock 永不释放时过期收口仍在锁外执行', async () => {
+  // P1 复验顺序回归(2026-11-10 deadline 证据的复现路径):旧实现把过期判定放在
+  // tickRound 内(持锁)——lead 长时间持锁(真实 LLM 监督回合)时 ROOT_TIMEOUT 被饿死。
+  // 锁存根:永不 resolve,并记录是否被进入(证明过期收口不依赖锁)。
+  let lockEntered = false
+  const { scheduler, rec, snap } = expiryFixture([
+    { id: 'root-stuck', parentId: null, assigneeId: 'worker-1', state: 'WORKING', deadlineAt: past },
+  ])
+  ;(scheduler as unknown as { collectSnapshot: () => unknown }).collectSnapshot = () => snap
+  ;(scheduler as unknown as { lead: Record<string, unknown> }).lead = {
+    ...(scheduler as unknown as { lead: Record<string, unknown> }).lead,
+    withExecLock: (_fn: () => unknown) => {
+      lockEntered = true
+      return new Promise(() => {}) // 永不释放:模拟监督回合卡死
+    },
+  } as never
+  // 调基类 runRound(绕过测试子类的 no-op override)
+  await Promise.race([
+    SchedulerLoopTick.prototype.runRound.call(scheduler),
+    new Promise<never>((_, reject) => {
+      const t = setTimeout(() => reject(new Error('runRound 阻塞在 withExecLock —— 过期收口被饿死(顺序回退)'), 2000))
+      t.unref?.()
+    }),
+  ])
+  assert.deepEqual(rec.timeouts, ['root-stuck'], '锁被永久持有时过期根仍被收口')
+  assert.equal(lockEntered, false, '收口动作不得进入执行锁')
+})
