@@ -1,14 +1,14 @@
 /**
  * R-1/R-2 生命周期增强回归(2026-11-01)
  *
- * R-1:AgentRuntime.stop() 不再同步等待宽限+dispose —— 调用方在墓碑动作
- *      (abort/mailbox close/广播)完成后立即返回,dispose 全程后台。
- *      用假 impl 计数 dispose 调用与时间,断言 stop() 先于 dispose 完成。
+ * R-1:AgentRuntime.stop() waits for consumption/finalization and dispose before returning,
+ *      so manager shutdown can close the database without late finalized-statement writes.
  * R-2:daqPushRearm —— driverConfig 变更后:退避清空 + 订阅回收 + 死连接驱逐;
  *      健康连接绝不驱逐;退避中的节点 PATCH 后下一拍即可重试。
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 const { AgentRuntimeLifecycle } = await import('../server/services/workshop/runtime/agent-runtime/lifecycle')
 const { evictMqttPoolConn, mqttKey, mqttPool } = await import('../server/services/workshop/daq/drivers/mqtt')
@@ -32,28 +32,52 @@ function makeMinimalRuntime(impl: Record<string, unknown>): AgentRuntimeLifecycl
   return rt
 }
 
-test('R-1: stop() 立即返回,dispose 在后台完成(慢 dispose 不阻塞调用方)', async () => {
+test('shutdown waits for runtime cleanup before database close', () => {
+  const lifecycle = readFileSync(new URL('../server/services/workshop/runtime/agent-runtime/lifecycle.ts', import.meta.url), 'utf8')
+  const observe = readFileSync(new URL('../server/services/workshop/runtime/manager/runtime-observe.ts', import.meta.url), 'utf8')
+  const plugin = readFileSync(new URL('../server/plugins/workshop.ts', import.meta.url), 'utf8')
+  assert.match(lifecycle, /await this\.disposeInBackground\(\)/)
+  assert.match(lifecycle, /await this\.loopPromise/)
+  assert.match(lifecycle, /await this\.postSettlePromise/)
+  assert.match(observe, /await Promise\.all\(\[\.\.\.this\.agentIndex\.values\(\)\]\.map\(a => a\.stop\(\)\)\)/)
+  assert.match(plugin, /await manager\.shutdown\(\)\s+db\.close\(\)/)
+})
+
+test('R-1: stop waits for the consume loop before disposing the harness', async () => {
+  let releaseLoop!: () => void
+  const loop = new Promise<void>((resolve) => {
+    releaseLoop = resolve
+  })
+  let disposed = false
+  const rt = makeMinimalRuntime({
+    async dispose() {
+      disposed = true
+    },
+  }) as unknown as AgentRuntimeLifecycle & { stop(): Promise<void> }
+  ;(rt as unknown as { loopPromise: Promise<void> | null }).loopPromise = loop
+  const stopping = rt.stop()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(disposed, false, 'consume loop 未结束时不得 dispose harness')
+  releaseLoop()
+  await stopping
+  assert.equal(disposed, true, 'stop 返回前必须完成 harness dispose')
+})
+
+test('R-1: stop waits for slow dispose so DB cannot close early', async () => {
   let disposeStarted = 0
   let disposeFinished = 0
   const slowImpl = {
     async dispose() {
       disposeStarted++
-      await new Promise(r => setTimeout(r, 400))
+      await new Promise(r => setTimeout(r, 40))
       disposeFinished++
     },
   }
   const rt = makeMinimalRuntime(slowImpl) as unknown as { stop(): Promise<void> }
-  const t0 = Date.now()
   await rt.stop()
-  const stopWall = Date.now() - t0
-  // stop() 不再等待 400ms 的 dispose —— 远小于 dispose 耗时即证明后台化
-  assert.ok(stopWall < 200, `stop() 应立即返回,实测 ${stopWall}ms`)
-  assert.equal(disposeStarted, 0, 'stop() 返回时 dispose 尚未开始(已移交后台)')
-  // 后台收尾最终完成
-  await new Promise(r => setTimeout(r, 700))
-  assert.equal(disposeFinished, 1, '后台 dispose 应完成一次')
+  assert.equal(disposeStarted, 1, 'stop() 返回前必须开始 dispose')
+  assert.equal(disposeFinished, 1, 'stop() 返回前 dispose 必须完成')
 })
-
 test('R-1: dispose 抛错不冒泡(后台容错)', async () => {
   const badImpl = {
     async dispose() {

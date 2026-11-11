@@ -1,0 +1,6 @@
+focused session idempotency: PASS 3/3
+related runtime/session: PASS 24/24
+full unit: PASS 1495/1495
+typecheck: PASS
+lint: PASS
+finalized statement occurrences: 0

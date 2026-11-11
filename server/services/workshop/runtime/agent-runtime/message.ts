@@ -478,11 +478,15 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
    */
   protected maybePostSettle(): void {
     if (!this.impl.onTurnSettled) return
-    void this.deps.mailbox.peek(1)
+    const settle = this.deps.mailbox.peek(1)
       .then((pending) => {
         if (pending.length > 0) return undefined
         return this.impl.onTurnSettled?.()
       })
+    // 生命周期屏障：stop() 必须等待这类异步 harness/DB 收尾，避免 manager
+    // 关闭数据库后，悬空 promise 再访问已 finalize 的 prepared statement。
+    this.postSettlePromise = (this.postSettlePromise ?? Promise.resolve())
+      .then(() => settle)
       .catch(() => {})
   }
 

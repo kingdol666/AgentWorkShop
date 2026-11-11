@@ -78,32 +78,81 @@ export function createMessageRepo(db: DatabaseSync) {
      LIMIT 1`,
   )
 
+  function buildRow(input: MessageCreateInput): MessageRow {
+    const now = new Date().toISOString()
+    return {
+      id: input.id ?? randomUUID(),
+      channelId: input.channelId,
+      taskId: input.taskId ?? null,
+      sessionId: input.sessionId ?? null,
+      actorUserId: input.actorUserId ?? null,
+      clientMessageId: input.clientMessageId ?? null,
+      fromAgentId: input.fromAgentId ?? null,
+
+      toAgentId: input.toAgentId ?? null,
+      role: input.role,
+      partsJson: JSON.stringify(input.parts),
+      metadataJson: JSON.stringify(input.metadata ?? {}),
+      state: 'pending',
+      attempts: 0,
+      createdAt: now,
+      consumedAt: null,
+    }
+  }
+
+  function insertRow(row: MessageRow): void {
+    insert.run(
+      row.id, row.channelId, row.taskId, row.sessionId, row.actorUserId, row.clientMessageId, row.fromAgentId, row.toAgentId, row.role, row.partsJson, row.metadataJson, row.state, row.createdAt, row.consumedAt,
+    )
+  }
+
+  function isSessionIdempotencyInput(input: MessageCreateInput): boolean {
+    return input.sessionId != null && input.actorUserId != null && input.clientMessageId != null
+  }
+
+  function isSessionIdempotencyConflict(err: unknown): boolean {
+    const message = err instanceof Error ? err.message : String(err)
+    return /UNIQUE constraint failed:\s*messages\.(?:channel_id|session_id|actor_user_id|client_message_id)/i.test(message)
+  }
+
   return {
     /** 创建消息(state=pending,parts/metadata 序列化存储) */
     create(input: MessageCreateInput): MessageRow {
-      const now = new Date().toISOString()
-      const row: MessageRow = {
-        id: input.id ?? randomUUID(),
-        channelId: input.channelId,
-        taskId: input.taskId ?? null,
-        sessionId: input.sessionId ?? null,
-        actorUserId: input.actorUserId ?? null,
-        clientMessageId: input.clientMessageId ?? null,
-        fromAgentId: input.fromAgentId ?? null,
-
-        toAgentId: input.toAgentId ?? null,
-        role: input.role,
-        partsJson: JSON.stringify(input.parts),
-        metadataJson: JSON.stringify(input.metadata ?? {}),
-        state: 'pending',
-        attempts: 0,
-        createdAt: now,
-        consumedAt: null,
-      }
-      insert.run(
-        row.id, row.channelId, row.taskId, row.sessionId, row.actorUserId, row.clientMessageId, row.fromAgentId, row.toAgentId, row.role, row.partsJson, row.metadataJson, row.state, row.createdAt, row.consumedAt,
-      )
+      const row = buildRow(input)
+      insertRow(row)
       return row
+    },
+
+    /**
+     * Session clientMessageId 的原子 INSERT 入口。
+     * 先插入、仅在唯一键冲突后回读，绝不依赖先查后插；这也覆盖了跨请求/跨进程并发。
+     */
+    createSessionIdempotent(input: MessageCreateInput): { row: MessageRow, inserted: boolean } {
+      if (!isSessionIdempotencyInput(input)) return { row: this.create(input), inserted: true }
+      const row = buildRow(input)
+      try {
+        insertRow(row)
+        return { row, inserted: true }
+      }
+      catch (err) {
+        if (!isSessionIdempotencyConflict(err)) throw err
+        const existing = (selectByClientMessageId.get(input.channelId, input.sessionId!, input.actorUserId!, input.clientMessageId!) as MessageRow | undefined) ?? undefined
+        // 唯一冲突行理论上必然可回读；若不可见则保留原始 SQLite 错误，避免静默假成功。
+        if (!existing) throw err
+        return { row: existing, inserted: false }
+      }
+    },
+
+    /** 判断同一幂等键的不可变消息载荷是否完全一致。 */
+    sameSessionPayload(row: MessageRow, input: MessageCreateInput): boolean {
+      return row.channelId === input.channelId
+        && row.sessionId === (input.sessionId ?? null)
+        && row.actorUserId === (input.actorUserId ?? null)
+        && row.clientMessageId === (input.clientMessageId ?? null)
+        && row.toAgentId === (input.toAgentId ?? null)
+        && row.role === input.role
+        && row.partsJson === JSON.stringify(input.parts)
+        && row.metadataJson === JSON.stringify(input.metadata ?? {})
     },
 
     findByClientMessageId(channelId: string, sessionId: string, actorUserId: string, clientMessageId: string): MessageRow | undefined {
@@ -155,7 +204,7 @@ export function createMessageRepo(db: DatabaseSync) {
 
     /** 启动恢复:全部未消费消息的目标 agent(供 restore 唤醒,重投的 assign 才能被消费) */
     listPendingTargets(): Array<{ channelId: string, toAgentId: string }> {
-      return selectPendingTargets.all() as unknown as Array<{ channelId: string, toAgentId: string }>
+      return selectPendingTargets.all() as Array<{ channelId: string, toAgentId: string }>
     },
 
     /** 作废某任务的全部 pending 消息(cancel/reassign/update 后清理旧 assignee 队列中的过期投递) */

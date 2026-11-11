@@ -172,20 +172,6 @@ export abstract class ManagerA2A extends ManagerTasks {
     if (!target) throw new AppError(409, 'SESSION_NO_MEMBER', '会话没有可投递的成员实例')
     const targetRow = this.deps.repos.channelAgents.findByChannelAgent(input.channelId, target)
     if (!targetRow || targetRow.enabled !== 1) throw new AppError(409, 'SESSION_MEMBER_UNAVAILABLE', '会话成员实例不存在或已停用')
-    const replayExisting = (existing: ReturnType<typeof this.deps.repos.messages.findByClientMessageId>): { messageId: string, toAgentId: string } => {
-      if (!existing) throw new AppError(500, 'INTERNAL_ERROR', '幂等消息回放缺少持久化行')
-      const existingText = parseJson<Part[]>(existing.partsJson, [])
-        .map(part => 'text' in part ? part.text : '')
-        .join('')
-      if (existingText !== input.text.trim()) {
-        throw new AppError(409, 'SESSION_MESSAGE_IDEMPOTENCY_CONFLICT', 'clientMessageId 已被同一 actor 用于不同 payload')
-      }
-      return { messageId: existing.id, toAgentId: existing.toAgentId ?? target }
-    }
-    if (input.clientMessageId) {
-      const existing = this.deps.repos.messages.findByClientMessageId(input.channelId, input.sessionId, input.actor.id, input.clientMessageId)
-      if (existing) return replayExisting(existing)
-    }
     const message = await this.sendImmediateMessage({
       channelId: input.channelId,
       toAgentId: target,

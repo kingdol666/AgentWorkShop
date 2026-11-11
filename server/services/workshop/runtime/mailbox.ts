@@ -8,6 +8,7 @@ import type { A2AMessage, Part } from '../types/a2a'
 import { parseJson } from '../db/database'
 import type { MessageRow } from '../db/database'
 import type { MessageRepo } from '../db/message.repo'
+import { AppError } from '../../../utils/errors'
 
 /** promise 门闩:resolve 后重建,供 dequeue 反复挂起 */
 interface Gate {
@@ -67,26 +68,39 @@ export class Mailbox {
    *  (2026-10-28 审查 C-P1-1:闭箱静默吞消息 + route 照常计入 delivered = 假送达)。 */
   enqueue(message: A2AMessage): boolean {
     if (this.closed) return false
-    this.messageRepo.create({
+    const sessionId = typeof message.metadata?.['x-aw-session-id'] === 'string'
+      ? message.metadata['x-aw-session-id']
+      : null
+    const actorUserId = typeof message.metadata?.['x-aw-from-user-id'] === 'string'
+      ? message.metadata['x-aw-from-user-id']
+      : null
+    const clientMessageId = typeof message.metadata?.['x-aw-client-message-id'] === 'string'
+      ? message.metadata['x-aw-client-message-id']
+      : null
+    const input = {
       // 保留发送方 messageId 作为落库 id:API 返回的 messageId 才能与历史/状态一致关联
       id: message.messageId,
       channelId: message.contextId,
       taskId: message.taskId ?? null,
-      sessionId: typeof message.metadata?.['x-aw-session-id'] === 'string'
-        ? message.metadata['x-aw-session-id']
-        : null,
-      actorUserId: typeof message.metadata?.['x-aw-from-user-id'] === 'string'
-        ? message.metadata['x-aw-from-user-id']
-        : null,
-      clientMessageId: typeof message.metadata?.['x-aw-client-message-id'] === 'string'
-        ? message.metadata['x-aw-client-message-id']
-        : null,
+      sessionId,
+      actorUserId,
+      clientMessageId,
       fromAgentId: (message.metadata?.['x-aw-from-agent'] as string | undefined) ?? null,
       toAgentId: this.agentId,
       role: message.role,
       parts: message.parts,
       metadata: message.metadata,
-    })
+    }
+    const result = sessionId && actorUserId && clientMessageId
+      ? this.messageRepo.createSessionIdempotent(input)
+      : { row: this.messageRepo.create(input), inserted: true }
+    if (!result.inserted) {
+      if (!this.messageRepo.sameSessionPayload(result.row, input)) {
+        throw new AppError(409, 'SESSION_MESSAGE_IDEMPOTENCY_CONFLICT', 'clientMessageId 已被同一 actor 用于不同 payload')
+      }
+      // 两个并发请求各自生成了 messageId；返回/后续回执必须使用数据库赢家的 id。
+      message.messageId = result.row.id
+    }
     this.wake()
     for (const cb of this.arrivalCbs) {
       try {

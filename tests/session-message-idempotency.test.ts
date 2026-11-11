@@ -61,32 +61,49 @@ test('session endpoint forwards clientMessageId instead of dropping it', () => {
   assert.match(source, /clientMessageId:\s*body\.clientMessageId/)
 })
 
-test('duplicate session clientMessageId is isolated by actor and conflicts on payload mismatch', async () => {
+test('concurrent identical session clientMessageId requests share one atomic message', async () => {
   const f = fixture()
   try {
     const input = {
       channelId: f.channel.id,
       sessionId: f.session.id,
       actor: { id: 'user-1', role: 'user' },
-      text: '请继续处理当前会话',
-      clientMessageId: 'session-client-message-1',
+      text: '并发请求应只入队一次',
+      clientMessageId: 'session-concurrent-same-1',
     }
-    const first = await f.manager.sendSessionMessage(input as never)
-    const second = await f.manager.sendSessionMessage(input as never)
-    assert.deepEqual(second, first, '重试应返回同一逻辑结果(messageId/toAgentId)')
+    const results = await Promise.all(Array.from({ length: 8 }, () => f.manager.sendSessionMessage(input as never)))
+    assert.equal(new Set(results.map(result => result.messageId)).size, 1, '相同 payload 并发请求必须共享同一 messageId')
+    assert.equal(new Set(results.map(result => result.toAgentId)).size, 1)
+    const rows = f.messages.listRecentByChannel(f.channel.id, 50)
+      .filter(row => row.sessionId === f.session.id && row.actorUserId === input.actor.id && row.clientMessageId === input.clientMessageId)
+    assert.equal(rows.length, 1, '原子唯一键必须只留下一个 mailbox 行')
+  }
+  finally {
+    await f.manager.shutdown()
+    f.db.close()
+  }
+})
 
-    await assert.rejects(
-      f.manager.sendSessionMessage({ ...input, text: '不同 payload' } as never),
-      (err: unknown) => (err as { code?: string }).code === 'SESSION_MESSAGE_IDEMPOTENCY_CONFLICT',
-    )
-
-    const otherActor = await f.manager.sendSessionMessage({ ...input, actor: { id: 'user-2', role: 'admin' } } as never)
-    assert.notEqual(otherActor.messageId, first.messageId, '不同 actor 必须有独立幂等命名空间')
-
-    const rows = f.messages.listRecentByChannel(f.channel.id, 20)
-      .filter(row => row.toAgentId === f.clone.id && row.sessionId === f.session.id)
-    assert.equal(rows.length, 2, '不同 actor 的同 key 应产生各自消息')
-    assert.deepEqual(new Set(rows.map(row => row.actorUserId)), new Set(['user-1', 'user-2']))
+test('concurrent different session payloads deterministically reject the loser with conflict', async () => {
+  const f = fixture()
+  try {
+    const base = {
+      channelId: f.channel.id,
+      sessionId: f.session.id,
+      actor: { id: 'user-1', role: 'user' },
+      clientMessageId: 'session-concurrent-conflict-1',
+    }
+    const results = await Promise.allSettled([
+      f.manager.sendSessionMessage({ ...base, text: 'payload-A' } as never),
+      f.manager.sendSessionMessage({ ...base, text: 'payload-B' } as never),
+    ])
+    assert.equal(results.filter(result => result.status === 'fulfilled').length, 1)
+    const rejected = results.find(result => result.status === 'rejected')
+    assert.ok(rejected && rejected.status === 'rejected')
+    assert.equal((rejected.reason as { code?: string }).code, 'SESSION_MESSAGE_IDEMPOTENCY_CONFLICT')
+    const rows = f.messages.listRecentByChannel(f.channel.id, 50)
+      .filter(row => row.sessionId === f.session.id && row.actorUserId === base.actor.id && row.clientMessageId === base.clientMessageId)
+    assert.equal(rows.length, 1, '冲突并发不得产生第二条消息')
   }
   finally {
     await f.manager.shutdown()
