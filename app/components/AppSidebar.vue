@@ -187,7 +187,10 @@ onBeforeUnmount(() => {
       </transition>
     </div>
 
-    <nav class="app-menu">
+    <nav
+      class="app-menu"
+      aria-label="主导航"
+    >
       <div
         v-for="group in menuGroups"
         :key="group.id"
@@ -215,6 +218,7 @@ onBeforeUnmount(() => {
           type="button"
           class="menu-item im"
           :class="{ active: isActive(item.key) }"
+          :aria-current="isActive(item.key) ? 'page' : undefined"
           :title="!showLabels ? item.label : undefined"
           @click="go(item.key)"
         >
@@ -257,13 +261,21 @@ onBeforeUnmount(() => {
 .app-sider {
   position: sticky;
   top: 0;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
-  overflow: hidden auto;
+  overflow: hidden;
   /* 壳层 chrome:高不透明 surface,保证导航文字对比 */
   background: var(--mat-chrome-bg);
   backdrop-filter: var(--vibrancy-chrome);
   border-right: 1px solid var(--line);
   z-index: 20;
+}
+
+/* 只有导航主体滚动:品牌与底部铭牌固定,900px 视口也能滚到「工具管理」 */
+.app-sider .logo,
+.app-sider .sider-footer {
+  flex: 0 0 auto;
 }
 
 .app-sider::-webkit-scrollbar {
@@ -318,9 +330,14 @@ onBeforeUnmount(() => {
 /* ---------- 分组导航 ---------- */
 .app-menu {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 14px;
-  padding: 16px 10px 0;
+  min-height: 0;
+  padding: 16px 10px 24px;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .menu-group {

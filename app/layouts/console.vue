@@ -16,7 +16,17 @@ useResponsive()
 
 <template>
   <div class="console-layout">
-    <slot />
+    <a
+      class="console-skip-link"
+      href="#console-main"
+    >跳到主要内容</a>
+    <main
+      id="console-main"
+      class="console-main"
+      tabindex="-1"
+    >
+      <slot />
+    </main>
     <!-- 全局登录对话框(与 default 布局同一实例;组件经目录前缀自动导入,勿显式 import) -->
     <AppHeaderLoginModal />
   </div>
@@ -30,5 +40,30 @@ useResponsive()
   min-height: 0;
   overflow: hidden;
   background: var(--chat-canvas);
+}
+
+/* display:contents:保留 main 语义,但不额外生成盒子,页面自持整幅视口 */
+.console-main {
+  display: contents;
+}
+
+.console-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-radius: 8px;
+  transform: translateY(-160%);
+  transition: transform var(--transition-fast);
+}
+
+.console-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 </style>
