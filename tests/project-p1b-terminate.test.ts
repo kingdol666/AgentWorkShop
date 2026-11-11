@@ -5,7 +5,11 @@
  *      TaskEngine stub 断言调用）+ attempt 闭合 + project.canceled + 审批过期；
  *   T2 终态守卫：completed/archived 不可终止；canceled 幂等；终止后 resume → 409；
  *   T3 快照可见面：channels[].rootTasks 透出在飞 root 任务态；owner 消息队列 FIFO
- *      消费顺序（messages created_at 顺序 + 全部 consumed）。
+ *      消费顺序（messages created_at 顺序 + 全部 consumed）；
+ *   T-orphan：孤立 task_instance 绑定的活任务树在事务内 cancelTree（runtime-first），
+ *      事务提交后仅做 durable 收口（session closed / channel 停用 / binding detach）；
+ *   T-orphan-fail-closed：孤立绑定活任务取消失败时整个事务回滚，项目/绑定/任务保持
+ *      非终态（fail-closed，数据库终态不先于 runtime 取消提交）。
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -22,6 +26,7 @@ delete process.env.AW_BENCH_MODE
 const { openWorkshopDb } = await import('../server/services/workshop/db/database')
 const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
 const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
+const { createChannelSessionRepo } = await import('../server/services/workshop/db/channel-session.repo')
 const { createTaskRepo } = await import('../server/services/workshop/db/task.repo')
 const { createProjectAttemptRepo } = await import('../server/services/workshop/db/project.repo')
 const { initProjectService } = await import('../server/services/workshop/projects/service')
@@ -31,6 +36,7 @@ function fixture(withEngine: boolean) {
   const db = openWorkshopDb(':memory:')
   const channels = createChannelRepo(db)
   const agents = createChannelAgentRepo(db)
+  const sessions = createChannelSessionRepo(db)
   const tasks = createTaskRepo(db)
   const attempts = createProjectAttemptRepo(db)
   const canceledTrees: string[] = []
@@ -75,7 +81,7 @@ function fixture(withEngine: boolean) {
     })
   }
   const svc = initProjectService(manager, db)
-  return { db, channels, agents, tasks, attempts, manager, svc, canceledTrees }
+  return { db, channels, agents, sessions, tasks, attempts, manager, svc, canceledTrees }
 }
 
 const owner = { id: 'u-owner', role: 'user' }
@@ -332,6 +338,71 @@ test('C-12：解绑在飞工作项先取消 runtime task tree 再收口数据库
     assert.deepEqual(f.canceledTrees, [taskId])
     assert.equal(f.svc.listWorkItems(s.p.id, owner).find(x => x.id === s.w1.id)!.state, 'CANCELED')
     assert.equal(f.tasks.findById(taskId)!.state, 'CANCELED')
+  }
+  finally { f.db.close() }
+})
+
+/** 构造孤立 task_instance 绑定：新频道 + active 绑定行（无对应 workItem）。 */
+async function seedOrphanBinding(f: ReturnType<typeof fixture>) {
+  const s = await boot(f)
+  const ch = await f.manager.createChannel({ name: 'orphan-instance', ownerUserId: owner.id, leadAgent: { name: 'O', harness: 'mock' } })
+  f.db.prepare(
+    `INSERT INTO project_channels (project_id, channel_id, binding_type, charter, status, added_by, added_at)
+     VALUES (?, ?, 'task_instance', '', 'active', ?, ?)`,
+  ).run(s.p.id, ch.channelId, owner.id, new Date().toISOString())
+  // 孤立频道上的活任务（state 非终态，SUBMITTED 默认值）
+  const task = f.tasks.create({
+    channelId: ch.channelId,
+    creatorId: `project:${s.p.id}`,
+    assigneeId: ch.leadAgentId!,
+    title: 'orphan root',
+    source: 'project',
+    projectId: s.p.id,
+  } as never)
+  const session = f.sessions.create({ channelId: ch.channelId, memberMap: {}, projectId: s.p.id, instanceKind: 'task', createdByKind: 'project' })
+  return { ...s, orphan: { channelId: ch.channelId, taskId: task.id, sessionId: session.id } }
+}
+
+test('T-orphan：孤立 task_instance 绑定在事务内取消活任务树，事务后 durable 收口', async () => {
+  const f = fixture(true)
+  try {
+    const s = await seedOrphanBinding(f)
+    assert.equal(f.tasks.findById(s.orphan.taskId)!.state, 'SUBMITTED')
+    const after = await f.svc.terminate(s.p.id, owner, '孤立绑定清理')
+    assert.equal(after.status, 'canceled')
+    // runtime 取消发生在事务内（cancelTree 被调用且任务落终态）
+    assert.ok(f.canceledTrees.includes(s.orphan.taskId), '孤立绑定的活任务树必须在事务内 cancelTree')
+    assert.equal(f.tasks.findById(s.orphan.taskId)!.state, 'CANCELED')
+    // durable 收口：session closed / channel 停用 / binding detached
+    assert.equal(f.sessions.findById(s.orphan.sessionId)!.status, 'closed')
+    assert.equal(f.channels.findById(s.orphan.channelId)!.enabled, 0)
+    const binding = f.db.prepare(
+      'SELECT status FROM project_channels WHERE project_id = ? AND channel_id = ?',
+    ).get(s.p.id, s.orphan.channelId) as { status: string }
+    assert.equal(binding.status, 'detached')
+  }
+  finally { f.db.close() }
+})
+
+test('T-orphan-fail-closed：孤立绑定活任务取消失败时整个事务回滚，不落任何终态', async () => {
+  const f = fixture(true)
+  try {
+    const s = await seedOrphanBinding(f)
+    // 覆盖 getTaskEngine：cancelTree 抛错模拟 runtime 级联失败
+    ;(f.manager as unknown as Record<string, unknown>)['getTaskEngine'] = () => ({
+      cancelTree: () => {
+        throw new Error('abort failed')
+      },
+    })
+    await assert.rejects(() => f.svc.terminate(s.p.id, owner, '孤立绑定取消失败'), /运行时不支持取消|abort/)
+    assert.equal(f.svc.get(s.p.id, owner).status, 'active', '取消失败时项目不得落 canceled')
+    const binding = f.db.prepare(
+      'SELECT status FROM project_channels WHERE project_id = ? AND channel_id = ?',
+    ).get(s.p.id, s.orphan.channelId) as { status: string }
+    assert.equal(binding.status, 'active', '取消失败时绑定不得 detach')
+    const state = f.tasks.findById(s.orphan.taskId)!.state
+    assert.ok(!['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(state), `任务必须保持非终态，实际 ${state}`)
+    assert.equal(f.sessions.findById(s.orphan.sessionId)!.status, 'active', '事务回滚后会话行保持 active')
   }
   finally { f.db.close() }
 })

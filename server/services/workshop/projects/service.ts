@@ -884,8 +884,12 @@ export class ProjectService {
    * P2 终止运行：owner 终止项目 = 级联终结（与 pause 可恢复相对，终止是终态）。
    *  - 全部未终结工作项 → CANCELED(PROJECT_TERMINATED) + attempt 闭合；
    *  - 各自 root 任务树 cancelTree（后代优先）——频道侧正在执行的 omp 回合被取消；
+   *  - active 的 task_instance 绑定频道上的非终态任务树同样在事务内 cancelTree
+   *    （孤立绑定/manager 级联半途失败的兜底）；
    *  - 待批审批全部过期；项目状态 → canceled（内核/路由/派发均只认 active）。
-   * manager 未暴露 TaskEngine 时，只要存在在飞 root task 就 fail-closed；数据库终态不会先于 runtime 取消提交。
+   * 事务提交后的阶段只做 durable 收口（会话行/channel 停用/绑定 detach，幂等），
+   * 不再依赖 manager 级联的结果。manager 未暴露 TaskEngine 时，只要存在在飞 root task
+   * 或孤立绑定活任务就 fail-closed；数据库终态不会先于 runtime 取消提交。
    */
   async terminate(id: string, actor: ProjectActor, reason: string): Promise<ProjectRow> {
     const p = this.get(id, actor)
@@ -919,6 +923,21 @@ export class ProjectService {
           }
         }
       }
+      // 孤立/任务实例绑定的 runtime 取消必须在数据库终态提交前完成（runtime-first +
+      // fail-closed）：manager.closeChannelSession 的内部级联（cancelTree→abort→…）任一步
+      // 失败时任务树可能仍存活，若只做事后 detach 会留下活 runtime。这里对每个 active 的
+      // task_instance 绑定，枚举其频道上非终态任务并逐棵 cancelTree；缺 runtime 能力时
+      // cancelTaskTreeForProject 抛 503，整个事务回滚、项目不落 canceled（与其他路径口径一致）。
+      for (const binding of this.bindings.listByProject(id).filter(b => b.bindingType === 'task_instance' && b.status === 'active')) {
+        const liveTasks = this.db.prepare(
+          `SELECT id FROM tasks WHERE channel_id = ? AND state NOT IN ('COMPLETED','FAILED','CANCELED','SUPERSEDED')`,
+        ).all(binding.channelId) as Array<{ id: string }>
+        for (const t of liveTasks) {
+          for (const canceled of this.cancelTaskTreeForProject(t.id, actor.id, 'PROJECT_TERMINATED')) {
+            canceledTasks.push({ taskId: canceled.id, state: canceled.state })
+          }
+        }
+      }
       this.approvals.expire(id)
       this.approvals.expireAllPending(id)
       if (p.status !== 'canceled') {
@@ -927,41 +946,38 @@ export class ProjectService {
       }
     })
     // 终止不会再经过 active 项目的 route loop；任务实例必须在终止出口主动回收。
-    // 先等待 runtime manager 停止回合，再做 durable session/channel/binding 收口，
+    // runtime 任务树已在上方事务内随终态一起取消（失败则整体回滚，不会走到这里）；
+    // 本阶段只做 durable 收口（幂等）：对每个 active task_instance 绑定（无论是否匹配
+    // workItem），逐 active session 先 manager.closeChannelSession（失败 fallback
+    // sessions.close），再 SQL 停用频道 + detach 绑定；全部 try/catch 包裹，
     // 保证 terminate 返回时不再留下可调度实例。
     const terminalItems = this.workItems.listByProject(id)
     const taskInstanceBindings = this.bindings.listByProject(id)
       .filter(b => b.bindingType === 'task_instance' && b.status === 'active')
     for (const binding of taskInstanceBindings) {
-      const wi = terminalItems.find(x => x.instanceChannelId === binding.channelId)
-      if (wi) {
-        await this.releaseTaskInstance(wi, 'PROJECT_TERMINATED', p.ownerUserId).catch(() => {})
-        this.closeTaskInstanceDurable(wi)
-      }
-      else {
-        for (const session of this.sessions.listByChannel(binding.channelId).filter(s => s.status === 'active')) {
+      for (const session of this.sessions.listByChannel(binding.channelId).filter(s => s.status === 'active')) {
+        try {
+          await this.manager.closeChannelSession({ channelId: binding.channelId, sessionId: session.id, actor: { id: p.ownerUserId, role: 'user' }, reason: 'PROJECT_TERMINATED' })
+        }
+        catch {
           try {
-            await this.manager.closeChannelSession({ channelId: binding.channelId, sessionId: session.id, actor: { id: p.ownerUserId, role: 'user' }, reason: 'PROJECT_TERMINATED' })
+            this.sessions.close(session.id)
           }
-          catch {
-            try {
-              this.sessions.close(session.id)
-            }
-            catch { /* 已关闭 */ }
-          }
+          catch { /* 已关闭 */ }
         }
-        try {
-          this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(binding.channelId)
-        }
-        catch { /* Channel 已删除 */ }
-        try {
-          this.bindings.setStatus(id, binding.channelId, 'detached')
-        }
-        catch { /* 历史/并发删除时可能已不存在 */ }
       }
+      try {
+        this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(binding.channelId)
+      }
+      catch { /* Channel 已删除 */ }
+      try {
+        this.bindings.setStatus(id, binding.channelId, 'detached')
+      }
+      catch { /* 历史/并发删除时可能已不存在 */ }
     }
+    // 兜底：工作项残留 instanceChannelId 但绑定已不 active（历史/并发 detach）时，
+    // 仍按 durable 口径收口会话行/频道/绑定指针。
     for (const wi of terminalItems.filter(x => x.instanceChannelId && !taskInstanceBindings.some(b => b.channelId === x.instanceChannelId))) {
-      await this.releaseTaskInstance(wi, 'PROJECT_TERMINATED', p.ownerUserId).catch(() => {})
       this.closeTaskInstanceDurable(wi)
     }
     return this.projects.findById(id)!
