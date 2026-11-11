@@ -73,9 +73,12 @@ describe('引擎构造契约 · registry 全集', () => {
   it('D5:工具面需手工接入的引擎被如实标注(并给出配置指引)', () => {
     const metas = harnessMetas()
     const manual = metas.filter(m => m.toolSurface === 'manual').map(m => m.id).sort()
-    assert.deepEqual(manual, ['crush', 'dsh', 'hermes'], '手工接入引擎必须显式标注,否则"没有平台工具"无从判断')
+    assert.deepEqual(manual, ['dsh', 'hermes'], '手工接入引擎必须显式标注,否则"没有平台工具"无从判断')
     assert.equal(metas.find(m => m.id === 'omp')!.toolSurface, 'bridge')
     assert.equal(metas.find(m => m.id === 'mock')!.toolSurface, 'none')
+    // crush 由平台自动装配(ensureCrushConfig 在 .crushrc 缺失时整份写入 aw 桥)——标 bridge
+    // 而非 manual,消除"标注 manual + hint 说平台不写 + 实现自动写"的三方矛盾(2026-11-11 H8)。
+    assert.equal(metas.find(m => m.id === 'crush')!.toolSurface, 'bridge')
 
     const rows = checkAllHarnessAvailability()
     for (const id of manual) {

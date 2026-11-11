@@ -6,6 +6,8 @@
  *   / {type:"message_update",assistantMessageEvent:{type:"text_delta"...}} / {type:"turn_end"}。
  *
  *  - steer:一次性进程模型 → 恒 'deferred';HITL:无程序化审批面
+ *  - 块管线:当前 JSON 模式**无工具行发射点**(mapLine 只处理 session/message_end;
+ *    pi 不产出 agent.block,发射矩阵见 tests/agent-blocks.test.ts —— 接入前不得虚标)
  *  - 工具:pi 无内建 MCP → 以零依赖扩展(server/harness/pi-aw-tools.mjs,经 -e 加载)注册
  *    平台 host tools;工具清单由 prepare() 从 hostToolsForRole 写入临时文件(AW_PI_TOOLS_FILE);
  *    execute 走平台 HTTP 回程(身份 env 由 pi 进程继承到扩展)

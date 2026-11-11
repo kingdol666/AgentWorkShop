@@ -4,7 +4,11 @@
  * 背景:2026-11-08 生产审计指控6(工具调用无结构化块,跨 harness 文案互异无法统一渲染/审计)。
  * 修复 = shared/agent-blocks.ts(块 schema + 文本签名归一) + omp 原生 data Part 并行发射
  * + ws 层 `agent.block` AEP 帧派生(原生优先/归一兜底) + 前端 ClusterTool 结构优先。
- * 本文件锁定**归一矩阵**:13 个发射 harness 的代表行逐条断言解析字段(渲染/审计的契约面)。
+ *
+ * 发射面真值(2026-11-11 H5 对齐):**发射者 = omp 原生 + 11 家文本(opencode/codex/claude/
+ * cursor/dsh/hermes/crush/copilot/gemini/goose/qwen)= 12 家**;pi 当前无工具行发射点
+ * (其 fixture 仅锁定解析器兼容,不代表发射);mock 无工具面(设计)。
+ * 发射面由 tests/harness-capability-contract.test.ts 源码契约锁定。
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
@@ -40,16 +44,20 @@ const FIXTURES: Array<{ harness: string, line: string, expect: Record<string, un
   { harness: 'dsh', line: '🔧 web_search 失败', expect: { tool: 'web_search', phase: 'end', status: 'error' } },
   { harness: 'hermes', line: '🔧 kb_store(payload)', expect: { tool: 'kb_store', phase: 'start' } },
   { harness: 'hermes', line: '🔧 kb_store 失败', expect: { tool: 'kb_store', phase: 'end', status: 'error' } },
-  // crush / copilot / gemini / goose / qwen / pi:通用 start 形
+  // crush / copilot / gemini / goose / qwen:通用 start 形
   { harness: 'crush', line: '🔧 run_command({"cmd":"make"})', expect: { tool: 'run_command', phase: 'start' } },
   { harness: 'copilot', line: '🔧 repo_search(q)', expect: { tool: 'repo_search', phase: 'start' } },
   { harness: 'gemini', line: '🔧 web_fetch(url)', expect: { tool: 'web_fetch', phase: 'start' } },
   { harness: 'goose', line: '🔧 fs_write(path)', expect: { tool: 'fs_write', phase: 'start' } },
   { harness: 'qwen', line: '🔧 acp_tool(input)', expect: { tool: 'acp_tool', phase: 'start' } },
+]
+
+/** 解析器兼容矩阵:非发射引擎(如 pi)的文本形态若出现仍可归一(容错,不代表该引擎在发射) */
+const PARSER_COMPAT_FIXTURES: Array<{ harness: string, line: string, expect: Record<string, unknown> }[]> = [
   { harness: 'pi', line: '🔧 pi_tool(args)', expect: { tool: 'pi_tool', phase: 'start' } },
 ]
 
-describe('AgentBlock v1 · 文本签名归一矩阵(13 发射 harness)', () => {
+describe('AgentBlock v1 · 文本签名归一矩阵(omp 原生 + 11 文本发射者)', () => {
   for (const fx of FIXTURES) {
     it(`${fx.harness}: ${fx.line.slice(0, 42)}`, () => {
       const b = normalizeToolLine(fx.line, fx.harness)
@@ -57,6 +65,17 @@ describe('AgentBlock v1 · 文本签名归一矩阵(13 发射 harness)', () => {
       assert.equal(b.harness, fx.harness)
       assert.equal(b.v, AGENT_BLOCK_VERSION)
       assert.equal(b.text, fx.line)
+      for (const [k, v] of Object.entries(fx.expect)) assert.deepStrictEqual(b[k as keyof typeof b], v, `字段 ${k}`)
+    })
+  }
+})
+
+describe('AgentBlock v1 · 解析器兼容矩阵(非发射引擎)', () => {
+  for (const fx of PARSER_COMPAT_FIXTURES) {
+    it(`${fx.harness}(容错;当前无发射点): ${fx.line.slice(0, 42)}`, () => {
+      const b = normalizeToolLine(fx.line, fx.harness)
+      assert.ok(b, '应识别为工具行')
+      assert.equal(b.harness, fx.harness)
       for (const [k, v] of Object.entries(fx.expect)) assert.deepStrictEqual(b[k as keyof typeof b], v, `字段 ${k}`)
     })
   }
