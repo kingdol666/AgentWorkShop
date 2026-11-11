@@ -7,23 +7,28 @@ import { computed, ref } from 'vue'
 import { TOOL_META } from '@/app/composables/workshop/useEventBlocks'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 import type { EventBlock } from '@/app/composables/workshop/useEventBlocks'
+import { isAgentToolBlock, type AgentToolBlock } from '#shared/agent-blocks'
 
 const props = defineProps<{ block: EventBlock }>()
 
 /** 解析工具行:AgentBlock v1 结构块优先(payload={block});正则反解 🔧 文本退路径(compat)。
+ *  防御:payload 先过 isAgentToolBlock(H9:DB 回放路径载荷原样进组件,坏块不得渲染/不得当覆盖集)。
  *  去重:omp 等原生发射同一调用会有「结构帧+文本帧」两条(payload.block.text 与文本帧同文),
  *  文本帧若已被任一结构块的 text 覆盖则跳过,避免双行。 */
 const toolLines = computed(() => {
   const events = props.block.events
   const covered = new Set<string>()
+  const validBlocks = new Map<number, AgentToolBlock>()
   for (const e of events) {
-    const b = (e.payload as { block?: { text?: string } }).block
-    if (b?.text) covered.add(b.text)
+    const raw = (e.payload as { block?: unknown }).block
+    if (!isAgentToolBlock(raw)) continue
+    validBlocks.set(e.seq, raw)
+    if (raw.text) covered.add(raw.text)
   }
   return events.flatMap((e) => {
-    const structured = (e.payload as { block?: { tool?: string, argsPreview?: string | null, phase?: string, status?: string } }).block
+    const structured = validBlocks.get(e.seq)
     const text = String((e.payload as { text?: string }).text ?? '')
-    if (structured && structured.tool) {
+    if (structured) {
       const suffix = structured.phase === 'end'
         ? (structured.status === 'error' ? ' ❌' : structured.status === 'ok' ? ' ✓' : '')
         : ''
