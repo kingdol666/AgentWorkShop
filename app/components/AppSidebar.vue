@@ -272,6 +272,15 @@ onBeforeUnmount(() => {
   z-index: 20;
 }
 
+/* antd Sider 的真实子容器:flex 必须落在这一层,否则 .app-menu 的 flex:1
+ * 不生效,内容会被 .app-sider 直接裁掉(实测「工具管理」不可达)。 */
+.app-sider :deep(.ant-layout-sider-children) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
 /* 只有导航主体滚动:品牌与底部铭牌固定,900px 视口也能滚到「工具管理」 */
 .app-sider .logo,
 .app-sider .sider-footer {
@@ -453,11 +462,10 @@ onBeforeUnmount(() => {
 }
 
 .sider-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
+  position: static;
+  flex: 0 0 auto;
   width: 100%;
-  padding: 0 18px 18px;
+  padding: 8px 18px 14px;
   background: linear-gradient(180deg, transparent, var(--frost-bg) 42%);
 }
 
