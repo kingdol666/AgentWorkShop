@@ -36,6 +36,31 @@ export interface GateDecision<S extends string> {
   reasons: string[]
 }
 
+export interface ExperienceTaskEvidence {
+  id: string
+  channelId: string
+  projectId?: string | null
+  state: string
+  sessionId?: string | null
+}
+
+export function evaluateExperienceTaskEvidence(
+  taskIds: string[],
+  tasks: ExperienceTaskEvidence[],
+  context: { channelId: string, projectId?: string | null },
+): { valid: boolean, reasons: string[] } {
+  const byId = new Map(tasks.map(t => [t.id, t]))
+  const reasons: string[] = []
+  for (const id of [...new Set(taskIds)]) {
+    const task = byId.get(id)
+    if (!task) reasons.push(`任务证据不存在：${id}`)
+    else if (task.channelId !== context.channelId) reasons.push(`任务证据不属于当前频道：${id}`)
+    else if (context.projectId !== undefined && task.projectId !== context.projectId) reasons.push(`任务证据不属于当前项目：${id}`)
+    else if (task.state !== 'COMPLETED') reasons.push(`任务证据未完成：${id}`)
+  }
+  return { valid: reasons.length === 0, reasons }
+}
+
 /** 解析证据 JSON（失败 → 空对象；门按"无锚点"处理） */
 export function evidenceOf(row: Pick<MemoryRow, 'evidenceJson'>): {
   taskIds: string[]
@@ -128,11 +153,15 @@ export function evaluateProfileGate(
   if (target === 'active') {
     if (status !== 'shadow') return { allowed: false, reasons: [`仅 shadow 可晋级 active（当前 ${status}）`] }
     if (!bench) return { allowed: false, reasons: ['缺少配对评测结果（WP-B2），不得晋级'] }
-    const significant = bench.pValue !== null && bench.pValue < PROFILE_GATE.significanceP && bench.primaryDelta > 0
+    const pValue = bench.pValue
+    if (typeof pValue !== 'number' || !Number.isFinite(pValue) || pValue < 0 || pValue > 1) {
+      return { allowed: false, reasons: ['配对评测 pValue 无效：必须是有限且位于 [0,1] 的数值'] }
+    }
+    const significant = pValue < PROFILE_GATE.significanceP && bench.primaryDelta > 0
     const nonInferior = bench.primaryDelta >= 0 && bench.costDelta <= PROFILE_GATE.maxCostDelta
-    if (significant) return { allowed: true, next: 'active', reasons: [`配对显著改善 p=${bench.pValue}`] }
+    if (significant) return { allowed: true, next: 'active', reasons: [`配对显著改善 p=${pValue}`] }
     if (nonInferior) return { allowed: true, next: 'active', reasons: ['无回归且成本非劣'] }
-    return { allowed: false, reasons: [`配对未通过：p=${bench.pValue ?? 'n/a'} Δ主终点=${bench.primaryDelta} Δ成本=${bench.costDelta}`] }
+    return { allowed: false, reasons: [`配对未通过：p=${pValue} Δ主终点=${bench.primaryDelta} Δ成本=${bench.costDelta}`] }
   }
   // superseded
   if (status === 'superseded') return { allowed: false, reasons: ['已 superseded'] }

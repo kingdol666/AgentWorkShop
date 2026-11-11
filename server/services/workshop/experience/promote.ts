@@ -7,17 +7,41 @@
  * 因此「Agent 自己给自己晋级」在结构上不可达（不在 host-tools 白名单）。
  */
 import type { DatabaseSync } from 'node:sqlite'
-import { createMemoryRepo } from '../db/memory.repo'
+import { createMemoryRepo, type MemoryRepo } from '../db/memory.repo'
 import { createImprovementActionRepo } from '../db/improvement-action.repo'
 import { recordOps } from '../ops/ops'
 import { createHarnessProfileRepo } from './harness-profile'
-import { evaluateExperienceGate, evaluateProfileGate, rollbackTarget, type PairedBenchResult } from './gates'
+import { evaluateExperienceGate, evaluateExperienceTaskEvidence, evidenceOf, evaluateProfileGate, rollbackTarget, type PairedBenchResult } from './gates'
 import { resolveBenchRunForPromote } from './bench-run'
 
 export interface PromoteResult<S extends string> {
   ok: boolean
   next?: S
   reasons: string[]
+}
+
+interface PromoteExperienceDeps {
+  memoryRepo?: Pick<MemoryRepo, 'getById' | 'markStatus'>
+}
+
+type HarnessProfileRepoLike = Pick<ReturnType<typeof createHarnessProfileRepo>, 'get' | 'markStatus' | 'activeOf' | 'listByChannel'>
+
+interface PromoteProfileDeps {
+  profileRepo?: HarnessProfileRepoLike
+}
+
+function stalePromotionFailure(next: 'validated' | 'retired'): PromoteResult<'validated' | 'retired'> {
+  return { ok: false, reasons: [`PROMOTION_CAS_FAILED: 经验状态迁移未命中（目标 ${next}，条目已被并发更新）`] }
+}
+
+function validateTaskEvidence(db: DatabaseSync, channelId: string, taskIds: string[]): string[] {
+  const ids = [...new Set(taskIds.filter(id => typeof id === 'string' && id.length > 0))]
+  if (ids.length === 0) return ['经验必须包含至少一个任务证据']
+  const placeholders = ids.map(() => '?').join(', ')
+  const rows = db.prepare(
+    `SELECT id, channel_id AS channelId, project_id AS projectId, state FROM tasks WHERE id IN (${placeholders})`,
+  ).all(...ids) as Array<{ id: string, channelId: string, projectId: string | null, state: string }>
+  return evaluateExperienceTaskEvidence(ids, rows, { channelId }).reasons
 }
 
 /**
@@ -43,9 +67,11 @@ export function mergeExperiences(
   if (invalid !== undefined) return { ok: false, reasons: ['存在不属于该频道的经验条目'] }
   const base = rows[0]!
   const taskIds = [...new Set(rows.flatMap((r) => {
-    const ev = JSON.parse(String(r!.evidenceJson || '{}')) as { taskIds?: unknown }
-    return Array.isArray(ev.taskIds) ? ev.taskIds.map(String) : []
-  }))].filter(Boolean)
+    const ev = evidenceOf(r!)
+    return ev.taskIds
+  }))]
+  const evidenceReasons = validateTaskEvidence(db, input.channelId, taskIds)
+  if (evidenceReasons.length > 0) return { ok: false, reasons: evidenceReasons }
   if (taskIds.length < 2) return { ok: false, reasons: [`合并后独立任务样本仍不足（${taskIds.length} < 2）`] }
 
   const baseEvidence = JSON.parse(String(base.evidenceJson || '{}')) as Record<string, unknown>
@@ -83,15 +109,25 @@ export function mergeExperiences(
 /** 经验条目晋升（candidate→validated）或退休（→retired） */
 export function promoteExperience(db: DatabaseSync,
   input: { memoryId: string, channelId: string, to: 'validated' | 'retired', actor: string, actorName?: string },
+  deps: PromoteExperienceDeps = {},
 ): PromoteResult<'validated' | 'retired'> {
-  const repo = createMemoryRepo(db)
+  const repo = deps.memoryRepo ?? createMemoryRepo(db)
   const row = repo.getById(input.memoryId)
   if (!row || row.channelId !== input.channelId || row.kind !== 'experience') {
     return { ok: false, reasons: ['经验条目不存在或不属于该频道'] }
   }
+  if (input.to === 'validated') {
+    const taskIds = evidenceOf(row).taskIds
+    const evidenceReasons = validateTaskEvidence(db, input.channelId, taskIds)
+    if (evidenceReasons.length > 0) return { ok: false, reasons: evidenceReasons }
+  }
   const decision = evaluateExperienceGate(row, input.to)
   if (!decision.allowed || !decision.next) return { ok: false, reasons: decision.reasons }
-  repo.markStatus(input.memoryId, decision.next)
+  const expectedStatus = row.status ?? 'active'
+  if (input.to === 'validated' && expectedStatus !== 'candidate') {
+    return { ok: false, reasons: [`仅 candidate 可晋级 validated（当前 ${expectedStatus}）`] }
+  }
+  if (!repo.markStatus(input.memoryId, decision.next, expectedStatus)) return stalePromotionFailure(decision.next)
   // WP-C3:元层成效入表(哪类改进动作有效,由事实计数回答)
   createImprovementActionRepo(db).record({
     actionKind: 'experience_promote',
@@ -132,8 +168,9 @@ export function promoteProfile(
     /** @deprecated 仅供测试/历史兼容;to='active' 时不再接受 */
     bench?: PairedBenchResult | null
   },
+  deps: PromoteProfileDeps = {},
 ): PromoteResult<'shadow' | 'active' | 'superseded'> {
-  const repo = createHarnessProfileRepo(db)
+  const repo = deps.profileRepo ?? createHarnessProfileRepo(db)
   const row = repo.get(input.profileId)
   if (!row || row.channelId !== input.channelId) return { ok: false, reasons: ['profile 不存在或不属于该频道'] }
 
@@ -151,7 +188,9 @@ export function promoteProfile(
 
   const decision = evaluateProfileGate(row, input.to, bench)
   if (!decision.allowed || !decision.next) return { ok: false, reasons: decision.reasons }
-  repo.markStatus(input.profileId, decision.next)
+  if (!repo.markStatus(input.profileId, decision.next)) {
+    return { ok: false, reasons: [`PROFILE_STATUS_CAS_FAILED: profile 状态迁移未命中（目标 ${decision.next}，条目已被并发更新）`] }
+  }
   if (benchRunId) {
     // 采纳证据绑定到 profile:审计/复盘可追溯到具体一次配对评测
     db.prepare('UPDATE channel_harness_profiles SET bench_run_id = ?, promoted_at = ? WHERE id = ?')
@@ -186,13 +225,16 @@ export function promoteProfile(
 export function rollbackProfile(
   db: DatabaseSync,
   input: { channelId: string, actor: string, actorName?: string },
+  deps: PromoteProfileDeps = {},
 ): PromoteResult<'active'> & { targetId?: string } {
-  const repo = createHarnessProfileRepo(db)
+  const repo = deps.profileRepo ?? createHarnessProfileRepo(db)
   const active = repo.activeOf(input.channelId)
   if (!active) return { ok: false, reasons: ['当前没有 active profile，无需回滚'] }
   const targetId = rollbackTarget(repo.listByChannel(input.channelId, 50), active.id)
   if (!targetId) return { ok: false, reasons: ['没有更早版本可回滚（唯一版本）'] }
-  repo.markStatus(targetId, 'active')
+  if (!repo.markStatus(targetId, 'active')) {
+    return { ok: false, reasons: ['PROFILE_STATUS_CAS_FAILED: 回滚目标状态迁移未命中（条目已被并发更新）'] }
+  }
   createImprovementActionRepo(db).record({
     actionKind: 'profile_rollback',
     subjectKind: 'harness_profile',

@@ -167,17 +167,18 @@ test('生命周期：markStatus 迁移 + expireSweep 退休过期行', () => {
     const past = new Date(Date.now() - 86_400_000).toISOString()
     const future = new Date(Date.now() + 86_400_000).toISOString()
     const a = repo.upsertExperience({ ...baseExp, dedupKey: 'exp:a', expiresAt: past })
-    const b = repo.upsertExperience({ ...baseExp, dedupKey: 'exp:b', expiresAt: future })
+    const b = repo.upsertExperience({ ...baseExp, dedupKey: 'exp:b', status: 'candidate', expiresAt: future })
     assert.equal(repo.getById(a.id)!.status, 'active', '写入不自动退休')
 
     assert.equal(repo.expireSweep(), 1, '仅过期行迁移')
     assert.equal(repo.getById(a.id)!.status, 'retired')
-    assert.equal(repo.getById(b.id)!.status, 'active')
+    assert.equal(repo.getById(b.id)!.status, 'candidate')
     assert.equal(repo.expireSweep(), 0, '幂等：已退休行不再计数')
 
-    assert.equal(repo.markStatus(b.id, 'validated'), true)
+    assert.equal(repo.markStatus(b.id, 'validated', 'active'), false, 'validated 只能从 candidate 迁移')
+    assert.equal(repo.markStatus(b.id, 'validated', 'candidate'), true)
     assert.equal(repo.getById(b.id)!.status, 'validated')
-    assert.equal(repo.markStatus('missing-id', 'validated'), false)
+    assert.equal(repo.markStatus('missing-id', 'validated', 'candidate'), false)
 
     const stats = repo.experienceStats()
     const byStatus = new Map(stats.map(s => [s.status, s.n]))
