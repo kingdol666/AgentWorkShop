@@ -1,0 +1,13 @@
+## fix/20261111-runtime-contract-resilience...origin/main
+ M server/api/workshop/channels/[id]/sessions/[sid]/messages.post.ts
+ M server/services/workshop/db/database/migrations-session.ts
+ M server/services/workshop/db/database/rows.ts
+ M server/services/workshop/db/database/schema.ts
+ M server/services/workshop/db/message.repo.ts
+ M server/services/workshop/db/schema.sql
+ M server/services/workshop/runtime/mailbox.ts
+ M server/services/workshop/runtime/manager/a2a.ts
+ M shared/daq-protocol.ts
+?? docs/audit/evidence/2026-11-11-full-system-hardening/
+?? tests/protocol-contract-pr5.test.ts
+?? tests/session-message-idempotency.test.ts

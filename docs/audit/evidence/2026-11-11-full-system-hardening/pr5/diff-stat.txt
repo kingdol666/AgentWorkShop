@@ -1,0 +1,10 @@
+ .../channels/[id]/sessions/[sid]/messages.post.ts  |  3 ++-
+ .../workshop/db/database/migrations-session.ts     |  3 +++
+ server/services/workshop/db/database/rows.ts       |  1 +
+ server/services/workshop/db/database/schema.ts     |  4 ++++
+ server/services/workshop/db/message.repo.ts        | 22 ++++++++++++++++------
+ server/services/workshop/db/schema.sql             |  5 +++++
+ server/services/workshop/runtime/mailbox.ts        |  3 +++
+ server/services/workshop/runtime/manager/a2a.ts    | 13 +++++++++++++
+ shared/daq-protocol.ts                             |  2 ++
+ 9 files changed, 49 insertions(+), 7 deletions(-)

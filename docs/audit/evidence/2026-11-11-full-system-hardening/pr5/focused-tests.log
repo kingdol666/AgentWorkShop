@@ -1,0 +1,29 @@
+Already up to date
+Done in 261ms using pnpm v11.9.0
+✔ AepDaqFrame preserves line provenance as an optional nullable lineId (1.4889ms)
+[channel-profile] 频道 2647918e-6067-4424-9fb9-770b6d07c7ba 档位读取失败,按 legacy/auto 兜底: AppError: AML 尚未初始化(workshop 插件未执行)
+    at getAmlRuntime (D:\codes\ABO\aw-fix-pr5-20261111\server\services\workshop\aml\runtime.ts:112:11)
+    at getChannelTwinProfile (D:\codes\ABO\aw-fix-pr5-20261111\server\services\workshop\aml\twin\channel-profile.ts:49:22)
+    at composeChannelSystemPrompt (D:\codes\ABO\aw-fix-pr5-20261111\server\services\workshop\aml\twin\prompt-composer.ts:139:19)
+    at AgentChannelManager.wireMember (D:\codes\ABO\aw-fix-pr5-20261111\server\services\workshop\runtime\manager\runtime-wiring.ts:75:24)
+    at AgentChannelManager.ensureAgentRuntime (D:\codes\ABO\aw-fix-pr5-20261111\server\services\workshop\runtime\manager\runtime-wiring.ts:211:17)
+    at ChannelRuntime.loader (D:\codes\ABO\aw-fix-pr5-20261111\server\services\workshop\runtime\manager\state.ts:515:31)
+    at ChannelRuntime.ensureAgent (D:\codes\ABO\aw-fix-pr5-20261111\server\services\workshop\runtime\channel-runtime.ts:143:20)
+    at ChannelRuntime.resolveRecipients (D:\codes\ABO\aw-fix-pr5-20261111\server\services\workshop\runtime\channel-runtime.ts:178:19)
+    at ChannelRuntime.route (D:\codes\ABO\aw-fix-pr5-20261111\server\services\workshop\runtime\channel-runtime.ts:84:32)
+    at AgentChannelManager.route (D:\codes\ABO\aw-fix-pr5-20261111\server\services\workshop\runtime\manager\internal.ts:16:49) {
+  status: 503,
+  code: 'AML_NOT_READY'
+}
+{"t":"2026-11-11T09:07:42.823Z","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:0ad02f63-75e2-407e-9a20-f40323958de7] runtime.stop() 调用(卸载/停用)"}
+{"t":"2026-11-11T09:07:42.826Z","level":"error","scope":"workshop.agent-runtime","msg":"[AgentRuntime:0ad02f63-75e2-407e-9a20-f40323958de7] run 失败:","args":["Error: statement has been finalized\n    at Object.markConsumed (D:\\codes\\ABO\\aw-fix-pr5-20261111\\server\\services\\workshop\\db\\message.repo.ts:135:24)\n    at Mailbox.markConsumed (D:\\codes\\ABO\\aw-fix-pr5-20261111\\server\\services\\workshop\\runtime\\mailbox.ts:140:22)\n    at AgentRuntime.processMessage (D:\\codes\\ABO\\aw-fix-pr5-20261111\\server\\services\\workshop\\runtime\\agent-runtime\\message.ts:420:27)\n    at async <anonymous> (D:\\codes\\ABO\\aw-fix-pr5-20261111\\server\\services\\workshop\\runtime\\agent-runtime\\supervise.ts:169:16)\n    at async AgentRuntime.consumeLoop (D:\\codes\\ABO\\aw-fix-pr5-20261111\\server\\services\\workshop\\runtime\\agent-runtime\\supervise.ts:184:9)\n    at async AgentRuntime.disposeInBackground (D:\\codes\\ABO\\aw-fix-pr5-20261111\\server\\services\\workshop\\runtime\\agent-runtime\\lifecycle.ts:62:7)"]}
+✔ session endpoint forwards clientMessageId instead of dropping it (0.7018ms)
+✔ duplicate session clientMessageId is durable and returns the same mailbox result (73.6869ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20928.3529

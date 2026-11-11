@@ -34,6 +34,10 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
   protected execLock: Promise<void> = Promise.resolve()
   protected abortController: AbortController | null = null
   protected loopPromise: Promise<void> | null = null
+  /** stop() 的单次收尾 promise；manager shutdown 必须等它完成后才可关闭 DB。 */
+  protected stopPromise: Promise<void> | null = null
+  /** 回合收尾后的异步 harness 清理，必须纳入 stop 的等待屏障。 */
+  protected postSettlePromise: Promise<void> | null = null
   protected started = false
   protected supervisionAttempt: SupervisionAttemptView = {
     attemptId: null, state: 'IDLE', startedAt: null, watchdogAt: null, activeRootId: null, watchdogCount: 0,

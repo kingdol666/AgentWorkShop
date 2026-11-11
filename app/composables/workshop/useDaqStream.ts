@@ -23,6 +23,8 @@ export interface DaqFrameLive {
   kind: 'vector' | 'image'
   points?: number[]
   metrics: Record<string, number>
+  /** 所属产线(WS/REST provenance;未挂线 = null) */
+  lineId: string | null
   /** 图像内容 URL(同源 cookie 鉴权,<img> 直用) */
   thumbUrl?: string
   contentUrl?: string
@@ -210,6 +212,7 @@ const createStore = () => {
       list.unshift({
         at,
         kind: p.kind,
+        lineId: p.lineId ?? null,
         points: p.preview,
         metrics: p.metrics ?? {},
         thumbUrl: p.thumbUrl,
@@ -410,8 +413,8 @@ const createStore = () => {
     if (opts.toMs != null) qs.set('to', String(opts.toMs))
     if (opts.kind) qs.set('kind', opts.kind)
     if (opts.limit != null) qs.set('limit', String(opts.limit))
-    const data = await api<{ frames: DaqFrameLive[] }>(`/${id}/frames?${qs.toString()}`)
-    frames[id] = data.frames ?? []
+    const data = await api<{ frames: Array<DaqFrameLive & { lineId?: string | null }> }>(`/${id}/frames?${qs.toString()}`)
+    frames[id] = (data.frames ?? []).map(frame => ({ ...frame, lineId: frame.lineId ?? null }))
     return frames[id]!
   }
 
