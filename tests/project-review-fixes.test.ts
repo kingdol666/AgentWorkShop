@@ -78,6 +78,17 @@ function fixture() {
       })
       return { task: { id: row.id } as never, created: true }
     },
+    getTaskEngine() {
+      return {
+        cancelTree: (taskId: string, _by: string, reason: string) => {
+          const task = tasks.findById(taskId)
+          if (task && !['COMPLETED', 'FAILED', 'CANCELED'].includes(task.state)) {
+            tasks.update(taskId, { state: 'CANCELED', closeReason: reason })
+          }
+          return [{ id: taskId, state: 'CANCELED' }]
+        },
+      }
+    },
   } as unknown as AgentChannelManager
   const svc = initProjectService(manager, db)
   return { db, channels, agents, tasks, manager, svc }
