@@ -18,7 +18,9 @@ export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping 
       // init() 可能未调用;从 ctx 推断
       this.channelId = ctx.channelId
       this.agentRole = ctx.role
-      this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName }
+      // harness 字段必须保留(治理审计 identityFields 要求非空;2026-11-11 H13:
+      // 此前重写丢 harness → 开 AW_GOV_HARNESS_EVENT_LOG 时 tool_start 被拒)
+      this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName, harness: this.harnessId }
     }
 
     if (!this.client || !this.client.alive) {
