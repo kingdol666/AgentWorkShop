@@ -24,6 +24,7 @@ import type { AgentContextStats } from '../types/task'
 import { registerHarnessProcess, bindHarnessProcess, markHarnessProcessExit, killHarnessProcess } from './harness-process'
 import { peerPrompt, systemManual, toolArgsPreview, workerPrompt } from './prompt-builder'
 import { getHitlRegistry } from './hitl-registry'
+import { resolveAcpPermissionReply } from './acp-hitl-mapping'
 import { harnessSettings } from '../settings'
 import { StdioJsonRpcClient, type JsonRpcRequestIncoming } from './adapters/stdio-jsonrpc'
 import { BaseAgentImpl, type BaseAgentConfigView } from './base-agent'
@@ -158,7 +159,7 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
     return 'deferred'
   }
 
-  /** HITL 应答:session/request_permission → allow/reject/cancelled(fail-closed) */
+  /** HITL 应答:session/request_permission → allow/reject/cancelled(fail-closed;映射见 acp-hitl-mapping) */
   override async respondHitl(kind: string, id: string, outcome: {
     confirmed?: boolean
     cancelled?: boolean
@@ -171,32 +172,13 @@ export class DshAgentImpl extends BaseAgentImpl implements AgentInterface {
     if (!pending) throw new Error(`待办不存在或已处理: ${id}`)
     const client = this.client
     if (!client) throw new Error('dsh 会话已关闭')
-    let result: Record<string, unknown>
-    if (outcome.cancelled === true) {
-      result = { outcome: { outcome: 'cancelled' } }
+    const reply = resolveAcpPermissionReply(pending.options, outcome)
+    if (reply.action === 'respondError') {
+      client.respondError(pending.rpcId, reply.code, reply.message)
+      this.clearPending(id, 'cancelled')
+      return
     }
-    else if (outcome.confirmed === true) {
-      // 选第一个 allow 语义选项(kind: allow_once/allow_always 或 name 含 allow)
-      const allow = pending.options.find(o => String(o.kind ?? '').startsWith('allow') || /allow/i.test(String(o.name ?? '')))
-      if (!allow) {
-        client.respondError(pending.rpcId, -32602, '无可用 allow 选项')
-        this.clearPending(id, 'cancelled')
-        return
-      }
-      result = { outcome: { outcome: 'selected', optionId: allow.optionId } }
-    }
-    else {
-      const reject = pending.options.find(o => String(o.kind ?? '').startsWith('reject') || /reject|deny/i.test(String(o.name ?? '')))
-      if (reject) {
-        result = { outcome: { outcome: 'selected', optionId: reject.optionId } }
-      }
-      else {
-        client.respondError(pending.rpcId, -32602, '已拒绝')
-        this.clearPending(id, 'cancelled')
-        return
-      }
-    }
-    client.respond(pending.rpcId, result)
+    client.respond(pending.rpcId, reply.payload)
     this.clearPending(id, outcome.cancelled === true ? 'cancelled' : 'answered')
   }
 

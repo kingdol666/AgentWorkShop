@@ -6,6 +6,7 @@ import { CodexAgentImplCore } from './core'
 import type { AgentEvent, AgentRunContext, AgentRunRequest } from '../agent-interface'
 import { CODEX_TURN_STALL_MS, log } from './helpers'
 import { getHitlRegistry } from '../hitl-registry'
+import { resolveCodexDecision } from '../acp-hitl-mapping'
 import { peerPrompt, systemManual, toolArgsPreview, workerPrompt } from '../prompt-builder'
 import { randomUUID } from 'node:crypto'
 
@@ -54,12 +55,8 @@ export abstract class CodexAgentImplTurn extends CodexAgentImplCore {
     }
     const client = this.client
     if (!client) throw new Error('codex 会话已关闭')
-    // 显式枚举 > 布尔;cancel 优先于一切(取消绝不等价于同意)
-    const decision = outcome.cancelled === true || outcome.response === 'cancel'
-      ? 'cancel'
-      : outcome.response === 'accept' || outcome.response === 'decline'
-        ? outcome.response
-        : outcome.confirmed === true ? 'accept' : 'decline'
+    // 显式枚举 > 布尔;cancel 优先于一切(取消绝不等价于同意)——映射抽纯函数锁定
+    const decision = resolveCodexDecision(outcome)
     client.respond(pending.rpcId, { decision })
     if (pending.timer) clearTimeout(pending.timer)
     this.pendingApprovals.delete(id)

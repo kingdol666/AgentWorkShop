@@ -23,6 +23,7 @@ import type { AgentContextStats } from '../types/task'
 import { registerHarnessProcess, bindHarnessProcess, markHarnessProcessExit, killHarnessProcess } from './harness-process'
 import { peerPrompt, systemManual, toolArgsPreview, workerPrompt } from './prompt-builder'
 import { getHitlRegistry } from './hitl-registry'
+import { resolveAcpPermissionReply } from './acp-hitl-mapping'
 import { harnessSettings } from '../settings'
 import { StdioJsonRpcClient, type JsonRpcRequestIncoming } from './adapters/stdio-jsonrpc'
 import { BaseAgentImpl } from './base-agent'
@@ -149,31 +150,13 @@ export class HermesAgentImpl extends BaseAgentImpl implements AgentInterface {
     if (!pending) throw new Error(`待办不存在或已处理: ${id}`)
     const client = this.client
     if (!client) throw new Error('hermes 会话已关闭')
-    let result: Record<string, unknown>
-    if (outcome.cancelled === true) {
-      result = { outcome: { outcome: 'cancelled' } }
+    const reply = resolveAcpPermissionReply(pending.options, outcome)
+    if (reply.action === 'respondError') {
+      client.respondError(pending.rpcId, reply.code, reply.message)
+      this.clearPending(id, 'cancelled')
+      return
     }
-    else if (outcome.confirmed === true) {
-      const allow = pending.options.find(o => String(o.kind ?? '').startsWith('allow') || /allow/i.test(String(o.name ?? '')))
-      if (!allow) {
-        client.respondError(pending.rpcId, -32602, '无可用 allow 选项')
-        this.clearPending(id, 'cancelled')
-        return
-      }
-      result = { outcome: { outcome: 'selected', optionId: allow.optionId } }
-    }
-    else {
-      const reject = pending.options.find(o => String(o.kind ?? '').startsWith('reject') || /reject|deny/i.test(String(o.name ?? '')))
-      if (reject) {
-        result = { outcome: { outcome: 'selected', optionId: reject.optionId } }
-      }
-      else {
-        client.respondError(pending.rpcId, -32602, '已拒绝')
-        this.clearPending(id, 'cancelled')
-        return
-      }
-    }
-    client.respond(pending.rpcId, result)
+    client.respond(pending.rpcId, reply.payload)
     this.clearPending(id, outcome.cancelled === true ? 'cancelled' : 'answered')
   }
 

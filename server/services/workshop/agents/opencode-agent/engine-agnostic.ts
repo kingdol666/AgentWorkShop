@@ -6,6 +6,7 @@ import { OpenCodeAgentImplLifecycle } from './lifecycle'
 import type { AgentContextStats } from '../../types/task'
 import type { AgentEvent, AgentRunContext, AgentRunRequest, SupervisionDecision, SupervisionSnapshot } from '../agent-interface'
 import { decodeHitlAnswers, getHitlRegistry } from '../hitl-registry'
+import { assertOpenCodePermissionResponse, resolveOpenCodeNativeResponse } from '../acp-hitl-mapping'
 import { extractJsonArray, peerPrompt, supervisePrompt, systemManual, workerPrompt } from '../prompt-builder'
 import { log } from './helpers'
 
@@ -62,10 +63,8 @@ export abstract class OpenCodeAgentImplEngineAgnostic extends OpenCodeAgentImplL
     const pending = this.pendingHitl.get(id)
     if (!pending) throw new Error(`待办不存在或已处理: ${id}`)
     const response = typeof outcome.response === 'string' && outcome.response !== '' ? outcome.response : undefined
-    if (response && response !== 'once' && response !== 'always' && response !== 'reject') {
-      // 未知枚举不得回落为 once(allow);在传导层再兜一道,防决策服务被绕过
-      throw new Error(`未知 permission 应答枚举「${response}」:仅允许 once|always|reject`)
-    }
+    // 未知枚举不得回落为 once(allow);在传导层再兜一道,防决策服务被绕过(映射见 acp-hitl-mapping)
+    assertOpenCodePermissionResponse(response)
     // fail-closed 双分支:
     //  - permission:只有显式 confirmed=true / once / always 才放行;其余(含字段缺失)一律 reject
     //    (与旧实现差别仅在"显式 reject 不再被降级为 once");
@@ -77,7 +76,7 @@ export abstract class OpenCodeAgentImplEngineAgnostic extends OpenCodeAgentImplL
       : explicitCancel || (outcome.value ?? outcome.comment ?? '').trim() === ''
     if (pending.type === 'permission') {
       // 显式 reject 原样透传;未给 response 时按 confirmed 布尔(缺省拒绝,fail-closed)
-      const native = cancelled ? 'reject' : (response === 'always' ? 'always' : 'once')
+      const native = resolveOpenCodeNativeResponse({ cancelled: outcome.cancelled === true, response, confirmed: outcome.confirmed === true })
       await this.api('POST', `/session/${pending.sessionId}/permissions/${encodeURIComponent(id)}`, { response: native })
     }
     else {
