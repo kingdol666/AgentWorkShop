@@ -939,9 +939,25 @@ export class ProjectService {
         this.closeTaskInstanceDurable(wi)
       }
       else {
-        try { this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(binding.channelId) }
+        for (const session of this.sessions.listByChannel(binding.channelId).filter(s => s.status === 'active')) {
+          try {
+            await this.manager.closeChannelSession({ channelId: binding.channelId, sessionId: session.id, actor: { id: p.ownerUserId, role: 'user' }, reason: 'PROJECT_TERMINATED' })
+          }
+          catch {
+            try {
+              this.sessions.close(session.id)
+            }
+            catch { /* 已关闭 */ }
+          }
+        }
+        try {
+          this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(binding.channelId)
+        }
         catch { /* Channel 已删除 */ }
-        this.detachTaskInstanceBinding(id, binding.channelId)
+        try {
+          this.bindings.setStatus(id, binding.channelId, 'detached')
+        }
+        catch { /* 历史/并发删除时可能已不存在 */ }
       }
     }
     for (const wi of terminalItems.filter(x => x.instanceChannelId && !taskInstanceBindings.some(b => b.channelId === x.instanceChannelId))) {
@@ -1447,7 +1463,9 @@ export class ProjectService {
       // close/回落逻辑覆盖（否则 CANCELED 会被改回 DRAFT/BLOCKED）。
       if (code === 'PROJECT_STATE_CHANGED') {
         if (createdInstanceId) {
-          try { this.bindings.setStatus(id, createdInstanceId, 'detached') }
+          try {
+            this.bindings.setStatus(id, createdInstanceId, 'detached')
+          }
           catch { /* binding may not have been written */ }
           await this.releaseCreatedInstance(wi, createdInstanceId)
         }
@@ -1606,17 +1624,23 @@ export class ProjectService {
   }
 
   private detachTaskInstanceBinding(projectId: string, channelId: string): void {
-    try { this.bindings.setStatus(projectId, channelId, 'detached') }
+    try {
+      this.bindings.setStatus(projectId, channelId, 'detached')
+    }
     catch { /* 历史/并发删除时可能已不存在 */ }
   }
 
   private closeTaskInstanceDurable(workItem: ProjectWorkItemRow): void {
     for (const session of this.sessions.listByWorkItem(workItem.id).filter(s => s.status === 'active')) {
-      try { this.sessions.close(session.id) }
+      try {
+        this.sessions.close(session.id)
+      }
       catch { /* 已关闭 */ }
     }
     if (workItem.instanceChannelId) {
-      try { this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(workItem.instanceChannelId) }
+      try {
+        this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(workItem.instanceChannelId)
+      }
       catch { /* Channel 已删除 */ }
       this.detachTaskInstanceBinding(workItem.projectId, workItem.instanceChannelId)
     }
@@ -1631,12 +1655,16 @@ export class ProjectService {
     const activeSessions = this.sessions.listByWorkItem(workItem.id).filter(s => s.status === 'active')
     const instanceChannelId = workItem.instanceChannelId
     let instanceChannel: Awaited<ReturnType<AgentChannelManager['getChannel']>> | null = null
-    try { instanceChannel = instanceChannelId ? await this.manager.getChannel(instanceChannelId) : null }
+    try {
+      instanceChannel = instanceChannelId ? await this.manager.getChannel(instanceChannelId) : null
+    }
     catch { /* SQL/session fallback below remains authoritative */ }
     const channelEnabled = instanceChannel ? instanceChannel.enabled === 1 : Boolean(instanceChannelId)
     if (activeSessions.length === 0 && !channelEnabled) {
       if (instanceChannelId) {
-        try { this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(instanceChannelId) }
+        try {
+          this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(instanceChannelId)
+        }
         catch { /* Channel 已删除 */ }
         this.detachTaskInstanceBinding(workItem.projectId, instanceChannelId)
       }
@@ -1664,18 +1692,22 @@ export class ProjectService {
         catch { /* 已关闭 */ }
       }
     }
-    if (instanceChannelId && channelEnabled) {
-      const stillActive = this.sessions.listByWorkItem(workItem.id).some(s => s.status === 'active')
-      if (stillActive) {
-        this.closeTaskInstanceDurable(workItem)
-        return
+    if (instanceChannelId) {
+      if (channelEnabled) {
+        try {
+          await this.manager.updateChannel(instanceChannelId, { enabled: 0 }, ownerActor)
+        }
+        catch {
+          try {
+            this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(instanceChannelId)
+          }
+          catch { /* 行已删 */ }
+        }
       }
-      try {
-        await this.manager.updateChannel(instanceChannelId, { enabled: 0 }, ownerActor)
-      }
-      catch {
-        // 属主缺失/只读路径失败 → 直写停用。
-        try { this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(instanceChannelId) }
+      else {
+        try {
+          this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(instanceChannelId)
+        }
         catch { /* 行已删 */ }
       }
       this.detachTaskInstanceBinding(workItem.projectId, instanceChannelId)
@@ -1698,7 +1730,9 @@ export class ProjectService {
         await this.manager.closeChannelSession({ channelId: s.channelId, sessionId: s.id, actor: ownerActor, reason: 'DISPATCH_CLAIM_LOST' })
       }
       catch {
-        try { this.sessions.close(s.id) }
+        try {
+          this.sessions.close(s.id)
+        }
         catch { /* 已关闭 */ }
         // manager 路径失败时直接收敛会话行，防止终态补偿留下 active session。
       }
@@ -1708,12 +1742,16 @@ export class ProjectService {
         await this.manager.updateChannel(channelId, { enabled: 0 }, ownerActor)
       }
       catch {
-        try { this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(channelId) }
+        try {
+          this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(channelId)
+        }
         catch { /* Channel 已删除：无需停用 */ }
       }
     }
     else {
-      try { this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(channelId) }
+      try {
+        this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(channelId)
+      }
       catch { /* Channel 已删除：无需停用 */ }
     }
     this.detachTaskInstanceBinding(workItem.projectId, channelId)
@@ -4841,7 +4879,7 @@ export class ProjectService {
     if (!b || b.status !== 'active') throw new AppError(404, 'NOT_FOUND', 'Channel 未绑定到该项目')
     // 先停止运行时，再提交解绑和数据库终态；取消失败时保留绑定，允许重试。
     const inFlight = this.workItems.listByProject(id)
-      .filter(w => {
+      .filter((w) => {
         if (w.channelId !== channelId) return false
         const attempt = w.currentAttemptId ? this.attempts.findById(w.currentAttemptId) : undefined
         const liveAttempt = Boolean(attempt && !attempt.closedAt && attempt.channelTaskId)
