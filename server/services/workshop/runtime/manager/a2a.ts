@@ -83,6 +83,8 @@ export abstract class ManagerA2A extends ManagerTasks {
     fromLabel?: string
     /** Session Context：消息归属会话 */
     sessionId?: string
+    /** 客户端幂等键(session endpoint;经 mailbox 持久化) */
+    clientMessageId?: string
     /** 额外受控元数据（服务端调用方盖章；不来自 REST 入参） */
     metadata?: Record<string, unknown>
   }): Promise<A2AMessage> {
@@ -97,6 +99,7 @@ export abstract class ManagerA2A extends ManagerTasks {
       'x-aw-msg-priority': 'immediate',
     }
     if (input.sessionId) metadata['x-aw-session-id'] = input.sessionId
+    if (input.clientMessageId) metadata['x-aw-client-message-id'] = input.clientMessageId
     if (hasFromAgent) metadata['x-aw-from-agent'] = input.fromAgentId
     if (input.fromLabel) metadata['x-aw-from-label'] = input.fromLabel
     if (input.requireReply) metadata['x-aw-require-reply'] = 'true'
@@ -147,6 +150,8 @@ export abstract class ManagerA2A extends ManagerTasks {
     sessionId: string
     actor: { id: string, role: string }
     text: string
+    /** 客户端幂等键(同 channel/session 内 durable;缺省保持一次性消息语义) */
+    clientMessageId?: string
   }): Promise<{ messageId: string, toAgentId: string }> {
     const channel = this.deps.repos.channels.findById(input.channelId)
     if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${input.channelId}`)
@@ -164,12 +169,20 @@ export abstract class ManagerA2A extends ManagerTasks {
     if (!target) throw new AppError(409, 'SESSION_NO_MEMBER', '会话没有可投递的成员实例')
     const targetRow = this.deps.repos.channelAgents.findByChannelAgent(input.channelId, target)
     if (!targetRow || targetRow.enabled !== 1) throw new AppError(409, 'SESSION_MEMBER_UNAVAILABLE', '会话成员实例不存在或已停用')
+    if (input.clientMessageId) {
+      const existing = this.deps.repos.messages.findByClientMessageId(input.channelId, input.sessionId, input.clientMessageId)
+      if (existing) {
+        const existingTarget = existing.toAgentId ?? target
+        return { messageId: existing.id, toAgentId: existingTarget }
+      }
+    }
     const message = await this.sendImmediateMessage({
       channelId: input.channelId,
       toAgentId: target,
       fromLabel: `owner:${input.actor.id}`,
       requireReply: true,
       sessionId: input.sessionId,
+      clientMessageId: input.clientMessageId,
       parts: [{ text: input.text.trim() }],
     })
     session.refresh(input.sessionId)

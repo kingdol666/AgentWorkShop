@@ -55,12 +55,16 @@ CREATE TABLE IF NOT EXISTS messages (
   role          TEXT NOT NULL,                -- 'ROLE_USER' | 'ROLE_AGENT'
   parts_json    TEXT NOT NULL,
   metadata_json TEXT NOT NULL DEFAULT '{}',   -- x-aw-target-agent / x-aw-task-kind
+  client_message_id TEXT,                      -- session client idempotency key; NULL for legacy/non-session sends
   state         TEXT NOT NULL DEFAULT 'pending',  -- pending|consuming|consumed|dead(P3-4:重投达上限)
   attempts      INTEGER NOT NULL DEFAULT 0,       -- P3-4:steer 失败重投计数(requeue +1)
   created_at    TEXT NOT NULL,
   consumed_at   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_messages_queue ON messages(channel_id, to_agent_id, state, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_idempotency
+  ON messages(channel_id, session_id, client_message_id)
+  WHERE session_id IS NOT NULL AND client_message_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS subscriptions (
   channel_id      TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
   agent_id        TEXT NOT NULL REFERENCES channel_agents(id) ON DELETE CASCADE,

@@ -12,7 +12,7 @@ import { getWorkshopManager } from '@/server/plugins/workshop'
 
 const schema = z.object({
   text: z.string().trim().min(1).max(8000),
-  clientMessageId: z.string().max(200).optional(),
+  clientMessageId: z.string().min(1).max(200).optional(),
 })
 
 export default defineApiHandler(async (event) => {
@@ -25,5 +25,6 @@ export default defineApiHandler(async (event) => {
     sessionId,
     actor: { id: user.id, role: user.role },
     text: body.text,
+    clientMessageId: body.clientMessageId,
   })
 })

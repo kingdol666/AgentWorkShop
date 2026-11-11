@@ -1,0 +1,27 @@
+Already up to date
+Done in 297ms using pnpm v11.9.0
+✔ 恢复扫描:只取 pending+mailbox 未落库+到期的投递 (43.8129ms)
+✔ 退避未到期的投递不进扫描;到期后重新可见 (41.8371ms)
+✔ 重试超限转死信:failed 不再进扫描且错误可读 (37.3434ms)
+✔ 已投递(delivered)的投递不进恢复扫描(第二窗口不重投语义) (36.9986ms)
+✔ buildMessage 显式 id 透传(确定性 mailbox 消息 id 锚) (0.2649ms)
+✔ S-A 会话克隆：独立 worker 实例 + 绑定复制 + 会话注册 (57.4959ms)
+✔ S-B 记忆隔离前提：两会话 clone 的 agentId 互不相同（auto 域按 agentId 过滤即隔离） (43.6966ms)
+✔ S-C 关闭级联：clone 在飞任务 cancelTree + 实例停用 + 会话 closed（幂等） (46.6273ms)
+✔ S-E 成员→active 会话反查：manual/task 命中，project 恒等映射与 closed 排除 (0.2974ms)
+✔ S-D 无基础成员 → 400 NO_BASE_MEMBERS (45.3569ms)
+✔ brief：session_id 贯通 task/message，brief/history/catalog 可读 (61.8446ms)
+✔ history：关闭后的 session 仍可读，catalog 标记 closed (45.4955ms)
+✔ task session：无 session_id 的旧任务按实例 Channel 回退可见（legacy 兼容） (45.2616ms)
+✔ C4:session 行写入失败时 clone 行必须整体回滚(无孤儿 clone) (1.5207ms)
+✔ C4:事务提交后才复制绑定面(绑定失败不产生孤儿 clone) (0.2778ms)
+✔ C5:并发 close 只有一个执行级联(cancelTree 只调一次) (0.9165ms)
+✔ C9:注入主连接后策略保存不再自持第二连接,且可嵌在调用方事务里 (235.529ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1207.82

@@ -75,6 +75,9 @@ export class Mailbox {
       sessionId: typeof message.metadata?.['x-aw-session-id'] === 'string'
         ? message.metadata['x-aw-session-id']
         : null,
+      clientMessageId: typeof message.metadata?.['x-aw-client-message-id'] === 'string'
+        ? message.metadata['x-aw-client-message-id']
+        : null,
       fromAgentId: (message.metadata?.['x-aw-from-agent'] as string | undefined) ?? null,
       toAgentId: this.agentId,
       role: message.role,

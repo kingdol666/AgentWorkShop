@@ -309,6 +309,7 @@ export interface MessageRow {
   channelId: string
   taskId: string | null
   sessionId: string | null
+  clientMessageId: string | null
   fromAgentId: string | null
   toAgentId: string | null
   role: string

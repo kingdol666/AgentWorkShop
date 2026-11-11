@@ -508,6 +508,8 @@ export interface AepDaqFrame {
   templateRef: string
   kind: 'vector' | 'image'
   at: string
+  /** 所属产线(WS 鉴权扇出按线过滤;未挂线 = null) */
+  lineId?: string | null
   /** 向量降采样预览(≤64 点;完整点列经 REST frames 查询) */
   preview?: number[]
   /** 派生指标(resample/derive-metric/quality-gate 等下沉处理器产出) */

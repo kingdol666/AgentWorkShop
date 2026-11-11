@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-11",
+  "pr": "PR-5",
+  "branch": "fix/20261111-runtime-contract-resilience",
+  "base": "5527d896c6816e63a69127a57585dc9e13362032",
+  "results": {
+    "focused_tests": "3/3 passed",
+    "related_tests": "17/17 passed",
+    "unit_tests": "1491/1491 passed",
+    "typecheck": "passed",
+    "lint": "passed",
+    "targeted_lint": "passed; schema.sql ignored by ESLint configuration"
+  },
+  "coverage": [
+    "session endpoint forwards clientMessageId",
+    "session mailbox stores clientMessageId durably with session-scoped unique index",
+    "duplicate clientMessageId returns the existing messageId/toAgentId and creates one mailbox row",
+    "AepDaqFrame lineId remains nullable and preserves line provenance"
+  ],
+  "observations_not_fixed": [
+    "Focused manager integration emits AML_NOT_READY fallback warnings because the workshop AML plugin is not initialized in the isolated test fixture.",
+    "Focused manager integration emits a shutdown-time statement has been finalized message from the asynchronous mock runtime; assertions remain green."
+  ],
+  "evidence_files": [
+    "focused-tests.log",
+    "related-tests.log",
+    "unit.log",
+    "typecheck.log",
+    "lint.log",
+    "targeted-eslint.log",
+    "diff-check.log"
+  ]
+}
