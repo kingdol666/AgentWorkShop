@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS messages (
   channel_id    TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
   task_id       TEXT,
   session_id    TEXT,
+  actor_user_id TEXT,
   from_agent_id TEXT,
   to_agent_id   TEXT,
   role          TEXT NOT NULL,                -- 'ROLE_USER' | 'ROLE_AGENT'
@@ -57,8 +58,8 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_queue ON messages(channel_id, to_agent_id, state, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_idempotency
-  ON messages(channel_id, session_id, client_message_id)
-  WHERE session_id IS NOT NULL AND client_message_id IS NOT NULL;
+  ON messages(channel_id, session_id, actor_user_id, client_message_id)
+  WHERE session_id IS NOT NULL AND actor_user_id IS NOT NULL AND client_message_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS subscriptions (
   channel_id      TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,

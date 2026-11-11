@@ -7,7 +7,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import type { MessageRow } from './database'
 
 const COLS
-  = 'id, channel_id AS channelId, task_id AS taskId, session_id AS sessionId, client_message_id AS clientMessageId, from_agent_id AS fromAgentId, to_agent_id AS toAgentId, role, parts_json AS partsJson, metadata_json AS metadataJson, state, attempts, created_at AS createdAt, consumed_at AS consumedAt'
+  = 'id, channel_id AS channelId, task_id AS taskId, session_id AS sessionId, actor_user_id AS actorUserId, client_message_id AS clientMessageId, from_agent_id AS fromAgentId, to_agent_id AS toAgentId, role, parts_json AS partsJson, metadata_json AS metadataJson, state, attempts, created_at AS createdAt, consumed_at AS consumedAt'
 
 export interface MessageCreateInput {
   /** 落库 id;缺省生成。A2A 入队时传发送方 messageId,保证 API 返回 id 与历史 id 一致关联 */
@@ -15,6 +15,8 @@ export interface MessageCreateInput {
   channelId: string
   taskId?: string | null
   sessionId?: string | null
+  /** durable actor/user dimension for session idempotency; non-session mailbox messages remain null */
+  actorUserId?: string | null
   /** session 人类消息客户端幂等键;非 session mailbox 消息保持 null */
   clientMessageId?: string | null
   fromAgentId?: string | null
@@ -28,8 +30,8 @@ export type MessageRepo = ReturnType<typeof createMessageRepo>
 
 export function createMessageRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO messages (id, channel_id, task_id, session_id, client_message_id, from_agent_id, to_agent_id, role, parts_json, metadata_json, state, created_at, consumed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO messages (id, channel_id, task_id, session_id, actor_user_id, client_message_id, from_agent_id, to_agent_id, role, parts_json, metadata_json, state, created_at, consumed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectPending = db.prepare(
     // rowid 决胜:同一毫秒内批量入队(连发任务/调度批量派发)也保持严格入队顺序(FIFO)
@@ -68,7 +70,7 @@ export function createMessageRepo(db: DatabaseSync) {
      FROM messages WHERE to_agent_id IS NOT NULL AND state = 'pending'`,
   )
   const selectByClientMessageId = db.prepare(
-    `SELECT ${COLS} FROM messages WHERE channel_id = ? AND session_id = ? AND client_message_id = ? LIMIT 1`,
+    `SELECT ${COLS} FROM messages WHERE channel_id = ? AND session_id = ? AND actor_user_id = ? AND client_message_id = ? LIMIT 1`,
   )
   const existsPendingAssignStmt = db.prepare(
     `SELECT 1 AS hit FROM messages
@@ -85,6 +87,7 @@ export function createMessageRepo(db: DatabaseSync) {
         channelId: input.channelId,
         taskId: input.taskId ?? null,
         sessionId: input.sessionId ?? null,
+        actorUserId: input.actorUserId ?? null,
         clientMessageId: input.clientMessageId ?? null,
         fromAgentId: input.fromAgentId ?? null,
 
@@ -98,13 +101,13 @@ export function createMessageRepo(db: DatabaseSync) {
         consumedAt: null,
       }
       insert.run(
-        row.id, row.channelId, row.taskId, row.sessionId, row.clientMessageId, row.fromAgentId, row.toAgentId, row.role, row.partsJson, row.metadataJson, row.state, row.createdAt, row.consumedAt,
+        row.id, row.channelId, row.taskId, row.sessionId, row.actorUserId, row.clientMessageId, row.fromAgentId, row.toAgentId, row.role, row.partsJson, row.metadataJson, row.state, row.createdAt, row.consumedAt,
       )
       return row
     },
 
-    findByClientMessageId(channelId: string, sessionId: string, clientMessageId: string): MessageRow | undefined {
-      return (selectByClientMessageId.get(channelId, sessionId, clientMessageId) as MessageRow | undefined) ?? undefined
+    findByClientMessageId(channelId: string, sessionId: string, actorUserId: string, clientMessageId: string): MessageRow | undefined {
+      return (selectByClientMessageId.get(channelId, sessionId, actorUserId, clientMessageId) as MessageRow | undefined) ?? undefined
     },
 
     listPendingByChannelAgent(channelId: string, toAgentId: string, limit?: number): MessageRow[] {

@@ -75,6 +75,9 @@ export class Mailbox {
       sessionId: typeof message.metadata?.['x-aw-session-id'] === 'string'
         ? message.metadata['x-aw-session-id']
         : null,
+      actorUserId: typeof message.metadata?.['x-aw-from-user-id'] === 'string'
+        ? message.metadata['x-aw-from-user-id']
+        : null,
       clientMessageId: typeof message.metadata?.['x-aw-client-message-id'] === 'string'
         ? message.metadata['x-aw-client-message-id']
         : null,

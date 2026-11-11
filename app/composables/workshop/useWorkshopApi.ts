@@ -170,6 +170,9 @@ export interface ChannelMessageDto {
   id: string
   channelId: string
   taskId: string | null
+  sessionId?: string | null
+  actorUserId?: string | null
+  clientMessageId?: string | null
   fromAgentId: string | null
   toAgentId: string | null
   role: string
@@ -251,8 +254,8 @@ export function useWorkshopApi() {
     getSessionBlock: (id: string, sid: string) => http.get<{ data: { block: string | null } }>(`/workshop/channels/${id}/sessions/${sid}/brief`, { format: 'block' }),
     /** Session Context 有界历史 */
     getSessionHistory: (id: string, sid: string, limit = 80) => http.get<{ data: SessionHistoryDto[] }>(`/workshop/channels/${id}/sessions/${sid}/history`, { limit }),
-    /** 手工会话发送消息（投给 session clone，requireReply） */
-    sendSessionMessage: (id: string, sid: string, body: { text: string }) =>
+    /** 手工会话发送消息（投给 session clone，requireReply；idempotency key scoped to actor/session） */
+    sendSessionMessage: (id: string, sid: string, body: { text: string, clientMessageId: string }) =>
       http.post<{ data: { messageId: string, toAgentId: string } }>(`/workshop/channels/${id}/sessions/${sid}/messages`, body),
     /** runtime mailbox 消息清单(limit≤500;parts 已解析) */
     listChannelMessages: (id: string, limit = 200) => http.get<{ data: ChannelMessageDto[] }>(`/workshop/channels/${id}/messages`, { limit }),

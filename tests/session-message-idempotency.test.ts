@@ -61,7 +61,7 @@ test('session endpoint forwards clientMessageId instead of dropping it', () => {
   assert.match(source, /clientMessageId:\s*body\.clientMessageId/)
 })
 
-test('duplicate session clientMessageId is durable and returns the same mailbox result', async () => {
+test('duplicate session clientMessageId is isolated by actor and conflicts on payload mismatch', async () => {
   const f = fixture()
   try {
     const input = {
@@ -74,10 +74,19 @@ test('duplicate session clientMessageId is durable and returns the same mailbox 
     const first = await f.manager.sendSessionMessage(input as never)
     const second = await f.manager.sendSessionMessage(input as never)
     assert.deepEqual(second, first, '重试应返回同一逻辑结果(messageId/toAgentId)')
+
+    await assert.rejects(
+      f.manager.sendSessionMessage({ ...input, text: '不同 payload' } as never),
+      (err: unknown) => (err as { code?: string }).code === 'SESSION_MESSAGE_IDEMPOTENCY_CONFLICT',
+    )
+
+    const otherActor = await f.manager.sendSessionMessage({ ...input, actor: { id: 'user-2', role: 'admin' } } as never)
+    assert.notEqual(otherActor.messageId, first.messageId, '不同 actor 必须有独立幂等命名空间')
+
     const rows = f.messages.listRecentByChannel(f.channel.id, 20)
       .filter(row => row.toAgentId === f.clone.id && row.sessionId === f.session.id)
-    assert.equal(rows.length, 1, '同一 clientMessageId 只能产生一条 session mailbox 消息')
-    assert.equal(rows[0]!.clientMessageId, 'session-client-message-1')
+    assert.equal(rows.length, 2, '不同 actor 的同 key 应产生各自消息')
+    assert.deepEqual(new Set(rows.map(row => row.actorUserId)), new Set(['user-1', 'user-2']))
   }
   finally {
     await f.manager.shutdown()

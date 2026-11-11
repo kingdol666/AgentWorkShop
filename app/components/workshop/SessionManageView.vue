@@ -38,6 +38,12 @@ const briefBlock = ref<string | null>(null)
 const history = ref<SessionHistoryDto[]>([])
 const composerText = ref('')
 const sending = ref(false)
+const pendingSessionSend = ref<{ sessionId: string, text: string, clientMessageId: string } | null>(null)
+const newClientMessageId = (): string => {
+  const cryptoApi = globalThis.crypto as Crypto | undefined
+  if (cryptoApi && typeof cryptoApi.randomUUID === 'function') return cryptoApi.randomUUID()
+  return `session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
 
 const activeSession = computed(() => sessions.value.find(s => s.id === activeSessionId.value) ?? null)
 
@@ -149,7 +155,12 @@ async function sendMessage(): Promise<void> {
   if (!text || !session || sending.value) return
   sending.value = true
   try {
-    await api.sendSessionMessage(props.channelId, session.id, { text })
+    const pending = pendingSessionSend.value?.sessionId === session.id && pendingSessionSend.value.text === text
+      ? pendingSessionSend.value
+      : { sessionId: session.id, text, clientMessageId: newClientMessageId() }
+    pendingSessionSend.value = pending
+    await api.sendSessionMessage(props.channelId, session.id, { text, clientMessageId: pending.clientMessageId })
+    pendingSessionSend.value = null
     composerText.value = ''
     await Promise.all([loadMessages(session), loadContext(session)])
   }
@@ -263,6 +274,7 @@ onMounted(loadAll)
 watch(() => props.channelId, () => {
   activeSessionId.value = null
   messages.value = []
+  pendingSessionSend.value = null
   void loadAll()
 })
 </script>

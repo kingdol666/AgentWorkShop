@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import type { AepDaqFrame } from '../shared/daq-protocol'
 
 test('AepDaqFrame preserves line provenance as an optional nullable lineId', () => {
@@ -14,4 +15,11 @@ test('AepDaqFrame preserves line provenance as an optional nullable lineId', () 
   assert.equal(frame.lineId, 'line-1')
   const unbound: AepDaqFrame = { ...frame, lineId: null }
   assert.equal(unbound.lineId, null)
+})
+
+test('DAQ frame frontend preserves nullable lineId from REST and WS paths', () => {
+  const source = readFileSync('app/composables/workshop/useDaqStream.ts', 'utf8')
+  assert.match(source, /lineId: string \| null/)
+  assert.match(source, /lineId: p\.lineId \?\? null/)
+  assert.match(source, /lineId: frame\.lineId \?\? null/)
 })

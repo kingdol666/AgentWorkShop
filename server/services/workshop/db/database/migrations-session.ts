@@ -19,7 +19,8 @@ export function migrateSessionContextColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'channel_sessions', 'generation', 'INTEGER NOT NULL DEFAULT 0')
   migrateAddColumn(db, 'tasks', 'session_id', 'TEXT')
   migrateAddColumn(db, 'messages', 'session_id', 'TEXT')
-  // Session endpoint retries use a durable channel-scoped key; legacy mailbox rows remain NULL.
+  // Session endpoint retries use a durable actor-scoped key; legacy mailbox rows remain NULL.
+  migrateAddColumn(db, 'messages', 'actor_user_id', 'TEXT')
   migrateAddColumn(db, 'messages', 'client_message_id', 'TEXT')
   migrateAddColumn(db, 'chat_messages', 'session_id', 'TEXT')
   migrateAddColumn(db, 'chat_deliveries', 'session_id', 'TEXT')
@@ -33,7 +34,8 @@ export function ensureSessionIndexes(db: DatabaseSync): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_channel_sessions_project ON channel_sessions(project_id, project_work_item_id, status)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_session ON tasks(channel_id, session_id, state, created_at)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, created_at)')
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_idempotency ON messages(channel_id, session_id, client_message_id) WHERE session_id IS NOT NULL AND client_message_id IS NOT NULL')
+  db.exec('DROP INDEX IF EXISTS idx_messages_client_idempotency')
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_idempotency ON messages(channel_id, session_id, actor_user_id, client_message_id) WHERE session_id IS NOT NULL AND actor_user_id IS NOT NULL AND client_message_id IS NOT NULL')
   db.exec('CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id, created_at DESC)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_chat_deliveries_session ON chat_deliveries(session_id, status)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_memories_session ON agent_memories(session_id, agent_id, created_at DESC)')
