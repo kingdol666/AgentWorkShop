@@ -30,8 +30,6 @@ export interface AgentToolBlock {
   phase: 'start' | 'end'
   /** end 帧才有意义;unknown=源未给状态 */
   status?: 'ok' | 'error' | 'unknown'
-  /** 端到端毫秒(源提供才填) */
-  durationMs?: number | null
   /** 参数预览(源侧已截断;无参数 null) */
   argsPreview?: string | null
   /** 错误摘要(end+error 时;源侧已截断) */
@@ -96,7 +94,7 @@ export function normalizeToolLine(line: string, harness = ''): AgentToolBlock | 
   if (body === null) return null
   const base = (over: Partial<AgentToolBlock>): AgentToolBlock => ({
     kind: 'agent.tool', v: 1, harness, tool: 'tool', phase: 'start', status: 'unknown',
-    durationMs: null, argsPreview: null, errorText: null, text, ...over,
+    argsPreview: null, errorText: null, text, ...over,
   })
 
   // omp end: `name ✅ 完成: summary` / `name ❌ 失败: summary`
@@ -141,4 +139,34 @@ export function normalizeToolLine(line: string, harness = ''): AgentToolBlock | 
   const sp = body.search(' ')
   const tool = cut(sp >= 0 ? body.slice(0, sp) : body, 80) || 'tool'
   return base({ tool, phase: 'start' })
+}
+
+/* ── status 消息 → 帧计划(ws 层消费的纯函数;原生优先/归一兜底一次判定) ── */
+
+/** status 消息的 AEP 帧计划:blocks=原生块;derived=无原生块时的文本归一兜底(首条 🔧 行);text=下发文本 */
+export interface AgentStatusFrame {
+  blocks: AgentToolBlock[]
+  derived: AgentToolBlock | null
+  text: string
+}
+
+/**
+ * status 消息 parts → 帧计划(纯函数;ws event-mapping 消费)。
+ *
+ *  - 原生块优先:有 data Part 块时逐块下发,**不再派生**(omp 等原生发射点);
+ *  - 归一兜底:无原生块且文本非空白时,取首条 🔧 行归一派生(全 harness 文案签名识别);
+ *    `harness` 透传写入派生块(调用方由 agentId 反查实例行;未知传空串);
+ *  - 单消息单工具行是所有 harness 的不变式(status 消息即单事件投影),派生只取首条。
+ */
+export function selectStatusFrame(parts: unknown, harness = ''): AgentStatusFrame {
+  const blocks = agentBlocksFromParts(parts)
+  const list = Array.isArray(parts) ? parts : []
+  const textOf = (p: unknown): string => ('text' in (p as Record<string, unknown>) ? String((p as { text?: unknown }).text ?? '') : '')
+  const text = list.map(textOf).join(' ')
+  let derived: AgentToolBlock | null = null
+  if (blocks.length === 0 && text.trim()) {
+    const toolLine = list.map(textOf).find(t => t.trim().startsWith(MARK))
+    if (toolLine) derived = normalizeToolLine(toolLine.trim(), harness)
+  }
+  return { blocks, derived, text }
 }
