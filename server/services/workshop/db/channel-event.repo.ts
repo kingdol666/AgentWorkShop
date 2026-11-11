@@ -134,7 +134,26 @@ export function createChannelEventRepo(db: DatabaseSync) {
     return ((stmt.get(channelId, ...filterParams) as { n: number } | undefined)?.n) ?? 0
   }
 
-  return { insert, insertMany, sweepRetention, listRecent, listBefore, maxSeq, count }
+  /**
+   * 按类型正查(业务面消费,如 tool-usage 聚合;与 listRecent 的"排除式"互补)。
+   * 倒序取最新 limit 条后正序返回;since(ISO)可选窗口下界。
+   */
+  function listByTypes(channelId: string, types: readonly string[], limit: number, since?: string): StoredAepEvent[] {
+    if (types.length === 0 || limit <= 0) return []
+    const placeholders = types.map(() => '?').join(', ')
+    const sql = since
+      ? `SELECT ${COLS} FROM channel_events WHERE channel_id = ? AND type IN (${placeholders}) AND at >= ? ORDER BY seq DESC LIMIT ?`
+      : `SELECT ${COLS} FROM channel_events WHERE channel_id = ? AND type IN (${placeholders}) ORDER BY seq DESC LIMIT ?`
+    let stmt = stmtCache.get(sql)
+    if (!stmt) {
+      stmt = db.prepare(sql)
+      stmtCache.set(sql, stmt)
+    }
+    const params: SQLInputValue[] = since ? [channelId, ...types, since, limit] : [channelId, ...types, limit]
+    return (stmt.all(...params) as unknown as ChannelEventRow[]).map(rowToEvent).reverse()
+  }
+
+  return { insert, insertMany, sweepRetention, listRecent, listBefore, listByTypes, maxSeq, count }
 }
 
 function rowToEvent(row: ChannelEventRow): StoredAepEvent {
