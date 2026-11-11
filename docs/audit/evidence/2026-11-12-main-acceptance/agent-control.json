@@ -1,0 +1,61 @@
+{
+  "tag": "d94x",
+  "channelId": "34cc336a-868b-42e3-89de-ea2ace599b39",
+  "results": [
+    {
+      "id": "A0",
+      "name": "频道成员可读（lead 存在）",
+      "pass": true,
+      "detail": "members=6 lead=b5c5a79c-2"
+    },
+    {
+      "id": "A1",
+      "name": "lead agent token 轮换（Agent 身份面）",
+      "pass": true,
+      "detail": "len=36"
+    },
+    {
+      "id": "A2",
+      "name": "recipe_trial 挂 HITL 审批卡（manual 绑定，不静默下发）",
+      "pass": true,
+      "detail": "kind=dcw-approval id=ap-e22b4d2f title=配方试验(整批候选)下发审批"
+    },
+    {
+      "id": "A3",
+      "name": "审批通过后整批试验下发并设备证实",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-3f7d0):保压压力SP→56bar [证实✓]。假设:acceptance d94x: raise hold pressure by one step to verify governed write path。\n人工附言:acceptance d94x approve注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → "
+    },
+    {
+      "id": "A4",
+      "name": "DCW 回读一致（56 ± 0.2）",
+      "pass": true,
+      "detail": "before=56 after=56"
+    },
+    {
+      "id": "A5",
+      "name": "独立 DAQ 观测物理量按孪生因果跟随（Δ重量 ≈ 0.34×ΔSP）",
+      "pass": true,
+      "detail": "weight 17.044 → 17.044（期望 ≈17.044）"
+    },
+    {
+      "id": "A6",
+      "name": "负例：超量程候选在审批后仍被量程联锁拒绝，设备值不变",
+      "pass": true,
+      "detail": "试验下发 ACK 鉴定未全绿(证实 0/1,未证实 0,失败 1,批次 rr-3d7a6):保压压力SP→200bar 被拒(候选值未下发(越界):设定值 200bar 超出上限 节点工艺安全量程 的 100bar —— 约束层:节点安全量程(当)。假设:acceptance d94x: over-range nega · value=56"
+    },
+    {
+      "id": "A7",
+      "name": "负例：未绑定配方/节点的 Agent 无写能力（权限模型 v2 拒绝）",
+      "pass": true,
+      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-9ef7911c」不在你的写授权面内(节点「保压压力SP」,归属产线 ln-1f5733ab)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:(无)。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
+    }
+  ],
+  "facts": {
+    "before": 56,
+    "after": 56,
+    "weightBefore": 17.04435515873016,
+    "weightAfter": 17.04435515873016,
+    "cardId": "ap-e22b4d2f"
+  }
+}

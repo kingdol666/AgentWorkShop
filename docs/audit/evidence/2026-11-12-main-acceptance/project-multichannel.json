@@ -1,0 +1,196 @@
+{
+  "tag": "974h",
+  "projectId": "e10af199-c3f4-4756-8f05-36e4ddafcc40",
+  "channelA": "0aed8299-a0a3-4f6a-994b-7be02b7149c0",
+  "channelB": "55a7574b-0718-420e-9013-d4b0a0e650ea",
+  "results": [
+    {
+      "id": "P0",
+      "name": "两个成员频道（mock lead）",
+      "pass": true,
+      "detail": "0aed8299-a0a3-4f6a-994b-7be02b7149c0 55a7574b-0718-420e-9013-d4b0a0e650ea"
+    },
+    {
+      "id": "P1",
+      "name": "Project 创建（mock leader）",
+      "pass": true,
+      "detail": "e10af199-c3f4-4756-8f05-36e4ddafcc40"
+    },
+    {
+      "id": "P2",
+      "name": "绑定频道 0aed8299",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P2",
+      "name": "绑定频道 55a7574b",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P2b",
+      "name": "计划审批 v1 通过（planVersion 门解除）",
+      "pass": true,
+      "detail": "approval=3c55a678-2ce5-4338-afcd-8b19764383cf"
+    },
+    {
+      "id": "P3",
+      "name": "必选交付物创建",
+      "pass": true,
+      "detail": "91835c0f-75fe-4ea9-bd7d-35264c7f483f"
+    },
+    {
+      "id": "P4",
+      "name": "跨频道依赖链 W1(A)→W2(B)→W3(A)",
+      "pass": true,
+      "detail": "b4a5b048-8e98-4447-8731-3da95129e8e0 b75494c9-b28f-4098-ae2e-f77a73d4103d 56b27c1f-159b-4678-adfd-3c5318b14d33"
+    },
+    {
+      "id": "P5",
+      "name": "项目激活",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P6",
+      "name": "W1 自动派发到 A 的任务实例频道并完成（root 在实例频道，不在模板频道）",
+      "pass": true,
+      "detail": "{\"workItemId\":\"b4a5b048-8e98-4447-8731-3da95129e8e0\",\"instanceChannelId\":\"06603c40-95df-4710-8ec1-9569c44adce8\",\"rootTaskId\":\"bb1fd3c7-2ea1-4d37-9a3f-d73776a3ba2f\",\"completeStatus\":200}"
+    },
+    {
+      "id": "P7",
+      "name": "依赖门解除后 W2 自动派发到 B 的实例频道并完成（跨频道接力）",
+      "pass": true,
+      "detail": "{\"workItemId\":\"b75494c9-b28f-4098-ae2e-f77a73d4103d\",\"instanceChannelId\":\"ebcd870f-e6cf-4b4d-a425-e60999e07306\",\"rootTaskId\":\"e6deb119-af2f-482a-ade9-8036e15a4630\",\"completeStatus\":200}"
+    },
+    {
+      "id": "P8",
+      "name": "W3 完成；三项 COMPLETED 且各自独立实例频道（3 个不同实例）",
+      "pass": true,
+      "detail": "states=COMPLETED,COMPLETED,COMPLETED instances=3"
+    },
+    {
+      "id": "P9",
+      "name": "Reconciler 为完成项生成成果（draft/评审中）",
+      "pass": true,
+      "detail": "results=3"
+    },
+    {
+      "id": "P10",
+      "name": "可观测面摘要反映 3/3 完成",
+      "pass": true,
+      "detail": "{\"deliverables\":1,\"requiredDeliverables\":1,\"approvedDeliverables\":0,\"workItems\":3,\"byState\":{\"COMPLETED\":3},\"ready\":0,\"inFlight\":0,\"waiting\":0,\"blocked\":0,\"results\":3,\"pendingApprovals\":0,\"progress\":1,\"acceptanceProgress\":0}"
+    },
+    {
+      "id": "P11",
+      "name": "负例：绑定不存在频道被拒（不是静默成功）",
+      "pass": true,
+      "detail": "404 NOT_FOUND"
+    }
+  ],
+  "workItems": [
+    {
+      "id": "b4a5b048-8e98-4447-8731-3da95129e8e0",
+      "projectId": "e10af199-c3f4-4756-8f05-36e4ddafcc40",
+      "deliverableId": "91835c0f-75fe-4ea9-bd7d-35264c7f483f",
+      "channelId": "0aed8299-a0a3-4f6a-994b-7be02b7149c0",
+      "title": "W1 设计契约",
+      "brief": "在 A 频道产出接口契约",
+      "state": "COMPLETED",
+      "stateReason": null,
+      "priority": 0,
+      "weight": 1,
+      "dependsOnJson": "[]",
+      "acceptanceJson": "[]",
+      "resultKey": "main",
+      "currentAttemptId": "0400ac19-57c7-4f3f-b82b-4419c9300149",
+      "planVersion": 1,
+      "contractJson": "{}",
+      "execBudgetMinutes": 60,
+      "traceId": "work:91835c0f-75fe-4ea9-bd7d-35264c7f483f:W1 设计契约",
+      "dedupeKey": "91835c0f-75fe-4ea9-bd7d-35264c7f483f:W1 设计契约",
+      "deadlineAt": null,
+      "reworkCount": 0,
+      "acceptedResultId": null,
+      "lastResultStatus": "",
+      "attemptCount": 1,
+      "maxAttempts": 3,
+      "deferredUntil": null,
+      "createdBy": "1c46d509-994a-459c-8838-e84360e702ba",
+      "instanceChannelId": "06603c40-95df-4710-8ec1-9569c44adce8",
+      "createdAt": "2026-11-12T01:57:42.485+08:00",
+      "updatedAt": "2026-11-12T01:57:42.660+08:00",
+      "closedAt": "2026-11-12T01:57:42.660+08:00",
+      "closeReason": "ROOT_COMPLETED"
+    },
+    {
+      "id": "b75494c9-b28f-4098-ae2e-f77a73d4103d",
+      "projectId": "e10af199-c3f4-4756-8f05-36e4ddafcc40",
+      "deliverableId": "91835c0f-75fe-4ea9-bd7d-35264c7f483f",
+      "channelId": "55a7574b-0718-420e-9013-d4b0a0e650ea",
+      "title": "W2 依契约实现",
+      "brief": "在 B 频道按 W1 契约实现",
+      "state": "COMPLETED",
+      "stateReason": null,
+      "priority": 0,
+      "weight": 1,
+      "dependsOnJson": "[\"b4a5b048-8e98-4447-8731-3da95129e8e0\"]",
+      "acceptanceJson": "[]",
+      "resultKey": "main",
+      "currentAttemptId": "af721032-6dcc-4295-92dd-31cc03217ba5",
+      "planVersion": 1,
+      "contractJson": "{}",
+      "execBudgetMinutes": 60,
+      "traceId": "work:91835c0f-75fe-4ea9-bd7d-35264c7f483f:W2 依契约实现",
+      "dedupeKey": "91835c0f-75fe-4ea9-bd7d-35264c7f483f:W2 依契约实现",
+      "deadlineAt": null,
+      "reworkCount": 0,
+      "acceptedResultId": null,
+      "lastResultStatus": "",
+      "attemptCount": 1,
+      "maxAttempts": 3,
+      "deferredUntil": null,
+      "createdBy": "1c46d509-994a-459c-8838-e84360e702ba",
+      "instanceChannelId": "ebcd870f-e6cf-4b4d-a425-e60999e07306",
+      "createdAt": "2026-11-12T01:57:42.499+08:00",
+      "updatedAt": "2026-11-12T01:57:42.796+08:00",
+      "closedAt": "2026-11-12T01:57:42.796+08:00",
+      "closeReason": "ROOT_COMPLETED"
+    },
+    {
+      "id": "56b27c1f-159b-4678-adfd-3c5318b14d33",
+      "projectId": "e10af199-c3f4-4756-8f05-36e4ddafcc40",
+      "deliverableId": "91835c0f-75fe-4ea9-bd7d-35264c7f483f",
+      "channelId": "0aed8299-a0a3-4f6a-994b-7be02b7149c0",
+      "title": "W3 集成验收",
+      "brief": "在 A 频道集成 W2 产物",
+      "state": "COMPLETED",
+      "stateReason": null,
+      "priority": 0,
+      "weight": 1,
+      "dependsOnJson": "[\"b75494c9-b28f-4098-ae2e-f77a73d4103d\"]",
+      "acceptanceJson": "[]",
+      "resultKey": "main",
+      "currentAttemptId": "bbfdb8cd-03aa-4739-8194-e3170a688490",
+      "planVersion": 1,
+      "contractJson": "{}",
+      "execBudgetMinutes": 60,
+      "traceId": "work:91835c0f-75fe-4ea9-bd7d-35264c7f483f:W3 集成验收",
+      "dedupeKey": "91835c0f-75fe-4ea9-bd7d-35264c7f483f:W3 集成验收",
+      "deadlineAt": null,
+      "reworkCount": 0,
+      "acceptedResultId": null,
+      "lastResultStatus": "",
+      "attemptCount": 1,
+      "maxAttempts": 3,
+      "deferredUntil": null,
+      "createdBy": "1c46d509-994a-459c-8838-e84360e702ba",
+      "instanceChannelId": "facff543-b1ed-4ba5-80b1-cc64db9bfb93",
+      "createdAt": "2026-11-12T01:57:42.514+08:00",
+      "updatedAt": "2026-11-12T01:57:42.920+08:00",
+      "closedAt": "2026-11-12T01:57:42.920+08:00",
+      "closeReason": "ROOT_COMPLETED"
+    }
+  ]
+}

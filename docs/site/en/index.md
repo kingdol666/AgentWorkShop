@@ -78,7 +78,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 143 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.11.0</i></span>
+        <span>Version <i>v0.11.1</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -95,13 +95,16 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">RELEASE · v0.11.0</span>
+      <span class="hw-sec-en">RELEASE · v0.11.1</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      Three structural changes in November 2026: the Project center became a first-class entry,
-      RSI made experience promotable and rollback-able, and omp/ustc-deepseek-flash ran Channel
-      and Project tasks for real. All three were accepted on the main build.
+      0.11.1 is a hardening release: cancellation hard-stop, RSI evidence integrity,
+      session idempotency with a shutdown barrier, and upgrade-safe migrations are all
+      closed on main. Isolated production-mode acceptance: 9 suites, 0 fail (PLC twin
+      V1–V6 14/14, governed agent writes 8/8, Project multi-channel dispatch 14/14,
+      RSI evolution 32/32), unit 1508/1508. The November structural work — the Project
+      center as a first-class entry, promotable RSI experience, real-model runs — carries forward.
     </p>
     <div class="hw-feats">
       <div class="hw-f">
