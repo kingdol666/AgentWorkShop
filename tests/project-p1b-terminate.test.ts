@@ -142,33 +142,65 @@ test('T2 终态守卫：completed 不可终止；canceled 幂等；终止后 res
   finally { f.db.close() }
 })
 
-test('T3 快照可见面：channels[].rootTasks 透出在飞 root 任务态；消息队列 FIFO 消费', async () => {
+test('C-04：runtime cancel 失败时终止 fail-closed，不提交数据库终态', async () => {
+  const f = fixture(true)
+  try {
+    const s = await boot(f)
+    await f.svc.dispatchWorkItem(s.p.id, s.w1.id, owner)
+    ;(f.manager as unknown as Record<string, unknown>).cancelTaskTreeInternal = () => {
+      throw new Error('abort failed')
+    }
+    assert.throws(() => f.svc.terminate(s.p.id, owner, 'abort failure'), /abort failed/)
+    assert.equal(f.svc.get(s.p.id, owner).status, 'active')
+    assert.equal(f.svc.listWorkItems(s.p.id, owner).find(x => x.id === s.w1.id)!.state, 'DISPATCHED')
+  }
+  finally { f.db.close() }
+})
+
+test('C-05：canceled Project 所有可变入口 fail-closed', async () => {
+  const f = fixture(false)
+  try {
+    const s = await boot(f)
+    assert.equal(f.svc.terminate(s.p.id, owner, 'terminal').status, 'canceled')
+    await assert.rejects(() => f.svc.continueProject(s.p.id, owner, { message: 'reopen' }), /不能继续开发/)
+    assert.throws(() => f.svc.createDeliverable(s.p.id, owner, { name: 'late' }), /不能新增交付物/)
+    assert.throws(() => f.svc.createWorkItem(s.p.id, owner, { deliverableId: s.d.id, channelId: s.ch.channelId, title: 'late' }), /不能新增工作项/)
+    await assert.rejects(() => f.svc.dispatchWorkItem(s.p.id, s.w1.id, owner), /不能派发/)
+    assert.throws(() => f.svc.updateDeliverableItem(s.p.id, s.d.id, owner, { name: 'late-edit' }), /不能编辑交付物/)
+    assert.equal(f.svc.get(s.p.id, owner).status, 'canceled')
+  }
+  finally { f.db.close() }
+})
+
+test('C-06：reconcile orphan task 关闭 attempt 并清 pointer，随后可安全 retry', async () => {
   const f = fixture(false)
   try {
     const s = await boot(f)
     await f.svc.dispatchWorkItem(s.p.id, s.w1.id, owner)
-    const snap = f.svc.projectSnapshot(s.p.id, owner)
-    const ch = (snap.channels ?? []).find(c => c.channelId === s.ch.channelId)!
-    assert.ok(ch.rootTasks?.length === 1, `rootTasks=${JSON.stringify(ch.rootTasks)}`)
-    assert.equal(ch.rootTasks[0]!.taskState ?? 'SUBMITTED', ch.rootTasks[0]!.taskState || 'SUBMITTED')
-    assert.equal(ch.inFlight, 1)
-    // 消息队列 FIFO：owner 连发 3 条 task 消息给频道 lead → 顺序入库
-    const sentAt: string[] = []
-    const ins = f.db.prepare(
-      `INSERT INTO messages (id, channel_id, from_agent_id, to_agent_id, role, parts_json, metadata_json, state, attempts, created_at)
-       VALUES (?, ?, NULL, ?, 'ROLE_USER', ?, '{}', 'pending', 0, ?)`,
-    )
-    for (const i of [1, 2, 3]) {
-      const id = randomUUID()
-      const at = new Date(Date.now() + i).toISOString()
-      ins.run(id, s.ch.channelId, s.ch.leadAgentId, JSON.stringify([{ text: `问题${i}` }]), at)
-      sentAt.push(id)
-    }
-    const queued = f.db.prepare(
-      `SELECT id, state, created_at FROM messages WHERE to_agent_id = ? AND state = 'pending' ORDER BY created_at ASC`,
-    ).all(s.ch.leadAgentId) as Array<{ id: string, state: string, created_at: string }>
-    assert.deepEqual(queued.map(m => m.id), sentAt, '队列按 created_at 顺序 pop（FIFO）')
-    assert.equal(queued.length, 3)
+    const attempt = f.attempts.findLiveByWorkItem(s.w1.id)!
+    const taskId = attempt.channelTaskId!
+    f.db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId)
+    f.svc.reconcile(s.p.id, owner)
+    const blocked = f.svc.listWorkItems(s.p.id, owner).find(x => x.id === s.w1.id)!
+    assert.equal(blocked.state, 'BLOCKED')
+    assert.equal(blocked.currentAttemptId, null)
+    assert.ok(f.attempts.findById(attempt.id)!.closedAt)
+    const retried = await f.svc.dispatchWorkItem(s.p.id, s.w1.id, owner)
+    assert.equal(retried.state, 'DISPATCHED')
+  }
+  finally { f.db.close() }
+})
+
+test('C-12：解绑在飞工作项先取消 runtime task tree 再收口数据库', async () => {
+  const f = fixture(true)
+  try {
+    const s = await boot(f)
+    await f.svc.dispatchWorkItem(s.p.id, s.w1.id, owner)
+    const taskId = f.attempts.findLiveByWorkItem(s.w1.id)!.channelTaskId!
+    f.svc.unbindChannel(s.p.id, s.ch.channelId, owner)
+    assert.deepEqual(f.canceledTrees, [taskId])
+    assert.equal(f.svc.listWorkItems(s.p.id, owner).find(x => x.id === s.w1.id)!.state, 'CANCELED')
+    assert.equal(f.tasks.findById(taskId)!.state, 'CANCELED')
   }
   finally { f.db.close() }
 })

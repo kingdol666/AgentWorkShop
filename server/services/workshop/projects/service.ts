@@ -807,7 +807,7 @@ export class ProjectService {
   }): Promise<ProjectContinuationResult> {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
-    if (p.status === 'archived') throw new AppError(409, 'PROJECT_STATE_INVALID', '已归档项目不能继续开发')
+    if (p.status === 'canceled' || p.status === 'archived') throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能继续开发`)
     if (p.status === 'draft') throw new AppError(409, 'PROJECT_STATE_INVALID', '项目尚未激活；请先激活再继续开发')
     if (!p.officeChannelId || !p.leadAgentId) {
       throw new AppError(409, 'PROJECT_OFFICE_MISSING', '项目缺少办公室频道/Leader，不能继续开发')
@@ -928,21 +928,11 @@ export class ProjectService {
   private cancelTaskTreeForProject(taskId: string, by: string, reason: string): Array<{ id: string, state: string }> {
     const mgr = this.manager as unknown as { cancelTaskTreeInternal?: (taskId: string, by: string, reason: string) => Array<{ id: string, state: string }> }
     if (typeof mgr.cancelTaskTreeInternal === 'function') {
-      try {
-        return mgr.cancelTaskTreeInternal(taskId, by, reason) ?? []
-      }
-      catch {
-        return []
-      }
+      return mgr.cancelTaskTreeInternal(taskId, by, reason) ?? []
     }
     const engineAccess = (this.manager as unknown as { getTaskEngine?: () => { cancelTree?: (taskId: string, by: string, reason: string) => Array<{ id: string, state: string }> } }).getTaskEngine
     const engine = typeof engineAccess === 'function' ? engineAccess.call(this.manager) : undefined
-    try {
-      return engine?.cancelTree?.(taskId, by, reason) ?? []
-    }
-    catch {
-      return []
-    }
+    return engine?.cancelTree?.(taskId, by, reason) ?? []
   }
 
   /**
@@ -1010,7 +1000,7 @@ export class ProjectService {
   }): ProjectDeliverableRow {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
-    if (p.status === 'archived' || p.status === 'completed') {
+    if (p.status === 'canceled' || p.status === 'archived' || p.status === 'completed') {
       throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能新增交付物`)
     }
     if (!input.name?.trim()) throw new AppError(400, 'BAD_REQUEST', '交付物名称不能为空')
@@ -1107,7 +1097,7 @@ export class ProjectService {
   }): ProjectWorkItemRow {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
-    if (p.status === 'archived' || p.status === 'completed') {
+    if (p.status === 'canceled' || p.status === 'archived' || p.status === 'completed') {
       throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能新增工作项`)
     }
     const d = this.deliverables.listByProject(id).find(x => x.id === input.deliverableId)
@@ -2032,7 +2022,8 @@ export class ProjectService {
       const attempt = wi.currentAttemptId ? this.attempts.findById(wi.currentAttemptId) : undefined
       if (!attempt || !attempt.channelTaskId) {
         withTransaction(this.db, () => {
-          this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'ATTEMPT_MISSING' })
+          if (attempt && !attempt.closedAt) this.attempts.close(attempt.id, 'BLOCKED', 'ATTEMPT_MISSING')
+          this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'ATTEMPT_MISSING', currentAttemptId: null })
           this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: 'ATTEMPT_MISSING' }, wi.traceId, 'work.blocked', `work:${wi.id}:attempt-missing`, { workItemId: wi.id, reason: 'ATTEMPT_MISSING' })
         })
         continue
@@ -2040,7 +2031,8 @@ export class ProjectService {
       const task = this.tasks.findById(attempt.channelTaskId)
       if (!task) {
         withTransaction(this.db, () => {
-          this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'TASK_MISSING' })
+          if (!attempt.closedAt) this.attempts.close(attempt.id, 'BLOCKED', 'TASK_MISSING')
+          this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'TASK_MISSING', currentAttemptId: null })
           this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: 'TASK_MISSING' }, wi.traceId, 'work.blocked', `work:${wi.id}:task-missing`, { workItemId: wi.id, reason: 'TASK_MISSING' })
         })
         continue
@@ -2800,7 +2792,7 @@ export class ProjectService {
   }): ProjectDeliverableRow {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
-    if (p.status === 'completed' || p.status === 'archived') {
+    if (p.status === 'canceled' || p.status === 'completed' || p.status === 'archived') {
       throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能编辑交付物`)
     }
     const d = this.deliverables.findById(deliverableId)
@@ -3961,6 +3953,7 @@ export class ProjectService {
 
   agentRequestProjectComplete(agentId: string): ProjectApprovalRow {
     const ctx = this.requireAgentContext(agentId, 'leader')
+    if (ctx.project.status === 'canceled') throw new AppError(409, 'PROJECT_STATE_INVALID', '项目已终止')
     if (ctx.project.status === 'completed') throw new AppError(409, 'PROJECT_STATE_INVALID', '项目已完成')
     if (ctx.project.status === 'archived') throw new AppError(409, 'PROJECT_STATE_INVALID', '项目已归档')
     this.assertCompletionGates(ctx.project.id)
@@ -4348,7 +4341,7 @@ export class ProjectService {
   }
 
   private assertLeaderProjectMutable(p: ProjectRow): void {
-    if (p.status === 'completed' || p.status === 'archived') {
+    if (p.status === 'canceled' || p.status === 'completed' || p.status === 'archived') {
       throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能提案`)
     }
   }
@@ -4688,13 +4681,17 @@ export class ProjectService {
     if (p.officeChannelId === channelId) throw new AppError(400, 'PROJECT_OFFICE_NOT_MEMBER', '不能解绑项目办公室')
     const b = this.bindings.findOne(id, channelId)
     if (!b || b.status !== 'active') throw new AppError(404, 'NOT_FOUND', 'Channel 未绑定到该项目')
+    // 先停止运行时，再提交解绑和数据库终态；取消失败时保留绑定，允许重试。
+    const inFlight = this.workItems.listByProject(id)
+      .filter(w => w.channelId === channelId && !['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(w.state))
+    for (const wi of inFlight) {
+      const attempt = wi.currentAttemptId ? this.attempts.findById(wi.currentAttemptId) : undefined
+      if (attempt?.channelTaskId) this.cancelTaskTreeForProject(attempt.channelTaskId, actor.id, 'CHANNEL_DETACHED')
+    }
     this.bindings.setStatus(id, channelId, 'detached')
     // P0-3 解绑语义：该频道名下的在飞工作项随解绑终结化（CANCELED + attempt 闭合 +
     // work.canceled 事件）。不终结化的旧行为：worker 因绑定失效 403 永远无法提交 →
-    // 工作项永久悬挂；且 reconcile 终态守卫保证迟到的 root 终态不会复活已终结工作项
-    // （root 进程本身的回收属频道侧生命周期，随资源回收计划处理）。
-    const inFlight = this.workItems.listByProject(id)
-      .filter(w => w.channelId === channelId && !['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(w.state))
+    // 工作项永久悬挂；且 reconcile 终态守卫保证迟到的 root 终态不会复活已终结工作项。
     for (const wi of inFlight) {
       withTransaction(this.db, () => {
         this.workItems.update(wi.id, {
