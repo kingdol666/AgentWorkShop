@@ -178,8 +178,7 @@ export function createMemoryRepo(db: DatabaseSync) {
         THEN agent_memories.status ELSE excluded.status END,
       expires_at = excluded.expires_at, created_at = excluded.created_at`,
   )
-  const markStatusValidatedStmt = db.prepare(`UPDATE agent_memories SET status = ? WHERE id = ? AND status NOT IN ('validated', 'retired')`)
-  const markStatusRetiredStmt = db.prepare(`UPDATE agent_memories SET status = ? WHERE id = ? AND status != 'retired'`)
+  const markStatusStmt = db.prepare(`UPDATE agent_memories SET status = ? WHERE id = ? AND status = ?`)
   const expireSweepStmt = db.prepare(
     `UPDATE agent_memories SET status = 'retired'
       WHERE expires_at IS NOT NULL AND expires_at != '' AND expires_at <= ? AND status != 'retired'`,
@@ -281,10 +280,12 @@ export function createMemoryRepo(db: DatabaseSync) {
       ).all(...args) as unknown as Array<MemoryRow & { rowid: number }>
     },
 
-    /** 生命周期迁移(candidate→validated / →retired);CAS 防止强状态被并发旧写覆盖 */
-    markStatus(id: string, status: MemoryStatus): boolean {
-      const stmt = status === 'retired' ? markStatusRetiredStmt : markStatusValidatedStmt
-      return Number(stmt.run(status, id).changes ?? 0) > 0
+    /** 生命周期迁移：调用方必须声明 expected-state；条件 UPDATE 防止旧读覆盖并发新状态 */
+    markStatus(id: string, status: MemoryStatus, expectedStatus: MemoryStatus): boolean {
+      if (status === 'validated' && expectedStatus !== 'candidate') return false
+      if (expectedStatus === 'validated' && status !== 'retired') return false
+      if (expectedStatus === 'retired' && status !== 'retired') return false
+      return Number(markStatusStmt.run(status, id, expectedStatus).changes ?? 0) > 0
     },
 
     /** 过期扫描:expires_at <= now 且未退休 → status='retired';返回迁移行数(维护定时器调用) */

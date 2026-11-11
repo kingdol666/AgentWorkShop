@@ -24,6 +24,12 @@ interface PromoteExperienceDeps {
   memoryRepo?: Pick<MemoryRepo, 'getById' | 'markStatus'>
 }
 
+type HarnessProfileRepoLike = Pick<ReturnType<typeof createHarnessProfileRepo>, 'get' | 'markStatus' | 'activeOf' | 'listByChannel'>
+
+interface PromoteProfileDeps {
+  profileRepo?: HarnessProfileRepoLike
+}
+
 function stalePromotionFailure(next: 'validated' | 'retired'): PromoteResult<'validated' | 'retired'> {
   return { ok: false, reasons: [`PROMOTION_CAS_FAILED: 经验状态迁移未命中（目标 ${next}，条目已被并发更新）`] }
 }
@@ -117,7 +123,11 @@ export function promoteExperience(db: DatabaseSync,
   }
   const decision = evaluateExperienceGate(row, input.to)
   if (!decision.allowed || !decision.next) return { ok: false, reasons: decision.reasons }
-  if (!repo.markStatus(input.memoryId, decision.next)) return stalePromotionFailure(decision.next)
+  const expectedStatus = row.status ?? 'active'
+  if (input.to === 'validated' && expectedStatus !== 'candidate') {
+    return { ok: false, reasons: [`仅 candidate 可晋级 validated（当前 ${expectedStatus}）`] }
+  }
+  if (!repo.markStatus(input.memoryId, decision.next, expectedStatus)) return stalePromotionFailure(decision.next)
   // WP-C3:元层成效入表(哪类改进动作有效,由事实计数回答)
   createImprovementActionRepo(db).record({
     actionKind: 'experience_promote',
@@ -158,8 +168,9 @@ export function promoteProfile(
     /** @deprecated 仅供测试/历史兼容;to='active' 时不再接受 */
     bench?: PairedBenchResult | null
   },
+  deps: PromoteProfileDeps = {},
 ): PromoteResult<'shadow' | 'active' | 'superseded'> {
-  const repo = createHarnessProfileRepo(db)
+  const repo = deps.profileRepo ?? createHarnessProfileRepo(db)
   const row = repo.get(input.profileId)
   if (!row || row.channelId !== input.channelId) return { ok: false, reasons: ['profile 不存在或不属于该频道'] }
 
@@ -177,7 +188,9 @@ export function promoteProfile(
 
   const decision = evaluateProfileGate(row, input.to, bench)
   if (!decision.allowed || !decision.next) return { ok: false, reasons: decision.reasons }
-  repo.markStatus(input.profileId, decision.next)
+  if (!repo.markStatus(input.profileId, decision.next)) {
+    return { ok: false, reasons: [`PROFILE_STATUS_CAS_FAILED: profile 状态迁移未命中（目标 ${decision.next}，条目已被并发更新）`] }
+  }
   if (benchRunId) {
     // 采纳证据绑定到 profile:审计/复盘可追溯到具体一次配对评测
     db.prepare('UPDATE channel_harness_profiles SET bench_run_id = ?, promoted_at = ? WHERE id = ?')
@@ -212,13 +225,16 @@ export function promoteProfile(
 export function rollbackProfile(
   db: DatabaseSync,
   input: { channelId: string, actor: string, actorName?: string },
+  deps: PromoteProfileDeps = {},
 ): PromoteResult<'active'> & { targetId?: string } {
-  const repo = createHarnessProfileRepo(db)
+  const repo = deps.profileRepo ?? createHarnessProfileRepo(db)
   const active = repo.activeOf(input.channelId)
   if (!active) return { ok: false, reasons: ['当前没有 active profile，无需回滚'] }
   const targetId = rollbackTarget(repo.listByChannel(input.channelId, 50), active.id)
   if (!targetId) return { ok: false, reasons: ['没有更早版本可回滚（唯一版本）'] }
-  repo.markStatus(targetId, 'active')
+  if (!repo.markStatus(targetId, 'active')) {
+    return { ok: false, reasons: ['PROFILE_STATUS_CAS_FAILED: 回滚目标状态迁移未命中（条目已被并发更新）'] }
+  }
   createImprovementActionRepo(db).record({
     actionKind: 'profile_rollback',
     subjectKind: 'harness_profile',

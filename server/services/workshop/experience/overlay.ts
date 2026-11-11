@@ -40,6 +40,10 @@ export function channelOverlayText(channelId: string): string {
         .map(id => memRepo.getById(id))
         .filter((r): r is NonNullable<typeof r> => {
           if (!r || r.channelId !== channelId || r.kind !== 'experience' || r.status !== 'validated') return false
+          if (r.expiresAt !== null && r.expiresAt !== undefined) {
+            const expiresAt = Date.parse(r.expiresAt)
+            if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return false
+          }
           if (r.scopeKind === 'line') return Boolean(scope.lineId && r.scopeKey === scope.lineId)
           if (r.scopeKind === 'product') return Boolean(scope.productId && r.scopeKey === scope.productId)
           if (r.scopeKind === 'channel') return !r.scopeKey || r.scopeKey === channelId

@@ -22,11 +22,11 @@ const { mergeExperiences, promoteExperience } = await import('../server/services
 const { configureAmlRuntime } = await import('../server/services/workshop/aml/runtime')
 const { channelOverlayText, resetHarnessOverlayCache } = await import('../server/services/workshop/experience/overlay')
 
-function experience(repo: ReturnType<typeof createMemoryRepo>, channelId: string, dedupKey: string, taskIds: string[], status: 'candidate' | 'validated' = 'candidate') {
+function experience(repo: ReturnType<typeof createMemoryRepo>, channelId: string, dedupKey: string, taskIds: string[], status: 'candidate' | 'validated' = 'candidate', expiresAt: string | null = null) {
   return repo.upsertExperience({
     channelId, agentId: 'agent-a', kind: 'experience', title: dedupKey, titleFts: dedupKey,
     content: `内容-${dedupKey}`, importance: 0.8, dedupKey, outcome: 'positive',
-    evidence: taskIds.length > 0 ? { taskIds } : { taskIds: [], traceId: `empty-${dedupKey}` }, scopeKind: 'line', scopeKey: 'line-1', status,
+    evidence: taskIds.length > 0 ? { taskIds } : { taskIds: [], traceId: `empty-${dedupKey}` }, scopeKind: 'line', scopeKey: 'line-1', status, expiresAt,
   })
 }
 
@@ -91,14 +91,16 @@ test('RSI overlay renders only validated same-line experience pins', () => {
     const repo = createMemoryRepo(db)
     const candidate = experience(repo, a.id, 'candidate', ['t-1'], 'candidate')
     const valid = experience(repo, a.id, 'valid', ['t-2'], 'validated')
+    const expired = experience(repo, a.id, 'expired', ['t-4'], 'validated', new Date(Date.now() - 1_000).toISOString())
     const foreignChannel = channels.create({ name: 'B' })
     const foreign = experience(repo, foreignChannel.id, 'foreign', ['t-3'], 'validated')
     const profiles = createHarnessProfileRepo(db)
-    profiles.create({ channelId: a.id, status: 'active', layers: { pins: [candidate.id, valid.id, foreign.id] } })
+    profiles.create({ channelId: a.id, status: 'active', layers: { pins: [candidate.id, valid.id, expired.id, foreign.id] } })
     resetHarnessOverlayCache()
     const text = channelOverlayText(a.id)
     assert.match(text, /内容-valid/)
     assert.doesNotMatch(text, /内容-candidate/)
+    assert.doesNotMatch(text, /内容-expired/)
     assert.doesNotMatch(text, /内容-foreign/)
   }
   finally { db.close() }
@@ -116,8 +118,10 @@ test('RSI memory status CAS cannot overwrite validated with a stale write', () =
     const completedA2 = task(tasks, a.id, lead.id, 'done-a2')
     const repo = createMemoryRepo(db)
     const row = experience(repo, a.id, 'cas', [completedA1.id, completedA2.id])
-    assert.equal(repo.markStatus(row.id, 'validated'), true)
-    assert.equal(repo.markStatus(row.id, 'candidate'), false)
+    assert.equal(repo.markStatus(row.id, 'validated', 'candidate'), true)
+    assert.equal(repo.markStatus(row.id, 'candidate', 'validated'), false)
+    assert.equal(repo.markStatus(row.id, 'contested', 'candidate'), false)
+    assert.equal(repo.markStatus(row.id, 'active', 'candidate'), false)
     assert.equal(repo.getById(row.id)?.status, 'validated')
     assert.equal(promoteExperience(db, { memoryId: row.id, channelId: a.id, to: 'validated', actor: 'u-1' }).ok, false)
   }
@@ -138,9 +142,9 @@ test('RSI promotion rejects a deterministic stale CAS without audit or improveme
     const row = experience(repo, a.id, 'stale-cas', [completedA1.id, completedA2.id])
     const staleRepo = {
       getById: (id: string) => repo.getById(id),
-      markStatus: (id: string, status: 'validated' | 'retired') => {
-        assert.equal(repo.markStatus(id, 'validated'), true, 'simulated concurrent candidate→validated update')
-        return repo.markStatus(id, status)
+      markStatus: (id: string, status: 'validated' | 'retired', expectedStatus: 'candidate' | 'active' | 'validated' | 'retired') => {
+        assert.equal(repo.markStatus(id, 'validated', expectedStatus), true, 'simulated concurrent candidate→validated update')
+        return repo.markStatus(id, status, expectedStatus)
       },
     }
     bindOpsRepos({ audit: createAuditRepo(db) } as never)

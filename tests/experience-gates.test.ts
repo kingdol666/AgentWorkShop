@@ -16,6 +16,8 @@ delete process.env.AW_BENCH_MODE
 const { openWorkshopDb } = await import('../server/services/workshop/db/database')
 const { createMemoryRepo } = await import('../server/services/workshop/db/memory.repo')
 const { createTaskRepo } = await import('../server/services/workshop/db/task.repo')
+const { createAuditRepo } = await import('../server/services/workshop/db/ops.repo')
+const { bindOpsRepos } = await import('../server/services/workshop/ops/ops')
 const { createHarnessProfileRepo } = await import('../server/services/workshop/experience/harness-profile')
 const { evaluateExperienceGate, evaluateProfileGate, rollbackTarget } = await import('../server/services/workshop/experience/gates')
 const { promoteExperience, promoteProfile, rollbackProfile } = await import('../server/services/workshop/experience/promote')
@@ -115,6 +117,13 @@ test('Profile 门：candidate→shadow 允许；shadow→active 无 bench 拒绝
   assert.equal(regress.allowed, false)
   assert.match(regress.reasons.join(), /配对未通过/)
 
+  for (const pValue of [0, 0.05, 1, null, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -0.01, 1.01]) {
+    const decision = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue, primaryDelta: 0.1, costDelta: 0.2 })
+    assert.equal(decision.allowed, pValue === 0, `pValue=${String(pValue)}: only 0 with positive delta is significant`)
+  }
+  assert.equal(evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.01, primaryDelta: 0, costDelta: 0.02 }).allowed, true, 'zero delta uses non-inferiority path')
+  assert.equal(evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.01, primaryDelta: -0.01, costDelta: 0.0 }).allowed, false, 'negative delta must fail')
+
   const notShadow = evaluateProfileGate({ status: 'candidate', version: 1 }, 'active', { pValue: 0.01, primaryDelta: 0.1, costDelta: 0 })
   assert.equal(notShadow.allowed, false, '仅 shadow 可登 active')
 })
@@ -178,6 +187,53 @@ test('执行面：promoteProfile 需要 bench；落地后单 active 不变量保
     const bound = db.prepare('SELECT bench_run_id AS id, promoted_at AS at FROM channel_harness_profiles WHERE id = ?').get(p.id) as { id?: string, at?: string }
     assert.equal(bound.id, (run as { run: { id: string } }).run.id)
     assert.ok(bound.at, 'promoted_at 必须落值')
+
+    // markStatus=false 必须 fail closed，且不写 bench binding/action/audit
+    const stale = profiles.create({ channelId: 'ch-1', layers: { overlay: 'stale' } })
+    assert.equal(promoteProfile(db, { profileId: stale.id, channelId: 'ch-1', to: 'shadow', actor: 'u-1' }).ok, true)
+    const staleRun = recordBenchRun(db, {
+      channelId: 'ch-1', actor: 'u-1',
+      artifact: { profileId: stale.id, perSeed: [{ seed: 1, a: 1.12, b: 1 }, { seed: 2, a: 1.12, b: 1 }, { seed: 3, a: 1.12, b: 1 }] },
+    })
+    assert.equal(staleRun.ok, true)
+    bindOpsRepos({ audit: createAuditRepo(db) } as never)
+    const staleRepo = {
+      get: (id: string) => profiles.get(id),
+      markStatus: () => false,
+      activeOf: (channelId: string) => profiles.activeOf(channelId),
+      listByChannel: (channelId: string, limit: number) => profiles.listByChannel(channelId, limit),
+    }
+    const actionCountBefore = Number(db.prepare('SELECT COUNT(*) AS n FROM improvement_actions WHERE subject_id = ?').get(stale.id)?.n ?? 0)
+    const auditCountBefore = Number(db.prepare('SELECT COUNT(*) AS n FROM audit_log WHERE target_id = ?').get(stale.id)?.n ?? 0)
+    const staleResult = promoteProfile(db, {
+      profileId: stale.id, channelId: 'ch-1', to: 'active', actor: 'u-1',
+      benchRunId: (staleRun as { run: { id: string } }).run.id,
+    }, { profileRepo: staleRepo })
+    assert.equal(staleResult.ok, false)
+    assert.match(staleResult.reasons.join('；'), /PROFILE_STATUS_CAS_FAILED/)
+    const staleBinding = db.prepare('SELECT bench_run_id AS id, promoted_at AS at FROM channel_harness_profiles WHERE id = ?').get(stale.id) as { id?: string | null, at?: string | null }
+    assert.equal(staleBinding.id ?? null, null)
+    assert.equal(staleBinding.at ?? null, null)
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM improvement_actions WHERE subject_id = ?').get(stale.id)?.n, actionCountBefore)
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM audit_log WHERE target_id = ?').get(stale.id)?.n, auditCountBefore)
+
+    const rollbackV1 = profiles.create({ channelId: 'ch-rollback', layers: { overlay: 'old' } })
+    profiles.markStatus(rollbackV1.id, 'active')
+    const rollbackV2 = profiles.create({ channelId: 'ch-rollback', layers: { overlay: 'new' } })
+    profiles.markStatus(rollbackV2.id, 'active')
+    const rollbackActionBefore = Number(db.prepare('SELECT COUNT(*) AS n FROM improvement_actions WHERE subject_id = ?').get(rollbackV1.id)?.n ?? 0)
+    const rollbackAuditBefore = Number(db.prepare('SELECT COUNT(*) AS n FROM audit_log WHERE target_id = ?').get(rollbackV1.id)?.n ?? 0)
+    const rollbackStaleRepo = {
+      get: (id: string) => profiles.get(id),
+      markStatus: () => false,
+      activeOf: (channelId: string) => profiles.activeOf(channelId),
+      listByChannel: (channelId: string, limit: number) => profiles.listByChannel(channelId, limit),
+    }
+    const rollbackStale = rollbackProfile(db, { channelId: 'ch-rollback', actor: 'u-1' }, { profileRepo: rollbackStaleRepo })
+    assert.equal(rollbackStale.ok, false)
+    assert.match(rollbackStale.reasons.join('；'), /PROFILE_STATUS_CAS_FAILED/)
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM improvement_actions WHERE subject_id = ?').get(rollbackV1.id)?.n, rollbackActionBefore)
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM audit_log WHERE target_id = ?').get(rollbackV1.id)?.n, rollbackAuditBefore)
   }
   finally {
     db.close()

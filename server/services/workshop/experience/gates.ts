@@ -153,11 +153,15 @@ export function evaluateProfileGate(
   if (target === 'active') {
     if (status !== 'shadow') return { allowed: false, reasons: [`仅 shadow 可晋级 active（当前 ${status}）`] }
     if (!bench) return { allowed: false, reasons: ['缺少配对评测结果（WP-B2），不得晋级'] }
-    const significant = bench.pValue !== null && bench.pValue < PROFILE_GATE.significanceP && bench.primaryDelta > 0
+    const pValue = bench.pValue
+    if (typeof pValue !== 'number' || !Number.isFinite(pValue) || pValue < 0 || pValue > 1) {
+      return { allowed: false, reasons: ['配对评测 pValue 无效：必须是有限且位于 [0,1] 的数值'] }
+    }
+    const significant = pValue < PROFILE_GATE.significanceP && bench.primaryDelta > 0
     const nonInferior = bench.primaryDelta >= 0 && bench.costDelta <= PROFILE_GATE.maxCostDelta
-    if (significant) return { allowed: true, next: 'active', reasons: [`配对显著改善 p=${bench.pValue}`] }
+    if (significant) return { allowed: true, next: 'active', reasons: [`配对显著改善 p=${pValue}`] }
     if (nonInferior) return { allowed: true, next: 'active', reasons: ['无回归且成本非劣'] }
-    return { allowed: false, reasons: [`配对未通过：p=${bench.pValue ?? 'n/a'} Δ主终点=${bench.primaryDelta} Δ成本=${bench.costDelta}`] }
+    return { allowed: false, reasons: [`配对未通过：p=${pValue} Δ主终点=${bench.primaryDelta} Δ成本=${bench.costDelta}`] }
   }
   // superseded
   if (status === 'superseded') return { allowed: false, reasons: ['已 superseded'] }
