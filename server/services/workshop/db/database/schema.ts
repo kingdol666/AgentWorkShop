@@ -63,9 +63,9 @@ CREATE TABLE IF NOT EXISTS messages (
   consumed_at   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_messages_queue ON messages(channel_id, to_agent_id, state, created_at);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_idempotency
-  ON messages(channel_id, session_id, actor_user_id, client_message_id)
-  WHERE session_id IS NOT NULL AND actor_user_id IS NOT NULL AND client_message_id IS NOT NULL;
+-- idx_messages_client_idempotency 不在此处内联：存量库升级时本脚本先于
+-- migrateSessionContextColumns 执行，列尚未补齐会让 CREATE UNIQUE INDEX 直接崩溃。
+-- 统一由 ensureSessionIndexes（补列后、幂等）创建 —— 新库/旧库同路径。
 CREATE TABLE IF NOT EXISTS subscriptions (
   channel_id      TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
   agent_id        TEXT NOT NULL REFERENCES channel_agents(id) ON DELETE CASCADE,
