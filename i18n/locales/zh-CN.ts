@@ -90,6 +90,16 @@ export default {
       writeRate: '写命令成功率',
       alarms: '活跃告警',
     },
+    shift: {
+      allNormal: '全线正常',
+      needAttention: '需关注 · {p0} 条告警',
+      queue: '告警队列',
+      queueSub: '未确认 · 按时间',
+      empty: '当前无待处理告警',
+      emptySub: '采集与写控正常',
+      ack: '确认',
+      more: '查看全部',
+    },
     charts: {
       trend: '实时工况趋势',
       trendSub: '按节点量程归一化 · 近 3 分钟',

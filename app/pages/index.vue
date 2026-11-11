@@ -16,7 +16,8 @@ import { useVisibleInterval } from '@/app/composables/workshop/useVisibleInterva
 import DashboardFleetPanel from '@/app/components/dashboard/DashboardFleetPanel.vue'
 import DashboardGaugeBand from '@/app/components/dashboard/DashboardGaugeBand.vue'
 import DashboardHarnessPanel from '@/app/components/dashboard/DashboardHarnessPanel.vue'
-import DashboardHero from '@/app/components/dashboard/DashboardHero.vue'
+import DashboardAlarmQueue from '@/app/components/dashboard/DashboardAlarmQueue.vue'
+import DashboardStatusBand from '@/app/components/dashboard/DashboardStatusBand.vue'
 import DashboardLineStatePanel from '@/app/components/dashboard/DashboardLineStatePanel.vue'
 import DashboardNodeStatePanel from '@/app/components/dashboard/DashboardNodeStatePanel.vue'
 import DashboardPipelinePanel from '@/app/components/dashboard/DashboardPipelinePanel.vue'
@@ -37,6 +38,7 @@ onMounted(() => {
   daq.ensureWsFeed()
   dcw.ensureWsFeed()
   void Promise.all([daq.load(), dcw.load()]).then(() => pushTrend())
+  void daq.fetchAlarms()
   void loadHarnesses()
   useVisibleInterval(() => {
     void daq.load()
@@ -45,16 +47,20 @@ onMounted(() => {
     pushTrend()
   }, 5000, { bgMs: 30000 })
 })
+
+/** 告警确认必须走服务端:ackAlarm 内部会重新拉取未确认列表,界面据此收敛 */
+const onAckAlarm = (id: string): void => {
+  void daq.ackAlarm(id)
+}
 </script>
 
 <template>
   <div class="home">
-    <!-- Hero:产线运营中枢(校准仪表台母题;右侧 LIVE 实况仪表簇) -->
-    <DashboardHero
+    <!-- 状态带:现在是否正常 + 去哪里处理;读数交给下方量规带 -->
+    <DashboardStatusBand
       :mode="site.mode"
       :lines-active="linesActive.length"
       :lines-total="dcw.lines.length"
-      :samples-stored="daq.meta.samplesStored ?? 0"
       :alarm-count="alarmCount"
     />
 
@@ -93,6 +99,11 @@ onMounted(() => {
       v-else-if="harnesses.length > 0"
       :harnesses="harnesses"
       :ok-count="harnessOk"
+    />
+
+    <DashboardAlarmQueue
+      :alarms="daq.alarms"
+      @ack="onAckAlarm"
     />
 
     <div class="grid aw-stagger">
