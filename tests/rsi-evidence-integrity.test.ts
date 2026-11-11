@@ -8,12 +8,14 @@ process.env.AGENTWORKSHOP_TEST = '1'
 process.env.AW_MODE = 'home'
 process.env.AW_HOME = mkdtempSync(join(tmpdir(), 'aw-rsi-integrity-'))
 
-
 const { openWorkshopDb } = await import('../server/services/workshop/db/database')
 const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
 const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
 const { createTaskRepo } = await import('../server/services/workshop/db/task.repo')
 const { createMemoryRepo } = await import('../server/services/workshop/db/memory.repo')
+const { createImprovementActionRepo } = await import('../server/services/workshop/db/improvement-action.repo')
+const { createAuditRepo } = await import('../server/services/workshop/db/ops.repo')
+const { bindOpsRepos } = await import('../server/services/workshop/ops/ops')
 const { createHarnessProfileRepo } = await import('../server/services/workshop/experience/harness-profile')
 const { recordBenchRun } = await import('../server/services/workshop/experience/bench-run')
 const { mergeExperiences, promoteExperience } = await import('../server/services/workshop/experience/promote')
@@ -118,6 +120,42 @@ test('RSI memory status CAS cannot overwrite validated with a stale write', () =
     assert.equal(repo.markStatus(row.id, 'candidate'), false)
     assert.equal(repo.getById(row.id)?.status, 'validated')
     assert.equal(promoteExperience(db, { memoryId: row.id, channelId: a.id, to: 'validated', actor: 'u-1' }).ok, false)
+  }
+  finally { db.close() }
+})
+
+test('RSI promotion rejects a deterministic stale CAS without audit or improvement action', () => {
+  const db = openWorkshopDb(':memory:')
+  try {
+    const channels = createChannelRepo(db)
+    const agents = createChannelAgentRepo(db)
+    const tasks = createTaskRepo(db)
+    const a = channels.create({ name: 'A' })
+    const lead = agents.create({ channelId: a.id, templateId: null, name: 'A lead', harness: 'mock', role: 'lead' })
+    const completedA1 = task(tasks, a.id, lead.id, 'done-a1')
+    const completedA2 = task(tasks, a.id, lead.id, 'done-a2')
+    const repo = createMemoryRepo(db)
+    const row = experience(repo, a.id, 'stale-cas', [completedA1.id, completedA2.id])
+    const staleRepo = {
+      getById: (id: string) => repo.getById(id),
+      markStatus: (id: string, status: 'validated' | 'retired') => {
+        assert.equal(repo.markStatus(id, 'validated'), true, 'simulated concurrent candidate→validated update')
+        return repo.markStatus(id, status)
+      },
+    }
+    bindOpsRepos({ audit: createAuditRepo(db) } as never)
+
+    const result = promoteExperience(
+      db,
+      { memoryId: row.id, channelId: a.id, to: 'validated', actor: 'u-1' },
+      { memoryRepo: staleRepo },
+    )
+
+    assert.equal(result.ok, false)
+    assert.deepEqual(result.reasons, ['PROMOTION_CAS_FAILED: 经验状态迁移未命中（目标 validated，条目已被并发更新）'])
+    assert.equal(repo.getById(row.id)?.status, 'validated')
+    assert.equal(createImprovementActionRepo(db).stats(a.id).length, 0, 'stale CAS must not record improvement action')
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM audit_log WHERE action = ? AND target_id = ?').get('experience.promote.validated', row.id)?.n, 0, 'stale CAS must not record promotion audit')
   }
   finally { db.close() }
 })

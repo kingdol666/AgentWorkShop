@@ -7,7 +7,7 @@
  * 因此「Agent 自己给自己晋级」在结构上不可达（不在 host-tools 白名单）。
  */
 import type { DatabaseSync } from 'node:sqlite'
-import { createMemoryRepo } from '../db/memory.repo'
+import { createMemoryRepo, type MemoryRepo } from '../db/memory.repo'
 import { createImprovementActionRepo } from '../db/improvement-action.repo'
 import { recordOps } from '../ops/ops'
 import { createHarnessProfileRepo } from './harness-profile'
@@ -20,6 +20,14 @@ export interface PromoteResult<S extends string> {
   reasons: string[]
 }
 
+interface PromoteExperienceDeps {
+  memoryRepo?: Pick<MemoryRepo, 'getById' | 'markStatus'>
+}
+
+function stalePromotionFailure(next: 'validated' | 'retired'): PromoteResult<'validated' | 'retired'> {
+  return { ok: false, reasons: [`PROMOTION_CAS_FAILED: 经验状态迁移未命中（目标 ${next}，条目已被并发更新）`] }
+}
+
 function validateTaskEvidence(db: DatabaseSync, channelId: string, taskIds: string[]): string[] {
   const ids = [...new Set(taskIds.filter(id => typeof id === 'string' && id.length > 0))]
   if (ids.length === 0) return ['经验必须包含至少一个任务证据']
@@ -29,7 +37,6 @@ function validateTaskEvidence(db: DatabaseSync, channelId: string, taskIds: stri
   ).all(...ids) as Array<{ id: string, channelId: string, projectId: string | null, state: string }>
   return evaluateExperienceTaskEvidence(ids, rows, { channelId }).reasons
 }
-
 
 /**
  * 经验合并(2026-11-10 审计):把同一结论的多条候选经验合并成一条证据并集。
@@ -96,8 +103,9 @@ export function mergeExperiences(
 /** 经验条目晋升（candidate→validated）或退休（→retired） */
 export function promoteExperience(db: DatabaseSync,
   input: { memoryId: string, channelId: string, to: 'validated' | 'retired', actor: string, actorName?: string },
+  deps: PromoteExperienceDeps = {},
 ): PromoteResult<'validated' | 'retired'> {
-  const repo = createMemoryRepo(db)
+  const repo = deps.memoryRepo ?? createMemoryRepo(db)
   const row = repo.getById(input.memoryId)
   if (!row || row.channelId !== input.channelId || row.kind !== 'experience') {
     return { ok: false, reasons: ['经验条目不存在或不属于该频道'] }
@@ -109,7 +117,7 @@ export function promoteExperience(db: DatabaseSync,
   }
   const decision = evaluateExperienceGate(row, input.to)
   if (!decision.allowed || !decision.next) return { ok: false, reasons: decision.reasons }
-  repo.markStatus(input.memoryId, decision.next)
+  if (!repo.markStatus(input.memoryId, decision.next)) return stalePromotionFailure(decision.next)
   // WP-C3:元层成效入表(哪类改进动作有效,由事实计数回答)
   createImprovementActionRepo(db).record({
     actionKind: 'experience_promote',
