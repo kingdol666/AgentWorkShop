@@ -12,6 +12,7 @@
 *  agent.message       A2AMessage(harness message 事件;LLM 产出气泡)
  *  agent.delta         { delta }(LLM 流式增量;text_delta 50ms 批量,前端打字机)
  *  agent.status.message{ text }(工具标记 🔧 / 中间状态文本)
+ *  agent.block         { block: AgentToolBlock }(结构化工具块;omp 原生/其余引擎 🔧 文本归一派生)
  *  task.status         { taskId, state, assigneeId?, agentId?, closeReason?, deadlineAt?, retryCount? }
  *  task.progress       { taskId, progress, agentId? }
  *  a2a.artifact        { taskId?, artifact }(任务交付物/工件)
@@ -36,6 +37,7 @@ import type { A2AArtifact, A2AMessage } from '../server/services/workshop/types/
 import type { HarnessContinuityView, SupervisionAttemptView, WorkspaceTask } from '../server/services/workshop/types/task'
 import type { AepDaqControllerState, AepDaqNodeChange, AepDaqReading, AepDaqTemplateChange } from './daq-protocol'
 import type { AepDcwControllerState, AepDcwNodeChange, AepDcwWritten, AepDcwOptimizationChange } from './dcw-protocol'
+import type { AgentToolBlock } from './agent-blocks'
 
 /**
  * 观测 DTO 再导出:前端 store/组件需要的类型直接从协议入口取,
@@ -376,6 +378,7 @@ export type AepEvent
     | { type: 'agent.message', payload: A2AMessage }
     | { type: 'agent.delta', payload: { delta: string } }
     | { type: 'agent.status.message', payload: { text: string } }
+    | { type: 'agent.block', payload: { block: AgentToolBlock } }
     | { type: 'task.status', payload: { taskId: string, state: string, assigneeId?: string, agentId?: string, title?: string, parentId?: string, rootQueueSeq?: number, progress?: number, routeReason?: string, closeReason?: string, deadlineAt?: string, retryCount?: number, createdAt?: string, artifacts?: number } }
     | { type: 'task.progress', payload: { taskId: string, progress: number, agentId?: string } }
     | { type: 'root.queue', payload: RootQueueView }
@@ -454,9 +457,9 @@ export type AepUplink
 /** 事件类型的展示分组(前端过滤条用) */
 export const AEP_GROUPS: Record<string, string[]> = {
   all: [],
-  messages: ['agent.message', 'agent.status.message', 'a2a.message'],
+  messages: ['agent.message', 'agent.status.message', 'agent.block', 'a2a.message'],
   chat: ['chat.message', 'chat.member', 'chat.settings', 'chat.delivery.status'],
-  tools: ['agent.status.message'],
+  tools: ['agent.status.message', 'agent.block'],
   tasks: ['task.status', 'task.progress', 'a2a.artifact', 'root.queue'],
   team: ['agent.member'],
   devices: ['device.created', 'device.updated', 'device.deleted'],

@@ -246,6 +246,23 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
   }
 
   /**
+   * AEP 派生块归因:Agent 实例 id → harness id(未知/未绑 = null)。
+   * 消费方:ws event-mapping 把 🔧 文本归一为 agent.block 时透传写块(harness 字段),
+   * 逐 harness 渲染/统计不再靠信封 agentId 反查。30s 微缓存:派生路径低频,但同一实例
+   * 连续事件不必重复打库。
+   */
+  private harnessOfAgentCache = new Map<string, { harness: string | null, at: number }>()
+
+  harnessOfAgent(agentId: string): string | null {
+    const hit = this.harnessOfAgentCache.get(agentId)
+    const now = Date.now()
+    if (hit && now - hit.at < 30_000) return hit.harness
+    const harness = this.deps.repos.channelAgents.findById(agentId)?.harness ?? null
+    this.harnessOfAgentCache.set(agentId, { harness, at: now })
+    return harness
+  }
+
+  /**
    * WP3:轮换 Agent 实例 token(旧 token 进入宽限窗,桥进程自动重连过渡)。
    * 返回 { token, prevTokenUntil, channelId, agentId };实例不属于该 channel → 404。
    * 审计由调用方(API 路由)写 agent.token.rotate。
