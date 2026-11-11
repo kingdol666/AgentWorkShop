@@ -807,7 +807,8 @@ export class ProjectService {
   }): Promise<ProjectContinuationResult> {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
-    if (p.status === 'canceled' || p.status === 'archived') throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能继续开发`)
+    if (p.status === 'canceled') throw new AppError(409, 'PROJECT_STATE_INVALID', '项目已终止，不能继续开发')
+    if (p.status === 'archived') throw new AppError(409, 'PROJECT_STATE_INVALID', '已归档项目不能继续开发')
     if (p.status === 'draft') throw new AppError(409, 'PROJECT_STATE_INVALID', '项目尚未激活；请先激活再继续开发')
     if (!p.officeChannelId || !p.leadAgentId) {
       throw new AppError(409, 'PROJECT_OFFICE_MISSING', '项目缺少办公室频道/Leader，不能继续开发')
