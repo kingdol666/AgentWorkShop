@@ -127,7 +127,7 @@ export abstract class OmpRpcAgentImplCore extends BaseAgentImpl {
     this.agentName = this.config.name ?? 'agent'
     this.agentRole = this.config.role ?? 'worker'
     this.channelId = this.config.channelId ?? ''
-    this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName }
+    this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName, harness: this.harnessId }
     this.roster = createRosterCache({
       selfAgentId: this.selfAgentId,
       listAgents: () => this.workspace!.listAgents(),
@@ -143,7 +143,7 @@ export abstract class OmpRpcAgentImplCore extends BaseAgentImpl {
     this.agentName = input.agent.name
     this.agentRole = input.agent.role
     this.selfAgentId = input.agent.id
-    this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName }
+    this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName, harness: this.harnessId }
     this.roster = createRosterCache({
       selfAgentId: this.selfAgentId,
       listAgents: () => this.workspace!.listAgents(),

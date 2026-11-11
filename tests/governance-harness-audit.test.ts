@@ -87,7 +87,7 @@ test('captures both Harness identities with paired server invocations and redact
   assert.equal(currentToolInvocation(), undefined)
 })
 
-test('propagates actual BaseAgent Harness identities before any Harness process is started', { skip: 'WIP(并行在途):待 bridgeCtx.identity.harness 落地后恢复' }, async () => {
+test('propagates actual BaseAgent Harness identities before any Harness process is started', async () => {
   const { OmpRpcAgentImpl } = await import('../server/services/workshop/agents/omp-agent')
   const { OpenCodeAgentImpl } = await import('../server/services/workshop/agents/opencode-agent')
   for (const [harness, Agent] of [['omp', OmpRpcAgentImpl], ['opencode', OpenCodeAgentImpl]] as const) {
@@ -98,7 +98,7 @@ test('propagates actual BaseAgent Harness identities before any Harness process 
   }
 })
 
-test('correlates repeated actual mock-driver calls without deduplicating attempts', { skip: 'WIP(并行在途):待驱动审计 outcome 字段落地后恢复' }, async () => {
+test('correlates repeated actual mock-driver calls without deduplicating attempts', async () => {
   const path = sink('driver')
   const { DcwControllerActuation } = await import('../server/services/workshop/dcw/dcw-controller/actuation')
   const { DcwNode } = await import('../server/services/workshop/dcw/dcw-node')
@@ -128,8 +128,12 @@ test('correlates repeated actual mock-driver calls without deduplicating attempt
   assert.notEqual(driverStarts[0]?.driver_call_id, driverStarts[1]?.driver_call_id)
   assert.ok(driverStarts.every(row => row.invocation_id === start.invocation_id && row.harness === 'opencode' && row.task_id === 'task-test'))
   assert.ok(driverStarts.every(row => row.driver_config.password === '[REDACTED]'))
-  assert.ok(driverEnds.every(row => row.outcome.ok === true && row.outcome.readback === 52))
-  assert.doesNotMatch(readFileSync(path, 'utf8'), /driver-secret/)
+  // mock 驱动的诚实 ACK 语义(drivers/mock.ts):readback 是「指令值回显」不冒充独立读 →
+  // readback=null + ack='transport-ack';重复调用不合并,每次调用独立 driver_call_id/outcome。
+  assert.ok(driverEnds.every(row => row.outcome.ok === true && row.outcome.readback === null && row.outcome.ack === 'transport-ack'),
+    `outcome 实际=${JSON.stringify(driverEnds.map(row => row.outcome))}`)
+  assert.ok(driverEnds.every(row => row.invocation_id === start.invocation_id && row.harness === 'opencode'))
+  assert.doesNotMatch(readFileSync(path, 'utf-8'), /driver-secret/)
 })
 
 test('an unavailable sink prevents dispatch and keeps subsequent attempts fail closed', async () => {
