@@ -90,6 +90,16 @@ export default {
       writeRate: 'Write Success',
       alarms: 'Active Alarms',
     },
+    shift: {
+      allNormal: 'All lines normal',
+      needAttention: 'Attention · {p0} alarms',
+      queue: 'Alarm Queue',
+      queueSub: 'Unacked · by time',
+      empty: 'No open alarms',
+      emptySub: 'Acquisition and writes normal',
+      ack: 'Ack',
+      more: 'View all',
+    },
     charts: {
       trend: 'Live Condition Trends',
       trendSub: 'Normalized per node range · last 3 min',
