@@ -493,9 +493,23 @@ try {
     ab.status === 0 && bench && bench.pValue !== null && bench.pValue < 0.05 && bench.primaryDelta > 0 && bench.costDelta <= 0.05,
     bench ? `p=${bench.pValue} Δ=${bench.primaryDelta} cost=${bench.costDelta} n=${bench.pairs}` : `exit=${ab.status} ${ab.stderr?.slice(0, 200)}`)
 
+  // 2026-11-12（PR #180 治理收紧）：pin 注入按频道属主校验（C-08 修复）——chA 的经验
+  // 不能再被 chE 按 ID 跨频道注入。正确路径 = 先把 validated 经验复制到 chE（本频道
+  // 属主、同 line scope），再 pin 本频道行。旧行为（跨频道注入）本身就是被修的缺陷。
+  const chEPinId = `pin-che-${TAG}`
+  qrun(
+    `INSERT INTO agent_memories (id, channel_id, agent_id, kind, title, title_fts, content, importance,
+       task_id, session_id, dedup_key, access_count, last_accessed_at, created_at,
+       outcome, evidence_json, scope_kind, scope_key, status, expires_at)
+     SELECT ?, ?, ?, kind, title, title_fts, content, importance,
+       task_id, '', ?, 0, NULL, ?,
+       outcome, evidence_json, scope_kind, scope_key, 'validated', NULL
+     FROM agent_memories WHERE id = ?`,
+    chEPinId, chE.channelId, workerE, `exp:pin:${TAG}`, new Date().toISOString(), captureRows[0].id,
+  )
   const prof1 = pick(await api('POST', `/api/workshop/channels/${chE.channelId}/harness-profiles`, {
     overlay: 'Prefer the pinned soak-zone experience; governance gates unchanged.',
-    pins: [captureRows[0].id],
+    pins: [chEPinId],
     origin: { source: 'rsi-live-e2e' },
   }, H()), 'data.profile')
   const shadow1 = await api('POST', `/api/workshop/channels/${chE.channelId}/harness-profiles/promote`, { profileId: prof1.id, to: 'shadow' }, H())
