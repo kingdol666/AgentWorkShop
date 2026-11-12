@@ -159,12 +159,12 @@ $ aw start
 - 设置描述符共 **144 项、19 组**（`aw config list` 即打印 144 行）：
 
 | 组 | 项数 | 组 | 项数 | 组 | 项数 | 组 | 项数 |
-|---|---|---|---|---|---|---|---|
+|---|---:|---|---:|---|---:|---|---:|
 | `server` | 3 | `app` | 2 | `api` | 4 | `theme` | 2 |
-| `i18n` | 1 | `time` | 1 | `security` | 7 | `daq` | 27 |
+| `i18n` | 1 | `time` | 1 | `security` | 8 | `daq` | 38 |
 | `memory` | 10 | `omp` | 4 | `harness` | 12 | `dcw` | 4 |
-| `workshop` | 15 | `backup` | 3 | `retention` | 6 | `log` | 1 |
-| `aml` | 16 | `mcp` | 1 | | | | |
+| `workshop` | 19 | `backup` | 3 | `retention` | 8 | `log` | 1 |
+| `aml` | 19 | `mcp` | 1 | `optimizer` | 4 | | |
 
   其中 `live`（保存即生效）47 项、`restart`（重启对应模式后生效）97 项，
   `aw config list` 每行末尾会标注 `live` 或 `restart`。
