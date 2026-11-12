@@ -181,6 +181,46 @@ export async function fetchNodeSeries(
   return tagged.get(nodeId) ?? []
 }
 
+export interface NearestGridAlignment {
+  values: number[]
+  missing: number
+}
+
+/**
+ * 将一个节点的已清洗时序按最近邻映射到公共网格。
+ *
+ * 节点轮询相位不必与公共网格完全相等;只要最近样本落在 maxInterpMs
+ * 容差内就应保留。输入按 at 升序,指针只单调前移,与 buildDataset 的
+ * 生产路径使用同一实现,便于锁定 PR166 的偏移采样回归。
+ */
+export function alignSeriesToGridNearest(
+  series: { at: number, value: number }[],
+  gridStart: number,
+  steps: number,
+  beatMs: number,
+  maxInterpMs: number,
+): NearestGridAlignment {
+  const alignTol = Math.max(1, maxInterpMs)
+  const values: number[] = []
+  let missing = 0
+  let ptr = 0
+  for (let i = 0; i < steps; i++) {
+    const t = gridStart + i * beatMs
+    while (ptr + 1 < series.length && Math.abs(series[ptr + 1]!.at - t) < Math.abs(series[ptr]!.at - t)) ptr++
+    while (ptr > 0 && Math.abs(series[ptr - 1]!.at - t) <= Math.abs(series[ptr]!.at - t)) ptr--
+    const near = series[ptr]
+    const value = near && Math.abs(near.at - t) <= alignTol ? near.value : undefined
+    if (value === undefined || !Number.isFinite(value)) {
+      values.push(Number.NaN)
+      missing++
+    }
+    else {
+      values.push(value)
+    }
+  }
+  return { values, missing }
+}
+
 // ---------- 主流程 ----------
 
 export interface ProcessDatasetExtras {
@@ -322,26 +362,11 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
     // 独立 DAQ 节点各自轮询,采样相位永不共线 —— 精确匹配会让其他节点整列 NaN
     // (实测:双节点真实产线网格缺失率恰 50.0%:锚定节点对齐自己,另一节点 0 命中)。
     // 容差 = spec.cleaning.maxInterpMs(缺省一个 beat);越容差才计缺失。
-    const alignTol = Math.max(1, spec.cleaning?.maxInterpMs ?? beat)
     for (const n of order) {
       const s = series.get(n.nodeId) ?? []
-      const col: number[] = []
-      let miss = 0
-      let ptr = 0
-      for (let i = 0; i < steps; i++) {
-        const t = g0 + i * beat
-        // 指针单调前移:t 单调递增;先前进到 |s[ptr+1].at - t| < |s[ptr].at - t| 为止
-        while (ptr + 1 < s.length && Math.abs(s[ptr + 1]!.at - t) < Math.abs(s[ptr]!.at - t)) ptr++
-        // t 回退容错(理论上不发生;防御 phase 抖动)
-        while (ptr > 0 && Math.abs(s[ptr - 1]!.at - t) <= Math.abs(s[ptr]!.at - t)) ptr--
-        const near = s[ptr]
-        const v = near && Math.abs(near.at - t) <= alignTol ? near.value : undefined
-        if (v === undefined || !Number.isFinite(v)) {
-          col.push(Number.NaN)
-          miss++
-        }
-        else col.push(v)
-      }
+      const aligned = alignSeriesToGridNearest(s, g0, steps, beat, spec.cleaning?.maxInterpMs ?? beat)
+      const col = aligned.values
+      const miss = aligned.missing
       missingTotal += miss
       rows.set(n.nodeId, col)
       const cr = cleaningReport[n.nodeId]
