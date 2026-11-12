@@ -154,8 +154,8 @@ test('合法候选批准后仍走 mock 驱动并完成设备回读', async (t) =
   const writeSpy = t.mock.method(mockDcwDriver, 'write', mockDcwDriver.write)
   const task = toolRecipeTrial(f.agentId, {
     recipe_id: f.recipe.id,
-    hypothesis: '批准后的合法候选必须完成设备证实',
-    params: [{ node_id: f.nodes[0]!.node.id, value: 53 }],
+    hypothesis: '批准后的合法数字字符串候选必须完成设备证实',
+    params: [{ node_id: f.nodes[0]!.node.id, value: '53' }],
   })
   const card = await pendingCard(f.agentId)
   getToolApprovals().decide(card.id, true, '批准合法候选', 'local-owner', 'Local owner')
@@ -169,7 +169,7 @@ test('合法候选批准后仍走 mock 驱动并完成设备回读', async (t) =
 test('混入非法参数时整批拒绝,不静默缩减为合法子集', async (t) => {
   const f = fixture('malformed')
   t.after(f.cleanup)
-  for (const value of [null, '', true, Number.NaN, Number.POSITIVE_INFINITY]) {
+  for (const value of [null, '', true, Number.NaN, Number.POSITIVE_INFINITY, 'NaN', 'Infinity', 'not-a-number']) {
     const out = await toolRecipeTrial(f.agentId, {
       recipe_id: f.recipe.id,
       hypothesis: '非法参数不能被静默丢弃',
