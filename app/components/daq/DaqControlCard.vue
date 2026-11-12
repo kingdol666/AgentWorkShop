@@ -196,14 +196,6 @@ function applyCycles(): void {
         >
           <span class="lp-dot" />
           <b>{{ l.name }}</b>
-          <small
-            v-if="lineStateOf(l.id).active"
-            class="lp-run"
-          >{{ lineStateOf(l.id).recipeName ?? $t('daq.k3vp67i096') }}</small>
-          <small
-            v-else
-            class="lp-idle"
-          >{{ $t('daq.k3zgkk021') }}</small>
         </NuxtLink>
         <NuxtLink
           v-if="lines.length === 0"
@@ -212,7 +204,6 @@ function applyCycles(): void {
         >
           <span class="lp-dot" />
           <b>{{ $t('daq.k1el12b1022') }}</b>
-          <small class="lp-idle">{{ $t('daq.k8jxxe8023') }}</small>
         </NuxtLink>
       </div>
     </div>

@@ -261,7 +261,6 @@ const opt = useDaqOptimizations()
       :ops-recent="opsLog.recent"
       :ops-kind-label="opsKindLabel"
       :ops-time="opsTime"
-      :alarms="daq.alarms"
       :visible-nodes="visibleNodes"
       :pad-top-px="padTopPx"
       :pad-bottom-px="padBottomPx"
@@ -269,7 +268,6 @@ const opt = useDaqOptimizations()
       :loaded="daq.loaded"
       :error="daq.error"
       @clear-filters="clearFilters"
-      @ack="ackOne"
     />
 
     <p
