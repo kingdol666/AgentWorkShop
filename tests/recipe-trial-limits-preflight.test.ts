@@ -169,17 +169,19 @@ test('合法候选批准后仍走 mock 驱动并完成设备回读', async (t) =
 test('混入非法参数时整批拒绝,不静默缩减为合法子集', async (t) => {
   const f = fixture('malformed')
   t.after(f.cleanup)
-  const out = await toolRecipeTrial(f.agentId, {
-    recipe_id: f.recipe.id,
-    hypothesis: '非法参数不能被静默丢弃',
-    params: [
-      { node_id: f.nodes[0]!.node.id, value: 53 },
-      { node_id: f.nodes[1]!.node.id, value: Number.NaN },
-    ],
-  })
-  assert.equal(out.isError, true)
-  assert.match(out.text, /整批候选已拒绝/)
-  assert.equal(getToolApprovals().listPending(f.agentId).length, 0)
+  for (const value of [null, '', true, Number.NaN, Number.POSITIVE_INFINITY]) {
+    const out = await toolRecipeTrial(f.agentId, {
+      recipe_id: f.recipe.id,
+      hypothesis: '非法参数不能被静默丢弃',
+      params: [
+        { node_id: f.nodes[0]!.node.id, value: 53 },
+        { node_id: f.nodes[1]!.node.id, value: value as never },
+      ],
+    })
+    assert.equal(out.isError, true)
+    assert.match(out.text, /整批候选已拒绝/)
+    assert.equal(getToolApprovals().listPending(f.agentId).length, 0)
+  }
 })
 
 test('预检纯函数:边界值放行、越界点名、部分越界整批拒绝、与 write() 断言同文', (t) => {
