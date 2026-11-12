@@ -18,6 +18,12 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'ack', id: string): void }>()
 
 const { t } = useI18n()
+/** 相对时间每 30s 重算,避免“5 分钟前”停住不动 */
+const now = ref(Date.now())
+const ageTimer = setInterval(() => {
+  now.value = Date.now()
+}, 30_000)
+onBeforeUnmount(() => clearInterval(ageTimer))
 const visible = computed(() => props.alarms.slice(0, 4))
 const overflow = computed(() => Math.max(props.alarms.length - visible.value.length, 0))
 
@@ -45,7 +51,7 @@ function ruleText(a: DaqAlarmRow): string {
 }
 
 function ageText(a: DaqAlarmRow): string {
-  const age = alarmAge(a.createdAt)
+  const age = alarmAge(a.createdAt, now.value)
   if (age.unit === 'now') return t('home.alarm.now')
   if (age.unit === 'minute') return t('home.alarm.minutes', { p0: age.n })
   if (age.unit === 'hour') return t('home.alarm.hours', { p0: age.n })
@@ -88,7 +94,7 @@ function fullTime(iso: string): string {
         :key="a.id"
         class="aq-item"
         :class="{ severe: severe(a) }"
-        :title="`#${a.id} · ${a.metric}`"
+        :title="`#${a.id} · ${a.metric}${a.escalation > 0 ? ` · +${a.escalation}` : ''}`"
       >
         <div class="aq-ident">
           <i

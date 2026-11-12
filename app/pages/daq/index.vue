@@ -262,6 +262,7 @@ const opt = useDaqOptimizations()
       :ops-kind-label="opsKindLabel"
       :ops-time="opsTime"
       :visible-nodes="visibleNodes"
+      :mobile-nodes="filteredNodes"
       :pad-top-px="padTopPx"
       :pad-bottom-px="padBottomPx"
       :loading="!daq.loaded && !daq.error"

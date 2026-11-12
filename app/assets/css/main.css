@@ -2909,11 +2909,34 @@ body {
     min-height: 40px !important;
   }
 
+  .aq-ack,
+  .ack-all,
+  .ctrl-toggle {
+    min-height: 40px;
+  }
+
+  .nc-del {
+    width: 40px;
+    height: 40px;
+  }
+
   .aq-all,
   .panel-link {
     display: inline-flex;
     align-items: center;
     min-height: 40px;
+  }
+
+  /* 告警确认 / 批量确认 / 节点启停 / 删除:与主按钮同一命中区地板 */
+  .aq-ack,
+  .ack-all,
+  .ctrl-toggle {
+    min-height: 40px;
+  }
+
+  .nc-del {
+    width: 40px;
+    height: 40px;
   }
 
   .menu-item {
@@ -3157,6 +3180,19 @@ body.nav-drawer .app-sider .app-menu {
   * {
     scrollbar-width: none;
   }
+}
+
+/* 仅供读屏的状态文本(颜色/点是视觉辅助,不是唯一信息载体) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* 手持宽度兜底:模拟器/部分 WebView 只报 hasTouch 不报 pointer:coarse,

@@ -45,7 +45,7 @@ interface ChannelBindingDto { projectId: string, channelId: string, bindingType:
 interface DeliverableDto { id: string, name: string, ownerChannelId: string | null, required: number, status: string, acceptanceCriteriaJson: string }
 interface WorkItemDto { id: string, deliverableId: string, channelId: string, title: string, state: string, stateReason: string | null, currentAttemptId: string | null, execBudgetMinutes: number }
 interface ResultDto { id: string, deliverableId: string, channelId: string, title: string, summary: string, status: string, version: number, evidenceJson: string, reviewedBy: string | null, approvedBy: string | null }
-interface ApprovalDto { id: string, kind: string, subjectId: string, status: string, createdAt?: string, expiresAt: string | null, payloadJson?: string, reason?: string, argsDigest?: string }
+interface ApprovalDto { id: string, kind: string, subjectId: string, subjectType?: string, status: string, createdAt?: string, expiresAt: string | null, payloadJson?: string, reason?: string, argsDigest?: string }
 interface DecisionDto { id: string, seq: number, decisionType: string, state: string, outcome: string, traceId: string, createdAt: string }
 interface EventDto { id: string, seq: number, type: string, eventKey: string, traceId: string, createdAt: string }
 interface MemberDto { projectId: string, userId: string, role: string, addedBy?: string, addedAt?: string }
@@ -824,22 +824,38 @@ const approvalKindLabels: Record<string, string> = {
   result_acceptance: '成果验收',
   result_review: '成果复核',
   project_complete: '项目完成',
+  write_intent: '生产写授权',
   production_write: '生产写授权',
+  channel_binding: '频道绑定',
 }
 const approvalKind = (kind: string): string => approvalKindLabels[kind] ?? kind
 
-/** 审批摘要:用当前项目的交付物/成果名补全 payload 里只有 id 的情况 */
-/** 项目办公室里的 mock/Agent 回执:与群聊同一条解析,避免原始信封外露 */
-function projectReceipt(m: AepChatMessage) {
-  return m.senderType === 'user' ? null : parseChatReceipt(m.text)
+/** deliverable_acceptance 的 subject 指向 result 时,徽标应按“成果验收”读 */
+function approvalKindOf(h: { kind: string, subjectId: string, subjectType?: string }): string {
+  if (h.kind === 'deliverable_acceptance' && (h.subjectType === 'result' || results.value.some(r => r.id === h.subjectId))) return '成果验收'
+  return approvalKind(h.kind)
 }
 
-function approvalSummaryOf(h: ApprovalDto): string {
-  return approvalSummary(h.kind, h.payloadJson, {
-    subjectId: h.subjectId,
+/** 审批摘要:用当前项目的交付物/成果名补全 payload 里只有 id 的情况 */
+/** 项目办公室里的 mock/Agent 回执:与群聊同一条解析,每条只算一次 */
+const projectReceipts = computed(() => {
+  const map = new Map<string, ReturnType<typeof parseChatReceipt>>()
+  for (const m of chatMessages.value) map.set(m.id, m.senderType === 'user' ? null : parseChatReceipt(m.text))
+  return map
+})
+function projectReceipt(m: AepChatMessage) {
+  return projectReceipts.value.get(m.id) ?? null
+}
+
+const approvalSummaries = computed(() => {
+  const ctx = {
     deliverables: deliverables.value.map(d => ({ id: d.id, name: d.name })),
     results: results.value.map(r => ({ id: r.id, title: r.title })),
-  })
+  }
+  return new Map(approvalHistory.value.map(h => [h.id, approvalSummary(h.kind, h.payloadJson, { ...ctx, subjectId: h.subjectId, subjectType: h.subjectType })]))
+})
+function approvalSummaryOf(h: ApprovalDto): string {
+  return approvalSummaries.value.get(h.id) ?? ''
 }
 
 /** 审批 reason 只有人话才展示;`deliverable acceptance` 这类枚举码不外露 */
@@ -1999,7 +2015,16 @@ onUnmounted(() => {
             </tbody>
           </table>
 
-          <div class="form-grid work-grid">
+          <p
+            v-if="project?.status === 'completed'"
+            class="form-locked"
+          >
+            项目已完成：新增工作项入口已收起。如需追加，请用「继续开发」重新打开项目。
+          </p>
+          <div
+            v-else
+            class="form-grid work-grid"
+          >
             <label>
               <span>交付物</span>
               <select
@@ -2460,7 +2485,7 @@ onUnmounted(() => {
               class="approval"
             >
               <header class="approval-head">
-                <span class="badge amber">{{ approvalKind(a.kind) }}</span>
+                <span class="badge amber">{{ approvalKindOf(a) }}</span>
                 <span class="mono muted">{{ a.subjectId.slice(0, 8) }}</span>
                 <span
                   v-if="a.expiresAt"
@@ -2513,7 +2538,7 @@ onUnmounted(() => {
               :title="`#${h.id} · ${h.subjectId}`"
             >
               <div class="ap-row1">
-                <span class="badge gray">{{ approvalKind(h.kind) }}</span>
+                <span class="badge gray">{{ approvalKindOf(h) }}</span>
                 <span
                   class="badge"
                   :class="h.status"

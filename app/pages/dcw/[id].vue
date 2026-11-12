@@ -106,7 +106,6 @@ const { items: rdItems, comments: rdComments, decidingId: rdDecidingId, decideEr
   >
     <DcwDetailHead
       :line="line"
-      :line-id="lineId"
       :nodes-count="lineNodes.length"
       :products-count="lineProducts.length"
       :recipes-count="lineRecipesAll.length"

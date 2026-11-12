@@ -231,6 +231,27 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
 
 .query-card { padding: 14px 18px; margin-bottom: 14px; }
 .q-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: end; }
+.q-head { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 4px 0 8px; }
+.q-head .sec-label { margin: 0; }
+.q-toggle {
+  display: inline-flex;
+  flex: none;
+  gap: 5px;
+  align-items: center;
+  padding: 4px 9px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+}
+.q-toggle:hover { color: var(--ink); border-color: var(--line-strong); }
+.q-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.q-chev { transition: transform var(--transition-fast); }
+.q-chev.up { transform: rotate(180deg); }
+.q-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+.q-actions .pill-btn { min-width: 120px; }
 
 .q-grid .f { font-size: 11px; color: var(--ink-faint); }
 .q-result { margin-top: 12px; overflow-x: auto; }

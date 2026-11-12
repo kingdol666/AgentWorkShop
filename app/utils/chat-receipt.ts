@@ -19,9 +19,11 @@ export interface ChatReceipt {
   instruction: string
 }
 
-const HEAD = /^@(\S+)\s+(.+?)\s*群聊回复\(\s*([0-9a-fA-F-]{6,})\s*\)\s*[:：]\s*已处理\s*([\s\S]*)$/
-const SOURCE = /\s*;?\s*source\s*=\s*([\w-]+)\s*$/
-const ASK_PREFIX = /^[^\s:：]+\s*提问\s*[:：]\s*/
+const HEAD = /^@(\S+)\s+mock\s*群聊回复\(\s*([0-9a-fA-F-]{6,})\s*\)\s*[:：]\s*已处理\s*([\s\S]*)$/
+/** mock 在 source 后还会追加 `<ctx brief=… recent=…>`;截断文本可能只剩 `;source=` */
+const TRAILER = /\s*;\s*source\s*=[\s\S]*$/i
+/** 提问者可能是带空格的显示名(如 Project Leader) */
+const ASK_PREFIX = /^[\s\S]*?提问\s*[:：]\s*/
 
 /** 清洗问题:去掉 [群聊]/「」/“提问:” 等协议包装。 */
 function cleanQuestion(raw: string): string {
@@ -38,13 +40,11 @@ export function parseChatReceipt(text: string): ChatReceipt | null {
   const head = source.match(HEAD)
   if (!head) return null
   const agent = head[1] ?? ''
-  const uuid = head[3] ?? ''
-  const bodyRaw = head[4] ?? ''
+  const uuid = head[2] ?? ''
+  const bodyRaw = head[3] ?? ''
 
-  let body = bodyRaw
-  const src = body.match(SOURCE)
-  const sourceId = src?.[1] ?? ''
-  if (src) body = body.slice(0, src.index ?? 0)
+  let body = bodyRaw.replace(TRAILER, '')
+  const sourceId = bodyRaw.match(/;\s*source\s*=\s*([\w-]+)/i)?.[1] ?? ''
   body = body.replace(/[」\]]+\s*$/, '').trim()
 
   // 系统指令以 "(请回复内容" 开头;问题在它之前。

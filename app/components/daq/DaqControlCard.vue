@@ -196,6 +196,7 @@ function applyCycles(): void {
         >
           <span class="lp-dot" />
           <b>{{ l.name }}</b>
+          <span class="sr-only">{{ lineStateOf(l.id).active ? $t('dcw.k1eox1el055') : $t('dcw.k149r6y7059') }}</span>
         </NuxtLink>
         <NuxtLink
           v-if="lines.length === 0"
@@ -204,6 +205,7 @@ function applyCycles(): void {
         >
           <span class="lp-dot" />
           <b>{{ $t('daq.k1el12b1022') }}</b>
+          <span class="sr-only">{{ $t('daq.k1x7jnru121') }}</span>
         </NuxtLink>
       </div>
     </div>

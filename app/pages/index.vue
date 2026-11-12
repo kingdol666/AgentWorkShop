@@ -42,6 +42,9 @@ onMounted(() => {
   void loadHarnesses()
   useVisibleInterval(() => {
     void daq.load()
+    // 告警 KPI/状态带/队列同源于 daq.alarms:必须随 5s 拍刷新,
+    // 否则别的操作者 ack 或 WS 断连期间会停在旧值。
+    void daq.fetchAlarms()
     void dcw.load()
     void loadHarnesses()
     pushTrend()

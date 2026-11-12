@@ -16,6 +16,11 @@ const emit = defineEmits<{ ack: [id: string], ackAll: [] }>()
 
 const { t } = useI18n()
 const daq = useDaqStream()
+const now = ref(Date.now())
+const ageTimer = setInterval(() => {
+  now.value = Date.now()
+}, 30_000)
+onBeforeUnmount(() => clearInterval(ageTimer))
 
 function unitOf(a: DaqAlarmRow): string {
   const u = daq.nodes.find(n => n.id === a.nodeId)?.unit ?? ''
@@ -34,7 +39,7 @@ function ruleText(a: DaqAlarmRow): string {
 }
 
 function ageText(a: DaqAlarmRow): string {
-  const age = alarmAge(a.createdAt)
+  const age = alarmAge(a.createdAt, now.value)
   if (age.unit === 'now') return t('home.alarm.now')
   if (age.unit === 'minute') return t('home.alarm.minutes', { p0: age.n })
   if (age.unit === 'hour') return t('home.alarm.hours', { p0: age.n })
@@ -106,7 +111,7 @@ function ageText(a: DaqAlarmRow): string {
   .ack-all {
     align-self: flex-start;
     width: auto;
-    min-height: 36px;
+    min-height: 40px;
   }
 }
 

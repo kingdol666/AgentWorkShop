@@ -130,9 +130,15 @@ function renderText(m: AepChatMessage): string {
   return mdLiteMentions(m.text, mentionMembers.value)
 }
 
-/** mock/Agent 回执:只有命中专属签名才折叠;真实回答渲染路径完全不变 */
+/** mock/Agent 回执:每条消息只解析一次(模板内会多次读取) */
+const receipts = computed(() => {
+  const map = new Map<string, ReturnType<typeof parseChatReceipt>>()
+  for (const m of messages.value) map.set(m.id, m.senderType === 'agent' ? parseChatReceipt(m.text) : null)
+  return map
+})
+/** 只有命中专属签名才折叠;真实回答渲染路径完全不变 */
 function receiptOf(m: AepChatMessage) {
-  return m.senderType === 'agent' ? parseChatReceipt(m.text) : null
+  return receipts.value.get(m.id) ?? null
 }
 
 /** 回执关联的“提问者/来源消息”用成员显示名,不再给用户看 8 位 uuid */
