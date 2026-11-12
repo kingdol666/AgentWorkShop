@@ -22,6 +22,7 @@ import { AppError } from '@/server/utils/errors'
 import { getAgentNodeBindingRepo, type AgentNodeBindingTuning } from '@/server/services/workshop/agents/node-bindings.repo'
 import { requireBindingAccess } from '@/server/services/workshop/agents/binding-authz'
 import { resolveModeChange } from '@/server/services/workshop/agents/binding-mode'
+import { getWorkshopManager } from '@/server/plugins/workshop'
 import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
@@ -32,6 +33,9 @@ export default defineApiHandler(async (event) => {
   const binding = repo.all().find(b => b.id === id)
   if (!binding) throw createError({ statusCode: 404, statusMessage: 'binding not found' })
   requireBindingAccess(user, binding)
+  const member = getWorkshopManager().findChannelAgentById(binding.agentId)
+  if (!member) throw new AppError(404, 'NOT_FOUND', `绑定所属 Agent 成员不存在: ${binding.agentId}`)
+  getWorkshopManager().requireChannelOwner(member.channelId, user, 'Agent 绑定')
   if (body.tuning !== undefined) {
     return { binding: repo.setTuning(id, body.tuning) }
   }

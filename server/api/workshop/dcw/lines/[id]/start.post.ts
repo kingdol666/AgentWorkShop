@@ -4,6 +4,7 @@
  */
 import { getRouterParam, readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
+import { AppError } from '@/server/utils/errors'
 import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
@@ -20,6 +21,12 @@ export default defineApiHandler(async (event) => {
   requireLineMode(user, id, 'operate')
   const body = await readBody<{ recipeId?: string }>(event) ?? {}
   const run = await getDcwController().lineStart(id, String(body.recipeId ?? ''))
+  const failed = run.results.filter(r => !r.ok)
+  if (run.results.length > 0 && failed.length === run.results.length) {
+    const active = getDcwController().lineState(id)
+    if (active.active && active.runId === run.id) getDcwController().lineStop(id)
+    throw new AppError(409, 'LINE_START_FAILED', `产线开跑失败:全部 ${failed.length} 个配方参数未下发成功,已自动停线收窗`)
+  }
   const active = getActiveLineRun(id)
   recordOps({
     actor: user.id,

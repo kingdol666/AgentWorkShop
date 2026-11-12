@@ -1074,6 +1074,15 @@ async function hitlDispatchGate(agentId: string, recipeId: string, detail: strin
  *  - 重新跑 grant-guard(频道属主的产线 grant,收权即失活)。
  * 任一失败 → 本次不执行,回包说明原因(Agent 可据此核实上下文并重新申请)。
  */
+function recipeDefinitionSnapshot(recipe: { version?: number, params?: Array<{ nodeId: string, value: number }>, lineId?: string, productId?: string }): string {
+  return JSON.stringify({
+    version: recipe.version ?? 1,
+    params: (recipe.params ?? []).map(p => ({ nodeId: p.nodeId, value: p.value })),
+    lineId: recipe.lineId ?? '',
+    productId: recipe.productId ?? '',
+  })
+}
+
 function approvedContextError(
   agentId: string,
   recipe: { id: string, name: string, lineId?: string, params?: Array<{ nodeId: string }>, access?: { requireAuth?: boolean, authorizedAgentIds?: string[] } },
@@ -1081,8 +1090,15 @@ function approvedContextError(
   expectedContext: ActiveRecipeContext,
   targetNodeIds?: string[],
   approvalBypassed = false,
+  expectedDefinition?: string,
 ): { text: string, isError: true } | null {
   const prefix = approvalBypassed ? '实验审批已旁路,但执行前' : '人工已批准,但审批期间'
+  if (expectedDefinition !== undefined) {
+    const currentRecipe = getDcwRecipeRepo().byId(recipe.id)
+    if (!currentRecipe || recipeDefinitionSnapshot(currentRecipe) !== expectedDefinition) {
+      return { text: `${prefix}配方定义已变化(版本/参数/产线或产品上下文不再等于审批快照),本次未执行。请按当前配方重新提交。`, isError: true }
+    }
+  }
   const currentGate = assertRecipeOperation(agentId, recipe, op, targetNodeIds)
   if (!currentGate.ok) {
     return { text: `${prefix}授权已失效,本次未执行:${currentGate.text}`, isError: true }
@@ -1118,10 +1134,11 @@ export async function revalidateApprovedAction(
   args: Record<string, unknown>,
   expectedContext: ActiveRecipeContext,
   approvalBypassed = false,
+  expectedDefinition?: string,
 ): Promise<{ text: string, isError: true } | null> {
   const prefix = approvalBypassed ? '实验审批已旁路,但执行前' : '人工已批准,但审批期间'
   const targetNodeIds = targetNodesFromArgs(op, args)
-  const initialContextError = approvedContextError(agentId, recipe, op, expectedContext, targetNodeIds, approvalBypassed)
+  const initialContextError = approvedContextError(agentId, recipe, op, expectedContext, targetNodeIds, approvalBypassed, expectedDefinition)
   if (initialContextError) return initialContextError
   try {
     // manager 未装配(单测/嵌入)→ 只做绑定与运行门复核;装配后叠加产线 grant 复核
@@ -1246,6 +1263,7 @@ export async function toolRecipeTrial(agentId: string, args: {
   if (cadence) return cadence
   try {
     // HITL 门:manual 绑定(或全局开关)时,整批试验前先挂起等人工裁决(拒绝附指导 → 回给 Agent 修订)
+    const expectedDefinition = recipeDefinitionSnapshot(recipe)
     let hitlNote = ''
     let gateApprovalId = ''
     let approvalBypassed = false
@@ -1294,9 +1312,9 @@ export async function toolRecipeTrial(agentId: string, args: {
       // 人工附言随批准回执回流(Agent 与审计都能看到放行时人的原话)
       if (approvalBypassed) hitlNote = '\n实验审批旁路:approval_bypassed=true;仅用于隔离模拟器,未获得人工批准。'
       else if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
-      const stale = await revalidateApprovedAction(agentId, recipe, 'trial', 'recipe_trial', { recipe_id: recipeId, params: list.map(p => ({ node_id: p.nodeId })) }, gate.activeContext, approvalBypassed)
+      const stale = await revalidateApprovedAction(agentId, recipe, 'trial', 'recipe_trial', { recipe_id: recipeId, params: list.map(p => ({ node_id: p.nodeId })) }, gate.activeContext, approvalBypassed, expectedDefinition)
       if (stale) return { ...stale, ...(approvalBypassed ? { approval_bypassed: true as const } : {}) }
-      const staleAtDispatch = approvedContextError(agentId, recipe, 'trial', gate.activeContext, list.map(p => p.nodeId), approvalBypassed)
+      const staleAtDispatch = approvedContextError(agentId, recipe, 'trial', gate.activeContext, list.map(p => p.nodeId), approvalBypassed, expectedDefinition)
       if (staleAtDispatch) return { ...staleAtDispatch, ...(approvalBypassed ? { approval_bypassed: true as const } : {}) }
     }
     // 2026-10-28 执行点复核(双轨授权,D13 同款):审批/节拍等待期间绑定可能被撤销,

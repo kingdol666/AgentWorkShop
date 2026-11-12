@@ -400,6 +400,8 @@ export async function createDispatchCard(initiator: ResolvedUser, recommendation
     recommendationId,
     recipeId: recipe.id,
     lineId: spec.lineId,
+    recipeVersion: recipe.version ?? 1,
+    recipeParams: recipe.params.map(p => ({ nodeId: p.nodeId, value: p.value })),
     modelFirstMove,
     packages,
   }

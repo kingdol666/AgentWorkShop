@@ -8,6 +8,8 @@ import { defineApiHandler } from '@/server/utils/response'
 import { AppError } from '@/server/utils/errors'
 import { visibleLineIds } from '@/server/services/workshop/permissions'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
+import { getDcwProductRepo } from '@/server/services/workshop/dcw/dcw-product.repo'
+import { getDaqNodeRepo } from '@/server/services/workshop/daq/daq-node.repo'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
 
 export default defineApiHandler(async (event) => {
@@ -16,6 +18,24 @@ export default defineApiHandler(async (event) => {
   const q = getQuery(event)
   // 产线权限:产线查询仅限可见产线(admin/editor 不限)
   const visible = visibleLineIds(user)
+  const selectorLineIds = new Set<string>()
+  if (q.recipeId) {
+    const recipeLine = getDcwController().listRecipes().find(r => r.id === String(q.recipeId))?.lineId
+    if (recipeLine) selectorLineIds.add(recipeLine)
+  }
+  if (q.productId) {
+    const productLine = getDcwProductRepo().byId(String(q.productId))?.lineId
+    if (productLine) selectorLineIds.add(productLine)
+  }
+  if (q.nodeId) {
+    for (const nodeId of String(q.nodeId).split(',').map(x => x.trim()).filter(Boolean)) {
+      const lineId = getDaqNodeRepo().byId(nodeId)?.lineId
+      if (lineId) selectorLineIds.add(lineId)
+    }
+  }
+  if (visible && selectorLineIds.size > 0 && (selectorLineIds.size !== 1 || !visible.has([...selectorLineIds][0]!))) {
+    throw new AppError(403, 'LINE_FORBIDDEN', '查询筛选条件跨越未授权产线')
+  }
   if (visible && (!q.lineId || !visible.has(String(q.lineId)))) {
     throw new AppError(403, 'LINE_FORBIDDEN', '无该产线权限:查询目标产线不在授权范围内')
   }

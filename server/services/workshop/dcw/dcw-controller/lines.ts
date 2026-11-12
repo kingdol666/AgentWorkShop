@@ -131,7 +131,7 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
       startedAt: run.startedAt,
       taggedSamples: 0,
     })
-    await this.writeRecipeParams(recipe, run, writeMeta ? { writeMeta } : {})
+    await this.writeRecipeParams(recipe, run, { requireActiveRun: true, ...(writeMeta ? { writeMeta } : {}) })
     this.broadcast?.('dcw.controller', this.controllerState())
     return run
   }

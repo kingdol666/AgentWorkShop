@@ -20,7 +20,8 @@ export default defineApiHandler(async (event) => {
   const recipe = getDcwController().listRecipes().find(r => r.id === id)
   requireLineMode(user, recipe?.lineId, 'operate')
   const body = await readBody<{ approvalId?: string }>(event) ?? {}
-  const gate = gateDangerous(useRuntimeConfig(event).approvalGate === true, user, { action: 'recipe.apply', targetId: id, summary: `一键下发配方 ${id}` }, body.approvalId)
+  const snapshot = JSON.stringify({ version: recipe?.version ?? 1, params: recipe?.params ?? [], lineId: recipe?.lineId ?? '', productId: recipe?.productId ?? '' })
+  const gate = gateDangerous(useRuntimeConfig(event).approvalGate === true, user, { action: 'recipe.apply', targetId: id, summary: `一键下发配方 ${id}`, payload: snapshot }, body.approvalId)
   if (gate.pending) {
     setResponseStatus(event, 202)
     return { pending: true, requestId: gate.requestId }

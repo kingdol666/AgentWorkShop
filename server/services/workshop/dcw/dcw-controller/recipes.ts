@@ -14,6 +14,7 @@ import { summarizeAck, verifyRecipeWrite } from './write-verify'
 import { writeTolerance } from '../dcw-runtime'
 import { notifyLineOperators } from '../../runtime/line-notify'
 import { assertWithinLimits } from '../param-limits'
+import { getActiveLineRun } from '../line-run'
 
 /**
  * 试验节拍 env 解析(显式 0 = 关闭;空/非法 = 默认 5 分钟)。
@@ -112,9 +113,14 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
    * 2026-10-08 ACK 鉴定:每参数写后经 verifyRecipeWrite 补验(链路受理→独立回读
    * 证实),结果行携带 ack/verify —— 「ok」不再被当成「设备已生效」。
    */
-  protected async writeRecipeParams(recipe: RecipeView, run: RecipeRunView, opts: { enforceRecipeWindow?: boolean, writeMeta?: DcwWriteMeta } = {}): Promise<void> {
+  protected async writeRecipeParams(recipe: RecipeView, run: RecipeRunView, opts: { enforceRecipeWindow?: boolean, writeMeta?: DcwWriteMeta, requireActiveRun?: boolean } = {}): Promise<void> {
     const results: RecipeRunView['results'] = []
     for (const param of recipe.params) {
+      const active = opts.requireActiveRun === true ? getActiveLineRun(recipe.lineId) : null
+      if (opts.requireActiveRun === true && (!active || active.runId !== run.id)) {
+        results.push({ templateRef: param.templateRef ?? param.nodeId, nodeId: param.nodeId, ok: false, message: '已中止:产线批次已停止或被替换,剩余参数未下发', value: param.value })
+        continue
+      }
       const node = param.nodeId ? this.repo.byId(param.nodeId) : undefined
       if (!node) {
         results.push({ templateRef: param.templateRef ?? param.nodeId, nodeId: null, ok: false, message: `已跳过:节点 ${param.nodeId} 已删除,参数未下发`, value: param.value })

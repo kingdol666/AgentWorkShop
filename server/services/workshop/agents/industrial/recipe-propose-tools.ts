@@ -67,6 +67,8 @@ export interface RecipeProposePayload {
   schemaVersion: 1
   recipeId: string
   lineId: string
+  recipeVersion: number
+  recipeParams: Array<{ nodeId: string, value: number }>
   packages: Array<{ name: string, rationale: string, params: RecipeProposePayloadParam[] }>
 }
 
@@ -236,6 +238,8 @@ export async function toolRecipePropose(agentId: string, args: {
     schemaVersion: 1,
     recipeId,
     lineId: recipe.lineId,
+    recipeVersion: recipe.version ?? 1,
+    recipeParams: recipe.params.map(p => ({ nodeId: p.nodeId, value: p.value })),
     packages: alivePackages.map(pkg => ({ ...pkg, params: pkg.params.filter(p => p.preflight.ok) })),
   }
   const detail = [
@@ -283,6 +287,11 @@ export async function toolRecipePropose(agentId: string, args: {
   }
 
   // 批准不等于授权仍有效:复核绑定/认证/运行门/产线 grant(审批期间可能被撤销)
+  const currentRecipe = getDcwController().listRecipes().find(r => r.id === recipeId)
+  const snapshotMatches = currentRecipe
+    && (currentRecipe.version ?? 1) === payload.recipeVersion
+    && JSON.stringify(currentRecipe.params.map(p => ({ nodeId: p.nodeId, value: p.value }))) === JSON.stringify(payload.recipeParams)
+  if (!snapshotMatches) return { text: '配方在审批期间已变更,与审批展示快照不一致,本次未执行。请按当前定义重新提交 recipe_propose。', isError: true }
   const stale = await revalidateApprovedAction(agentId, recipe, 'dispatch', 'recipe_propose', { recipe_id: recipeId }, gate.activeContext)
   if (stale) return stale
 
