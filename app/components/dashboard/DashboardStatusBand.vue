@@ -203,7 +203,20 @@ const { t } = useI18n()
 @media (max-width: 640px) {
   .sb-title { font-size: 19px; }
   .sb-sub { display: none; }
-  .sb-acts { width: 100%; }
-  .sb-acts .aw-pill { flex: 1; justify-content: center; }
+  .sb-right { flex-wrap: wrap; gap: 10px; }
+  /* 两枚入口各自半行,完整文案不再被 105px 的窄条裁掉 */
+  .sb-acts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .sb-acts .aw-pill {
+    gap: 5px;
+    justify-content: center;
+    min-width: 0;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
 }
 </style>

@@ -509,8 +509,17 @@ watch(() => props.channelId, async () => {
                     <span class="cr-agent">@{{ senderNameOf(m) }}</span>
                     <span class="cr-badge">mock</span>
                   </div>
-                  <p class="cr-q">
+                  <p
+                    v-if="receiptOf(m)!.question"
+                    class="cr-q"
+                  >
                     {{ receiptOf(m)!.question }}
+                  </p>
+                  <p
+                    v-else
+                    class="cr-q cr-digest"
+                  >
+                    {{ $t('chat.receiptDigest') }}
                   </p>
                   <details
                     v-if="receiptOf(m)!.instruction"

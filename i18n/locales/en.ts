@@ -2097,6 +2097,7 @@ export default {
     mentionAgentTitle: 'Click to open this agent',
     mentionMemberTitle: 'Mentioned member (does not trigger an agent)',
     receiptTitle: 'Execution receipt',
+    receiptDigest: 'Internal event batch processed (see system instruction)',
     receiptSystem: 'View system instruction',
     answeredFrom: 'Answering {p0}',
     askedBy: '· asked by {p0}',

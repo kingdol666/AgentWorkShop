@@ -37,7 +37,7 @@ export function useDashboardCharts(data: DashboardData) {
     grid: { left: 42, right: 14, top: 30, bottom: 24 },
     xAxis: {
       type: 'time',
-      axisLabel: { color: dimC.value, fontSize: 10, formatter: '{HH}:{mm}:{ss}' },
+      axisLabel: { color: dimC.value, fontSize: 10, formatter: '{HH}:{mm}:{ss}', hideOverlap: true, showMinLabel: false, showMaxLabel: false },
       axisLine: { lineStyle: { color: splitC.value } },
       splitLine: { show: false },
     },

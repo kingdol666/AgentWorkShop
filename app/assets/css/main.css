@@ -2881,6 +2881,41 @@ body {
     min-height: 34px;
   }
 
+  /* 图标钮是正方形:只抬 min-height 会留下 34px 宽的窄条 */
+  .icon-btn,
+  .collapse-btn {
+    width: 40px !important;
+  }
+
+  /* 聊天消息动作 / 提及章 / 产线胶囊 / 查询开关:手持档统一到可点尺寸 */
+  .ct-action {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .ct-mention-chip {
+    min-height: 32px !important;
+  }
+
+  .line-pill,
+  .q-toggle,
+  .flt-toggle {
+    min-height: 40px !important;
+  }
+
+  input.inp,
+  select.inp,
+  .inp-sel {
+    min-height: 40px !important;
+  }
+
+  .aq-all,
+  .panel-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
+
   .menu-item {
     min-height: 44px;
   }
@@ -3121,5 +3156,42 @@ body.nav-drawer .app-sider .app-menu {
 
   * {
     scrollbar-width: none;
+  }
+}
+
+/* 手持宽度兜底:模拟器/部分 WebView 只报 hasTouch 不报 pointer:coarse,
+   触控命中区不能只押在 pointer 媒体特性上。 */
+@media (max-width: 640px) {
+  .icon-btn,
+  .collapse-btn {
+    width: 40px !important;
+  }
+
+  .ct-action {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .ct-mention-chip {
+    min-height: 32px !important;
+  }
+
+  .line-pill,
+  .q-toggle,
+  .flt-toggle {
+    min-height: 40px !important;
+  }
+
+  input.inp,
+  select.inp,
+  .inp-sel {
+    min-height: 40px !important;
+  }
+
+  .aq-all,
+  .panel-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
   }
 }

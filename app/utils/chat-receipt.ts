@@ -50,10 +50,13 @@ export function parseChatReceipt(text: string): ChatReceipt | null {
   // 系统指令以 "(请回复内容" 开头;问题在它之前。
   const cut = body.search(/[（(]\s*请回复内容/)
   const questionRaw = cut >= 0 ? body.slice(0, cut) : body
-  const instruction = cut >= 0 ? body.slice(cut).trim() : ''
-
-  const question = cleanQuestion(questionRaw)
-  if (!question) return null
+  const hasAsk = /提问\s*[:：]/.test(questionRaw)
+  const question = hasAsk ? cleanQuestion(questionRaw) : ''
+  // 不是“提问→回复”而是内部事件批次摘要时,整段进折叠的系统指令,不冒充用户问题
+  const instruction = hasAsk
+    ? (cut >= 0 ? body.slice(cut).trim() : '')
+    : body.trim()
+  if (!question && !instruction) return null
 
   return {
     agent,

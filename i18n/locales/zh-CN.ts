@@ -2097,6 +2097,7 @@ export default {
     mentionAgentTitle: '点击查看该 Agent',
     mentionMemberTitle: '被 {\'@\'} 的成员(不触发 Agent)',
     receiptTitle: '执行回执',
+    receiptDigest: '已处理内部事件批次（详情见系统指令）',
     receiptSystem: '查看系统指令',
     answeredFrom: '回答自 {p0}',
     askedBy: '· 提问者 {p0}',

@@ -11,6 +11,7 @@
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { mdLite } from '@/app/composables/workshop/useEventBlocks'
 import { approvalSummary } from '@/app/utils/project-approval'
+import { parseChatReceipt } from '@/app/utils/chat-receipt'
 import { useUserStore } from '~/stores/workshop/user'
 import type { AepChatMessage } from '#shared/workshop-protocol'
 
@@ -828,6 +829,11 @@ const approvalKindLabels: Record<string, string> = {
 const approvalKind = (kind: string): string => approvalKindLabels[kind] ?? kind
 
 /** 审批摘要:用当前项目的交付物/成果名补全 payload 里只有 id 的情况 */
+/** 项目办公室里的 mock/Agent 回执:与群聊同一条解析,避免原始信封外露 */
+function projectReceipt(m: AepChatMessage) {
+  return m.senderType === 'user' ? null : parseChatReceipt(m.text)
+}
+
 function approvalSummaryOf(h: ApprovalDto): string {
   return approvalSummary(h.kind, h.payloadJson, {
     subjectId: h.subjectId,
@@ -1256,29 +1262,41 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="hero-stats">
-            <div class="hero-stat">
-              <b>{{ obs?.summary.ready ?? 0 }}</b>
-              <span>就绪</span>
-            </div>
-            <div class="hero-stat">
-              <b>{{ obs?.summary.inFlight ?? 0 }}</b>
-              <span>执行中</span>
-            </div>
-            <div class="hero-stat">
-              <b>{{ obs?.summary.waiting ?? 0 }}</b>
-              <span>等待</span>
-            </div>
-            <div
-              class="hero-stat"
-              :class="{ danger: Number(obs?.summary.blocked ?? 0) > 0 }"
-            >
-              <b>{{ obs?.summary.blocked ?? 0 }}</b>
-              <span>阻塞</span>
-            </div>
-            <div class="hero-stat">
-              <b>{{ acceptanceProgress }}%</b>
-              <span>交付签核</span>
-            </div>
+            <template v-if="project?.status === 'completed'">
+              <div class="hero-stat">
+                <b class="ok">✓</b>
+                <span>全部完成</span>
+              </div>
+              <div class="hero-stat">
+                <b>{{ acceptanceProgress }}%</b>
+                <span>交付签核</span>
+              </div>
+            </template>
+            <template v-else>
+              <div class="hero-stat">
+                <b>{{ obs?.summary.ready ?? 0 }}</b>
+                <span>就绪</span>
+              </div>
+              <div class="hero-stat">
+                <b>{{ obs?.summary.inFlight ?? 0 }}</b>
+                <span>执行中</span>
+              </div>
+              <div class="hero-stat">
+                <b>{{ obs?.summary.waiting ?? 0 }}</b>
+                <span>等待</span>
+              </div>
+              <div
+                class="hero-stat"
+                :class="{ danger: Number(obs?.summary.blocked ?? 0) > 0 }"
+              >
+                <b>{{ obs?.summary.blocked ?? 0 }}</b>
+                <span>阻塞</span>
+              </div>
+              <div class="hero-stat">
+                <b>{{ acceptanceProgress }}%</b>
+                <span>交付签核</span>
+              </div>
+            </template>
           </div>
           <div
             v-if="successCriteria.length"
@@ -1382,8 +1400,39 @@ onUnmounted(() => {
                   <strong>{{ m.senderType === 'user' ? '你' : m.senderName }}</strong>
                   <span>{{ formatChatTime(m.createdAt) }}</span>
                 </div>
+                <div
+                  v-if="projectReceipt(m)"
+                  class="chat-receipt"
+                >
+                  <div class="cr-head">
+                    <span class="i-tabler-receipt" />
+                    <b>执行回执</b>
+                    <span class="cr-agent">@{{ m.senderName || 'Leader' }}</span>
+                    <span class="cr-badge">mock</span>
+                  </div>
+                  <p
+                    v-if="projectReceipt(m)!.question"
+                    class="cr-q"
+                  >
+                    {{ projectReceipt(m)!.question }}
+                  </p>
+                  <p
+                    v-else
+                    class="cr-q cr-digest"
+                  >
+                    已处理内部事件批次（详情见系统指令）
+                  </p>
+                  <details
+                    v-if="projectReceipt(m)!.instruction"
+                    class="cr-sys"
+                  >
+                    <summary>查看系统指令</summary>
+                    <pre>{{ projectReceipt(m)!.instruction }}</pre>
+                  </details>
+                </div>
                 <!-- eslint-disable vue/no-v-html -- mdLite 先 escapeHtml，仅注入受控标记 -->
                 <div
+                  v-else
                   class="chat-body"
                   v-html="mdLite(m.text)"
                 />
@@ -1705,12 +1754,19 @@ onUnmounted(() => {
             class="stat-strip"
             data-testid="exec-summary"
           >
-            <span class="stat"><b>{{ obs.summary.ready }}</b> 就绪</span>
-            <span class="stat"><b>{{ obs.summary.inFlight }}</b> 执行中</span>
-            <span class="stat"><b>{{ obs.summary.waiting }}</b> 等待</span>
-            <span class="stat"><b>{{ obs.summary.blocked }}</b> 阻塞/返工</span>
-            <span class="stat"><b>{{ projectProgress }}%</b> 工作项完成</span>
-            <span class="stat"><b>{{ acceptanceProgress }}%</b> 交付物签核</span>
+            <template v-if="project?.status === 'completed'">
+              <span class="stat done"><b>✓</b> 工作项与交付物已全部完成</span>
+              <span class="stat"><b>{{ projectProgress }}%</b> 工作项完成</span>
+              <span class="stat"><b>{{ acceptanceProgress }}%</b> 交付物签核</span>
+            </template>
+            <template v-else>
+              <span class="stat"><b>{{ obs.summary.ready }}</b> 就绪</span>
+              <span class="stat"><b>{{ obs.summary.inFlight }}</b> 执行中</span>
+              <span class="stat"><b>{{ obs.summary.waiting }}</b> 等待</span>
+              <span class="stat"><b>{{ obs.summary.blocked }}</b> 阻塞/返工</span>
+              <span class="stat"><b>{{ projectProgress }}%</b> 工作项完成</span>
+              <span class="stat"><b>{{ acceptanceProgress }}%</b> 交付物签核</span>
+            </template>
           </div>
 
           <!-- 执行看板：后端 stage → 列 -->
@@ -2772,7 +2828,17 @@ onUnmounted(() => {
           项目快照
           <span class="badge mono">{{ obs.project.routingPolicy }}</span>
         </div>
-        <div class="ctx-stats">
+        <div
+          v-if="project?.status === 'completed'"
+          class="ctx-done"
+        >
+          <span class="i-tabler-circle-check" />
+          工作项与交付物已全部完成
+        </div>
+        <div
+          v-else
+          class="ctx-stats"
+        >
           <div class="ctx-stat">
             <b>{{ obs.summary.ready }}</b><span>就绪</span>
           </div>
@@ -3806,6 +3872,28 @@ h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-in
   border: 1px dashed var(--chat-line);
   border-radius: 8px;
 }
+.stat.done b { color: var(--tone-success-dot); }
+.hero-stat b.ok { color: var(--tone-success-dot); }
+.stat.done { color: var(--tone-success-dot); }
+
+/* 项目办公室执行回执(与群聊 .ct-receipt 同一语法) */
+.chat-receipt {
+  max-width: 660px;
+  padding: 9px 11px;
+  margin-top: 2px;
+  background: var(--chat-canvas);
+  border: 1px solid var(--chat-line);
+  border-left: 2px solid var(--chat-accent);
+  border-radius: 9px;
+}
+.chat-receipt .cr-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 5px; }
+.chat-receipt .cr-head b { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--chat-ink); }
+.chat-receipt .cr-agent { font-family: var(--font-mono, monospace); font-size: 9.5px; color: var(--chat-ink-soft); }
+.chat-receipt .cr-badge { padding: 0 5px; font-family: var(--font-mono, monospace); font-size: 9px; color: var(--chat-ink-faint); border: 1px solid var(--chat-line); border-radius: 4px; }
+.chat-receipt .cr-q { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--chat-ink); overflow-wrap: anywhere; }
+.chat-receipt .cr-sys { margin-top: 5px; font-size: 10.5px; color: var(--chat-ink-soft); }
+.chat-receipt .cr-sys pre { max-height: 150px; padding: 7px; margin: 5px 0 0; overflow: auto; font-family: var(--font-mono, monospace); font-size: 10px; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--chat-surface-raised); border: 1px solid var(--chat-line); border-radius: 6px; }
+
 .ap-payload { flex: 1 1 200px; min-width: 0; }
 .ap-time { flex: 0 0 auto; margin-left: auto; }
 
@@ -3952,6 +4040,16 @@ h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-in
 .ctx-head > :last-child { margin-left: auto; }
 .ctx-lane-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ctx-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ctx-done {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 9px;
+  font-size: 10.5px;
+  color: var(--tone-success-dot);
+  background: var(--tone-success-bg);
+  border-radius: 7px;
+}
 .ctx-stat { display: flex; flex-direction: column; gap: 1px; }
 .ctx-stat b { font-family: var(--font-mono, monospace); font-size: 15px; color: var(--chat-ink); }
 .ctx-stat span { font-size: 9.5px; color: var(--chat-ink-faint); }

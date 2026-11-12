@@ -691,7 +691,7 @@ h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.02
 
 .daq-node-mobile { display: none; }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .flt-toggle {
     display: inline-flex;
     gap: 6px;
@@ -726,7 +726,7 @@ h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.02
   .count { margin-left: auto; }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   /* 产线胶囊:2 列网格 + 名称截断,避免 8 行纵向堆叠 */
   .strip-scroll {
     display: grid;
@@ -748,7 +748,7 @@ h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.02
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   /* 报警条在手机上换行成卡:设备/通道/规则三行,确认固定在右侧 */
   .alarm-bar { gap: 8px; padding: 10px 12px; }
   .bar-label { flex: 1 1 100%; }
