@@ -109,4 +109,4 @@ UI「运行环境」面板(`/aml` 页)提供完整引导:
 - 训练代码仅运行于作业工作区(`./aml/jobs/<id>/workspace/`),平台以独立子进程执行、墙钟/停摆/并发三重限制、杀树回收;权威指标由平台评估器复算,不采信 Agent 自报。
 - 数据集节点集 ⊆ Agent 的 daq 绑定(只缩不放);REST 侧走产线 line grants。
 - 全部副作用过 `recordOps`(audit_log + ops.log 实时帧),Agent 行为归属「Channel/成员」。
-- SQL 全参数绑定;工作区路径收敛校验(amlkit `_safe_job_path`);Mimosa 审计通过。
+- SQL 全参数绑定；工作区路径收敛校验（amlkit `_safe_job_path`）；本轮 Mimosa 完整扫描未完成（`scanner_enobufs`），不作安全通过声明。
