@@ -40,54 +40,57 @@ const lineRecipeId = defineModel<string>('recipeId', { required: true })
       </div>
     </div>
     <div class="line-ctl">
-      <label class="ctl-sel">
-        <span>{{ $t('dcwDetail.k3waz1025') }}</span>
-        <select
-          v-model="lineProductId"
-          class="inp"
-          @change="lineRecipeId = ''"
-        >
-          <option value="">
-            {{ $t('dcwDetail.kuisodh026') }}
-          </option>
-          <option
-            v-for="p in lineProducts"
-            :key="p.id"
-            :value="p.id"
+      <!-- 运行中不再展示“开跑表单”:两个空下拉会让人误以为还要选产品/配方。
+           运行态只保留停线入口,参数在上方摘要里只读呈现。 -->
+      <template v-if="!ls.active">
+        <label class="ctl-sel">
+          <span>{{ $t('dcwDetail.k3waz1025') }}</span>
+          <select
+            v-model="lineProductId"
+            class="inp"
+            @change="lineRecipeId = ''"
           >
-            {{ p.name }}
-          </option>
-        </select>
-      </label>
-      <label class="ctl-sel">
-        <span>{{ $t('dcwDetail.k48grv027') }}</span>
-        <select
-          v-model="lineRecipeId"
-          class="inp"
-          :disabled="!lineProductId"
-        >
-          <option value="">
-            {{ $t('dcwDetail.kutxzsz028') }}
-          </option>
-          <option
-            v-for="r in lineRecipes"
-            :key="r.id"
-            :value="r.id"
-            :disabled="r.params.length === 0"
+            <option value="">
+              {{ $t('dcwDetail.kuisodh026') }}
+            </option>
+            <option
+              v-for="p in lineProducts"
+              :key="p.id"
+              :value="p.id"
+            >
+              {{ p.name }}
+            </option>
+          </select>
+        </label>
+        <label class="ctl-sel">
+          <span>{{ $t('dcwDetail.k48grv027') }}</span>
+          <select
+            v-model="lineRecipeId"
+            class="inp"
+            :disabled="!lineProductId"
           >
-            {{ r.name }}{{ r.params.length === 0 ? $t('dcwDetail.k1hicmch155') : $t('dcwDetail.k1lzfi4g180', { p0: r.params.length }) }}
-          </option>
-        </select>
-      </label>
-      <button
-        v-if="!ls.active"
-        class="pill-btn"
-        :disabled="lineBusy || !lineRecipeId"
-        :title="!lineRecipeId ? $t('dcwDetail.startNeedRecipe') : $t('dcwDetail.startTip')"
-        @click="emit('start')"
-      >
-        {{ $t('dcwDetail.kfb8vml029') }}
-      </button>
+            <option value="">
+              {{ $t('dcwDetail.kutxzsz028') }}
+            </option>
+            <option
+              v-for="r in lineRecipes"
+              :key="r.id"
+              :value="r.id"
+              :disabled="r.params.length === 0"
+            >
+              {{ r.name }}{{ r.params.length === 0 ? $t('dcwDetail.k1hicmch155') : $t('dcwDetail.k1lzfi4g180', { p0: r.params.length }) }}
+            </option>
+          </select>
+        </label>
+        <button
+          class="pill-btn"
+          :disabled="lineBusy || !lineRecipeId"
+          :title="!lineRecipeId ? $t('dcwDetail.startNeedRecipe') : $t('dcwDetail.startTip')"
+          @click="emit('start')"
+        >
+          {{ $t('dcwDetail.kfb8vml029') }}
+        </button>
+      </template>
       <!-- 停线会中断在跑产线的数采与写控,属高危:二次确认(交互宪法 §2-1) -->
       <a-popconfirm
         v-else
