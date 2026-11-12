@@ -22,6 +22,12 @@ const emit = defineEmits<{ run: [] }>()
 
 const query = defineModel<DcwQueryForm>('query', { required: true })
 
+/** 手持档默认收起筛选(6 个全宽下拉会吃掉 600px);桌面保持展开。 */
+const filtersOpen = ref(true)
+onMounted(() => {
+  if (window.matchMedia('(max-width: 900px)').matches) filtersOpen.value = false
+})
+
 /** 查询点位展示(原始值或桶均值) */
 function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
   const v = p?.value ?? p?.avg
@@ -31,10 +37,27 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
 
 <template>
   <section class="aw-tile query-card">
-    <p class="sec-label">
-      {{ $t('dcwDetail.k1us3jse106') }}
-    </p>
-    <div class="q-grid">
+    <header class="q-head">
+      <p class="sec-label">
+        {{ $t('dcwDetail.k1us3jse106') }}
+      </p>
+      <button
+        type="button"
+        class="q-toggle"
+        :aria-expanded="filtersOpen"
+        @click="filtersOpen = !filtersOpen"
+      >
+        {{ filtersOpen ? $t('dcwDetail.filtersHide') : $t('dcwDetail.filtersShow') }}
+        <span
+          class="i-tabler-chevron-down q-chev"
+          :class="{ up: filtersOpen }"
+        />
+      </button>
+    </header>
+    <div
+      v-show="filtersOpen"
+      class="q-grid"
+    >
       <label class="f">
         <span>{{ $t('dcwDetail.k3waz1025') }}</span>
         <select
@@ -129,15 +152,15 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
           class="inp"
         >
       </label>
-      <div class="f q-actions">
-        <button
-          class="pill-btn"
-          :disabled="queryBusy"
-          @click="emit('run')"
-        >
-          {{ queryBusy ? $t('dcwDetail.k1eyx09r165') : $t('dcwDetail.k416ek178') }}
-        </button>
-      </div>
+    </div>
+    <div class="q-actions">
+      <button
+        class="pill-btn"
+        :disabled="queryBusy"
+        @click="emit('run')"
+      >
+        {{ queryBusy ? $t('dcwDetail.k1eyx09r165') : $t('dcwDetail.k416ek178') }}
+      </button>
     </div>
     <p
       v-if="queryError"
@@ -210,7 +233,6 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
 .q-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: end; }
 
 .q-grid .f { font-size: 11px; color: var(--ink-faint); }
-.q-actions { justify-content: flex-end; }
 .q-result { margin-top: 12px; overflow-x: auto; }
 
 .sec-label { margin: 14px 0 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); }
@@ -237,6 +259,7 @@ function fmtPoint(p: { value?: number, avg?: number } | undefined): string {
     box-shadow: 1px 0 0 var(--line);
   }
   .query-card { padding: 12px; }
+  .q-actions .pill-btn { width: 100%; }
   /* 触摸目标:手持命中区 ≥40px(main.css 只在 pointer:coarse 下兜底) */
   .pill-btn,
   .inp {

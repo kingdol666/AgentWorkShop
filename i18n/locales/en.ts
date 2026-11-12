@@ -1180,6 +1180,8 @@ export default {
     k40bfz150: 'entries)',
     k1b2snna151: 'Line Detail',
     kzcbfki152: 'Line-scoped nodes/products/recipes/batches: a recipe is required to start a run, and every acquired sample within the window carries the line identity — true line-level data isolation; PLC low-level (scaling/write/readback) is encapsulated by the system.',
+    filtersShow: 'Filters',
+    filtersHide: 'Hide filters',
     kplrsg153: 'Pause All Control',
     pauseAllConfirm: 'Every enabled node stops writing until you resume manually. Pause all control?',
     k1snap154: 'Pause all control: stops writes for every enabled node. Node-level enable/stop is independent — manually stopped nodes stay stopped; resume restores only enabled nodes',
