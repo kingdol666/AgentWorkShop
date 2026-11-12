@@ -63,7 +63,7 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">field protocols</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
-        <div class="hw-stat"><span class="v">143</span><span class="k">runtime settings</span></div>
+        <div class="hw-stat"><span class="v">144</span><span class="k">runtime settings</span></div>
         <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">acceptance assertions</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">task states</span></div>
       </div>
@@ -469,7 +469,7 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
   <section class="hw-final">
     <h2>Put an agent team on a real production line</h2>
     <p>
-      14 engines, 6 field protocols, 143 runtime settings and 1100+ baseline acceptance assertions (plus the follow-up wave reports) are
+      14 engines, 6 field protocols, 144 runtime settings and 1100+ baseline acceptance assertions (plus the follow-up wave reports) are
       already in the repository. Supervisory by design, second-level soft real-time;
       protocol-real, assertion-reproducible.
     </p>

@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [新增功能](#0110-新增了什么) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [新增功能](#0112-修复了什么) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -58,16 +58,16 @@
 - **AML 最近邻独立回归**：偏移时间戳、精确时间戳优先、容差边界与超容差缺失均锁定生产 helper。
 - **最终 main 验收**：最新 main `6af25a8b`，unit 1516/1516、PLC 11/11、Agent 9/9、API 75/75、Project 14/14、RSI 32/32、多轮 RSI 10/10，另有 6 页生产式 UI 截图。证据：`docs/audit/evidence/2026-11-12-final-main-acceptance/`。
 - **边界**：PLC 为隔离数字孪生，编排为确定性 mock harness；Mimosa 完整扫描仍因 `scanner_enobufs` 未完成，本版本不宣称安全通过。
+- **UI 观察项**：最终截图矩阵 `/dcw` 记录 1 条 hydration mismatch warning；无页面崩溃，overflowX=0。该项列为 P3 后续观察，不伪装为零控制台告警。
 
-
-- **取消/终止硬停**（#176）：canceled 项目不可变——全部写/审批/提案入口 fail-closed；runtime 取消能力缺失时终止以 503 回滚而非静默跳过；孤立任务实例频道在同一事务内取消并回收；解绑先停 runtime 再单事务收口数据库。
+（#176）：canceled 项目不可变——全部写/审批/提案入口 fail-closed；runtime 取消能力缺失时终止以 503 回滚而非静默跳过；孤立任务实例频道在同一事务内取消并回收；解绑先停 runtime 再单事务收口数据库。
 - **RSI 证据完整性**（#180）：bench pValue 由服务端按 perSeed 重算；经验晋级必须锚定真实已完成的本频道任务；Harness Profile pin 只渲染本频道 validated 且 scope 匹配的行；生命周期迁移全部 expected-state CAS。
 - **Session 幂等与停机**（#181）：会话消息获得 actor 维度的持久 `clientMessageId`（原子 INSERT 冲突回读；载荷变化确定性 409）；DAQ 帧全链携带 `lineId`；runtime stop 等待消费循环与 dispose，停机不再与数据库关库竞态。
 - **升级安全**（#182）：存量库平滑升级——messages 幂等索引改为补列之后再建（此前会让 0.11.1 之前的库启动即崩）。
 - **UI P0 三批**（#177–#179）：壳层/令牌/导航无障碍、ChatGPT 式群聊节奏、仪表盘班次状态带 + 真实告警队列。
 - 同批合入：AML 数据集最近邻对齐（#166）、动作证据按 MV 收窄（#167/#168）、锁外根任务过期收口（#169）、agent.block 协议面端到端（#170/#172/#173）、harness 能力声明对齐事实（#171）、OMP identity 补 harness（#174）、ACP HITL 应答映射抽纯函数（#175）。
 
-验证：unit **1508/1508**，lint/typecheck/i18n/docs 0 失败；隔离生产构建实机验收 **9 套件 0 FAIL**——PLC 孪生 V1–V6 **14/14**、Agent 治理写 **8/8**、REST/WS/MCP **75/75**、Project 跨频道派发 **14/14**、RSI 演化 **32/32**。证据：`docs/audit/evidence/2026-11-12-main-acceptance/`。
+验证：unit **1516/1516**，lint/typecheck/i18n/docs 0 失败；最终 main 生产式隔离验收——PLC 孪生 **11/11**、Agent 治理写 **9/9**、REST/WS/MCP **75/75**、Project 跨频道派发 **14/14**、RSI 演化 **32/32**、多轮 RSI **10/10**。证据：`docs/audit/evidence/2026-11-12-final-main-acceptance/`。
 
 ## 0.11.0 新增了什么
 

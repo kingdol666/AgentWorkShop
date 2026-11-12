@@ -22,7 +22,7 @@
 | Project/SuperAgent multi-channel | PASS | 14/14 |
 | RSI live | PASS | 32/32 |
 | RSI multi-round | PASS | 10/10 |
-| UI screenshots | PASS with observations | 6 pages, overflowX=0, pageErrors=0, consoleErrors empty after final capture |
+| UI screenshots | PASS with observation | 6 pages, overflowX=0, pageErrors=0; final capture had one hydration warning on `/dcw`, no page crash |
 
 ## Fixed issues in this acceptance wave
 
@@ -36,7 +36,7 @@
 Screenshots are stored in `shots/` and were captured from the final production-style instance at 1440×900 dark theme:
 `dashboard`, `workshop`, `projects`, `monitor`, `daq`, `dcw`.
 
-The browser matrix reported `overflowX=0`, no page errors, and no console errors after the final capture. Earlier exploratory capture showed hydration mismatch warnings on two routes; the final capture did not reproduce them. They remain a follow-up observation rather than a release blocker.
+The browser matrix reported `overflowX=0`, no page errors, and one hydration mismatch warning on the final `/dcw` route; no page crash occurred. The warning is recorded as a P3 follow-up observation, not silently counted as zero console errors.
 
 ## Boundaries
 
