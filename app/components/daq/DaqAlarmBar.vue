@@ -101,6 +101,15 @@ function ageText(a: DaqAlarmRow): string {
   align-items: center;
 }
 
+@media (max-width: 900px) {
+  /* 批量确认是次要动作:保持内容宽度,不占满整条报警带 */
+  .ack-all {
+    align-self: flex-start;
+    width: auto;
+    min-height: 36px;
+  }
+}
+
 .alarm-ch {
   padding: 0 4px;
   font-size: 9.5px;

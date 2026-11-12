@@ -33,6 +33,14 @@ test('普通 Markdown 回答不被改写', () => {
   assert.equal(parseChatReceipt(''), null)
 })
 
+test('内部事件批次摘要不冒充提问,整段进系统指令', () => {
+  const r = parseChatReceipt('@项目内核 mock 群聊回复(0b5c3d9c-68ad-45eb-a326-ddfbedfffd01):已处理「[项目内核] 事件批次摘要 (1 条,按类型聚合;需要细节请用 project_get_status) : - result.submitted ×1」;source=6285462f')
+  assert.ok(r)
+  assert.equal(r.question, '')
+  assert.match(r.instruction, /事件批次摘要/)
+  assert.equal(r.instruction.includes('source='), false)
+})
+
 test('仅有协议头没有提问内容时返回 null,避免渲染空回执', () => {
   assert.equal(parseChatReceipt('@visual mock 群聊回复(4b841f2e-f271-4d01-80f9-cd8ece9ae830):已处理'), null)
 })
