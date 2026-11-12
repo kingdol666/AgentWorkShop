@@ -21,14 +21,29 @@ const emit = defineEmits<{
 <template>
   <section class="aw-tile ctrl-card">
     <div class="ctrl-left">
-      <button
-        class="aw-pill"
-        :class="{ running: running }"
-        :title="$t('dcwDetail.k1snap154')"
-        @click="emit('toggle', running ? 'pause' : 'resume')"
+      <a-popconfirm
+        v-if="running"
+        :title="$t('dcwDetail.pauseAllConfirm')"
+        :ok-text="$t('common.confirm')"
+        :cancel-text="$t('common.cancel')"
+        @confirm="emit('toggle', 'pause')"
       >
-        <span :class="running ? 'i-tabler-player-pause' : 'i-tabler-player-play'" />
-        {{ running ? $t('dcwDetail.kplrsg153') : $t('dcwDetail.knxgni9169') }}
+        <button
+          class="aw-pill danger"
+          :title="$t('dcwDetail.k1snap154')"
+        >
+          <span class="i-tabler-player-pause" />
+          {{ $t('dcwDetail.kplrsg153') }}
+        </button>
+      </a-popconfirm>
+      <button
+        v-else
+        class="aw-pill"
+        :title="$t('dcwDetail.k1snap154')"
+        @click="emit('toggle', 'resume')"
+      >
+        <span class="i-tabler-player-play" />
+        {{ $t('dcwDetail.knxgni9169') }}
       </button>
     </div>
     <div class="ctrl-right">
@@ -78,7 +93,6 @@ const emit = defineEmits<{
   margin-bottom: 14px;
 }
 .ctrl-left { display: flex; gap: 14px; align-items: center; }
-.aw-pill.running { background: var(--accent); }
 .ctrl-right { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; justify-content: flex-end; }
 .ctrl-metrics { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-right: 4px; font-size: 11.5px; color: var(--ink-soft); }
 .ctrl-metrics .sep { opacity: 0.4; }

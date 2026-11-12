@@ -82,14 +82,29 @@ function applyCycles(): void {
   <section class="aw-tile ctrl-card">
     <div class="ctrl-row">
       <div class="ctrl-left">
-        <button
-          class="aw-pill"
-          :class="{ running: controller.running }"
-          :title="$t('daq.k1snap145')"
-          @click="emit('action', controller.running ? 'pause' : 'resume')"
+        <a-popconfirm
+          v-if="controller.running"
+          :title="$t('daq.pauseAllConfirm')"
+          :ok-text="$t('common.confirm')"
+          :cancel-text="$t('common.cancel')"
+          @confirm="emit('action', 'pause')"
         >
-          <span :class="controller.running ? 'i-tabler-player-pause' : 'i-tabler-player-play'" />
-          {{ controller.running ? $t('daq.kpui00095') : $t('daq.knxpdpt111') }}
+          <button
+            class="aw-pill danger"
+            :title="$t('daq.k1snap145')"
+          >
+            <span class="i-tabler-player-pause" />
+            {{ $t('daq.kpui00095') }}
+          </button>
+        </a-popconfirm>
+        <button
+          v-else
+          class="aw-pill"
+          :title="$t('daq.k1snap145')"
+          @click="emit('action', 'resume')"
+        >
+          <span class="i-tabler-player-play" />
+          {{ $t('daq.knxpdpt111') }}
         </button>
         <label class="cycle mono">
           {{ $t('daq.k1ifahxj016') }}

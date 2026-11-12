@@ -48,6 +48,11 @@ onMounted(() => {
   }, 5000, { bgMs: 30000 })
 })
 
+/** 告警行不带单位:从节点清单取同一份工程单位(只用于展示) */
+const alarmUnits = computed<Record<string, string>>(() =>
+  Object.fromEntries(daq.nodes.map(n => [n.id, n.unit])),
+)
+
 /** 告警确认必须走服务端:ackAlarm 内部会重新拉取未确认列表,界面据此收敛 */
 const onAckAlarm = (id: string): void => {
   void daq.ackAlarm(id)
@@ -103,6 +108,7 @@ const onAckAlarm = (id: string): void => {
 
     <DashboardAlarmQueue
       :alarms="daq.alarms"
+      :units="alarmUnits"
       @ack="onAckAlarm"
     />
 

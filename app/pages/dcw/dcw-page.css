@@ -52,7 +52,8 @@
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
 }
-/* 产线卡:实心 surface + 1px 发丝边;运行卡在顶缘叠一线产线色洗染做「图」 */
+/* 产线卡:中性实心 surface + 发丝边;产线色只做 2px 身份左缘,不铺底。
+ * 状态色是页面上唯一的“实色语义”:绿=运行,中性=待机。 */
 .line-card {
   position: relative;
   display: flex;
@@ -62,22 +63,18 @@
   text-align: left;
   background: var(--surface-card);
   border: 1px solid var(--line);
+  border-left: 2px solid color-mix(in srgb, var(--lc, var(--line-strong)) 55%, var(--line));
   border-radius: var(--radius-panel);
   transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .line-card:hover {
-    border-color: color-mix(in srgb, var(--lc, #3aa0ff) 45%, var(--line-strong));
+    border-color: var(--line-strong);
     transform: translateY(-1px);
     box-shadow: var(--shadow-lift-1);
   }
 }
-.line-card:not(.idle) {
-  border-color: color-mix(in srgb, var(--lc, #3aa0ff) 38%, var(--line-strong));
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--lc, #3aa0ff) 7%, transparent), transparent 46%),
-    var(--surface-card);
-}
+.line-card:not(.idle),
 .line-card.idle {
   background: var(--surface-card);
 }
@@ -88,46 +85,54 @@
 .line-card.idle .lc-name {
   color: var(--ink-faint);
 }
-.lc-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lc-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.lc-ident { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.lc-flags { display: flex; flex: none; gap: 6px; align-items: center; }
+.lc-acts { display: flex; flex: none; gap: 2px; align-items: center; }
 .lc-dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   flex: none;
   background: var(--lc);
-  border-radius: 4px;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--lc) 70%, transparent);
+  border-radius: 3px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--lc) 55%, transparent);
 }
-/* 名称不再用 ellipsis 硬裁:窄屏改用换行,长名不消失(审计的 text-clipped 根因) */
 .lc-name {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 14.5px;
+  overflow: hidden;
+  font-size: 14px;
   color: var(--ink);
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .lc-state {
-  margin-left: auto;
   flex: none;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--ink-faint);
 }
 .lc-state.on { color: var(--tone-success-dot); }
-/* 线级控制模式总闸标签(2026-10-08):手动=缺省安全色,自动=警示橙(审批闸门已摘) */
+/* 线级控制模式:手动=缺省中性,自动=解除审批的警示色(不再用第二套橙) */
 .lc-mode {
   flex: none;
-  font-size: 11px;
-  line-height: 1;
   padding: 3px 7px;
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
   border-radius: var(--radius-chip);
-  border: 1px solid var(--tone-success-dot, #35e0a0);
-  color: var(--tone-success-dot, #35e0a0);
-  background: color-mix(in srgb, var(--tone-success-dot, #35e0a0) 10%, transparent);
 }
 .lc-mode.auto {
-  border-color: #ff8a5c;
-  color: #ff8a5c;
-  background: rgba(255, 138, 92, 0.1);
+  color: var(--tone-warning-dot);
+  background: var(--tone-warning-bg);
+  border-color: color-mix(in srgb, var(--tone-warning-dot) 32%, transparent);
 }
 /* 头部图标钮:编辑/删除,悬停语义色染色 */
 .lc-act {
