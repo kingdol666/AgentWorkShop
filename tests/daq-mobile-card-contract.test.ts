@@ -26,8 +26,8 @@ test('手机节点卡提供只读读数与节点详情入口', () => {
   assert.match(mobile, /n\.unit/)
 })
 
-test('760 档隐藏桌面表、显示节点卡,筛选可折叠', () => {
-  assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.daq-node-table \{ display: none; \}/)
+test('900 档隐藏桌面表、显示节点卡,筛选可折叠', () => {
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.daq-node-table \{ display: none; \}/)
   assert.match(css, /\.daq-node-mobile \{ display: block; \}/)
   assert.match(css, /\.flt-toggle/)
   assert.match(panel, /filtersOpen/)

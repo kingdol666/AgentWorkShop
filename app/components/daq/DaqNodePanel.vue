@@ -47,7 +47,7 @@ const emit = defineEmits<{
 /** 手持档默认收起筛选:7 个全宽下拉会先吃掉 400px 才看到节点 */
 const filtersOpen = ref(true)
 onMounted(() => {
-  if (window.matchMedia('(max-width: 760px)').matches) filtersOpen.value = false
+  if (window.matchMedia('(max-width: 900px)').matches) filtersOpen.value = false
 })
 
 /** 筛选态经 v-model 传入(与页面 useDaqFilters 同一 reactive 对象;下拉就地读写) */
