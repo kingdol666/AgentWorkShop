@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.11.1</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.11.2</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -49,9 +49,16 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **闭环是真的**：读数 → 分析 → 提案 → 审批 → 写穿 → 回读证实 → 台账留痕，全链有实机验收。
 
-## 0.11.1 新增了什么
+## 0.11.2 修复了什么
 
-一次加固版本：2026-11-11 全系统验收提出的所有发现全部在 main 收口，1508 项单元测试与一轮生产式隔离验收（9 套件 0 FAIL）背书。
+这是在 PR #185、PR #186 合并后收口最终验收发现的补丁版本。
+
+- **recipe_trial 挂卡前预检**：确定性超量程与配方窗口越界候选在 HITL 前拒绝，不创建审批卡、不调用驱动、不建执行批次、设备值不变。
+- **严格 recipe 输入校验**：null、布尔值、空字符串、NaN、Infinity 与非数字字符串整批 fail-closed；有限数字与数字字符串保持兼容。
+- **AML 最近邻独立回归**：偏移时间戳、精确时间戳优先、容差边界与超容差缺失均锁定生产 helper。
+- **最终 main 验收**：最新 main `6af25a8b`，unit 1516/1516、PLC 11/11、Agent 9/9、API 75/75、Project 14/14、RSI 32/32、多轮 RSI 10/10，另有 6 页生产式 UI 截图。证据：`docs/audit/evidence/2026-11-12-final-main-acceptance/`。
+- **边界**：PLC 为隔离数字孪生，编排为确定性 mock harness；Mimosa 完整扫描仍因 `scanner_enobufs` 未完成，本版本不宣称安全通过。
+
 
 - **取消/终止硬停**（#176）：canceled 项目不可变——全部写/审批/提案入口 fail-closed；runtime 取消能力缺失时终止以 503 回滚而非静默跳过；孤立任务实例频道在同一事务内取消并回收；解绑先停 runtime 再单事务收口数据库。
 - **RSI 证据完整性**（#180）：bench pValue 由服务端按 perSeed 重算；经验晋级必须锚定真实已完成的本频道任务；Harness Profile pin 只渲染本频道 validated 且 scope 匹配的行；生命周期迁移全部 expected-state CAS。
@@ -394,7 +401,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前版本：**v0.11.1** —— [版本发布](https://github.com/kingdol666/AgentWorkShop/releases) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前版本：**v0.11.2** —— [版本发布](https://github.com/kingdol666/AgentWorkShop/releases) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />
