@@ -279,6 +279,10 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 639px) {
+  .mobile-title {
+    font-size: 13px;
+  }
+
   .header-left,
   .header-right {
     gap: 4px;

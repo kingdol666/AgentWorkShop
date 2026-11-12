@@ -994,7 +994,7 @@ async function instantiate(): Promise<void> {
   flex: 0 0 auto;
   font-family: var(--font-mono, monospace);
   font-size: 11px;
-  color: var(--ink-fainter);
+  color: var(--ink-faint);
   letter-spacing: 0.06em;
 }
 .guide-step b { display: block; margin-bottom: 2px; font-size: 12.5px; color: var(--ink); }

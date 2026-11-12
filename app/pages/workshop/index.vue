@@ -132,6 +132,10 @@ useHead({ title: () => t('titles.workshop') })
   gap: 18px;
 }
 
+@media (max-width: 640px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* 新建占位砖:与工作区卡同高同圆角,虚线边界表明"这里还能放一个" */
 .ws-add {
   display: flex;

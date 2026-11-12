@@ -158,6 +158,10 @@ const { t } = useI18n()
   border-top: 1px solid var(--divider-hair);
 }
 
+@media (max-width: 640px) {
+  .fleet-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* 手持档字号地板:本页所有"铭牌级"微字(引擎命令名、产线状态、产线指标行、
    跳转箭头)统一抬到 11.5px。它们在桌面是仪器铭牌语言,在手机上就是读不了的小字。
    ⚠️ 此块与 DashboardHarnessPanel 的 scoped 块有意重复:同一条"页面级字号地板"
@@ -206,7 +210,11 @@ const { t } = useI18n()
 }
 .fleet-all:hover .fa-arrow { transform: translateX(3px); }
 .fleet-empty {
+  box-sizing: border-box;
+  max-width: 100%;
   padding: 18px 0;
+  margin: 0;
+  overflow-wrap: anywhere;
   font-size: 12px;
   color: var(--ink-faint);
   text-align: center;

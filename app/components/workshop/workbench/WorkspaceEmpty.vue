@@ -30,6 +30,10 @@ const emit = defineEmits<{
 
 /* 空态:整幅居中构图(跨全部网格列,代替左上角一张小幽灵卡) */
 .ws-empty {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
@@ -51,6 +55,13 @@ const emit = defineEmits<{
 }
 .ws-empty-ico { font-size: 34px; color: var(--ink-faint); }
 .aw-empty-title { font-size: 16px; font-weight: 600; color: var(--ink); }
-.aw-empty-sub { max-width: 420px; font-size: 12.5px; line-height: 1.7; color: var(--ink-faint); }
+.aw-empty-sub {
+  width: 100%;
+  max-width: 420px;
+  overflow-wrap: anywhere;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-faint);
+}
 .ws-empty-cta { margin-top: 6px; pointer-events: none; }
 </style>
