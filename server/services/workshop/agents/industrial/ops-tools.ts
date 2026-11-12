@@ -1205,9 +1205,11 @@ export async function toolRecipeTrial(agentId: string, args: {
   const hypothesis = String(args.hypothesis ?? '').trim()
   const emergency = args.emergency === true || args.emergency === 'true'
   if (!hypothesis) return { text: 'hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯与人工审批判断。', isError: true }
-  const list = (args.params ?? []).filter(p => p && String(p.node_id ?? '').trim() && Number.isFinite(Number(p.value)))
-    .map(p => ({ nodeId: String(p.node_id).trim(), value: Number(p.value) }))
-  if (list.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字);试验的意义就是多参数一次整批改动。', isError: true }
+  const rawParams = args.params ?? []
+  if (rawParams.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字);试验的意义就是多参数一次整批改动。', isError: true }
+  const malformed = rawParams.find(p => !p || !String(p.node_id ?? '').trim() || !Number.isFinite(Number(p.value)))
+  if (malformed) return { text: 'params 中每一项都必须提供非空 node_id 与有限数字 value;本次整批候选已拒绝,未创建审批卡。', isError: true }
+  const list = rawParams.map(p => ({ nodeId: String(p!.node_id).trim(), value: Number(p!.value) }))
   const target = resolveRecipeTarget(args.recipe_id, args.line_id)
   if (!target.ok) return { text: target.text, isError: true }
   const recipe = target.recipe

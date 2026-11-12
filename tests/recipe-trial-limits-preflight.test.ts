@@ -148,6 +148,40 @@ test('合法候选不受影响:manual 绑定仍正常挂 HITL 卡(预检不误�
   for (const { node } of f.nodes) assert.equal(node.value, null)
 })
 
+test('合法候选批准后仍走 mock 驱动并完成设备回读', async (t) => {
+  const f = fixture('approved')
+  t.after(f.cleanup)
+  const writeSpy = t.mock.method(mockDcwDriver, 'write', mockDcwDriver.write)
+  const task = toolRecipeTrial(f.agentId, {
+    recipe_id: f.recipe.id,
+    hypothesis: '批准后的合法候选必须完成设备证实',
+    params: [{ node_id: f.nodes[0]!.node.id, value: 53 }],
+  })
+  const card = await pendingCard(f.agentId)
+  getToolApprovals().decide(card.id, true, '批准合法候选', 'local-owner', 'Local owner')
+  const out = await task
+  assert.equal(out.isError, undefined)
+  assert.match(out.text, /全部设备证实|证实/)
+  assert.equal(writeSpy.mock.callCount(), 1)
+  assert.equal(f.nodes[0]!.node.value, 53)
+})
+
+test('混入非法参数时整批拒绝,不静默缩减为合法子集', async (t) => {
+  const f = fixture('malformed')
+  t.after(f.cleanup)
+  const out = await toolRecipeTrial(f.agentId, {
+    recipe_id: f.recipe.id,
+    hypothesis: '非法参数不能被静默丢弃',
+    params: [
+      { node_id: f.nodes[0]!.node.id, value: 53 },
+      { node_id: f.nodes[1]!.node.id, value: Number.NaN },
+    ],
+  })
+  assert.equal(out.isError, true)
+  assert.match(out.text, /整批候选已拒绝/)
+  assert.equal(getToolApprovals().listPending(f.agentId).length, 0)
+})
+
 test('预检纯函数:边界值放行、越界点名、部分越界整批拒绝、与 write() 断言同文', (t) => {
   const f = fixture('pure')
   t.after(f.cleanup)
