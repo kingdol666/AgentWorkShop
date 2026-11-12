@@ -63,7 +63,7 @@ function clock(iso: string | null | undefined): string {
       <header class="np-head">
         <h2>{{ $t('dcwDetail.k1e2dtkt053') }}</h2>
         <span class="np-count mono">{{ lineNodes.length }}</span>
-        <span class="np-hint">{{ $t('dcwDetail.k1snap154') }}</span>
+        <span class="np-hint">{{ $t('dcwDetail.nodeListHint') }}</span>
       </header>
 
       <div
@@ -104,7 +104,7 @@ function clock(iso: string | null | undefined): string {
             </div>
 
             <span
-              v-if="!n.enabled || n.state !== 'ok'"
+              v-if="!n.enabled || (n.state !== 'ok' && n.state !== 'idle')"
               class="st-pill"
               :class="n.enabled ? n.state : 'paused'"
             >{{ n.enabled ? (stateLabel[n.state] ?? n.state) : $t('dcwDetail.k3n93ed062') }}</span>

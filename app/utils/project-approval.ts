@@ -9,6 +9,8 @@
 export interface ApprovalContext {
   /** 审批对象 id(交付物/成果审批时用于补全名称) */
   subjectId?: string
+  /** 服务端 subject_type:result 时按“成果”呈现 */
+  subjectType?: string
   deliverables?: Array<{ id: string, name: string }>
   results?: Array<{ id: string, title: string, summary?: string }>
 }
@@ -27,6 +29,9 @@ interface Payload {
   workItemCount?: unknown
   completedWorkItems?: unknown
   workItems?: unknown
+  tool?: unknown
+  args?: unknown
+  channelId?: unknown
 }
 
 function obj(raw: unknown): Payload | null {
@@ -71,12 +76,31 @@ export function approvalSummary(kind: string, payloadJson?: string, ctx?: Approv
   }
 
   if (kind === 'deliverable_acceptance') {
-    const id = text(p.deliverableId) || text(ctx?.subjectId)
+    const id = text(p.deliverableId) || text(p.resultId) || text(ctx?.subjectId)
     const known = ctx?.deliverables?.find(d => d.id === id)?.name
-    // 审批对象可能是“交付物”也可能是其下的成果(subjectId 指向 result)
+    // 审批对象可能是“交付物”也可能是其下的成果(载荷/标题命中 result)
     const knownResult = ctx?.results?.find(r => r.id === id)?.title
+    const isResult = ctx?.subjectType === 'result' || !!text(p.resultId) || !!knownResult
     const name = text(p.deliverableName) || known || knownResult || shortId(id)
-    return name ? `交付物:${name}${versionOf(p)}` : ''
+    return name ? `${isResult ? '成果' : '交付物'}:${name}${versionOf(p)}` : ''
+  }
+
+  if (kind === 'write_intent') {
+    const tool = text(p.tool)
+    const args = obj(p.args)
+    const bits: string[] = []
+    for (const [k, v] of Object.entries(args ?? {}).slice(0, 3)) {
+      if (v == null || typeof v === 'object') continue
+      bits.push(`${k}=${String(v)}`)
+    }
+    const detail = bits.join(' · ')
+    if (!tool && !detail) return ''
+    return `写意图:${[tool, detail].filter(Boolean).join(' · ')}`
+  }
+
+  if (kind === 'channel_binding') {
+    const id = text(p.channelId) || text(ctx?.subjectId)
+    return id ? `频道:${id.slice(0, 8)}` : ''
   }
 
   if (kind === 'result_acceptance' || kind === 'result_review') {

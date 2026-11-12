@@ -7,7 +7,6 @@ import type { LineView } from '#shared/dcw-protocol'
 
 defineProps<{
   line: LineView | undefined
-  lineId: string
   nodesCount: number
   productsCount: number
   recipesCount: number

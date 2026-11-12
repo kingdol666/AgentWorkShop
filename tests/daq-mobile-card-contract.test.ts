@@ -19,6 +19,12 @@ test('节点面板不再渲染第二份未确认报警卡', () => {
   assert.match(panel, /DaqNodeMobileList/)
 })
 
+test('手机卡使用全量过滤结果,不复用桌面虚拟窗口', () => {
+  assert.match(panel, /mobileNodes: DaqNodeLive\[\]/)
+  assert.match(panel, /:nodes="mobileNodes"/)
+  assert.equal(/:nodes="visibleNodes"/.test(panel), false)
+})
+
 test('手机节点卡提供只读读数与节点详情入口', () => {
   assert.match(mobile, /data-testid="daq-node-mobile-card"/)
   assert.match(mobile, /\/daq\/\$\{n\.id\}/)

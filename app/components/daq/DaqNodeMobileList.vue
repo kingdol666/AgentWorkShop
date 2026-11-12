@@ -8,6 +8,7 @@
  */
 import type { DaqNodeLive } from '@/app/composables/workshop/useDaqStream'
 import type { LineView } from '#shared/dcw-protocol'
+import { useDeviceTwins } from '@/app/composables/workshop/useDeviceTwins'
 
 const props = defineProps<{
   nodes: DaqNodeLive[]
@@ -16,6 +17,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const deviceTwins = useDeviceTwins()
 
 /** 34 张卡 ≈ 4000px;先给 10 张,其余按需展开 */
 const showAll = ref(false)
@@ -23,7 +25,7 @@ const shown = computed(() => showAll.value ? props.nodes : props.nodes.slice(0, 
 
 function lineName(id: string | null | undefined): string {
   if (!id) return t('daq.k3ootr6053')
-  return props.lines.find(l => l.id === id)?.name ?? id.slice(0, 8)
+  return props.lines.find(l => l.id === id)?.name ?? t('daq.unassignedLine')
 }
 
 function stateOf(n: DaqNodeLive): { key: string, label: string } {
@@ -43,7 +45,10 @@ function valueOf(n: DaqNodeLive): string {
 
 function deviceOf(n: DaqNodeLive): string {
   const ids = n.deviceIds ?? (n.deviceBindingId ? [n.deviceBindingId] : [])
-  return ids.length > 0 ? `${ids.length}` : '—'
+  const names = ids
+    .map(id => deviceTwins.twins.find(x => x.id === id)?.name)
+    .filter((x): x is string => !!x)
+  return names.length > 0 ? names.join(' / ') : '—'
 }
 </script>
 
@@ -68,11 +73,11 @@ function deviceOf(n: DaqNodeLive): string {
         <div class="dn-value mono">
           <b>{{ valueOf(n) }}</b>
           <small>{{ n.unit }}</small>
-          <span class="dn-interval">{{ n.intervalMs == null ? '跟随' : `${n.intervalMs}ms` }}</span>
+          <span class="dn-interval">{{ n.intervalMs == null ? $t('daq.followGlobal') : `${n.intervalMs}ms` }}</span>
         </div>
         <div class="dn-meta">
           <span>{{ lineName(n.lineId) }}</span>
-          <span>设备 {{ deviceOf(n) }}</span>
+          <span>{{ $t('daq.boundDevices') }} {{ deviceOf(n) }}</span>
           <span class="i-tabler-chevron-right dn-go" />
         </div>
       </NuxtLink>
@@ -176,10 +181,18 @@ function deviceOf(n: DaqNodeLive): string {
 
 .dn-meta {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   align-items: center;
   font-size: 10.5px;
   color: var(--ink-faint);
+}
+
+.dn-meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dn-go { margin-left: auto; }

@@ -40,7 +40,6 @@ h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.02
 .aw-pill { flex: 0 0 auto; white-space: nowrap; }
 /* 行内小按钮(确认/筛选/回滚…)同族:窄屏禁止中文折成两行 */
 .mini-btn, .mini-act, .pill-btn, .node-toggle { white-space: nowrap; }
-.aw-pill.running { background: var(--accent); }
 .cycle { display: inline-flex; flex: 0 0 auto; gap: 6px; align-items: center; font-size: 12px; white-space: nowrap; color: var(--ink-faint); }
 .cycle input {
   width: 84px;
@@ -80,6 +79,8 @@ h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.02
   flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
+  max-height: 92px;
+  overflow-y: auto;
 }
 .strip-scroll::-webkit-scrollbar { height: 4px; }
 .strip-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 2px; }
@@ -692,6 +693,11 @@ h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.02
 .daq-node-mobile { display: none; }
 
 @media (max-width: 900px) {
+  /* 控制器周期输入:25px 的裸 input 手指点不中 */
+  .cycle input {
+    min-height: 40px;
+  }
+
   .flt-toggle {
     display: inline-flex;
     gap: 6px;
@@ -732,6 +738,8 @@ h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.02
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
+    max-height: 180px;
+    overflow-y: auto;
   }
 
   .line-pill {

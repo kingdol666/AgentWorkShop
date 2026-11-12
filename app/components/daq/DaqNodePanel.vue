@@ -31,8 +31,10 @@ defineProps<{
   opsRecent: Array<{ at: string, actor: string, action: string, actorKind: string, kind: string, summary: string }>
   opsKindLabel: (kind: string) => string
   opsTime: (at: string) => string
-  /** 窗口化切片 */
+  /** 桌面表的窗口化切片 */
   visibleNodes: DaqNodeLive[]
+  /** 手机卡列表用的全量过滤结果(不能复用虚拟窗口:手机端表 display:none,窗口会塌缩) */
+  mobileNodes: DaqNodeLive[]
   padTopPx: number
   padBottomPx: number
   loading: boolean
@@ -44,10 +46,20 @@ const emit = defineEmits<{
   'clear-filters': []
 }>()
 
-/** 手持档默认收起筛选:7 个全宽下拉会先吃掉 400px 才看到节点 */
+/** 手持档默认收起筛选:7 个全宽下拉会先吃掉 400px 才看到节点。
+ *  跨断点(旋转/拉伸)时同步:窄屏收起,宽屏展开,避免"筛选已生效却看不到入口"。 */
 const filtersOpen = ref(true)
+let media: MediaQueryList | null = null
+const syncFilters = (): void => {
+  if (media) filtersOpen.value = !media.matches
+}
 onMounted(() => {
-  if (window.matchMedia('(max-width: 900px)').matches) filtersOpen.value = false
+  media = window.matchMedia('(max-width: 900px)')
+  syncFilters()
+  media.addEventListener('change', syncFilters)
+})
+onBeforeUnmount(() => {
+  media?.removeEventListener('change', syncFilters)
 })
 
 /** 筛选态经 v-model 传入(与页面 useDaqFilters 同一 reactive 对象;下拉就地读写) */
@@ -72,6 +84,10 @@ const tableEl = defineModel<HTMLTableElement | null>('tableEl', { required: true
             v-if="hasFilters"
             class="flt-on"
           />
+          <span
+            v-if="hasFilters"
+            class="sr-only"
+          >{{ $t('daq.filtersActive') }}</span>
         </button>
         <div
           v-show="filtersOpen"
@@ -372,7 +388,7 @@ const tableEl = defineModel<HTMLTableElement | null>('tableEl', { required: true
 
       <div class="daq-node-mobile">
         <DaqNodeMobileList
-          :nodes="visibleNodes"
+          :nodes="mobileNodes"
           :lines="lines"
           :loaded="loaded"
         />

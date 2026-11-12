@@ -44,6 +44,24 @@ test('成果验收与项目完成', () => {
   )
 })
 
+test('生产写授权取 tool 与参数摘要', () => {
+  const p = JSON.stringify({ tool: 'dcw_write', args: { nodeId: 'dw-1f85b', value: 230 }, digest: 'abc123' })
+  const s = approvalSummary('write_intent', p)
+  assert.match(s, /dcw_write/)
+  assert.match(s, /dw-1f85b/)
+  assert.equal(s.includes('{'), false)
+})
+
+test('频道绑定取频道 id 短码', () => {
+  const s = approvalSummary('channel_binding', JSON.stringify({ channelId: 'e2cb6b43-b1f5-4a7a' }))
+  assert.match(s, /e2cb6b43/)
+})
+
+test('deliverable_acceptance 载荷指向 result 时按成果呈现', () => {
+  const s = approvalSummary('deliverable_acceptance', JSON.stringify({ resultId: '7c4fa389-b804', version: 1 }))
+  assert.match(s, /^成果:/)
+})
+
 test('坏 JSON/未知类型不外露原始载荷', () => {
   assert.equal(approvalSummary('plan_approval', '{broken'), '')
   assert.equal(approvalSummary('mystery', JSON.stringify({ secret: 'x' })), '')
