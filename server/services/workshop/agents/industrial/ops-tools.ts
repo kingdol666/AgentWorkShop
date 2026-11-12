@@ -1190,6 +1190,13 @@ export function recipeTrialValuePreflight(params: Array<{ nodeId: string, value:
   }
 }
 
+function finiteTrialValue(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value !== 'string' || value.trim() === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 /** 工具:recipe_trial —— 多参数候选整批试验下发(v19 配方链路核心)。
  *  权限模型 v2:需绑定该 recipe 且过二级认证+运行门;候选值只覆盖列出节点(须为配方内节点)。
  *  绑定 manual 时整批试验挂 HITL(理由随审批卡);整批一次落产线,不写配方版本 ——
@@ -1207,9 +1214,9 @@ export async function toolRecipeTrial(agentId: string, args: {
   if (!hypothesis) return { text: 'hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯与人工审批判断。', isError: true }
   const rawParams = args.params ?? []
   if (rawParams.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字);试验的意义就是多参数一次整批改动。', isError: true }
-  const malformed = rawParams.find(p => !p || !String(p.node_id ?? '').trim() || !Number.isFinite(Number(p.value)))
+  const malformed = rawParams.find(p => !p || !String(p.node_id ?? '').trim() || finiteTrialValue(p.value) == null)
   if (malformed) return { text: 'params 中每一项都必须提供非空 node_id 与有限数字 value;本次整批候选已拒绝,未创建审批卡。', isError: true }
-  const list = rawParams.map(p => ({ nodeId: String(p!.node_id).trim(), value: Number(p!.value) }))
+  const list = rawParams.map(p => ({ nodeId: String(p!.node_id).trim(), value: finiteTrialValue(p!.value)! }))
   const target = resolveRecipeTarget(args.recipe_id, args.line_id)
   if (!target.ok) return { text: target.text, isError: true }
   const recipe = target.recipe
