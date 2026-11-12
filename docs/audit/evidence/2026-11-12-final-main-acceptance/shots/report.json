@@ -1,0 +1,70 @@
+[
+  {
+    "route": "dashboard",
+    "path": "/",
+    "theme": "dark",
+    "landed": "/",
+    "overflowX": 0,
+    "scrollH": 1611,
+    "pageErrors": [],
+    "consoleErrors": [],
+    "file": "D:\\tmp\\aw-final-accept-20261112\\shots-final\\dark__dashboard.png"
+  },
+  {
+    "route": "workshop",
+    "path": "/workshop",
+    "theme": "dark",
+    "landed": "/workshop",
+    "overflowX": 0,
+    "scrollH": 900,
+    "pageErrors": [],
+    "consoleErrors": [],
+    "file": "D:\\tmp\\aw-final-accept-20261112\\shots-final\\dark__workshop.png"
+  },
+  {
+    "route": "projects",
+    "path": "/projects",
+    "theme": "dark",
+    "landed": "/projects",
+    "overflowX": 0,
+    "scrollH": 900,
+    "pageErrors": [],
+    "consoleErrors": [],
+    "file": "D:\\tmp\\aw-final-accept-20261112\\shots-final\\dark__projects.png"
+  },
+  {
+    "route": "monitor",
+    "path": "/monitor",
+    "theme": "dark",
+    "landed": "/monitor",
+    "overflowX": 0,
+    "scrollH": 1640,
+    "pageErrors": [],
+    "consoleErrors": [],
+    "file": "D:\\tmp\\aw-final-accept-20261112\\shots-final\\dark__monitor.png"
+  },
+  {
+    "route": "daq",
+    "path": "/daq",
+    "theme": "dark",
+    "landed": "/daq",
+    "overflowX": 0,
+    "scrollH": 1002,
+    "pageErrors": [],
+    "consoleErrors": [],
+    "file": "D:\\tmp\\aw-final-accept-20261112\\shots-final\\dark__daq.png"
+  },
+  {
+    "route": "dcw",
+    "path": "/dcw",
+    "theme": "dark",
+    "landed": "/dcw",
+    "overflowX": 0,
+    "scrollH": 900,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Hydration completed but contains mismatches."
+    ],
+    "file": "D:\\tmp\\aw-final-accept-20261112\\shots-final\\dark__dcw.png"
+  }
+]

@@ -1,4 +1,11 @@
-# 版本历史
+## v0.11.2 — 最终验收收口：recipe_trial 预检 × AML 回归 × 严格输入（2026-11-12）
+
+- recipe_trial 在 HITL 前复用统一限界谓词，超量程与活动配方窗口越界候选不再消耗人工审批或产线窗口。
+- recipe_trial 输入严格 fail-closed：null、布尔、空串、NaN、Infinity 与非数字字符串整批拒绝；有限数字与数字字符串保持兼容。
+- AML 最近邻生产 helper 增加独立偏移时间戳回归：精确值优先、容差边界接受、超容差计缺失。
+- 最终 main `6af25a8b` 生产式隔离验收：unit 1516/1516、PLC 11/11、Agent 9/9、API 75/75、Project 14/14、RSI 32/32、多轮 RSI 10/10；UI 6 页 overflowX=0/pageErrors=0。
+- 边界如实声明：PLC 为数字孪生，编排使用 mock harness，Mimosa 完整扫描因 `scanner_enobufs` 未完成。
+
 
 > 完整发布产物与逐版本说明见 [GitHub Releases](https://github.com/kingdol666/AgentWorkShop/releases)。
 > 以下为核心版本节点——每个节点对应一轮可验收的能力跃迁,验收证据收录于 `docs/audit/`。

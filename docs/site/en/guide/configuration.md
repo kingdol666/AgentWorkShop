@@ -34,8 +34,8 @@ aw config validate                   # validate config.yml and the overrides
 
 ## Effect (live vs restart)
 
-There are **119 descriptors** in total, split by effect into **40 `live`** and
-**79 `restart`** keys:
+There are **144 descriptors** in total, split by effect into **47 `live`** and
+**97 `restart`** keys:
 
 - `live` keys take effect **as soon as they are saved** (theme, title, timeouts, DAQ
   sampling cadence, AML gate thresholds — pushed over the server event stream);

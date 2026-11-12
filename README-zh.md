@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.2)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.11.1</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.11.2</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [新增功能](#0110-新增了什么) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [新增功能](#0112-修复了什么) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,9 +49,16 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **闭环是真的**：读数 → 分析 → 提案 → 审批 → 写穿 → 回读证实 → 台账留痕，全链有实机验收。
 
-## 0.11.1 新增了什么
+## 0.11.2 修复了什么
 
-一次加固版本：2026-11-11 全系统验收提出的所有发现全部在 main 收口，1508 项单元测试与一轮生产式隔离验收（9 套件 0 FAIL）背书。
+这是在 PR #185、PR #186 合并后收口最终验收发现的补丁版本。
+
+- **recipe_trial 挂卡前预检**：确定性超量程与配方窗口越界候选在 HITL 前拒绝，不创建审批卡、不调用驱动、不建执行批次、设备值不变。
+- **严格 recipe 输入校验**：null、布尔值、空字符串、NaN、Infinity 与非数字字符串整批 fail-closed；有限数字与数字字符串保持兼容。
+- **AML 最近邻独立回归**：偏移时间戳、精确时间戳优先、容差边界与超容差缺失均锁定生产 helper。
+- **最终 main 验收**：最新 main `6af25a8b`，unit 1516/1516、PLC 11/11、Agent 9/9、API 75/75、Project 14/14、RSI 32/32、多轮 RSI 10/10，另有 6 页生产式 UI 截图。证据：`docs/audit/evidence/2026-11-12-final-main-acceptance/`。
+- **边界**：PLC 为隔离数字孪生，编排为确定性 mock harness；Mimosa 完整扫描仍因 `scanner_enobufs` 未完成，本版本不宣称安全通过。
+- **UI 观察项**：最终截图矩阵 `/dcw` 记录 1 条 hydration mismatch warning；无页面崩溃，overflowX=0。该项列为 P3 后续观察，不伪装为零控制台告警。
 
 - **取消/终止硬停**（#176）：canceled 项目不可变——全部写/审批/提案入口 fail-closed；runtime 取消能力缺失时终止以 503 回滚而非静默跳过；孤立任务实例频道在同一事务内取消并回收；解绑先停 runtime 再单事务收口数据库。
 - **RSI 证据完整性**（#180）：bench pValue 由服务端按 perSeed 重算；经验晋级必须锚定真实已完成的本频道任务；Harness Profile pin 只渲染本频道 validated 且 scope 匹配的行；生命周期迁移全部 expected-state CAS。
@@ -60,7 +67,7 @@
 - **UI P0 三批**（#177–#179）：壳层/令牌/导航无障碍、ChatGPT 式群聊节奏、仪表盘班次状态带 + 真实告警队列。
 - 同批合入：AML 数据集最近邻对齐（#166）、动作证据按 MV 收窄（#167/#168）、锁外根任务过期收口（#169）、agent.block 协议面端到端（#170/#172/#173）、harness 能力声明对齐事实（#171）、OMP identity 补 harness（#174）、ACP HITL 应答映射抽纯函数（#175）。
 
-验证：unit **1508/1508**，lint/typecheck/i18n/docs 0 失败；隔离生产构建实机验收 **9 套件 0 FAIL**——PLC 孪生 V1–V6 **14/14**、Agent 治理写 **8/8**、REST/WS/MCP **75/75**、Project 跨频道派发 **14/14**、RSI 演化 **32/32**。证据：`docs/audit/evidence/2026-11-12-main-acceptance/`。
+验证：unit **1516/1516**，lint/typecheck/i18n/docs 0 失败；最终 main 生产式隔离验收——PLC 孪生 **11/11**、Agent 治理写 **9/9**、REST/WS/MCP **75/75**、Project 跨频道派发 **14/14**、RSI 演化 **32/32**、多轮 RSI **10/10**。证据：`docs/audit/evidence/2026-11-12-final-main-acceptance/`。
 
 ## 0.11.0 新增了什么
 
@@ -394,7 +401,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前版本：**v0.11.1** —— [版本发布](https://github.com/kingdol666/AgentWorkShop/releases) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前版本：**v0.11.2** —— [v0.11.2 版本发布](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.2) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

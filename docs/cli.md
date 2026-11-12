@@ -76,7 +76,7 @@ npx -p agentworkshop aw doctor     # 需要 aw 这个名字时用 -p 指定包
 | 包管理器 | `pnpm@11.9.0`（`packageManager`，仅源码开发需要） |
 | 模块形态 | ESM（`type: module`） |
 | 许可证 | `Apache-2.0` |
-| 当前版本 | `0.11.1`（`package.json`） |
+| 当前版本 | `0.11.2`（`package.json`） |
 
 ## 二、首次启动（Claude Code 式）
 
@@ -156,17 +156,17 @@ $ aw start
 
 - 优先级（CLI 与网页设置页、dev/prod 启动脚本共用同一引擎 `shared/config/engine.mjs`）：
   `config.yml 默认 < runtime-settings.json 运行时覆盖 < 环境变量 / CLI 显式参数`。
-- 设置描述符共 **138 项、19 组**（`aw config list` 即打印 138 行）：
+- 设置描述符共 **144 项、19 组**（`aw config list` 即打印 144 行）：
 
 | 组 | 项数 | 组 | 项数 | 组 | 项数 | 组 | 项数 |
-|---|---|---|---|---|---|---|---|
+|---|---:|---|---:|---|---:|---|---:|
 | `server` | 3 | `app` | 2 | `api` | 4 | `theme` | 2 |
-| `i18n` | 1 | `time` | 1 | `security` | 7 | `daq` | 27 |
+| `i18n` | 1 | `time` | 1 | `security` | 8 | `daq` | 38 |
 | `memory` | 10 | `omp` | 4 | `harness` | 12 | `dcw` | 4 |
-| `workshop` | 15 | `backup` | 3 | `retention` | 6 | `log` | 1 |
-| `aml` | 16 | `mcp` | 1 | | | | |
+| `workshop` | 19 | `backup` | 3 | `retention` | 8 | `log` | 1 |
+| `aml` | 19 | `mcp` | 1 | `optimizer` | 4 | | |
 
-  其中 `live`（保存即生效）40 项、`restart`（重启对应模式后生效）79 项，
+  其中 `live`（保存即生效）47 项、`restart`（重启对应模式后生效）97 项，
   `aw config list` 每行末尾会标注 `live` 或 `restart`。
 - 环境变量映射：`AW_<KEY 大写、点转下划线>`（如 `AW_SERVER_DEV_PORT`），
   另加描述符显式声明的历史 `aliases`（优先级：`AW_<KEY>` 高于 `aliases` 声明顺序）。

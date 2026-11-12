@@ -63,7 +63,7 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">field protocols</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
-        <div class="hw-stat"><span class="v">143</span><span class="k">runtime settings</span></div>
+        <div class="hw-stat"><span class="v">144</span><span class="k">runtime settings</span></div>
         <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">acceptance assertions</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">task states</span></div>
       </div>
@@ -75,10 +75,10 @@ footer:
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> and
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>.
         The rest are countable facts: 6 driver classes (5 built-in + the serial-bridge plugin) / 4 entry points (WS · MCP · A2A · REST) /
-        14 harnesses (<code>agents/registry.ts</code>) / 143 settings in 19 groups (<code>aw config list</code>) / 7 task states.
+        14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.11.1</i></span>
+        <span>Version <i>v0.11.2</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -95,16 +95,14 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">RELEASE · v0.11.1</span>
+      <span class="hw-sec-en">RELEASE · v0.11.2</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      0.11.1 is a hardening release: cancellation hard-stop, RSI evidence integrity,
-      session idempotency with a shutdown barrier, and upgrade-safe migrations are all
-      closed on main. Isolated production-mode acceptance: 9 suites, 0 fail (PLC twin
-      V1–V6 14/14, governed agent writes 8/8, Project multi-channel dispatch 14/14,
-      RSI evolution 32/32), unit 1508/1508. The November structural work — the Project
-      center as a first-class entry, promotable RSI experience, real-model runs — carries forward.
+      0.11.2 is a patch release that closes the final acceptance findings: recipe trial preflight,
+      strict runtime input validation, and independent AML nearest-neighbor regression coverage.
+      Final isolated acceptance: unit 1516/1516, PLC 11/11, Agent 9/9, REST/WS/MCP 75/75,
+      Project 14/14, RSI 32/32, multi-round RSI 10/10. Mimosa full scan remained incomplete.
     </p>
     <div class="hw-feats">
       <div class="hw-f">
@@ -328,7 +326,7 @@ footer:
       <div class="hw-p">
         <span class="no">04</span>
         <h3>Config-driven</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 143 settings, zero hardcoded defaults.</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 144 settings, zero hardcoded defaults.</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
@@ -471,7 +469,7 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
   <section class="hw-final">
     <h2>Put an agent team on a real production line</h2>
     <p>
-      14 engines, 6 field protocols, 143 runtime settings and 1100+ baseline acceptance assertions (plus the follow-up wave reports) are
+      14 engines, 6 field protocols, 144 runtime settings and 1100+ baseline acceptance assertions (plus the follow-up wave reports) are
       already in the repository. Supervisory by design, second-level soft real-time;
       protocol-real, assertion-reproducible.
     </p>

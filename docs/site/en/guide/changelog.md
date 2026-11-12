@@ -1,4 +1,11 @@
-# Version history
+## v0.11.2 — Final acceptance closeout: recipe preflight × AML regression × strict input (2026-11-12)
+
+- `recipe_trial` rejects deterministic out-of-range and active recipe-window-invalid candidates before HITL, with no approval card, driver write, execution batch, or device mutation.
+- Runtime input validation is fail-closed for null, booleans, empty strings, NaN, Infinity and nonnumeric strings; finite numbers and numeric strings remain supported.
+- PR #166 nearest-neighbor production-helper coverage locks offset timestamps, exact timestamp precedence, tolerance boundary and beyond-tolerance missing behavior.
+- Final main `6af25a8b`: unit 1516/1516, PLC 11/11, Agent 9/9, REST/WS/MCP 75/75, Project 14/14, RSI 32/32, multi-round RSI 10/10; UI screenshots came from the isolated production-style instance.
+- Boundaries: PLC is a digital twin, orchestration uses deterministic mock harnesses, and Mimosa full scan remained incomplete (`scanner_enobufs`); no security-pass claim is made.
+
 
 > Full release artifacts and per-version notes live on [GitHub Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 > The milestones below each mark an acceptance-verified capability jump; evidence is archived under `docs/audit/`.
