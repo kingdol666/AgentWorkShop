@@ -20,6 +20,7 @@ import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useNotificationsStore } from '@/app/stores/workshop/notifications'
 import { useComposerBus } from '@/app/composables/workshop/useComposerBus'
 import { agentHueColor, mdLiteMentions, type MentionMember } from '@/app/composables/workshop/useEventBlocks'
+import { parseChatReceipt } from '@/app/utils/chat-receipt'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 import type { AepChatDelivery, AepChatMessage, AepEnvelope } from '#shared/workshop-protocol'
 import { classifyOperation, type OperationMeta } from '@/app/composables/workshop/operation-events'
@@ -127,6 +128,23 @@ function isGrouped(m: AepChatMessage, index: number): boolean {
 
 function renderText(m: AepChatMessage): string {
   return mdLiteMentions(m.text, mentionMembers.value)
+}
+
+/** mock/Agent 回执:只有命中专属签名才折叠;真实回答渲染路径完全不变 */
+function receiptOf(m: AepChatMessage) {
+  return m.senderType === 'agent' ? parseChatReceipt(m.text) : null
+}
+
+/** 回执关联的“提问者/来源消息”用成员显示名,不再给用户看 8 位 uuid */
+function memberName(userId: string): string {
+  const list = chat.members?.[props.channelId] ?? []
+  return list.find(x => x.userId === userId)?.displayName ?? ''
+}
+
+function sourceSenderName(m: AepChatMessage): string {
+  if (!m.sourceChatMessageId) return ''
+  const src = byId.value.get(m.sourceChatMessageId)
+  return src ? senderNameOf(src) : ''
 }
 
 function operationOf(m: AepChatMessage): OperationMeta | null {
@@ -478,8 +496,34 @@ watch(() => props.channelId, async () => {
                   {{ operationOf(m)!.label }}
                 </div>
 
+                <!-- 回执卡:mock/Agent 的内部执行信封不再作为正文外露 -->
+                <div
+                  v-if="receiptOf(m)"
+                  class="ct-receipt"
+                  data-testid="chat-receipt"
+                  :title="receiptOf(m)!.correlation"
+                >
+                  <div class="cr-head">
+                    <span class="i-tabler-receipt cr-icon" />
+                    <b>{{ $t('chat.receiptTitle') }}</b>
+                    <span class="cr-agent">@{{ senderNameOf(m) }}</span>
+                    <span class="cr-badge">mock</span>
+                  </div>
+                  <p class="cr-q">
+                    {{ receiptOf(m)!.question }}
+                  </p>
+                  <details
+                    v-if="receiptOf(m)!.instruction"
+                    class="cr-sys"
+                  >
+                    <summary>{{ $t('chat.receiptSystem') }}</summary>
+                    <pre>{{ receiptOf(m)!.instruction }}</pre>
+                  </details>
+                </div>
+
                 <!-- eslint-disable vue/no-v-html -- mdLite escapes first -->
                 <div
+                  v-else
                   class="ct-text"
                   @click="onTextClick"
                   v-html="renderText(m)"
@@ -523,13 +567,16 @@ watch(() => props.channelId, async () => {
                 </div>
 
                 <div
-                  v-if="m.senderType === 'agent' && m.sourceChatMessageId"
+                  v-if="m.senderType === 'agent' && (sourceSenderName(m) || memberName(m.requesterUserId ?? ''))"
                   class="ct-source"
+                  :title="m.sourceChatMessageId ?? ''"
                 >
                   <span class="i-tabler-link" />
-                  {{ $t('chat.answeredFrom', { p0: m.sourceChatMessageId.slice(0, 8) }) }}
-                  <template v-if="m.requesterUserId">
-                    {{ $t('chat.askedBy', { p0: m.requesterUserId.slice(0, 8) }) }}
+                  <template v-if="sourceSenderName(m)">
+                    {{ $t('chat.answeredFrom', { p0: sourceSenderName(m) }) }}
+                  </template>
+                  <template v-if="memberName(m.requesterUserId ?? '')">
+                    {{ $t('chat.askedBy', { p0: memberName(m.requesterUserId ?? '') }) }}
                   </template>
                 </div>
               </div>
@@ -827,6 +874,85 @@ watch(() => props.channelId, async () => {
   color: var(--chat-ink);
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+/* 执行回执:群聊里的“系统信封”折叠成一张可扫读的卡片 */
+.ct-receipt {
+  max-width: 660px;
+  padding: 10px 12px;
+  margin-top: 6px;
+  background: var(--chat-surface-raised);
+  border: 1px solid var(--chat-line);
+  border-left: 2px solid var(--chat-accent);
+  border-radius: 10px;
+}
+
+.cr-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.cr-icon { font-size: 14px; color: var(--chat-accent-strong); }
+
+.cr-head b {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: var(--chat-ink);
+  text-transform: uppercase;
+}
+
+.cr-agent {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--chat-ink-soft);
+}
+
+.cr-badge {
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.6;
+  color: var(--chat-ink-faint);
+  border: 1px solid var(--chat-line);
+  border-radius: 4px;
+}
+
+.cr-q {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--chat-ink);
+  overflow-wrap: anywhere;
+}
+
+.cr-sys {
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--chat-ink-soft);
+}
+
+.cr-sys summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.cr-sys pre {
+  max-height: 160px;
+  padding: 8px;
+  margin: 6px 0 0;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--chat-canvas);
+  border: 1px solid var(--chat-line);
+  border-radius: 6px;
 }
 .ct-text :deep(p) { margin: 0 0 8px; }
 .ct-text :deep(p:last-child) { margin-bottom: 0; }

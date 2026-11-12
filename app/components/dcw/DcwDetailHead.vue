@@ -21,7 +21,7 @@ defineProps<{
         <span
           class="line-chip"
           :style="{ background: line?.color ?? '#3aa0ff' }"
-        />AGENTWORKSHOP / LINE / {{ line?.name ?? lineId }}
+        />AGENTWORKSHOP / LINE OPERATIONS
       </p>
       <h1>{{ line?.name ?? $t('dcwDetail.k1b2snna151') }} · {{ $t('dcwDetail.k1l0iow1137') }}</h1>
       <p class="sub">

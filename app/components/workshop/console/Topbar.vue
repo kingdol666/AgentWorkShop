@@ -230,10 +230,26 @@ const toggleRight = (): void => {
 .toggle-left-narrow { display: none; }
 .view-switch {
   flex: 1 1 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
+  overflow: visible;
 }
-.view-switch::-webkit-scrollbar { display: none; }
+
+/* 窄屏视图条:宁可换行也不把最后一个区藏进横向卷轴。
+   触摸档每项 ≥40px(与 shell 的命中区地板一致)。 */
+.view-switch :deep(.ant-segmented-group) {
+  flex-wrap: wrap;
+}
+
+.view-switch :deep(.ant-segmented-item) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+}
+
+@media (pointer: coarse) {
+  .view-switch :deep(.ant-segmented-item) {
+    min-height: 44px;
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    窄屏形态 · 顶栏部分(≤1023px) —— 完整设计说明见页面

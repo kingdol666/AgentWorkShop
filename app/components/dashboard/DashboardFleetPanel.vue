@@ -99,14 +99,14 @@ const { t } = useI18n()
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .line-card:hover {
-    border-color: var(--lc, var(--accent));
+    border-color: var(--line-strong);
     transform: translateY(-1px);
     box-shadow: var(--glass-edge), var(--shadow-float);
   }
 }
 .line-card.on {
-  background: color-mix(in srgb, var(--lc) 7%, var(--paper-deep));
-  border-color: color-mix(in srgb, var(--lc) 45%, transparent);
+  background: var(--paper-deep);
+  border-color: var(--line-strong);
 }
 .lc-head {
   display: flex;

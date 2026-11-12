@@ -31,7 +31,6 @@ defineProps<{
   opsRecent: Array<{ at: string, actor: string, action: string, actorKind: string, kind: string, summary: string }>
   opsKindLabel: (kind: string) => string
   opsTime: (at: string) => string
-  alarms: Array<{ id: string, nodeName: string, metric: string, value: number | null, rule: string, threshold: number | null, escalation: number }>
   /** 窗口化切片 */
   visibleNodes: DaqNodeLive[]
   padTopPx: number
@@ -43,8 +42,13 @@ defineProps<{
 
 const emit = defineEmits<{
   'clear-filters': []
-  'ack': [id: string]
 }>()
+
+/** 手持档默认收起筛选:7 个全宽下拉会先吃掉 400px 才看到节点 */
+const filtersOpen = ref(true)
+onMounted(() => {
+  if (window.matchMedia('(max-width: 760px)').matches) filtersOpen.value = false
+})
 
 /** 筛选态经 v-model 传入(与页面 useDaqFilters 同一 reactive 对象;下拉就地读写) */
 const filters = defineModel<DaqFilters>('filters', { required: true })
@@ -56,7 +60,23 @@ const tableEl = defineModel<HTMLTableElement | null>('tableEl', { required: true
   <a-spin :spinning="loading">
     <section class="aw-tile table-card">
       <div class="tbl-toolbar">
-        <div class="filters">
+        <button
+          type="button"
+          class="flt-toggle"
+          :aria-expanded="filtersOpen"
+          @click="filtersOpen = !filtersOpen"
+        >
+          <span class="i-tabler-filter" />
+          {{ $t('daq.filtersToggle') }}
+          <span
+            v-if="hasFilters"
+            class="flt-on"
+          />
+        </button>
+        <div
+          v-show="filtersOpen"
+          class="filters"
+        >
           <label class="flt">
             <span>{{ $t('daq.k3wj9n051') }}</span>
             <select
@@ -226,50 +246,8 @@ const tableEl = defineModel<HTMLTableElement | null>('tableEl', { required: true
         </div>
         <span class="count mono">{{ filteredCount }} / {{ totalCount }} {{ $t('daq.k45uio067') }}</span>
       </div>
-      <!-- 实时告警 + 实时事件:告警 = server 权威未确认报警(WS 直推/可确认);事件 = 全操作摘要轨(详情在日志管理) -->
+      <!-- 实时事件:告警统一在页面顶部 DaqAlarmBar(唯一确认面);此面板只保留操作摘要轨 -->
       <div class="ops-panels">
-        <div
-          class="ops-panel alarm-panel"
-          :class="{ live: alarms.length > 0 }"
-        >
-          <div class="panel-head">
-            <span class="i-tabler-bell-ringing bell" />
-            <b>{{ $t('daq.k1alarm141') }}</b>
-            <span
-              class="mono cnt"
-              :class="{ hot: alarms.length > 0 }"
-            >{{ alarms.length }}</span>
-          </div>
-          <div class="panel-body">
-            <p
-              v-if="alarms.length === 0"
-              class="panel-empty"
-            >
-              {{ $t('daq.k1evt001') }}
-            </p>
-            <div
-              v-for="a in alarms"
-              v-else
-              :key="a.id"
-              class="alarm-row"
-            >
-              <span class="i-tabler-alert-triangle tri" />
-              <b>{{ a.nodeName }}</b>
-              <span class="mono dim">{{ a.metric }}</span>
-              <span class="mono">{{ a.value }} {{ a.rule === 'lt-min' ? '<' : '>' }} {{ a.threshold }}</span>
-              <small
-                v-if="a.escalation > 0"
-                class="esc mono"
-              >+{{ a.escalation }}</small>
-              <button
-                class="mini-btn ack"
-                @click="emit('ack', a.id)"
-              >
-                {{ $t('daq.k1ack142') }}
-              </button>
-            </div>
-          </div>
-        </div>
         <div class="ops-panel event-panel">
           <div class="panel-head">
             <span class="i-tabler-activity" />
@@ -313,7 +291,7 @@ const tableEl = defineModel<HTMLTableElement | null>('tableEl', { required: true
       </div>
       <table
         ref="tableEl"
-        class="nodes-table"
+        class="nodes-table daq-node-table"
       >
         <thead>
           <tr>
@@ -391,6 +369,14 @@ const tableEl = defineModel<HTMLTableElement | null>('tableEl', { required: true
           </tr>
         </tbody>
       </table>
+
+      <div class="daq-node-mobile">
+        <DaqNodeMobileList
+          :nodes="visibleNodes"
+          :lines="lines"
+          :loaded="loaded"
+        />
+      </div>
     </section>
   </a-spin>
 </template>

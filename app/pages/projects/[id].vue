@@ -10,6 +10,7 @@
  */
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { mdLite } from '@/app/composables/workshop/useEventBlocks'
+import { approvalSummary } from '@/app/utils/project-approval'
 import { useUserStore } from '~/stores/workshop/user'
 import type { AepChatMessage } from '#shared/workshop-protocol'
 
@@ -43,7 +44,7 @@ interface ChannelBindingDto { projectId: string, channelId: string, bindingType:
 interface DeliverableDto { id: string, name: string, ownerChannelId: string | null, required: number, status: string, acceptanceCriteriaJson: string }
 interface WorkItemDto { id: string, deliverableId: string, channelId: string, title: string, state: string, stateReason: string | null, currentAttemptId: string | null, execBudgetMinutes: number }
 interface ResultDto { id: string, deliverableId: string, channelId: string, title: string, summary: string, status: string, version: number, evidenceJson: string, reviewedBy: string | null, approvedBy: string | null }
-interface ApprovalDto { id: string, kind: string, subjectId: string, status: string, expiresAt: string | null, payloadJson?: string, reason?: string, argsDigest?: string }
+interface ApprovalDto { id: string, kind: string, subjectId: string, status: string, createdAt?: string, expiresAt: string | null, payloadJson?: string, reason?: string, argsDigest?: string }
 interface DecisionDto { id: string, seq: number, decisionType: string, state: string, outcome: string, traceId: string, createdAt: string }
 interface EventDto { id: string, seq: number, type: string, eventKey: string, traceId: string, createdAt: string }
 interface MemberDto { projectId: string, userId: string, role: string, addedBy?: string, addedAt?: string }
@@ -819,10 +820,27 @@ const statusLabel = (s: string): string => statusLabels[s] ?? s
 const approvalKindLabels: Record<string, string> = {
   plan_approval: '计划审批',
   deliverable_acceptance: '交付物验收',
+  result_acceptance: '成果验收',
+  result_review: '成果复核',
   project_complete: '项目完成',
   production_write: '生产写授权',
 }
 const approvalKind = (kind: string): string => approvalKindLabels[kind] ?? kind
+
+/** 审批摘要:用当前项目的交付物/成果名补全 payload 里只有 id 的情况 */
+function approvalSummaryOf(h: ApprovalDto): string {
+  return approvalSummary(h.kind, h.payloadJson, {
+    subjectId: h.subjectId,
+    deliverables: deliverables.value.map(d => ({ id: d.id, name: d.name })),
+    results: results.value.map(r => ({ id: r.id, title: r.title })),
+  })
+}
+
+/** 审批 reason 只有人话才展示;`deliverable acceptance` 这类枚举码不外露 */
+function approvalReason(h: ApprovalDto): string {
+  const r = (h.reason ?? '').trim()
+  return r && !/^[a-z][a-z0-9_ -]*$/.test(r) ? r : '—'
+}
 
 const eventLabels: Record<string, string> = {
   'project.created': '项目创建',
@@ -1470,7 +1488,16 @@ onUnmounted(() => {
               </button>
             </li>
           </ul>
-          <div class="form-grid bind-grid">
+          <p
+            v-if="project?.status === 'completed'"
+            class="form-locked"
+          >
+            项目已完成：频道绑定已冻结。如需变更，请用「继续开发」重新打开项目。
+          </p>
+          <div
+            v-else
+            class="form-grid bind-grid"
+          >
             <label class="span2">
               <span>绑定已有 Channel</span>
               <select v-model="bindForm.channelId">
@@ -2206,7 +2233,16 @@ onUnmounted(() => {
             </article>
           </div>
 
-          <div class="form-grid deliv-grid-form">
+          <p
+            v-if="project?.status === 'completed'"
+            class="form-locked"
+          >
+            项目已完成：新增交付物入口已收起。如需追加，请用「继续开发」重新打开项目。
+          </p>
+          <div
+            v-else
+            class="form-grid deliv-grid-form"
+          >
             <label>
               <span>交付物名称</span>
               <input
@@ -2413,24 +2449,33 @@ onUnmounted(() => {
           >
             暂无审批记录。
           </p>
-          <ul class="list">
+          <ul class="ap-list">
             <li
               v-for="h in approvalHistory.slice(0, 50)"
               :key="h.id"
+              class="ap-item"
+              :title="`#${h.id} · ${h.subjectId}`"
             >
-              <span class="badge gray">{{ approvalKind(h.kind) }}</span>
-              <span class="mono muted">{{ h.subjectId.slice(0, 8) }}</span>
-              <span
-                class="badge"
-                :class="h.status"
-              >{{ statusLabel(h.status) }}</span>
-              <span
-                v-if="h.payloadJson && h.payloadJson !== '{}'"
-                class="muted ellipsis ap-payload"
+              <div class="ap-row1">
+                <span class="badge gray">{{ approvalKind(h.kind) }}</span>
+                <span
+                  class="badge"
+                  :class="h.status"
+                >{{ statusLabel(h.status) }}</span>
+                <span class="ap-when muted">{{ relTime(h.createdAt ?? h.expiresAt) }}</span>
+              </div>
+              <p
+                v-if="approvalSummaryOf(h)"
+                class="ap-summary"
               >
-                {{ h.payloadJson.slice(0, 140) }}{{ h.payloadJson.length > 140 ? '…' : '' }}
-              </span>
-              <code class="muted ap-time">{{ h.expiresAt ? relTime(h.expiresAt) : '' }}</code>
+                {{ approvalSummaryOf(h) }}
+              </p>
+              <p
+                v-else
+                class="ap-summary muted"
+              >
+                {{ approvalReason(h) }}
+              </p>
             </li>
           </ul>
         </section>
@@ -3218,7 +3263,8 @@ h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-in
 .ring-bg { fill: none; stroke: var(--chat-line); stroke-width: 4; }
 .ring-fg {
   fill: none;
-  stroke: var(--chat-accent);
+  /* 完成度是“正常/已完成”语义,不是品牌的强调橙 */
+  stroke: var(--tone-success-dot);
   stroke-linecap: round;
   stroke-width: 4;
   transition: stroke-dasharray var(--transition-base);
@@ -3408,6 +3454,7 @@ h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-in
 .chan-meta { font-size: 10px; color: var(--chat-ink-faint); }
 .chan-charter {
   flex: 1 1 160px;
+  min-width: 0;
   overflow: hidden;
   font-size: 11px;
   color: var(--chat-ink-faint);
@@ -3443,6 +3490,7 @@ h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-in
 
 /* 双列 */
 .two-col { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 14px; }
+.two-col > * { min-width: 0; }
 .session-list { display: flex; flex-direction: column; gap: 5px; padding: 0; margin: 0; list-style: none; }
 .session-row {
   display: flex;
@@ -3748,8 +3796,36 @@ h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-in
   border-radius: 8px;
 }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-locked {
+  padding: 9px 12px;
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--chat-ink-faint);
+  background: var(--chat-surface-raised);
+  border: 1px dashed var(--chat-line);
+  border-radius: 8px;
+}
 .ap-payload { flex: 1 1 200px; min-width: 0; }
 .ap-time { flex: 0 0 auto; margin-left: auto; }
+
+/* 审批历史:两行卡(类型/状态/时间 + 人话摘要),不再渲染原始 JSON */
+.ap-list { display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.ap-item {
+  padding: 9px 11px;
+  background: var(--chat-surface-raised);
+  border: 1px solid var(--chat-line);
+  border-radius: 9px;
+}
+.ap-row1 { display: flex; gap: 8px; align-items: center; }
+.ap-when { margin-left: auto; font-size: 11px; }
+.ap-summary {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--chat-ink);
+  overflow-wrap: anywhere;
+}
 .waiting-box {
   display: flex;
   flex-direction: column;
@@ -3883,7 +3959,7 @@ h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-in
 .ctx-progress-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--chat-ink-faint); }
 .ctx-progress-row b { font-family: var(--font-mono, monospace); color: var(--chat-ink-soft); }
 .ctx-bar { height: 3px; overflow: hidden; background: var(--chat-line); border-radius: 999px; }
-.ctx-bar i { display: block; height: 100%; background: var(--chat-accent); border-radius: inherit; }
+.ctx-bar i { display: block; height: 100%; background: var(--tone-success-dot); border-radius: inherit; }
 .ctx-foot {
   display: flex;
   flex-wrap: wrap;
@@ -3981,13 +4057,31 @@ h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-in
   .side-item-label { flex: 0 0 auto; }
   .side-life { width: 100%; }
   .main-col { padding: 14px 14px 32px; }
-  .two-col, .grid2 { grid-template-columns: 1fr; }
+  .two-col, .grid2 { grid-template-columns: minmax(0, 1fr); }
   .form-grid { grid-template-columns: 1fr; }
   .hero-stats { gap: 8px 18px; }
   .hero-stat b { font-size: 17px; }
   .report-grid { grid-template-columns: repeat(2, 1fr); }
   .board { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
   .board-col:last-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 640px) {
+  /* 左导航在手机上 2 列网格:5 个 tab 全部可见,不再出现“两端对齐”的大空洞 */
+  .side-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .side-item {
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 40px;
+    white-space: normal;
+  }
+  .main-col { padding: 12px 12px 28px; }
+  .ap-row1 { flex-wrap: wrap; }
+  .ap-when { margin-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
