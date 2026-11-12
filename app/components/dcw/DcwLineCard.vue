@@ -37,36 +37,45 @@ const pick = defineModel<string | undefined>('pick')
     :style="{ '--lc': card.line.color }"
   >
     <div class="lc-head">
-      <span class="lc-dot" />
-      <b class="lc-name">{{ card.line.name }}</b>
-      <span
-        class="lc-mode"
-        :class="{ auto: card.line.controlMode === 'auto' }"
-        :title="card.line.controlMode === 'auto' ? '自动模式:按各绑定模式执行(auto 免批)' : '手动模式:本线全部配方写动作强制人工批准(缺省)'"
-      >{{ card.line.controlMode === 'auto' ? '自动' : '手动' }}</span>
-      <span
-        class="lc-state"
-        :class="{ on: state.active }"
-      >{{ state.active ? $t('dcw.k1eox1el055') : $t('dcw.k149r6y7059') }}</span>
-      <span
-        v-if="pendingExp"
-        class="badge warn-badge"
-        :title="$t('expConfirm.badgeTip', { p0: pendingExp })"
-      >{{ pendingExp }}</span>
-      <button
-        class="lc-act"
-        :title="$t('common.edit')"
-        @click="emit('edit', card)"
-      >
-        <span class="i-tabler-pencil" />
-      </button>
-      <button
-        class="lc-act danger"
-        :title="$t('dcw.k3xakp026')"
-        @click="emit('remove', card)"
-      >
-        <span class="i-tabler-trash" />
-      </button>
+      <div class="lc-ident">
+        <span class="lc-dot" />
+        <b
+          class="lc-name"
+          :title="card.line.name"
+        >{{ card.line.name }}</b>
+      </div>
+      <div class="lc-flags">
+        <span
+          class="lc-mode"
+          :class="{ auto: card.line.controlMode === 'auto' }"
+          :title="card.line.controlMode === 'auto' ? '自动模式:按各绑定模式执行(auto 免批)' : '手动模式:本线全部配方写动作强制人工批准(缺省)'"
+        >{{ card.line.controlMode === 'auto' ? '自动' : '手动' }}</span>
+        <span
+          class="lc-state"
+          :class="{ on: state.active }"
+        >{{ state.active ? $t('dcw.k1eox1el055') : $t('dcw.k149r6y7059') }}</span>
+        <span
+          v-if="pendingExp"
+          class="badge warn-badge"
+          :title="$t('expConfirm.badgeTip', { p0: pendingExp })"
+        >{{ pendingExp }}</span>
+      </div>
+      <div class="lc-acts">
+        <button
+          class="lc-act"
+          :title="$t('common.edit')"
+          @click="emit('edit', card)"
+        >
+          <span class="i-tabler-pencil" />
+        </button>
+        <button
+          class="lc-act danger"
+          :title="$t('dcw.k3xakp026')"
+          @click="emit('remove', card)"
+        >
+          <span class="i-tabler-trash" />
+        </button>
+      </div>
     </div>
     <small
       v-if="state.active"

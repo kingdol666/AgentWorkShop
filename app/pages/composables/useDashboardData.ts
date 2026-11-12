@@ -15,6 +15,7 @@ import { useDaqStream } from '~/composables/workshop/useDaqStream'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
 import { useWorkshopApi, type HarnessMetaDto } from '~/composables/workshop/useWorkshopApi'
 import { useAppStore } from '~/stores/app'
+import { alarmCountOf } from '~/utils/alarm-presentation'
 
 /** 产线清单卡(裁策:清单是导航不是数据库导出) */
 export interface DashboardFleetLine {
@@ -68,7 +69,9 @@ export function useDashboardData() {
   const linesActive = computed(() => dcw.lines.filter(l => dcw.lineStateOf(l.id).active))
   const daqOnline = computed(() => daq.nodes.filter(n => n.enabled && n.state !== 'offline').length)
   const daqTotal = computed(() => daq.nodes.length)
-  const alarmCount = computed(() => daq.nodes.filter(n => n.state === 'alarm').length)
+  // 单一来源:未确认告警列表(服务端权威)。节点 state==='alarm' 只在读数为越界瞬时成立,
+  // 不能代表“待处理告警”,曾导致 KPI 0 与队列 1 自相矛盾。
+  const alarmCount = computed(() => alarmCountOf(daq.alarms))
   const writeRate = computed(() => {
     const total = dcw.controller.writesTotal
     if (total === 0) return 100

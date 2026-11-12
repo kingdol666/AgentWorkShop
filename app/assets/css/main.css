@@ -768,6 +768,24 @@ ul.task-list {
   border-color: var(--line-strong);
 }
 
+/* 危险动作的“静息面色”:不是主操作,不能靠实心主色抢注意力。
+   语义色只出现在文字/描边/浅底,悬停才加深。 */
+.aw-pill.danger {
+  color: var(--tone-danger-dot);
+  background: var(--tone-danger-bg);
+  border-color: color-mix(in srgb, var(--tone-danger-dot) 32%, transparent);
+}
+
+.aw-pill.danger:hover {
+  color: var(--tone-danger-dot);
+  background: color-mix(in srgb, var(--tone-danger-bg) 72%, var(--paper-raised));
+  border-color: var(--tone-danger-dot);
+}
+
+.aw-pill.danger:active {
+  transform: scale(0.97);
+}
+
 .aw-pill:focus-visible {
   outline: 2px solid var(--focus-ring) !important;
   outline-offset: 2px;
