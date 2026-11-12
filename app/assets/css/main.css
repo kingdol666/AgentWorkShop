@@ -2884,29 +2884,29 @@ body {
   /* 图标钮是正方形:只抬 min-height 会留下 34px 宽的窄条 */
   .icon-btn,
   .collapse-btn {
-    width: 40px;
+    width: 40px !important;
   }
 
   /* 聊天消息动作 / 提及章 / 产线胶囊 / 查询开关:手持档统一到可点尺寸 */
   .ct-action {
-    width: 40px;
-    height: 40px;
+    width: 40px !important;
+    height: 40px !important;
   }
 
   .ct-mention-chip {
-    min-height: 32px;
+    min-height: 32px !important;
   }
 
   .line-pill,
   .q-toggle,
   .flt-toggle {
-    min-height: 40px;
+    min-height: 40px !important;
   }
 
   input.inp,
   select.inp,
   .inp-sel {
-    min-height: 40px;
+    min-height: 40px !important;
   }
 
   .aq-all,
@@ -3164,28 +3164,28 @@ body.nav-drawer .app-sider .app-menu {
 @media (max-width: 640px) {
   .icon-btn,
   .collapse-btn {
-    width: 40px;
+    width: 40px !important;
   }
 
   .ct-action {
-    width: 40px;
-    height: 40px;
+    width: 40px !important;
+    height: 40px !important;
   }
 
   .ct-mention-chip {
-    min-height: 32px;
+    min-height: 32px !important;
   }
 
   .line-pill,
   .q-toggle,
   .flt-toggle {
-    min-height: 40px;
+    min-height: 40px !important;
   }
 
   input.inp,
   select.inp,
   .inp-sel {
-    min-height: 40px;
+    min-height: 40px !important;
   }
 
   .aq-all,
