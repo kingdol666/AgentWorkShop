@@ -17,6 +17,8 @@ export interface GateSubject {
   action: string
   targetId: string
   summary: string
+  /** Immutable resource snapshot captured before approval and compared on replay. */
+  payload?: unknown
 }
 
 export type GateVerdict = { pending: true, requestId: string } | { pending: false }
@@ -39,6 +41,9 @@ export function gateDangerous(
     }
     if (req.status !== 'approved') {
       throw new AppError(403, 'APPROVAL_NOT_APPROVED', '复核尚未批准(或已被拒绝)')
+    }
+    if (subject.payload !== undefined && req.payloadJson !== JSON.stringify(subject.payload)) {
+      throw new AppError(409, 'APPROVAL_STALE', '审批时资源快照已变化,请重新提交审批')
     }
     if (req.requestedBy !== user.id) {
       throw new AppError(403, 'APPROVAL_REQUESTER_MISMATCH', '仅申请人本人可携批准记录重放操作')

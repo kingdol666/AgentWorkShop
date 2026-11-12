@@ -61,6 +61,7 @@ export default defineApiHandler(async (event) => {
   }
   const targetLine = nodeLineOf(nodeId, kind)
   const channelRow = manager.deps.repos.channels.findById(memberRow.channelId)
+  manager.requireChannelOwner(memberRow.channelId, user, 'Agent 绑定')
   // P2 加固：targetLine 为空（未挂线节点/配方）同样拒绝——绑线频道只接受本线对象，
   // 未挂线对象曾是绕过产线隔离的口子。
   if (channelRow?.lineId && targetLine !== channelRow.lineId) {

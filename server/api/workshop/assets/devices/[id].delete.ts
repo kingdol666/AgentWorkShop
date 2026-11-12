@@ -11,8 +11,11 @@ import { defineApiHandler } from '@/server/utils/response'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { assertAssetManager } from '@/server/utils/asset-auth'
+
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
+  assertAssetManager(user, '删除设备模型')
   const raw = getRouterParam(event, 'id')!
   const base = raw.replace(/^dev-folder-/, '')
   // 路径穿越与非法名防护:仅允许安全的文件基名

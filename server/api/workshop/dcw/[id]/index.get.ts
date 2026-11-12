@@ -20,5 +20,5 @@ export default defineApiHandler(async (event) => {
   const node = getDcwController().byId(id)
   if (!node) throw new AppError(404, 'NOT_FOUND', `控制节点不存在: ${id}`)
   requireLineMode(user, node.lineId, 'readonly')
-  return { node }
+  return { node: node.toView() }
 })

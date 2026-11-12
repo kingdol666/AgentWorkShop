@@ -21,5 +21,5 @@ export default defineApiHandler(async (event) => {
   const node = getDaqController().byId(id)
   if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
   requireLineMode(user, node.lineId, 'readonly')
-  return { node }
+  return { node: node.toView() }
 })

@@ -10,6 +10,7 @@ import { defineApiHandler } from '@/server/utils/response'
 import { getAgentNodeBindingRepo } from '@/server/services/workshop/agents/node-bindings.repo'
 import { requireBindingAccess } from '@/server/services/workshop/agents/binding-authz'
 import { getToolApprovals } from '@/server/services/workshop/agents/tool-approvals'
+import { getWorkshopManager } from '@/server/plugins/workshop'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -19,6 +20,9 @@ export default defineApiHandler(async (event) => {
   const binding = all.find(b => b.id === id)
   if (!binding) throw createError({ statusCode: 404, statusMessage: 'binding not found' })
   requireBindingAccess(user, binding)
+  const member = getWorkshopManager().findChannelAgentById(binding.agentId)
+  if (!member) throw createError({ statusCode: 404, statusMessage: 'binding agent not found' })
+  getWorkshopManager().requireChannelOwner(member.channelId, user, 'Agent 绑定')
   if (!repo.unbind(id)) throw createError({ statusCode: 404, statusMessage: 'binding not found' })
   // 解绑即失效:该 Agent 对该绑定(含配方/配方参数/配方审批单)的挂起审批按拒绝收敛
   getToolApprovals().cancelPendingForBinding(binding.agentId, binding)

@@ -110,6 +110,16 @@ export default defineApiHandler(async (event) => {
     }
   }
 
+  // 通用审批消费前再次读取当前资格；此段无 await，避免资格检查与内存消费之间形成可交错窗口。
+  if (agentId) {
+    const currentChannelId = manager.findChannelAgentById(agentId)?.channelId
+    if (currentChannelId) {
+      assertCanDecideHitlChannel(currentChannelId, acting, row ? { policy: row.policy, snapshot: snapshotOfRow(row) } : {})
+    }
+    else if (user.role !== 'admin') {
+      throw new AppError(403, 'SCOPE_VIOLATION', '审批 Agent 已脱离 Channel,仅管理员可处理')
+    }
+  }
   let approval
   try {
     approval = getToolApprovals().decide(id, normalized.approved, comment, user.id, user.name, normalized.choice)
