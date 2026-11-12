@@ -187,7 +187,9 @@ const { t } = useI18n()
   align-items: center;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 900px) {
+  .sb-live { font-size: 11.5px; }
+
   .status-band {
     flex-direction: column;
     align-items: stretch;

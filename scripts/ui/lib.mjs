@@ -85,6 +85,9 @@ export async function api(method, endpoint, { body, token } = {}) {
 
 /** 确保存在一个可登录的视觉走查账号(admin 角色,便于看到全部页面真实数据) */
 export async function ensureVisualUser() {
+  const suppliedToken = process.env.AW_TOKEN ?? process.env.AW_E2E_TOKEN
+  if (suppliedToken) return suppliedToken
+
   let login = await api('POST', '/api/users/login', {
     body: { email: VISUAL_USER.email, password: VISUAL_USER.password },
   })
