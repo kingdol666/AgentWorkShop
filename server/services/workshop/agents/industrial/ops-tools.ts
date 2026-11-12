@@ -9,6 +9,7 @@ import { getActiveLineRun } from '../../dcw/line-run'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { evaluateRecipeParamLimits } from '../../dcw/dcw-controller/write'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
@@ -1159,6 +1160,36 @@ function recipeOpIntervalGate(recipe: { id: string, name: string, opIntervalMs?:
   }
 }
 
+/**
+ * 试验候选的挂卡前限界预检(P2,2026-11-12 验收收口)。
+ *
+ * 事故形态:候选值超节点安全量程时,HITL 卡照样生成并等人工批准,批准之后才在
+ * DcwController.write() 咽喉点被拒 —— 一次注定失败的审批白耗人工与产线窗口。
+ * 修复:复用 write() 咽喉点同一个只读断言(evaluateRecipeParamLimits),与执行层
+ * 判定逐字同源,不另立口径;在审批卡创建之前拒绝,不写库、不下发、不锁窗、不建卡。
+ *
+ * skipRecipe=false 与 trial 的候选校验路径一致:applyRecipe → writeRecipeParams(enforceRecipeWindow=true)
+ * 先校验节点量程、参数基准、产品限界和活动配方窗口;随后 write() 仍以 skipRecipe=true
+ * 做最终咽喉校验,防止审批等待期间上下文变化。软联锁层的 bench 消融臂只认 write() 的
+ * meta.benchArm,工具路径不注入该标记,因此这里恒按生产 arm 预检,不会误拦也不会放宽。
+ */
+export function recipeTrialValuePreflight(params: Array<{ nodeId: string, value: number }>): { text: string, isError: true } | null {
+  const violations: string[] = []
+  for (const p of params) {
+    const node = getDcwController().byId(p.nodeId)
+    if (!node) continue // 节点存在性由调用方前序校验负责,不重复报错
+    const verdict = evaluateRecipeParamLimits(node, p.value, { skipRecipe: false })
+    if (!verdict.ok) {
+      violations.push(`「${node.name}」${p.value}${node.unit ?? ''}:${verdict.violations[0] ?? '写入限界校验失败'}`)
+    }
+  }
+  if (violations.length === 0) return null
+  return {
+    text: `试验候选未通过挂卡前限界预检,本次未创建审批卡、未下发,设备零变更:${violations.join(';')}。请按有效写入区间修订候选值(可用 my_industrial_nodes / line_context 查安全量程与工艺限界)后重新提交 recipe_trial。`,
+    isError: true,
+  }
+}
+
 /** 工具:recipe_trial —— 多参数候选整批试验下发(v19 配方链路核心)。
  *  权限模型 v2:需绑定该 recipe 且过二级认证+运行门;候选值只覆盖列出节点(须为配方内节点)。
  *  绑定 manual 时整批试验挂 HITL(理由随审批卡);整批一次落产线,不写配方版本 ——
@@ -1174,9 +1205,11 @@ export async function toolRecipeTrial(agentId: string, args: {
   const hypothesis = String(args.hypothesis ?? '').trim()
   const emergency = args.emergency === true || args.emergency === 'true'
   if (!hypothesis) return { text: 'hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯与人工审批判断。', isError: true }
-  const list = (args.params ?? []).filter(p => p && String(p.node_id ?? '').trim() && Number.isFinite(Number(p.value)))
-    .map(p => ({ nodeId: String(p.node_id).trim(), value: Number(p.value) }))
-  if (list.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字);试验的意义就是多参数一次整批改动。', isError: true }
+  const rawParams = args.params ?? []
+  if (rawParams.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字);试验的意义就是多参数一次整批改动。', isError: true }
+  const malformed = rawParams.find(p => !p || !String(p.node_id ?? '').trim() || !Number.isFinite(Number(p.value)))
+  if (malformed) return { text: 'params 中每一项都必须提供非空 node_id 与有限数字 value;本次整批候选已拒绝,未创建审批卡。', isError: true }
+  const list = rawParams.map(p => ({ nodeId: String(p!.node_id).trim(), value: Number(p!.value) }))
   const target = resolveRecipeTarget(args.recipe_id, args.line_id)
   if (!target.ok) return { text: target.text, isError: true }
   const recipe = target.recipe
@@ -1197,6 +1230,10 @@ export async function toolRecipeTrial(agentId: string, args: {
       return { text: `节点「${node.name}」不是配方「${recipe.name}」的参数节点;试验候选只能覆盖配方内参数。`, isError: true }
     }
   }
+  // 挂卡前限界预检:确定性非法候选(超量程/越参数或产品限界)在 HITL 之前即拒,
+  // 不消耗一次人工审批。顺序先于频控(与 write.ts「越界 400 优先于限频 429」同纪律)。
+  const preflight = recipeTrialValuePreflight(list)
+  if (preflight) return preflight
   // Recipe 级下发间隔卡控(提案早拒):距上次已批准下发不足 opIntervalMs 即拒,不建卡
   const cadence = recipeOpIntervalGate(recipe, emergency)
   if (cadence) return cadence
