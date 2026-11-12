@@ -75,7 +75,7 @@ footer:
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> and
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>.
         The rest are countable facts: 6 driver classes (5 built-in + the serial-bridge plugin) / 4 entry points (WS · MCP · A2A · REST) /
-        14 harnesses (<code>agents/registry.ts</code>) / 143 settings in 19 groups (<code>aw config list</code>) / 7 task states.
+        14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
         <span>Version <i>v0.11.2</i></span>
@@ -326,7 +326,7 @@ footer:
       <div class="hw-p">
         <span class="no">04</span>
         <h3>Config-driven</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 143 settings, zero hardcoded defaults.</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code> — one descriptor registry drives both the CLI and the Settings UI. 144 settings, zero hardcoded defaults.</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>

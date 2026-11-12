@@ -60,7 +60,7 @@
 - **边界**：PLC 为隔离数字孪生，编排为确定性 mock harness；Mimosa 完整扫描仍因 `scanner_enobufs` 未完成，本版本不宣称安全通过。
 - **UI 观察项**：最终截图矩阵 `/dcw` 记录 1 条 hydration mismatch warning；无页面崩溃，overflowX=0。该项列为 P3 后续观察，不伪装为零控制台告警。
 
-（#176）：canceled 项目不可变——全部写/审批/提案入口 fail-closed；runtime 取消能力缺失时终止以 503 回滚而非静默跳过；孤立任务实例频道在同一事务内取消并回收；解绑先停 runtime 再单事务收口数据库。
+- **取消/终止硬停**（#176）：canceled 项目不可变——全部写/审批/提案入口 fail-closed；runtime 取消能力缺失时终止以 503 回滚而非静默跳过；孤立任务实例频道在同一事务内取消并回收；解绑先停 runtime 再单事务收口数据库。
 - **RSI 证据完整性**（#180）：bench pValue 由服务端按 perSeed 重算；经验晋级必须锚定真实已完成的本频道任务；Harness Profile pin 只渲染本频道 validated 且 scope 匹配的行；生命周期迁移全部 expected-state CAS。
 - **Session 幂等与停机**（#181）：会话消息获得 actor 维度的持久 `clientMessageId`（原子 INSERT 冲突回读；载荷变化确定性 409）；DAQ 帧全链携带 `lineId`；runtime stop 等待消费循环与 dispose，停机不再与数据库关库竞态。
 - **升级安全**（#182）：存量库平滑升级——messages 幂等索引改为补列之后再建（此前会让 0.11.1 之前的库启动即崩）。
