@@ -2772,7 +2772,17 @@ onUnmounted(() => {
           项目快照
           <span class="badge mono">{{ obs.project.routingPolicy }}</span>
         </div>
-        <div class="ctx-stats">
+        <div
+          v-if="project?.status === 'completed'"
+          class="ctx-done"
+        >
+          <span class="i-tabler-circle-check" />
+          工作项与交付物已全部完成
+        </div>
+        <div
+          v-else
+          class="ctx-stats"
+        >
           <div class="ctx-stat">
             <b>{{ obs.summary.ready }}</b><span>就绪</span>
           </div>
@@ -3952,6 +3962,16 @@ h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-in
 .ctx-head > :last-child { margin-left: auto; }
 .ctx-lane-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ctx-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ctx-done {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 9px;
+  font-size: 10.5px;
+  color: var(--tone-success-dot);
+  background: var(--tone-success-bg);
+  border-radius: 7px;
+}
 .ctx-stat { display: flex; flex-direction: column; gap: 1px; }
 .ctx-stat b { font-family: var(--font-mono, monospace); font-size: 15px; color: var(--chat-ink); }
 .ctx-stat span { font-size: 9.5px; color: var(--chat-ink-faint); }
