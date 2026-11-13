@@ -171,6 +171,9 @@ test('flags are strict default-off gates and hard deny actuation/promotion', () 
   assert.equal(readBetaFlags({ AW_RSI_BETA_ENABLED: 'true', AW_RSI_BETA_RESEARCH_ENABLED: '1' }).globallyEnabled, false)
   assert.equal(readBetaFlags({ AW_RSI_BETA_ENABLED: '1', AW_RSI_BETA_RESEARCH_ENABLED: '1', AW_RSI_BETA_ACTUATION_ENABLED: '1' }).globallyEnabled, false)
   assert.equal(readBetaFlags({ AW_RSI_BETA_ENABLED: '1', AW_RSI_BETA_RESEARCH_ENABLED: '1', AW_RSI_BETA_PROMOTION_ENABLED: '1' }).hardDenied, true)
+  const hil = readBetaFlags({ AW_RSI_BETA_ENABLED: '1', AW_RSI_BETA_RESEARCH_ENABLED: '1', AW_RSI_BETA_UI_ENABLED: '1', AW_RSI_BETA_PHYSICAL_HIL_ENABLED: '1' })
+  assert.equal(hil.physicalHilEnabled, true)
+  assert.equal(hil.AW_RSI_BETA_UI_ENABLED, true)
 })
 
 test('scope intersection requires all IDs and rejects foreign, template, disabled, and stale state', () => {

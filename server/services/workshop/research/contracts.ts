@@ -30,6 +30,15 @@ export type ResearchEvidenceKind = typeof EVIDENCE_KINDS[number]
 export type ResearchEvidenceQuality = typeof EVIDENCE_QUALITY[number]
 export type ResearchClaimLevel = typeof CLAIM_LEVELS[number]
 
+/** Capabilities permitted when a request does not explicitly opt into a set. */
+export const SAFE_READ_ONLY_CAPABILITIES = Object.freeze([
+  'discover',
+  'snapshot',
+  'observe',
+  'query',
+  'verify',
+] as const satisfies readonly ResearchCapability[])
+
 export interface ResearchBudgetInput {
   maxDurationMs?: number
   maxSteps?: number
@@ -106,6 +115,7 @@ export interface ResearchRun {
   readonly scope: ContextScope
   readonly contextSnapshotId?: string
   readonly researchCaseId?: string
+  readonly allowedCapabilities: readonly ResearchCapability[]
   readonly budget: ResearchBudget
   readonly plan?: ResearchPlan
   readonly counters: ResearchCounters

@@ -70,6 +70,7 @@ export function readBetaFlags(env = globalThis.process?.env ?? {}) {
     explicitlyEnabled,
     globallyEnabled: explicitlyEnabled && !hardDenied,
     simulatorEnabled: explicitlyEnabled && configured.AW_RSI_BETA_SIMULATOR_ENABLED && !hardDenied,
+    physicalHilEnabled: explicitlyEnabled && configured.AW_RSI_BETA_PHYSICAL_HIL_ENABLED && !hardDenied,
     uiEnabled: configured.AW_RSI_BETA_UI_ENABLED === true,
   })
 }
@@ -182,10 +183,11 @@ export function evaluateBetaScope({ flags, persistence, requested, persisted, ca
 }
 
 export function publicFlags(flags) {
-  if (!flags) return { globallyEnabled: false, explicitlyEnabled: false, uiEnabled: false }
+  if (!flags) return { globallyEnabled: false, explicitlyEnabled: false, AW_RSI_BETA_UI_ENABLED: false, uiEnabled: false }
   return {
     AW_RSI_BETA_ENABLED: flags.AW_RSI_BETA_ENABLED === true,
     AW_RSI_BETA_RESEARCH_ENABLED: flags.AW_RSI_BETA_RESEARCH_ENABLED === true,
+    AW_RSI_BETA_UI_ENABLED: flags.AW_RSI_BETA_UI_ENABLED === true,
     AW_RSI_BETA_SIMULATOR_ENABLED: flags.AW_RSI_BETA_SIMULATOR_ENABLED === true,
     AW_RSI_BETA_PHYSICAL_HIL_ENABLED: flags.AW_RSI_BETA_PHYSICAL_HIL_ENABLED === true,
     AW_RSI_BETA_ACTUATION_ENABLED: flags.AW_RSI_BETA_ACTUATION_ENABLED === true,

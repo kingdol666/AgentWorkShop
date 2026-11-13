@@ -1,8 +1,8 @@
 import { canonicalHash } from '@/shared/context/hash'
+import { CONTEXT_ADAPTER_CAPABILITIES } from '@/server/services/workshop/context/contracts'
 import type { ContextAdapterRegistry } from '@/server/services/workshop/context/registry'
 import type {
   ContextAdapterCapability,
-  ContextAdapterResult,
   ContextRef,
 } from '@/server/services/workshop/context/contracts'
 import { normalizeCandidateEvidence } from '../evidence/normalizer'
@@ -23,12 +23,14 @@ import type {
   ResearchPlan,
   ResearchRequest,
   ResearchRun,
+  ResearchCapability,
   ResearchState,
   ResearchStep,
   ResearchVerdict,
   ResearchCounters,
   ResearchOrchestratorOptions,
 } from './contracts'
+import { SAFE_READ_ONLY_CAPABILITIES } from './contracts'
 
 export const RESEARCH_ERROR_CODES = {
   INVALID_REQUEST: 'RESEARCH_INVALID_REQUEST',
@@ -38,6 +40,7 @@ export const RESEARCH_ERROR_CODES = {
   EXPIRED: 'RESEARCH_EXPIRED',
   BUDGET_EXCEEDED: 'RESEARCH_BUDGET_EXCEEDED',
   ACTUATE_FORBIDDEN: 'RESEARCH_ACTUATE_FORBIDDEN',
+  CAPABILITY_UNDECLARED: 'RESEARCH_CAPABILITY_UNDECLARED',
   ADAPTER_FAILURE: 'RESEARCH_ADAPTER_FAILURE',
   IDEMPOTENCY_CONFLICT: 'RESEARCH_IDEMPOTENCY_CONFLICT',
 } as const
@@ -62,6 +65,7 @@ type MutableRun = {
   scope: ResearchRequest['scope']
   contextSnapshotId?: string
   researchCaseId?: string
+  allowedCapabilities: readonly ResearchCapability[]
   budget: ResearchRun['budget']
   plan?: ResearchPlan
   counters: ResearchCounters
@@ -87,6 +91,7 @@ function freezeRun(run: MutableRun): ResearchRun {
     ...run,
     subjectRefs: Object.freeze([...run.subjectRefs]),
     scope: Object.freeze({ ...run.scope }),
+    allowedCapabilities: Object.freeze([...run.allowedCapabilities]),
     counters: Object.freeze({ ...run.counters }),
     evidenceIds: Object.freeze([...run.evidenceIds]),
     ...(run.plan ? { plan: Object.freeze({ ...run.plan, steps: Object.freeze([...run.plan.steps]) }) } : {}),
@@ -101,10 +106,6 @@ function clone(value: unknown): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-}
-
-function outputPayload(result: ContextAdapterResult): unknown {
-  return result.ok ? result.payload : result.error
 }
 
 export interface ResearchOrchestrator {
@@ -139,11 +140,23 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
     if (!request.id.trim() || !request.idempotencyKey.trim() || !request.objective.trim() || !request.question.trim() || request.subjectRefs.length === 0) {
       throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.INVALID_REQUEST, 'id, idempotencyKey, objective, question, and subjectRefs are required')
     }
-    const requestFingerprint = canonicalHash({ ...request, budget: normalizeResearchBudget(request.budget) })
+    const allowedCapabilities = normalizeAllowedCapabilities(request.allowedCapabilities)
+    const requestFingerprint = canonicalHash({
+      id: request.id,
+      idempotencyKey: request.idempotencyKey,
+      objective: request.objective,
+      question: request.question,
+      subjectRefs: request.subjectRefs,
+      scope: request.scope,
+      contextSnapshotId: request.contextSnapshotId,
+      researchCaseId: request.researchCaseId,
+      allowedCapabilities,
+      budget: normalizeResearchBudget(request.budget),
+    })
     const existingId = this.idempotency.get(request.idempotencyKey)
     if (existingId) {
       const existing = this.runs.get(existingId)!
-      const existingFingerprint = canonicalHash({ id: existing.id, idempotencyKey: existing.idempotencyKey, objective: existing.objective, question: existing.question, subjectRefs: existing.subjectRefs, scope: existing.scope, contextSnapshotId: existing.contextSnapshotId, researchCaseId: existing.researchCaseId, budget: existing.budget })
+      const existingFingerprint = canonicalHash({ id: existing.id, idempotencyKey: existing.idempotencyKey, objective: existing.objective, question: existing.question, subjectRefs: existing.subjectRefs, scope: existing.scope, contextSnapshotId: existing.contextSnapshotId, researchCaseId: existing.researchCaseId, allowedCapabilities: existing.allowedCapabilities, budget: existing.budget })
       if (existingFingerprint !== requestFingerprint) throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.IDEMPOTENCY_CONFLICT, `idempotency key ${request.idempotencyKey} conflicts with an existing request`)
       return { run: freezeRun(existing), idempotent: true }
     }
@@ -158,6 +171,7 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
       scope: Object.freeze({ ...request.scope }),
       ...(request.contextSnapshotId ? { contextSnapshotId: request.contextSnapshotId } : {}),
       ...(request.researchCaseId ? { researchCaseId: request.researchCaseId } : {}),
+      allowedCapabilities,
       budget: normalizeResearchBudget(request.budget),
       counters: { steps: 0, bytes: 0, sources: 0, outputBytes: 0, rsiIterations: 0 },
       evidenceIds: [],
@@ -203,10 +217,11 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
 
   plan(id: string, plan: ResearchPlan): ResearchRun {
     const run = this.mutable(id)
-    this.transition(run, 'planned')
     if (!plan.id.trim() || plan.steps.length > run.budget.maxSteps) throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.INVALID_REQUEST, 'plan id is required and steps must fit the budget')
     const steps = plan.steps.map(step => this.normalizeStep(step))
+    this.assertAllowedCapabilities(run, steps)
     const counters = this.planCounters(steps, run.budget)
+    this.transition(run, 'planned')
     run.plan = Object.freeze({ id: plan.id, steps: Object.freeze(steps), ...(plan.verdict ? { verdict: plan.verdict } : {}) })
     run.counters = counters
     return freezeRun(run)
@@ -221,6 +236,7 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
   async execute(id: string, options: ResearchExecutionOptions = {}): Promise<ResearchRun> {
     const run = this.mutable(id)
     if (!run.plan) throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.INVALID_STATE, 'a research plan is required before execution')
+    this.assertAllowedCapabilities(run, run.plan.steps)
     this.transition(run, 'running')
     run.startedAt = this.now()
     const startedAtMs = Date.parse(run.startedAt)
@@ -234,13 +250,17 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
     const signal = controller.signal
     try {
       this.checkCancellation(signal)
+      const pendingCandidates: CandidateEvidenceEnvelope[] = []
       for (const [index, step] of run.plan.steps.entries()) {
         this.checkCancellation(signal)
         assertDuration(startedAtMs, Date.parse(this.now()), run.budget)
         if (step.capability === ('actuate' as ContextAdapterCapability) || step.capability.toLowerCase() === 'actuate') throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.ACTUATE_FORBIDDEN, 'research cannot actuate')
         const result = await this.registry.invoke(step.adapterId, step.capability, clone(step.payload), { idempotencyKey: `${run.id}:${step.id}`, signal })
         this.checkCancellation(signal)
-        const payload = outputPayload(result)
+        if (!result.ok) {
+          throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.ADAPTER_FAILURE, `${step.adapterId} ${step.capability} failed: ${result.error.code}: ${result.error.message}`)
+        }
+        const payload = result.payload
         this.checkCancellation(signal)
         const outputBytes = jsonBytes(payload)
         const nextCounters = { ...run.counters, outputBytes: run.counters.outputBytes + outputBytes }
@@ -249,9 +269,11 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
         this.checkCancellation(signal)
         const candidate = this.toCandidate(run, step, payload, index)
         this.checkCancellation(signal)
-        this.candidates.add(candidate)
-        run.evidenceIds.push(candidate.id)
+        pendingCandidates.push(candidate)
       }
+      this.checkCancellation(signal)
+      this.candidates.addMany(pendingCandidates)
+      run.evidenceIds.push(...pendingCandidates.map(candidate => candidate.id))
       this.transition(run, 'verdict')
       run.verdict = { summary: run.plan.verdict ?? 'bounded research completed with candidate evidence', claimLevel: 'candidate', evidenceIds: [...run.evidenceIds] }
       this.transition(run, 'evidence-candidate')
@@ -316,6 +338,7 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
       scope: Object.freeze(structuredClone(value.scope) as ResearchRequest['scope']),
       ...(typeof value.contextSnapshotId === 'string' ? { contextSnapshotId: value.contextSnapshotId } : {}),
       ...(typeof value.researchCaseId === 'string' ? { researchCaseId: value.researchCaseId } : {}),
+      allowedCapabilities: normalizeAllowedCapabilities(value.allowedCapabilities as ResearchCapability[] | undefined),
       budget: Object.freeze(structuredClone(value.budget) as unknown as ResearchRun['budget']),
       ...(isRecord(value.plan) ? { plan: Object.freeze(structuredClone(value.plan) as unknown as ResearchPlan) } : {}),
       counters: Object.freeze(structuredClone(value.counters) as unknown as ResearchCounters),
@@ -368,6 +391,13 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
     return Object.freeze({ ...step, payload: clone(step.payload), ...(step.subjectRefs ? { subjectRefs: Object.freeze([...step.subjectRefs]) } : {}) })
   }
 
+  private assertAllowedCapabilities(run: MutableRun, steps: readonly ResearchStep[]): void {
+    const undeclared = steps.find(step => !run.allowedCapabilities.includes(step.capability))
+    if (undeclared) {
+      throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.CAPABILITY_UNDECLARED, `research step ${undeclared.id} uses undeclared capability ${undeclared.capability}`)
+    }
+  }
+
   private planCounters(steps: readonly ResearchStep[], budget: ResearchRun['budget']): ResearchCounters {
     const sources = new Set(steps.map(step => `${step.adapterId}:${step.sourceRef}:${step.sourceRevision ?? ''}`)).size
     const bytes = steps.reduce((total, step) => total + jsonBytes(step.payload), 0)
@@ -409,4 +439,16 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
 
 export function createResearchOrchestrator(registry: ContextAdapterRegistry, candidates?: CandidateEvidenceStore, options?: ResearchOrchestratorOptions): LocalResearchOrchestrator {
   return new LocalResearchOrchestrator(registry, candidates, options)
+}
+
+function normalizeAllowedCapabilities(input?: readonly ResearchCapability[]): readonly ResearchCapability[] {
+  if (input !== undefined && !Array.isArray(input)) {
+    throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.INVALID_REQUEST, 'research allowedCapabilities must be an array')
+  }
+  const capabilities = input === undefined ? SAFE_READ_ONLY_CAPABILITIES : input
+  const normalized = [...new Set(capabilities)]
+  if (normalized.some(capability => !CONTEXT_ADAPTER_CAPABILITIES.includes(capability as ContextAdapterCapability))) {
+    throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.INVALID_REQUEST, 'research allowedCapabilities contains an unsupported capability')
+  }
+  return Object.freeze(normalized as ResearchCapability[])
 }
