@@ -168,8 +168,14 @@ function seedRunRec(opts: { status?: string, crosscheck?: boolean } = {}): strin
 // mock DCW 面(listRecipes/byId/applyRecipe;真实 DcwNode 保证 preflight/步限语义)
 controller.listRecipes = () => [recipeView as never]
 controller.byId = (id: string) => id === 'dw-1' ? dwNode : undefined
-const applyRecipeCalls: Array<{ overrides: Array<{ nodeId: string, value: number }> }> = []
-;(controller as unknown as { applyRecipe: unknown }).applyRecipe = async (_id: string, input: { overrides: Array<{ nodeId: string, value: number }> }) => {
+const applyRecipeCalls: Array<{
+  overrides: Array<{ nodeId: string, value: number }>
+  trial?: boolean
+  agentDispatch?: boolean
+  agentApprovalId?: string
+  agentTrialMeta?: { actor: string, actorName?: string, hypothesis?: string, channelId?: string, executionMode?: string }
+}> = []
+;(controller as unknown as { applyRecipe: unknown }).applyRecipe = async (_id: string, input: typeof applyRecipeCalls[number]) => {
   applyRecipeCalls.push(input)
   return { id: `dcw-run-${applyRecipeCalls.length}`, results: [{ ok: true, nodeId: input.overrides[0]?.nodeId, value: input.overrides[0]?.value, verify: { verdict: 'verified' } }], ackSummary: { verified: 1, unverified: 0, failed: 0, total: 1 } }
 }
@@ -291,6 +297,15 @@ test('单一咽喉:批准 → D13 通过 → committed 抢占 → applyRecipe �
   const override = applyRecipeCalls[0]!.overrides[0]!
   assert.equal(override.nodeId, 'dw-1')
   assert.equal(override.value, 55)
+  // 写归属回归(2026-11-13):派发必须携带 agentTrialMeta,否则干预台账 channel 为空 →
+  // 优化记录/盲回读/RSI 反射全部失联(source 退化 recipe 的治理旁路)。
+  const dispatched = applyRecipeCalls[0]!
+  assert.equal(dispatched.agentDispatch, true)
+  assert.equal(dispatched.agentApprovalId, pending!.id)
+  assert.equal(dispatched.agentTrialMeta?.actor, 'ca-d')
+  assert.equal(dispatched.agentTrialMeta?.channelId, 'ch-d')
+  assert.ok(dispatched.agentTrialMeta?.hypothesis?.startsWith('优化器建议'), '方案名进入写账假设字段')
+  assert.equal(dispatched.agentTrialMeta?.executionMode, 'auto')
   assert.equal(dispatchState(recId), 'executed')
   assert.equal(auditCount('optimizer.dispatch.execute'), 1)
   // 未建卡的建议(idle)批准 → handled=false(调用方回退通用 decide,那里 409)

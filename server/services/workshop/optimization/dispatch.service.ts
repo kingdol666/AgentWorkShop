@@ -37,6 +37,8 @@ import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { getActiveLineRun } from '../dcw/line-run'
 import { assertRecipeOpInterval } from '../dcw/recipe-op-anchor'
 import { getToolApprovals } from '../agents/tool-approvals'
+import { agentBadgeLabel } from '../agents/agent-badge'
+import { executionModeOfChannel } from '../agents/execution-mode'
 import { amlActivityForLine } from '../agents/industrial/aml-activity'
 import { assertOntologyUnchanged, evaluateOntologyGuardsForNodes } from '../ontology/ontology.service'
 import type { RecipeProposePayload } from '../agents/industrial/recipe-propose-tools'
@@ -268,12 +270,23 @@ export async function decideOptimizerDispatch(input: {
     return reject('DISPATCH_PACKAGE_MISSING', '审批卡缺少候选包;按拒收敛')
   }
   const overrides = chosen.params.map(p => ({ nodeId: p.nodeId, value: p.to }))
+  // 写归属必须随下发一并落账:缺 meta 时 applyRecipe 退化为 source='recipe',
+  // 干预台账 channel_id 为空 → 优化记录不建、盲回读跳过、RSI 反射拿不到干预事实。
+  // 执行者 = 绑定产线的 Agent,审批人仍由 approvalId 与 ops 审计记录。
+  const { binding: dispatchBinding } = loadRec(recId)
   try {
     const run = await getDcwController().applyRecipe(cardPayload.recipeId, {
       overrides,
       trial: true,
       agentDispatch: true,
       agentApprovalId: input.cardId,
+      agentTrialMeta: {
+        actor: dispatchBinding.channelAgentId,
+        actorName: agentBadgeLabel(dispatchBinding.channelAgentId),
+        hypothesis: chosen.name,
+        channelId: dispatchBinding.channelId,
+        executionMode: executionModeOfChannel(dispatchBinding.channelId),
+      },
     })
     db().prepare(`UPDATE optimizer_recommendations SET dispatch_state = 'executed' WHERE id = ?`).run(recId)
     const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }

@@ -118,6 +118,28 @@ export async function promoteToAdmin() {
   db.close()
 }
 
+/**
+ * Bearer → HttpOnly 浏览器会话（aw.session）。
+ * v197 起浏览器鉴权只认服务端会话 cookie，旧 `token` cookie 不再被接受；
+ * 视觉/验收脚本必须换一次会话再注入，否则页面全是未登录快照。
+ * 模块级缓存：同进程多次 openPage 只建一次，避免触发每用户 4 会话上限。
+ */
+let visualSession = { token: '', credential: '' }
+export async function ensureVisualSessionCookie(token) {
+  if (!token) return ''
+  if (visualSession.token === token && visualSession.credential) return visualSession.credential
+  const res = await fetch(`${BASE}/api/users/session`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(`建立浏览器会话失败: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`)
+  const raw = (res.headers.getSetCookie?.() ?? []).find(c => c.startsWith('aw.session='))
+  const credential = raw?.split(';')[0]?.slice('aw.session='.length) ?? ''
+  if (!credential) throw new Error('建立浏览器会话失败: 响应未返回 aw.session cookie')
+  visualSession = { token, credential }
+  return credential
+}
+
 export async function launch({ width = 1440, height = 900 } = {}) {
   return puppeteer.launch({
     executablePath: CHROME,
@@ -154,7 +176,8 @@ export async function openPage(browser, {
     width, height, deviceScaleFactor, isMobile: isTouch, hasTouch: isTouch,
   })
   if (token) {
-    await page.setCookie({ name: 'token', value: token, domain: '127.0.0.1', path: '/' })
+    const credential = await ensureVisualSessionCookie(token)
+    await page.setCookie({ name: 'aw.session', value: credential, domain: '127.0.0.1', path: '/' })
   }
   await page.setCookie({
     name: 'aw-theme', value: dark ? 'dark' : 'light', domain: '127.0.0.1', path: '/',

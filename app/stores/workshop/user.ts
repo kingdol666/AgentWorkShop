@@ -49,6 +49,8 @@ type BrowserSessionPayload = {
 export const useUserStore = defineStore('workshop.user', {
   state: () => ({
     user: null as CurrentUser | null,
+    /** 客户端会话恢复是否已尝试完成（SSR 恒 false → 首帧骨架，避免 auth 分支水合错位） */
+    sessionReady: false,
   }),
   getters: {
     isLoggedIn: state => state.user !== null,
