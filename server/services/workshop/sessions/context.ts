@@ -26,8 +26,11 @@ export interface SessionTurnItem {
 }
 
 export interface SessionCompressedState {
-  /** 已折叠消息的最大 rowid（插入序，单调可比；message id 是 UUID 不可比） */
+  /** 兼容旧 brief 的观测字段；cursor 用 persisted message identity + created_at，并校验当前行未被删除/复用。 */
   uptoSeq: number
+  /** 已折叠消息 identity；每次续读先校验行仍存在，避免 SQLite 回收 rowid 后跳过新消息。 */
+  uptoCreatedAt: string
+  uptoMessageId: string
   lines: string[]
   generation: number
 }
@@ -50,8 +53,8 @@ export interface SessionBrief {
   deliverables: Array<{ name: string, status: string, artifactId: string | null, bytes: number }>
   recentMessages: Array<{ role: string, name: string, text: string, at: string }>
   recentTurns: SessionTurnItem[]
-  /** 压缩层快照（uptoSeq 供跨代折叠续接；generation 仅观测用） */
-  compressed: { uptoSeq: number, generation: number, lines: string[] }
+  /** 压缩层快照；cursor 使用稳定 created_at + message id，uptoSeq 仅保留兼容观测。 */
+  compressed: { uptoSeq: number, uptoCreatedAt: string, uptoMessageId: string, generation: number, lines: string[] }
   decisions: Array<{ id: string, text: string, state: string, at: string }>
   openQuestions: string[]
   nextStep: string
@@ -142,8 +145,17 @@ export class SessionContextService {
     const row = this.sessions.findById(sessionId)
     if (!row) return null
     // 压缩状态跨代携带：从上一份 brief_json 读取，窗口外新消息增量折叠。
-    const prev = parseJson<{ compressed?: SessionCompressedState } | null>(row.briefJson, null)
-    const compressed = this.foldOlderMessages(row, prev?.compressed ?? { uptoSeq: 0, lines: [], generation: 0 })
+    const prev = parseJson<{ compressed?: Partial<SessionCompressedState> } | null>(row.briefJson, null)
+    const stored = prev?.compressed
+    const compressed = this.foldOlderMessages(row, {
+      uptoSeq: Number.isSafeInteger(Number(stored?.uptoSeq)) && Number(stored?.uptoSeq) >= 0 ? Number(stored?.uptoSeq) : 0,
+      // Old briefs only persisted uptoSeq; an empty stable cursor safely replays
+      // their rows and the existing line de-duplication keeps this idempotent.
+      uptoCreatedAt: typeof stored?.uptoCreatedAt === 'string' ? stored.uptoCreatedAt : '',
+      uptoMessageId: typeof stored?.uptoMessageId === 'string' ? stored.uptoMessageId : '',
+      lines: Array.isArray(stored?.lines) ? stored.lines.filter((line): line is string => typeof line === 'string') : [],
+      generation: Number.isSafeInteger(Number(stored?.generation)) && Number(stored?.generation) >= 0 ? Number(stored?.generation) : 0,
+    })
     const brief = this.assemble(row, compressed)
     if (opts.refresh) {
       this.sessions.updateBrief(sessionId, {
@@ -161,38 +173,53 @@ export class SessionContextService {
    * 全程确定性、幂等（uptoId 推进 + 行去重），不调 LLM。
    */
   private foldOlderMessages(row: ChannelSessionRow, state: SessionCompressedState): SessionCompressedState {
-    const messages = this.listSessionMessages(row, 200)
-    const windowStart = Math.max(0, messages.length - RECENT_TURN_LIMIT)
-    const older = messages.slice(0, windowStart).filter(m => m.seq > state.uptoSeq)
+    const windowStart = Math.max(0, this.countSessionMessages(row) - RECENT_TURN_LIMIT)
+    const boundary = this.sessionMessageBoundaryAtOffset(row, windowStart)
+    if (!boundary) return state
+    const cursor = this.validCompactionCursor(row, state)
+    const older = this.listSessionMessagesBefore(row, cursor, boundary, 200)
     if (older.length === 0) return state
     const pinned: string[] = []
     const topics: string[] = []
     for (const m of older) {
-      if (PINNED_LINE_RE.test(m.text)) pinned.push(`${m.name}: ${short(m.text, 200)}`)
+      if (!m.text) continue
+      if (PINNED_LINE_RE.test(m.text)) pinned.push(short(`${m.name}: ${m.text}`, 200))
       else topics.push(`· ${m.name}: ${short(m.text, 36)}`)
     }
     const merged = [...new Set([...state.lines, ...pinned, ...topics])]
     const lines = this.trimCompressedLines(merged)
     const last = older[older.length - 1]
     return {
-      uptoSeq: last ? last.seq : state.uptoSeq,
+      uptoSeq: last ? last.seq : cursor.uptoSeq,
+      uptoCreatedAt: last?.at ?? cursor.uptoCreatedAt,
+      uptoMessageId: last?.id ?? cursor.uptoMessageId,
       lines,
       generation: state.generation + 1,
     }
   }
 
-  /** 按 rowid 正序列出 session 消息（manual 用 session_id；task/project 回退实例频道）。 */
+  /** cursor 行存在且 identity 匹配时沿用 rowid；否则从 session 头部重放。 */
+  private validCompactionCursor(session: ChannelSessionRow, state: SessionCompressedState): SessionCompressedState {
+    if (!state.uptoCreatedAt || !state.uptoMessageId || state.uptoSeq <= 0) {
+      return { ...state, uptoSeq: 0, uptoCreatedAt: '', uptoMessageId: '' }
+    }
+    const found = this.db.prepare(
+      'SELECT created_at AS at, id FROM messages WHERE session_id = ? AND rowid = ?',
+    ).get(session.id, state.uptoSeq) as { at: string, id: string } | undefined
+    if (found?.at === state.uptoCreatedAt && found.id === state.uptoMessageId) return state
+    return { ...state, uptoSeq: 0, uptoCreatedAt: '', uptoMessageId: '' }
+  }
+
+  /** 按 created_at + rowid 的 session 最新窗口；rowid 只作同毫秒入队顺序。 */
   private listSessionMessages(row: ChannelSessionRow, limit: number): Array<{ id: string, seq: number, role: 'user' | 'agent', name: string, text: string, at: string }> {
-    const filter = row.instanceKind === 'task' || row.instanceKind === 'project'
-      ? 'session_id = ? OR (session_id IS NULL AND channel_id = ?)'
-      : 'session_id = ?'
-    const args = filter.includes('channel_id') ? [row.id, row.channelId, limit] : [row.id, limit]
     const rows = this.db.prepare(
       `SELECT id, rowid AS seq, role, from_agent_id AS fromAgentId, to_agent_id AS toAgentId,
               parts_json AS partsJson, created_at AS at
-       FROM messages WHERE ${filter} ORDER BY rowid ASC LIMIT ?`,
-    ).all(...args) as Array<{ id: string, seq: number, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
-    return rows.map(m => ({
+       FROM messages
+       WHERE session_id = ?
+       ORDER BY rowid DESC LIMIT ?`,
+    ).all(row.id, limit) as Array<{ id: string, seq: number, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
+    return rows.reverse().map(m => ({
       id: m.id,
       seq: Number(m.seq),
       role: m.role === 'ROLE_USER' ? 'user' as const : 'agent' as const,
@@ -202,16 +229,58 @@ export class SessionContextService {
     })).filter(m => m.text)
   }
 
-  /** 压缩层预算：pinned 上限 14 行，话题上限 10 行，总字符 ≤ 1200（超限先丢最旧话题）。 */
+  /** 按稳定 rowid 批次读取；cursor identity 校验防止 retention 后复用造成跳过。 */
+  private listSessionMessagesBefore(
+    row: ChannelSessionRow,
+    state: SessionCompressedState,
+    boundary: { at: string, id: string, seq: number },
+    limit: number,
+  ): Array<{ id: string, seq: number, role: 'user' | 'agent', name: string, text: string, at: string }> {
+    const rows = this.db.prepare(
+      `SELECT id, rowid AS seq, role, from_agent_id AS fromAgentId, to_agent_id AS toAgentId,
+              parts_json AS partsJson, created_at AS at
+       FROM messages
+       WHERE session_id = ? AND rowid > ? AND rowid <= ?
+       ORDER BY rowid ASC LIMIT ?`,
+    ).all(row.id, state.uptoSeq, boundary.seq, limit) as Array<{ id: string, seq: number, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
+    return rows.map(m => ({
+      id: m.id,
+      seq: Number(m.seq),
+      role: m.role === 'ROLE_USER' ? 'user' as const : 'agent' as const,
+      name: m.role === 'ROLE_USER' ? '人类' : (m.fromAgentId ?? '系统'),
+      text: textOfParts(m.partsJson),
+      at: m.at,
+    }))
+  }
+
+  private countSessionMessages(row: ChannelSessionRow): number {
+    const result = this.db.prepare('SELECT COUNT(*) AS count FROM messages WHERE session_id = ?').get(row.id) as { count: number }
+    return Number(result.count ?? 0)
+  }
+
+  /** 按同一入队 rowid 顺序定位 recent 边界；created_at/id 仅用于 cursor 复用校验。 */
+  private sessionMessageBoundaryAtOffset(row: ChannelSessionRow, offset: number): { at: string, id: string, seq: number } | undefined {
+    if (offset <= 0) return undefined
+    return this.db.prepare(
+      `SELECT created_at AS at, id, rowid AS seq FROM messages
+       WHERE session_id = ? ORDER BY rowid ASC LIMIT 1 OFFSET ?`,
+    ).get(row.id, offset - 1) as { at: string, id: string, seq: number } | undefined
+  }
+
+  /** 压缩层确定性保留：优先保留最新 pinned，再用剩余预算保留最新 topics。 */
   private trimCompressedLines(lines: string[]): string[] {
-    const pinned = lines.filter(l => !l.startsWith('· '))
-    const topics = lines.filter(l => l.startsWith('· '))
-    const keptPinned = pinned.slice(-PINNED_MAX)
-    let keptTopics: string[] = []
-    for (const t of topics.slice(-TOPIC_MAX)) {
-      const candidate = [...keptTopics, t]
-      if (charsOf(keptPinned) + charsOf(candidate) > COMPRESSED_CHAR_BUDGET) break
-      keptTopics = candidate
+    const pinned = lines.filter(l => !l.startsWith('· ')).slice(-PINNED_MAX)
+    const topics = lines.filter(l => l.startsWith('· ')).slice(-TOPIC_MAX)
+    const keptPinned: string[] = []
+    for (const line of pinned.reverse()) {
+      const bounded = short(line, 200)
+      if (charsOf(keptPinned) + bounded.length > COMPRESSED_CHAR_BUDGET) continue
+      keptPinned.unshift(bounded)
+    }
+    const keptTopics: string[] = []
+    for (const line of topics.reverse()) {
+      if (charsOf(keptPinned) + charsOf(keptTopics) + line.length > COMPRESSED_CHAR_BUDGET) continue
+      keptTopics.unshift(line)
     }
     return [...keptPinned, ...keptTopics]
   }
@@ -295,20 +364,16 @@ export class SessionContextService {
   history(sessionId: string, limit = 80): SessionHistoryItem[] {
     const row = this.sessions.findById(sessionId)
     if (!row) return []
-    const taskFilter = row.instanceKind === 'task' || row.instanceKind === 'project'
-      ? 'session_id = ? OR (session_id IS NULL AND channel_id = ?)'
-      : 'session_id = ?'
-    const args = taskFilter.includes('channel_id') ? [sessionId, row.channelId, limit] : [sessionId, limit]
     const tasks = this.db.prepare(
-      `SELECT id, title, state, progress, updated_at AS at FROM tasks
-       WHERE ${taskFilter} ORDER BY updated_at DESC LIMIT ?`,
-    ).all(...args) as Array<{ id: string, title: string, state: string, progress: number, at: string }>
+      `SELECT id, title, state, progress, created_at AS at, rowid AS sourceSeq FROM tasks
+       WHERE session_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?`,
+    ).all(sessionId, limit) as Array<{ id: string, title: string, state: string, progress: number, at: string, sourceSeq: number }>
     const messages = this.db.prepare(
       `SELECT id, role, from_agent_id AS fromAgentId, to_agent_id AS toAgentId,
-              parts_json AS partsJson, created_at AS at
-       FROM messages WHERE session_id = ? ORDER BY created_at ASC LIMIT ?`,
-    ).all(sessionId, limit) as Array<{ id: string, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
-    const history: SessionHistoryItem[] = [
+              parts_json AS partsJson, created_at AS at, rowid AS sourceSeq
+       FROM messages WHERE session_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?`,
+    ).all(sessionId, limit) as Array<{ id: string, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string, sourceSeq: number }>
+    const history: Array<SessionHistoryItem & { source: 0 | 1, sourceSeq: number }> = [
       ...tasks.map(t => ({
         type: 'task' as const,
         id: t.id,
@@ -317,6 +382,8 @@ export class SessionContextService {
         text: t.title,
         state: t.state,
         progress: Number(t.progress ?? 0),
+        source: 0 as const,
+        sourceSeq: Number(t.sourceSeq),
       })),
       ...messages.map(m => ({
         type: 'message' as const,
@@ -325,12 +392,15 @@ export class SessionContextService {
         role: m.role,
         name: m.fromAgentId ?? m.toAgentId ?? 'system',
         text: textOfParts(m.partsJson),
+        source: 1 as const,
+        sourceSeq: Number(m.sourceSeq),
       })),
     ]
     return history
       .filter(h => Boolean(h.text))
-      .sort((a, b) => String(a.at).localeCompare(String(b.at)))
+      .sort((a, b) => String(a.at).localeCompare(String(b.at)) || a.source - b.source || a.sourceSeq - b.sourceSeq)
       .slice(-limit)
+      .map(({ source: _source, sourceSeq: _sourceSeq, ...item }) => item)
   }
 
   /** 当前 channel 的 active session（任务实例/项目办公室优先）。 */
@@ -346,14 +416,10 @@ export class SessionContextService {
     const workItem = row.projectWorkItemId
       ? this.db.prepare('SELECT title, brief FROM project_work_items WHERE id = ?').get(row.projectWorkItemId) as { title: string, brief: string } | undefined
       : undefined
-    const taskFilter = row.instanceKind === 'task' || row.instanceKind === 'project'
-      ? 'session_id = ? OR (session_id IS NULL AND channel_id = ?)'
-      : 'session_id = ?'
-    const taskArgs = taskFilter.includes('channel_id') ? [row.id, row.channelId] : [row.id]
     const taskRows = this.db.prepare(
       `SELECT id, title, state, progress, assignee_id AS assigneeId, artifacts_json AS artifactsJson, updated_at AS updatedAt
-       FROM tasks WHERE ${taskFilter} ORDER BY created_at ASC`,
-    ).all(...taskArgs) as Array<{
+       FROM tasks WHERE session_id = ? ORDER BY created_at ASC, rowid ASC`,
+    ).all(row.id) as Array<{
       id: string
       title: string
       state: string
@@ -447,7 +513,13 @@ export class SessionContextService {
       deliverables,
       recentMessages,
       recentTurns,
-      compressed: { uptoSeq: compressed.uptoSeq, generation: compressed.generation, lines: compressed.lines },
+      compressed: {
+        uptoSeq: compressed.uptoSeq,
+        uptoCreatedAt: compressed.uptoCreatedAt,
+        uptoMessageId: compressed.uptoMessageId,
+        generation: compressed.generation,
+        lines: compressed.lines,
+      },
       decisions,
       openQuestions,
       nextStep: this.nextStep(currentTask, recentMessages.length),
