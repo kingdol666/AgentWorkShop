@@ -13,6 +13,8 @@ export const CONTEXT_OVERLAY_ERROR_CODES = {
   NOT_READY: 'CONTEXT_OVERLAY_NOT_READY',
   DISPOSED: 'CONTEXT_OVERLAY_DISPOSED',
   OWNER_DISPOSE_FAILED: 'CONTEXT_OVERLAY_OWNER_DISPOSE_FAILED',
+  READ_TIMEOUT: 'CONTEXT_OVERLAY_READ_TIMEOUT',
+  DRAIN_TIMEOUT: 'CONTEXT_OVERLAY_DRAIN_TIMEOUT',
 } as const
 
 export type ContextOverlayRegistryErrorCode = typeof CONTEXT_OVERLAY_ERROR_CODES[keyof typeof CONTEXT_OVERLAY_ERROR_CODES]
@@ -197,6 +199,9 @@ type ProviderRecord = {
   errors: string[]
   drainingReason?: ContextOverlayLifecycleContext['reason']
   lifecycleStarted: boolean
+  drainPromise?: Promise<boolean>
+  drainWaiters: Set<() => void>
+  operations: Set<{ controller: AbortController, reject: (error: unknown) => void }>
 }
 
 type SanitizerState = { nodes: number }
@@ -204,6 +209,8 @@ type SanitizerState = { nodes: number }
 const AUTHORITY_KEY = /^(?:prompt|system(?:prompt)?|instruction|instructions|tool|tools|tool[_-]?calls?|route|routing|router|write|writes|write[_-]?intent|command|commands|dispatch|model|authority|capability|capabilities)$/i
 const MAX_PROVIDER_TEXT = 160
 const MAX_ID_TEXT = 120
+const PROVIDER_READ_TIMEOUT_MS = 1_000
+const PROVIDER_DRAIN_TIMEOUT_MS = 1_000
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -409,7 +416,7 @@ export class ContextOverlayRegistry {
       active.drainingReason = 'replaced'
       retired.push(active)
     }
-    this.records.set(key, { provider: normalized, state: 'ready', inFlight: 0, errors: [], lifecycleStarted: false })
+    this.records.set(key, { provider: normalized, state: 'ready', inFlight: 0, errors: [], lifecycleStarted: false, drainWaiters: new Set(), operations: new Set() })
     this.active.set(normalized.overlayId, key)
     for (const record of retired) void this.finalizeDrain(record)
     return {
@@ -447,18 +454,32 @@ export class ContextOverlayRegistry {
     for (const record of records) {
       if (signal?.aborted) break
       const controller = new AbortController()
-      const onAbort = () => controller.abort(signal?.reason)
+      let rejectRead: ((error: unknown) => void) | undefined
+      const operation = { controller, reject: (error: unknown) => rejectRead?.(error) }
+      const onAbort = () => {
+        controller.abort(signal?.reason)
+        rejectRead?.(new ContextOverlayRegistryError(CONTEXT_OVERLAY_ERROR_CODES.DISPOSED, 'overlay read was cancelled'))
+      }
       signal?.addEventListener('abort', onAbort, { once: true })
       record.inFlight += 1
+      record.operations.add(operation)
+      const readPromise = Promise.resolve().then(() => record.provider.read({
+        apiVersion: CONTEXT_OVERLAY_API_VERSION,
+        overlayId: record.provider.overlayId,
+        version: record.provider.version,
+        generation: record.provider.generation,
+        scope,
+        signal: controller.signal,
+      }))
+      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => {
+        controller.abort(new Error('overlay provider timeout'))
+        reject(new ContextOverlayRegistryError(CONTEXT_OVERLAY_ERROR_CODES.READ_TIMEOUT, `overlay provider ${record.provider.overlayId} exceeded ${PROVIDER_READ_TIMEOUT_MS}ms`))
+      }, PROVIDER_READ_TIMEOUT_MS))
+      const cancellationPromise = new Promise<never>((_, reject) => {
+        rejectRead = reject
+      })
       try {
-        const result = await record.provider.read({
-          apiVersion: CONTEXT_OVERLAY_API_VERSION,
-          overlayId: record.provider.overlayId,
-          version: record.provider.version,
-          generation: record.provider.generation,
-          scope,
-          signal: controller.signal,
-        })
+        const result = await Promise.race([readPromise, timeoutPromise, cancellationPromise])
         if (!controller.signal.aborted && !signal?.aborted) {
           for (const candidate of candidateValues(result)) {
             if (items.length >= this.limits.maxItems) break
@@ -485,8 +506,13 @@ export class ContextOverlayRegistry {
       }
       finally {
         record.inFlight -= 1
+        record.operations.delete(operation)
         signal?.removeEventListener('abort', onAbort)
-        if (record.inFlight === 0 && record.state === 'draining') void this.finalizeDrain(record)
+        if (record.inFlight === 0) {
+          for (const resolve of record.drainWaiters) resolve()
+          record.drainWaiters.clear()
+          if (record.state === 'draining' && !record.lifecycleStarted) void this.finalizeDrain(record)
+        }
       }
     }
 
@@ -519,7 +545,7 @@ export class ContextOverlayRegistry {
     return records.map(record => this.drainResult(record))
   }
 
-  drain(overlayId: string, generation?: number): ContextOverlayDrainResult {
+  async drain(overlayId: string, generation?: number): Promise<ContextOverlayDrainResult> {
     this.ensureOpen()
     const activeKey = this.active.get(overlayId)
     const record = activeKey ? this.records.get(activeKey) : undefined
@@ -530,7 +556,10 @@ export class ContextOverlayRegistry {
       record.state = 'draining'
       record.drainingReason = 'unregistered'
     }
-    void this.finalizeDrain(record)
+    await this.finalizeDrain(record)
+    if (record.state === 'failed' && record.errors.some(error => error.startsWith(CONTEXT_OVERLAY_ERROR_CODES.DRAIN_TIMEOUT))) {
+      throw new ContextOverlayRegistryError(CONTEXT_OVERLAY_ERROR_CODES.DRAIN_TIMEOUT, `overlay ${overlayId} drain exceeded ${PROVIDER_DRAIN_TIMEOUT_MS}ms`)
+    }
     return this.drainResult(record)
   }
 
@@ -589,28 +618,56 @@ export class ContextOverlayRegistry {
   }
 
   private async finalizeDrain(record: ProviderRecord): Promise<void> {
-    if (record.lifecycleStarted || record.inFlight > 0) return
-    record.lifecycleStarted = true
-    const provider = record.provider
-    const context = {
-      overlayId: provider.overlayId,
-      version: provider.version,
-      generation: provider.generation,
-      reason: record.drainingReason ?? (this.disposed ? 'registry-disposed' : 'unregistered'),
-      inFlight: record.inFlight,
-      signal: new AbortController().signal,
-    } as const
-    try {
-      await provider.drain(context)
-      await provider.retire(context)
-      await provider.owner.dispose({ ...context, reason: 'owner-disposed' })
-      record.state = 'retired'
-      if (this.active.get(provider.overlayId) === overlayKey(provider.overlayId, provider.version)) this.active.delete(provider.overlayId)
+    if (record.drainPromise) {
+      await record.drainPromise
+      return
     }
-    catch (error) {
-      record.state = 'failed'
-      record.errors.push(error instanceof Error ? error.message.slice(0, MAX_PROVIDER_TEXT) : CONTEXT_OVERLAY_ERROR_CODES.OWNER_DISPOSE_FAILED)
-    }
+    record.drainPromise = (async () => {
+      if (record.inFlight > 0) {
+        const completed = await new Promise<boolean>((resolve) => {
+          const timer = setTimeout(() => resolve(false), PROVIDER_DRAIN_TIMEOUT_MS)
+          record.drainWaiters.add(() => {
+            clearTimeout(timer)
+            resolve(true)
+          })
+        })
+        if (!completed) {
+          for (const operation of record.operations) {
+            operation.controller.abort(new Error('overlay drain timeout'))
+            operation.reject(new ContextOverlayRegistryError(CONTEXT_OVERLAY_ERROR_CODES.DRAIN_TIMEOUT, `overlay provider ${record.provider.overlayId} drain exceeded ${PROVIDER_DRAIN_TIMEOUT_MS}ms`))
+          }
+          record.state = 'failed'
+          record.errors.push(`${CONTEXT_OVERLAY_ERROR_CODES.DRAIN_TIMEOUT}: overlay provider ${record.provider.overlayId} drain exceeded ${PROVIDER_DRAIN_TIMEOUT_MS}ms`)
+          return false
+        }
+      }
+      const provider = record.provider
+      const context = {
+        overlayId: provider.overlayId,
+        version: provider.version,
+        generation: provider.generation,
+        reason: record.drainingReason ?? (this.disposed ? 'registry-disposed' : 'unregistered'),
+        inFlight: record.inFlight,
+        signal: new AbortController().signal,
+      } as const
+      try {
+        record.lifecycleStarted = true
+        await provider.drain(context)
+        await provider.retire(context)
+        await provider.owner.dispose({ ...context, reason: 'owner-disposed' })
+        record.state = 'retired'
+        const activeKey = this.active.get(provider.overlayId)
+        const activeRecord = activeKey ? this.records.get(activeKey) : undefined
+        if (activeRecord === record) this.active.delete(provider.overlayId)
+        return true
+      }
+      catch (error) {
+        record.state = 'failed'
+        record.errors.push(error instanceof Error ? error.message.slice(0, MAX_PROVIDER_TEXT) : CONTEXT_OVERLAY_ERROR_CODES.OWNER_DISPOSE_FAILED)
+        return false
+      }
+    })()
+    await record.drainPromise
   }
 
   private drainResult(record: ProviderRecord): ContextOverlayDrainResult {

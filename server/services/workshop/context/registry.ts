@@ -28,6 +28,7 @@ export const CONTEXT_ADAPTER_ERROR_CODES = {
   MALFORMED_RESULT: 'CONTEXT_ADAPTER_MALFORMED_RESULT',
   HEALTH_UNAVAILABLE: 'CONTEXT_ADAPTER_HEALTH_UNAVAILABLE',
   OWNER_DISPOSE_FAILED: 'CONTEXT_ADAPTER_OWNER_DISPOSE_FAILED',
+  DRAIN_TIMEOUT: 'CONTEXT_ADAPTER_DRAIN_TIMEOUT',
 } as const
 
 export type ContextAdapterRegistryErrorCode = typeof CONTEXT_ADAPTER_ERROR_CODES[keyof typeof CONTEXT_ADAPTER_ERROR_CODES]
@@ -48,16 +49,27 @@ type AdapterRecord = {
   adapter: NormalizedContextAdapter
   state: ContextAdapterSummary['state']
   inFlight: number
+  operations: Set<InFlightOperation>
   registeredAt: string
   drainingAt?: string
+  drainingReason?: 'replaced' | 'unregistered' | 'registry-disposed'
   retiredAt?: string
   errors: StructuredAdapterError[]
+  drainPromise?: Promise<boolean>
+  drainWaiters: Set<() => void>
+}
+
+type InFlightOperation = {
+  controller: AbortController
+  reject: (error: unknown) => void
 }
 
 type StagedRegistration = {
   adapter: NormalizedContextAdapter
   key: string
 }
+
+const DRAIN_TIMEOUT_MS = 1_000
 
 function key(adapterId: string, version: string): string {
   return `${adapterId}\u0000${version}`
@@ -142,9 +154,10 @@ export class ContextAdapterRegistry {
       if (active && active.adapter.generation < item.adapter.generation && active.state === 'ready') {
         active.state = 'draining'
         active.drainingAt = now()
+        active.drainingReason = 'replaced'
         retired.push(active)
       }
-      const record: AdapterRecord = { adapter: item.adapter, state: 'ready', inFlight: 0, registeredAt: now(), errors: [] }
+      const record: AdapterRecord = { adapter: item.adapter, state: 'ready', inFlight: 0, operations: new Set(), registeredAt: now(), errors: [], drainWaiters: new Set() }
       this.records.set(item.key, record)
       this.active.set(item.adapter.adapterId, item.key)
       results.push({ ok: true, adapterId: item.adapter.adapterId, version: item.adapter.version, generation: item.adapter.generation, state: 'ready', drainedGenerations: retired.filter(value => value.adapter.adapterId === item.adapter.adapterId).map(value => value.adapter.generation) })
@@ -165,6 +178,7 @@ export class ContextAdapterRegistry {
       if (record.state === 'ready') {
         record.state = 'draining'
         record.drainingAt = now()
+        record.drainingReason = 'unregistered'
       }
       void this.finalizeDrain(record, 'unregistered')
     }
@@ -189,16 +203,31 @@ export class ContextAdapterRegistry {
     const timeoutMs = options.timeoutMs ?? record.adapter.timeout.defaultMs
     if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > record.adapter.timeout.maxMs) throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.TIMEOUT, `timeoutMs must be between 1 and ${record.adapter.timeout.maxMs}`)
     const controller = new AbortController()
-    const onAbort = () => controller.abort(callerSignal?.reason)
+    let rejectCancellation: ((error: unknown) => void) | undefined
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+    const inFlightOperation: InFlightOperation = {
+      controller,
+      reject: error => rejectCancellation?.(error),
+    }
+    const onAbort = () => {
+      controller.abort(callerSignal?.reason)
+      rejectCancellation?.(abortError())
+    }
     callerSignal?.addEventListener('abort', onAbort, { once: true })
-    const timer = setTimeout(() => controller.abort(new Error('adapter timeout')), timeoutMs)
     record.inFlight += 1
+    record.operations.add(inFlightOperation)
+    const operationPromise = Promise.resolve().then(() => operation({ adapterId, apiVersion: record.adapter.apiVersion, version: record.adapter.version, generation: record.adapter.generation, capability, payload, idempotencyKey: options.idempotencyKey, timeoutMs, signal: controller.signal }))
+    const cancellationPromise = new Promise<never>((_, reject) => {
+      rejectCancellation = reject
+    })
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        controller.abort(new Error('adapter timeout'))
+        reject(new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.TIMEOUT, `adapter ${adapterId} exceeded ${timeoutMs}ms`))
+      }, timeoutMs)
+    })
     try {
-      const result = await operation({ adapterId, apiVersion: record.adapter.apiVersion, version: record.adapter.version, generation: record.adapter.generation, capability, payload, idempotencyKey: options.idempotencyKey, timeoutMs, signal: controller.signal })
-      if (controller.signal.aborted) {
-        if (callerSignal?.aborted) throw abortError()
-        throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.TIMEOUT, `adapter ${adapterId} exceeded ${timeoutMs}ms`)
-      }
+      const result = await Promise.race([operationPromise, cancellationPromise, timeoutPromise])
       try {
         return normalizeAdapterResult(result)
       }
@@ -217,10 +246,15 @@ export class ContextAdapterRegistry {
       throw new ContextAdapterRegistryError(structured.code as ContextAdapterRegistryErrorCode, structured.message, structured.details)
     }
     finally {
-      clearTimeout(timer)
+      if (timeoutHandle !== undefined) clearTimeout(timeoutHandle)
       callerSignal?.removeEventListener('abort', onAbort)
+      record.operations.delete(inFlightOperation)
       record.inFlight -= 1
-      if (record.inFlight === 0 && (record.state as AdapterRecord['state']) === 'draining') void this.finalizeDrain(record, 'unregistered')
+      if (record.inFlight === 0) {
+        for (const resolve of record.drainWaiters) resolve()
+        record.drainWaiters.clear()
+        if (record.state === ('draining' as AdapterRecord['state']) && !record.drainPromise) void this.finalizeDrain(record, record.drainingReason ?? 'unregistered')
+      }
     }
   }
 
@@ -241,12 +275,15 @@ export class ContextAdapterRegistry {
     }
   }
 
-  drain(adapterId: string, generation?: number): ContextAdapterDrainResult {
+  async drain(adapterId: string, generation?: number): Promise<ContextAdapterDrainResult> {
     const record = this.resolve(adapterId, generation)
     if (record.state === 'ready') {
       record.state = 'draining'
       record.drainingAt = now()
-      void this.finalizeDrain(record, 'unregistered')
+    }
+    await this.finalizeDrain(record, 'unregistered')
+    if (record.state === 'failed' && record.errors.some(error => error.code === CONTEXT_ADAPTER_ERROR_CODES.DRAIN_TIMEOUT)) {
+      throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.DRAIN_TIMEOUT, `adapter ${adapterId} drain exceeded ${DRAIN_TIMEOUT_MS}ms`)
     }
     return this.drainResult(record)
   }
@@ -258,6 +295,7 @@ export class ContextAdapterRegistry {
       if (record.state === 'ready') {
         record.state = 'draining'
         record.drainingAt = now()
+        record.drainingReason = 'unregistered'
       }
       void this.finalizeDrain(record, 'unregistered')
       return { ok: true, adapterId, generation: record.adapter.generation, state: record.state, inFlight: record.inFlight, retired: record.state === 'retired' }
@@ -279,6 +317,8 @@ export class ContextAdapterRegistry {
       record.drainingAt ??= now()
     }
     await Promise.all(records.map(record => this.finalizeDrain(record, 'registry-disposed')))
+    const timedOut = records.find(record => record.errors.some(error => error.code === CONTEXT_ADAPTER_ERROR_CODES.DRAIN_TIMEOUT))
+    if (timedOut) throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.DRAIN_TIMEOUT, `adapter ${timedOut.adapter.adapterId} drain exceeded ${DRAIN_TIMEOUT_MS}ms`)
   }
 
   private resolve(adapterId: string, generation?: number): AdapterRecord {
@@ -294,22 +334,48 @@ export class ContextAdapterRegistry {
   }
 
   private async finalizeDrain(record: AdapterRecord, reason: 'replaced' | 'unregistered' | 'registry-disposed'): Promise<void> {
-    if (record.inFlight > 0) {
+    if (record.drainPromise) {
+      await record.drainPromise
       return
     }
-    const context = { adapterId: record.adapter.adapterId, version: record.adapter.version, generation: record.adapter.generation, reason, inFlight: record.inFlight, signal: new AbortController().signal } as const
-    try {
-      await record.adapter.drain(context)
-      await record.adapter.retire(context)
-      await record.adapter.owner.dispose({ ...context, reason: 'owner-disposed' })
-      record.state = 'retired'
-      record.retiredAt = now()
-      if (this.active.get(record.adapter.adapterId) === key(record.adapter.adapterId, record.adapter.version)) this.active.delete(record.adapter.adapterId)
-    }
-    catch (error) {
-      record.state = 'failed'
-      record.errors.push(errorFromUnknown(error, { code: CONTEXT_ADAPTER_ERROR_CODES.OWNER_DISPOSE_FAILED, category: 'lifecycle', message: error instanceof Error ? error.message : String(error), retryable: false }))
-    }
+    record.drainPromise = (async () => {
+      if (record.inFlight > 0) {
+        const completed = await new Promise<boolean>((resolve) => {
+          const timer = setTimeout(() => resolve(false), DRAIN_TIMEOUT_MS)
+          record.drainWaiters.add(() => {
+            clearTimeout(timer)
+            resolve(true)
+          })
+        })
+        if (!completed) {
+          for (const operation of record.operations) {
+            operation.controller.abort(new Error('adapter drain timeout'))
+            operation.reject(new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.DRAIN_TIMEOUT, `adapter ${record.adapter.adapterId} drain exceeded ${DRAIN_TIMEOUT_MS}ms`))
+          }
+          record.state = 'failed'
+          record.errors.push({ code: CONTEXT_ADAPTER_ERROR_CODES.DRAIN_TIMEOUT, category: 'lifecycle', message: `adapter ${record.adapter.adapterId} drain exceeded ${DRAIN_TIMEOUT_MS}ms`, retryable: false })
+          return false
+        }
+      }
+      const context = { adapterId: record.adapter.adapterId, version: record.adapter.version, generation: record.adapter.generation, reason, inFlight: record.inFlight, signal: new AbortController().signal } as const
+      try {
+        await record.adapter.drain(context)
+        await record.adapter.retire(context)
+        await record.adapter.owner.dispose({ ...context, reason: 'owner-disposed' })
+        record.state = 'retired'
+        record.retiredAt = now()
+        const activeKey = this.active.get(record.adapter.adapterId)
+        const activeRecord = activeKey ? this.records.get(activeKey) : undefined
+        if (activeRecord === record) this.active.delete(record.adapter.adapterId)
+        return true
+      }
+      catch (error) {
+        record.state = 'failed'
+        record.errors.push(errorFromUnknown(error, { code: CONTEXT_ADAPTER_ERROR_CODES.OWNER_DISPOSE_FAILED, category: 'lifecycle', message: error instanceof Error ? error.message : String(error), retryable: false }))
+        return false
+      }
+    })()
+    await record.drainPromise
   }
 
   private drainResult(record: AdapterRecord): ContextAdapterDrainResult {

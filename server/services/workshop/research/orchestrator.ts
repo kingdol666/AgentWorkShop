@@ -127,7 +127,7 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
   private readonly candidates: CandidateEvidenceStore
   private readonly now: () => string
   private readonly createId: (prefix: string) => string
-
+  private readonly controllers = new Map<string, AbortController>()
   constructor(registry: ContextAdapterRegistry, candidates = new CandidateEvidenceStore(), options: ResearchOrchestratorOptions = {}) {
     this.registry = registry
     this.candidates = candidates
@@ -197,7 +197,14 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
     this.transition(run, 'running')
     run.startedAt = this.now()
     const startedAtMs = Date.parse(run.startedAt)
-    const signal = options.signal
+    const controller = new AbortController()
+    const previousController = this.controllers.get(run.id)
+    previousController?.abort()
+    this.controllers.set(run.id, controller)
+    const onAbort = () => controller.abort(options.signal?.reason)
+    options.signal?.addEventListener('abort', onAbort, { once: true })
+    if (options.signal?.aborted) controller.abort(options.signal.reason)
+    const signal = controller.signal
     try {
       this.checkCancellation(signal)
       for (const [index, step] of run.plan.steps.entries()) {
@@ -205,12 +212,16 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
         assertDuration(startedAtMs, Date.parse(this.now()), run.budget)
         if (step.capability === ('actuate' as ContextAdapterCapability) || step.capability.toLowerCase() === 'actuate') throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.ACTUATE_FORBIDDEN, 'research cannot actuate')
         const result = await this.registry.invoke(step.adapterId, step.capability, clone(step.payload), { idempotencyKey: `${run.id}:${step.id}`, signal })
+        this.checkCancellation(signal)
         const payload = outputPayload(result)
+        this.checkCancellation(signal)
         const outputBytes = jsonBytes(payload)
         const nextCounters = { ...run.counters, outputBytes: run.counters.outputBytes + outputBytes }
         assertBudgetMetric('outputBytes', nextCounters.outputBytes, run.budget.maxOutputBytes)
         run.counters = nextCounters
+        this.checkCancellation(signal)
         const candidate = this.toCandidate(run, step, payload, index)
+        this.checkCancellation(signal)
         this.candidates.add(candidate)
         run.evidenceIds.push(candidate.id)
       }
@@ -246,10 +257,15 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
       this.transitionIfAllowed(run, 'failed')
       throw error
     }
+    finally {
+      options.signal?.removeEventListener('abort', onAbort)
+      if (this.controllers.get(run.id) === controller) this.controllers.delete(run.id)
+    }
   }
 
   cancel(id: string): ResearchRun {
     const run = this.mutable(id)
+    this.controllers.get(id)?.abort()
     if (!['completed', 'failed', 'cancelled', 'expired'].includes(run.state)) this.transition(run, 'cancelled')
     run.endedAt ??= this.now()
     run.errorCode = RESEARCH_ERROR_CODES.ABORTED
