@@ -4,8 +4,9 @@
  * instances. It can start only a run-private simulator, never stops services, grants
  * automatic approval, or uses a mock.
  */
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
+import { homedir } from 'node:os'
 import { createHash, randomUUID } from 'node:crypto'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -221,7 +222,38 @@ function verifyOmpProfiles(runId, roles, { allowExisting = false } = {}) {
     verification_basis: 'OMP --profile config path readback; each fresh run-scoped profile resolves under .omp/profiles/<profile>/agent and contains no profile-root or agent/mcp.json. No credential-bearing config contents are read or recorded.',
     runtime_event_audit_still_required: true,
     profiles: rows,
+    model_config: null,
     result: 'PASS',
+  }
+}
+
+/**
+ * P12 的 omp profile 是 run-scoped 新目录，不继承用户默认 profile 的模型配置。
+ * 没有 models.yml/modelRoles 时 omp 会在 ready 前退出（No default model selected）。
+ * 这里只复制模型配置（providers/keys）并设置 default role；不复制 MCP/tool 配置，
+ * profile 隔离校验仍然有效。证据只记录来源标签与 model role，不记录密钥内容。
+ */
+function provisionOmpModelConfig(c, isolation) {
+  const configuredSource = process.env.P12_OMP_MODELS_YML?.trim()
+  const source = configuredSource || join(homedir(), '.omp', 'agent', 'models.yml')
+  if (!existsSync(source) || !statSync(source).isFile()) {
+    throw new Error(`P12 OMP model config missing: ${source} (set P12_OMP_MODELS_YML or configure ~/.omp/agent/models.yml)`)
+  }
+  const cli = ompCommand()
+  const modelRole = `${c.provider}/${c.model}${String(c.model).includes(':') ? '' : ':max'}`
+  const rows = []
+  for (const row of isolation.profiles) {
+    const configDir = execFileSync(cli, ['--profile', row.profile, 'config', 'path'], { encoding: 'utf8', timeout: 15_000 }).trim()
+    if (!configDir || !existsSync(configDir)) throw new Error(`OMP profile config dir unavailable for ${row.role}`)
+    copyFileSync(source, join(configDir, 'models.yml'))
+    execFileSync(cli, ['--profile', row.profile, 'config', 'set', 'modelRoles', JSON.stringify({ default: modelRole })], { stdio: 'ignore', timeout: 30_000 })
+    rows.push({ role: row.role, profile: row.profile, model_role: modelRole })
+  }
+  return {
+    result: 'PASS',
+    model_role: modelRole,
+    models_source: configuredSource ? 'P12_OMP_MODELS_YML' : 'operator-omp-profile',
+    profiles: rows,
   }
 }
 
@@ -1230,6 +1262,7 @@ async function main() {
     try {
       ompProfileRoles = ['lead', ...c.roles.workers.map(worker => `worker-${worker.key}`)]
       ompProfileIsolation = verifyOmpProfiles(c.runId, ompProfileRoles)
+      ompProfileIsolation.model_config = provisionOmpModelConfig(c, ompProfileIsolation)
     }
     catch (error) {
       ompProfileIsolation = {
@@ -1237,7 +1270,7 @@ async function main() {
         verified_at_utc: iso(),
         run_id: c.runId,
         result: 'FAIL',
-        verification_failure: 'OMP effective profile path or profile MCP-config isolation check failed',
+        verification_failure: `OMP profile/model config setup failed: ${stripSecret(error instanceof Error ? error.message : String(error))}`,
         credentials_recorded: false,
       }
       jsonOut(join(c.outDir, 'omp-profile-isolation.json'), ompProfileIsolation)
@@ -1924,6 +1957,60 @@ async function main() {
     manifest.harness_runtime.omp_profile_isolation = ompProfileIsolation
     jsonOut(join(c.outDir, 'omp-profile-isolation.json'), ompProfileIsolation)
     jsonOut(join(c.outDir, 'manifest.json'), manifest)
+
+    // pre-goal 的 profile 复检/写盘会占用数秒，readiness 阶段缓存的样本可能已过
+    // 「最新样本 ≤5s」门（2026-11-13 实测：1.8s 样本被 3.6s 复检推到 5.4s）。
+    // 提交 goal 前按同一 API 重新查询一次，不复用缓存；查询失败保留旧值，由下方门 fail-closed。
+    const refreshDaqBeforeGoal = async () => {
+      for (const signal of daqSignalsForGoal) {
+        const signalState = daqReadiness.signals[signal]
+        if (!signalState) continue
+        const to = Date.now()
+        const from = to - 20_000
+        const nodeId = line.daq[signal]
+        const sampleQuery = {
+          signal,
+          node_id: nodeId,
+          from_ms: from,
+          to_ms: to,
+          bucket_ms: 1000,
+          limit: 22,
+          at_utc: iso(),
+          http_status: null,
+          baseline_watermark_ms: signalState.baseline_watermark_ms,
+          points: [],
+        }
+        daqReadiness.sample_queries.push(sampleQuery)
+        try {
+          const response = await fetch(`${c.base.replace(/\/$/, '')}/api/workshop/daq/${encodeURIComponent(nodeId)}/samples?bucketMs=1000&from=${from}&to=${to}&limit=22`, {
+            method: 'GET',
+            headers: { ...(api.token ? { authorization: `Bearer ${api.token}` } : {}) },
+            signal: AbortSignal.timeout(7_000),
+          })
+          sampleQuery.http_status = response.status
+          const payload = await response.json()
+          const points = (Array.isArray(payload?.data?.points) ? payload.data.points : []).map(point => ({
+            at_ms: Number.isFinite(Number(point.at)) ? Number(point.at) : null,
+            value: Number.isFinite(Number(point.avg ?? point.value)) ? Number(point.avg ?? point.value) : null,
+            count: point.cnt != null && Number.isFinite(Number(point.cnt)) ? Number(point.cnt) : null,
+          })).sort((a, b) => (a.at_ms ?? Number.POSITIVE_INFINITY) - (b.at_ms ?? Number.POSITIVE_INFINITY))
+          sampleQuery.points = points
+          const fresh = points
+            .filter(point => point.at_ms != null && point.at_ms > signalState.baseline_watermark_ms)
+            .map(point => point.at_ms)
+          const latest = fresh.at(-1) ?? null
+          signalState.fresh_sample_at_ms = fresh
+          signalState.sample_count = fresh.length
+          signalState.latest_age_ms = latest == null ? null : Math.max(0, to - latest)
+          signalState.latest_within_5s = latest != null && to - latest <= 5_000
+          signalState.ready = fresh.length >= 2 && signalState.latest_within_5s
+        }
+        catch (error) {
+          sampleQuery.error = stripSecret(error instanceof Error ? error.message : String(error))
+        }
+      }
+    }
+    await refreshDaqBeforeGoal()
 
     const goalSubmitController = await recordDaqController('pre_goal_submit')
     const goalSubmitAt = Date.now()
