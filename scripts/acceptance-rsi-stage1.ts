@@ -171,7 +171,7 @@ try {
     content: '应被排除', importance: 0.9, dedupKey: 'exp:retired-1', outcome: 'negative',
     evidence: { taskIds: ['t-r'] }, scopeKind: 'line', scopeKey: 'line-1', status: 'validated',
   })
-  repo.markStatus(retired.id, 'retired')
+  repo.markStatus(retired.id, 'retired', 'validated')
   const rowsAfter = await mem.recallRows('退休经验', { limit: 20 })
   check('A-5.2 retired 经验不参与检索', rowsAfter.every(x => x.dedupKey !== 'exp:retired-1' && x.status !== 'retired'),
     `${rowsAfter.length} 条命中均非 retired`)

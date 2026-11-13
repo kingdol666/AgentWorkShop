@@ -14,7 +14,7 @@ process.env.AW_HOME = mkdtempSync(join(tmpdir(), 'aw-rsi-c1-'))
 delete process.env.AW_BENCH_MODE
 
 const { openWorkshopDb } = await import('../server/services/workshop/db/database')
-const { verifyInterventionEvent, verifyPendingInterventions, verifyAllPending, listBlindVerifications, blindCheckForTask, blindMetricsForTask } = await import('../server/services/workshop/verify/blind-verifier')
+const { verifyInterventionEvent, verifyPendingInterventions, verifyAllPending, listBlindVerifications, blindCheckForTask, blindMetricsForTask, selectIndependentReadback } = await import('../server/services/workshop/verify/blind-verifier')
 
 const now = new Date().toISOString()
 
@@ -223,4 +223,20 @@ test('迁移幂等/升级：旧表缺 task_id → 补列且不丢行', async () 
   finally {
     db.close()
   }
+})
+
+// ── 独立回读语义（2026-11-13 审计修复）：write 的 ACK 回执不是独立证据 ──
+test('独立回读：fresh readValue 才算证据，缺失/过期一律 inconclusive 理由', () => {
+  const nowMs = Date.parse('2026-11-13T10:00:00.000Z')
+  const fresh = selectIndependentReadback({ readValue: 218.5, lastReadAt: '2026-11-13T09:59:50.000Z' }, nowMs, 30_000)
+  assert.deepEqual(fresh, { value: 218.5 })
+
+  const missing = selectIndependentReadback({ readValue: null, lastReadAt: '2026-11-13T09:59:50.000Z' }, nowMs, 30_000)
+  assert.ok('reason' in missing && /无独立设备读数/.test(missing.reason))
+
+  const noStamp = selectIndependentReadback({ readValue: 218.5, lastReadAt: null }, nowMs, 30_000)
+  assert.ok('reason' in noStamp && /缺少时间戳/.test(noStamp.reason))
+
+  const stale = selectIndependentReadback({ readValue: 218.5, lastReadAt: '2026-11-13T09:58:00.000Z' }, nowMs, 30_000)
+  assert.ok('reason' in stale && /已过期/.test(stale.reason))
 })

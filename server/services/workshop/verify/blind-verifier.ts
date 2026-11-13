@@ -41,17 +41,27 @@ export function readbackProbe(event: { nodeId: string, nodeName: string, toValue
   if (typeof expected !== 'number' || !Number.isFinite(expected)) {
     return { values: [], detail: '台账缺 to_value，无法独立判读' }
   }
-  let raw: number | null | undefined
+  let node: {
+    readValue?: number | null
+    lastReadAt?: string | null
+    readIntervalMs?: number | null
+  } | undefined
   try {
-    raw = getDcwController().byId(event.nodeId)?.value
+    node = getDcwController().byId(event.nodeId)
   }
   catch {
-    raw = undefined
+    node = undefined
   }
-  const actual = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined
-  if (actual === undefined) {
+  if (!node) {
     return { values: [], detail: `节点 ${event.nodeId} 无实时值（未绑定/未运行）` }
   }
+  const interval = Number(node.readIntervalMs ?? 5_000)
+  const maxAgeMs = Math.max(30_000, (Number.isFinite(interval) && interval > 0 ? interval : 5_000) * 3)
+  const picked = selectIndependentReadback(node, Date.now(), maxAgeMs)
+  if ('reason' in picked) {
+    return { values: [], detail: `节点 ${event.nodeId} ${picked.reason}` }
+  }
+  const actual = picked.value
   // 容差：写入时回读与指令的偏差（至少 0.5% 量级，防浮点噪声），缺省 0.01
   const writeGap = typeof event.actualValue === 'number' && Number.isFinite(event.actualValue)
     ? Math.abs(event.actualValue - expected)
@@ -61,6 +71,31 @@ export function readbackProbe(event: { nodeId: string, nodeName: string, toValue
     values: [{ nodeId: event.nodeId, nodeName: event.nodeName, expected, actual, tol, ok: Math.abs(actual - expected) <= tol }],
     detail: `独立回读 ${actual} vs 指令 ${expected}（容差 ${tol.toFixed(3)}）`,
   }
+}
+
+/**
+ * 选取**独立**回读值：readValue 来自周期读/按需 readNow（设备侧），不是 write() 的
+ * ACK 回执（node.value 在驱动缺回读时等于指令值，用它验证等于自己证明自己）。
+ * 读数必须带时间戳且未过期；缺读数/过期 → 证据不足（inconclusive），不得判 match。
+ */
+export function selectIndependentReadback(
+  node: { readValue?: number | null, lastReadAt?: string | null },
+  now: number,
+  maxAgeMs: number,
+): { value: number } | { reason: string } {
+  const actual = node.readValue
+  if (typeof actual !== 'number' || !Number.isFinite(actual)) {
+    return { reason: '无独立设备读数（写回执不是独立回读）' }
+  }
+  const at = node.lastReadAt ? Date.parse(node.lastReadAt) : Number.NaN
+  if (!Number.isFinite(at)) {
+    return { reason: '独立读数缺少时间戳，无法判断新鲜度' }
+  }
+  const age = now - at
+  if (age > maxAgeMs) {
+    return { reason: `独立读数已过期（${Math.round(age / 1000)}s > ${Math.round(maxAgeMs / 1000)}s）` }
+  }
+  return { value: actual }
 }
 
 export interface BlindVerificationResult {

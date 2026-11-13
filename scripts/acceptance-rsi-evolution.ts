@@ -94,7 +94,7 @@ const strong = memRepo.upsertExperience({
 const strongId = strong.id
 const strongRow = memRepo.getById(strongId)!
 const gate = evaluateExperienceGate(strongRow, 'validated')
-if (gate.allowed && gate.next) memRepo.markStatus(strongId, gate.next)
+if (gate.allowed && gate.next) memRepo.markStatus(strongId, gate.next, strongRow.status)
 check('E4 多任务证据晋级 validated', memRepo.getById(strongId)!.status === 'validated',
   `${gate.reasons.join('；')} → ${memRepo.getById(strongId)!.status}`)
 
