@@ -72,7 +72,9 @@ export abstract class DaqControllerIngest extends DaqControllerPush {
         templateRef: node.templateRef,
         value: node.value ?? env.value,
         state: node.state,
+        quality: node.quality,
         at: env.at,
+
         lineId: node.lineId ?? null,
       } satisfies AepDaqReading
       this.broadcast?.('daq.reading', reading)
@@ -91,6 +93,7 @@ export abstract class DaqControllerIngest extends DaqControllerPush {
       tsMs,
       value: env.value,
       state: node.state,
+      quality: node.quality,
       nodeLineId: node.lineId,
       run: lineRun,
     }))

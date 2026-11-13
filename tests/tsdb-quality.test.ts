@@ -36,6 +36,12 @@ test('A15:queryTagged raw 返回真实 state;cleanPoints 实际剔除坏点', as
   assert.equal(cleaned.counts.droppedState, 2)
   assert.equal(cleaned.values.length, 2)
 })
+test('quality is persisted and returned by SQLite history queries', async () => {
+  const now = Date.now()
+  await adapter.writeSamples([{ nodeId: 'n-quality', tsMs: now - 1000, value: 7, state: 'ok', quality: 'stale' }])
+  const qualityPoint = await adapter.query('n-quality', { fromMs: now - 2000, toMs: now })
+  assert.equal(qualityPoint[0]?.quality, 'stale')
+})
 
 test('A16:同键不同值 → 首值保留且 correctionDropped+1(不静默)', async () => {
   const now = Date.now()
