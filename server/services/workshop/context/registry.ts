@@ -5,6 +5,8 @@ import {
   type ContextAdapterDrainResult,
   type ContextAdapterHealth,
   type ContextAdapterInvokeOptions,
+  type ContextAdapterAuthorizationContext,
+  type ContextAdapterAuthorizationInput,
   type ContextAdapterRegistrationResult,
   type ContextAdapterResult,
   type ContextAdapterRetireResult,
@@ -20,6 +22,8 @@ export const CONTEXT_ADAPTER_ERROR_CODES = {
   CONFLICT: 'CONTEXT_ADAPTER_CONFLICT',
   NOT_FOUND: 'CONTEXT_ADAPTER_NOT_FOUND',
   CAPABILITY_UNSUPPORTED: 'CONTEXT_ADAPTER_CAPABILITY_UNSUPPORTED',
+  AUTHORIZATION_REQUIRED: 'CONTEXT_ADAPTER_AUTHORIZATION_REQUIRED',
+  AUTHORIZATION_FORBIDDEN: 'CONTEXT_ADAPTER_AUTHORIZATION_FORBIDDEN',
   GENERATION_STALE: 'CONTEXT_ADAPTER_GENERATION_STALE',
   GENERATION_INVALID: 'CONTEXT_ADAPTER_GENERATION_INVALID',
   NOT_READY: 'CONTEXT_ADAPTER_NOT_READY',
@@ -196,6 +200,7 @@ export class ContextAdapterRegistry {
     if (expectedGeneration !== record.adapter.generation) throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.GENERATION_STALE, `requested generation ${expectedGeneration} is not current for ${adapterId}`)
     if (record.state !== 'ready') throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.NOT_READY, `${adapterId} is ${record.state}`)
     if (!options.idempotencyKey || options.idempotencyKey.trim().length === 0) throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.INVALID_ADAPTER, 'idempotencyKey is required')
+    const authorization = await this.authorize(record.adapter, adapterId, capability, payload, options)
     const operation = record.adapter[capability]
     if (typeof operation !== 'function') throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.CAPABILITY_UNSUPPORTED, `${adapterId} operation ${capability} is unavailable`)
     const callerSignal = options.signal
@@ -216,7 +221,7 @@ export class ContextAdapterRegistry {
     callerSignal?.addEventListener('abort', onAbort, { once: true })
     record.inFlight += 1
     record.operations.add(inFlightOperation)
-    const operationPromise = Promise.resolve().then(() => operation({ adapterId, apiVersion: record.adapter.apiVersion, version: record.adapter.version, generation: record.adapter.generation, capability, payload, idempotencyKey: options.idempotencyKey, timeoutMs, signal: controller.signal }))
+    const operationPromise = Promise.resolve().then(() => operation({ adapterId, apiVersion: record.adapter.apiVersion, version: record.adapter.version, generation: record.adapter.generation, capability, payload, idempotencyKey: options.idempotencyKey, timeoutMs, signal: controller.signal, ...(authorization ? { authorization } : {}) }))
     const cancellationPromise = new Promise<never>((_, reject) => {
       rejectCancellation = reject
     })
@@ -319,6 +324,29 @@ export class ContextAdapterRegistry {
     await Promise.all(records.map(record => this.finalizeDrain(record, 'registry-disposed')))
     const timedOut = records.find(record => record.errors.some(error => error.code === CONTEXT_ADAPTER_ERROR_CODES.DRAIN_TIMEOUT))
     if (timedOut) throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.DRAIN_TIMEOUT, `adapter ${timedOut.adapter.adapterId} drain exceeded ${DRAIN_TIMEOUT_MS}ms`)
+  }
+
+  private async authorize(
+    adapter: NormalizedContextAdapter,
+    adapterId: string,
+    capability: ContextAdapterCapability,
+    payload: unknown,
+    options: ContextAdapterInvokeOptions,
+  ): Promise<ContextAdapterAuthorizationContext | undefined> {
+    if (!adapter.requiresAuthorization && !adapter.authorize) return options.authorization
+    if (typeof adapter.authorize !== 'function') {
+      throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.AUTHORIZATION_REQUIRED, `${adapterId} requires an authorized runtime context`)
+    }
+    const input: ContextAdapterAuthorizationInput = {
+      adapterId,
+      capability,
+      payload,
+      ...(options.principal ? { principal: options.principal } : {}),
+      ...(options.scope ? { scope: options.scope } : {}),
+    }
+    const authorization = await adapter.authorize(input)
+    if (!authorization) throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.AUTHORIZATION_FORBIDDEN, `${adapterId} invocation is outside the authorized scope`)
+    return authorization
   }
 
   private resolve(adapterId: string, generation?: number): AdapterRecord {

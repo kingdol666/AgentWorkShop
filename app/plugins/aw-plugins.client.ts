@@ -16,10 +16,27 @@ import { createClientContext, type ClientContext } from '@/sdk/client.mjs'
 import { usePluginPanels, type PluginPanelEntry } from '@/app/composables/workshop/usePluginPanels'
 import { useTownBus, type TownBus } from '~/composables/workshop/useTownBus'
 
-interface ManifestEntry { name: string, enabled?: boolean, hasClient?: boolean }
+interface ManifestEntry {
+  name: string
+  enabled?: boolean
+  hasClient?: boolean
+  /** Optional server-evaluated feature flags. Missing means legacy plugins remain enabled. */
+  clientFlags?: string[]
+  clientAvailable?: boolean
+}
 /** vue-i18n 实例在 NuxtApp 上的最小面(只用到 mergeLocaleMessage + locale,故按鸭子类型声明确切形状) */
 interface I18nLike { mergeLocaleMessage?: (locale: string, messages: Record<string, unknown>) => void, locale?: unknown }
 interface I18nBundle { i18n?: Record<string, Record<string, Record<string, string>>> }
+
+function clientIsAvailable(plugin: ManifestEntry): boolean {
+  if (plugin.clientAvailable === false) return false
+  // Missing clientFlags is the legacy contract: a client plugin is enabled when
+  // the manifest says it has a client, regardless of optional feature metadata.
+  if (!Array.isArray(plugin.clientFlags) || plugin.clientFlags.length === 0) return true
+  // A manifest may either provide the server-evaluated availability or the flag
+  // names. The client must never infer an enabled flag from a missing value.
+  return plugin.clientAvailable === true
+}
 
 export default defineNuxtPlugin(async (nuxtApp) => {
   if (!import.meta.client) return
@@ -148,14 +165,14 @@ export default defineNuxtPlugin(async (nuxtApp) => {
       const list = body?.plugins ?? []
       let changed = false
       for (const p of list) {
-        if (p.enabled !== false && p.hasClient && !loaded.has(p.name)) {
+        if (p.enabled !== false && p.hasClient && clientIsAvailable(p) && !loaded.has(p.name)) {
           await loadOne(p.name)
           changed = true
         }
       }
       for (const name of [...loaded.keys()]) {
         const p = list.find(x => x.name === name)
-        if (!p || p.enabled === false || !p.hasClient) {
+        if (!p || p.enabled === false || !p.hasClient || !clientIsAvailable(p)) {
           unloadOne(name)
           changed = true
         }

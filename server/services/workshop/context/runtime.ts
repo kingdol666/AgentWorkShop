@@ -1,6 +1,12 @@
 import { createIndustrialReadAdapter } from './adapters/industrial-read'
 import { ContextAdapterRegistry } from './registry'
-import type { ContextAdapter, ContextAdapterRegistrationResult } from './contracts'
+import type {
+  ContextAdapter,
+  ContextAdapterAuthorizationContext,
+  ContextAdapterAuthorizationInput,
+  ContextAdapterAuthorizer,
+  ContextAdapterRegistrationResult,
+} from './contracts'
 import type { ChannelMemberRepo } from '../db/channel-member.repo'
 import type { UserRepo } from '../db/user.repo'
 import type { ChannelRepo } from '../db/channel.repo'
@@ -13,9 +19,20 @@ import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
 export const CONTEXT_RUNTIME_API_VERSION = 'context-runtime.v1' as const
 
 export type ContextRuntimePrincipal = { id: string, role?: string }
-export type ContextRuntimeScope = { workspaceId?: string, channelId?: string, workerId?: string }
+export type ContextRuntimeScope = {
+  workspaceId?: string
+  channelId?: string
+  workerId?: string
+  /** Compatibility selectors for an industrial projection only. */
+  lineId?: string
+  lineIds?: readonly string[]
+  projection?: string
+  industrial?: boolean
+  [key: string]: unknown
+}
+type NormalizedContextRuntimeScope = ContextRuntimeScope & { workspaceId: string, channelId: string, workerId: string }
 export type ContextRuntimeAuthorization
-  = | { ok: true, scope: Required<ContextRuntimeScope> }
+  = | { ok: true, scope: NormalizedContextRuntimeScope }
     | { ok: false, code: 'SCOPE_FORBIDDEN' }
 
 export type ContextRuntimeRepositories = {
@@ -25,16 +42,25 @@ export type ContextRuntimeRepositories = {
   channelMembers?: ChannelMemberRepo
 }
 
+type ContextRuntimeOptions = {
+  registry?: ContextAdapterRegistry
+  repos?: ContextRuntimeRepositories
+  /** Test seam; production continues to resolve the persisted binding repo. */
+  lineIdsForWorker?: (workerId: string) => readonly string[]
+}
+
 /** Host-owned context runtime and adapter lifecycle authority. */
 export class ContextRuntimeService {
   readonly apiVersion = CONTEXT_RUNTIME_API_VERSION
   readonly registry: ContextAdapterRegistry
   private disposed = false
   private readonly repos?: ContextRuntimeRepositories
+  private readonly lineIdsForWorker?: (workerId: string) => readonly string[]
 
-  constructor(options: { registry?: ContextAdapterRegistry, repos?: ContextRuntimeRepositories } = {}) {
+  constructor(options: ContextRuntimeOptions = {}) {
     this.registry = options.registry ?? new ContextAdapterRegistry()
     this.repos = options.repos
+    this.lineIdsForWorker = options.lineIdsForWorker
   }
 
   registerOne(adapter: ContextAdapter, ownerId = adapter.owner.ownerId): ContextAdapterRegistrationResult {
@@ -45,12 +71,26 @@ export class ContextRuntimeService {
 
   createIndustrialReadAdapter(options: { adapterId?: string, version?: string, generation?: number, ownerId?: string } = {}): ContextAdapter {
     this.ensureOpen()
-    return createIndustrialReadAdapter(options)
+    const authorize: ContextAdapterAuthorizer = (input) => {
+      const principal = input.principal
+      const scope = input.scope
+      if (!principal || !scope) return false
+      return this.authorizeAdapterRequest({ ...input, principal, scope })
+    }
+    return createIndustrialReadAdapter({ ...options, authorize })
   }
 
   lineIdsForScope(scope?: ContextRuntimeScope | null): string[] {
     const normalized = this.normalizeScope(scope)
     if (!normalized) return []
+    if (this.lineIdsForWorker) {
+      try {
+        return [...new Set(this.lineIdsForWorker(normalized.workerId).map(String).filter(Boolean))]
+      }
+      catch {
+        return []
+      }
+    }
     try {
       const lineIds = new Set<string>()
       for (const binding of getAgentNodeBindingRepo().byAgent(normalized.workerId)) {
@@ -77,6 +117,16 @@ export class ContextRuntimeService {
     }
   }
 
+  /** Industrial selectors are optional compatibility filters, not generic scope requirements. */
+  isIndustrialScope(scope?: ContextRuntimeScope | null): boolean {
+    const normalized = this.normalizeScope(scope)
+    if (!normalized) return false
+    return normalized.industrial === true
+      || normalized.projection === 'industrial'
+      || typeof normalized.lineId === 'string'
+      || (Array.isArray(normalized.lineIds) && normalized.lineIds.length > 0)
+  }
+
   isDeployedScope(scope?: ContextRuntimeScope | null): boolean {
     const normalized = this.normalizeScope(scope)
     const repos = this.repos ?? this.resolveRepositories()
@@ -85,12 +135,19 @@ export class ContextRuntimeService {
       const workspace = repos.users.getWorkspace(normalized.workspaceId)
       const channel = repos.channels.findById(normalized.channelId)
       const worker = repos.channelAgents.findByChannelAgent(normalized.channelId, normalized.workerId)
-      return Boolean(workspace
+      const deployed = Boolean(workspace
         && repos.users.listMountedChannels(workspace.id).includes(normalized.channelId)
         && channel?.enabled === 1
         && worker?.enabled !== 0
-        && worker?.role === 'worker'
-        && this.lineIdsForScope(normalized).length > 0)
+        && worker?.role === 'worker')
+      if (!deployed) return false
+      if (!this.isIndustrialScope(normalized)) return true
+      const actualLineIds = this.lineIdsForScope(normalized)
+      if (actualLineIds.length === 0) return false
+      const requestedLineIds = normalized.lineId
+        ? [normalized.lineId]
+        : Array.isArray(normalized.lineIds) ? normalized.lineIds.map(String) : []
+      return requestedLineIds.every(lineId => actualLineIds.includes(lineId))
     }
     catch {
       return false
@@ -117,15 +174,52 @@ export class ContextRuntimeService {
     }
   }
 
+  /**
+   * Build the only industrial capability context accepted by the adapter. The
+   * returned lineIds are derived from persisted worker bindings, never from the
+   * caller payload, so a registry caller cannot turn an industrial adapter into
+   * a global read.
+   */
+  authorizeAdapterRequest(input: Omit<ContextAdapterAuthorizationInput, 'authorization'> & { principal: ContextRuntimePrincipal, scope: ContextRuntimeScope }): ContextAdapterAuthorizationContext | false {
+    const decision = this.authorizeScope({ principal: input.principal, scope: input.scope })
+    if (!decision.ok) return false
+    const lineIds = this.lineIdsForScope(decision.scope)
+    const industrial = this.isIndustrialScope(decision.scope)
+    if (industrial && lineIds.length === 0) return false
+    return {
+      scope: decision.scope,
+      principal: { id: input.principal.id, ...(input.principal.role ? { role: input.principal.role } : {}) },
+      lineIds,
+      industrial,
+    }
+  }
+
   async dispose(): Promise<void> {
     if (this.disposed) return
     this.disposed = true
     await this.registry.dispose()
   }
 
-  private normalizeScope(scope?: ContextRuntimeScope | null): Required<ContextRuntimeScope> | null {
-    if (!scope?.workspaceId || !scope.channelId || !scope.workerId) return null
-    return { workspaceId: String(scope.workspaceId), channelId: String(scope.channelId), workerId: String(scope.workerId) }
+  private normalizeScope(scope?: ContextRuntimeScope | null): NormalizedContextRuntimeScope | null {
+    if (!scope || typeof scope !== 'object') return null
+    if (!scope.workspaceId || !scope.channelId || !scope.workerId) return null
+    const normalized: NormalizedContextRuntimeScope = {
+      ...scope,
+      workspaceId: String(scope.workspaceId),
+      channelId: String(scope.channelId),
+      workerId: String(scope.workerId),
+    }
+    if (scope.lineId !== undefined) {
+      if (!String(scope.lineId)) return null
+      normalized.lineId = String(scope.lineId)
+    }
+    if (scope.lineIds !== undefined) {
+      if (!Array.isArray(scope.lineIds)) return null
+      normalized.lineIds = scope.lineIds.map(String).filter(Boolean)
+    }
+    if (scope.projection !== undefined) normalized.projection = String(scope.projection)
+    if (scope.industrial !== undefined && typeof scope.industrial !== 'boolean') return null
+    return normalized
   }
 
   private resolveRepositories(): ContextRuntimeRepositories | null {
@@ -143,6 +237,6 @@ export class ContextRuntimeService {
   }
 }
 
-export function createContextRuntimeService(options: { registry?: ContextAdapterRegistry, repos?: ContextRuntimeRepositories } = {}): ContextRuntimeService {
+export function createContextRuntimeService(options: ContextRuntimeOptions = {}): ContextRuntimeService {
   return new ContextRuntimeService(options)
 }

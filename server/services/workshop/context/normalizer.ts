@@ -7,6 +7,7 @@ import {
   type ContextAdapterHealthStatus,
   type ContextAdapterTimeoutPolicy,
   type ContextAdapterOperation,
+  type ContextAdapterAuthorizer,
   type ContextAdapterResult,
   type StructuredAdapterError,
   type MaybePromise,
@@ -214,6 +215,8 @@ export function normalizeContextAdapter(value: unknown, options: AdapterNormaliz
     health,
     timeout,
     owner: { ownerId, dispose: owner.dispose as ContextAdapter['owner']['dispose'] },
+    ...(value.requiresAuthorization === true ? { requiresAuthorization: true } : {}),
+    ...(typeof value.authorize === 'function' ? { authorize: value.authorize as ContextAdapterAuthorizer } : {}),
     drain: lifecycleMethod(value, 'drain'),
     retire: lifecycleMethod(value, 'retire'),
   }

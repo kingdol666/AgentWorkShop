@@ -135,6 +135,7 @@ export interface ResearchCreateResult {
 
 export interface ResearchExecutionOptions {
   readonly signal?: AbortSignal
+  readonly principal?: { id: string, role?: string }
 }
 
 export interface ResearchOrchestratorOptions {

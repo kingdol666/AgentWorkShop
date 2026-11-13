@@ -56,6 +56,34 @@ export interface ContextAdapterLifecycleContext {
   signal: AbortSignal
 }
 
+export type ContextAdapterAuthorizationScope = {
+  workspaceId: string
+  channelId: string
+  workerId: string
+  lineId?: string
+  lineIds?: readonly string[]
+  projection?: string
+  industrial?: boolean
+  [key: string]: unknown
+}
+
+export type ContextAdapterAuthorizationContext = {
+  scope: ContextAdapterAuthorizationScope
+  principal: { id: string, role?: string }
+  lineIds: readonly string[]
+  industrial: boolean
+}
+
+export type ContextAdapterAuthorizationInput = {
+  adapterId: string
+  capability: ContextAdapterCapability
+  payload: unknown
+  principal?: { id: string, role?: string }
+  scope?: ContextAdapterAuthorizationScope
+}
+
+export type ContextAdapterAuthorizer = (input: ContextAdapterAuthorizationInput) => MaybePromise<ContextAdapterAuthorizationContext | false>
+
 export interface ContextAdapterOperationRequest<TPayload = unknown> {
   adapterId: string
   apiVersion: string
@@ -66,6 +94,7 @@ export interface ContextAdapterOperationRequest<TPayload = unknown> {
   idempotencyKey: string
   timeoutMs: number
   signal: AbortSignal
+  authorization?: ContextAdapterAuthorizationContext
 }
 
 export type ContextAdapterOperation
@@ -113,6 +142,10 @@ export interface ContextAdapter {
   health: ContextAdapterHealth | (() => MaybePromise<unknown>)
   timeout: ContextAdapterTimeout
   owner: ContextAdapterOwner
+  /** Industrial adapters must be invoked through an authorized runtime context. */
+  requiresAuthorization?: boolean
+  /** Optional host authorizer; direct registry calls use it when present. */
+  authorize?: ContextAdapterAuthorizer
   discover?: ContextAdapterOperation
   snapshot?: ContextAdapterOperation
   observe?: ContextAdapterOperation
@@ -135,6 +168,9 @@ export interface ContextAdapterInvokeOptions {
   signal?: AbortSignal
   timeoutMs?: number
   generation?: number
+  authorization?: ContextAdapterAuthorizationContext
+  principal?: { id: string, role?: string }
+  scope?: ContextAdapterAuthorizationScope
 }
 
 export type ContextAdapterLifecycleState = 'ready' | 'draining' | 'retired' | 'failed'

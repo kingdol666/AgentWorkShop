@@ -2,6 +2,7 @@ import type {
   Attribute,
   ContextAdapter,
   ContextAdapterOperationRequest,
+  ContextAdapterAuthorizer,
   ContextRef,
   ContextSubject,
   DomainObject,
@@ -305,17 +306,36 @@ export function createIndustrialReadAdapter(options: {
   ownerId?: string
   services?: ReadServices
   now?: () => string
+  authorize?: ContextAdapterAuthorizer
 } = {}): ContextAdapter {
   const adapterId = options.adapterId ?? INDUSTRIAL_READ_ADAPTER_ID
   const version = options.version ?? INDUSTRIAL_READ_ADAPTER_VERSION
   const services = options.services ?? defaultServices()
   const now = options.now ?? (() => new Date().toISOString())
-  const snapshot = (request: ContextAdapterOperationRequest): IndustrialReadPayload => projectIndustrialRead(services, payloadOf(request), adapterId, version, now())
+  const snapshot = (request: ContextAdapterOperationRequest): IndustrialReadPayload => {
+    const authorization = request.authorization
+    if (options.authorize && (!authorization?.industrial || authorization.lineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
+    const requested = payloadOf(request)
+    const requestedLineId = text(requested.lineId) || undefined
+    const requestedScope = requested.scope as (typeof requested.scope & { lineIds?: readonly string[] }) | undefined
+    const requestedLineIds: string[] = Array.isArray(requestedScope?.lineIds) ? requestedScope.lineIds.map(text).filter((lineId): lineId is string => Boolean(lineId)) : []
+    if (authorization) {
+      const allowed = new Set(authorization.lineIds)
+      if (requestedLineId && !allowed.has(requestedLineId)) throw new Error('industrial projection line is outside authorized bindings')
+      if (requestedLineIds.some(lineId => !allowed.has(lineId))) throw new Error('industrial projection line is outside authorized bindings')
+    }
+    const lineId = requestedLineId ?? (requestedLineIds.length === 1 ? requestedLineIds[0] : undefined)
+    return projectIndustrialRead(services, { ...requested, lineId }, adapterId, version, now())
+  }
   const discover = (request: ContextAdapterOperationRequest) => {
+    const authorization = request.authorization
+    if (options.authorize && (!authorization?.industrial || authorization.lineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
     const payload = payloadOf(request)
-    const lineId = text(payload.lineId) || undefined
-    const lines = lineId ? services.lines.all().filter(item => text(item.id) === lineId) : services.lines.all()
-    return { adapterId, version, lineId, refs: lines.map(item => contextRef('industrial.line', text(item.id))), counts: { lines: lines.length, products: selected(services.products.all(), lineId).length, recipes: selected(services.recipes.list(), lineId).length } }
+    const requestedLineId = text(payload.lineId) || undefined
+    if (authorization && requestedLineId && !authorization.lineIds.includes(requestedLineId)) throw new Error('industrial discovery line is outside authorized bindings')
+    const lineIds = authorization ? (requestedLineId ? [requestedLineId] : [...authorization.lineIds]) : (requestedLineId ? [requestedLineId] : undefined)
+    const lines = lineIds ? services.lines.all().filter(item => lineIds.includes(text(item.id))) : services.lines.all()
+    return { adapterId, version, lineId: requestedLineId, refs: lines.map(item => contextRef('industrial.line', text(item.id))), counts: { lines: lines.length, products: selected(services.products.all(), requestedLineId).length, recipes: selected(services.recipes.list(), requestedLineId).length } }
   }
   const capabilities = { discover: true, snapshot: true, observe: false, query: true, simulate: false, replay: false, verify: false, export: false } as const
   return {
@@ -324,6 +344,7 @@ export function createIndustrialReadAdapter(options: {
     version,
     capabilities,
     sideEffect: 'none',
+    ...(options.authorize ? { requiresAuthorization: true, authorize: options.authorize } : {}),
     generation: options.generation ?? 1,
     health: { status: 'healthy', checkedAt: now(), details: { readOnly: true } },
     timeout: { defaultMs: 5000, maxMs: 30000 },
