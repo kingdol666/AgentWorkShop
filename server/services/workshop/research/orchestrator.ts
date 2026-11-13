@@ -15,7 +15,7 @@ import {
   normalizeResearchBudget,
   ResearchBudgetError,
 } from './budget'
-import { assertResearchTransition } from './state'
+import { assertResearchTransition, RESEARCH_STATE_TRANSITIONS } from './state'
 import type {
   CandidateEvidenceEnvelope,
   ResearchCreateResult,
@@ -174,6 +174,33 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
     return freezeRun(run)
   }
 
+  list(): readonly ResearchRun[] {
+    return Object.freeze([...this.runs.values()].map(freezeRun))
+  }
+
+  /** Return a JSON-safe snapshot of runs and idempotency state. */
+  serialize(): { runs: readonly ResearchRun[], idempotency: Readonly<Record<string, string>> } {
+    return {
+      runs: Object.freeze(this.list().map(run => structuredClone(run))),
+      idempotency: Object.freeze(Object.fromEntries(this.idempotency.entries())),
+    }
+  }
+
+  /** Restore draft and terminal state only; in-flight execution never survives restart. */
+  restore(snapshot: unknown): void {
+    if (!isRecord(snapshot) || !Array.isArray(snapshot.runs)) throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.INVALID_REQUEST, 'research snapshot is invalid')
+    const restored = snapshot.runs.map(value => this.restoreRun(value))
+    const idempotency = isRecord(snapshot.idempotency) ? snapshot.idempotency : {}
+    for (const run of restored) {
+      if (this.runs.has(run.id)) throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.IDEMPOTENCY_CONFLICT, `research run ${run.id} already exists`)
+      this.runs.set(run.id, run)
+      this.idempotency.set(run.idempotencyKey, run.id)
+    }
+    for (const [key, id] of Object.entries(idempotency)) {
+      if (this.idempotency.get(key) !== id) throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.IDEMPOTENCY_CONFLICT, `idempotency key ${key} does not match its research run`)
+    }
+  }
+
   plan(id: string, plan: ResearchPlan): ResearchRun {
     const run = this.mutable(id)
     this.transition(run, 'planned')
@@ -271,6 +298,42 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
     run.errorCode = RESEARCH_ERROR_CODES.ABORTED
     run.errorMessage = 'research cancelled'
     return freezeRun(run)
+  }
+
+  private restoreRun(value: unknown): MutableRun {
+    if (!isRecord(value) || typeof value.id !== 'string' || typeof value.idempotencyKey !== 'string' || typeof value.objective !== 'string' || typeof value.question !== 'string' || !Array.isArray(value.subjectRefs) || !isRecord(value.scope) || !isRecord(value.budget) || !isRecord(value.counters) || !Array.isArray(value.evidenceIds) || typeof value.createdAt !== 'string') {
+      throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.INVALID_REQUEST, 'research snapshot contains an invalid run')
+    }
+    const state = value.state
+    if (typeof state !== 'string' || !Object.prototype.hasOwnProperty.call(RESEARCH_STATE_TRANSITIONS, state)) throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.INVALID_REQUEST, 'research snapshot contains an invalid state')
+    const run: MutableRun = {
+      id: value.id,
+      idempotencyKey: value.idempotencyKey,
+      state: state as ResearchState,
+      objective: value.objective,
+      question: value.question,
+      subjectRefs: Object.freeze(structuredClone(value.subjectRefs) as ContextRef[]),
+      scope: Object.freeze(structuredClone(value.scope) as ResearchRequest['scope']),
+      ...(typeof value.contextSnapshotId === 'string' ? { contextSnapshotId: value.contextSnapshotId } : {}),
+      ...(typeof value.researchCaseId === 'string' ? { researchCaseId: value.researchCaseId } : {}),
+      budget: Object.freeze(structuredClone(value.budget) as unknown as ResearchRun['budget']),
+      ...(isRecord(value.plan) ? { plan: Object.freeze(structuredClone(value.plan) as unknown as ResearchPlan) } : {}),
+      counters: Object.freeze(structuredClone(value.counters) as unknown as ResearchCounters),
+      evidenceIds: [...value.evidenceIds.filter(item => typeof item === 'string')],
+      ...(isRecord(value.verdict) ? { verdict: Object.freeze(structuredClone(value.verdict) as unknown as ResearchVerdict) } : {}),
+      ...(typeof value.errorCode === 'string' ? { errorCode: value.errorCode } : {}),
+      ...(typeof value.errorMessage === 'string' ? { errorMessage: value.errorMessage } : {}),
+      createdAt: value.createdAt,
+      ...(typeof value.startedAt === 'string' ? { startedAt: value.startedAt } : {}),
+      ...(typeof value.endedAt === 'string' ? { endedAt: value.endedAt } : {}),
+    }
+    if (run.state === 'running') {
+      run.state = 'cancelled'
+      run.errorCode = RESEARCH_ERROR_CODES.ABORTED
+      run.errorMessage = 'research cancelled during restart'
+      run.endedAt ??= this.now()
+    }
+    return run
   }
 
   private mutable(id: string): MutableRun {

@@ -1,5 +1,7 @@
 import type { CandidateEvidenceEnvelope, CandidateEvidenceRef } from '../research/contracts'
 import { candidateEvidenceRef } from './normalizer'
+import { canonicalHash } from '@/shared/context/hash'
+import { validateEvidenceEnvelope } from '../context/validator'
 
 export const CANDIDATE_STORE_ERROR_CODES = {
   DUPLICATE_ID: 'EVIDENCE_CANDIDATE_DUPLICATE_ID',
@@ -24,7 +26,7 @@ function assertCandidate(value: CandidateEvidenceEnvelope): void {
   }
 }
 
-/** In-memory, append-only candidate store. It intentionally has no persistence hooks. */
+/** In-memory, append-only candidate store with explicit JSON snapshot hooks. */
 export class CandidateEvidenceStore {
   private readonly records = new Map<string, CandidateEvidenceEnvelope>()
 
@@ -65,6 +67,26 @@ export class CandidateEvidenceStore {
 
   size(): number {
     return this.records.size
+  }
+
+  /** Return a JSON-safe immutable snapshot; candidates remain candidate-only. */
+  serialize(): readonly CandidateEvidenceEnvelope[] {
+    return Object.freeze(this.list().map(value => structuredClone(value)))
+  }
+
+  /** Restore a previously serialized snapshot, validating every record before publishing it. */
+  restore(values: readonly CandidateEvidenceEnvelope[] | unknown): void {
+    if (!Array.isArray(values)) throw new CandidateEvidenceStoreError(CANDIDATE_STORE_ERROR_CODES.IMMUTABLE, 'candidate snapshot must be an array')
+    const restored: CandidateEvidenceEnvelope[] = []
+    for (const value of values) {
+      assertCandidate(value as CandidateEvidenceEnvelope)
+      const issues = validateEvidenceEnvelope(value)
+      if (issues.length) throw new CandidateEvidenceStoreError(CANDIDATE_STORE_ERROR_CODES.IMMUTABLE, issues.map(issue => `${issue.path}: ${issue.message}`).join('; '))
+      const expectedContentHash = canonicalHash(Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([key]) => key !== 'candidateOnly' && key !== 'contentHash')))
+      if ((value as CandidateEvidenceEnvelope).contentHash !== expectedContentHash) throw new CandidateEvidenceStoreError(CANDIDATE_STORE_ERROR_CODES.HASH_CONFLICT, `candidate ${(value as CandidateEvidenceEnvelope).id} has invalid content hash`)
+      restored.push(structuredClone(value as CandidateEvidenceEnvelope))
+    }
+    for (const value of restored) this.add(value)
   }
 }
 

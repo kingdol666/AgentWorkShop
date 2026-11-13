@@ -22,6 +22,13 @@ const healthPath = '/health'
 const scopePath = '/scope'
 const adapterPath = '/adapter'
 const metadataPath = '/metadata'
+const researchPath = '/research'
+const researchRunPath = '/research/run'
+const researchCancelPath = '/research/cancel'
+const evidencePath = '/evidence'
+const RESEARCH_STATE_KEY = 'rsi.beta.research.state'
+const RESEARCH_STATE_VERSION = 1
+const READ_CAPABILITIES = new Set(['discover', 'snapshot', 'observe', 'query'])
 
 const BETA_PROVENANCE = Object.freeze({
   context: Object.freeze({
@@ -42,7 +49,7 @@ const BETA_PROVENANCE = Object.freeze({
 })
 
 const BETA_LIMITATIONS = Object.freeze([
-  'Read-only diagnostics and adapter metadata only; no domain operation is exposed here.',
+  'Read-only diagnostics and bounded candidate research only; no domain operation is exposed here.',
   'Actuation, approval, promotion, and profile activation are outside the Beta boundary.',
   'Candidate evidence is not validated control authority and cannot be promoted by this plugin.',
   'A request without the exact active worker scope is denied; no implicit scope inheritance is used.',
@@ -57,6 +64,20 @@ function safeCall(fn, fallback) {
   catch {
     return fallback
   }
+}
+
+function bodyOf(event) {
+  const body = event?.awBody ?? event?.body
+  return body && typeof body === 'object' && !Array.isArray(body) ? body : {}
+}
+
+function scopeOf(event, body = bodyOf(event)) {
+  if (body.scope && typeof body.scope === 'object' && !Array.isArray(body.scope)) return body.scope
+  return requestedScopeFromEvent(event)
+}
+
+function sameRequiredScope(left, right) {
+  return REQUIRED_SCOPE_KEYS.every(key => String(left?.[key] ?? '') === String(right?.[key] ?? ''))
 }
 
 function readPersistence(ctx) {
@@ -124,6 +145,11 @@ function publicMetadata(state) {
       ...adapter,
       health: adapter.ok ? 'healthy' : 'unavailable',
     },
+    research: {
+      wired: Boolean(state.research),
+      persisted: state.researchPersistenceReady === true,
+      candidateOnly: true,
+    },
     readOnly: true,
     actuation: false,
     promotion: false,
@@ -144,81 +170,41 @@ function persistLifecycle(ctx, state) {
   }
 }
 
-function createReadOnlyAdapter(getState) {
-  const denied = (capability, input) => {
-    const state = getState()
-    const result = evaluateBetaScope({
-      flags: state.flags,
-      persistence: state.persistence,
-      requested: input?.scope ?? input,
-      persisted: state.persistence?.scope,
-      capability,
-      maxAgeMs: state.maxAgeMs,
-    })
-    if (!result.ok) return { ok: false, ...result }
-    return {
-      ok: false,
-      code: 'ADAPTER_OPERATION_UNAVAILABLE',
-      reason: 'the Beta interface exposes no domain adapter implementation',
-      capability,
-      scope: result.scope,
-    }
-  }
-
-  return Object.freeze({
-    ...adapterDescriptor,
-    manifest: adapterDescriptor,
-    canRead(scope) {
-      const state = getState()
-      return evaluateBetaScope({
-        flags: state.flags,
-        persistence: state.persistence,
-        requested: scope,
-        persisted: state.persistence?.scope,
-        capability: 'observe',
-        maxAgeMs: state.maxAgeMs,
-      }).ok
-    },
-    discover: input => denied('discover', input),
-    observe: input => denied('observe', input),
-    query: input => denied('query', input),
-    simulate: input => denied('simulate', input),
-    replay: input => denied('replay', input),
-    verify: input => denied('verify', input),
-    actuate: () => ({ ok: false, code: 'CAPABILITY_FORBIDDEN', reason: 'actuate is outside the Beta read-only boundary' }),
-    promote: () => ({ ok: false, code: 'CAPABILITY_FORBIDDEN', reason: 'promote is outside the Beta boundary' }),
-  })
-}
-
-async function registerAdapter(ctx, adapter, logger) {
-  const resolved = await resolveAdapterRegistry(ctx)
-  if (!resolved.registry) return { ok: false, code: resolved.reason }
-
-  const registry = resolved.registry
-  const register = registry.registerAdapter ?? registry.register
-  if (typeof register !== 'function') return { ok: false, code: 'ADAPTER_REGISTRY_UNSUPPORTED' }
-
-  let registration
+function persistResearchState(state) {
+  if (!state.research || typeof state.ctx?.kv?.set !== 'function' || typeof state.ctx?.kv?.get !== 'function') return false
   try {
-    registration = await register.call(registry, adapter)
+    const serialized = state.research.orchestrator.serialize()
+    const value = {
+      version: RESEARCH_STATE_VERSION,
+      runs: serialized.runs,
+      idempotency: serialized.idempotency,
+      candidates: state.research.candidates.serialize(),
+    }
+    state.ctx.kv.set(RESEARCH_STATE_KEY, value)
+    const stored = state.ctx.kv.get(RESEARCH_STATE_KEY)
+    if (!stored || stored.version !== RESEARCH_STATE_VERSION || !Array.isArray(stored.runs) || !Array.isArray(stored.candidates)) return false
+    return true
   }
   catch (error) {
-    logger.warn(`adapter registry registration denied: ${error?.message ?? error}`)
-    return { ok: false, code: 'ADAPTER_REGISTRATION_FAILED' }
+    state.logger.warn(`research persistence failed: ${error?.message ?? error}`)
+    return false
   }
+}
 
-  const unregister = registry.unregisterAdapter ?? registry.unregister
-  const cleanup = async () => {
-    try {
-      if (typeof registration?.dispose === 'function') await registration.dispose()
-      else if (typeof unregister === 'function') await unregister.call(registry, ADAPTER_ID, ADAPTER_VERSION)
-    }
-    catch (error) {
-      logger.warn(`adapter registry cleanup failed: ${error?.message ?? error}`)
-    }
+function restoreResearchState(state) {
+  if (!state.research || typeof state.ctx?.kv?.get !== 'function') return false
+  try {
+    const raw = state.ctx.kv.get(RESEARCH_STATE_KEY)
+    if (raw === undefined || raw === null) return true
+    if (!raw || raw.version !== RESEARCH_STATE_VERSION || !Array.isArray(raw.runs) || !Array.isArray(raw.candidates)) return false
+    state.research.candidates.restore(raw.candidates)
+    state.research.orchestrator.restore({ runs: raw.runs, idempotency: raw.idempotency ?? {} })
+    return true
   }
-  ctx.onDispose(cleanup)
-  return { ok: true, service: resolved.service, registration: registration ?? null, cleanup }
+  catch (error) {
+    state.logger.warn(`research restore failed: ${error?.message ?? error}`)
+    return false
+  }
 }
 
 function routeResult(state, event, capability) {
@@ -278,6 +264,50 @@ function routeResult(state, event, capability) {
   }
 }
 
+function researchError(error) {
+  return {
+    ok: false,
+    available: false,
+    code: error?.code ?? 'RESEARCH_FAILURE',
+    reason: error?.message ?? String(error),
+    candidateOnly: true,
+    actuation: false,
+    promotion: false,
+  }
+}
+
+function authorizeResearch(state, event, body) {
+  const persistence = state.persistenceReady ? readPersistence(state.ctx) : { ok: false, code: 'PERSISTENCE_UNAVAILABLE' }
+  if (!persistence.ok) return { ok: false, response: researchError({ code: 'PERSISTENCE_UNAVAILABLE', message: 'research persistence is unavailable' }) }
+  const requested = scopeOf(event, body)
+  const principal = event?.awUser ?? event?.context?.awUser ?? null
+  const runtime = state.runtime?.authorizeScope?.({ principal, scope: requested })
+  if (!runtime?.ok) return { ok: false, response: researchError({ code: 'SCOPE_FORBIDDEN', message: 'requested research scope is not authorized' }) }
+  const exact = evaluateBetaScope({
+    flags: readBetaFlags(),
+    persistence,
+    requested: runtime.scope,
+    persisted: persistence.scope,
+    capability: 'query',
+    maxAgeMs: state.maxAgeMs,
+  })
+  if (!exact.ok) return { ok: false, response: researchError({ code: 'SCOPE_FORBIDDEN', message: 'requested research scope is not the exact active worker scope' }) }
+  if (!state.research || state.researchPersistenceReady !== true) return { ok: false, response: researchError({ code: 'PERSISTENCE_UNAVAILABLE', message: 'research persistence is unavailable' }) }
+  return { ok: true, scope: exact.scope }
+}
+
+function scopeRun(run, scope) {
+  return sameRequiredScope(run?.scope, scope)
+}
+
+function ensureReadPlan(plan) {
+  if (!plan || typeof plan !== 'object' || !Array.isArray(plan.steps)) return null
+  if (plan.steps.some(step => !READ_CAPABILITIES.has(String(step?.capability ?? '').toLowerCase()))) {
+    return researchError({ code: 'RESEARCH_READ_ONLY_FORBIDDEN', message: 'research routes accept read capabilities only' })
+  }
+  return null
+}
+
 export default {
   name: PLUGIN_NAME,
   version: ADAPTER_VERSION,
@@ -302,15 +332,17 @@ export default {
     const logger = ctx?.logger ?? { info: noOpLogger, warn: noOpLogger, error: noOpLogger }
     const state = {
       ctx,
+      logger,
+      flags: readBetaFlags(),
       maxAgeMs: Number(ctx?.config?.get?.(`plugins.${PLUGIN_NAME}.scope_max_age_ms`)) || DEFAULT_SCOPE_MAX_AGE_MS,
       adapterStatus: { ok: false, code: 'BETA_DISABLED' },
       persistenceReady: false,
+      researchPersistenceReady: false,
       runtime: null,
+      research: null,
     }
 
-    // Read-only status is intentionally still loadable while flags are off.
-    // It gives authenticated operators a truthful default-deny explanation.
-    const initialFlags = readBetaFlags()
+    const initialFlags = state.flags
     const initialPersistence = readPersistence(ctx)
     state.persistenceReady = initialPersistence.ok
     if (!initialPersistence.ok) logger.warn(`persistence unavailable; Beta remains default-deny: ${initialPersistence.reason}`)
@@ -328,13 +360,28 @@ export default {
         const industrial = typeof state.runtime.createIndustrialReadAdapter === 'function'
           ? state.runtime.createIndustrialReadAdapter({ adapterId: ADAPTER_ID, version: ADAPTER_VERSION, ownerId: PLUGIN_NAME })
           : null
-        if (industrial && typeof state.runtime.registerOne === 'function') {
+        const registry = state.runtime.registry
+        if (industrial && registry && typeof state.runtime.registerOne === 'function') {
           try {
             const registration = state.runtime.registerOne(industrial, PLUGIN_NAME)
             state.adapterStatus = { ok: true, service: 'context.runtime', registration }
+            state.research = await (async () => {
+              const [{ LocalResearchOrchestrator }, { CandidateEvidenceStore }] = await Promise.all([
+                import('@/server/services/workshop/research/orchestrator'),
+                import('@/server/services/workshop/evidence/candidate-store'),
+              ])
+              const candidates = new CandidateEvidenceStore()
+              const orchestrator = new LocalResearchOrchestrator(registry, candidates)
+              return { orchestrator, candidates }
+            })()
+            state.researchPersistenceReady = restoreResearchState(state)
             ctx.onDispose(async () => {
-              try { await state.runtime.registry.unregister(industrial.adapterId, industrial.version) }
-              catch { /* host registry may already be disposing */ }
+              try {
+                await state.runtime.registry.unregister(industrial.adapterId, industrial.version)
+              }
+              catch {
+                // host registry may already be disposing
+              }
             })
           }
           catch (error) {
@@ -372,10 +419,93 @@ export default {
     ctx.route('GET', metadataPath, metadataHandler)
     ctx.route('GET', adapterPath, adapterHandler)
 
-    // The route table is owned by the host and removed on dispose. Keep a
-    // small lifecycle marker only in memory; no prompt, scheduler, DB, or raw
-    // hook is touched by this plugin.
-    safeCall(() => logger.info(`ready apiVersion=${API_VERSION} flags=${initialFlags.globallyEnabled ? 'enabled' : 'default-deny'}`), undefined)
+    const listResearch = (event) => {
+      const body = bodyOf(event)
+      const authorized = authorizeResearch(state, event, body)
+      if (!authorized.ok) return authorized.response
+      try {
+        const id = event?.query?.id ?? body.id
+        const runs = id ? [state.research.orchestrator.get(String(id))] : state.research.orchestrator.list()
+        return {
+          ok: true,
+          available: true,
+          scope: authorized.scope,
+          runs: runs.filter(run => scopeRun(run, authorized.scope)),
+          candidateOnly: true,
+          actuation: false,
+          promotion: false,
+        }
+      }
+      catch (error) {
+        return researchError(error)
+      }
+    }
+
+    const runResearch = async (event) => {
+      const body = bodyOf(event)
+      const authorized = authorizeResearch(state, event, body)
+      if (!authorized.ok) return authorized.response
+      const { plan, execute, ...request } = body
+      request.scope = authorized.scope
+      const planError = plan ? ensureReadPlan(plan) : null
+      if (planError) return planError
+      try {
+        const created = state.research.orchestrator.create(request)
+        let run = created.run
+        if (plan) {
+          run = state.research.orchestrator.plan(run.id, plan)
+          run = state.research.orchestrator.approveRead(run.id)
+        }
+        if (execute === true) run = await state.research.orchestrator.execute(run.id)
+        if (!persistResearchState(state)) return researchError({ code: 'PERSISTENCE_UNAVAILABLE', message: 'research state could not be persisted' })
+        state.researchPersistenceReady = true
+        return { ok: true, available: true, scope: authorized.scope, run, idempotent: created.idempotent, candidateOnly: true, actuation: false, promotion: false }
+      }
+      catch (error) {
+        return researchError(error)
+      }
+    }
+
+    const cancelResearch = (event) => {
+      const body = bodyOf(event)
+      const authorized = authorizeResearch(state, event, body)
+      if (!authorized.ok) return authorized.response
+      try {
+        const current = state.research.orchestrator.get(String(body.id ?? ''))
+        if (!scopeRun(current, authorized.scope)) return researchError({ code: 'SCOPE_FORBIDDEN', message: 'research run is outside the exact active worker scope' })
+        const run = state.research.orchestrator.cancel(current.id)
+        if (!persistResearchState(state)) return researchError({ code: 'PERSISTENCE_UNAVAILABLE', message: 'research state could not be persisted' })
+        return { ok: true, available: true, scope: authorized.scope, run, candidateOnly: true, actuation: false, promotion: false }
+      }
+      catch (error) {
+        return researchError(error)
+      }
+    }
+
+    const listEvidence = (event) => {
+      const body = bodyOf(event)
+      const authorized = authorizeResearch(state, event, body)
+      if (!authorized.ok) return authorized.response
+      try {
+        const id = String(event?.query?.id ?? body.id ?? '')
+        const evidence = id
+          ? [state.research.candidates.require(id)]
+          : state.research.candidates.list().filter(value => sameRequiredScope(value.accessScope, authorized.scope))
+        if (id && !evidence.every(value => sameRequiredScope(value.accessScope, authorized.scope))) return researchError({ code: 'SCOPE_FORBIDDEN', message: 'evidence is outside the exact active worker scope' })
+        return { ok: true, available: true, scope: authorized.scope, evidence, candidateOnly: true, actuation: false, promotion: false }
+      }
+      catch (error) {
+        return researchError(error)
+      }
+    }
+
+    // These routes are registered only after the global feature gate passes.
+    ctx.route('GET', researchPath, listResearch)
+    ctx.route('POST', researchRunPath, runResearch)
+    ctx.route('POST', researchCancelPath, cancelResearch)
+    ctx.route('GET', evidencePath, listEvidence)
+
+    safeCall(() => logger.info(`ready apiVersion=${API_VERSION} flags=enabled research=${state.research ? 'wired' : 'unavailable'}`), undefined)
     state.persistenceReady = persistLifecycle(ctx, { state: 'ready', apiVersion: API_VERSION, at: new Date().toISOString() })
   },
 }
