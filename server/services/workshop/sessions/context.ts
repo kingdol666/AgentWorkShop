@@ -148,13 +148,13 @@ export class SessionContextService {
     const prev = parseJson<{ compressed?: Partial<SessionCompressedState> } | null>(row.briefJson, null)
     const stored = prev?.compressed
     const compressed = this.foldOlderMessages(row, {
-      uptoSeq: Number(stored?.uptoSeq ?? 0),
+      uptoSeq: Number.isSafeInteger(Number(stored?.uptoSeq)) && Number(stored?.uptoSeq) >= 0 ? Number(stored?.uptoSeq) : 0,
       // Old briefs only persisted uptoSeq; an empty stable cursor safely replays
       // their rows and the existing line de-duplication keeps this idempotent.
       uptoCreatedAt: typeof stored?.uptoCreatedAt === 'string' ? stored.uptoCreatedAt : '',
       uptoMessageId: typeof stored?.uptoMessageId === 'string' ? stored.uptoMessageId : '',
       lines: Array.isArray(stored?.lines) ? stored.lines.filter((line): line is string => typeof line === 'string') : [],
-      generation: Number(stored?.generation ?? 0),
+      generation: Number.isSafeInteger(Number(stored?.generation)) && Number(stored?.generation) >= 0 ? Number(stored?.generation) : 0,
     })
     const brief = this.assemble(row, compressed)
     if (opts.refresh) {
@@ -217,7 +217,7 @@ export class SessionContextService {
               parts_json AS partsJson, created_at AS at
        FROM messages
        WHERE session_id = ?
-       ORDER BY created_at DESC, rowid DESC LIMIT ?`,
+       ORDER BY rowid DESC LIMIT ?`,
     ).all(row.id, limit) as Array<{ id: string, seq: number, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
     return rows.reverse().map(m => ({
       id: m.id,
