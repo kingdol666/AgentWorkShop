@@ -87,11 +87,10 @@ export function useOmpTerminalSession(props: OmpTerminalSessionProps, open: Mode
 
   function wsUrl(): string {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const token = encodeURIComponent(userStore.token ?? '')
     const target = props.pid != null && props.pid > 0
       ? `pid=${props.pid}`
       : `agentId=${encodeURIComponent(props.agentId ?? '')}${props.channelId ? `&channelId=${encodeURIComponent(props.channelId)}` : ''}`
-    return `${proto}://${window.location.host}/api/system/monitor/terminal/ws?${target}&token=${token}`
+    return `${proto}://${window.location.host}/api/system/monitor/terminal/ws?${target}`
   }
 
   /** 上一次错误去重(NO_SESSION 重试风暴防刷屏) */
@@ -139,7 +138,7 @@ export function useOmpTerminalSession(props: OmpTerminalSessionProps, open: Mode
   }
 
   function connect(): void {
-    if (!hasTarget.value || !userStore.token) return
+    if (!hasTarget.value || !userStore.isLoggedIn) return
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return
     closedByUser = false
     connState.value = retryCount === 0 ? 'connecting' : 'retrying'

@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { readAuthToken } from '~/utils/auth-session'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
 import type { DcwTemplateInput } from '#shared/dcw-protocol'
 
@@ -31,7 +31,7 @@ export function useDcwTemplates() {
     try {
       await fetch(`/api/workshop/dcw/templates/${key}`, {
         method: 'DELETE',
-        headers: { authorization: `Bearer ${document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? ''}` },
+        headers: readAuthToken() ? { authorization: `Bearer ${readAuthToken()}` } : {},
       }).then(async (r) => {
         const json = await r.json().catch(() => ({}))
         if (json?.code !== 0) throw new Error(json?.message ?? t('dcw.k1bphrb3048'))

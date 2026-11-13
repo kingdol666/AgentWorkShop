@@ -9,6 +9,7 @@
  * 单例挂 globalThis,跨组件安全;store 为 reactive(驱动频道坞/选中面板重渲染)。
  */
 import { reactive } from 'vue'
+import { readAuthToken } from '~/utils/auth-session'
 import { nowLocalIso } from './useLocalTime'
 
 export interface SceneLayoutView {
@@ -40,11 +41,9 @@ interface SceneLayoutStore {
 }
 
 function headers(json = true): Record<string, string> {
-  const cookieToken = typeof document !== 'undefined'
-    ? (document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? '')
-    : ''
   const h: Record<string, string> = {}
-  if (cookieToken) h.authorization = `Bearer ${decodeURIComponent(cookieToken)}`
+  const token = readAuthToken()
+  if (token) h.authorization = `Bearer ${token}`
   if (json) h['content-type'] = 'application/json'
   return h
 }

@@ -29,11 +29,11 @@ export function useMonitorData(hooks: MonitorDataHooks = {}) {
   let pollFailStreak = 0
 
   const poll = async (): Promise<void> => {
-    if (!userStore.token) return
+    if (!userStore.isLoggedIn) return
     loading.value = true
     try {
       const res = await narrowFetch<ApiEnvelope<MonitorSnapshot>>('/api/system/monitor', {
-        headers: { authorization: `Bearer ${userStore.token}` },
+        headers: userStore.authHeaders(),
       })
       snapshot.value = res.data
       lastUpdated.value = formatLocalClock(new Date().toISOString())
@@ -58,19 +58,19 @@ export function useMonitorData(hooks: MonitorDataHooks = {}) {
       clearInterval(timer)
       timer = null
     }
-    if (autoRefresh.value && userStore.token) {
+    if (autoRefresh.value && userStore.isLoggedIn) {
       timer = setInterval(() => void poll(), 5000)
     }
   }
   watch(autoRefresh, () => applyTimer())
-  watch(() => userStore.token, () => {
-    if (userStore.token) void poll()
+  watch(() => userStore.isLoggedIn, () => {
+    if (userStore.isLoggedIn) void poll()
     else snapshot.value = null
     applyTimer()
   })
 
   onMounted(() => {
-    if (userStore.token) {
+    if (userStore.isLoggedIn) {
       void poll().then(() => hooks.onInitialPoll?.())
     }
     applyTimer()
@@ -86,7 +86,7 @@ export function useMonitorData(hooks: MonitorDataHooks = {}) {
     try {
       const res = await narrowFetch<ApiEnvelope<{ agentId: string, stopped: boolean }>>('/api/system/monitor/terminate', {
         method: 'POST',
-        headers: { authorization: `Bearer ${userStore.token}` },
+        headers: userStore.authHeaders(),
         body: { channelId: a.channelId, agentId: a.agentId },
       })
       message.success(res.code === 0 ? `${a.name} ${t('monitor.terminated')}` : (res.message ?? t('monitor.failed')))
@@ -105,7 +105,7 @@ export function useMonitorData(hooks: MonitorDataHooks = {}) {
     try {
       const res = await narrowFetch<ApiEnvelope<{ pid: number, killed: boolean }>>('/api/system/monitor/terminate', {
         method: 'POST',
-        headers: { authorization: `Bearer ${userStore.token}` },
+        headers: userStore.authHeaders(),
         body: { pid: p.pid },
       })
       message.success(res.code === 0 ? `PID ${p.pid} ${t('monitor.terminated')}` : (res.message ?? t('monitor.failed')))

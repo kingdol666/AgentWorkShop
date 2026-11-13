@@ -211,6 +211,13 @@ export const userService = {
     return { ok: userRepository.revokeTokenByValue(token) }
   },
 
+  /** 浏览器登录态由服务端 HttpOnly 会话承载；API token 仍只用于外部 Agent/兼容客户端。 */
+  browserSessionUser(userId: string): AuthResult['user'] {
+    const user = userRepository.findById(userId)
+    if (!user || user.status !== 'active') throw new AppError(401, 'UNAUTHORIZED', '用户会话无效或账号已禁用')
+    return this.publicProfile(user)
+  },
+
   // ===== 当前用户（Bearer token 身份）=====
 
   me(token: string): AuthResult['user'] {

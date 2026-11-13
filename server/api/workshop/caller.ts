@@ -4,11 +4,11 @@
  * 所有查询/通信按 caller 的 channelId 作用域过滤(跨 channel 一律 SCOPE_VIOLATION)。
  * v10:用户面透传 role,提供 admin 守卫与模板归属名注入(权限系统)。
  */
-import { getRequestHeader } from 'h3'
-import type { H3Event } from 'h3'
+import { getRequestHeader, type H3Event } from 'h3'
 import { AppError } from '../../utils/errors'
 import { getWorkshopManager } from '../../plugins/workshop'
 import { resolveUserByToken } from '../../services/user.service'
+import { resolveBrowserSessionFromEvent } from '../../services/auth/browser-session'
 import { userRepository } from '../../repositories/user.repository'
 import type { AgentInfo } from '../../services/workshop/agents/agent-interface'
 
@@ -71,9 +71,9 @@ export interface ResolvedUser {
 export function resolveUser(event: H3Event): ResolvedUser {
   const auth = getRequestHeader(event, 'authorization')
   const token = auth?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
-  const user = token ? resolveUserByToken(token) : null
+  const user = token ? resolveUserByToken(token) : resolveBrowserSessionFromEvent(event)
   if (!user) {
-    throw new AppError(401, 'USER_UNAUTHORIZED', '需要有效的用户 token(Authorization: Bearer <用户token>;经 /api/users/register 或 /api/users/login 获取)')
+    throw new AppError(401, 'USER_UNAUTHORIZED', '需要有效的用户会话或 Bearer token')
   }
   return { id: user.id, name: user.name, role: user.role, createdAt: user.createdAt }
 }

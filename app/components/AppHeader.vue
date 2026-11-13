@@ -23,8 +23,8 @@ const wsSession = useWorkshopWs()
 const ensureHitlLive = () => {
   if (userStore.isLoggedIn) wsSession.ensureConnected()
 }
-watch(() => userStore.token, (t2) => {
-  if (t2) {
+watch(() => userStore.isLoggedIn, (authenticated) => {
+  if (authenticated) {
     ensureHitlLive()
     void hitl.loadSnapshot()
   }

@@ -79,7 +79,7 @@ watch(
     />
 
     <!-- 未登录门 -->
-    <MonitorLoginGate v-if="!userStore.token" />
+    <MonitorLoginGate v-if="!userStore.isLoggedIn" />
 
     <template v-else>
       <!-- 概要统计 -->

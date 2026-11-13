@@ -9,6 +9,7 @@
  */
 import { onBeforeUnmount, reactive, ref, watch } from 'vue'
 import type { Ref } from 'vue'
+import { readAuthToken } from '~/utils/auth-session'
 import type { useDaqStream } from '@/app/composables/workshop/useDaqStream'
 import type { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import type { AgentNodeBindingRow, ToolApprovalRow } from './town-view-types'
@@ -37,8 +38,8 @@ export function useTownAgentBindings(params: {
   }
 
   const authHeaders = (): Record<string, string> => {
-    const token = document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? ''
-    return { 'content-type': 'application/json', 'authorization': `Bearer ${decodeURIComponent(token)}` }
+    const token = readAuthToken()
+    return token ? { 'content-type': 'application/json', 'authorization': `Bearer ${token}` } : { 'content-type': 'application/json' }
   }
 
   const agentBindings = ref<AgentNodeBindingRow[]>([])

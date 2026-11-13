@@ -13,6 +13,7 @@ import type { TownScene3D } from '@/app/components/workshop/town/TownScene3D'
 import { mapEnvelopeToIntent } from '#shared/town-protocol'
 import type { AepEnvelope } from '#shared/workshop-protocol'
 import { channelColorCss } from '#shared/town-scene-math'
+import { readAuthToken } from '~/utils/auth-session'
 import type { ChatEntry } from './town-view-types'
 
 export function useTownAgentChat(params: {
@@ -101,9 +102,9 @@ export function useTownAgentChat(params: {
     if (rows.length > LIVE_CAP) rows.splice(0, rows.length - LIVE_CAP)
   }
 
-  function cookieToken(): string {
-    if (typeof document === 'undefined') return ''
-    return (document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? '')
+  function authHeaders(): Record<string, string> {
+    const token = readAuthToken()
+    return token ? { authorization: `Bearer ${token}` } : {}
   }
   function channelOfAgent(agentId: string): string | undefined {
     for (const cid of Object.keys(entities.agents)) {
@@ -121,9 +122,8 @@ export function useTownAgentChat(params: {
     }
     historyLoading.value = true
     try {
-      const tok = cookieToken()
       const q = `/api/workshop/channels/${channelId}/events?limit=500&excludeTypes=agent.delta`
-      const res = await fetch(q, { headers: tok ? { authorization: `Bearer ${decodeURIComponent(tok)}` } : {} })
+      const res = await fetch(q, { headers: authHeaders() })
       const json = await res.json().catch(() => null)
       // 接口返回 { data: { channelId, total, maxSeq, items } }(旧代码误把 data 当数组迭代,历史一直为空)
       const events: AepEnvelope[] = json?.data?.items ?? (Array.isArray(json?.data) ? json.data : [])

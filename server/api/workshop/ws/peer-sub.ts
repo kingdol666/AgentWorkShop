@@ -4,7 +4,7 @@
  */
 import type { AgentChannelManager } from '../../../services/workshop/runtime/manager'
 import type { WsPeer } from './shared'
-import { AEP_VERSION, peerChannels, streams } from './shared'
+import { AEP_VERSION, peerChannels, streams, peerUsers } from './shared'
 import { attachScenePeer, sendControl, sendFrame } from './hub'
 import { bindUserPeer } from '../../../services/workshop/runtime/user-notification-hub'
 import { buildSnapshot } from './publish'
@@ -15,13 +15,9 @@ import { lineMode } from '../../../services/workshop/permissions'
 import { projectManagementSnapshotForMember } from '../../../services/workshop/runtime/chat-projection'
 
 export function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channelId: string, lastSeq?: number, userToken?: string): void { // v17:群成员鉴权(requireChannelMember);管理面字段按 canManage 投影(§13.1)
-  if (!userToken) {
-    sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'USER_UNAUTHORIZED', message: 'WS 订阅需要用户 token(sub 帧携带 token 字段或连接 ?token= 查询参数)' } })
-    return
-  }
-  const user = resolveUserByToken(userToken)
+  const user = peerUsers.get(peer) ?? (userToken ? resolveUserByToken(userToken) : null)
   if (!user) {
-    sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'USER_UNAUTHORIZED', message: '用户 token 无效' } })
+    sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId, payload: { code: 'USER_UNAUTHORIZED', message: 'WS 订阅需要先完成 auth(ticket)' } })
     return
   }
   // v17:token 认证成功后绑定 peer→userId(用户级通知 hub 的 recipient 隔离基础)

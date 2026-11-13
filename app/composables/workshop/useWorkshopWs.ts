@@ -22,6 +22,7 @@
  *    闭包持有旧句柄会让实时更新静默停摆(不报错、无日志)。每帧按需 `useXStore()`。
  */
 import { onBeforeUnmount, onMounted } from 'vue'
+import { readAuthToken } from '~/utils/auth-session'
 import { useUserStore } from '../../stores/workshop/user'
 import { WorkshopWsSession, useWsConnectionStore } from '../../stores/workshop/connection'
 import { useEventsStore } from '../../stores/workshop/events'
@@ -58,16 +59,28 @@ function channelSeqGuard(e: AepEnvelope, appliedSeq: Map<string, number>): boole
   return false
 }
 
+type NarrowFetch = <T>(url: string, opts?: Record<string, unknown>) => Promise<T>
+const narrowFetch = (globalThis as unknown as { $fetch: NarrowFetch }).$fetch
+
 export function useWorkshopWs() {
   const conn = useWsConnectionStore()
   const userStore = useUserStore()
   const townBus = useTownBus()
+  const isAuthenticated = computed(() => userStore.isLoggedIn)
 
   /** 模块级单例:多组件共享一条连接 */
   let session: WorkshopWsSession | null = hookGlobal.__workshopWs ?? null
   // per-channel 已应用 seq(断线续传重放/缓冲重叠的同帧在此单点丢弃;
   // entities/场景计数等下游消费方不再各自防重)
   const appliedSeq = new Map<string, number>()
+
+  // 浏览器 WS 身份由 HttpOnly session 换取一次性 ticket；API token 仅兼容显式外部调用。
+  const ticketProvider = async (): Promise<string | null> => {
+    const token = readAuthToken()
+    const headers = token ? { authorization: `Bearer ${token}` } : undefined
+    const res = await narrowFetch<{ code: number, data?: { ticket?: string } }>('/api/workshop/ws/ticket', { method: 'POST', headers })
+    return res.code === 0 ? res.data?.ticket ?? null : null
+  }
 
   if (!session) {
     const s = new WorkshopWsSession(
@@ -147,6 +160,7 @@ export function useWorkshopWs() {
     session = s
     hookGlobal.__workshopWs = session
   }
+  session.setTicketProvider(ticketProvider)
 
   /**
    * 发送一条上行帧。
@@ -183,7 +197,7 @@ export function useWorkshopWs() {
   const hostNotifications = (): (() => void) => {
     const notifications = useNotificationsStore()
     hookGlobal.__workshopWsNotifHosts = (hookGlobal.__workshopWsNotifHosts ?? 0) + 1
-    if (!hookGlobal.__workshopWsNotifSubscribed && userStore.token) {
+    if (!hookGlobal.__workshopWsNotifSubscribed && isAuthenticated.value) {
       hookGlobal.__workshopWsNotifSubscribed = true
       sendNotificationsSub()
       void notifications.loadSnapshot()
@@ -196,16 +210,15 @@ export function useWorkshopWs() {
       hookGlobal.__workshopWsNotifHosts = left > 0 ? left : 0
       if (left <= 0) {
         hookGlobal.__workshopWsNotifSubscribed = false
-        if (userStore.token) sendFrame({ type: 'unsubNotifications' })
+        if (isAuthenticated.value) sendFrame({ type: 'unsubNotifications' })
       }
     }
   }
 
-  // 用户 token 注入(登录态变化即时生效;未登录 sub 将被服务端 401 拒绝)
-  watch(() => userStore.token, (t) => {
+  // 用户会话变化时，已有 WS 会话会在下一次订阅/重连时重新申请 ticket。
+  watch(() => isAuthenticated.value, (authenticated) => {
     const notifications = useNotificationsStore()
-    if (session instanceof WorkshopWsSession) session.userToken = t
-    if (t) {
+    if (authenticated) {
       if ((hookGlobal.__workshopWsNotifHosts ?? 0) > 0) {
         hookGlobal.__workshopWsNotifSubscribed = true
         sendNotificationsSub()
