@@ -224,6 +224,26 @@ test('task/project sessions：同频道双 session 只读严格 session_id，NUL
   }
 })
 
+test('history：混合 task/message 按 created_at 排序，同时间按 source 和表内 rowid 稳定排序', () => {
+  const f = fixture()
+  try {
+    const task1 = f.tasks.create({ channelId: f.channel.id, assigneeId: 'lead', title: 'task-1', sessionId: f.session.id })
+    const task2 = f.tasks.create({ channelId: f.channel.id, assigneeId: 'lead', title: 'task-2', sessionId: f.session.id })
+    const message1 = f.messages.create({ channelId: f.channel.id, sessionId: f.session.id, role: 'ROLE_USER', parts: [{ text: 'message-1' }] })
+    const message2 = f.messages.create({ channelId: f.channel.id, sessionId: f.session.id, role: 'ROLE_USER', parts: [{ text: 'message-2' }] })
+    f.db.prepare('UPDATE tasks SET created_at = ? WHERE id = ?').run('2026-01-01T00:00:01.000Z', task1.id)
+    f.db.prepare('UPDATE tasks SET created_at = ? WHERE id = ?').run('2026-01-01T00:00:02.000Z', task2.id)
+    f.db.prepare('UPDATE messages SET created_at = ? WHERE id = ?').run('2026-01-01T00:00:02.000Z', message1.id)
+    f.db.prepare('UPDATE messages SET created_at = ? WHERE id = ?').run('2026-01-01T00:00:02.000Z', message2.id)
+
+    const history = new SessionContextService(f.db, f.sessions).history(f.session.id)
+    assert.deepEqual(history.map(item => item.text), ['task-1', 'task-2', 'message-1', 'message-2'])
+  }
+  finally {
+    f.db.close()
+  }
+})
+
 test('recent/history：300 条消息返回真正最新窗口，rowid DESC 后 reverse', () => {
   const f = fixture()
   try {
@@ -251,25 +271,143 @@ test('recent/history：300 条消息返回真正最新窗口，rowid DESC 后 re
   }
 })
 
+test('compaction：稳定 created_at+id cursor 在删除重插后不重复或停滞', () => {
+  const f = fixture()
+  try {
+    for (let i = 1; i <= 10; i++) {
+      f.messages.create({
+        channelId: f.channel.id,
+        sessionId: f.session.id,
+        role: 'ROLE_USER',
+        parts: [{ text: `retained-${String(i).padStart(2, '0')}` }],
+      })
+    }
+    const svc = new SessionContextService(f.db, f.sessions)
+    const first = svc.buildBrief(f.session.id, { refresh: true })!
+    assert.ok(first.compressed.uptoCreatedAt)
+    const stored = f.sessions.findById(f.session.id)!
+    const storedCompressed = JSON.parse(stored.briefJson).compressed as { uptoCreatedAt?: string, uptoMessageId?: string }
+    assert.equal(storedCompressed.uptoCreatedAt, first.compressed.uptoCreatedAt)
+    assert.equal(storedCompressed.uptoMessageId, first.compressed.uptoMessageId)
+    const cursorId = first.compressed.uptoMessageId
+    f.db.prepare('DELETE FROM messages WHERE id = ?').run(cursorId)
+    f.messages.create({
+      channelId: f.channel.id,
+      sessionId: f.session.id,
+      role: 'ROLE_USER',
+      parts: [{ text: 'retained-after-delete-reinsert' }],
+    })
+    const second = svc.buildBrief(f.session.id, { refresh: true })!
+    assert.equal(second.compressed.lines.filter(line => line.includes('retained-after-delete-reinsert')).length, 0, 'newer recent message must not be compacted')
+    assert.ok(second.compressed.uptoCreatedAt >= first.compressed.uptoCreatedAt)
+    assert.notEqual(second.compressed.uptoMessageId, cursorId)
+  }
+  finally {
+    f.db.close()
+  }
+})
+
+test('compaction：200 条非文本消息后仍推进 cursor 并折叠后续文本', () => {
+  const f = fixture()
+  try {
+    for (let i = 1; i <= 200; i++) {
+      const row = f.messages.create({
+        channelId: f.channel.id,
+        sessionId: f.session.id,
+        role: 'ROLE_USER',
+        parts: [{ url: `https://example.test/empty/${i}` }],
+      })
+      f.db.prepare('UPDATE messages SET created_at = ? WHERE id = ?').run(
+        new Date(Date.parse('2026-01-01T00:00:00.000Z') + i * 1000).toISOString(),
+        row.id,
+      )
+    }
+    const afterEmpty = f.messages.create({
+      channelId: f.channel.id,
+      sessionId: f.session.id,
+      role: 'ROLE_USER',
+      parts: [{ text: 'after-empty-batch' }],
+    })
+    f.db.prepare('UPDATE messages SET created_at = ? WHERE id = ?').run('2026-01-01T00:03:21.000Z', afterEmpty.id)
+    for (let i = 1; i <= 8; i++) {
+      const row = f.messages.create({
+        channelId: f.channel.id,
+        sessionId: f.session.id,
+        role: 'ROLE_USER',
+        parts: [{ text: `post-empty-${i}` }],
+      })
+      f.db.prepare('UPDATE messages SET created_at = ? WHERE id = ?').run(
+        new Date(Date.parse('2026-01-01T00:03:21.000Z') + i * 1000).toISOString(),
+        row.id,
+      )
+    }
+    const svc = new SessionContextService(f.db, f.sessions)
+    const first = svc.buildBrief(f.session.id, { refresh: true })!
+    const stored = f.sessions.findById(f.session.id)!
+    const storedCompressed = JSON.parse(stored.briefJson).compressed as { uptoCreatedAt?: string, uptoMessageId?: string }
+    assert.equal(storedCompressed.uptoCreatedAt, first.compressed.uptoCreatedAt)
+    assert.equal(storedCompressed.uptoMessageId, first.compressed.uptoMessageId)
+    const second = svc.buildBrief(f.session.id, { refresh: true })!
+    assert.ok(first.compressed.uptoCreatedAt, 'empty rows must advance the cursor')
+    assert.ok(second.compressed.uptoCreatedAt >= first.compressed.uptoCreatedAt)
+    assert.ok(second.compressed.lines.some(line => line.includes('after-empty-batch')), 'text after empty batch must eventually compact')
+  }
+  finally {
+    f.db.close()
+  }
+})
+
+test('compaction：长 pinned 行与 topic 行总字符数不超过预算', () => {
+  const f = fixture()
+  try {
+    for (let i = 1; i <= 30; i++) {
+      f.messages.create({
+        channelId: f.channel.id,
+        sessionId: f.session.id,
+        role: 'ROLE_USER',
+        parts: [{ text: `决策：${String(i).padStart(2, '0')} ${'关键事实'.repeat(100)}` }],
+      })
+    }
+    const brief = new SessionContextService(f.db, f.sessions).buildBrief(f.session.id)!
+    assert.ok(brief.compressed.lines.length > 0)
+    assert.ok(brief.compressed.lines.reduce((sum, line) => sum + line.length, 0) <= 1200)
+    assert.equal(new Set(brief.compressed.lines).size, brief.compressed.lines.length)
+    assert.ok(brief.compressed.lines.every(line => line.length <= 204), 'pinned retention must truncate each line deterministically')
+  }
+  finally {
+    f.db.close()
+  }
+})
+
 test('compaction：uptoSeq 作为游标分批推进，超过 200 条不停止或重复', () => {
   const f = fixture()
   try {
     for (let i = 1; i <= 300; i++) {
-      f.messages.create({
+      const row = f.messages.create({
         channelId: f.channel.id,
         sessionId: f.session.id,
         role: 'ROLE_USER',
         parts: [{ text: `compact-${String(i).padStart(3, '0')}` }],
       })
+      f.db.prepare('UPDATE messages SET created_at = ? WHERE id = ?').run(
+        new Date(Date.parse('2026-01-01T00:00:00.000Z') + i * 1000).toISOString(),
+        row.id,
+      )
     }
     const svc = new SessionContextService(f.db, f.sessions)
     const first = svc.buildBrief(f.session.id, { refresh: true })!
     const second = svc.buildBrief(f.session.id, { refresh: true })!
     const third = svc.buildBrief(f.session.id, { refresh: true })!
-    assert.ok(first.compressed.uptoSeq > 0)
-    assert.ok(second.compressed.uptoSeq > first.compressed.uptoSeq, '第二批必须越过首批 cursor')
+    assert.ok(first.compressed.uptoCreatedAt)
+    assert.ok(
+      second.compressed.uptoCreatedAt > first.compressed.uptoCreatedAt
+      || (second.compressed.uptoCreatedAt === first.compressed.uptoCreatedAt
+        && second.compressed.uptoMessageId > first.compressed.uptoMessageId),
+      '第二批必须越过首批 stable cursor',
+    )
     assert.equal(second.compressed.generation, first.compressed.generation + 1)
-    assert.equal(third.compressed.uptoSeq, second.compressed.uptoSeq, '已到 recent window 后不得重复折叠')
+    assert.equal(third.compressed.uptoCreatedAt, second.compressed.uptoCreatedAt, '已到 recent window 后不得重复折叠')
+    assert.equal(third.compressed.uptoMessageId, second.compressed.uptoMessageId, 'stable cursor 不得回退或重复')
     assert.equal(third.compressed.generation, second.compressed.generation)
     assert.equal(new Set(second.compressed.lines).size, second.compressed.lines.length, '压缩行不得重复')
     assert.ok(second.compressed.lines.some(line => line.includes('compact-292')), '第二批旧消息必须被折叠')
