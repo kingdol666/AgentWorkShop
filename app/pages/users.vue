@@ -155,9 +155,17 @@ useHead({ title: () => t('titles.users') })
       />
     </div>
 
+    <!-- 会话恢复中:骨架;SSR 与客户端首帧一致,避免 admin 分支水合错位把门禁卡样式套到表格上 -->
+    <a-card
+      v-if="!userStore.sessionReady"
+      :bordered="false"
+      :loading="true"
+      class="table-card"
+    />
+
     <!-- 非 admin 门禁视图 -->
     <a-card
-      v-if="!userStore.isAdmin"
+      v-else-if="!userStore.isAdmin"
       :bordered="false"
       class="gate-card"
     >
@@ -182,6 +190,7 @@ useHead({ title: () => t('titles.users') })
         row-key="id"
         size="small"
         :pagination="false"
+        :scroll="{ x: 780 }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'role'">
