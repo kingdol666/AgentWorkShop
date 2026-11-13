@@ -94,7 +94,7 @@ function parseArgs(argv) {
     if (!valueOptions.has(key)) throw new Error(`unknown option --${key}`)
     const value = equal === -1 ? argv[++index] : argument.slice(equal + 1)
     if (!value || value.startsWith('--')) throw new Error(`option --${key} requires a value`)
-    options[key] = value
+    options[key === 'write-baseline' ? 'writeBaseline' : key] = value
   }
   return options
 }
