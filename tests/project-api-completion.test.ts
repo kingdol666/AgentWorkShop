@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createHash } from 'node:crypto'
 
 process.env.AGENTWORKSHOP_TEST = '1'
 process.env.AW_MODE = 'home'
@@ -142,6 +143,76 @@ test('PATCH 交付物/工作项：状态门 + 字段生效', async () => {
       () => s.svc.updateWorkItem(s.p.id, s.w.id, s.owner, { title: 'X' }),
       (e: unknown) => (e as { code?: string }).code === 'WORK_ITEM_STATE_INVALID',
     )
+  }
+  finally {
+    s.db.close()
+  }
+})
+
+test('DRAFT 工作项契约图 patch：非法依赖/环/inputs 漂移拒绝，合法 patch 保留版本并落契约', async () => {
+  const s = await setup()
+  try {
+    const upstream = s.svc.createWorkItem(s.p.id, s.owner, {
+      deliverableId: s.d.id,
+      channelId: s.member.channelId,
+      title: '上游工作项',
+      resultKey: 'source',
+    })
+    const downstream = s.svc.createWorkItem(s.p.id, s.owner, {
+      deliverableId: s.d.id,
+      channelId: s.member.channelId,
+      title: '下游工作项',
+      resultKey: 'target',
+      dependsOn: [upstream.id],
+      contract: { inputs: [{ workItemId: upstream.id, resultKey: 'source' }] },
+    })
+    const planVersion = downstream.planVersion
+
+    // 当前缺陷复现：patch 把依赖改成不存在的 id 会被直接写入。
+    assert.throws(
+      () => s.svc.updateWorkItem(s.p.id, downstream.id, s.owner, { dependsOn: ['missing-work-item'] }),
+      (e: unknown) => ['WORK_ITEM_DEPENDENCY_INVALID', 'WORK_ITEM_GRAPH_INVALID', 'PLAN_INVALID'].includes((e as { code?: string }).code ?? ''),
+    )
+    assert.deepEqual(JSON.parse(s.svc.getWorkItem(s.p.id, downstream.id, s.owner).dependsOnJson), [upstream.id])
+
+    // 当前缺陷复现：patch 上游依赖形成环时没有重新跑 DAG 校验。
+    assert.throws(
+      () => s.svc.updateWorkItem(s.p.id, upstream.id, s.owner, { dependsOn: [downstream.id] }),
+      (e: unknown) => ['WORK_ITEM_DEPENDENCY_CYCLE', 'WORK_ITEM_GRAPH_INVALID', 'PLAN_INVALID'].includes((e as { code?: string }).code ?? ''),
+    )
+    assert.deepEqual(JSON.parse(s.svc.getWorkItem(s.p.id, upstream.id, s.owner).dependsOnJson), [])
+
+    // 当前缺陷复现：contract.inputs 可漂移到非 dependsOn 项，或重复引用同一输入。
+    const badInputPatch = { contract: { inputs: [{ workItemId: s.w.id }, { workItemId: s.w.id }] } }
+    assert.throws(
+      () => s.svc.updateWorkItem(s.p.id, downstream.id, s.owner, badInputPatch as never),
+      (e: unknown) => ['WORK_ITEM_CONTRACT_INVALID', 'WORK_ITEM_GRAPH_INVALID', 'PLAN_INVALID'].includes((e as { code?: string }).code ?? ''),
+    )
+    assert.deepEqual(JSON.parse(s.svc.getWorkItem(s.p.id, downstream.id, s.owner).contractJson), {
+      inputs: [{ workItemId: upstream.id, resultKey: 'source' }],
+    })
+
+    assert.throws(
+      () => s.svc.updateWorkItem(s.p.id, downstream.id, s.owner, {
+        contract: { inputs: [{ workItemId: upstream.id, resultKey: 'wrong-slot' }] },
+      } as never),
+      (e: unknown) => (e as { code?: string }).code === 'PLAN_INVALID',
+    )
+
+    // 合法 patch：依赖与 contract.inputs 同步更新，planVersion 不漂移，契约摘要内容落库。
+    const nextContract = { inputs: [{ workItemId: upstream.id, resultKey: 'source' }], output: { format: 'json' } }
+    const legal = s.svc.updateWorkItem(s.p.id, downstream.id, s.owner, {
+      title: '下游工作项 V2',
+      resultKey: 'target-v2',
+      dependsOn: [upstream.id],
+      contract: nextContract,
+    } as never)
+    assert.equal(legal.title, '下游工作项 V2')
+    assert.equal(legal.resultKey, 'target-v2')
+    assert.equal(legal.planVersion, planVersion)
+    assert.deepEqual(JSON.parse(legal.contractJson), nextContract)
+    const digest = createHash('sha256').update(legal.contractJson).digest('hex')
+    assert.equal(digest.length, 64)
   }
   finally {
     s.db.close()

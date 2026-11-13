@@ -158,6 +158,130 @@ function asObject(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 }
 
+function strictStringArray(value: unknown, label: string): string[] {
+  if (value === undefined || value === null) return []
+  if (!Array.isArray(value) || value.some(v => typeof v !== 'string' || !v.trim())) {
+    throw new AppError(400, 'PLAN_INVALID', `${label} 必须是非空字符串数组`)
+  }
+  return value.map(v => v.trim())
+}
+
+function strictContract(value: unknown, label: string): Record<string, unknown> | null {
+  if (value === undefined || value === null) return null
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new AppError(400, 'PLAN_INVALID', `${label} 必须是对象`)
+  }
+  return value as Record<string, unknown>
+}
+
+function parsePersistedStringArray(text: string | null | undefined, label: string): string[] {
+  if (text == null || text === '') return []
+  let value: unknown
+  try {
+    value = JSON.parse(text)
+  }
+  catch {
+    throw new AppError(400, 'PLAN_INVALID', `${label} JSON 无效`)
+  }
+  if (!Array.isArray(value)) throw new AppError(400, 'PLAN_INVALID', `${label} 必须是数组`)
+  return strictStringArray(value, label)
+}
+
+function parsePersistedContract(text: string | null | undefined, label: string): Record<string, unknown> {
+  if (text == null || text === '') return {}
+  let value: unknown
+  try {
+    value = JSON.parse(text)
+  }
+  catch {
+    throw new AppError(400, 'PLAN_INVALID', `${label} JSON 无效`)
+  }
+  const contract = strictContract(value, label)
+  if (!contract) throw new AppError(400, 'PLAN_INVALID', `${label} 必须是对象`)
+  return contract
+}
+
+interface WorkItemGraphNode {
+  id: string
+  title: string
+  deliverableKey?: string
+  dependsOn: string[]
+  resultKey: string
+  contract: Record<string, unknown> | null
+}
+
+/**
+ * Work-item graph is persisted in several JSON columns, so SQLite cannot enforce
+ * its invariants. Keep the validation shared by plan normalization and DRAFT
+ * mutations; callers must validate the complete candidate graph before writing.
+ */
+function assertWorkItemGraphIntegrity(nodes: WorkItemGraphNode[], opts: { checkResultSlots?: boolean } = {}): void {
+  const byId = new Map(nodes.map(node => [node.id, node]))
+  for (const node of nodes) {
+    const dependencies = new Set<string>()
+    for (const dependency of node.dependsOn) {
+      if (dependencies.has(dependency)) {
+        throw new AppError(400, 'PLAN_INVALID', `工作项「${node.title}」依赖重复: ${dependency}`)
+      }
+      dependencies.add(dependency)
+      if (!byId.has(dependency)) {
+        throw new AppError(400, 'PLAN_INVALID', `工作项「${node.title}」依赖未知工作项: ${dependency}`)
+      }
+      if (dependency === node.id) {
+        throw new AppError(400, 'PLAN_INVALID', `工作项「${node.title}」不能依赖自己`)
+      }
+    }
+
+    const contract = node.contract
+    const rawInputs = contract?.inputs
+    if (rawInputs !== undefined && !Array.isArray(rawInputs)) {
+      throw new AppError(400, 'PLAN_INVALID', `工作项「${node.title}」contract.inputs 必须是数组`)
+    }
+    const inputRefs = new Set<string>()
+    for (const [index, rawInput] of (rawInputs ?? []).entries()) {
+      if (rawInput === null || typeof rawInput !== 'object' || Array.isArray(rawInput)) {
+        throw new AppError(400, 'PLAN_INVALID', `工作项「${node.title}」contract.inputs[${index}] 必须是对象`)
+      }
+      const input = rawInput as Record<string, unknown>
+      const reference = asString(input.workItemId)
+        || asString(input.workItemKey)
+        || asString(input.fromWorkItemId)
+        || asString(input.fromWorkItemKey)
+        || asString(input.from_work_item_key)
+      if (!reference) {
+        throw new AppError(400, 'PLAN_INVALID', `工作项「${node.title}」contract.inputs[${index}] 缺 workItemId/workItemKey`)
+      }
+      if (inputRefs.has(reference)) {
+        throw new AppError(400, 'PLAN_INVALID', `工作项「${node.title}」contract.inputs 重复引用: ${reference}`)
+      }
+      inputRefs.add(reference)
+      if (!byId.has(reference)) {
+        throw new AppError(400, 'PLAN_INVALID', `工作项「${node.title}」contract.inputs 引用了未知工作项: ${reference}`)
+      }
+      if (!dependencies.has(reference)) {
+        throw new AppError(400, 'PLAN_INVALID', `工作项「${node.title}」contract.inputs[${index}] 引用了非依赖工作项: ${reference}`)
+      }
+      const referencedResultKey = asString(input.resultKey) || asString(input.result_key)
+      if (referencedResultKey && referencedResultKey !== byId.get(reference)!.resultKey) {
+        throw new AppError(400, 'PLAN_INVALID', `工作项「${node.title}」contract.inputs[${index}] resultKey 引用不匹配: ${referencedResultKey}`)
+      }
+    }
+  }
+
+  assertAcyclic(nodes.map(node => ({ id: node.id, deps: node.dependsOn })), '工作项')
+
+  if (opts.checkResultSlots) {
+    const slots = new Set<string>()
+    for (const node of nodes) {
+      const slot = `${node.deliverableKey ?? ''}\u0000${node.resultKey}`
+      if (slots.has(slot)) {
+        throw new AppError(400, 'PLAN_INVALID', `交付物「${node.deliverableKey ?? node.id}」的成果槽 ${node.resultKey} 有多个生产者`)
+      }
+      slots.add(slot)
+    }
+  }
+}
+
 interface TaskArtifactLike {
   artifactId?: string
   name?: string
@@ -425,35 +549,29 @@ export function normalizeProjectPlan(plan: Record<string, unknown>): NormalizedP
       execBudgetMinutes,
       acceptanceCriteria: asStringArray(w.acceptanceCriteria ?? w.acceptance_criteria),
       resultKey: asString(w.resultKey) || asString(w.result_key) || 'main',
-      contract: Object.keys(asObject(w.contract)).length > 0 ? asObject(w.contract) : null,
+      contract: strictContract(w.contract, `工作项「${title}」contract`),
     }
   })
   for (const w of workItems) {
+    const dependencySet = new Set(w.dependsOn)
+    // P1 契约/图一致性统一由 assertWorkItemGraphIntegrity 负责；保留计划层
+    // 的 key 语义（物化前 contract.inputs 使用 workItemKey）。
+    if (dependencySet.size !== w.dependsOn.length) {
+      throw new AppError(400, 'PLAN_INVALID', `工作项「${w.title}」依赖重复`)
+    }
     for (const dep of w.dependsOn) {
       if (!workKeys.has(dep)) throw new AppError(400, 'PLAN_INVALID', `工作项「${w.title}」依赖未知工作项: ${dep}`)
       if (dep === w.key) throw new AppError(400, 'PLAN_INVALID', `工作项「${w.title}」不能依赖自己`)
     }
-    // P1 契约：inputs 必须落在 dependsOn 上（数据流与执行图同源，禁止隐式宽读）。
-    const inputs = Array.isArray(asObject(w.contract).inputs) ? asObject(w.contract).inputs as unknown[] : []
-    for (const [i, raw] of inputs.entries()) {
-      const input = asObject(raw)
-      const from = asString(input.workItemKey) || asString(input.fromWorkItemKey) || asString(input.from_work_item_key)
-      if (!from) throw new AppError(400, 'PLAN_INVALID', `工作项「${w.title}」contract.inputs[${i}] 缺 workItemKey`)
-      if (!w.dependsOn.includes(from)) {
-        throw new AppError(400, 'PLAN_INVALID', `工作项「${w.title}」contract.inputs[${i}] 引用了非依赖工作项: ${from}`)
-      }
-    }
   }
-  assertAcyclic(workItems.map(w => ({ id: w.key, deps: w.dependsOn })), '工作项')
-  // P1 槽位唯一：同一交付物的同一 resultKey 只能有一个生产者。
-  const slots = new Set<string>()
-  for (const w of workItems) {
-    const slot = `${w.deliverableKey}\u0000${w.resultKey}`
-    if (slots.has(slot)) {
-      throw new AppError(400, 'PLAN_INVALID', `交付物「${w.deliverableKey}」的成果槽 ${w.resultKey} 有多个生产者`)
-    }
-    slots.add(slot)
-  }
+  assertWorkItemGraphIntegrity(workItems.map(w => ({
+    id: w.key,
+    title: w.title,
+    deliverableKey: w.deliverableKey,
+    dependsOn: w.dependsOn,
+    resultKey: w.resultKey,
+    contract: w.contract ?? null,
+  })), { checkResultSlots: true })
   return { deliverables, workItems, raw: plan }
 }
 
@@ -1168,6 +1286,27 @@ export class ProjectService {
     const bound = this.bindings.listByProject(id).find(b => b.channelId === input.channelId && b.status === 'active')
     if (!bound) throw new AppError(409, 'CHANNEL_NOT_IN_PROJECT', '工作项目标 Channel 未绑定到该项目')
     if (!input.title?.trim()) throw new AppError(400, 'BAD_REQUEST', '工作项标题不能为空')
+    const dependsOn = strictStringArray(input.dependsOn, 'dependsOn')
+    const contract = strictContract(input.contract, 'contract')
+    const existingItems = this.workItems.listByProject(id)
+    assertWorkItemGraphIntegrity([
+      ...existingItems.map(item => ({
+        id: item.id,
+        title: item.title,
+        deliverableKey: item.deliverableId,
+        dependsOn: parsePersistedStringArray(item.dependsOnJson, `工作项「${item.title}」dependsOn`),
+        resultKey: item.resultKey,
+        contract: parsePersistedContract(item.contractJson, `工作项「${item.title}」contract`),
+      })),
+      {
+        id: '__candidate__',
+        title: input.title.trim(),
+        deliverableKey: d.id,
+        dependsOn,
+        resultKey: input.resultKey?.trim() || 'main',
+        contract,
+      },
+    ])
     try {
       return this.workItems.create({
         projectId: id,
@@ -1177,10 +1316,10 @@ export class ProjectService {
         brief: input.brief,
         priority: input.priority,
         weight: input.weight,
-        dependsOnJson: JSON.stringify(input.dependsOn ?? []),
+        dependsOnJson: JSON.stringify(dependsOn),
         acceptanceJson: JSON.stringify(input.acceptanceCriteria ?? []),
-        resultKey: input.resultKey,
-        contractJson: JSON.stringify(input.contract ?? {}),
+        resultKey: input.resultKey?.trim() || 'main',
+        contractJson: JSON.stringify(contract ?? {}),
         planVersion: p.planVersion,
         execBudgetMinutes: input.execBudgetMinutes,
         traceId: input.dedupeKey ?? `work:${d.id}:${input.title.trim()}`,
@@ -3020,6 +3159,8 @@ export class ProjectService {
     brief?: string
     execBudgetMinutes?: number
     dependsOn?: string[]
+    contract?: Record<string, unknown> | null
+    resultKey?: string
     priority?: number
   }): ProjectWorkItemRow {
     const p = this.get(id, actor)
@@ -3036,13 +3177,44 @@ export class ProjectService {
     if (budget !== undefined && (!Number.isFinite(budget) || budget < 1 || budget > 24 * 60)) {
       throw new AppError(400, 'BAD_REQUEST', 'execBudgetMinutes 必须在 1–1440')
     }
-    const next = this.workItems.update(workItemId, {
+    const workItems = this.workItems.listByProject(id)
+    const nextDependsOn = patch.dependsOn !== undefined
+      ? strictStringArray(patch.dependsOn, 'dependsOn')
+      : parsePersistedStringArray(wi.dependsOnJson, `工作项「${wi.title}」dependsOn`)
+    const nextContract = patch.contract !== undefined
+      ? strictContract(patch.contract, 'contract')
+      : parsePersistedContract(wi.contractJson, `工作项「${wi.title}」contract`)
+    const nextResultKey = patch.resultKey !== undefined ? String(patch.resultKey).trim() : wi.resultKey
+    if (!nextResultKey) throw new AppError(400, 'PLAN_INVALID', 'resultKey 不能为空')
+    const candidate = workItems.map(item => item.id === wi.id
+      ? {
+          id: item.id,
+          title: title ?? item.title,
+          deliverableKey: item.deliverableId,
+          dependsOn: nextDependsOn,
+          resultKey: nextResultKey,
+          contract: nextContract,
+        }
+      : {
+          id: item.id,
+          title: item.title,
+          deliverableKey: item.deliverableId,
+          dependsOn: parsePersistedStringArray(item.dependsOnJson, `工作项「${item.title}」dependsOn`),
+          resultKey: item.resultKey,
+          contract: parsePersistedContract(item.contractJson, `工作项「${item.title}」contract`),
+        })
+    assertWorkItemGraphIntegrity(candidate)
+
+    const updatePatch = {
       ...(title !== undefined ? { title } : {}),
       ...(patch.brief !== undefined ? { brief: patch.brief } : {}),
       ...(budget !== undefined ? { execBudgetMinutes: Math.floor(budget) } : {}),
-      ...(patch.dependsOn !== undefined ? { dependsOnJson: JSON.stringify(patch.dependsOn) } : {}),
+      ...(patch.dependsOn !== undefined ? { dependsOnJson: JSON.stringify(nextDependsOn) } : {}),
+      ...(patch.contract !== undefined ? { contractJson: JSON.stringify(nextContract ?? {}) } : {}),
       ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
-    })
+      ...(patch.resultKey !== undefined ? { resultKey: nextResultKey } : {}),
+    }
+    const next = this.workItems.update(workItemId, updatePatch)
     if (!next) throw new AppError(404, 'NOT_FOUND', '工作项不存在')
     this.record(id, 'work.updated', actor, { workItemId, patch }, wi.traceId, 'work.updated', `work:${workItemId}:updated:${Date.now()}`, { fields: Object.keys(patch) })
     return next
