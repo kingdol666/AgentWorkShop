@@ -153,7 +153,7 @@ export class SessionContextService {
       // their rows and the existing line de-duplication keeps this idempotent.
       uptoCreatedAt: typeof stored?.uptoCreatedAt === 'string' ? stored.uptoCreatedAt : '',
       uptoMessageId: typeof stored?.uptoMessageId === 'string' ? stored.uptoMessageId : '',
-      lines: Array.isArray(stored?.lines) ? stored.lines.filter((line): line is string => typeof line === 'string') : [],
+      lines: Array.isArray(stored?.lines) ? this.trimCompressedLines(stored.lines.filter((line): line is string => typeof line === 'string')) : [],
       generation: Number.isSafeInteger(Number(stored?.generation)) && Number(stored?.generation) >= 0 ? Number(stored?.generation) : 0,
     })
     const brief = this.assemble(row, compressed)
@@ -269,8 +269,9 @@ export class SessionContextService {
 
   /** 压缩层确定性保留：优先保留最新 pinned，再用剩余预算保留最新 topics。 */
   private trimCompressedLines(lines: string[]): string[] {
-    const pinned = lines.filter(l => !l.startsWith('· ')).slice(-PINNED_MAX)
-    const topics = lines.filter(l => l.startsWith('· ')).slice(-TOPIC_MAX)
+    const unique = [...new Set(lines)]
+    const pinned = unique.filter(l => !l.startsWith('· ')).slice(-PINNED_MAX)
+    const topics = unique.filter(l => l.startsWith('· ')).slice(-TOPIC_MAX)
     const keptPinned: string[] = []
     for (const line of pinned.reverse()) {
       const bounded = short(line, 200)
