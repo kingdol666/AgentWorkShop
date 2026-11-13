@@ -116,7 +116,7 @@ test('history：关闭后的 session 仍可读，catalog 标记 closed', () => {
   }
 })
 
-test('task session：无 session_id 的旧任务按实例 Channel 回退可见（legacy 兼容）', () => {
+test('task session：无 session_id 的同频道旧任务不再回退混入 authoritative context', () => {
   const f = fixture()
   try {
     const taskSession = f.sessions.create({
@@ -128,7 +128,7 @@ test('task session：无 session_id 的旧任务按实例 Channel 回退可见�
       createdByKind: 'project',
       instanceKind: 'task',
     })
-    // 旧任务（本迁移前）只有 channel_id，没有 session_id
+    // 旧任务（本迁移前）只有 channel_id，没有 session_id；不得成为当前 session 的权威事实。
     f.tasks.create({
       channelId: f.channel.id,
       assigneeId: 'task-lead',
@@ -139,7 +139,140 @@ test('task session：无 session_id 的旧任务按实例 Channel 回退可见�
     const svc = new SessionContextService(f.db, f.sessions)
     const brief = svc.buildBrief(taskSession.id, { refresh: true })
     assert.equal(brief?.kind, 'task')
-    assert.equal(brief?.currentTask?.title, '遗留任务')
+    assert.equal(brief?.tasks.length, 0)
+    assert.equal(brief?.currentTask, null)
+  }
+  finally {
+    f.db.close()
+  }
+})
+
+test('task/project sessions：同频道双 session 只读严格 session_id，NULL 行不得混入', () => {
+  const f = fixture()
+  try {
+    const taskSession = f.sessions.create({
+      channelId: f.channel.id,
+      title: '任务会话',
+      memberMap: {},
+      instanceKind: 'task',
+    })
+    const projectSession = f.sessions.create({
+      channelId: f.channel.id,
+      title: '项目会话',
+      memberMap: {},
+      instanceKind: 'project',
+    })
+    const taskA = f.tasks.create({
+      channelId: f.channel.id,
+      assigneeId: 'task-lead',
+      title: '任务 A 权威事实',
+      state: 'WORKING',
+      sessionId: taskSession.id,
+    })
+    const taskB = f.tasks.create({
+      channelId: f.channel.id,
+      assigneeId: 'project-lead',
+      title: '项目 B 权威事实',
+      state: 'WORKING',
+      sessionId: projectSession.id,
+    })
+    f.tasks.create({
+      channelId: f.channel.id,
+      assigneeId: 'legacy-lead',
+      title: 'NULL 遗留事实',
+      state: 'WORKING',
+    })
+    f.messages.create({
+      channelId: f.channel.id,
+      taskId: taskA.id,
+      sessionId: taskSession.id,
+      role: 'ROLE_USER',
+      parts: [{ text: 'task-session-A message' }],
+    })
+    f.messages.create({
+      channelId: f.channel.id,
+      taskId: taskB.id,
+      sessionId: projectSession.id,
+      role: 'ROLE_USER',
+      parts: [{ text: 'project-session-B message' }],
+    })
+    f.messages.create({
+      channelId: f.channel.id,
+      role: 'ROLE_USER',
+      parts: [{ text: 'NULL legacy message' }],
+    })
+
+    const svc = new SessionContextService(f.db, f.sessions)
+    const taskBrief = svc.buildBrief(taskSession.id)
+    const projectBrief = svc.buildBrief(projectSession.id)
+    assert.deepEqual(taskBrief?.tasks.map(t => t.title), ['任务 A 权威事实'])
+    assert.deepEqual(projectBrief?.tasks.map(t => t.title), ['项目 B 权威事实'])
+    assert.deepEqual(taskBrief?.recentMessages.map(m => m.text), ['task-session-A message'])
+    assert.deepEqual(projectBrief?.recentMessages.map(m => m.text), ['project-session-B message'])
+    assert.ok(!JSON.stringify(taskBrief).includes('NULL'))
+    assert.ok(!JSON.stringify(projectBrief).includes('NULL'))
+
+    const taskHistory = svc.history(taskSession.id)
+    const projectHistory = svc.history(projectSession.id)
+    assert.deepEqual(taskHistory.filter(h => h.type === 'message').map(h => h.text), ['task-session-A message'])
+    assert.deepEqual(projectHistory.filter(h => h.type === 'message').map(h => h.text), ['project-session-B message'])
+    assert.ok(!JSON.stringify(taskHistory).includes('project-session-B'))
+    assert.ok(!JSON.stringify(projectHistory).includes('task-session-A'))
+  }
+  finally {
+    f.db.close()
+  }
+})
+
+test('recent/history：300 条消息返回真正最新窗口，rowid DESC 后 reverse', () => {
+  const f = fixture()
+  try {
+    for (let i = 1; i <= 300; i++) {
+      f.messages.create({
+        channelId: f.channel.id,
+        sessionId: f.session.id,
+        role: 'ROLE_USER',
+        parts: [{ text: `message-${String(i).padStart(3, '0')}` }],
+      })
+    }
+    const svc = new SessionContextService(f.db, f.sessions)
+    const brief = svc.buildBrief(f.session.id)
+    assert.deepEqual(brief?.recentTurns.map(m => m.text), [
+      'message-293', 'message-294', 'message-295', 'message-296',
+      'message-297', 'message-298', 'message-299', 'message-300',
+    ])
+    assert.deepEqual(svc.history(f.session.id, 8).filter(h => h.type === 'message').map(h => h.text), [
+      'message-293', 'message-294', 'message-295', 'message-296',
+      'message-297', 'message-298', 'message-299', 'message-300',
+    ])
+  }
+  finally {
+    f.db.close()
+  }
+})
+
+test('compaction：uptoSeq 作为游标分批推进，超过 200 条不停止或重复', () => {
+  const f = fixture()
+  try {
+    for (let i = 1; i <= 300; i++) {
+      f.messages.create({
+        channelId: f.channel.id,
+        sessionId: f.session.id,
+        role: 'ROLE_USER',
+        parts: [{ text: `compact-${String(i).padStart(3, '0')}` }],
+      })
+    }
+    const svc = new SessionContextService(f.db, f.sessions)
+    const first = svc.buildBrief(f.session.id, { refresh: true })!
+    const second = svc.buildBrief(f.session.id, { refresh: true })!
+    const third = svc.buildBrief(f.session.id, { refresh: true })!
+    assert.ok(first.compressed.uptoSeq > 0)
+    assert.ok(second.compressed.uptoSeq > first.compressed.uptoSeq, '第二批必须越过首批 cursor')
+    assert.equal(second.compressed.generation, first.compressed.generation + 1)
+    assert.equal(third.compressed.uptoSeq, second.compressed.uptoSeq, '已到 recent window 后不得重复折叠')
+    assert.equal(third.compressed.generation, second.compressed.generation)
+    assert.equal(new Set(second.compressed.lines).size, second.compressed.lines.length, '压缩行不得重复')
+    assert.ok(second.compressed.lines.some(line => line.includes('compact-292')), '第二批旧消息必须被折叠')
   }
   finally {
     f.db.close()

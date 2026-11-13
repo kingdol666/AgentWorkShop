@@ -161,9 +161,9 @@ export class SessionContextService {
    * 全程确定性、幂等（uptoId 推进 + 行去重），不调 LLM。
    */
   private foldOlderMessages(row: ChannelSessionRow, state: SessionCompressedState): SessionCompressedState {
-    const messages = this.listSessionMessages(row, 200)
-    const windowStart = Math.max(0, messages.length - RECENT_TURN_LIMIT)
-    const older = messages.slice(0, windowStart).filter(m => m.seq > state.uptoSeq)
+    const windowStart = Math.max(0, this.countSessionMessages(row) - RECENT_TURN_LIMIT)
+    const older = this.listSessionMessagesAfter(row, state.uptoSeq, 200)
+      .filter(m => m.seq <= this.sessionMessageSeqAtOffset(row, windowStart))
     if (older.length === 0) return state
     const pinned: string[] = []
     const topics: string[] = []
@@ -181,17 +181,34 @@ export class SessionContextService {
     }
   }
 
-  /** 按 rowid 正序列出 session 消息（manual 用 session_id；task/project 回退实例频道）。 */
+  /** 按稳定 rowid 倒序读取真正最新的 session 消息，再恢复正序。 */
   private listSessionMessages(row: ChannelSessionRow, limit: number): Array<{ id: string, seq: number, role: 'user' | 'agent', name: string, text: string, at: string }> {
-    const filter = row.instanceKind === 'task' || row.instanceKind === 'project'
-      ? 'session_id = ? OR (session_id IS NULL AND channel_id = ?)'
-      : 'session_id = ?'
-    const args = filter.includes('channel_id') ? [row.id, row.channelId, limit] : [row.id, limit]
     const rows = this.db.prepare(
       `SELECT id, rowid AS seq, role, from_agent_id AS fromAgentId, to_agent_id AS toAgentId,
               parts_json AS partsJson, created_at AS at
-       FROM messages WHERE ${filter} ORDER BY rowid ASC LIMIT ?`,
-    ).all(...args) as Array<{ id: string, seq: number, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
+       FROM messages
+       WHERE session_id = ?
+       ORDER BY rowid DESC LIMIT ?`,
+    ).all(row.id, limit) as Array<{ id: string, seq: number, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
+    return rows.reverse().map(m => ({
+      id: m.id,
+      seq: Number(m.seq),
+      role: m.role === 'ROLE_USER' ? 'user' as const : 'agent' as const,
+      name: m.role === 'ROLE_USER' ? '人类' : (m.fromAgentId ?? '系统'),
+      text: textOfParts(m.partsJson),
+      at: m.at,
+    })).filter(m => m.text)
+  }
+
+  /** 按 rowid 正序读取 cursor 之后的 session 消息；limit 是批次大小。 */
+  private listSessionMessagesAfter(row: ChannelSessionRow, afterSeq: number, limit: number): Array<{ id: string, seq: number, role: 'user' | 'agent', name: string, text: string, at: string }> {
+    const rows = this.db.prepare(
+      `SELECT id, rowid AS seq, role, from_agent_id AS fromAgentId, to_agent_id AS toAgentId,
+              parts_json AS partsJson, created_at AS at
+       FROM messages
+       WHERE session_id = ? AND rowid > ?
+       ORDER BY rowid ASC LIMIT ?`,
+    ).all(row.id, afterSeq, limit) as Array<{ id: string, seq: number, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
     return rows.map(m => ({
       id: m.id,
       seq: Number(m.seq),
@@ -200,6 +217,19 @@ export class SessionContextService {
       text: textOfParts(m.partsJson),
       at: m.at,
     })).filter(m => m.text)
+  }
+
+  private countSessionMessages(row: ChannelSessionRow): number {
+    const result = this.db.prepare('SELECT COUNT(*) AS count FROM messages WHERE session_id = ?').get(row.id) as { count: number }
+    return Number(result.count ?? 0)
+  }
+
+  private sessionMessageSeqAtOffset(row: ChannelSessionRow, offset: number): number {
+    if (offset <= 0) return 0
+    const result = this.db.prepare(
+      `SELECT rowid AS seq FROM messages WHERE session_id = ? ORDER BY rowid ASC LIMIT 1 OFFSET ?`,
+    ).get(row.id, offset - 1) as { seq: number } | undefined
+    return Number(result?.seq ?? 0)
   }
 
   /** 压缩层预算：pinned 上限 14 行，话题上限 10 行，总字符 ≤ 1200（超限先丢最旧话题）。 */
@@ -295,20 +325,16 @@ export class SessionContextService {
   history(sessionId: string, limit = 80): SessionHistoryItem[] {
     const row = this.sessions.findById(sessionId)
     if (!row) return []
-    const taskFilter = row.instanceKind === 'task' || row.instanceKind === 'project'
-      ? 'session_id = ? OR (session_id IS NULL AND channel_id = ?)'
-      : 'session_id = ?'
-    const args = taskFilter.includes('channel_id') ? [sessionId, row.channelId, limit] : [sessionId, limit]
     const tasks = this.db.prepare(
-      `SELECT id, title, state, progress, updated_at AS at FROM tasks
-       WHERE ${taskFilter} ORDER BY updated_at DESC LIMIT ?`,
-    ).all(...args) as Array<{ id: string, title: string, state: string, progress: number, at: string }>
+      `SELECT id, title, state, progress, updated_at AS at, rowid AS seq FROM tasks
+       WHERE session_id = ? ORDER BY rowid DESC LIMIT ?`,
+    ).all(sessionId, limit) as Array<{ id: string, title: string, state: string, progress: number, at: string, seq: number }>
     const messages = this.db.prepare(
       `SELECT id, role, from_agent_id AS fromAgentId, to_agent_id AS toAgentId,
-              parts_json AS partsJson, created_at AS at
-       FROM messages WHERE session_id = ? ORDER BY created_at ASC LIMIT ?`,
-    ).all(sessionId, limit) as Array<{ id: string, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
-    const history: SessionHistoryItem[] = [
+              parts_json AS partsJson, created_at AS at, rowid AS seq
+       FROM messages WHERE session_id = ? ORDER BY rowid DESC LIMIT ?`,
+    ).all(sessionId, limit) as Array<{ id: string, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string, seq: number }>
+    const history: Array<SessionHistoryItem & { seq: number }> = [
       ...tasks.map(t => ({
         type: 'task' as const,
         id: t.id,
@@ -317,6 +343,7 @@ export class SessionContextService {
         text: t.title,
         state: t.state,
         progress: Number(t.progress ?? 0),
+        seq: Number(t.seq),
       })),
       ...messages.map(m => ({
         type: 'message' as const,
@@ -325,12 +352,14 @@ export class SessionContextService {
         role: m.role,
         name: m.fromAgentId ?? m.toAgentId ?? 'system',
         text: textOfParts(m.partsJson),
+        seq: Number(m.seq),
       })),
     ]
     return history
       .filter(h => Boolean(h.text))
-      .sort((a, b) => String(a.at).localeCompare(String(b.at)))
+      .sort((a, b) => a.seq - b.seq)
       .slice(-limit)
+      .map(({ seq: _seq, ...item }) => item)
   }
 
   /** 当前 channel 的 active session（任务实例/项目办公室优先）。 */
@@ -346,14 +375,10 @@ export class SessionContextService {
     const workItem = row.projectWorkItemId
       ? this.db.prepare('SELECT title, brief FROM project_work_items WHERE id = ?').get(row.projectWorkItemId) as { title: string, brief: string } | undefined
       : undefined
-    const taskFilter = row.instanceKind === 'task' || row.instanceKind === 'project'
-      ? 'session_id = ? OR (session_id IS NULL AND channel_id = ?)'
-      : 'session_id = ?'
-    const taskArgs = taskFilter.includes('channel_id') ? [row.id, row.channelId] : [row.id]
     const taskRows = this.db.prepare(
       `SELECT id, title, state, progress, assignee_id AS assigneeId, artifacts_json AS artifactsJson, updated_at AS updatedAt
-       FROM tasks WHERE ${taskFilter} ORDER BY created_at ASC`,
-    ).all(...taskArgs) as Array<{
+       FROM tasks WHERE session_id = ? ORDER BY created_at ASC, rowid ASC`,
+    ).all(row.id) as Array<{
       id: string
       title: string
       state: string
