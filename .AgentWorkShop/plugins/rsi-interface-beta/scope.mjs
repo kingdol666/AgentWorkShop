@@ -16,7 +16,6 @@ export const ALLOWED_CAPABILITIES = Object.freeze([
 export const REQUIRED_FLAGS = Object.freeze([
   'AW_RSI_BETA_ENABLED',
   'AW_RSI_BETA_RESEARCH_ENABLED',
-  'AW_RSI_BETA_UI_ENABLED',
 ])
 export const RESERVED_DENY_FLAGS = Object.freeze([
   'AW_RSI_BETA_ACTUATION_ENABLED',
@@ -71,7 +70,7 @@ export function readBetaFlags(env = globalThis.process?.env ?? {}) {
     explicitlyEnabled,
     globallyEnabled: explicitlyEnabled && !hardDenied,
     simulatorEnabled: explicitlyEnabled && configured.AW_RSI_BETA_SIMULATOR_ENABLED && !hardDenied,
-    physicalHilEnabled: explicitlyEnabled && configured.AW_RSI_BETA_PHYSICAL_HIL_ENABLED && !hardDenied,
+    uiEnabled: configured.AW_RSI_BETA_UI_ENABLED === true,
   })
 }
 

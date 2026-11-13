@@ -191,24 +191,15 @@ test('valid scope is an exact intersection and capability mismatch fails closed'
   expectDenied(evaluateBetaScope({ flags: enabledFlags, persistence, requested: scope, persisted: activeState, capability: 'simulate', now: Date.parse('2026-11-13T14:01:00.000Z') }), 'FLAG_SIMULATOR_DISABLED')
 })
 
-test('setup keeps authenticated status routes available while globally disabled', async () => {
+test('feature-off setup is a true no-op with no routes, state, or host surfaces', async () => {
   await withEnv({}, async () => {
     const state = { rsi: { ...activeState } }
     const { context, routes, disposables, calls } = makeContext({ kv: state })
     await plugin.setup(context as never)
-    assert.equal(calls.route, 5)
-    const response = routes.get('GET /status')!({ query: scope }) as Record<string, unknown>
-    assert.equal(response.ok, false)
-    assert.equal(response.code, 'BETA_DISABLED')
-    assert.equal((response.flags as Record<string, unknown>).globallyEnabled, false)
-    const metadata = routes.get('GET /metadata')!() as Record<string, unknown>
-    assert.equal(metadata.visible, false)
-    assert.equal(metadata.status, 'default-deny')
-    assert.equal((metadata.flags as Record<string, unknown>).AW_RSI_BETA_ENABLED, false)
-    assert.equal((metadata.provenance as Record<string, unknown>).context != null, true)
-    assert.deepEqual(metadata.limitations instanceof Array, true)
+    assert.equal(calls.route, 0)
+    assert.equal(routes.size, 0)
+    assert.equal(disposables.length, 0)
     assert.equal(calls.omp + calls.daq + calls.dcw + calls.hooks, 0)
-    for (const dispose of disposables) await dispose()
   })
 })
 

@@ -315,6 +315,9 @@ export default {
     state.persistenceReady = initialPersistence.ok
     if (!initialPersistence.ok) logger.warn(`persistence unavailable; Beta remains default-deny: ${initialPersistence.reason}`)
 
+    // Feature-off is a true no-op: no routes, lifecycle markers, provider, or client panel.
+    if (!initialFlags.globallyEnabled) return
+
     if (initialFlags.globallyEnabled && initialPersistence.ok) {
       const runtimeResult = await resolveAdapterRuntime(ctx)
       state.runtime = runtimeResult.runtime
