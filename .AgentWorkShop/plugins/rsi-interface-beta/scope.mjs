@@ -16,6 +16,7 @@ export const ALLOWED_CAPABILITIES = Object.freeze([
 export const REQUIRED_FLAGS = Object.freeze([
   'AW_RSI_BETA_ENABLED',
   'AW_RSI_BETA_RESEARCH_ENABLED',
+  'AW_RSI_BETA_UI_ENABLED',
 ])
 export const RESERVED_DENY_FLAGS = Object.freeze([
   'AW_RSI_BETA_ACTUATION_ENABLED',
@@ -181,7 +182,7 @@ export function evaluateBetaScope({ flags, persistence, requested, persisted, ca
 }
 
 export function publicFlags(flags) {
-  if (!flags) return { globallyEnabled: false, explicitlyEnabled: false }
+  if (!flags) return { globallyEnabled: false, explicitlyEnabled: false, uiEnabled: false }
   return {
     AW_RSI_BETA_ENABLED: flags.AW_RSI_BETA_ENABLED === true,
     AW_RSI_BETA_RESEARCH_ENABLED: flags.AW_RSI_BETA_RESEARCH_ENABLED === true,
@@ -193,26 +194,34 @@ export function publicFlags(flags) {
     explicitlyEnabled: flags.explicitlyEnabled === true,
     simulatorEnabled: flags.simulatorEnabled === true,
     physicalHilEnabled: flags.physicalHilEnabled === true,
+    uiEnabled: flags.uiEnabled === true,
     hardDenied: flags.hardDenied === true,
     malformed: [...(flags.malformed ?? [])],
   }
 }
 
-/**
- * PR-2 is intentionally optional on this branch. The host may expose the
- * registry as a service later; absence is a normal, fail-closed state.
- */
+export async function resolveAdapterRuntime(ctx) {
+  const get = ctx?.services?.get
+  if (typeof get !== 'function') return { runtime: null, reason: 'CONTEXT_RUNTIME_UNAVAILABLE' }
+  try {
+    const runtime = await get('context.runtime')
+    if (runtime && typeof runtime === 'object') return { runtime, reason: null, service: 'context.runtime' }
+  }
+  catch {
+    // Fail closed: the host runtime is required for real Beta integration.
+  }
+  return { runtime: null, reason: 'CONTEXT_RUNTIME_UNAVAILABLE' }
+}
+
 export async function resolveAdapterRegistry(ctx) {
   const get = ctx?.services?.get
   if (typeof get !== 'function') return { registry: null, reason: 'ADAPTER_REGISTRY_UNAVAILABLE' }
-  for (const name of ['context.adapterRegistry', 'context.adapters', 'adapterRegistry']) {
-    try {
-      const registry = await get(name)
-      if (registry && typeof registry === 'object') return { registry, reason: null, service: name }
-    }
-    catch {
-      // Optional seam: an absent service is not a plugin load failure.
-    }
+  try {
+    const registry = await get('context.adapterRegistry')
+    if (registry && typeof registry === 'object') return { registry, reason: null, service: 'context.adapterRegistry' }
+  }
+  catch {
+    // Fail closed: the host runtime is required for real Beta integration.
   }
   return { registry: null, reason: 'ADAPTER_REGISTRY_UNAVAILABLE' }
 }

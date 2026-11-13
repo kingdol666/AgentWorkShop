@@ -85,6 +85,7 @@
     "test:twin-provider": "tsx --test tests/aml-twin-provider-registry.test.ts",
     "test:unit": "tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/*.test.ts",
     "test:acceptance-context": "node --test tests/context-learning-acceptance.test.mjs",
+    "test:acceptance-context-learning": "node --test tests/context-learning-acceptance.test.mjs tests/context-learning-services-acceptance.test.mjs",
     "prepare": "husky",
     "test:api-live": "node scripts/api-live-e2e.mjs",
     "test:e2e-line": "node scripts/e2e-line-governance.mjs",

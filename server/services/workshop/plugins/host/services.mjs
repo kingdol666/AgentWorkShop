@@ -30,6 +30,16 @@ export const servicesExt = (g.__awPluginServices ??= {
 /** 插件可获取的后端运行时对象(只读取数面;懒加载避免循环导入,失败即抛由插件兜底) */
 export async function seedRuntimeServices() {
   if (servicesExt.registry.has('daq')) return
+  servicesExt.register('context.runtime', async () => {
+    const host = g.__awPluginHost
+    if (host?.contextRuntime) return host.contextRuntime
+    const { createContextRuntimeService } = await import('@/server/services/workshop/context/runtime')
+    const manager = await import('@/server/plugins/workshop')
+    const runtime = createContextRuntimeService({ repos: manager.getWorkshopManager().deps.repos })
+    if (host) host.contextRuntime = runtime
+    return runtime
+  })
+  servicesExt.register('context.adapterRegistry', async () => (await servicesExt.get('context.runtime')).registry)
   servicesExt.register('daq', async () => {
     const storage = await import('@/server/services/workshop/daq/storage/index')
     const nodes = await import('@/server/services/workshop/daq/daq-node.repo')

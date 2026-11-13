@@ -14,7 +14,7 @@ import {
   publicFlags,
   readBetaFlags,
   requestedScopeFromEvent,
-  resolveAdapterRegistry,
+  resolveAdapterRuntime,
 } from './scope.mjs'
 
 const statusPath = '/status'
@@ -96,15 +96,13 @@ function publicMetadata(state) {
   const flags = readBetaFlags()
   const persistence = state.persistenceReady ? readPersistence(state.ctx) : { ok: false, code: 'PERSISTENCE_UNAVAILABLE' }
   const persistedScope = persistence.ok && persistence.scope && typeof persistence.scope === 'object' ? persistence.scope : null
-  const scopeResult = flags.globallyEnabled && persistence.ok && persistedScope
-    ? evaluateBetaScope({
-        flags,
-        persistence,
-        requested: persistedScope,
-        persisted: persistedScope,
-        maxAgeMs: state.maxAgeMs,
-      })
-    : { ok: false, code: flags.globallyEnabled ? (persistence.ok ? 'SCOPE_STATE_MISSING' : persistence.code) : 'BETA_DISABLED' }
+  const runtimeScope = persistedScope && state.runtime?.authorizeScope?.({
+    principal: state.ctx?.principal ?? null,
+    scope: persistedScope,
+  })
+  const scopeResult = flags.globallyEnabled && persistence.ok && persistedScope && runtimeScope?.ok
+    ? evaluateBetaScope({ flags, persistence, requested: persistedScope, persisted: persistedScope, maxAgeMs: state.maxAgeMs })
+    : { ok: false, code: flags.globallyEnabled ? (persistence.ok ? (runtimeScope?.code ?? 'SCOPE_FORBIDDEN') : persistence.code) : 'BETA_DISABLED' }
   const adapter = publicAdapterStatus(state.adapterStatus)
   const scoped = scopeResult.ok
   const ready = scoped && adapter.ok
@@ -116,7 +114,7 @@ function publicMetadata(state) {
     visible: scoped,
     code: ready ? 'READY' : (flags.hardDenied ? 'BETA_HARD_DENY' : scopeResult.code ?? adapter.code),
     flags: publicFlags(flags),
-    requiredFlags: ['AW_RSI_BETA_ENABLED', 'AW_RSI_BETA_RESEARCH_ENABLED'],
+    requiredFlags: ['AW_RSI_BETA_ENABLED', 'AW_RSI_BETA_RESEARCH_ENABLED', 'AW_RSI_BETA_UI_ENABLED'],
     requiredScope: [...REQUIRED_SCOPE_KEYS],
     scopeState: scoped ? 'bound' : 'denied',
     scopeCode: scoped ? 'SCOPE_BOUND' : scopeResult.code,
@@ -227,10 +225,26 @@ function routeResult(state, event, capability) {
   const flags = readBetaFlags()
   const persistence = state.persistenceReady ? readPersistence(state.ctx) : { ok: false, code: 'PERSISTENCE_UNAVAILABLE', reason: 'plugin state persistence failed' }
   const requested = requestedScopeFromEvent(event)
+  const principal = event?.awUser ?? event?.context?.awUser ?? null
+  const authorization = state.runtime?.authorizeScope?.({ principal, scope: requested })
+  if (!authorization?.ok) {
+    return {
+      apiVersion: API_VERSION,
+      plugin: PLUGIN_NAME,
+      ok: false,
+      available: false,
+      code: flags.globallyEnabled ? 'SCOPE_FORBIDDEN' : (flags.hardDenied ? 'BETA_HARD_DENY' : 'BETA_DISABLED'),
+      reason: flags.globallyEnabled ? 'requested Beta scope is not authorized' : 'Beta flags are not explicitly enabled',
+      capability: capability ?? null,
+      flags: publicFlags(flags),
+      persistence: publicPersistence(persistence),
+      adapter: publicAdapterStatus(state.adapterStatus),
+    }
+  }
   const result = evaluateBetaScope({
     flags,
     persistence,
-    requested,
+    requested: authorization.scope,
     persisted: persistence.scope,
     capability,
     maxAgeMs: state.maxAgeMs,
@@ -257,6 +271,7 @@ export default {
   apiVersion: API_VERSION,
   auth: 'user',
   client: './client.mjs',
+  clientFlags: ['AW_RSI_BETA_UI_ENABLED'],
   config: PLUGIN_CONFIG,
   settings: [
     {
@@ -276,6 +291,7 @@ export default {
       maxAgeMs: Number(ctx?.config?.get?.(`plugins.${PLUGIN_NAME}.scope_max_age_ms`)) || DEFAULT_SCOPE_MAX_AGE_MS,
       adapterStatus: { ok: false, code: 'BETA_DISABLED' },
       persistenceReady: false,
+      runtime: null,
     }
 
     // Read-only status is intentionally still loadable while flags are off.
@@ -286,12 +302,33 @@ export default {
     if (!initialPersistence.ok) logger.warn(`persistence unavailable; Beta remains default-deny: ${initialPersistence.reason}`)
 
     if (initialFlags.globallyEnabled && initialPersistence.ok) {
-      const adapter = createReadOnlyAdapter(() => ({
-        flags: readBetaFlags(),
-        persistence: readPersistence(ctx),
-        maxAgeMs: state.maxAgeMs,
-      }))
-      state.adapterStatus = await registerAdapter(ctx, adapter, logger)
+      const runtimeResult = await resolveAdapterRuntime(ctx)
+      state.runtime = runtimeResult.runtime
+      if (!state.runtime) {
+        state.adapterStatus = { ok: false, code: runtimeResult.reason }
+      }
+      else {
+        const industrial = typeof state.runtime.createIndustrialReadAdapter === 'function'
+          ? state.runtime.createIndustrialReadAdapter({ adapterId: ADAPTER_ID, version: ADAPTER_VERSION, ownerId: PLUGIN_NAME })
+          : null
+        if (industrial && typeof state.runtime.registerOne === 'function') {
+          try {
+            const registration = state.runtime.registerOne(industrial, PLUGIN_NAME)
+            state.adapterStatus = { ok: true, service: 'context.runtime', registration }
+            ctx.onDispose(async () => {
+              try { await state.runtime.registry.unregister(industrial.adapterId, industrial.version) }
+              catch { /* host registry may already be disposing */ }
+            })
+          }
+          catch (error) {
+            logger.warn(`adapter registration failed: ${error?.message ?? error}`)
+            state.adapterStatus = { ok: false, code: 'ADAPTER_REGISTRATION_FAILED' }
+          }
+        }
+        else {
+          state.adapterStatus = { ok: false, code: 'ADAPTER_RUNTIME_UNSUPPORTED' }
+        }
+      }
     }
 
     ctx.onDispose(() => {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, extname, isAbsolute, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -18,6 +18,23 @@ const MODES = new Set(['simulation', 'isolated-home', 'physical-hil'])
 const CAPABILITIES = new Set(['discover', 'snapshot', 'observe', 'query', 'simulate', 'replay', 'verify', 'export'])
 const READ_CAPABILITIES = new Set(['discover', 'snapshot', 'observe', 'query', 'replay', 'verify', 'export'])
 const DEFAULT_BUDGET = Object.freeze({ maxDurationMs: 60_000, maxSteps: 32, maxBytes: 1_048_576, maxSources: 16, maxOutputBytes: 524_288, maxRsiIterations: 8 })
+export class AcceptanceProductError extends Error {
+  constructor(code, message, options = {}) {
+    super(message, options)
+    this.name = 'AcceptanceProductError'
+    this.code = code
+    this.exitCode = EXIT_FAIL
+  }
+}
+
+export class AcceptanceBlockedError extends Error {
+  constructor(code, message, options = {}) {
+    super(message, options)
+    this.name = 'AcceptanceBlockedError'
+    this.code = code
+    this.exitCode = EXIT_BLOCKED
+  }
+}
 
 function stable(value) {
   if (Array.isArray(value)) return value.map(stable)
@@ -44,23 +61,23 @@ function clone(value) {
 }
 
 function text(value, name) {
-  if (typeof value !== 'string' || value.trim().length === 0) throw new Error(`${name} must be a non-empty string`)
+  if (typeof value !== 'string' || value.trim().length === 0) throw new AcceptanceProductError('INVALID_ASSERTION', `${name} must be a non-empty string`)
   return value.trim()
 }
 
 function record(value, name) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${name} must be an object`)
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new AcceptanceProductError('INVALID_ASSERTION', `${name} must be an object`)
   return value
 }
 
 function array(value, name) {
-  if (!Array.isArray(value)) throw new Error(`${name} must be an array`)
+  if (!Array.isArray(value)) throw new AcceptanceProductError('INVALID_ASSERTION', `${name} must be an array`)
   return value
 }
 
 function parseArgs(argv) {
-  const options = { profile: DEFAULT_PROFILE, mode: DEFAULT_MODE, seed: DEFAULT_SEED, noNetwork: false, report: undefined, baseline: undefined, help: false }
-  const valueOptions = new Set(['profile', 'mode', 'report', 'baseline', 'seed'])
+  const options = { profile: DEFAULT_PROFILE, mode: DEFAULT_MODE, seed: DEFAULT_SEED, noNetwork: false, report: undefined, baseline: undefined, writeBaseline: undefined, help: false }
+  const valueOptions = new Set(['profile', 'mode', 'report', 'baseline', 'write-baseline', 'seed'])
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index]
     if (argument === '--help' || argument === '-h') {
@@ -89,7 +106,8 @@ function usage() {
     `  --profile <name|path>  Context profile (default: ${DEFAULT_PROFILE})`,
     `  --mode <simulation|isolated-home|physical-hil>  Execution classification (default: ${DEFAULT_MODE})`,
     '  --report <path>        Write the deterministic JSON report',
-    '  --baseline <path>      Compare acceptanceFingerprint with a prior report',
+    '  --baseline <path>      Compare acceptanceFingerprint with a prior report or baseline manifest',
+    '  --write-baseline <path> Write a versioned baseline manifest for later comparison',
     `  --seed <value>         Deterministic candidate ID seed (default: ${DEFAULT_SEED})`,
     '  --no-network           Disable network work (fixture adapters are offline)',
     '  --help                 Show this help',
@@ -102,14 +120,12 @@ function profilePath(value) {
 }
 
 function loadJson(path, name) {
-  let parsed
   try {
-    parsed = JSON.parse(readFileSync(path, 'utf8'))
+    return record(JSON.parse(readFileSync(path, 'utf8')), name)
   }
   catch (error) {
-    throw new Error(`cannot read ${name} ${path}: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
+    throw new AcceptanceBlockedError('EXTERNAL_INPUT_UNAVAILABLE', `cannot read ${name} ${path}: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
   }
-  return record(parsed, name)
 }
 
 function validateProfile(profile) {
@@ -118,21 +134,21 @@ function validateProfile(profile) {
   const adapter = record(profile.adapter, 'profile.adapter')
   text(adapter.id, 'profile.adapter.id')
   text(adapter.version, 'profile.adapter.version')
-  if (!['none', 'candidate-only'].includes(adapter.sideEffect)) throw new Error('profile.adapter.sideEffect must be none or candidate-only')
+  if (!['none', 'candidate-only'].includes(adapter.sideEffect)) throw new AcceptanceProductError('INVALID_ASSERTION', 'profile.adapter.sideEffect must be none or candidate-only')
   const capabilities = array(adapter.capabilities, 'profile.adapter.capabilities')
-  if (capabilities.length === 0 || capabilities.some(capability => !CAPABILITIES.has(capability))) throw new Error('profile.adapter.capabilities contains an unsupported capability')
+  if (capabilities.length === 0 || capabilities.some(capability => !CAPABILITIES.has(capability))) throw new AcceptanceProductError('INVALID_ASSERTION', 'profile.adapter.capabilities contains an unsupported capability')
   const research = record(profile.research, 'profile.research')
   text(research.objective, 'profile.research.objective')
   text(research.question, 'profile.research.question')
   const steps = array(research.steps, 'profile.research.steps')
-  if (steps.length === 0) throw new Error('profile.research.steps must not be empty')
+  if (steps.length === 0) throw new AcceptanceProductError('INVALID_ASSERTION', 'profile.research.steps must not be empty')
   const budget = { ...DEFAULT_BUDGET, ...(research.budget ?? {}) }
   for (const [key, value] of Object.entries(budget)) {
-    if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`profile.research.budget.${key} must be a positive integer`)
+    if (!Number.isSafeInteger(value) || value <= 0) throw new AcceptanceProductError('INVALID_ASSERTION', `profile.research.budget.${key} must be a positive integer`)
   }
-  if (steps.length > budget.maxSteps) throw new Error('profile.research.steps exceeds maxSteps')
+  if (steps.length > budget.maxSteps) throw new AcceptanceProductError('INVALID_ASSERTION', 'profile.research.steps exceeds maxSteps')
   const acceptance = record(profile.acceptance ?? {}, 'profile.acceptance')
-  if (acceptance.expectedClassification && !MODES.has(acceptance.expectedClassification)) throw new Error('profile.acceptance.expectedClassification is not a supported mode')
+  if (acceptance.expectedClassification && !MODES.has(acceptance.expectedClassification)) throw new AcceptanceProductError('INVALID_ASSERTION', 'profile.acceptance.expectedClassification is not a supported mode')
   return { ...profile, adapter: { ...adapter, capabilities: [...capabilities] }, research: { ...research, steps: [...steps], budget }, acceptance }
 }
 
@@ -145,7 +161,7 @@ function loadProfile(value) {
 function loadFixture(profile) {
   const fixtures = record(loadJson(FIXTURE_FILE, 'context fixture file').fixtures, 'context fixture file fixtures')
   const fixture = fixtures[profile.fixtureId]
-  if (!fixture) throw new Error(`fixture ${profile.fixtureId} is not defined`)
+  if (!fixture) throw new AcceptanceProductError('INVALID_ASSERTION', `fixture ${profile.fixtureId} is not defined`)
   const output = record(fixture, `fixture ${profile.fixtureId}`)
   text(output.capturedAt, `fixture ${profile.fixtureId}.capturedAt`)
   text(output.sourceRef, `fixture ${profile.fixtureId}.sourceRef`)
@@ -414,10 +430,20 @@ function fingerprint(report) {
 
 function compareBaseline(report, baselinePath) {
   if (!baselinePath) return { provided: false, matched: null }
-  const baseline = loadJson(resolve(process.cwd(), baselinePath), 'baseline report')
-  const expected = baseline.acceptanceFingerprint ?? baseline.summary?.acceptanceFingerprint
-  if (typeof expected !== 'string' || expected.length === 0) throw new Error('baseline report does not contain acceptanceFingerprint')
-  return { provided: true, matched: expected === report.acceptanceFingerprint, path: baselinePath }
+  const path = resolve(process.cwd(), baselinePath)
+  if (!existsSync(path)) throw new AcceptanceBlockedError('BASELINE_UNAVAILABLE', `baseline file does not exist: ${path}`)
+  const baseline = loadJson(path, 'baseline manifest')
+  const expected = baseline.acceptanceFingerprint ?? baseline.acceptance?.acceptanceFingerprint ?? baseline.summary?.acceptanceFingerprint
+  if (typeof expected !== 'string' || expected.length === 0) throw new AcceptanceBlockedError('BASELINE_INCOMPATIBLE', 'baseline manifest does not contain acceptanceFingerprint; generate one with --write-baseline')
+  return { provided: true, matched: expected === report.acceptanceFingerprint, path }
+}
+
+function writeBaseline(path, report) {
+  if (!path) return undefined
+  const target = resolve(process.cwd(), path)
+  mkdirSync(dirname(target), { recursive: true })
+  writeFileSync(target, `${JSON.stringify({ manifestVersion: 'context-learning.acceptance-baseline.v1', kind: 'context-learning-acceptance-baseline', generatedAt: new Date().toISOString(), runner: 'scripts/acceptance-context-learning.mjs', reportVersion: report.reportVersion, profile: report.profile, execution: report.execution, acceptanceFingerprint: report.acceptanceFingerprint }, null, 2)}\n`, 'utf8')
+  return target
 }
 
 function writeReport(path, report) {
@@ -488,14 +514,16 @@ async function main() {
     if (!MODES.has(options.mode)) throw new Error(`--mode must be one of ${[...MODES].join(', ')}`)
     text(options.seed, '--seed')
     const result = runAcceptance(options)
+    if (options.writeBaseline) writeBaseline(options.writeBaseline, result.report)
     writeReport(options.report, result.report)
     console.log(`CONTEXT_ACCEPTANCE status=${result.report.acceptance.status} profile=${result.report.profile.id} mode=${result.report.execution.classification} exit=${result.exitCode}`)
     if (options.report) console.log(`report=${resolve(process.cwd(), options.report)}`)
     process.exitCode = result.exitCode
   }
   catch (error) {
-    console.error(`CONTEXT_ACCEPTANCE status=ERROR exit=${EXIT_BLOCKED} message=${error instanceof Error ? error.message : String(error)}`)
-    process.exitCode = EXIT_BLOCKED
+    const exitCode = Number(error?.exitCode) === EXIT_FAIL ? EXIT_FAIL : EXIT_BLOCKED
+    console.error(`CONTEXT_ACCEPTANCE status=${exitCode === EXIT_FAIL ? 'FAIL' : 'BLOCKED'} exit=${exitCode} message=${error instanceof Error ? error.message : String(error)}`)
+    process.exitCode = exitCode
   }
 }
 
