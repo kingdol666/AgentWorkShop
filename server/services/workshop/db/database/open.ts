@@ -15,6 +15,7 @@ import { migrateHarnessProfiles } from './migrations-harness-profile'
 import { migrateHarnessBenchRuns } from './migrations-harness-bench'
 import { migrateImprovementActions } from './migrations-improvement-actions'
 import { migrateBlindVerifications } from './migrations-blind-verification'
+import { ensureMigrationLedger, assertMigrationFingerprint, fingerprintMigration, recordMigration } from './migration-ledger'
 import { seedDefaultWorkshopData } from './seed'
 
 export const require = createRequire(import.meta.url)
@@ -41,6 +42,11 @@ export function initWorkshopDb(db: DatabaseSync): void {
   db.exec('PRAGMA synchronous = NORMAL;')
   db.exec('PRAGMA foreign_keys = ON;')
   db.exec(SCHEMA_SQL)
+  ensureMigrationLedger(db)
+  // Verify the recorded contract before incremental legacy migrations run; first boot records it.
+  const contractFingerprint = fingerprintMigration(SCHEMA_SQL)
+  assertMigrationFingerprint(db, 1, contractFingerprint)
+  recordMigration(db, { version: 1, name: 'schema-contract', fingerprint: contractFingerprint })
   // Add guardrail metadata before any legacy tasks-table rebuild so values can be copied safely.
   migrateAgentTeamTaskGuardrailColumns(db)
   migrateAgentTeamTaskQueueColumns(db)
