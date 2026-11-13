@@ -241,7 +241,7 @@ export class SessionContextService {
               parts_json AS partsJson, created_at AS at
        FROM messages
        WHERE session_id = ? AND rowid > ? AND rowid <= ?
-       ORDER BY created_at ASC, rowid ASC LIMIT ?`,
+       ORDER BY rowid ASC LIMIT ?`,
     ).all(row.id, state.uptoSeq, boundary.seq, limit) as Array<{ id: string, seq: number, role: string, fromAgentId: string | null, toAgentId: string | null, partsJson: string, at: string }>
     return rows.map(m => ({
       id: m.id,
@@ -258,7 +258,7 @@ export class SessionContextService {
     return Number(result.count ?? 0)
   }
 
-  /** 按当前 rowid 定位 recent 边界；该 rowid 只服务当前快照的窗口。 */
+  /** 按同一入队 rowid 顺序定位 recent 边界；created_at/id 仅用于 cursor 复用校验。 */
   private sessionMessageBoundaryAtOffset(row: ChannelSessionRow, offset: number): { at: string, id: string, seq: number } | undefined {
     if (offset <= 0) return undefined
     return this.db.prepare(
