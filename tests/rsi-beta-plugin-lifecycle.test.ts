@@ -22,6 +22,7 @@ const activeState = {
 const enabledFlags = readBetaFlags({
   AW_RSI_BETA_ENABLED: '1',
   AW_RSI_BETA_RESEARCH_ENABLED: '1',
+  AW_RSI_BETA_UI_ENABLED: '1',
 })
 const persistence = { ok: true }
 
@@ -30,7 +31,7 @@ function expectDenied(result: { ok: boolean, code: string }, code: string) {
   assert.equal(result.code, code)
 }
 
-function makeContext({ kv = {}, registry = null, config = {} } = {}) {
+function makeContext({ kv = {}, registry = null, config = {}, onRegister = () => undefined, onDispose = () => undefined } = {}) {
   const routes = new Map<string, (event?: unknown) => unknown>()
   const disposables: Array<() => unknown> = []
   const calls = { omp: 0, daq: 0, dcw: 0, hooks: 0, route: 0 }
@@ -55,6 +56,27 @@ function makeContext({ kv = {}, registry = null, config = {} } = {}) {
     },
     services: {
       get(name: string) {
+        if (name === 'context.runtime') {
+          if (!registry) throw new Error('missing optional runtime')
+          return {
+            registerOne(adapter: unknown) {
+              onRegister(adapter)
+              return { ok: true, adapterId: 'rsi-interface-beta', version: '0.1.0', generation: 1, state: 'ready', drainedGenerations: [] }
+            },
+            createIndustrialReadAdapter: () => ({
+              adapterId: 'rsi-interface-beta', apiVersion: API_VERSION, version: '0.1.0', generation: 1,
+              capabilities: Object.fromEntries(adapterDescriptor.capabilities.map(capability => [capability, false])), sideEffect: 'none',
+              health: { status: 'healthy' }, timeout: { defaultMs: 1000, maxMs: 5000 }, owner: { ownerId: 'rsi-interface-beta', dispose: async () => undefined },
+              drain: async () => undefined, retire: async () => undefined,
+            }),
+            authorizeScope: ({ scope }: { scope: typeof activeState }) => ({ ok: true, scope }),
+            registry: {
+              unregister: async () => {
+                if (typeof (registry as { unregister?: () => Promise<void> }).unregister === 'function') await (registry as { unregister: () => Promise<void> }).unregister()
+              },
+            },
+          }
+        }
         if (name === 'context.adapterRegistry') {
           if (!registry) throw new Error('missing optional registry')
           return registry
@@ -69,6 +91,7 @@ function makeContext({ kv = {}, registry = null, config = {} } = {}) {
     },
     onDispose: (fn: () => unknown) => {
       disposables.push(fn)
+      onDispose(fn)
       return fn
     },
     // These counters make the no-bypass surface explicit in the test fixture.
@@ -96,6 +119,7 @@ function withEnv(values: Record<string, string | undefined>, fn: () => Promise<v
   const names = [
     'AW_RSI_BETA_ENABLED',
     'AW_RSI_BETA_RESEARCH_ENABLED',
+    'AW_RSI_BETA_UI_ENABLED',
     'AW_RSI_BETA_SIMULATOR_ENABLED',
     'AW_RSI_BETA_PHYSICAL_HIL_ENABLED',
     'AW_RSI_BETA_ACTUATION_ENABLED',
@@ -189,7 +213,7 @@ test('setup keeps authenticated status routes available while globally disabled'
 })
 
 test('enabled setup uses the optional registry seam and disposes on reload/disable', async () => {
-  await withEnv({ AW_RSI_BETA_ENABLED: '1', AW_RSI_BETA_RESEARCH_ENABLED: '1' }, async () => {
+  await withEnv({ AW_RSI_BETA_ENABLED: '1', AW_RSI_BETA_RESEARCH_ENABLED: '1', AW_RSI_BETA_UI_ENABLED: '1', AW_RSI_BETA_SIMULATOR_ENABLED: '1' }, async () => {
     const state = {
       [SCOPE_STATE_KEY]: {
         ...activeState,
@@ -208,12 +232,23 @@ test('enabled setup uses the optional registry seam and disposes on reload/disab
           },
         }
       },
+      unregister: async () => {
+        disposed++
+        registered = null
+      },
     }
-    const { context, routes, disposables } = makeContext({ kv: state, registry })
+    const { context, routes, disposables } = makeContext({
+      kv: state,
+      registry,
+      onRegister: (adapter) => {
+        registered = adapter
+      },
+      onDispose: () => undefined,
+    })
     await plugin.setup(context as never)
     assert.equal(registered != null, true)
     assert.equal((registered as typeof adapterDescriptor).apiVersion, API_VERSION)
-    assert.deepEqual((registered as typeof adapterDescriptor).capabilities, adapterDescriptor.capabilities)
+    assert.deepEqual(Object.keys((registered as typeof adapterDescriptor).capabilities), [...adapterDescriptor.capabilities])
     const response = routes.get('GET /status')!({ query: scope }) as Record<string, unknown>
     assert.equal(response.ok, true)
     assert.equal(response.code, 'READY')
@@ -233,7 +268,7 @@ test('enabled setup uses the optional registry seam and disposes on reload/disab
 })
 
 test('persistence failure remains default-deny and cannot produce an empty success', async () => {
-  await withEnv({ AW_RSI_BETA_ENABLED: '1', AW_RSI_BETA_RESEARCH_ENABLED: '1' }, async () => {
+  await withEnv({ AW_RSI_BETA_ENABLED: '1', AW_RSI_BETA_RESEARCH_ENABLED: '1', AW_RSI_BETA_UI_ENABLED: '1', AW_RSI_BETA_SIMULATOR_ENABLED: '1' }, async () => {
     const { context, routes, disposables } = makeContext({ kv: new Error('kv unavailable') })
     await plugin.setup(context as never)
     const response = routes.get('GET /status')!({ query: scope }) as Record<string, unknown>

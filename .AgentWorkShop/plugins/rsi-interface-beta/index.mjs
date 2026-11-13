@@ -227,6 +227,20 @@ function routeResult(state, event, capability) {
   const requested = requestedScopeFromEvent(event)
   const principal = event?.awUser ?? event?.context?.awUser ?? null
   const authorization = state.runtime?.authorizeScope?.({ principal, scope: requested })
+  if (!persistence.ok) {
+    return {
+      apiVersion: API_VERSION,
+      plugin: PLUGIN_NAME,
+      ok: false,
+      available: false,
+      code: persistence.code ?? 'PERSISTENCE_UNAVAILABLE',
+      reason: 'Beta scope persistence is unavailable',
+      capability: capability ?? null,
+      flags: publicFlags(flags),
+      persistence: publicPersistence(persistence),
+      adapter: publicAdapterStatus(state.adapterStatus),
+    }
+  }
   if (!authorization?.ok) {
     return {
       apiVersion: API_VERSION,
