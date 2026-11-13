@@ -26,7 +26,7 @@
   {
     "name": "complete_task",
     "label": "Complete Task",
-    "description": "Mark a task as completed with final deliverables. Workers call this when their assigned task is done. Lead calls this for parent tasks when all children are done.",
+    "description": "Mark a task as completed with final deliverables. Workers call this when their assigned task is done. Lead calls this for parent tasks when all children are done. If the task text contains a numeric target band (e.g. 32.5±0.35) and the task made device writes, you MUST pass verification with the target DAQ node; the platform independently re-reads it and rejects completion when out of band or guards fail.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -41,6 +41,42 @@
         "task_id": {
           "type": "string",
           "description": "Task ID to complete. If omitted, completes your current assigned task."
+        },
+        "verification": {
+          "type": "object",
+          "description": "Required for goal tasks whose text contains a numeric target band. Supply the target DAQ node and any guard nodes; the platform independently re-reads fresh DAQ values before accepting completion.",
+          "properties": {
+            "node_id": {
+              "type": "string",
+              "description": "DAQ node id of the target measurement (must be inside your DAQ binding surface)"
+            },
+            "guards": {
+              "type": "array",
+              "description": "Guard nodes and limits; each is re-read independently",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "node_id": {
+                    "type": "string"
+                  },
+                  "min": {
+                    "type": "number"
+                  },
+                  "max": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "node_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "node_id"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
