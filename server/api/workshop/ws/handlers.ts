@@ -3,7 +3,7 @@
  * (由 server/api/workshop/ws.ts 按职责拆出;内容逐行原文搬运)
  */
 import type { AgentChannelManager } from '../../../services/workshop/runtime/manager'
-import { AEP_VERSION } from './shared'
+import { AEP_VERSION, peerIdentities, peerUsers } from './shared'
 import { attachScenePeer, ensureHubBound, resolveChannelIdFromUrl, resolveQueryParam, sendControl } from './hub'
 import { bindUserPeer, unbindUserPeer } from '../../../services/workshop/runtime/user-notification-hub'
 import { defineWebSocketHandler } from 'h3'
@@ -11,6 +11,7 @@ import { ensureStream } from './streams'
 import { getWorkshopManager } from '../../../plugins/workshop'
 import { handleNotificationUplink } from './notification-uplink'
 import { publish } from './publish'
+import { resolveWsTicketUser } from '../../../services/auth/browser-session'
 import { resolveUserByToken } from '../../../services/user.service'
 import { subscribePeer, unsubscribePeer } from './peer-sub'
 import { unregisterScenePeer } from '../../../services/workshop/scene-events'
@@ -45,14 +46,12 @@ export default defineWebSocketHandler({
       return
     }
     ensureHubBound(manager)
-    // 场景事件(daq.reading / dcw.* / device.* 等无频道归属广播)鉴权扇出:
-    // ?token= 有效才注册 scene peer(按用户产线可见集过滤);无/坏 token 的连接
-    // 收不到任何 scene 帧(sub 帧鉴权成功后补注册)。前端全部连接携带 ?token=。
-    const qpUser = (() => {
-      const t = resolveQueryParam(peer, 'token')
-      return t ? resolveUserByToken(t) : null
-    })()
+    // 旧 query-token 仅给外部兼容客户端；浏览器使用首帧 auth(ticket)。
+    const qpToken = resolveQueryParam(peer, 'token')
+    const qpUser = qpToken ? resolveUserByToken(qpToken) : null
     if (qpUser) {
+      peerIdentities.set(peer, { userId: qpUser.id, role: qpUser.role })
+      peerUsers.set(peer, { id: qpUser.id, name: qpUser.name, role: qpUser.role, createdAt: qpUser.createdAt })
       attachScenePeer(peer, qpUser)
       // v17:认证即绑定 peer→userId(用户级通知的 recipient 隔离基础;
       // 仅凭 ?token= 连接的客户端无需再 sub 一个 channel 也能收定向通知)
@@ -67,12 +66,26 @@ export default defineWebSocketHandler({
   message(peer, message) {
     const raw = message.text()
     if (!raw) return
-    let parsed: { type?: unknown, channelId?: unknown, lastSeq?: unknown, token?: unknown }
+    let parsed: { type?: unknown, channelId?: unknown, lastSeq?: unknown, token?: unknown, ticket?: unknown }
     try {
       parsed = JSON.parse(raw)
     }
     catch {
       sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'BAD_MESSAGE', message: '上行消息必须是 JSON' } })
+      return
+    }
+    if (parsed.type === 'auth' && typeof parsed.ticket === 'string') {
+      const user = resolveWsTicketUser(parsed.ticket)
+      if (!user) {
+        sendControl(peer, { v: AEP_VERSION, type: 'error', seq: 0, at: new Date().toISOString(), channelId: '', payload: { code: 'USER_UNAUTHORIZED', message: 'WS ticket 无效、过期或已使用' } })
+        peer.close(4401, 'invalid ws ticket')
+        return
+      }
+      peerIdentities.set(peer, { userId: user.id, role: user.role })
+      peerUsers.set(peer, { id: user.id, name: user.name, role: user.role, createdAt: user.createdAt })
+      attachScenePeer(peer, user)
+      bindUserPeer(peer, user.id)
+      sendControl(peer, { v: AEP_VERSION, type: 'auth.ok', seq: 0, at: new Date().toISOString(), channelId: '', payload: { userId: user.id } })
       return
     }
     if (parsed.type === 'ping') {

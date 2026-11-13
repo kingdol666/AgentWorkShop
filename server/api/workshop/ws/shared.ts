@@ -45,6 +45,19 @@ export interface WsPeer {
   close(code?: number, reason?: string): void
 }
 
+export interface WsIdentity {
+  userId: string
+  role: string
+}
+
+export const peerIdentities = new WeakMap<WsPeer, WsIdentity>()
+export const peerUsers = new WeakMap<WsPeer, { id: string, name: string, role: string, createdAt: string }>()
+
+export interface WsIdentity {
+  userId: string
+  role: string
+}
+
 /** channel 级事件流:seq 单调递增 + 环形缓冲 + 订阅清理 + 优雅保留窗口 */
 export interface ChannelStream {
   channelId: string

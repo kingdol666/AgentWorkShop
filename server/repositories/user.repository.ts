@@ -42,6 +42,15 @@ CREATE TABLE IF NOT EXISTS user_tokens (
   last_used_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id);
+CREATE TABLE IF NOT EXISTS browser_sessions (
+  id              TEXT PRIMARY KEY,
+  user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  credential_hash TEXT NOT NULL UNIQUE,
+  created_at      TEXT NOT NULL,
+  expires_at      TEXT NOT NULL,
+  last_used_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_browser_sessions_user ON browser_sessions(user_id);
 CREATE TABLE IF NOT EXISTS user_line_grants (
   user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   line_id     TEXT NOT NULL,
@@ -535,6 +544,47 @@ export const userRepository = {
     return Number(d.prepare('DELETE FROM user_tokens WHERE user_id = ?').run(userId).changes)
   },
 
+  /** 按浏览器会话凭据查用户；数据库只存 SHA-256，过期会话按请求懒清理。 */
+  findByBrowserSession(credential: string): (User & { sessionId: string }) | null {
+    const d = getDb()
+    const hash = hashToken(credential)
+    const row = d.prepare(
+      `SELECT u.id, u.name, u.email, u.role, u.status, u.created_at AS createdAt,
+              u.must_change_password AS mustChangePassword, s.id AS sessionId, s.expires_at AS expiresAt
+       FROM browser_sessions s JOIN users u ON u.id = s.user_id
+       WHERE s.credential_hash = ?`,
+    ).get(hash) as (User & { sessionId: string, expiresAt: string }) | undefined
+    if (!row || row.status !== 'active' || Date.parse(row.expiresAt) <= Date.now()) {
+      if (row) d.prepare('DELETE FROM browser_sessions WHERE id = ?').run(row.sessionId)
+      return null
+    }
+    d.prepare('UPDATE browser_sessions SET last_used_at = ? WHERE id = ?').run(now(), row.sessionId)
+    return row
+  },
+
+  /** 创建浏览器会话；调用方负责生成不可预测 credential。 */
+  createBrowserSession(userId: string, credential: string, createdAt: string, expiresAt: string): { id: string, userId: string, createdAt: string, expiresAt: string } {
+    const d = getDb()
+    const id = randomUUID()
+    d.prepare('DELETE FROM browser_sessions WHERE user_id = ? AND expires_at <= ?').run(userId, now())
+    const active = d.prepare('SELECT id FROM browser_sessions WHERE user_id = ? ORDER BY created_at ASC').all(userId) as Array<{ id: string }>
+    for (const old of active.slice(0, Math.max(0, active.length - 4))) d.prepare('DELETE FROM browser_sessions WHERE id = ?').run(old.id)
+    d.prepare('INSERT INTO browser_sessions (id, user_id, credential_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?)')
+      .run(id, userId, hashToken(credential), createdAt, expiresAt)
+    return { id, userId, createdAt, expiresAt }
+  },
+
+  /** 按凭据吊销浏览器会话。 */
+  revokeBrowserSession(credential: string): boolean {
+    const d = getDb()
+    return d.prepare('DELETE FROM browser_sessions WHERE credential_hash = ?').run(hashToken(credential)).changes > 0
+  },
+
+  /** 吊销用户的全部浏览器会话，供密码重置/禁用等管理动作使用。 */
+  revokeAllBrowserSessions(userId: string): number {
+    const d = getDb()
+    return Number(d.prepare('DELETE FROM browser_sessions WHERE user_id = ?').run(userId).changes)
+  },
   /** 测试钩子：替换内部 DB（重开内存库等） */
   _resetForTest(): void {
     db?.close()

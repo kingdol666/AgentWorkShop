@@ -5,7 +5,6 @@
  * 确定 -> emit('select', 绝对路径);浏览器自身无法读服务器路径,故走后端目录浏览。
  */
 import { message } from 'ant-design-vue'
-import { useUserStore } from '@/app/stores/workshop/user'
 
 const { t } = useI18n()
 
@@ -21,7 +20,6 @@ const emit = defineEmits<{
   (e: 'select', path: string): void
 }>()
 
-const userStore = useUserStore()
 const cwd = ref('')
 const parent = ref<string | null>(null)
 const dirs = ref<Array<{ name: string, path: string, hasChildren: boolean }>>([])
@@ -32,9 +30,7 @@ const manualPath = ref('')
 const load = async (path?: string): Promise<void> => {
   loading.value = true
   try {
-    const res = await fetch(`/api/workshop/fs/dirs${path ? `?path=${encodeURIComponent(path)}` : ''}`, {
-      headers: { authorization: `Bearer ${userStore.token}` },
-    })
+    const res = await fetch(`/api/workshop/fs/dirs${path ? `?path=${encodeURIComponent(path)}` : ''}`)
     const json = await res.json()
     if (json.code !== 0) {
       message.warning(json.message ?? t('fileSelectorModal.kz99pgv004'))

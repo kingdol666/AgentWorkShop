@@ -16,6 +16,7 @@
  * 仅 admin 可接入。越权一律 4403 关闭,且**不泄露**会话元信息。
  */
 import { defineWebSocketHandler } from 'h3'
+import { resolveBrowserSessionFromCookieHeader } from '../../../../services/auth/browser-session'
 import { resolveUserByToken } from '../../../../services/user.service'
 import {
   abortTerminal,
@@ -58,11 +59,13 @@ export default defineWebSocketHandler({
   open(peer) {
     const ws = peer as unknown as WsPeer
 
-    // 鉴权:?token= 用户 token(管理面同口径)
+    // 浏览器连接依赖 HttpOnly session cookie；query-token 仅保留外部兼容客户端。
+    const req = (ws as unknown as { request?: Request }).request
+    const sessionUser = resolveBrowserSessionFromCookieHeader(req?.headers.get('cookie') ?? undefined)
     const token = resolveQueryParam(ws, 'token')
-    const user = token ? resolveUserByToken(token) : null
+    const user = sessionUser ?? (token ? resolveUserByToken(token) : null)
     if (!user) {
-      fail(ws, 'USER_UNAUTHORIZED', '需要有效用户 token(?token= 查询参数)', 4401)
+      fail(ws, 'USER_UNAUTHORIZED', '需要有效用户会话', 4401)
       return
     }
 

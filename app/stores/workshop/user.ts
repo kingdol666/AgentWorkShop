@@ -1,10 +1,9 @@
 /**
- * 用户身份（全局用户系统集成）：register/login/logout/多 token CRUD；
- * token 写入 cookie 'token' 供 $http 拦截器全局注入(Authorization: Bearer)。
- * WS sub / 手写 fetch 场景直接读 store.token。
- * 身份源：/api/users/*（data/users.sqlite 全局用户系统，非 workshop 本地用户）。
+ * 用户身份：浏览器使用服务端 HttpOnly session；显式 API token 仅在当前内存会话中
+ * 保留，供外部 API/Agent 兼容路径使用，绝不写入 cookie 或 localStorage。
  */
 import { defineStore } from 'pinia'
+import { readApiToken, setApiToken } from '~/utils/api-token'
 
 export interface CurrentUser {
   id: string
@@ -12,10 +11,10 @@ export interface CurrentUser {
   email: string
   role: string
   createdAt: string
-  token: string
-  /** 当前会话 token 的 id（吊销会话时比对用） */
+  /** 外部 API token；浏览器从 HttpOnly session 恢复时为空。 */
+  token?: string
+  /** 当前 API token 的 id；浏览器 session 恢复时为空。 */
   tokenId: string
-  /** 首登强制改密(admin 建号/重置后为 true;本人改密成功后服务端清除) */
   mustChangePassword?: boolean
 }
 
@@ -24,9 +23,7 @@ export interface TokenMeta {
   label: string
   createdAt: string
   lastUsedAt: string | null
-  /** 服务端掩码预览（前 6 后 4）；旧 token 未存档明文时为 null */
   preview: string | null
-  /** 是否可随时查看明文（旧数据仅存哈希 → false） */
   hasPlain: boolean
 }
 
@@ -41,18 +38,13 @@ interface ApiEnvelope<T = unknown> {
   data: T | null
 }
 
-/**
- * 窄化的 `$fetch`。
- *
- * Nuxt 的 `$fetch` 带**全量路由类型推导**;在本 store 的深层 action 里对 `/api/users/*`
- * 求值会触发 TS2589「Type instantiation is excessively deep」(v17 之前 `pnpm typecheck`
- * 就一直红在这一处 —— 属既有未修复项)。这里把 `$fetch` 本身窄化成本地函数签名,
- * 绕开该路由的泛型展开:**运行时是同一个函数,行为不变**,只是不再让 TS 展开整棵路由类型树。
- *
- * 用 `globalThis.$fetch` 取用:Nuxt 把 `$fetch` 挂在全局,这样无需依赖自动导入的类型。
- */
 type NarrowFetch = <T>(url: string, opts?: Record<string, unknown>) => Promise<T>
 const http = (globalThis as unknown as { $fetch: NarrowFetch }).$fetch
+
+type BrowserSessionPayload = {
+  user: Omit<CurrentUser, 'token' | 'tokenId'>
+  expiresAt?: string
+}
 
 export const useUserStore = defineStore('workshop.user', {
   state: () => ({
@@ -60,63 +52,82 @@ export const useUserStore = defineStore('workshop.user', {
   }),
   getters: {
     isLoggedIn: state => state.user !== null,
-    token: state => state.user?.token ?? '',
-    /** admin 角色(最高管理权限:全量监控/任意模板/用户管理) */
+    token: state => readApiToken() ?? state.user?.token ?? '',
     isAdmin: state => state.user?.role === 'admin',
   },
   actions: {
-    applyCookie(): void {
-      // SSR 阶段直接跳过:登录/登出只发生在客户端,且 refresh() 等异步链在 await 后
-      // 请求上下文已丢失,useCookie 会抛 NUXT_E1001(useNuxtApp outside context);
-      // 请求期写 Set-Cookie 在响应完成后也无实效。客户端 useCookie 不依赖请求上下文。
-      if (import.meta.server) return
-      // maxAge 与服务端 token TTL(30 天)对齐:365 天会让浏览器带着必死 token 往返。
-      // 安全属性:SameSite=Lax 防 CSRF 跳板;https 部署自动附加 Secure(明文 http 内网调试不设)。
-      const cookie = useCookie<string | null>('token', {
-        maxAge: 60 * 60 * 24 * 30,
-        sameSite: 'lax',
-        secure: import.meta.client && window.location.protocol === 'https:',
-      })
-      cookie.value = this.user?.token ?? null
-      // 双通道兜底:cookie 罐在部分环境会被宿主驱逐(嵌入式浏览器/隐私策略),
-      // localStorage 与 cookie 同步写,http 拦截器按 useCookie→document.cookie→localStorage 顺序读取
-      try {
-        if (this.user?.token) localStorage.setItem('aw.token', this.user.token)
-        else localStorage.removeItem('aw.token')
-      }
-      catch { /* localStorage 不可用(隐私模式) */ }
+    setUser(user: BrowserSessionPayload['user'], token?: string): CurrentUser {
+      this.user = { ...user, ...(token ? { token } : {}), tokenId: '' }
+      setApiToken(token ?? null)
+      return this.user
     },
-    /** 以 me 响应补全 tokenId（注册/登录签发的新 token 尚未绑定 id） */
-    async _attachTokenId(token: string): Promise<void> {
+
+    async establishBrowserSession(bearer: string): Promise<BrowserSessionPayload> {
+      const res = await http<ApiEnvelope<BrowserSessionPayload>>('/api/users/session', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${bearer}` },
+      })
+      if (res.code !== 0 || !res.data) throw new Error(res.message ?? '建立浏览器会话失败')
+      return res.data
+    },
+
+    async restoreBrowserSession(): Promise<void> {
+      const session = await this.restoreBrowserSessionPayload()
+      if (!session?.user) {
+        this.user = null
+        setApiToken(null)
+        return
+      }
+      this.setUser(session.user)
+    },
+
+    async restoreBrowserSessionPayload(): Promise<BrowserSessionPayload | null> {
+      const res = await http<ApiEnvelope<BrowserSessionPayload | null>>('/api/users/session')
+      return res.code === 0 ? res.data : null
+    },
+
+    async clearBrowserSession(): Promise<void> {
+      try {
+        await http('/api/users/session', { method: 'DELETE' })
+      }
+      finally {
+        this.user = null
+        setApiToken(null)
+      }
+    },
+
+    async attachTokenId(token: string): Promise<void> {
       const res = await http<ApiEnvelope<Omit<CurrentUser, 'token'> & { tokenId: string }>>('/api/users/me', {
         headers: { authorization: `Bearer ${token}` },
       })
-      if (res.code === 0 && res.data && this.user) {
-        this.user.tokenId = res.data.tokenId
-      }
+      if (res.code === 0 && res.data && this.user) this.user.tokenId = res.data.tokenId
     },
+
     async register(name: string, email: string, password: string): Promise<CurrentUser> {
       const res = await http<ApiEnvelope<AuthPayload>>('/api/users/register', {
         method: 'POST',
+        headers: { 'x-aw-browser': '1' },
         body: { name: name.trim(), email: email.trim(), password },
       })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? '注册失败')
-      this.user = { ...res.data.user, token: res.data.token, tokenId: '' }
-      this.applyCookie()
-      await this._attachTokenId(res.data.token)
-      return this.user
+      const session = await this.restoreBrowserSessionPayload()
+      if (!session?.user) throw new Error('浏览器会话未建立')
+      return this.setUser(session.user)
     },
+
     async login(email: string, password: string): Promise<CurrentUser> {
       const res = await http<ApiEnvelope<AuthPayload>>('/api/users/login', {
         method: 'POST',
+        headers: { 'x-aw-browser': '1' },
         body: { email: email.trim(), password },
       })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? '登录失败')
-      this.user = { ...res.data.user, token: res.data.token, tokenId: '' }
-      this.applyCookie()
-      await this._attachTokenId(res.data.token)
-      return this.user
+      const session = await this.restoreBrowserSessionPayload()
+      if (!session?.user) throw new Error('浏览器会话未建立')
+      return this.setUser(session.user)
     },
+
+    /** 显式 API token 登录：建立浏览器 session 后只在当前内存中保留 token。 */
     async loginWithToken(token: string): Promise<CurrentUser> {
       const trimmed = token.trim()
       if (!trimmed) throw new Error('token 不能为空')
@@ -124,33 +135,46 @@ export const useUserStore = defineStore('workshop.user', {
         headers: { authorization: `Bearer ${trimmed}` },
       })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? 'token 无效')
-      this.user = { ...res.data, token: trimmed }
-      this.applyCookie()
-      return this.user
+      const session = await this.establishBrowserSession(trimmed)
+      const user = this.setUser(session.user, trimmed)
+      if (this.user) this.user.tokenId = res.data.tokenId
+      return user
     },
+
     async refresh(): Promise<void> {
-      if (!this.user) return
-      try {
-        await this.loginWithToken(this.user.token)
-      }
-      catch {
-        this.logout()
-      }
-    },
-    async logout(): Promise<void> {
-      const t = this.user?.token
-      this.user = null
-      this.applyCookie()
-      if (t) {
+      if (this.user?.token) {
         try {
-          await http('/api/users/logout', { method: 'POST', headers: { authorization: `Bearer ${t}` } })
+          await this.loginWithToken(this.user.token)
+          return
         }
         catch {
-          // 吊销失败不阻塞本地登出
+          this.user = null
+          setApiToken(null)
+        }
+      }
+      await this.restoreBrowserSession()
+    },
+
+    async logout(): Promise<void> {
+      const token = this.user?.token
+      this.user = null
+      setApiToken(null)
+      try {
+        await http('/api/users/session', { method: 'DELETE' })
+      }
+      catch {
+        // session 已在本地清除，服务端失败由下次过期收敛
+      }
+      if (token) {
+        try {
+          await http('/api/users/logout', { method: 'POST', headers: { authorization: `Bearer ${token}` } })
+        }
+        catch {
+          // 兼容 API token 吊销失败不阻塞浏览器登出
         }
       }
     },
-    /** 本人修改密码(首登强制改密同一入口);成功后清除本地强制标记 */
+
     async changePassword(currentPassword: string, newPassword: string): Promise<void> {
       const res = await http<ApiEnvelope<{ ok: boolean, mustChangePassword: boolean }>>('/api/users/change-password', {
         method: 'POST',
@@ -160,67 +184,45 @@ export const useUserStore = defineStore('workshop.user', {
       if (res.code !== 0 || !res.data?.ok) throw new Error(res.message ?? '修改密码失败')
       if (this.user) this.user.mustChangePassword = false
     },
-    // ===== API Token CRUD（仅本人；$fetch 不走 axios 拦截器，需显式携带当前会话 Bearer）=====
+
     authHeaders(): Record<string, string> {
-      const t = this.user?.token
-      return t ? { authorization: `Bearer ${t}` } : {}
+      return this.user?.token ? { authorization: `Bearer ${this.user.token}` } : {}
     },
+
     async listTokens(): Promise<TokenMeta[]> {
       const res = await http<ApiEnvelope<TokenMeta[]>>('/api/users/tokens', { headers: this.authHeaders() })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? '获取 token 列表失败')
       return res.data
     },
+
     async createToken(label: string): Promise<{ id: string, label: string, token: string }> {
       const res = await http<ApiEnvelope<{ id: string, label: string, token: string }>>('/api/users/tokens', {
-        method: 'POST',
-        body: { label: label.trim() },
-        headers: this.authHeaders(),
+        method: 'POST', body: { label: label.trim() }, headers: this.authHeaders(),
       })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? '创建 token 失败')
       return res.data
     },
+
     async renameToken(id: string, label: string): Promise<TokenMeta> {
       const res = await http<ApiEnvelope<TokenMeta>>(`/api/users/tokens/${id}`, {
-        method: 'PATCH',
-        body: { label: label.trim() },
-        headers: this.authHeaders(),
+        method: 'PATCH', body: { label: label.trim() }, headers: this.authHeaders(),
       })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? '更新 token 失败')
       return res.data
     },
-    /** 查看存档明文（随时可查；404=非本人/不存在, 410=旧数据仅存哈希） */
+
     async revealToken(id: string): Promise<string | null> {
-      const res = await http<ApiEnvelope<{ token: string | null }>>(`/api/users/tokens/${id}/token`, {
-        headers: this.authHeaders(),
-      })
+      const res = await http<ApiEnvelope<{ token: string | null }>>(`/api/users/tokens/${id}/token`, { headers: this.authHeaders() })
       if (res.code !== 0 || !res.data) throw new Error(res.message ?? '查看 token 失败')
       return res.data.token
     },
+
     async revokeToken(id: string): Promise<void> {
       const res = await http<ApiEnvelope<{ id: string }>>(`/api/users/tokens/${id}`, {
-        method: 'DELETE',
-        headers: this.authHeaders(),
+        method: 'DELETE', headers: this.authHeaders(),
       })
       if (res.code !== 0) throw new Error(res.message ?? '删除 token 失败')
-      // 吊销的是当前会话 token → 本地登出
-      if (this.user && id === this.user.tokenId) {
-        this.logout()
-      }
-    },
-  },
-  persist: {
-    // localStorage 不持久化 token(长命明文凭据,XSS 可读且跨标签页漂移):
-    // token 真源是 30 天 cookie;hydration 后从 cookie 回填,无 cookie 即回登出态
-    pick: ['user'],
-    afterHydrate: (ctx) => {
-      const store = ctx.store as { user?: CurrentUser | null, applyCookie?: () => void }
-      if (!store.user) return
-      try {
-        const cookie = useCookie<string | null>('token')
-        if (cookie.value) store.user.token = cookie.value
-        else (store as { user?: CurrentUser | null }).user = null
-      }
-      catch { /* SSR 上下文:跳过(session-restore.client 负责) */ }
+      if (this.user && id === this.user.tokenId) await this.logout()
     },
   },
 })

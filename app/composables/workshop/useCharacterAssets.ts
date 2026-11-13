@@ -9,6 +9,7 @@
  * 单例挂 globalThis,跨组件安全;store 为 reactive(异步加载完成后驱动组件重渲染)。
  */
 import { reactive } from 'vue'
+import { readAuthToken } from '~/utils/auth-session'
 
 export interface CharacterModel {
   id: string
@@ -114,13 +115,9 @@ function createStore(): CharacterAssetStore {
     // glob 不识别该相对路径时静默;不影响其余模型。
   }
   const headers = (json = true): Record<string, string> => {
-    // token 存在 cookie 'token'(user store 写入);读不到则从 user store 兜底
-    const cookieToken = typeof document !== 'undefined'
-      ? (document.cookie.match(/(?:^|;\s*)token=([^;]+)/)?.[1] ?? '')
-      : ''
     const h: Record<string, string> = {}
-    const t = cookieToken || ''
-    if (t) h.authorization = `Bearer ${decodeURIComponent(t)}`
+    const token = readAuthToken()
+    if (token) h.authorization = `Bearer ${token}`
     if (json) h['content-type'] = 'application/json'
     return h
   }

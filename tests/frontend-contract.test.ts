@@ -38,17 +38,19 @@ test('B2: 四个 202 端点消费点都判 pending,不再当成功', () => {
   assert.match(recipes, /isPendingApproval\(run\)/, '整批下发必须先判 pending,否则读 run.results 会 TypeError')
 })
 
-test('B5: apiFetch 与 axios 共用 401 收尾与三通道 token 读取', () => {
+test('B5: apiFetch 与 axios 共用 401 收尾，浏览器凭据由 HttpOnly session 承载', () => {
   const client = read('app/composables/workshop/apiClient.ts')
   assert.match(client, /handleAuthExpired\(\)/, 'apiFetch 401 必须触发统一收尾')
-  assert.match(client, /readAuthToken\(\)/, 'token 读取必须与 axios 同源(三通道)')
+  assert.match(client, /readAuthToken\(\)/, 'apiFetch 必须与显式 API token 读取同源')
 
   const http = read('app/plugins/http.ts')
   assert.match(http, /handleAuthExpired\(\)/, 'axios 侧应复用同一收尾(避免两份实现漂移)')
-  assert.match(http, /readAuthToken\(\)/, 'axios 侧应复用同一 token 读取')
+  assert.match(http, /readAuthToken\(\)/, 'axios 侧应复用显式 API token 读取')
 
   const util = read('app/utils/auth-session.ts')
-  assert.match(util, /localStorage\.getItem\('aw\.token'\)/, '三通道读取必须保留 localStorage 兜底')
+  const apiToken = read('app/utils/api-token.ts')
+  assert.doesNotMatch(util, /localStorage\.getItem\(['"]aw\.token['"]\)/, '浏览器长期 Bearer 不得从 localStorage 恢复')
+  assert.match(apiToken, /__awApiToken/, '显式 API token 只能驻留内存')
   assert.match(util, /openLogin\('expired'\)/, '401 收尾必须给登录入口')
 })
 
