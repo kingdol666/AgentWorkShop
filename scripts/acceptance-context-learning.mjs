@@ -14,7 +14,7 @@ const DEFAULT_SEED = 'context-learning-default'
 const EXIT_PASS = 0
 const EXIT_FAIL = 1
 const EXIT_BLOCKED = 2
-const MODES = new Set(['simulation', 'physical-hil'])
+const MODES = new Set(['simulation', 'isolated-home', 'physical-hil'])
 const CAPABILITIES = new Set(['discover', 'snapshot', 'observe', 'query', 'simulate', 'replay', 'verify', 'export'])
 const READ_CAPABILITIES = new Set(['discover', 'snapshot', 'observe', 'query', 'replay', 'verify', 'export'])
 const DEFAULT_BUDGET = Object.freeze({ maxDurationMs: 60_000, maxSteps: 32, maxBytes: 1_048_576, maxSources: 16, maxOutputBytes: 524_288, maxRsiIterations: 8 })
@@ -87,7 +87,7 @@ function usage() {
     'Usage: node scripts/acceptance-context-learning.mjs [options]',
     '',
     `  --profile <name|path>  Context profile (default: ${DEFAULT_PROFILE})`,
-    `  --mode <simulation|physical-hil>  Execution classification (default: ${DEFAULT_MODE})`,
+    `  --mode <simulation|isolated-home|physical-hil>  Execution classification (default: ${DEFAULT_MODE})`,
     '  --report <path>        Write the deterministic JSON report',
     '  --baseline <path>      Compare acceptanceFingerprint with a prior report',
     `  --seed <value>         Deterministic candidate ID seed (default: ${DEFAULT_SEED})`,
@@ -358,10 +358,11 @@ function runResearch(profile, fixture, snapshot, options) {
 
 function executionFor(mode) {
   const physicalHIL = { requested: mode === 'physical-hil', executed: false, verified: false, claim: false, status: 'not-available' }
+  const simulation = mode === 'simulation' || mode === 'isolated-home'
   return {
     mode,
-    classification: mode,
-    simulation: mode === 'simulation',
+    classification: simulation ? 'simulation' : mode,
+    simulation,
     physicalHIL,
     network: { disabled: false, calls: 0 },
   }
