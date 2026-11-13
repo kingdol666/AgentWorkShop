@@ -7,6 +7,7 @@
  * 鉴权:仅 admin（系统级设置变更属高危管理面）。
  */
 import { readBody } from 'h3'
+import { AppError } from '../../../utils/errors'
 import { defineApiHandler } from '../../../utils/response'
 import { requireRole } from '../../workshop/caller'
 import { getSystemConfigService } from '../../../services/system-config'
@@ -17,7 +18,7 @@ export default defineApiHandler(async (event) => {
   const body = (await readBody<Record<string, unknown>>(event)) ?? {}
   const overrides = body.override ?? body.overrides ?? body
   if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) {
-    return { ok: false, message: '请求体应为 { "override": { key: value } }' }
+    throw new AppError(400, 'VALIDATION_ERROR', '请求体应为 { "override": { key: value } }')
   }
   const res = getSystemConfigService().patch(overrides as Record<string, unknown>)
   // 高危管理面留痕:改了哪些键(值不落审计——可能含凭据),谁改的
