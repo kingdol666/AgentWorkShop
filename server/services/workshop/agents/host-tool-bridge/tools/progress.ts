@@ -5,6 +5,7 @@
 import { randomUUID } from 'node:crypto'
 import type { AgentWorkspace } from '../../agent-interface'
 import type { A2AArtifact } from '../../../types/a2a'
+import type { GoalCompletionVerifier } from '../../../verify/goal-completion'
 import type { HostToolResult, HostToolSessionState } from '../types'
 
 export async function handleReportProgress(
@@ -42,6 +43,7 @@ export async function handleCompleteTask(
   state: HostToolSessionState,
   ws: AgentWorkspace,
   activeRootTaskId?: string,
+  verifyGoal?: GoalCompletionVerifier,
 ): Promise<HostToolResult> {
   const summary = args.summary as string
   const deliverable = args.deliverable as string | undefined
@@ -81,7 +83,36 @@ export async function handleCompleteTask(
       return { text: `任务 ${taskId} 已被平台${current.state === 'CANCELED' ? '取消' : '判定失败'},无需再完成,请继续处理队列下一项。` }
     }
   }
+  // 完成门独立证据(P0,2026-11-13 实机 False-Done):
+  // 任务书含 `目标±容差` 时,complete_task 必须携带目标 DAQ 节点;平台用 DAQ 控制器
+  // 实时读数复算目标带与守卫,Agent 自述/自报值一律不作为完成证据。
+  const verification = verifyGoal
+    ? verifyGoal(
+        {
+          title: (current as unknown as { title?: string } | null)?.title,
+          description: (current as unknown as { description?: string } | null)?.description,
+          assigneeId: (current as unknown as { assigneeId?: string } | null)?.assigneeId,
+          relatedAssigneeIds: allTasks
+            .filter(t => t.parentId === taskId && typeof t.assigneeId === 'string' && t.assigneeId)
+            .map(t => t.assigneeId as string),
+        },
+        args,
+      )
+    : { ok: true as const, skipped: true as const }
+  if (!verification.ok) {
+    return {
+      text: `拒绝收口:${verification.reason}\n完成门以独立数据面为准；请修正/复测后重新提交 complete_task，不要用自述替代证据。`,
+      isError: true,
+    }
+  }
   const artifacts: A2AArtifact[] = []
+  if (!verification.skipped) {
+    artifacts.push({
+      artifactId: randomUUID(),
+      name: 'goal-verification',
+      parts: [{ text: JSON.stringify(verification.evidence) }],
+    })
+  }
   if (deliverable || summary) {
     artifacts.push({
       artifactId: randomUUID(),

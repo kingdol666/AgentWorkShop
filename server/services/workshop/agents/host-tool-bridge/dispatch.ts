@@ -28,6 +28,7 @@ import { optimizerDispatchGate, legacyMpcAliasGate } from './optimizer-gate'
 import { channelToolGate } from '../../tools/policy'
 import type { WorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
 import { handleCompleteTask, handleReportProgress, handleSupersedeTask } from './tools/progress'
+import { buildGoalCompletionVerifier } from '../../verify/goal-completion-runtime'
 import { handleCancelTask, handleDispatchTask, handleGetMyTaskQueue, handleGetTaskDetails, handleListChannelTasks, handleReassignTask, handleRefuseTask, handleSubmitTask, handleUpdateTask } from './tools/tasks'
 import { handleGrantNodes, handleRevokeNodes } from './tools/team-delegation'
 import { handleBroadcastMessage, handleListOtherTeams, handlePollMessages, handleReadChannelMail, handleSearchOtherTeamsMemory, handleSendCrossChannelMessage, handleSendMessageToAgent } from './tools/messaging'
@@ -362,7 +363,7 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
         // 活动根任务透传(与 dispatch_task 同源);否则 lead 的进度/收口恒报无任务 ID。
         return await handleReportProgress(args, state, ws, activeRootTaskId)
       case 'complete_task':
-        return await handleCompleteTask(args, state, ws, activeRootTaskId)
+        return await handleCompleteTask(args, state, ws, activeRootTaskId, buildGoalCompletionVerifier(identity.agentId))
       case 'supersede_task':
         return await handleSupersedeTask(args, state, ws)
       case 'submit_task':
