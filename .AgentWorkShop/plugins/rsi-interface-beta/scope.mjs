@@ -183,6 +183,12 @@ export function evaluateBetaScope({ flags, persistence, requested, persisted, ca
 export function publicFlags(flags) {
   if (!flags) return { globallyEnabled: false, explicitlyEnabled: false }
   return {
+    AW_RSI_BETA_ENABLED: flags.AW_RSI_BETA_ENABLED === true,
+    AW_RSI_BETA_RESEARCH_ENABLED: flags.AW_RSI_BETA_RESEARCH_ENABLED === true,
+    AW_RSI_BETA_SIMULATOR_ENABLED: flags.AW_RSI_BETA_SIMULATOR_ENABLED === true,
+    AW_RSI_BETA_PHYSICAL_HIL_ENABLED: flags.AW_RSI_BETA_PHYSICAL_HIL_ENABLED === true,
+    AW_RSI_BETA_ACTUATION_ENABLED: flags.AW_RSI_BETA_ACTUATION_ENABLED === true,
+    AW_RSI_BETA_PROMOTION_ENABLED: flags.AW_RSI_BETA_PROMOTION_ENABLED === true,
     globallyEnabled: flags.globallyEnabled === true,
     explicitlyEnabled: flags.explicitlyEnabled === true,
     simulatorEnabled: flags.simulatorEnabled === true,

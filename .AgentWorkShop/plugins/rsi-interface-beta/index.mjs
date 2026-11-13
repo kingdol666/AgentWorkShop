@@ -21,6 +21,32 @@ const statusPath = '/status'
 const healthPath = '/health'
 const scopePath = '/scope'
 const adapterPath = '/adapter'
+const metadataPath = '/metadata'
+
+const BETA_PROVENANCE = Object.freeze({
+  context: Object.freeze({
+    contract: 'context.v1',
+    source: 'shared/context/contracts.ts',
+    description: 'ContextSubject, DomainObject, Attribute, MaterialAssignment, and ContextSnapshot contracts',
+  }),
+  research: Object.freeze({
+    contract: 'research-run.v1',
+    source: 'server/services/workshop/research/contracts.ts',
+    description: 'Bounded research requests, plans, runs, budgets, and candidate verdicts',
+  }),
+  evidence: Object.freeze({
+    contract: 'EvidenceEnvelope',
+    source: 'server/services/workshop/evidence/normalizer.ts',
+    description: 'Immutable candidate evidence with source, revision, payload hash, scope, and freshness provenance',
+  }),
+})
+
+const BETA_LIMITATIONS = Object.freeze([
+  'Read-only diagnostics and adapter metadata only; no domain operation is exposed here.',
+  'Actuation, approval, promotion, and profile activation are outside the Beta boundary.',
+  'Candidate evidence is not validated control authority and cannot be promoted by this plugin.',
+  'A request without the exact active worker scope is denied; no implicit scope inheritance is used.',
+])
 
 function noOpLogger() {}
 
@@ -63,6 +89,49 @@ function publicAdapterStatus(status) {
     ok: status?.ok === true,
     code: status?.ok === true ? 'REGISTERED' : (status?.code ?? 'ADAPTER_UNAVAILABLE'),
     service: status?.service ?? null,
+  }
+}
+
+function publicMetadata(state) {
+  const flags = readBetaFlags()
+  const persistence = state.persistenceReady ? readPersistence(state.ctx) : { ok: false, code: 'PERSISTENCE_UNAVAILABLE' }
+  const persistedScope = persistence.ok && persistence.scope && typeof persistence.scope === 'object' ? persistence.scope : null
+  const scopeResult = flags.globallyEnabled && persistence.ok && persistedScope
+    ? evaluateBetaScope({
+        flags,
+        persistence,
+        requested: persistedScope,
+        persisted: persistedScope,
+        maxAgeMs: state.maxAgeMs,
+      })
+    : { ok: false, code: flags.globallyEnabled ? (persistence.ok ? 'SCOPE_STATE_MISSING' : persistence.code) : 'BETA_DISABLED' }
+  const adapter = publicAdapterStatus(state.adapterStatus)
+  const scoped = scopeResult.ok
+  const ready = scoped && adapter.ok
+  return {
+    apiVersion: API_VERSION,
+    plugin: PLUGIN_NAME,
+    status: ready ? 'ready' : scoped ? 'degraded' : 'default-deny',
+    available: ready,
+    visible: scoped,
+    code: ready ? 'READY' : (flags.hardDenied ? 'BETA_HARD_DENY' : scopeResult.code ?? adapter.code),
+    flags: publicFlags(flags),
+    requiredFlags: ['AW_RSI_BETA_ENABLED', 'AW_RSI_BETA_RESEARCH_ENABLED'],
+    requiredScope: [...REQUIRED_SCOPE_KEYS],
+    scopeState: scoped ? 'bound' : 'denied',
+    scopeCode: scoped ? 'SCOPE_BOUND' : scopeResult.code,
+    scope: scoped ? scopeResult.scope : null,
+    persistence: publicPersistence(persistence),
+    adapter: {
+      ...adapter,
+      health: adapter.ok ? 'healthy' : 'unavailable',
+    },
+    readOnly: true,
+    actuation: false,
+    promotion: false,
+    capabilities: [...adapterDescriptor.capabilities],
+    provenance: BETA_PROVENANCE,
+    limitations: [...BETA_LIMITATIONS],
   }
 }
 
@@ -187,6 +256,7 @@ export default {
   description: 'Default-deny, read-only RSI Beta adapter/plugin interface',
   apiVersion: API_VERSION,
   auth: 'user',
+  client: './client.mjs',
   config: PLUGIN_CONFIG,
   settings: [
     {
@@ -231,6 +301,7 @@ export default {
     const statusHandler = event => routeResult(state, event, null)
     const healthHandler = event => routeResult(state, event, 'observe')
     const scopeHandler = event => routeResult(state, event, 'query')
+    const metadataHandler = () => publicMetadata(state)
     const adapterHandler = event => ({
       ...routeResult(state, event, null),
       adapterDescriptor,
@@ -244,6 +315,7 @@ export default {
     ctx.route('GET', statusPath, statusHandler)
     ctx.route('GET', healthPath, healthHandler)
     ctx.route('GET', scopePath, scopeHandler)
+    ctx.route('GET', metadataPath, metadataHandler)
     ctx.route('GET', adapterPath, adapterHandler)
 
     // The route table is owned by the host and removed on dispose. Keep a
