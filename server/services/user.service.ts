@@ -79,7 +79,10 @@ export const userService = {
     if (!user) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, '用户不存在')
     }
-    if (passwordChanged) userRepository.revokeAllTokens(id)
+    if (passwordChanged) {
+      userRepository.revokeAllTokens(id)
+      userRepository.revokeAllBrowserSessions(id)
+    }
     return user
   },
 
@@ -97,6 +100,7 @@ export const userService = {
       throw new AppError(404, ErrorCodes.NOT_FOUND, '用户不存在')
     }
     const revoked = userRepository.revokeAllTokens(id)
+    userRepository.revokeAllBrowserSessions(id)
     return { id, revokedSessions: revoked, mustChangePassword: true }
   },
 
@@ -112,6 +116,7 @@ export const userService = {
       throw new AppError(401, 'UNAUTHORIZED', '当前密码不正确')
     }
     userRepository.update(userId, { password: newPassword, mustChangePassword: false })
+    userRepository.revokeAllBrowserSessions(userId)
     recordOps({
       actor: userId, actorName: user.name, actorKind: 'user',
       action: 'auth.password.change', kind: 'system', targetKind: 'user', targetId: userId,
