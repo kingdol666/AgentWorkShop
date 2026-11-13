@@ -43,6 +43,18 @@ function resolveQueryParam(peer: WsPeer, name: string): string | undefined {
   return new URL(req.url).searchParams.get(name) ?? undefined
 }
 
+function sameOrigin(req: Request | undefined): boolean {
+  if (!req) return false
+  const origin = req.headers.get('origin')
+  if (!origin) return true
+  try {
+    return new URL(origin).origin === new URL(req.url).origin
+  }
+  catch {
+    return false
+  }
+}
+
 function send(peer: WsPeer, msg: TerminalServerMessage): void {
   try {
     peer.send(JSON.stringify(msg))
@@ -59,8 +71,12 @@ export default defineWebSocketHandler({
   open(peer) {
     const ws = peer as unknown as WsPeer
 
-    // 浏览器连接依赖 HttpOnly session cookie；query-token 仅保留外部兼容客户端。
+    // Cookie-authenticated browser terminals must be same-origin; bearer query clients remain external compatibility.
     const req = (ws as unknown as { request?: Request }).request
+    if (!resolveQueryParam(ws, 'token') && !sameOrigin(req)) {
+      fail(ws, 'ORIGIN_FORBIDDEN', '终端浏览器来源不受信任', 4403)
+      return
+    }
     const sessionUser = resolveBrowserSessionFromCookieHeader(req?.headers.get('cookie') ?? undefined)
     const token = resolveQueryParam(ws, 'token')
     const user = sessionUser ?? (token ? resolveUserByToken(token) : null)

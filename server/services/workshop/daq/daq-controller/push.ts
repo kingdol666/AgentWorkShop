@@ -170,6 +170,8 @@ export abstract class DaqControllerPush extends DaqControllerState {
       const live = this.repo.byId(nodeId)
       if (live && this.running) {
         live.lastError = `被动订阅建立失败:${msg}`
+        live.quality = 'bad'
+        live.staleSince = live.staleSince ?? new Date().toISOString()
         if (live.state !== 'alarm') live.state = 'offline'
         const now = Date.now()
         if (now - (this.pushRetryAt.get(nodeId) ?? 0) > 30_000) {

@@ -65,6 +65,13 @@ export class WorkshopWsSession {
     }
     if (!ticket || this.closedByUser) {
       this.connecting = false
+      if (!this.closedByUser) {
+        const delay = Math.min(1000 * 2 ** this.retry, 10_000)
+        this.retry += 1
+        setTimeout(() => {
+          if (!this.closedByUser) void this.connect()
+        }, delay)
+      }
       this.onStateChange('closed', this.retry)
       return
     }
