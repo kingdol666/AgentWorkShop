@@ -379,6 +379,32 @@ test('compaction：长 pinned 行与 topic 行总字符数不超过预算', () =
   }
 })
 
+test('legacy compressed brief：无新旧消息时仍规范化预算、去重且保持确定性', () => {
+  const f = fixture()
+  try {
+    const pinned = Array.from({ length: 7 }, (_, i) => `决策：legacy-${String(i + 1).padStart(2, '0')} ${'长 pinned 内容'.repeat(80)}`)
+    const legacyLines = pinned.flatMap(line => [line, line])
+    f.db.prepare('UPDATE channel_sessions SET brief_json = ? WHERE id = ?').run(
+      JSON.stringify({ compressed: { lines: legacyLines } }),
+      f.session.id,
+    )
+
+    const svc = new SessionContextService(f.db, f.sessions)
+    const built = svc.buildBrief(f.session.id)!
+    const refreshed = svc.refresh(f.session.id)!
+    const formatted = formatBriefText(refreshed)
+    const lineChars = (lines: string[]) => lines.reduce((sum, line) => sum + line.length, 0)
+
+    assert.ok(lineChars(built.compressed.lines) <= 1200)
+    assert.equal(new Set(built.compressed.lines).size, built.compressed.lines.length)
+    assert.deepEqual(refreshed.compressed.lines, built.compressed.lines)
+    assert.equal(formatted, formatBriefText(built))
+  }
+  finally {
+    f.db.close()
+  }
+})
+
 test('compaction：uptoSeq 作为游标分批推进，超过 200 条不停止或重复', () => {
   const f = fixture()
   try {
