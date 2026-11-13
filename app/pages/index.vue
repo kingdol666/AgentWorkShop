@@ -12,6 +12,7 @@
  */
 import { useDashboardCharts } from './composables/useDashboardCharts'
 import { useDashboardData } from './composables/useDashboardData'
+import { onBeforeUnmount } from 'vue'
 import { useVisibleInterval } from '@/app/composables/workshop/useVisibleInterval'
 import DashboardFleetPanel from '@/app/components/dashboard/DashboardFleetPanel.vue'
 import DashboardGaugeBand from '@/app/components/dashboard/DashboardGaugeBand.vue'
@@ -34,9 +35,11 @@ const { site, daq, dcw, pushTrend, loadHarnesses, linesActive, daqOnline, daqTot
 const { trendOpt, lineStateOpt, pipelineOpt, writeOpt, nodeStateOpt } = useDashboardCharts(data)
 
 // ---------- 数据装载(WS 实时 + 5s 兜底;可见性调度:后台降频 30s,回前台立即补拍) ----------
+let releaseDaqFeed: (() => void) | null = null
+let releaseDcwFeed: (() => void) | null = null
 onMounted(() => {
-  daq.ensureWsFeed()
-  dcw.ensureWsFeed()
+  releaseDaqFeed = daq.ensureWsFeed()
+  releaseDcwFeed = dcw.ensureWsFeed()
   void Promise.all([daq.load(), dcw.load()]).then(() => pushTrend())
   void daq.fetchAlarms()
   void loadHarnesses()
@@ -49,6 +52,14 @@ onMounted(() => {
     void loadHarnesses()
     pushTrend()
   }, 5000, { bgMs: 30000 })
+})
+
+onBeforeUnmount(() => {
+  // Dashboard owns one feed reference per stream; release both on route leave.
+  releaseDaqFeed?.()
+  releaseDcwFeed?.()
+  releaseDaqFeed = null
+  releaseDcwFeed = null
 })
 
 /** 告警行不带单位:从节点清单取同一份工程单位(只用于展示) */

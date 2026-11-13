@@ -28,7 +28,7 @@ jobs:
           version: 11.9.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -38,3 +38,9 @@ jobs:
         run: pnpm run lint
       - name: Unit tests
         run: pnpm run test:unit
+      - name: i18n parity
+        run: pnpm run i18n:check
+      - name: CSS variable integrity
+        run: pnpm run check:cssvars
+      - name: Frontend lifecycle contract
+        run: pnpm run frontend-lifecycle-contract

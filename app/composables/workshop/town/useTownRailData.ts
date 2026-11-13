@@ -400,9 +400,11 @@ export function useTownRailData(params: {
   const TREND_COLORS = ['#35e0a0', '#41c8f4', '#f6c453', '#a78bfa', '#ff6b6b', '#4dd0e1']
   const trendColor = (id: string): string => TREND_COLORS[Math.abs(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) % TREND_COLORS.length] ?? '#35e0a0'
 
+  let releaseDaqFeed: (() => void) | null = null
+  let releaseDcwFeed: (() => void) | null = null
   onMounted(() => {
     // 数采流:REST 基线 + WS 实时帧(server 权威;进数字孪生空间即建立连接)
-    daq.ensureWsFeed()
+    releaseDaqFeed = daq.ensureWsFeed()
     void daq.load()
     // 实时消费层:读数帧零缓冲直写 rtc(标注/设备卡/KPI/趋势全部真·实时;
     // 渲染循环每帧只读最新值,与帧率选择无关)
@@ -410,10 +412,14 @@ export function useTownRailData(params: {
       if (e.type === 'daq.reading') consumeReading(e.payload as { nodeId?: string, value?: number, state?: string, at?: string })
     })
     // 智控流:同款上电(REST 基线 + dcw.* WS 帧),dcwTwins 投影进 sceneTwinPool
-    dcw.ensureWsFeed()
+    releaseDcwFeed = dcw.ensureWsFeed()
     void dcw.load()
   })
   onBeforeUnmount(() => {
+    releaseDaqFeed?.()
+    releaseDcwFeed?.()
+    releaseDaqFeed = null
+    releaseDcwFeed = null
     unsubLiveVals?.()
   })
 
