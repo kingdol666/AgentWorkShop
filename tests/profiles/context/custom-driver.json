@@ -1,0 +1,8 @@
+{
+  "id": "custom-driver",
+  "fixtureId": "context-learning-base",
+  "adapter": { "id": "fixture.context.custom-driver", "version": "1.0.0", "sideEffect": "none", "capabilities": ["discover", "snapshot", "query", "simulate"] },
+  "context": { "subjectIds": ["custom-driver"], "objectIds": ["custom-driver-object"], "attributeIds": ["custom-driver-kind"], "tags": ["custom-driver", "read-only"] },
+  "research": { "objective": "learn custom driver context", "question": "What bounded context does the custom driver expose?", "steps": [{ "id": "driver-discover", "capability": "discover", "sourceRef": "fixture:custom-driver/discover", "kind": "observation" }, { "id": "driver-simulation", "capability": "simulate", "sourceRef": "fixture:custom-driver/simulation", "kind": "simulation" }] },
+  "acceptance": { "expectedClassification": "simulation", "maxCandidateEvidence": 2, "requireNoPhysicalWrites": true }
+}

@@ -1,0 +1,8 @@
+{
+  "id": "batch-material",
+  "fixtureId": "context-learning-base",
+  "adapter": { "id": "fixture.context.batch-material", "version": "1.0.0", "sideEffect": "none", "capabilities": ["discover", "snapshot", "query", "simulate"] },
+  "context": { "subjectIds": ["batch-material"], "objectIds": ["batch-material-object"], "attributeIds": ["batch-material-lot"], "tags": ["batch-material", "read-only"] },
+  "research": { "objective": "learn batch material context", "question": "What bounded material batch context is available?", "steps": [{ "id": "batch-snapshot", "capability": "snapshot", "sourceRef": "fixture:batch-material/context", "kind": "observation" }, { "id": "batch-simulation", "capability": "simulate", "sourceRef": "fixture:batch-material/simulation", "kind": "simulation" }] },
+  "acceptance": { "expectedClassification": "simulation", "maxCandidateEvidence": 2, "requireNoPhysicalWrites": true }
+}

@@ -1,0 +1,8 @@
+{
+  "id": "injection",
+  "fixtureId": "context-learning-base",
+  "adapter": { "id": "fixture.context.injection", "version": "1.0.0", "sideEffect": "none", "capabilities": ["discover", "snapshot", "query", "simulate"] },
+  "context": { "subjectIds": ["injection"], "objectIds": ["injection-object"], "attributeIds": ["injection-state"], "tags": ["injection", "read-only"] },
+  "research": { "objective": "learn injection context", "question": "What bounded context is available for injection?", "steps": [{ "id": "injection-snapshot", "capability": "snapshot", "sourceRef": "fixture:injection/context", "kind": "observation" }, { "id": "injection-simulation", "capability": "simulate", "sourceRef": "fixture:injection/simulation", "kind": "simulation" }] },
+  "acceptance": { "expectedClassification": "simulation", "maxCandidateEvidence": 2, "requireNoPhysicalWrites": true }
+}

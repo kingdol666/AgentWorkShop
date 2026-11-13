@@ -1,0 +1,8 @@
+{
+  "id": "wwtp",
+  "fixtureId": "context-learning-base",
+  "adapter": { "id": "fixture.context.wwtp", "version": "1.0.0", "sideEffect": "none", "capabilities": ["discover", "snapshot", "query", "simulate"] },
+  "context": { "subjectIds": ["wwtp"], "objectIds": ["wwtp-object"], "attributeIds": ["wwtp-state"], "tags": ["wwtp", "read-only"] },
+  "research": { "objective": "learn WWTP context", "question": "What bounded context is available for WWTP?", "steps": [{ "id": "wwtp-snapshot", "capability": "snapshot", "sourceRef": "fixture:wwtp/context", "kind": "observation" }, { "id": "wwtp-simulation", "capability": "simulate", "sourceRef": "fixture:wwtp/simulation", "kind": "simulation" }] },
+  "acceptance": { "expectedClassification": "simulation", "maxCandidateEvidence": 2, "requireNoPhysicalWrites": true }
+}

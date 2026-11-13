@@ -1,0 +1,8 @@
+{
+  "id": "simulation",
+  "fixtureId": "context-learning-base",
+  "adapter": { "id": "fixture.context.simulation", "version": "1.0.0", "sideEffect": "candidate-only", "capabilities": ["discover", "snapshot", "query", "simulate", "replay"] },
+  "context": { "subjectIds": ["simulation"], "objectIds": ["simulation-object"], "attributeIds": ["simulation-kind"], "tags": ["simulation", "candidate-only"] },
+  "research": { "objective": "learn simulation context", "question": "What bounded simulation context can be evaluated?", "steps": [{ "id": "simulation-snapshot", "capability": "snapshot", "sourceRef": "fixture:simulation/context", "kind": "observation" }, { "id": "simulation-run", "capability": "simulate", "sourceRef": "fixture:simulation/run", "kind": "simulation" }] },
+  "acceptance": { "expectedClassification": "simulation", "maxCandidateEvidence": 2, "requireNoPhysicalWrites": true }
+}
