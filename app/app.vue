@@ -145,6 +145,7 @@ const accentStrong = computed(() =>
 useHead({
   htmlAttrs: {
     lang: locale,
+    class: computed(() => store.isDark ? 'dark' : ''),
     style: computed(() => [
       `--color-primary: ${accentBase.value}`,
       `--accent: ${store.isDark ? mixWhite(accentBase.value, 0.16) : mixBlack(accentBase.value, 0.46)}`,
