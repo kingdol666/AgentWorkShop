@@ -45,6 +45,7 @@ export class TimescaleAdapter implements TsdbPort {
         ts       timestamptz NOT NULL,
         value    double precision NOT NULL,
         state    text        NOT NULL DEFAULT 'ok',
+        quality  text        NOT NULL DEFAULT 'good',
         PRIMARY KEY (node_id, ts)
       );
     `)
@@ -55,6 +56,7 @@ export class TimescaleAdapter implements TsdbPort {
     await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_node_ts ON daq_samples (node_id, ts DESC)`)
     // 存量库迁移:先补打标列(幂等;已存在时报错吞掉),再建依赖列的索引
     for (const ddl of [
+      'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS quality text NOT NULL DEFAULT \'good\'',
       'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS line_id text',
       'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS product_id text',
       'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS recipe_id text',
@@ -144,6 +146,7 @@ export class TimescaleAdapter implements TsdbPort {
       ts: rows.map(r => new Date(r.tsMs).toISOString()),
       value: rows.map(r => r.value),
       state: rows.map(r => r.state),
+      quality: rows.map(r => r.quality ?? 'good'),
       line: rows.map(r => r.lineId ?? null),
       product: rows.map(r => r.productId ?? null),
       recipe: rows.map(r => r.recipeId ?? null),
@@ -151,11 +154,11 @@ export class TimescaleAdapter implements TsdbPort {
       ingested: rows.map(r => r.ingestedAt ?? now),
     }
     const inserted = await this.pool.query(
-      `INSERT INTO daq_samples (node_id, ts, value, state, line_id, product_id, recipe_id, run_id, ingested_at)
-       SELECT * FROM unnest($1::text[], $2::timestamptz[], $3::float8[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[], $9::bigint[])
+      `INSERT INTO daq_samples (node_id, ts, value, state, quality, line_id, product_id, recipe_id, run_id, ingested_at)
+       SELECT * FROM unnest($1::text[], $2::timestamptz[], $3::float8[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[], $9::text[], $10::bigint[])
        ON CONFLICT (node_id, ts) DO NOTHING
        RETURNING node_id, ts`,
-      [col.node, col.ts, col.value, col.state, col.line, col.product, col.recipe, col.run, col.ingested],
+      [col.node, col.ts, col.value, col.state, col.quality, col.line, col.product, col.recipe, col.run, col.ingested],
     ) as { rows: Array<{ node_id: string, ts: string | Date }> }
     // 首写胜出:被忽略的键里,值/状态不同则计数(可观测,不静默更正)
     // 2026-10-30 修复:pg 对 timestamptz RETURNING 回传 Date 对象(类型标注不改变运行时),
@@ -187,11 +190,11 @@ export class TimescaleAdapter implements TsdbPort {
       return rows.map(r => ({ at: Date.parse(r.bucket), avg: Number(r.avg), min: Number(r.min), max: Number(r.max), cnt: Number(r.cnt) }))
     }
     const { rows } = await this.pool.query(
-      `SELECT ts, value, state FROM daq_samples WHERE node_id = $1 AND ts >= $2 AND ts <= $3
+      `SELECT ts, value, state, quality FROM daq_samples WHERE node_id = $1 AND ts >= $2 AND ts <= $3
        ORDER BY ts ASC LIMIT $4`,
       [nodeId, new Date(opts.fromMs ?? 0).toISOString(), new Date(opts.toMs ?? Date.now()).toISOString(), limit],
     )
-    return rows.map(r => ({ at: tsToMs(r.ts), value: Number(r.value), state: String(r.state) }))
+    return rows.map(r => ({ at: tsToMs(r.ts), value: Number(r.value), state: String(r.state), quality: String(r.quality ?? 'good') }))
   }
 
   async queryTagged(q: import('./tsdb-port').TsdbTagQuery): Promise<Map<string, import('./tsdb-port').TsdbPoint[]>> {
@@ -241,10 +244,10 @@ export class TimescaleAdapter implements TsdbPort {
       return out
     }
     const { rows } = await this.pool.query(
-      `SELECT node_id, ts, value, state, ingested_at FROM daq_samples WHERE ${whereSql} ORDER BY ts ASC LIMIT $${params.length + 1}`,
+      `SELECT node_id, ts, value, state, ingested_at, quality FROM daq_samples WHERE ${whereSql} ORDER BY ts ASC LIMIT $${params.length + 1}`,
       [...params, limit],
     )
-    for (const r of rows as Array<{ node_id: string, ts: string, value: number, state: string | null, ingested_at: string | number | null }>) {
+    for (const r of rows as Array<{ node_id: string, ts: string, value: number, state: string | null, quality: string | null, ingested_at: string | number | null }>) {
       const list = out.get(String(r.node_id)) ?? []
       // D-P1-1(2026-10-28 审查):state/ingested_at 与 sqlite 同口径返回;
       // 否则生产后端上的坏点清洗(cleanPoints)与入库水位判定是静默空操作。
@@ -252,6 +255,7 @@ export class TimescaleAdapter implements TsdbPort {
         at: tsToMs(r.ts),
         value: Number(r.value),
         state: String(r.state ?? 'ok'),
+        quality: String(r.quality ?? 'good'),
         ...(r.ingested_at == null ? {} : { ingestedAt: Number(r.ingested_at) }),
       })
       out.set(String(r.node_id), list)
@@ -293,7 +297,7 @@ export class TimescaleAdapter implements TsdbPort {
           args,
         )).rows
       : (await this.pool.query(
-          `SELECT ts, value FROM daq_samples
+          `SELECT ts, value, ingested_at FROM daq_samples
            WHERE node_id = $1 AND ts >= $2 AND ts <= $3
              AND ($4::text IS NULL OR line_id = $4)
              AND ($5::text IS NULL OR product_id = $5)
@@ -302,7 +306,7 @@ export class TimescaleAdapter implements TsdbPort {
            ORDER BY ts ASC LIMIT $8`,
           args,
         )).rows
-    const points = (rows as Array<{ ts: string, value: number, state?: string | null, ingested_at?: string | number | null }>).map(r => ({
+    const points = (rows as Array<{ ts: string, value: number, state?: string | null, quality?: string | null, ingested_at?: string | number | null }>).map(r => ({
       at: tsToMs(r.ts),
       value: Number(r.value),
       ...(withState ? { state: String(r.state ?? 'ok') } : {}),
@@ -316,10 +320,10 @@ export class TimescaleAdapter implements TsdbPort {
     const out = new Map<string, DaqSampleRow>()
     if (!this.pool) return out
     const { rows } = await this.pool.query(
-      `SELECT DISTINCT ON (node_id) node_id, ts, value, state FROM daq_samples ORDER BY node_id, ts DESC`,
+      `SELECT DISTINCT ON (node_id) node_id, ts, value, state, quality FROM daq_samples ORDER BY node_id, ts DESC`,
     )
     for (const r of rows) {
-      out.set(String(r.node_id), { nodeId: String(r.node_id), tsMs: tsToMs(r.ts), value: Number(r.value), state: String(r.state) })
+      out.set(String(r.node_id), { nodeId: String(r.node_id), tsMs: tsToMs(r.ts), value: Number(r.value), state: String(r.state), quality: String(r.quality ?? 'good') })
     }
     return out
   }

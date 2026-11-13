@@ -40,6 +40,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
         ts_ms   INTEGER NOT NULL,
         value   REAL    NOT NULL,
         state   TEXT    NOT NULL DEFAULT 'ok',
+        quality TEXT    NOT NULL DEFAULT 'good',
         line_id    TEXT,
         product_id TEXT,
         recipe_id  TEXT,
@@ -51,6 +52,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     `)
     // 存量库迁移:先补打标列(幂等),再建依赖列的索引
     const cols = new Set((this.db.prepare('PRAGMA table_info(daq_samples)').all() as Array<{ name: string }>).map(c => c.name))
+    if (!cols.has('quality')) this.db.exec('ALTER TABLE daq_samples ADD COLUMN quality TEXT NOT NULL DEFAULT \'good\'')
     if (!cols.has('line_id')) this.db.exec('ALTER TABLE daq_samples ADD COLUMN line_id TEXT')
     if (!cols.has('product_id')) this.db.exec('ALTER TABLE daq_samples ADD COLUMN product_id TEXT')
     if (!cols.has('recipe_id')) this.db.exec('ALTER TABLE daq_samples ADD COLUMN recipe_id TEXT')
@@ -126,14 +128,14 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     if (!this.db || rows.length === 0) return
     // 批内单事务:一次 fsync 落整批(逐行 run 会每行一次 WAL fsync,写放大)
     const ins = this.db.prepare(
-      'INSERT OR IGNORE INTO daq_samples (node_id, ts_ms, value, state, line_id, product_id, recipe_id, run_id, ingested_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT OR IGNORE INTO daq_samples (node_id, ts_ms, value, state, quality, line_id, product_id, recipe_id, run_id, ingested_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    const existing = this.db.prepare('SELECT value, state FROM daq_samples WHERE node_id = ? AND ts_ms = ?')
+    const existing = this.db.prepare('SELECT value, state, quality FROM daq_samples WHERE node_id = ? AND ts_ms = ?')
     const now = Date.now()
     this.db.exec('BEGIN')
     try {
       for (const r of rows) {
-        const res = ins.run(r.nodeId, r.tsMs, r.value, r.state, r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null, r.ingestedAt ?? now)
+        const res = ins.run(r.nodeId, r.tsMs, r.value, r.state, r.quality ?? 'good', r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null, r.ingestedAt ?? now)
         // 首写胜出:同键二次写入被忽略。若值/状态不同,计数使丢弃可观测(不静默更正)。
         if (Number(res.changes) === 0) {
           const prev = existing.get(r.nodeId, r.tsMs) as { value: number, state: string } | undefined
@@ -178,11 +180,11 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       return rows.map(r => ({ at: Number(r.b_at), avg: r.avg, min: r.min, max: r.max, cnt: Number(r.cnt) }))
     }
     const rows = db.prepare(`
-      SELECT ts_ms, value, state FROM daq_samples
+      SELECT ts_ms, value, state, quality FROM daq_samples
       WHERE node_id = :id AND ts_ms >= :from AND ts_ms <= :to
       ORDER BY ts_ms ASC LIMIT :lim
-    `).all({ ':id': nodeId, ':from': from, ':to': to, ':lim': limit }) as Array<{ ts_ms: number, value: number, state: string }>
-    return rows.map(r => ({ at: Number(r.ts_ms), value: Number(r.value), state: String(r.state) }))
+    `).all({ ':id': nodeId, ':from': from, ':to': to, ':lim': limit }) as Array<{ ts_ms: number, value: number, state: string, quality: string }>
+    return rows.map(r => ({ at: Number(r.ts_ms), value: Number(r.value), state: String(r.state), quality: String(r.quality) }))
   }
 
   async queryTagged(q: import('./tsdb-port').TsdbTagQuery): Promise<Map<string, import('./tsdb-port').TsdbPoint[]>> {
@@ -234,13 +236,13 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       return out
     }
     const rows = (db.prepare(`
-      SELECT node_id, ts_ms, value, state, ingested_at FROM daq_samples WHERE ${where.join(' AND ')}
+      SELECT node_id, ts_ms, value, state, ingested_at, quality FROM daq_samples WHERE ${where.join(' AND ')}
       ORDER BY ts_ms ASC LIMIT ?
-    `).all(...params, limit)) as Array<{ node_id: string, ts_ms: number, value: number, state: string, ingested_at: number | null }>
+    `).all(...params, limit)) as Array<{ node_id: string, ts_ms: number, value: number, state: string, quality?: string | null, ingested_at: number | null }>
     for (const r of rows) {
       const list = out.get(r.node_id) ?? []
       // state 必须真实返回:C5 修复前恒 undefined,cleanPoints 的坏点过滤是空操作。
-      list.push({ at: Number(r.ts_ms), value: Number(r.value), state: String(r.state ?? 'ok'), ...(r.ingested_at == null ? {} : { ingestedAt: Number(r.ingested_at) }) })
+      list.push({ at: Number(r.ts_ms), value: Number(r.value), state: String(r.state ?? 'ok'), ...(r.quality == null ? {} : { quality: String(r.quality) }), ...(r.ingested_at == null ? {} : { ingestedAt: Number(r.ingested_at) }) })
       out.set(r.node_id, list)
     }
     return out
@@ -270,14 +272,14 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
           ORDER BY ts_ms ASC LIMIT ?
         `).all(nodeId, from, to, tagOf(q.lineId), tagOf(q.lineId), tagOf(q.productId), tagOf(q.productId), tagOf(q.recipeId), tagOf(q.recipeId), tagOf(q.runId), tagOf(q.runId), limit)
       : db.prepare(`
-          SELECT ts_ms, value FROM daq_samples
+          SELECT ts_ms, value, ingested_at FROM daq_samples
           WHERE node_id = ? AND ts_ms >= ? AND ts_ms <= ?
             AND (? IS NULL OR line_id = ?)
             AND (? IS NULL OR product_id = ?)
             AND (? IS NULL OR recipe_id = ?)
             AND (? IS NULL OR run_id = ?)
           ORDER BY ts_ms ASC LIMIT ?
-        `).all(nodeId, from, to, tagOf(q.lineId), tagOf(q.lineId), tagOf(q.productId), tagOf(q.productId), tagOf(q.recipeId), tagOf(q.recipeId), tagOf(q.runId), tagOf(q.runId), limit)) as Array<{ ts_ms: number, value: number, state?: string, ingested_at?: number | null }>
+        `).all(nodeId, from, to, tagOf(q.lineId), tagOf(q.lineId), tagOf(q.productId), tagOf(q.productId), tagOf(q.recipeId), tagOf(q.recipeId), tagOf(q.runId), tagOf(q.runId), limit)) as Array<{ ts_ms: number, value: number, state?: string, quality?: string, ingested_at?: number | null }>
     const points = rows.map(r => ({
       at: Number(r.ts_ms),
       value: Number(r.value),

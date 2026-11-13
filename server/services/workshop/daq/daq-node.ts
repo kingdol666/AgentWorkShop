@@ -7,7 +7,8 @@
  * 采样历史仅驻内存(环形缓冲),不进磁盘快照 —— 磁盘只存"配置 + 最近一次读数"。
  */
 
-import { daqKeyFromRef, maskDriverConfigSecrets, type DaqDriverKind, type DaqNodeState, type DaqNodeView, type DataTransform } from '../../../../shared/daq-protocol'
+import { daqKeyFromRef, maskDriverConfigSecrets, type DaqDriverKind, type DaqNodeState, type DaqNodeView, type DataTransform, type DaqQuality } from '../../../../shared/daq-protocol'
+import { qualityFromReading } from './quality'
 import { findDaqTemplate } from './daq-templates'
 
 /** 采样历史环形缓冲长度(前端趋势图/火花线消费;1s 周期 ≈ 5 分钟窗口) */
@@ -81,7 +82,9 @@ export class DaqNode {
   unitPath?: string
   value: number | null
   state: DaqNodeState = 'offline'
+  quality: DaqQuality = 'offline'
   lastAt: string | null = null
+  staleSince: string | null = null
   /** 最近一次采样失败原因(连接/超时/PLC 异常分类文案;成功采样后清空) */
   lastError: string | null = null
   /** 去抖候选态(连续 3 帧一致才切换;alarm/offline 立即生效,安全优先) */
@@ -151,6 +154,8 @@ export class DaqNode {
   applyReading(v: number, at: string): void {
     this.value = v
     this.lastError = null
+    this.quality = qualityFromReading({ enabled: this.enabled, value: v, state: this.state, driverOk: true, ageMs: 0 })
+    this.staleSince = null
     const raw = this.deriveState(v)
     // alarm/offline 立即切换(安全事件不等去抖);ok↔warn 需连续 3 帧一致
     if (raw === 'alarm' || raw === 'offline' || raw === this.state) {
@@ -210,6 +215,8 @@ export class DaqNode {
       unitPath: this.unitPath,
       value: this.value,
       state: this.state,
+      quality: this.quality,
+      staleSince: this.staleSince,
       lastAt: this.lastAt,
       // S11:驱动不可用/采样失败原因必须随快照落盘,否则重启即丢、UI 无从解释
       lastError: this.lastError,
@@ -247,9 +254,12 @@ export class DaqNode {
     if (row.value != null && !Number.isNaN(Number(row.value))) {
       node.value = Number(row.value)
       node.state = node.deriveState(node.value)
+      node.quality = qualityFromReading({ enabled: node.enabled, value: node.value, state: node.state, driverOk: true, ageMs: 0 })
     }
     if (row.lastAt != null) node.lastAt = String(row.lastAt)
     if (row.lastError != null) node.lastError = String(row.lastError)
+    if (row.quality === 'good' || row.quality === 'uncertain' || row.quality === 'bad' || row.quality === 'stale' || row.quality === 'offline') node.quality = row.quality
+    if (row.staleSince != null) node.staleSince = String(row.staleSince)
     return node
   }
 
@@ -290,7 +300,9 @@ export class DaqNode {
         : undefined,
       value: this.value,
       state: this.state,
+      quality: this.quality,
       lastAt: this.lastAt,
+      staleSince: this.staleSince,
       lastError: this.lastError,
       createdAt: this.createdAt,
     }

@@ -360,6 +360,8 @@ export abstract class DaqControllerPush extends DaqControllerState {
         if (seed) this.publishPushValue(node, seed.value, seed.atMs)
         bind.runSeeded = true
         if (node.lastError) node.lastError = null
+        node.quality = 'good'
+        node.staleSince = null
       }
       const staleMs = Number(node.driverConfig?.staleMs ?? MQTT_STALE_DEFAULT_MS)
       if (!(staleMs > 0)) continue
@@ -369,6 +371,8 @@ export abstract class DaqControllerPush extends DaqControllerState {
         ? `MQTT 被动订阅:${Math.round((now - bind.lastAt) / 1000)}s 未收到报文(设备停发/主题无发布/网络分区),节点置 offline(停发期间不写样本)`
         : `MQTT 被动订阅:订阅后 ${Math.round((now - bind.startedAt) / 1000)}s 未收到首条报文(检查 broker/主题/设备发布)`
       node.state = 'offline'
+      node.quality = 'stale'
+      node.staleSince = node.staleSince ?? new Date(now).toISOString()
       node.lastError = msg
       if (now - bind.lastWarnAt > 30_000) {
         bind.lastWarnAt = now

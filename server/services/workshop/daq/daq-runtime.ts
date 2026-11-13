@@ -139,6 +139,8 @@ export class DaqNodeRuntime {
       // 驱动故障(mock 不应发生;PLC 未接入走这里):置 offline + 分类错误落节点(lastError)
       // + 独立节流广播 —— API/前端/Agent 均可读到失败原因与处理提示
       node.state = 'offline'
+      node.quality = 'bad'
+      node.staleSince = node.staleSince ?? new Date(now).toISOString()
       const msg = classifyCommError(err)
       node.lastError = msg
       if (now - this.errAt > ERR_THROTTLE_MS) {
@@ -174,6 +176,8 @@ export class DaqNodeRuntime {
       // (metricStates)与节点态直接矛盾。warn/alarm 的进入与恢复由网关
       // evaluateMetricAlarms 的边沿语义独占,此处不得改写。
       if (node.state === 'offline') node.state = 'ok'
+      node.quality = 'good'
+      node.staleSince = null
       // P3(2026-11-03):成功解析的帧 = 链路已恢复 —— 清掉陈旧 lastError(如一次
       // "向量帧点列非法"解析失败)。标量路径 applyReading 有同样自愈语义;帧路径此前缺失,
       // 导致节点带着已失效的错误长期显示异常(FL-7 实测)。state(warn/alarm)不在此处改写 ——

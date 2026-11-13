@@ -28,15 +28,15 @@ function lineName(id: string | null | undefined): string {
   return props.lines.find(l => l.id === id)?.name ?? t('daq.unassignedLine')
 }
 
-function stateOf(n: DaqNodeLive): { key: string, label: string } {
-  if (!n.enabled) return { key: 'disabled', label: t('daq.k1disabl130') }
+function qualityLabel(n: DaqNodeLive): string {
   const labels: Record<string, string> = {
-    ok: t('daq.k41k5c062'),
-    warn: t('daq.k49z8v063'),
-    alarm: t('daq.k3xmid064'),
-    offline: t('daq.k44c2n065'),
+    good: t('daq.qualityGood'),
+    uncertain: t('daq.qualityUncertain'),
+    bad: t('daq.qualityBad'),
+    stale: t('daq.qualityStale'),
+    offline: t('daq.qualityOffline'),
   }
-  return { key: n.state, label: labels[n.state] ?? n.state }
+  return labels[n.quality] ?? labels.uncertain ?? t('daq.qualityUncertain')
 }
 
 function valueOf(n: DaqNodeLive): string {
@@ -66,9 +66,9 @@ function deviceOf(n: DaqNodeLive): string {
         <div class="dn-top">
           <b class="dn-name">{{ n.name }}</b>
           <span
-            class="dn-state"
-            :data-state="stateOf(n).key"
-          >{{ stateOf(n).label }}</span>
+            class="dn-quality"
+            :data-quality="n.quality"
+          >{{ qualityLabel(n) }}</span>
         </div>
         <div class="dn-value mono">
           <b>{{ valueOf(n) }}</b>
@@ -141,22 +141,11 @@ function deviceOf(n: DaqNodeLive): string {
   -webkit-line-clamp: 2;
 }
 
-.dn-state {
-  flex: 0 0 auto;
-  padding: 1px 7px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--ink-soft);
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-}
-
-.dn-state[data-state='ok'] { color: var(--tone-success-dot); background: var(--tone-success-bg); border-color: transparent; }
-.dn-state[data-state='warn'] { color: var(--tone-warning-dot); background: var(--tone-warning-bg); border-color: transparent; }
-.dn-state[data-state='alarm'] { color: var(--tone-danger-dot); background: var(--tone-danger-bg); border-color: transparent; }
-.dn-state[data-state='offline'] { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); border-color: transparent; }
-.dn-state[data-state='disabled'] { color: var(--ink-faint); }
+.dn-quality { color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 1px 7px; font-family: var(--font-mono); font-size: 10px; }
+.dn-quality[data-quality='good'] { color: var(--tone-success-dot); background: var(--tone-success-bg); border-color: transparent; }
+.dn-quality[data-quality='stale'], .dn-quality[data-quality='uncertain'] { color: var(--tone-warning-dot); background: var(--tone-warning-bg); border-color: transparent; }
+.dn-quality[data-quality='bad'] { color: var(--tone-danger-dot); background: var(--tone-danger-bg); border-color: transparent; }
+.dn-quality[data-quality='offline'] { color: var(--tone-neutral-dot); background: var(--tone-neutral-bg); border-color: transparent; }
 
 .dn-value {
   display: flex;

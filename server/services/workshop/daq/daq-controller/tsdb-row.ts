@@ -18,6 +18,7 @@ export interface TsdbSampleInput {
   tsMs: number
   value: number
   state: string
+  quality?: string
   nodeLineId?: string | null
   run: TsdbRunTags | null
 }
@@ -27,6 +28,7 @@ export interface TsdbSampleRow {
   tsMs: number
   value: number
   state: string
+  quality?: string
   lineId: string | null
   productId: string | null
   recipeId: string | null
@@ -40,6 +42,7 @@ export function tsdbRowOf(input: TsdbSampleInput): TsdbSampleRow {
     tsMs: input.tsMs,
     value: input.value,
     state: input.state,
+    quality: input.quality ?? 'good',
     lineId: nodeLine || null,
     productId: input.run?.productId ?? null,
     recipeId: input.run?.recipeId ?? null,

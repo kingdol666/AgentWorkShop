@@ -18,6 +18,7 @@ export interface DaqSampleRow {
   tsMs: number
   value: number
   state: string
+  quality?: string
   /** 平台首次入库时间(epoch ms;首写胜出,同键更正帧本期不支持 → C6) */
   ingestedAt?: number | null
   /** 产线批次打标(活动 LineRun 窗口内的样本逐条携带;null = 线体空闲段) */
@@ -45,6 +46,7 @@ export interface TsdbPoint {
   max?: number
   cnt?: number
   state?: string
+  quality?: string
   /** 首次入库时间(仅逐节点分页/raw 返回;旧数据为 undefined = unknown) */
   ingestedAt?: number
 }

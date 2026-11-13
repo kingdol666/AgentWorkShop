@@ -439,6 +439,9 @@ export interface DriverTestResult {
   latencyMs?: number
 }
 
+/** 信号质量:good=链路正常, uncertain=无有效值, bad=驱动错误, stale=超过陈旧窗, offline=停用/失联 */
+export type DaqQuality = 'good' | 'uncertain' | 'bad' | 'stale' | 'offline'
+
 /** 通道健康态(ok 量程内 / warn 越预警带 / alarm 越硬量程 / offline 停用或控制器暂停) */
 export type DaqNodeState = 'ok' | 'warn' | 'alarm' | 'offline'
 
@@ -485,7 +488,9 @@ export interface DaqNodeView {
   fieldLabel?: string
   value: number | null
   state: DaqNodeState
+  quality: DaqQuality
   lastAt: string | null
+  staleSince?: string | null
   /** 最近一次采样失败原因(连接/超时/PLC 异常分类;成功后清空) */
   lastError: string | null
   createdAt: string
@@ -497,6 +502,7 @@ export interface AepDaqReading {
   templateRef: string
   value: number
   state: DaqNodeState
+  quality?: DaqQuality
   at: string
   /** 所属产线(WS 鉴权扇出按线过滤;未挂线 = null,全员可见) */
   lineId?: string | null
