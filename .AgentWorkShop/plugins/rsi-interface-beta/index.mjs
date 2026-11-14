@@ -11,6 +11,7 @@ import {
   SCOPE_STATE_KEY,
   adapterDescriptor,
   evaluateBetaScope,
+  evaluateCapability,
   publicFlags,
   readBetaFlags,
   requestedScopeFromEvent,
@@ -113,6 +114,28 @@ function publicAdapterStatus(status) {
   }
 }
 
+/**
+ * P1 capability 真相(2026-11-14):对外可见能力 = 注册 adapter 实况 ∩ ALLOWED,
+ * 不再照抄静态 descriptor(adapter 支持 snapshot;observe/simulate/replay/verify
+ * 未实现即不展示)。registry 不可用时回退 descriptor(保守:只列总是可判定的键)。
+ */
+function advertisedCapabilities(state) {
+  const base = adapterDescriptor.capabilities
+  try {
+    const summaries = typeof state.runtime?.registry?.list === 'function'
+      ? state.runtime.registry.list()
+      : []
+    const mine = summaries.find(item => item?.adapterId === ADAPTER_ID)
+      ?? summaries.find(item => item?.ownerId === PLUGIN_NAME)
+    if (!mine || typeof mine.capabilities !== 'object') return [...base]
+    const truth = base.filter(capability => mine.capabilities[capability] === true)
+    return truth.length ? truth : [...base]
+  }
+  catch {
+    return [...base]
+  }
+}
+
 function publicMetadata(state, event) {
   const flags = readBetaFlags()
   const persistence = state.persistenceReady ? readPersistence(state.ctx) : { ok: false, code: 'PERSISTENCE_UNAVAILABLE' }
@@ -128,6 +151,7 @@ function publicMetadata(state, event) {
   const adapter = publicAdapterStatus(state.adapterStatus)
   const scoped = scopeResult.ok
   const ready = scoped && adapter.ok
+  const caps = advertisedCapabilities(state)
   return {
     apiVersion: API_VERSION,
     plugin: PLUGIN_NAME,
@@ -145,7 +169,9 @@ function publicMetadata(state, event) {
     adapter: {
       ...adapter,
       health: adapter.ok ? 'healthy' : 'unavailable',
+      capabilities: caps,
     },
+    capabilities: caps,
     research: {
       wired: Boolean(state.research),
       persisted: state.researchPersistenceReady === true,
@@ -154,7 +180,6 @@ function publicMetadata(state, event) {
     readOnly: true,
     actuation: false,
     promotion: false,
-    capabilities: [...adapterDescriptor.capabilities],
     provenance: BETA_PROVENANCE,
     limitations: [...BETA_LIMITATIONS],
   }
@@ -208,59 +233,119 @@ function restoreResearchState(state) {
   }
 }
 
-function routeResult(state, event, capability) {
+/**
+ * P0 授权语义修订(2026-11-14):授权事实源自宿主持久记录
+ * (runtime.resolveScopeBinding:workspace 挂载 + channel 启用 + worker 启用/角色
+ * + principal 归属/成员关系)。插件 kv 的 rsi.beta.scope 不再是授权前提,
+ * 只在存在时作为**附加收窄约束**(foreign/stale/disabled 仍拒)——
+ * 真实部署无需手工预置 kv 即可工作,且既有 kv 约束语义不放宽。
+ */
+function authorizeScopeBinding(state, event, requested, capability) {
   const flags = readBetaFlags()
+  // kv 可用性仍是硬前提(研究状态/生命周期落盘依赖它):读失败即 default-deny,
+  // 不降级为「仅宿主推导」—— 防止持久层故障时的静默放行。
   const persistence = state.persistenceReady ? readPersistence(state.ctx) : { ok: false, code: 'PERSISTENCE_UNAVAILABLE', reason: 'plugin state persistence failed' }
-  const requested = requestedScopeFromEvent(event)
-  const principal = event?.awUser ?? event?.context?.awUser ?? null
-  const authorization = state.runtime?.authorizeScope?.({ principal, scope: requested })
   if (!persistence.ok) {
     return {
-      apiVersion: API_VERSION,
-      plugin: PLUGIN_NAME,
       ok: false,
-      available: false,
-      code: persistence.code ?? 'PERSISTENCE_UNAVAILABLE',
-      reason: 'Beta scope persistence is unavailable',
-      capability: capability ?? null,
-      flags: publicFlags(flags),
-      persistence: publicPersistence(persistence),
-      adapter: publicAdapterStatus(state.adapterStatus),
+      response: {
+        apiVersion: API_VERSION,
+        plugin: PLUGIN_NAME,
+        ok: false,
+        available: false,
+        code: persistence.code ?? 'PERSISTENCE_UNAVAILABLE',
+        reason: 'Beta scope persistence is unavailable',
+        capability: capability ?? null,
+        flags: publicFlags(flags),
+        persistence: publicPersistence(persistence),
+        adapter: publicAdapterStatus(state.adapterStatus),
+      },
     }
   }
-  if (!authorization?.ok) {
+  const principal = event?.awUser ?? event?.context?.awUser ?? null
+  const binding = state.runtime?.resolveScopeBinding?.({ principal, scope: requested })
+  if (!binding?.ok) {
     return {
-      apiVersion: API_VERSION,
-      plugin: PLUGIN_NAME,
       ok: false,
-      available: false,
-      code: flags.globallyEnabled ? 'SCOPE_FORBIDDEN' : (flags.hardDenied ? 'BETA_HARD_DENY' : 'BETA_DISABLED'),
-      reason: flags.globallyEnabled ? 'requested Beta scope is not authorized' : 'Beta flags are not explicitly enabled',
-      capability: capability ?? null,
-      flags: publicFlags(flags),
-      persistence: publicPersistence(persistence),
-      adapter: publicAdapterStatus(state.adapterStatus),
+      response: {
+        apiVersion: API_VERSION,
+        plugin: PLUGIN_NAME,
+        ok: false,
+        available: false,
+        code: flags.globallyEnabled ? 'SCOPE_FORBIDDEN' : (flags.hardDenied ? 'BETA_HARD_DENY' : 'BETA_DISABLED'),
+        reason: flags.globallyEnabled ? 'requested Beta scope is not authorized against host records' : 'Beta flags are not explicitly enabled',
+        capability: capability ?? null,
+        flags: publicFlags(flags),
+        persistence: publicPersistence(persistence),
+        adapter: publicAdapterStatus(state.adapterStatus),
+      },
     }
   }
-  const result = evaluateBetaScope({
-    flags,
-    persistence,
-    requested: authorization.scope,
-    persisted: persistence.scope,
-    capability,
-    maxAgeMs: state.maxAgeMs,
-  })
+  // kv scope 条目是**可选附加约束**:存在即相交校验(foreign/stale/disabled 仍拒);
+  // 不存在(未 provision)时宿主推导单独授权 —— 真实部署不再被空 kv 卡死。
+  const persistedScope = persistence.scope && typeof persistence.scope === 'object' ? persistence.scope : null
+  if (persistedScope) {
+    const exact = evaluateBetaScope({
+      flags,
+      persistence,
+      requested: binding.scope,
+      persisted: persistedScope,
+      capability,
+      maxAgeMs: state.maxAgeMs,
+    })
+    if (!exact.ok) {
+      return {
+        ok: false,
+        response: {
+          apiVersion: API_VERSION,
+          plugin: PLUGIN_NAME,
+          ok: false,
+          available: false,
+          code: exact.code ?? 'SCOPE_FORBIDDEN',
+          reason: exact.reason ?? 'Beta scope provisioning constraint not satisfied',
+          capability: capability ?? null,
+          flags: publicFlags(flags),
+          persistence: publicPersistence(persistence),
+          adapter: publicAdapterStatus(state.adapterStatus),
+        },
+      }
+    }
+  }
+  const capabilityResult = evaluateCapability({ flags, capability })
+  if (!capabilityResult.ok) {
+    return {
+      ok: false,
+      response: {
+        apiVersion: API_VERSION,
+        plugin: PLUGIN_NAME,
+        ok: false,
+        available: false,
+        code: capabilityResult.code,
+        reason: capabilityResult.reason,
+        capability: capability ?? null,
+        flags: publicFlags(flags),
+        persistence: publicPersistence(persistence),
+        adapter: publicAdapterStatus(state.adapterStatus),
+      },
+    }
+  }
+  return { ok: true, scope: binding.scope, binding, persistence }
+}
+
+function routeResult(state, event, capability) {
+  const authorized = authorizeScopeBinding(state, event, requestedScopeFromEvent(event), capability)
+  if (!authorized.ok) return authorized.response
+  const { binding } = authorized
   return {
     apiVersion: API_VERSION,
     plugin: PLUGIN_NAME,
-    ok: result.ok,
-    available: result.ok,
-    code: result.ok ? 'READY' : result.code,
-    reason: result.ok ? undefined : result.reason,
-    capability: result.capability ?? capability ?? null,
-    scope: result.ok ? result.scope : undefined,
-    flags: publicFlags(flags),
-    persistence: publicPersistence(persistence),
+    ok: true,
+    available: true,
+    code: 'READY',
+    capability: capability ?? null,
+    scope: binding.scope,
+    flags: publicFlags(readBetaFlags()),
+    persistence: publicPersistence(authorized.persistence),
     adapter: publicAdapterStatus(state.adapterStatus),
   }
 }
@@ -278,23 +363,12 @@ function researchError(error) {
 }
 
 function authorizeResearch(state, event, body) {
-  const persistence = state.persistenceReady ? readPersistence(state.ctx) : { ok: false, code: 'PERSISTENCE_UNAVAILABLE' }
-  if (!persistence.ok) return { ok: false, response: researchError({ code: 'PERSISTENCE_UNAVAILABLE', message: 'research persistence is unavailable' }) }
   const requested = scopeOf(event, body)
-  const principal = event?.awUser ?? event?.context?.awUser ?? null
-  const runtime = state.runtime?.authorizeScope?.({ principal, scope: requested })
-  if (!runtime?.ok) return { ok: false, response: researchError({ code: 'SCOPE_FORBIDDEN', message: 'requested research scope is not authorized' }) }
-  const exact = evaluateBetaScope({
-    flags: readBetaFlags(),
-    persistence,
-    requested: runtime.scope,
-    persisted: persistence.scope,
-    capability: 'query',
-    maxAgeMs: state.maxAgeMs,
-  })
-  if (!exact.ok) return { ok: false, response: researchError({ code: 'SCOPE_FORBIDDEN', message: 'requested research scope is not the exact active worker scope' }) }
+  const authorized = authorizeScopeBinding(state, event, requested, 'query')
+  if (!authorized.ok) return { ok: false, response: authorized.response }
+  // 研究状态仍需 kv 持久化可用(run/candidate 断电续跑契约)
   if (!state.research || state.researchPersistenceReady !== true) return { ok: false, response: researchError({ code: 'PERSISTENCE_UNAVAILABLE', message: 'research persistence is unavailable' }) }
-  return { ok: true, scope: exact.scope }
+  return { ok: true, scope: authorized.scope }
 }
 
 function scopeRun(run, scope) {
@@ -426,12 +500,19 @@ export default {
       if (!authorized.ok) return authorized.response
       try {
         const id = event?.query?.id ?? body.id
+        // P1 oracle 修复:显式请求 foreign run id 必须显式 SCOPE_FORBIDDEN,
+        // 不再返回 ok:true + 空列表(空列表仅用于无 id 的范围列表查询)。
         const runs = id ? [state.research.orchestrator.get(String(id))] : state.research.orchestrator.list()
+        const matched = runs.filter(run => scopeRun(run, authorized.scope))
+        if (id && matched.length === 0) {
+          auditDenial(state, event, 'research.list.denied', 'run outside the exact active worker scope')
+          return researchError({ code: 'SCOPE_FORBIDDEN', message: 'research run is outside the exact active worker scope' })
+        }
         return {
           ok: true,
           available: true,
           scope: authorized.scope,
-          runs: runs.filter(run => scopeRun(run, authorized.scope)),
+          runs: matched,
           candidateOnly: true,
           actuation: false,
           promotion: false,
@@ -440,6 +521,26 @@ export default {
       catch (error) {
         return researchError(error)
       }
+    }
+
+    /** 拒绝审计(隐私安全:只记 actor/scope/capability/原因,不带业务载荷) */
+    function auditDenial(state, event, action, reason) {
+      try {
+        const principal = event?.awUser ?? event?.context?.awUser ?? null
+        void import('@/server/services/workshop/ops/ops').then(({ recordOps }) => {
+          recordOps({
+            actor: principal?.id ?? 'unknown',
+            actorName: principal?.name ?? '',
+            actorKind: principal ? 'user' : 'system',
+            action,
+            kind: 'read',
+            scope: 'system',
+            targetKind: 'rsi_beta_research',
+            summary: `RSI Beta 拒绝(${action}):${reason}`,
+          })
+        }).catch(() => { /* 审计不可用不改变拒绝语义 */ })
+      }
+      catch { /* 审计不可用不改变拒绝语义 */ }
     }
 
     const runResearch = async (event) => {
@@ -483,7 +584,14 @@ export default {
       if (!authorized.ok) return authorized.response
       try {
         const current = state.research.orchestrator.get(String(body.id ?? ''))
-        if (!scopeRun(current, authorized.scope)) return researchError({ code: 'SCOPE_FORBIDDEN', message: 'research run is outside the exact active worker scope' })
+        if (!current) {
+          auditDenial(state, event, 'research.cancel.denied', 'run not found')
+          return researchError({ code: 'SCOPE_FORBIDDEN', message: 'research run is outside the exact active worker scope' })
+        }
+        if (!scopeRun(current, authorized.scope)) {
+          auditDenial(state, event, 'research.cancel.denied', 'run outside the exact active worker scope')
+          return researchError({ code: 'SCOPE_FORBIDDEN', message: 'research run is outside the exact active worker scope' })
+        }
         const run = state.research.orchestrator.cancel(current.id)
         if (!persistResearchState(state)) return researchError({ code: 'PERSISTENCE_UNAVAILABLE', message: 'research state could not be persisted' })
         return { ok: true, available: true, scope: authorized.scope, run, candidateOnly: true, actuation: false, promotion: false }
@@ -499,10 +607,31 @@ export default {
       if (!authorized.ok) return authorized.response
       try {
         const id = String(event?.query?.id ?? body.id ?? '')
-        const evidence = id
-          ? [state.research.candidates.require(id)]
-          : state.research.candidates.list().filter(value => sameRequiredScope(value.accessScope, authorized.scope))
-        if (id && !evidence.every(value => sameRequiredScope(value.accessScope, authorized.scope))) return researchError({ code: 'SCOPE_FORBIDDEN', message: 'evidence is outside the exact active worker scope' })
+        if (id) {
+          // P1 oracle 修复:显式 foreign evidence id 显式 SCOPE_FORBIDDEN(可审计)
+          let record
+          try {
+            record = state.research.candidates.require(id)
+          }
+          catch {
+            record = null
+          }
+          if (!record || !sameRequiredScope(record.accessScope, authorized.scope)) {
+            auditDenial(state, event, 'research.evidence.denied', 'evidence outside the exact active worker scope')
+            return researchError({ code: 'SCOPE_FORBIDDEN', message: 'evidence is outside the exact active worker scope' })
+          }
+          return { ok: true, available: true, scope: authorized.scope, evidence: [record], candidateOnly: true, actuation: false, promotion: false }
+        }
+        // 范围列表:worker scope 精确匹配;请求携带 subjectRefs 时按交集收窄
+        const requestedRefs = Array.isArray(body.subjectRefs) ? body.subjectRefs.map(v => String(v ?? '').trim()).filter(Boolean) : []
+        const evidence = state.research.candidates.list().filter((value) => {
+          if (!sameRequiredScope(value.accessScope, authorized.scope)) return false
+          if (requestedRefs.length) {
+            const owned = Array.isArray(value.accessScope?.subjectRefs) ? value.accessScope.subjectRefs.map(v => String(v ?? '')) : []
+            if (!requestedRefs.some(ref => owned.includes(ref))) return false
+          }
+          return true
+        })
         return { ok: true, available: true, scope: authorized.scope, evidence, candidateOnly: true, actuation: false, promotion: false }
       }
       catch (error) {

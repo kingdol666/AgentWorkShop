@@ -5,8 +5,13 @@ export const ADAPTER_VERSION = '0.1.0'
 export const TEMPLATE_ID = 'rsi-interface-beta'
 
 export const REQUIRED_SCOPE_KEYS = Object.freeze(['workspaceId', 'channelId', 'workerId'])
+// 2026-11-14 P1:capability 真相 —— snapshot 是生产 industrial adapter 的真实
+// 能力(adapter capabilities={discover,snapshot,query:true});此前 ALLOWED 漏了
+// snapshot,合法研究计划在建卡时被误拒。observe/simulate/replay/verify 仍保留
+// 在 ALLOWED(兼容既有 scope 语义),但对外的可见能力一律以注册 adapter 实况为准。
 export const ALLOWED_CAPABILITIES = Object.freeze([
   'discover',
+  'snapshot',
   'observe',
   'query',
   'simulate',
@@ -180,6 +185,11 @@ export function evaluateBetaScope({ flags, persistence, requested, persisted, ca
   const scopeResult = intersectScope(requested, persisted, { now, maxAgeMs, templateId })
   if (!scopeResult.ok) return scopeResult
   return { ...scopeResult, capability: capabilityResult.capability }
+}
+
+/** 能力判定(独立于 scope 相交):actuate/promote 恒拒;simulate/replay 需显式 flag。 */
+export function evaluateCapability({ flags, capability } = {}) {
+  return capabilityDecision(capability, flags)
 }
 
 export function publicFlags(flags) {

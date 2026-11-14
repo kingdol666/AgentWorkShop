@@ -59,6 +59,10 @@ function makeContext(store: Record<string, unknown>, options: { deny?: boolean, 
       if (options.deny || principal?.id !== 'operator' || !requested || Object.entries(scope).some(([key, value]) => requested[key] !== value)) return { ok: false as const, code: 'SCOPE_FORBIDDEN' as const }
       return { ok: true as const, scope: requested }
     },
+    resolveScopeBinding({ principal, scope: requested }: { principal?: { id?: string } | null, scope?: typeof scope }) {
+      if (options.deny || principal?.id !== 'operator' || !requested || Object.entries(scope).some(([key, value]) => requested[key] !== value)) return { ok: false as const, code: 'SCOPE_FORBIDDEN' as const }
+      return { ok: true as const, scope: requested, boundLineIds: ['line-authorized'], channelLineId: null }
+    },
     authorizeAdapterRequest({ principal, scope: requested }: { principal?: { id?: string }, scope?: unknown }) {
       return principal?.id === 'operator' && JSON.stringify(requested) === JSON.stringify(scope)
         ? { scope: requested, principal: { id: 'operator', role: 'user' }, lineIds: ['line-authorized'] }
