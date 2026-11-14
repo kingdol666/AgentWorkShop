@@ -33,6 +33,11 @@ export type ContextRuntimeAuthorization
   = | { ok: true, scope: NormalizedContextRuntimeScope }
     | { ok: false, code: 'SCOPE_FORBIDDEN' }
 
+/** Host-derived scope binding: durable records, not client- or kv-supplied state. */
+export type ContextRuntimeScopeBinding
+  = | { ok: true, scope: NormalizedContextRuntimeScope, boundLineIds: string[], channelLineId: string | null }
+    | { ok: false, code: 'SCOPE_FORBIDDEN' }
+
 export type ContextRuntimeRepositories = {
   users: UserRepo
   channels: ChannelRepo
@@ -82,38 +87,51 @@ export class ContextRuntimeService {
   lineIdsForScope(scope?: ContextRuntimeScope | null): string[] {
     const normalized = this.normalizeScope(scope)
     if (!normalized) return []
+    const lineIds = new Set<string>()
     if (this.lineIdsForWorker) {
       try {
-        return [...new Set(this.lineIdsForWorker(normalized.workerId).map(String).filter(Boolean))]
+        for (const id of this.lineIdsForWorker(normalized.workerId)) {
+          const v = String(id)
+          if (v) lineIds.add(v)
+        }
       }
       catch {
         return []
       }
     }
-    try {
-      const lineIds = new Set<string>()
-      for (const binding of getAgentNodeBindingRepo().byAgent(normalized.workerId)) {
-        if (binding.kind === 'line-recipe') {
-          if (binding.nodeId) lineIds.add(binding.nodeId)
-        }
-        else if (binding.kind === 'recipe') {
-          const lineId = getDcwRecipeRepo().byId(binding.nodeId)?.lineId
-          if (lineId) lineIds.add(lineId)
-        }
-        else if (binding.kind === 'daq') {
-          const lineId = getDaqNodeRepo().byId(binding.nodeId)?.lineId
-          if (lineId) lineIds.add(lineId)
-        }
-        else if (binding.kind === 'dcw') {
-          const lineId = getDcwNodeRepo().byId(binding.nodeId)?.lineId
-          if (lineId) lineIds.add(lineId)
+    else {
+      try {
+        for (const binding of getAgentNodeBindingRepo().byAgent(normalized.workerId)) {
+          if (binding.kind === 'line-recipe') {
+            if (binding.nodeId) lineIds.add(binding.nodeId)
+          }
+          else if (binding.kind === 'recipe') {
+            const lineId = getDcwRecipeRepo().byId(binding.nodeId)?.lineId
+            if (lineId) lineIds.add(lineId)
+          }
+          else if (binding.kind === 'daq') {
+            const lineId = getDaqNodeRepo().byId(binding.nodeId)?.lineId
+            if (lineId) lineIds.add(lineId)
+          }
+          else if (binding.kind === 'dcw') {
+            const lineId = getDcwNodeRepo().byId(binding.nodeId)?.lineId
+            if (lineId) lineIds.add(lineId)
+          }
         }
       }
-      return [...lineIds]
+      catch {
+        return []
+      }
     }
-    catch {
-      return []
+    // 频道绑线只读面(与 agentOpsScope 同源):Channel 绑定产线即成员的只读授权,
+    // 不要求 worker 拥有单点节点绑定 —— 否则既有「频道绑线」作业在 Beta 中必然拒绝。
+    try {
+      const repos = this.repos ?? this.resolveRepositories()
+      const channelLineId = repos?.channels.findById(normalized.channelId)?.lineId
+      if (channelLineId) lineIds.add(String(channelLineId))
     }
+    catch { /* 频道绑线推导失败不回滚已推导的绑定面 */ }
+    return [...lineIds]
   }
 
   /** Industrial selectors are adapter-owned; generic scope deployment only checks host bindings. */
@@ -147,8 +165,12 @@ export class ContextRuntimeService {
       const channel = repos.channels.findById(scope.channelId)
       if (!workspace || !channel) return { ok: false, code: 'SCOPE_FORBIDDEN' }
       const admin = principal.role === 'admin'
-      if (!admin && workspace.ownerUserId !== principal.id) return { ok: false, code: 'SCOPE_FORBIDDEN' }
-      if (!admin && channel.ownerUserId !== principal.id && !repos.channelMembers?.isActiveMember(scope.channelId, principal.id)) return { ok: false, code: 'SCOPE_FORBIDDEN' }
+      // 授权关系面:workspace 属主 ∪ channel 属主 ∪ channel 在册成员(2026-11-14
+      // 修复:此前 workspace 属主检查先行,导致成员路径对非属主永远不可达 —— 死授权面)
+      const isWorkspaceOwner = workspace.ownerUserId === principal.id
+      const isChannelOwner = channel.ownerUserId === principal.id
+      const isChannelMember = repos.channelMembers?.isActiveMember(scope.channelId, principal.id) === true
+      if (!admin && !isWorkspaceOwner && !isChannelOwner && !isChannelMember) return { ok: false, code: 'SCOPE_FORBIDDEN' }
       return { ok: true, scope }
     }
     catch {
@@ -174,6 +196,30 @@ export class ContextRuntimeService {
     }
   }
 
+  /**
+   * Host-derived scope binding (P0 2026-11-14): authorization derives from
+   * durable host records (workspace mount + channel enabled + worker enabled/
+   * role + principal ownership/membership). Callers must not treat plugin-kv
+   * state as the authorization source; a kv entry may only ever narrow access.
+   */
+  resolveScopeBinding(input: { principal?: ContextRuntimePrincipal | null, scope?: ContextRuntimeScope | null }): ContextRuntimeScopeBinding {
+    const decision = this.authorizeScope(input)
+    if (!decision.ok) return { ok: false, code: 'SCOPE_FORBIDDEN' }
+    let channelLineId: string | null = null
+    try {
+      const repos = this.repos ?? this.resolveRepositories()
+      const channelLine = repos?.channels.findById(decision.scope.channelId)?.lineId
+      if (channelLine) channelLineId = String(channelLine)
+    }
+    catch { /* 绑定线推导失败不改变授权结果 */ }
+    return {
+      ok: true,
+      scope: decision.scope,
+      boundLineIds: this.lineIdsForScope(decision.scope),
+      channelLineId,
+    }
+  }
+
   async dispose(): Promise<void> {
     if (this.disposed) return
     this.disposed = true
@@ -183,6 +229,13 @@ export class ContextRuntimeService {
   private normalizeScope(scope?: ContextRuntimeScope | null): NormalizedContextRuntimeScope | null {
     if (!scope || typeof scope !== 'object') return null
     if (!scope.workspaceId || !scope.channelId || !scope.workerId) return null
+    // P1(2026-11-14):未知且非空的 scope 字段一律 fail-closed 拒绝 ——
+    // 静默丢弃会让跨 tenant/subject/时间窗请求伪装成等价请求。
+    const allowed = new Set(['workspaceId', 'channelId', 'workerId', 'lineId', 'lineIds', 'projection', 'industrial'])
+    for (const [key, value] of Object.entries(scope)) {
+      const empty = value == null || value === '' || (Array.isArray(value) && value.length === 0)
+      if (!empty && !allowed.has(key)) return null
+    }
     return {
       workspaceId: String(scope.workspaceId),
       channelId: String(scope.channelId),

@@ -26,6 +26,26 @@ function assertCandidate(value: CandidateEvidenceEnvelope): void {
   }
 }
 
+/**
+ * P1 完整性(2026-11-14):结构/声明/内容哈希校验从 restore 提升为 add 入口不变式 ——
+ * 任何内部调用方注入畸形/篡改候选在插入即拒,不再等到恢复时才暴露。
+ */
+function assertValidCandidate(value: CandidateEvidenceEnvelope): void {
+  assertCandidate(value)
+  const issues = validateEvidenceEnvelope(value)
+  if (issues.length) throw new CandidateEvidenceStoreError(CANDIDATE_STORE_ERROR_CODES.IMMUTABLE, issues.map(issue => `${issue.path}: ${issue.message}`).join('; '))
+  const expectedContentHash = canonicalHash(Object.fromEntries(Object.entries(value as unknown as Record<string, unknown>).filter(([key]) => key !== 'candidateOnly' && key !== 'contentHash')))
+  if (value.contentHash !== expectedContentHash) throw new CandidateEvidenceStoreError(CANDIDATE_STORE_ERROR_CODES.HASH_CONFLICT, `candidate ${value.id} has invalid content hash`)
+}
+
+/** 深冻结(候选不可变契约:顶层与嵌套都不可改) */
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (value === null || typeof value !== 'object' || seen.has(value)) return value
+  seen.add(value)
+  for (const nested of Object.values(value as Record<string, unknown>)) deepFreeze(nested, seen)
+  return Object.freeze(value)
+}
+
 /** In-memory, append-only candidate store with explicit JSON snapshot hooks. */
 export class CandidateEvidenceStore {
   private readonly records = new Map<string, CandidateEvidenceEnvelope>()
@@ -34,10 +54,13 @@ export class CandidateEvidenceStore {
     assertCandidate(value)
     const existing = this.records.get(value.id)
     if (existing) {
+      // 追加不变式(既有语义):同 id 不同内容 → immutable 冲突
       if (existing.contentHash !== value.contentHash) throw new CandidateEvidenceStoreError(CANDIDATE_STORE_ERROR_CODES.HASH_CONFLICT, `candidate ${value.id} has immutable content`)
       return candidateEvidenceRef(existing)
     }
-    this.records.set(value.id, value)
+    // P1 完整性:新插入必须在入口全量校验(结构/声明/内容哈希),入库即深冻结
+    assertValidCandidate(value)
+    this.records.set(value.id, deepFreeze(structuredClone(value)))
     return candidateEvidenceRef(value)
   }
 
@@ -79,11 +102,7 @@ export class CandidateEvidenceStore {
     if (!Array.isArray(values)) throw new CandidateEvidenceStoreError(CANDIDATE_STORE_ERROR_CODES.IMMUTABLE, 'candidate snapshot must be an array')
     const restored: CandidateEvidenceEnvelope[] = []
     for (const value of values) {
-      assertCandidate(value as CandidateEvidenceEnvelope)
-      const issues = validateEvidenceEnvelope(value)
-      if (issues.length) throw new CandidateEvidenceStoreError(CANDIDATE_STORE_ERROR_CODES.IMMUTABLE, issues.map(issue => `${issue.path}: ${issue.message}`).join('; '))
-      const expectedContentHash = canonicalHash(Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([key]) => key !== 'candidateOnly' && key !== 'contentHash')))
-      if ((value as CandidateEvidenceEnvelope).contentHash !== expectedContentHash) throw new CandidateEvidenceStoreError(CANDIDATE_STORE_ERROR_CODES.HASH_CONFLICT, `candidate ${(value as CandidateEvidenceEnvelope).id} has invalid content hash`)
+      assertValidCandidate(value as CandidateEvidenceEnvelope)
       restored.push(structuredClone(value as CandidateEvidenceEnvelope))
     }
     for (const value of restored) this.add(value)

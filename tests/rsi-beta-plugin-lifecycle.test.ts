@@ -70,6 +70,7 @@ function makeContext({ kv = {}, registry = null, config = {}, onRegister = () =>
               drain: async () => undefined, retire: async () => undefined,
             }),
             authorizeScope: ({ scope }: { scope: typeof activeState }) => ({ ok: true, scope }),
+            resolveScopeBinding: ({ scope }: { scope: typeof activeState }) => ({ ok: true, scope, boundLineIds: [], channelLineId: null }),
             registry: {
               unregister: async () => {
                 if (typeof (registry as { unregister?: () => Promise<void> }).unregister === 'function') await (registry as { unregister: () => Promise<void> }).unregister()
