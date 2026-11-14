@@ -5,7 +5,9 @@
 import { ManagerNotifications } from './notifications'
 import type { ActingUser, AgentTemplateDetail } from './types'
 import type { AgentInfo } from '../../agents/agent-interface'
+import { trustedSessionBindingIdentity } from '../../agents/session-snapshot'
 import type { AgentRow, ChannelRow, WorkspaceRow } from '../../db/database'
+import type { ChannelMode } from '../../db/database/rows'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
@@ -16,6 +18,8 @@ import { mkdirSync } from 'node:fs'
 import { parseJson } from '../../db/database'
 import { resolve } from 'node:path'
 import { runtimeKey } from './helpers'
+import { activeSessionOfMember, SESSION_MARKER } from '../../agents/session-clone'
+import { createChannelSessionRepo } from '../../db/channel-session.repo'
 
 export abstract class ManagerAdminChannel extends ManagerNotifications {
   listWorkspaces(userId: string): Array<WorkspaceRow & { channelIds: string[] }> {
@@ -62,8 +66,13 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
 
   // ===== Channel 管理面 =====
 
+  channelModeOf(channelId: string): ChannelMode {
+    return this.deps.repos.channels.findById(channelId)?.channelMode === 'production_line_integrated' ? 'production_line_integrated' : 'generic'
+  }
+
   async createChannel(input: {
     name: string
+    channelMode?: ChannelMode
     description?: string
     scenarioPrompt?: string
     workspace?: string
@@ -75,7 +84,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     const actor = input.actor ?? { role: 'user' }
     if (input.workspace) assertChannelWorkspaceAllowed(input.workspace, actor)
     if (input.leadAgent) assertSpawnConfigAllowed(input.leadAgent.harness, input.leadAgent.config, actor)
-    const channel = this.deps.repos.channels.create({ name: input.name, description: input.description, scenarioPrompt: input.scenarioPrompt, ownerUserId: input.ownerUserId ?? null })
+    const channel = this.deps.repos.channels.create({ name: input.name, description: input.description, scenarioPrompt: input.scenarioPrompt, channelMode: input.channelMode, ownerUserId: input.ownerUserId ?? null })
     // v17:owner 成员记录必须与 Channel 同时落库(不变量:有且只有一条 active owner)。
     // 迁移回填只覆盖**已存在**的 Channel;新建路径若不写,owner 会长期缺席名册 ——
     // 成员列表漏掉 owner、群成员数偏小,只能靠 requireChannelMember 的自愈副作用补,
@@ -120,7 +129,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     return { ...channel, agents }
   }
 
-  async updateChannel(channelId: string, patch: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null, chatEnabled?: number }, actor: SpawnActor = { role: 'user' }): Promise<ChannelRow> {
+  async updateChannel(channelId: string, patch: { name?: string, channelMode?: ChannelMode, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null, chatEnabled?: number }, actor: SpawnActor = { role: 'user' }): Promise<ChannelRow> {
     const channel = this.requireChannelRow(channelId)
     if (patch.workspace !== undefined && patch.workspace !== channel.workspace) {
       assertChannelWorkspaceAllowed(patch.workspace, actor, channelId)
@@ -130,6 +139,8 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     if (patch.enabled === 0 && channel.enabled !== 0) {
       await this.unloadChannelAgents(channelId)
     }
+    const modeChanged = patch.channelMode !== undefined && patch.channelMode !== channel.channelMode
+    if (modeChanged) await this.unloadChannelAgents(channelId)
     // 场景 prompt 变更 → 回收成员运行时(下次装配注入新场景;进度任务不受影响,
     // 排队任务在成员重新装配后按需恢复)
     if (patch.scenarioPrompt !== undefined && patch.scenarioPrompt !== channel.scenarioPrompt) {
@@ -144,7 +155,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     }
     const updated = this.deps.repos.channels.update(channelId, patch)
     // 卸载后 channel 需重新激活(懒装配 lead + 恢复调度驱动)
-    if (updated && updated.leadAgentId && (patch.scenarioPrompt !== undefined || patch.workspace !== undefined || (nextLlm !== undefined && nextLlm !== prevLlm))) {
+    if (updated && updated.leadAgentId && (modeChanged || patch.scenarioPrompt !== undefined || patch.workspace !== undefined || (nextLlm !== undefined && nextLlm !== prevLlm))) {
       this.ensureChannelActive(channelId)
     }
     return updated!
@@ -232,12 +243,23 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     return this.activeScopeOf(agentId)
   }
 
-  /** v18:Agent 实例 → 其频道绑定的产线 id(只读扩权依据;未绑/找不到 = null) */
+  /** Agent line authority follows its immutable active session snapshot when present. */
   channelLineBindingOf(agentId: string): string | null {
-    const m = this.deps.repos.channelAgents.findById(agentId)
-    if (!m) return null
-    const lineId = this.deps.repos.channels.findById(m.channelId)?.lineId ?? ''
-    return lineId || null
+    try {
+      const member = this.deps.repos.channelAgents.findById(agentId)
+      if (!member) return null
+      const sessions = createChannelSessionRepo(this.deps.db).listByChannel(member.channelId)
+      const session = activeSessionOfMember(sessions, agentId)
+      if (session) {
+        return trustedSessionBindingIdentity(session)?.lineId ?? null
+      }
+      // Stale or ambiguous clones must never inherit the mutable channel binding.
+      if (String(member.name ?? '').includes(SESSION_MARKER)
+        || sessions.some(s => s.status === 'active' && s.instanceKind !== 'project' && Object.values(parseJson<Record<string, string>>(s.memberMapJson, {})).includes(agentId))) return null
+      if (this.channelModeOf(member.channelId) !== 'production_line_integrated') return null
+      return this.deps.repos.channels.findById(member.channelId)?.lineId || null
+    }
+    catch { return null }
   }
 
   /** v33 三模式:Agent 实例 → 所属频道 id(执行模式钳位依据;未绑/找不到 = null) */

@@ -11,6 +11,6 @@
  */
 export { HOST_TOOLS, LEAD_ONLY_TOOL_NAMES, hostToolsForRole } from './catalog'
 export { hostToolsForAgent, agentToolResources } from './per-agent'
-export type { HostToolBridgeContext, HostToolCall, HostToolResult, HostToolSessionState } from './types'
+export type { ChannelSessionExecutionScope, HostToolBridgeContext, HostToolCall, HostToolResult, HostToolSessionState } from './types'
 export { createSessionState, partsToText } from './session'
 export { dispatchHostTool, noteToolActivity, toolActivityAt, resetToolActivity } from './dispatch'

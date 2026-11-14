@@ -16,10 +16,11 @@
  * 时间源统一 Date.now();单节点读取失败(离线等)跳过不阻塞整轮。
  */
 import type { DcwJournalAnchor } from '../../../../shared/dcw-protocol'
-import type { ExpConfirmation, ExpEpisode, ExpNodeSnapshot, ExpWatermark } from './exp-state.repo'
+import type { ExpConfirmation, ExpEpisode, ExpEpisodeDraftInput, ExpNodeSnapshot, ExpWatermark } from './exp-state.repo'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { getDcwController } from '../dcw/dcw-controller'
 import { getDcwNodeRepo } from '../dcw/dcw-node.repo'
+import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
 import { getRecipeRollBackRepo } from '../dcw/recipe-rollback.repo'
 import { getOps } from '../ops/ops'
 import { getExpStateRepo } from './exp-state.repo'
@@ -33,8 +34,13 @@ const AUDIT_SLACK_MS = 60_000
 /** SET 变化判定阈值(节点值已按 decimals 取整,浮点噪声用 epsilon 吸收) */
 const SET_EPSILON = 1e-9
 
-/** episode 草稿(recordEpisodes 前的中间形态;untilAt 仅归因窗计算用,不入库) */
-export type ExpEpisodeDraft = Omit<ExpEpisode, 'id' | 'lineId' | 'status' | 'hash'> & { untilAt?: string }
+/** episode 草稿(recordEpisodes 前的中间形态;untilAt 仅归因窗计算用,身份可由采集器补全) */
+export type ExpEpisodeDraft = ExpEpisodeDraftInput & { untilAt?: string }
+
+/** 可信采集上下文;不得从锚或其他不受信请求参数读取 sessionId。 */
+export interface ExpCollectContext {
+  sessionId?: string | null
+}
 
 /** 锚写来源 → episode 来源归因(rollback 恢复归入配方/系统路径) */
 function srcOf(source: string): 'manual' | 'agent' | 'recipe' {
@@ -69,6 +75,10 @@ function draftOf(lineId: string, group: DcwJournalAnchor[]): ExpEpisodeDraft {
     source: srcOf(source),
     actor: anchorForActor.actor,
     actorKind: actorKindOf(source),
+    recipeRunId: group.find(a => a.recipeRunId)?.recipeRunId ?? null,
+    productId: null,
+    recipeId: null,
+    sessionId: null,
     params: group.map(a => ({ nodeId: a.nodeId, from: a.prevValue, to: a.newValue })),
     at: group[0]!.at,
     untilAt: group[group.length - 1]!.at,
@@ -144,6 +154,17 @@ export function diffSnapshot(
   return out
 }
 
+function enrichIdentity(draft: ExpEpisodeDraft, context: ExpCollectContext): void {
+  const recipeRunId = draft.recipeRunId ?? null
+  const run = recipeRunId ? getDcwRecipeRepo().runById(recipeRunId) : undefined
+  const recipe = run?.recipeId ? getDcwRecipeRepo().byId(run.recipeId) : undefined
+  // Only the recipe repository is trusted for product/recipe scope; unknown stays null.
+  draft.recipeRunId = recipeRunId
+  draft.recipeId = run?.recipeId ?? null
+  draft.productId = run?.productId ?? recipe?.productId ?? null
+  draft.sessionId = context.sessionId ?? null
+}
+
 /**
  * 平台动作归因增强(就地改写草稿):
  *  - audit_log 按 targetId+时间窗交叉:取写审计行 id(证据链)与 actor 归因
@@ -189,7 +210,7 @@ function enrichDraft(draft: ExpEpisodeDraft): void {
  * 平台动作入 pending episode + 推断动作入待确认队列,返回本轮增量与待确认计数。
  * 重复调用幂等:水位(at+已见 id)剔重,第二轮零新增(单测覆盖)。
  */
-export async function collectEpisodes(lineId: string, opts: { nowMs?: number } = {}): Promise<{
+export async function collectEpisodes(lineId: string, opts: { nowMs?: number } = {}, context: ExpCollectContext = {}): Promise<{
   episodes: ExpEpisode[]
   confirmations: { added: number, pending: number }
 }> {
@@ -201,7 +222,10 @@ export async function collectEpisodes(lineId: string, opts: { nowMs?: number } =
   // ---- 1. 平台动作:锚账本增量 → 聚合 → 归因 → pending 落账 → 水位推进
   const fresh = unseenAnchorsSince(getRecipeRollBackRepo().listAnchorsSince(lineId, wm.lastAnchorAt), wm)
   const drafts = aggregateAnchorsToEpisodes(lineId, fresh)
-  for (const d of drafts) enrichDraft(d)
+  for (const d of drafts) {
+    enrichIdentity(d, context)
+    enrichDraft(d)
+  }
   const episodes = state.recordEpisodes(lineId, drafts)
   if (fresh.length > 0) {
     const seen = new Set(wm.seenAnchorIds)

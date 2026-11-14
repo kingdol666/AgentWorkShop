@@ -15,6 +15,7 @@ import { getAgentNodeBindingRepo } from '../agents/node-bindings.repo'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { getDcwNodeRepo } from '../dcw/dcw-node.repo'
 import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
+import { channelModeForAgent } from '../channel-mode'
 
 export const CONTEXT_RUNTIME_API_VERSION = 'context-runtime.v1' as const
 
@@ -86,7 +87,7 @@ export class ContextRuntimeService {
 
   lineIdsForScope(scope?: ContextRuntimeScope | null): string[] {
     const normalized = this.normalizeScope(scope)
-    if (!normalized) return []
+    if (!normalized || channelModeForAgent(normalized.workerId) !== 'production_line_integrated') return []
     const lineIds = new Set<string>()
     if (this.lineIdsForWorker) {
       try {
@@ -126,11 +127,13 @@ export class ContextRuntimeService {
     // 频道绑线只读面(与 agentOpsScope 同源):Channel 绑定产线即成员的只读授权,
     // 不要求 worker 拥有单点节点绑定 —— 否则既有「频道绑线」作业在 Beta 中必然拒绝。
     try {
-      const repos = this.repos ?? this.resolveRepositories()
-      const channelLineId = repos?.channels.findById(normalized.channelId)?.lineId
+      const manager = (globalThis as typeof globalThis & { __workshopManager?: { channelLineBindingOf?: (agentId: string) => string | null, channelSessionScopeOfAgent?: (channelId: string, agentId: string) => { lineId: string } | null } }).__workshopManager
+      const session = manager?.channelSessionScopeOfAgent?.(normalized.channelId, normalized.workerId)
+      if (session) return lineIds.has(session.lineId) || manager?.channelLineBindingOf?.(normalized.workerId) === session.lineId ? [session.lineId] : []
+      const channelLineId = manager?.channelLineBindingOf?.(normalized.workerId)
       if (channelLineId) lineIds.add(String(channelLineId))
     }
-    catch { /* 频道绑线推导失败不回滚已推导的绑定面 */ }
+    catch { return [] }
     return [...lineIds]
   }
 
@@ -187,6 +190,7 @@ export class ContextRuntimeService {
     if (!decision.ok) return false
     const industrialScope = input.scope as ContextRuntimeScope
     const industrial = Boolean(industrialScope.lineId || industrialScope.lineIds?.length || industrialScope.projection === 'industrial' || industrialScope.industrial)
+    if (industrial && channelModeForAgent(decision.scope.workerId) !== 'production_line_integrated') return false
     const lineIds = this.lineIdsForScope(decision.scope)
     return {
       scope: decision.scope,
@@ -207,8 +211,10 @@ export class ContextRuntimeService {
     if (!decision.ok) return { ok: false, code: 'SCOPE_FORBIDDEN' }
     let channelLineId: string | null = null
     try {
-      const repos = this.repos ?? this.resolveRepositories()
-      const channelLine = repos?.channels.findById(decision.scope.channelId)?.lineId
+      const manager = (globalThis as typeof globalThis & { __workshopManager?: { channelLineBindingOf?: (agentId: string) => string | null } }).__workshopManager
+      const channelLine = channelModeForAgent(decision.scope.workerId) === 'production_line_integrated'
+        ? manager?.channelLineBindingOf?.(decision.scope.workerId)
+        : null
       if (channelLine) channelLineId = String(channelLine)
     }
     catch { /* 绑定线推导失败不改变授权结果 */ }

@@ -14,7 +14,8 @@ import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { getChannelTwinProfile, modelBackedToolPolicyFor, type AmlChannelProfileKind } from '../../aml/twin/channel-profile'
 import { getAmlRuntime } from '../../aml/runtime'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
-import { AML_TRAINING_TOOL_NAMES, AML_MODEL_BACKED_TOOL_NAMES, HOST_TOOLS } from './catalog'
+import { AML_TRAINING_TOOL_NAMES, AML_MODEL_BACKED_TOOL_NAMES, HOST_TOOLS, isProductionTool } from './catalog'
+import { channelModeForAgent } from '../../channel-mode'
 import { twinWriteGuard } from '../../aml/twin/feature-flags'
 import { listPluginTools, pluginOfTool } from '../plugin-tools'
 import { auditPluginToolCall, governPluginToolCall } from '../plugin-governance'
@@ -164,6 +165,11 @@ function truncateToolResult(result: HostToolResult, toolName: string): HostToolR
 async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCall, activeRootTaskId?: string): Promise<HostToolResult> {
   const identity = ctx.identity
   const state = ctx.state
+  // Tool lists are advisory: reject cached or manually invoked production tools too.
+  if (channelModeForAgent(identity.agentId) !== 'production_line_integrated'
+    && (INDUSTRIAL_TOOL_NAMES.has(req.toolName) || isProductionTool(req.toolName, pluginOfTool(req.toolName)))) {
+    return { text: '通用频道不开放产线工业工具。', isError: true }
+  }
   // §13.3 人类发起者作用域:进程内工具调用同样受管理面/高危写限制。
   // REST/MCP 路径已在 manager.invokeHostTool 检查;omp 的 host_tool_call 只经过本函数,
   // 此前完全绕过(群成员 @Agent 可借 Agent 身份执行高危写)。
@@ -339,7 +345,8 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
     // 调用者的绑定面内;越界拒绝并把「你的绑定面 + 下一步」返回给 Agent)
     const verifyDenied = verifyIndustrialToolCall(identity.agentId, req.toolName, args)
     if (verifyDenied) return verifyDenied
-    return await dispatchIndustrialTool(identity.agentId, req.toolName, args, identity.channelId)
+    if (ctx.state.sessionId && !ctx.channelSessionScope) return { text: '当前 Session 缺少可信产品快照,工业工具拒绝执行。', isError: true }
+    return await dispatchIndustrialTool(identity.agentId, req.toolName, args, identity.channelId, ctx.channelSessionScope ?? undefined)
   }
 
   const ws = ctx.getWorkspace()
@@ -454,7 +461,8 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
       case 'recipe_versions':
       case 'recipe_update':
       case 'recipe_rollback':
-        return await dispatchIndustrialTool(identity.agentId, req.toolName, args, identity.channelId)
+        if (ctx.state.sessionId && !ctx.channelSessionScope) return { text: '当前 Session 缺少可信产品快照,工业工具拒绝执行。', isError: true }
+        return await dispatchIndustrialTool(identity.agentId, req.toolName, args, identity.channelId, ctx.channelSessionScope ?? undefined)
     }
     return { text: `未知工具: ${req.toolName}`, isError: true }
   }

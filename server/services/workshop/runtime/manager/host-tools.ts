@@ -172,6 +172,9 @@ export abstract class ManagerHostTools extends ManagerA2A {
       // mock/无工具面引擎经 MCP 桥调用却报“不支持该协作工具”(2026-10-20 实测)。
       const workspace = runtime?.workspace
       if (workspace) {
+        const channelSessionScope = this.channelSessionScopeOfAgent(row.channelId, row.id)
+        const state = createSessionState()
+        state.sessionId = channelSessionScope?.sessionId ?? null
         return finish(input, await dispatchHostTool({
           identity: {
             agentId: row.id,
@@ -179,7 +182,8 @@ export abstract class ManagerHostTools extends ManagerA2A {
             role: row.role === 'lead' ? 'lead' : 'worker',
             name: row.name,
           },
-          state: createSessionState(),
+          state,
+          channelSessionScope,
           getWorkspace: () => workspace,
         }, { toolName: input.tool, arguments: input.args ?? {} }))
       }

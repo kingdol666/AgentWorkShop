@@ -81,6 +81,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
       identity: { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName },
       state: this.toolState,
       getWorkspace: () => this.workspace,
+      channelSessionScope: null,
     }
     this.refreshIdentity()
   }
@@ -126,6 +127,10 @@ export abstract class BaseAgentImpl implements AgentInterface {
 
   dispatchHostTool(toolName: string, args: Record<string, unknown>, activeRootTaskId?: string): Promise<{ text: string, isError?: boolean }> {
     return dispatchHostTool(this.bridgeCtx, { toolName, arguments: args }, activeRootTaskId)
+  }
+
+  setChannelSessionScope(scope: HostToolBridgeContext['channelSessionScope']): void {
+    this.bridgeCtx.channelSessionScope = scope ?? null
   }
 
   /** HITL:默认无程序化审批面(有审批能力的引擎覆盖;能力面如实声明) */
@@ -300,7 +305,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
       base,
       this.currentSessionBlock,
       // WP-B1:频道 Harness overlay（仅 active profile；无 profile → ''，prompt 与现状逐字节一致）
-      channelOverlayText(this.channelId),
+      channelOverlayText(this.channelId, this.selfAgentId),
     ].filter(part => !!part).join('\n\n')
   }
 

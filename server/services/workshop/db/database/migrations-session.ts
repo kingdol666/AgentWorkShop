@@ -17,6 +17,11 @@ export function migrateSessionContextColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'channel_sessions', 'brief_json', 'TEXT NOT NULL DEFAULT \'{}\'')
   migrateAddColumn(db, 'channel_sessions', 'last_active_at', 'TEXT')
   migrateAddColumn(db, 'channel_sessions', 'generation', 'INTEGER NOT NULL DEFAULT 0')
+  migrateAddColumn(db, 'channel_sessions', 'product_id', 'TEXT')
+  migrateAddColumn(db, 'channel_sessions', 'line_id', 'TEXT')
+  migrateAddColumn(db, 'channel_sessions', 'binding_snapshot_json', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'channel_sessions', 'binding_snapshot_hash', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'channel_sessions', 'binding_snapshot_revision', 'INTEGER NOT NULL DEFAULT 0')
   migrateAddColumn(db, 'tasks', 'session_id', 'TEXT')
   migrateAddColumn(db, 'messages', 'session_id', 'TEXT')
   // Session endpoint retries use a durable actor-scoped key; legacy mailbox rows remain NULL.
@@ -26,6 +31,8 @@ export function migrateSessionContextColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'chat_deliveries', 'session_id', 'TEXT')
   migrateAddColumn(db, 'agent_memories', 'session_id', 'TEXT NOT NULL DEFAULT \'\'')
   migrateAddColumn(db, 'project_work_item_attempts', 'session_id', 'TEXT')
+  const channelCols = db.prepare('PRAGMA table_info(channels)').all() as Array<{ name: string }>
+  if (channelCols.some(c => c.name === 'channel_mode')) migrateSessionChannelModeColumn(db)
 }
 
 /** 索引必须在 tasks 重建之后创建（rebuild 会丢索引）。 */
@@ -40,4 +47,12 @@ export function ensureSessionIndexes(db: DatabaseSync): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_chat_deliveries_session ON chat_deliveries(session_id, status)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_memories_session ON agent_memories(session_id, agent_id, created_at DESC)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_project_attempt_session ON project_work_item_attempts(session_id)')
+}
+
+/** Freeze the channel mode for legacy sessions exactly once. */
+export function migrateSessionChannelModeColumn(db: DatabaseSync): void {
+  const cols = db.prepare('PRAGMA table_info(channel_sessions)').all() as Array<{ name: string }>
+  if (cols.some(c => c.name === 'channel_mode')) return
+  db.exec('ALTER TABLE channel_sessions ADD COLUMN channel_mode TEXT NOT NULL DEFAULT \'generic\' CHECK (channel_mode IN (\'generic\', \'production_line_integrated\'))')
+  db.exec('UPDATE channel_sessions SET channel_mode = COALESCE((SELECT channel_mode FROM channels WHERE channels.id = channel_sessions.channel_id), \'generic\')')
 }

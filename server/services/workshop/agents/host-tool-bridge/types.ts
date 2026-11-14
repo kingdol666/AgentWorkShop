@@ -26,8 +26,18 @@ export interface HostToolSessionState {
 }
 
 /** 桥上下文:impl 注入身份与 workspace 取值器 */
+export interface ChannelSessionExecutionScope {
+  sessionId: string
+  productId: string
+  lineId: string
+  bindingSnapshotHash: string
+  bindingSnapshotRevision: number
+}
+
 export interface HostToolBridgeContext {
   identity: { agentId: string, channelId: string, role: 'lead' | 'worker', name: string, harness?: string }
   state: HostToolSessionState
+  /** Trusted server-side scope; never populated from model/tool arguments. */
+  channelSessionScope?: ChannelSessionExecutionScope | null
   getWorkspace(): AgentWorkspace | null
 }

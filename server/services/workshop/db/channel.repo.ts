@@ -9,12 +9,14 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import type { ChannelRow } from './database'
+import type { ChannelMode } from './database/rows'
 
 /** 查询列(蛇形列名 → 驼峰行字段) */
-const COLS = 'id, name, description, scenario_prompt AS scenarioPrompt, llm_json AS llmJson, lead_agent_id AS leadAgentId, workspace, enabled, owner_user_id AS ownerUserId, visibility, join_policy AS joinPolicy, approval_policy AS approvalPolicy, chat_enabled AS chatEnabled, version, line_id AS lineId, created_at AS createdAt, updated_at AS updatedAt'
+const COLS = 'id, name, description, scenario_prompt AS scenarioPrompt, llm_json AS llmJson, lead_agent_id AS leadAgentId, workspace, enabled, owner_user_id AS ownerUserId, visibility, join_policy AS joinPolicy, approval_policy AS approvalPolicy, chat_enabled AS chatEnabled, version, line_id AS lineId, channel_mode AS channelMode, created_at AS createdAt, updated_at AS updatedAt'
 
 export interface ChannelCreateInput {
   name: string
+  channelMode?: ChannelMode
   description?: string
   /** channel 级作业场景 prompt(注入全部成员 harness) */
   scenarioPrompt?: string
@@ -32,6 +34,7 @@ export interface ChannelCreateInput {
 }
 
 export interface ChannelPatch {
+  channelMode?: ChannelMode
   name?: string
   description?: string
   scenarioPrompt?: string
@@ -53,8 +56,8 @@ export type ChannelRepo = ReturnType<typeof createChannelRepo>
 
 export function createChannelRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO channels (id, name, description, scenario_prompt, lead_agent_id, workspace, enabled, owner_user_id, visibility, join_policy, approval_policy, chat_enabled, version, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO channels (id, name, description, scenario_prompt, lead_agent_id, workspace, enabled, owner_user_id, visibility, join_policy, approval_policy, chat_enabled, version, channel_mode, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectAll = db.prepare(`SELECT ${COLS} FROM channels ORDER BY createdAt ASC`)
   const selectByOwner = db.prepare(`SELECT ${COLS} FROM channels WHERE owner_user_id = ? OR owner_user_id IS NULL ORDER BY createdAt ASC`)
@@ -74,7 +77,7 @@ export function createChannelRepo(db: DatabaseSync) {
      ORDER BY created_at ASC`,
   )
   const updateStmt = db.prepare(
-    `UPDATE channels SET name = ?, description = ?, scenario_prompt = ?, llm_json = ?, lead_agent_id = ?, workspace = ?, enabled = ?, owner_user_id = ?, visibility = ?, join_policy = ?, approval_policy = ?, chat_enabled = ?, version = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE channels SET name = ?, description = ?, scenario_prompt = ?, llm_json = ?, lead_agent_id = ?, workspace = ?, enabled = ?, owner_user_id = ?, visibility = ?, join_policy = ?, approval_policy = ?, chat_enabled = ?, version = ?, channel_mode = ?, updated_at = ? WHERE id = ?`,
   )
   const removeStmt = db.prepare(`DELETE FROM channels WHERE id = ?`)
 
@@ -100,12 +103,13 @@ export function createChannelRepo(db: DatabaseSync) {
         chatEnabled: input.chatEnabled ?? 0,
         version: 1,
         lineId: '',
+        channelMode: input.channelMode ?? 'generic',
         createdAt: now,
         updatedAt: now,
       }
       insert.run(
         row.id, row.name, row.description, row.scenarioPrompt, row.leadAgentId, row.workspace, row.enabled, row.ownerUserId,
-        row.visibility, row.joinPolicy, row.approvalPolicy, row.chatEnabled, row.version, row.createdAt, row.updatedAt,
+        row.visibility, row.joinPolicy, row.approvalPolicy, row.chatEnabled, row.version, row.channelMode, row.createdAt, row.updatedAt,
       )
       return row
     },
@@ -177,11 +181,12 @@ export function createChannelRepo(db: DatabaseSync) {
         approvalPolicy: nextApproval,
         chatEnabled: nextChatEnabled,
         version: current.version + (groupChatChanged ? 1 : 0),
+        channelMode: patch.channelMode ?? current.channelMode,
         updatedAt: new Date().toISOString(),
       }
       updateStmt.run(
         next.name, next.description, next.scenarioPrompt, next.llmJson, next.leadAgentId, next.workspace, next.enabled,
-        next.ownerUserId, next.visibility, next.joinPolicy, next.approvalPolicy, next.chatEnabled, next.version,
+        next.ownerUserId, next.visibility, next.joinPolicy, next.approvalPolicy, next.chatEnabled, next.version, next.channelMode,
         next.updatedAt, id,
       )
       return next

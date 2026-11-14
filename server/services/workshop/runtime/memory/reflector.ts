@@ -18,6 +18,7 @@ import type { MemoryScopeKind, MemoryStatus } from '../../db/database'
 import type { ExperienceEvidence, MemoryRepo } from '../../db/memory.repo'
 import type { EmbeddingProvider } from '../embedding-provider'
 import { segmentCJK, vectorizeMemory } from './helpers'
+import { channelModeOf } from '../../channel-mode'
 
 /** 任务终态事实（message.ts / supervise.ts / 调度器 bus 单点收口后采集） */
 export interface TaskFact {
@@ -290,10 +291,24 @@ export async function reflectExperience(
   repo: MemoryRepo,
   embedder: EmbeddingProvider | null,
   fact: ExperienceFact,
+  options: { industrialScopeEnabled?: boolean } = {},
 ): Promise<ReflectResult> {
   const distilled = distillExperience(fact)
   if (!distilled) return { written: false, reason: 'nothing-to-distill' }
+  const industrialEnabled = options.industrialScopeEnabled ?? (channelModeOf(fact.channelId) === 'production_line_integrated')
+  if (!industrialEnabled && (distilled.scopeKind === 'line' || distilled.scopeKind === 'product' || distilled.scopeKind === 'global')) {
+    distilled.scopeKind = 'channel'
+    distilled.scopeKey = ''
+    distilled.status = 'active'
+  }
   try {
+    if (!industrialEnabled) {
+      const previous = repo.findByAgentDedup(fact.channelId, fact.agentId, distilled.dedupKey)
+      const row = previous ? repo.getById(previous.id) : null
+      if (row?.kind === 'experience' && (row.scopeKind === 'line' || row.scopeKind === 'product' || row.scopeKind === 'global')) {
+        return { written: false, reason: 'industrial experience requires production_line_integrated mode' }
+      }
+    }
     const { id } = repo.upsertExperience({
       channelId: fact.channelId,
       agentId: fact.agentId,

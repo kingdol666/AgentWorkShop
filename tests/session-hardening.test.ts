@@ -90,6 +90,57 @@ test('C4:事务提交后才复制绑定面(绑定失败不产生孤儿 clone)', 
   void bound
 })
 
+test('C4:集成绑定复制失败时清理部分绑定、clone 与已提交会话', () => {
+  const { store, deps } = cloneCtx()
+  const removed: string[] = []
+  const bound: Array<{ agentId: string, nodeId: string }> = []
+  let bindCalls = 0
+  let compensated: string | null = null
+  const channelAgents = {
+    ...deps.channelAgents,
+    remove: (_channelId: string, id: string) => {
+      removed.push(id)
+      const index = store.findIndex(row => row.id === id)
+      if (index >= 0) store.splice(index, 1)
+    },
+  }
+  const bindings = {
+    byAgent: () => [],
+    bind: (agentId: string, nodeId: string) => {
+      bindCalls += 1
+      if (bindCalls === 2) throw new Error('binding io failed')
+      bound.push({ agentId, nodeId })
+    },
+    removeAgent: (agentId: string) => {
+      for (let i = bound.length - 1; i >= 0; i--) {
+        if (bound[i]!.agentId === agentId) bound.splice(i, 1)
+      }
+    },
+  }
+  assert.throws(() => createChannelSession(
+    {
+      ...deps,
+      channelAgents,
+      bindings,
+      compensateSession: (sessionId: string) => { compensated = sessionId },
+    } as never,
+    {
+      channelId: 'ch1',
+      actorId: 'u1',
+      channelMode: 'production_line_integrated',
+      bindingsSnapshot: {
+        'base-a': [{ nodeId: 'node-a', kind: 'dcw', mode: 'auto', tuning: { step: 2 } }],
+        'base-b': [{ nodeId: 'node-b', kind: 'daq', mode: 'manual' }],
+      },
+      sessionRepo: { create: () => ({ id: 'cs-rollback' }) },
+    },
+  ), /binding io failed/)
+  assert.equal(compensated, 'cs-rollback')
+  assert.equal(store.length, 2, '补偿后不得留下 clone 行')
+  assert.deepEqual(bound, [], '补偿后不得留下部分绑定')
+  assert.equal(removed.length, 2, '补偿必须移除全部 clone')
+})
+
 test('C5:并发 close 只有一个执行级联(cancelTree 只调一次)', async () => {
   let status = 'active'
   let cancelCalls = 0

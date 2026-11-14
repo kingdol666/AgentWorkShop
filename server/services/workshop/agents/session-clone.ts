@@ -10,6 +10,9 @@
 import { randomUUID } from 'node:crypto'
 import { parseJson } from '../db/database'
 import { AppError } from '../../../utils/errors'
+import type { ChannelSessionBindingSnapshot } from './session-snapshot'
+import type { ChannelSessionRow } from '../db/channel-session.repo'
+import type { ChannelMode } from '../db/database/rows'
 
 export interface SessionCloneMemberRow {
   id: string
@@ -25,15 +28,23 @@ export interface SessionCloneDeps {
   channelAgents: {
     listByChannel(channelId: string): SessionCloneMemberRow[]
     create(input: { channelId: string, templateId: null, name: string, harness: string, config: Record<string, unknown>, role: string }): { id: string, name: string, role: string }
+    remove?(channelId: string, id: string): unknown
   }
   tasks: {
     list(channelId: string): Array<{ id: string, state: string, assigneeId: string | null }>
     cancelTree(taskId: string, by: string, reason: string): unknown[]
   }
   bindings: {
-    byAgent(agentId: string): Array<{ nodeId: string, kind: string, mode?: string }>
-    bind(agentId: string, nodeId: string, kind: string, mode?: string): unknown
+    byAgent(agentId: string): Array<{ nodeId: string, kind: string, mode?: string, tuning?: unknown }>
+    bind(agentId: string, nodeId: string, kind: string, mode?: string, tuning?: unknown): unknown
+    /** Remove all bindings for a newly-created clone during compensation. */
+    removeAgent?(agentId: string): unknown
   }
+  /** Validate immutable selectors while the clone/session transaction is open. */
+  beforeCreate?: () => void
+  /** Captured product/line/binding snapshot used to construct this session. */
+  bindingSnapshot?: ChannelSessionBindingSnapshot
+  bindingsSnapshot?: Record<string, Array<{ nodeId: string, kind: string, mode?: string, tuning?: unknown }>>
   /** 停用 clone 实例（触发既有 runtime 卸载路径） */
   unloadAgent: (channelId: string, instanceId: string, reason: string) => Promise<void>
   /**
@@ -52,6 +63,8 @@ export interface SessionCloneDeps {
    * 生产由 manager 注入 `withTransaction(this.deps.db, fn)`(可重入,嵌套走 SAVEPOINT)。
    */
   withTx?: <T>(fn: () => T) => T
+  /** Compensate the committed session row if post-commit binding copy fails. */
+  compensateSession?: (sessionId: string) => unknown
 }
 
 export const SESSION_MARKER = '·session·'
@@ -74,10 +87,15 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
   channelId: string
   actorId: string
   title?: string
-  /** 会话记忆策略(缺省 session):shared 允许写 line/global 经验 */
   memoryPolicy?: 'session' | 'shared'
-  sessionRepo: { create(input: { channelId: string, title?: string, memberMap: Record<string, string>, createdBy?: string, memoryPolicy?: string }): { id: string } }
-}): { sessionId: string, title: string, members: Array<{ baseAgentId: string, cloneId: string, name: string, role: string }> } {
+  channelMode?: ChannelMode
+  productId?: string
+  lineId?: string
+  bindingSnapshot?: ChannelSessionBindingSnapshot
+  /** Captured binding rows; clone creation must not re-read mutable JSON after snapshot. */
+  bindingsSnapshot?: Record<string, Array<{ nodeId: string, kind: string, mode?: string, tuning?: unknown }>>
+  sessionRepo: { create(input: { channelId: string, title?: string, memberMap: Record<string, string>, createdBy?: string, memoryPolicy?: string, channelMode?: ChannelMode, productId?: string | null, lineId?: string | null, bindingSnapshotJson?: string, bindingSnapshotHash?: string, bindingSnapshotRevision?: number }): ChannelSessionRow }
+}): { sessionId: string, title: string, productId?: string, lineId?: string, bindingSnapshotHash?: string, bindingSnapshotRevision?: number, members: Array<{ baseAgentId: string, cloneId: string, name: string, role: string }> } {
   const bases = baseMembersOf(deps, input.channelId)
   if (bases.length === 0) {
     throw new AppError(400, 'NO_BASE_MEMBERS', '频道没有可克隆的基础成员（需要已启用的 lead/worker）')
@@ -107,6 +125,7 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
   // 孤儿绑定(读侧按 agent 过滤,无害),不会产生孤儿 clone。
   const withTx = deps.withTx ?? (<T>(fn: () => T): T => fn())
   const created = withTx(() => {
+    deps.beforeCreate?.()
     const rows: Array<{ base: typeof bases[number], cloneId: string, name: string }> = []
     for (const base of bases) {
       let seq = nextSeqOf(base.name)
@@ -133,17 +152,58 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
       memberMap,
       createdBy: input.actorId,
       memoryPolicy: input.memoryPolicy,
+      channelMode: input.channelMode,
+      productId: input.bindingSnapshot?.productId ?? input.productId ?? null,
+      lineId: input.bindingSnapshot?.lineId ?? input.lineId ?? null,
+      bindingSnapshotJson: input.bindingSnapshot?.json ?? '',
+      bindingSnapshotHash: input.bindingSnapshot?.hash ?? '',
+      bindingSnapshotRevision: input.bindingSnapshot?.revision ?? 0,
     })
     return { rows, sessionId: session.id }
   })
-  // 事务外:复制绑定面 + 广播成员变更(notify 可能触发懒装配/落库,出事务更稳)
-  for (const r of created.rows) {
-    for (const b of deps.bindings.byAgent(r.base.id)) {
-      deps.bindings.bind(r.cloneId, b.nodeId, b.kind, b.mode)
+  // Bindings live in JSON storage rather than SQLite, so copy them only after the
+  // clone/session transaction commits. Use the captured rows to avoid snapshot drift.
+  try {
+    for (const r of created.rows) {
+      const bindings = input.channelMode === 'generic' ? [] : input.bindingsSnapshot?.[r.base.id] ?? deps.bindings.byAgent(r.base.id)
+      for (const binding of bindings) {
+        deps.bindings.bind(r.cloneId, binding.nodeId, binding.kind, binding.mode, binding.tuning)
+      }
     }
+  }
+  catch (err) {
+    // Compensate any partial JSON writes and committed SQLite rows when the
+    // concrete repositories support those operations. Never leave an active
+    // session whose industrial bindings were only partially captured.
+    for (const r of created.rows) {
+      deps.bindings.removeAgent?.(r.cloneId)
+      deps.channelAgents.remove?.(input.channelId, r.cloneId)
+    }
+    // The session row is intentionally not exposed as a mutable dependency;
+    // callers that need compensation must provide a close hook below.
+    deps.compensateSession?.(created.sessionId)
+    throw err
+  }
+  // 事务外:广播成员变更(notify 可能触发懒装配/落库,出事务更稳)。
+  for (const r of created.rows) {
     deps.notify?.(input.channelId, { op: 'added', agentId: r.cloneId, name: r.name, role: 'worker', harness: r.base.harness })
   }
-  return { sessionId: created.sessionId, title, members }
+
+  return {
+    sessionId: created.sessionId,
+    title,
+    ...(input.bindingSnapshot
+      ? {
+          productId: input.bindingSnapshot.productId,
+          lineId: input.bindingSnapshot.lineId,
+          bindingSnapshotHash: input.bindingSnapshot.hash,
+          bindingSnapshotRevision: input.bindingSnapshot.revision,
+        }
+      : input.productId && input.lineId
+        ? { productId: input.productId, lineId: input.lineId }
+        : {}),
+    members,
+  }
 }
 
 /**
@@ -224,14 +284,30 @@ export async function closeChannelSession(deps: SessionCloneDeps, input: {
  * 会话维度，排除以免把项目办公室的摘要误盖成会话戳；manual/task 会话的
  * memberMap 值都是真实克隆实例 id，按实例反查即可。
  */
+function memberMapContains(memberMapJson: string, memberId: string): boolean {
+  const map = parseJson<unknown>(memberMapJson, null)
+  return !!map && typeof map === 'object' && !Array.isArray(map)
+    && Object.values(map as Record<string, unknown>).some(value => value === memberId)
+}
+
+export function activeSessionOfMember(
+  sessions: ChannelSessionRow[],
+  memberId: string,
+): ChannelSessionRow | null {
+  const matches = sessions.filter((session) => {
+    if (session.status !== 'active' || session.instanceKind === 'project') return false
+    return memberMapContains(session.memberMapJson, memberId)
+  })
+  return matches.length === 1 ? matches[0]! : null
+}
+
 export function activeSessionIdOfMember(
   sessions: Array<{ id: string, status: string, instanceKind: string, memberMapJson: string }>,
   memberId: string,
 ): string | null {
-  for (const s of sessions) {
-    if (s.status !== 'active' || s.instanceKind === 'project') continue
-    const map = parseJson<Record<string, string>>(s.memberMapJson, {})
-    if (Object.values(map).includes(memberId)) return s.id
-  }
-  return null
+  const matches = sessions.filter((session) => {
+    if (session.status !== 'active' || session.instanceKind === 'project') return false
+    return memberMapContains(session.memberMapJson, memberId)
+  })
+  return matches.length === 1 ? matches[0]!.id : null
 }

@@ -73,8 +73,18 @@ export abstract class DcwControllerProducts extends DcwControllerLines {
     const lineNodes = getDaqNodeRepo().all().filter(n => !run.lineId || n.lineId === run.lineId)
     const results = await Promise.all(lineNodes.map(async (node) => {
       try {
-        const points = await getTsdb().query(node.id, { fromMs: startMs, toMs: endMs, bucketMs, limit: 500 })
-        return { node, points }
+        const series = await getTsdb().queryTagged({
+          lineId: run.lineId,
+          productId: run.productId,
+          recipeId: run.recipeId,
+          runId: run.id,
+          nodeIds: [node.id],
+          fromMs: startMs,
+          toMs: endMs,
+          bucketMs,
+          limit: 500,
+        })
+        return { node, points: series.get(node.id) ?? [] }
       }
       catch { return { node, points: [] } } // 单节点查询失败不阻塞整体
     }))

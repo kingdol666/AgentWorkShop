@@ -23,11 +23,11 @@ const { createChannelSessionRepo } = await import('../server/services/workshop/d
 const { createTaskInstanceChannel, templateMembersOf, TASK_INSTANCE_MARKER } = await import('../server/services/workshop/agents/task-channel')
 type TaskInstanceDeps = import('../server/services/workshop/agents/task-channel').TaskInstanceDeps
 
-function fixture() {
+function fixture(channelMode: 'generic' | 'production_line_integrated' = 'production_line_integrated') {
   const db = openWorkshopDb(':memory:')
   const sessions = createChannelSessionRepo(db)
   const bindingsByAgent: Record<string, Array<{ nodeId: string, kind: string, mode?: string }>> = {}
-  const createdChannels: Array<{ name: string, description?: string, leadAgent?: { name: string } }> = []
+  const createdChannels: Array<{ name: string, description?: string, channelMode?: string, leadAgent?: { name: string } }> = []
   const createdMembers: Array<{ channelId: string, name: string, role: string }> = []
   const templateMembers = [
     { id: 'tpl-lead', name: 'Lead·协调', harness: 'mock', role: 'lead', enabled: 1, agentKind: 'channel_agent', configJson: '{"provider":"x"}' },
@@ -43,7 +43,7 @@ function fixture() {
   const deps: TaskInstanceDeps = {
     channels: {
       findById: (id: string) => id === 'ch-template'
-        ? { id: 'ch-template', name: '交付执行频道', scenarioPrompt: '落地页交付', llmJson: '{"provider":"lm-studio","model":"m1"}', ownerUserId: 'u-1' }
+        ? { id: 'ch-template', name: '交付执行频道', scenarioPrompt: '落地页交付', llmJson: '{"provider":"lm-studio","model":"m1"}', ownerUserId: 'u-1', channelMode }
         : undefined,
     },
     channelAgents: {
@@ -54,15 +54,9 @@ function fixture() {
         return { id, name: input.name, role: input.role }
       },
     },
-    bindings: {
-      byAgent: (agentId: string) => bindingsByAgent[agentId] ?? [],
-      bind: (agentId, nodeId, kind, mode) => {
-        (bindingsByAgent[agentId] ??= []).push({ nodeId, kind, mode })
-      },
-    },
     sessions,
     createChannel: async (input) => {
-      createdChannels.push({ name: input.name, description: input.description, leadAgent: input.leadAgent })
+      createdChannels.push({ name: input.name, description: input.description, channelMode: input.channelMode, leadAgent: input.leadAgent })
       // 模拟 manager.createChannel 建 lead 实例
       bindingsByAgent['inst-lead'] = []
       return { channelId: 'ch-task-1', leadAgentId: 'inst-lead', workspace: 'data/workspaces/ch-task-1' }
@@ -81,7 +75,7 @@ test('TI-A 模板成员筛选：排除办公室 leader / 会话克隆 / 任务�
   finally { f.db.close() }
 })
 
-test('TI-B 任务实例创建：专属 Channel + 全成员克隆 + 绑定复制 + 会话溯源', async () => {
+test('TI-B 任务实例创建：专属 generic Channel + 全成员克隆 + 工业绑定隔离 + 会话溯源', async () => {
   const f = fixture()
   try {
     const r = await createTaskInstanceChannel(f.deps, {
@@ -96,6 +90,8 @@ test('TI-B 任务实例创建：专属 Channel + 全成员克隆 + 绑定复制 
     assert.equal(r.leadAgentId, 'inst-lead')
     assert.equal(f.createdChannels.length, 1)
     assert.match(f.createdChannels[0]!.name, /交付执行频道 · 任务 /)
+    assert.equal(f.createdChannels[0]!.channelMode, 'generic', 'project work item has no trusted product selector')
+    assert.equal(f.sessions.findById(r.sessionId)?.channelMode, 'generic')
     assert.match(f.createdChannels[0]!.leadAgent!.name, new RegExp(TASK_INSTANCE_MARKER))
     // 成员：lead 保持 lead 身份（channel_lead 工具面前提），worker 为 worker
     assert.equal(r.members.length, 2, '克隆 lead + 1 个启用 worker')
@@ -103,9 +99,9 @@ test('TI-B 任务实例创建：专属 Channel + 全成员克隆 + 绑定复制 
     const worker = r.members.find(m => m.templateAgentId === 'tpl-w1')!
     assert.equal(worker.role, 'worker')
     assert.ok(f.createdMembers.some(m => m.name.includes(TASK_INSTANCE_MARKER) && m.role === 'worker'))
-    // 节点绑定面复制：lead 与 worker 的绑定都落到实例成员
-    assert.equal(f.bindingsByAgent['inst-lead']!.length, 1)
-    assert.equal(f.bindingsByAgent[worker.instanceId]!.length, 2)
+    // Project task has no validated product selector; industrial bindings must not leak into its clones.
+    assert.equal(f.bindingsByAgent['inst-lead']!.length, 0)
+    assert.equal(f.bindingsByAgent[worker.instanceId]?.length ?? 0, 0)
     // 会话行：任务溯源 + 真实 memberMap（模板成员 → 实例成员）
     const s = f.sessions.findById(r.sessionId)!
     assert.equal(s.projectId, 'p-1')

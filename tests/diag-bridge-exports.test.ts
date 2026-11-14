@@ -161,7 +161,7 @@ function makeCtx(options: { auditSink?: (entry: Record<string, unknown>) => void
             claim: (tool: string, jobId: string) => { claimed.push([tool, jobId]) },
           }
         : name === 'agentScope'
-          ? { readableLines: () => ['ln-A'], boundNodes: () => [] }
+          ? { productionEnabled: () => true, readableLines: () => ['ln-A'], boundNodes: () => [] }
           : name === 'ops.record' && options.auditSink
             ? options.auditSink
             : null,

@@ -8,7 +8,8 @@
  *
  * 该族**不依赖 workspace**,由 dispatch 在 workspace 门控之前分流(保持原分发顺序)。
  */
-import type { HostToolResult } from '../types'
+import type { ChannelSessionExecutionScope, HostToolResult } from '../types'
+import type { DaqQueryExecutionScope } from '../../industrial/daq-tools'
 import { toolLineStart, toolLineStop, toolLineStatus, toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlModelAnnotate, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqExport, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolLineContext, toolMesBridge, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesExport, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolRecipeApply, toolRecipeCatalog, toolRecipeCreate, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolDaqIdentifiability, toolInterventionHistory, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest, toolAnalysisSave, toolAnalysisQuery } from '../../industrial'
 
 import { toolExpCollect } from '../../industrial/exp-tools'
@@ -18,7 +19,7 @@ import { toolOptimizerCancel, toolOptimizerCapabilities, toolOptimizerPlanGet, t
 import { toolIndustrialResources } from '../../industrial/resources-tools'
 import { toolOntologyCompilePreview, toolOntologyDraftAutofix, toolOntologyDraftCreate, toolOntologyDraftUpdate, toolOntologyDraftValidate, toolOntologyNodeNeighbors, toolOntologyPublishPropose, toolOntologyRuleExplain, toolOntologySceneInspect, toolOntologyVersionCompare } from '../../industrial/ontology-tools'
 
-type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string) => Promise<HostToolResult>
+type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string, sessionScope?: ChannelSessionExecutionScope) => Promise<HostToolResult>
 
 /** 工具名 → 转发处理器(顺序与原 dispatch 首个 switch 的分支顺序一致) */
 const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
@@ -57,7 +58,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['twin_bayes_optimize', (agentId, args) => toolTwinBayesOptimize(agentId, args)],
   ['dcw_control', (agentId, args, channelId) => toolDcwControl(agentId, args as { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId)],
   ['param_control', (agentId, args, channelId) => toolParamControl(agentId, args as { param?: string, value?: number | string, hypothesis?: string, task_id?: string, line_id?: string }, channelId)],
-  ['daq_query', (agentId, args) => toolDaqQuery(agentId, args as Parameters<typeof toolDaqQuery>[1])],
+  ['daq_query', (agentId, args, _channelId, sessionScope) => toolDaqQuery(agentId, args as Parameters<typeof toolDaqQuery>[1], sessionScope as DaqQueryExecutionScope | undefined)],
   ['daq_export', (agentId, args) => toolDaqExport(agentId, args as Parameters<typeof toolDaqExport>[1])],
   ['daq_frames', (agentId, args) => toolDaqFrames(agentId, args as Parameters<typeof toolDaqFrames>[1])],
   // P1/P2(科学探索计划):可辨识性预检与干预台账查询(全只读)
@@ -84,7 +85,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['mes_export', (agentId, args) => toolMesExport(agentId, args as Parameters<typeof toolMesExport>[1])],
   ['mes_dataset_read', (agentId, args) => toolMesDatasetRead(agentId, args as Parameters<typeof toolMesDatasetRead>[1])],
   ['mes_datasets', (agentId, args) => toolMesDatasets(agentId, args as Parameters<typeof toolMesDatasets>[1])],
-  ['exp_collect', (agentId, args) => toolExpCollect(agentId, args as { line_id?: string, lineId?: string })],
+  ['exp_collect', (agentId, args, _channelId, sessionScope) => toolExpCollect(agentId, args as { line_id?: string, lineId?: string }, sessionScope ? { sessionId: sessionScope.sessionId } : undefined)],
   // 产线 Co-Pilot P2(诊断工程师下发面):整包方案审批 + AML 活动硬闸自查
   ['recipe_propose', (agentId, args) => toolRecipePropose(agentId, args as Parameters<typeof toolRecipePropose>[1])],
   ['line_start', (agentId, args, channelId) => toolLineStart(agentId, args as Parameters<typeof toolLineStart>[1], channelId)],
@@ -123,8 +124,8 @@ export const INDUSTRIAL_TOOL_NAMES: ReadonlySet<string> = new Set(INDUSTRIAL_HAN
  * 调用方先经 INDUSTRIAL_TOOL_NAMES 判断,故「未登记的工具名」不可达 —— 仍然显式拒绝,
  * 避免静默返回与未知工具混淆。
  */
-export function dispatchIndustrialTool(agentId: string, toolName: string, args: Record<string, unknown>, channelId?: string): Promise<HostToolResult> {
+export function dispatchIndustrialTool(agentId: string, toolName: string, args: Record<string, unknown>, channelId?: string, sessionScope?: ChannelSessionExecutionScope): Promise<HostToolResult> {
   const handler = INDUSTRIAL_HANDLERS.get(toolName)
   if (!handler) return Promise.reject(new Error(`未知工业工具: ${toolName}`))
-  return handler(agentId, args, channelId)
+  return handler(agentId, args, channelId, sessionScope)
 }

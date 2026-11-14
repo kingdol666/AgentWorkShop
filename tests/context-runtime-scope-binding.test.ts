@@ -44,15 +44,33 @@ function makeRepos(opts: {
 const owner = { id: 'owner-1', role: 'user' }
 const scope: Scope = { workspaceId: 'ws-1', channelId: 'ch-1', workerId: 'worker-1' }
 
-test('resolveScopeBinding:部署面 + 属主成立 → ok;频道绑线并入 boundLineIds', () => {
-  const runtime = createContextRuntimeService({ repos: makeRepos({ channelLineId: 'ln-9' }) as never })
+test('generic channel hides industrial bindings and refuses industrial adapter authorization', () => {
+  const runtime = createContextRuntimeService({ repos: makeRepos({ channelLineId: 'ln-9' }) as never, lineIdsForWorker: () => ['ln-9'] })
   const binding = runtime.resolveScopeBinding({ principal: owner, scope })
   assert.equal(binding.ok, true)
   if (binding.ok) {
-    assert.deepEqual(binding.scope, scope)
-    assert.ok(binding.boundLineIds.includes('ln-9'), '频道绑线必须出现在 boundLineIds(即使 worker 无节点绑定)')
-    assert.equal(binding.channelLineId, 'ln-9')
+    assert.deepEqual(binding.boundLineIds, [])
+    assert.equal(binding.channelLineId, null)
   }
+  const decision = runtime.authorizeAdapterRequest({ principal: owner, scope: { ...scope, projection: 'industrial' }, operation: 'read' } as never)
+  assert.equal(decision, false)
+})
+
+test('resolveScopeBinding:部署面 + 属主成立 → ok;频道绑线并入 boundLineIds', () => {
+  const g = globalThis as typeof globalThis & { __workshopManager?: unknown }
+  const previous = g.__workshopManager
+  g.__workshopManager = { channelModeForAgent: () => 'production_line_integrated', channelLineBindingOf: () => 'ln-9' }
+  try {
+    const runtime = createContextRuntimeService({ repos: makeRepos({ channelLineId: 'ln-9' }) as never })
+    const binding = runtime.resolveScopeBinding({ principal: owner, scope })
+    assert.equal(binding.ok, true)
+    if (binding.ok) {
+      assert.deepEqual(binding.scope, scope)
+      assert.ok(binding.boundLineIds.includes('ln-9'), '频道绑线必须出现在 boundLineIds(即使 worker 无节点绑定)')
+      assert.equal(binding.channelLineId, 'ln-9')
+    }
+  }
+  finally { g.__workshopManager = previous }
 })
 
 test('resolveScopeBinding:未挂载/停用频道/停用 worker/非 worker 角色 → 一律拒绝', () => {

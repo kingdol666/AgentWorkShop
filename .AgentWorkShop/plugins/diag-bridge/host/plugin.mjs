@@ -10,6 +10,23 @@ import { uploadExportDataset } from './exports.mjs'
 import { sweepOnce } from './sweep.mjs'
 import { intentLabel } from './intents.mjs'
 
+function registerDiagnosticTool(ctx, tool) {
+  const handler = tool.handler
+  ctx.omp.registerTool({
+    ...tool,
+    handler: async (args, agent) => {
+      try {
+        const scope = await ctx.services.get('agentScope')
+        if (!agent?.agentId || !scope.productionEnabled?.(agent.agentId)) return { text: '通用频道不开放产线诊断工具。', isError: true }
+      }
+      catch {
+        return { text: '无法确认频道模式，拒绝产线诊断工具。', isError: true }
+      }
+      return handler(args, agent)
+    },
+  })
+}
+
 export default {
   name: 'diag-bridge',
   version: '2.3.0',
@@ -99,7 +116,7 @@ export default {
     })
 
     // 工具 ×2
-    ctx.omp.registerTool({
+    registerDiagnosticTool(ctx, {
       name: 'diag_run',
       label: '发起分析',
       description: '发起 IDD 后台分析任务(提交即返 task_id,无需等待;完成后平台自动回执本频道,空闲时也可 diag_status 查询)。analysis_intent 选择分析模式,每种意图由 IDD 侧对应 skill 协议执行(harness 在 IDD 内,分析业务与平台解耦):deep-diagnosis=深度根因诊断(9 阶段管线,最重);stability-report=产线稳定报告(评分+等级+建议,零根因);quick-screen=快速筛查(越限/漂移/冻结异常清单+HTML 看板,最快);doe-analysis=DOE 试验分析(因子效应/显著性/最优工况);experience-mining=调参经验挖掘(结构化经验条目,供知识库沉淀);optimizer-campaign=优化战役(寻优迭代+推荐工况,最重)。数据来源三选一:① line+时间窗(导出产线 DAQ 快照);② data_path:诊断服务内已有数据文件;③ export_id(推荐):daq_export 导出的数据集。',
@@ -255,7 +272,7 @@ export default {
       },
     })
 
-    ctx.omp.registerTool({
+    registerDiagnosticTool(ctx, {
       name: 'diag_status',
       label: '分析任务状态',
       description: '查询后台分析任务进度:传 run_id 看单条实时状态(完成时含评分/结论/总结/报告路径),不传看最近 5 条概要。适用 diag_run 发起的全部意图(深度诊断/产线报告/快速筛查/DOE/经验挖掘/优化战役)。',
@@ -356,7 +373,7 @@ export default {
     // 因此 worker 的开关判断放在 handler 内(每次调用实时读设置)。
     const denyWorkerIfDisabled = agent => agent?.role === 'worker' && !resultsAllowWorkerOf(ctx)
 
-    ctx.omp.registerTool({
+    registerDiagnosticTool(ctx, {
       name: 'diag_results',
       label: '检索分析结果',
       description: '检索 IDD 分析结果库的摘要索引(全量历史分析,不限本平台发起):按关键词/意图/标签/场景/分数过滤,返回 result_id、标题、意图、评分与结论、时间与标签。先用本工具拿到 result_id,再用 diag_result_get 看完整详情。brief 模式(缺省)单卡很省 token。',
@@ -415,7 +432,7 @@ export default {
       },
     })
 
-    ctx.omp.registerTool({
+    registerDiagnosticTool(ctx, {
       name: 'diag_result_get',
       label: '分析结果详情',
       description: '按 result_id 取一条分析结果的完整详情:结论摘要、关键数字(可溯源到工件字段)、产物清单(报告/HTML 的 API URL)、运行状态。缺省不带 report.md 全文(只给 URL);include_md=true 时携带全文但按插件设置截断保护上下文。',
@@ -480,7 +497,7 @@ export default {
       },
     })
 
-    ctx.omp.registerTool({
+    registerDiagnosticTool(ctx, {
       name: 'diag_result_annotate',
       label: '编辑结果元数据',
       description: '编辑一条分析结果的元数据(description ≤2000 / tags ≤16×≤40 / title ≤200),用于沉淀"这条结果代表什么、何时复用"。只改元数据、不触产线;需插件设置「允许元数据编辑」且调用者是 lead;属主校验最终在 IDD 侧(非属主 403 如实回执)。',

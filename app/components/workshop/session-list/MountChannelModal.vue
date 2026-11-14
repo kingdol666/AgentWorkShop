@@ -6,7 +6,7 @@
  */
 import { message } from 'ant-design-vue'
 import { useWorkspacesStore } from '@/app/stores/workshop/workspaces'
-import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
+import { useWorkshopApi, type ChannelMode } from '@/app/composables/workshop/useWorkshopApi'
 
 const { t } = useI18n()
 
@@ -20,7 +20,7 @@ const wsStore = useWorkspacesStore()
 const api = useWorkshopApi()
 
 // ===== 新建 Channel 并挂载(空团队) =====
-const mountForm = reactive({ name: '', description: '', workspace: '', scenarioPrompt: '' })
+const mountForm = reactive({ name: '', description: '', workspace: '', scenarioPrompt: '', channelMode: 'generic' as ChannelMode })
 const mountSubmitting = ref(false)
 /** FileSelector 弹窗(选择服务器目录作为 workspace) */
 const fileSelectorOpen = ref(false)
@@ -33,6 +33,7 @@ const createAndMount = async (): Promise<void> => {
   try {
     const res = await api.createChannel({
       name: mountForm.name.trim(),
+      channelMode: mountForm.channelMode,
       description: mountForm.description || undefined,
       scenarioPrompt: mountForm.scenarioPrompt.trim() || undefined,
       workspace: mountForm.workspace.trim() || undefined,
@@ -46,6 +47,7 @@ const createAndMount = async (): Promise<void> => {
     mountForm.description = ''
     mountForm.workspace = ''
     mountForm.scenarioPrompt = ''
+    mountForm.channelMode = 'generic'
     emit('mounted')
     message.success(t('channelSessionList.kn89jvs028'))
   }
@@ -68,6 +70,15 @@ const createAndMount = async (): Promise<void> => {
     @ok="createAndMount"
   >
     <a-form layout="vertical">
+      <a-form-item :label="$t('channelSessionList.channelMode')">
+        <a-select
+          v-model:value="mountForm.channelMode"
+          :options="[
+            { value: 'generic', label: $t('channelSessionList.modeGeneric') },
+            { value: 'production_line_integrated', label: $t('channelSessionList.modeIntegrated') },
+          ]"
+        />
+      </a-form-item>
       <a-form-item :label="$t('channelSessionList.nameLabel')">
         <a-input v-model:value="mountForm.name" />
       </a-form-item>

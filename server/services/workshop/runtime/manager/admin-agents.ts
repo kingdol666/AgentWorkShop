@@ -12,7 +12,12 @@ import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { assertSpawnConfigAllowed, assertSpawnConfigPatchAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
 import { instanceToAgentInfo } from './helpers'
-import { createChannelSession, closeChannelSession, activeSessionIdOfMember } from '../../agents/session-clone'
+import { createChannelSession, closeChannelSession, activeSessionIdOfMember, activeSessionOfMember, SESSION_MARKER } from '../../agents/session-clone'
+import { createChannelSessionBindingSnapshot, trustedSessionBindingIdentity } from '../../agents/session-snapshot'
+import { createChannelProductBindingRepo } from '../../db/channel-product-binding.repo'
+import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
+import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
+import { executionModeOfChannel } from '../../agents/execution-mode'
 import { createTaskInstanceChannel } from '../../agents/task-channel'
 import type { TaskInstanceDeps } from '../../agents/task-channel'
 import { getAgentNodeBindingRepo } from '../../agents/node-bindings.repo'
@@ -119,8 +124,11 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     input: { query: string, scope?: 'auto' | 'private' | 'shared' | 'session', limit?: number, sessionId?: string | null },
     opts: { byOwner?: boolean } = {},
   ): Promise<MemorySnippet[]> {
-    // byOwner:人类 owner(channel 属主)经控制台检索,跳过 agent 成员校验
-    if (!opts.byOwner) this.requireMember(channelId, callerAgentId)
+    // Agent caller may only inspect their own private/session domain; owner UI may choose a target.
+    if (!opts.byOwner) {
+      this.requireMember(channelId, callerAgentId)
+      if (callerAgentId !== targetAgentId) throw new AppError(403, 'MEMORY_OWNER_REQUIRED', 'Agent 只能检索自己的私有记忆')
+    }
     if (!this.deps.repos.channelAgents.findByChannelAgent(channelId, targetAgentId)) {
       throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在: ${targetAgentId}`)
     }
@@ -377,25 +385,68 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     channelId: string
     actor: { id: string, role: string }
     title?: string
+    productId?: string
     /** 会话记忆策略(缺省 session):shared 允许写 line/global 经验 */
     memoryPolicy?: 'session' | 'shared'
-  }): Promise<{ sessionId: string, title: string, members: Array<{ baseAgentId: string, cloneId: string, name: string, role: string }> }> {
+  }): Promise<{ sessionId: string, title: string, channelMode: import('../../db/database/rows').ChannelMode, productId?: string, lineId?: string, bindingSnapshotHash?: string, bindingSnapshotRevision?: number, members: Array<{ baseAgentId: string, cloneId: string, name: string, role: string }> }> {
     const channel = this.deps.repos.channels.findById(input.channelId)
     if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${input.channelId}`)
     this.requireWritable(channel.ownerUserId, input.actor, 'channel')
+    const channelMode = this.channelModeOf(input.channelId)
+    const bases = this.deps.repos.channelAgents.listByChannel(input.channelId).filter((agent) => {
+      if (agent.enabled !== 1 || agent.agentKind === 'project_leader' || String(agent.name ?? '').includes('·session·')) return false
+      return agent.role === 'lead' || agent.role === 'worker'
+    })
+    const bindingRepo = createChannelProductBindingRepo(this.deps.db)
+    let bindingRevision = 0
+    let snapshot: ReturnType<typeof createChannelSessionBindingSnapshot> | undefined
+    let baseBindings: Array<{ agentId: string, bindings: Array<{ nodeId: string, kind: string, mode: string, tuning: unknown }> }> = []
+    if (channelMode === 'production_line_integrated') {
+      if (!input.productId) throw new AppError(400, 'SESSION_PRODUCT_REQUIRED', '集成产线会话必须选择已绑定产品')
+      const boundProductIds = bindingRepo.listByChannel(input.channelId).map(binding => binding.productId)
+      if (!boundProductIds.includes(input.productId)) {
+        throw new AppError(403, 'SESSION_PRODUCT_NOT_BOUND', `产品 ${input.productId} 未绑定到当前 Channel`)
+      }
+      const product = getDcwProductRepo().byId(input.productId)
+      if (!product || !product.lineId) throw new AppError(404, 'SESSION_PRODUCT_NOT_FOUND', `产品不存在或未绑定产线: ${input.productId}`)
+      if (channel.lineId && channel.lineId !== product.lineId) throw new AppError(409, 'SESSION_PRODUCT_LINE_MISMATCH', '产品所属产线与 Channel 当前产线不一致')
+      const allAgentBindings = getAgentNodeBindingRepo()
+      baseBindings = bases.map(agent => ({ agentId: agent.id, bindings: allAgentBindings.byAgent(agent.id).map(binding => ({ nodeId: binding.nodeId, kind: binding.kind, mode: binding.mode, tuning: binding.tuning })) }))
+      bindingRevision = bindingRepo.getRevision(input.channelId)
+      snapshot = createChannelSessionBindingSnapshot({
+        channelId: input.channelId,
+        selectedProductId: input.productId,
+        lineId: product.lineId,
+        bindingRevision,
+        boundProductIds,
+        recipes: getDcwRecipeRepo().list().filter(recipe => recipe.productId === input.productId).map(recipe => ({ id: recipe.id, productId: recipe.productId, lineId: recipe.lineId, version: recipe.version ?? 1, params: recipe.params, daqWindows: recipe.daqWindows ?? [] })),
+        agentBindings: baseBindings,
+        executionProfile: { mode: executionModeOfChannel(input.channelId) },
+      })
+    }
     // 并发上限:每个会话克隆全部基础成员(各起独立 runtime/进程),无上限是资源放大器
     const limit = workshopSettings().max_active_sessions_per_channel
     const active = createChannelSessionRepo(this.deps.db).listActive(input.channelId).length
     if (limit > 0 && active >= limit) {
       throw new AppError(429, 'SESSION_LIMIT', `该频道活动会话已达上限(${active}/${limit});请先关闭不用的会话,或调高 workshop.max_active_sessions_per_channel`)
     }
-    const result = await createChannelSession(
+    const bindingRowsByAgent = Object.fromEntries(baseBindings.map(entry => [entry.agentId, entry.bindings]))
+    const result = createChannelSession(
       {
         channelAgents: this.deps.repos.channelAgents as unknown as SessionCloneDeps['channelAgents'],
         tasks: this.getTaskEngine(),
         bindings: getAgentNodeBindingRepo(),
-        // clone 行 + session 行原子落库(绑定面是 JSON 文件,出事务后复制)
+        bindingsSnapshot: bindingRowsByAgent,
+        bindingSnapshot: snapshot,
+        beforeCreate: () => {
+          if (snapshot && bindingRepo.getRevision(input.channelId) !== bindingRevision) {
+            throw new AppError(409, 'CHANNEL_PRODUCT_BINDING_STALE', 'Channel 产品绑定已变化，请刷新后重新创建会话')
+          }
+        },
         withTx: fn => withTransaction(this.deps.db, fn),
+        compensateSession: (sessionId) => {
+          createChannelSessionRepo(this.deps.db).close(sessionId)
+        },
         unloadAgent: (cid, iid) => this.unloadAgent(cid, iid),
         notify: (cid, payload) => this.notifyMember(cid, { ...payload, enabled: 1, by: 'session', reason: 'session create' }),
       },
@@ -403,6 +454,11 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
         channelId: input.channelId,
         actorId: input.actor.id,
         title: input.title,
+        channelMode,
+        productId: snapshot?.productId,
+        lineId: snapshot?.lineId,
+        bindingSnapshot: snapshot,
+        bindingsSnapshot: bindingRowsByAgent,
         memoryPolicy: input.memoryPolicy,
         sessionRepo: createChannelSessionRepo(this.deps.db),
       },
@@ -420,7 +476,11 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       summary: `创建会话 ${result.sessionId.slice(0, 8)}（克隆 ${result.members.length} 个成员实例）`,
       detail: { sessionId: result.sessionId, members: result.members },
     })
-    return result
+    return {
+      ...result,
+      channelMode,
+      ...(snapshot ? { productId: snapshot.productId, lineId: snapshot.lineId, bindingSnapshotHash: snapshot.hash, bindingSnapshotRevision: snapshot.revision } : {}),
+    }
   }
 
   /** 关闭会话：在飞任务按树取消 + clone 实例停用（runtime 卸载）+ 会话 closed（终态）。 */
@@ -485,6 +545,45 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     return createChannelSessionRepo(this.deps.db).findById(sessionId)
   }
 
+  channelModeForAgent(agentId: string): import('../../db/database/rows').ChannelMode {
+    try {
+      const agent = this.deps.repos.channelAgents.findById(agentId)
+      if (!agent) return 'generic'
+      const sessions = createChannelSessionRepo(this.deps.db).listByChannel(agent.channelId)
+      const matches = sessions.filter((session) => {
+        if (session.status !== 'active' || (session.instanceKind !== 'manual' && session.instanceKind !== 'task')) return false
+        const memberMap = parseJson<Record<string, string>>(session.memberMapJson, {})
+        return memberMap !== null && typeof memberMap === 'object' && !Array.isArray(memberMap) && Object.values(memberMap).includes(agentId)
+      })
+      if (matches.length > 1) return 'generic'
+      if (matches.length === 1) {
+        const session = matches[0]!
+        if (session.channelMode !== 'production_line_integrated') return 'generic'
+        return trustedSessionBindingIdentity(session)?.channelMode ?? 'generic'
+      }
+      if (agent.name.includes(SESSION_MARKER) || agent.name.includes('·任务·')) return 'generic'
+      return this.channelModeOf(agent.channelId)
+    }
+    catch {
+      return 'generic'
+    }
+  }
+
+  /** Trusted active Session scope for an exact clone membership; ambiguous/legacy is denied. */
+  channelSessionScopeOfAgent(channelId: string, agentId: string): import('../../agents/host-tool-bridge').ChannelSessionExecutionScope | null {
+    const session = activeSessionOfMember(createChannelSessionRepo(this.deps.db).listByChannel(channelId), agentId)
+    if (!session) return null
+    const trusted = trustedSessionBindingIdentity(session)
+    if (!trusted) return null
+    return {
+      sessionId: trusted.sessionId,
+      productId: trusted.productId,
+      lineId: trusted.lineId,
+      bindingSnapshotHash: trusted.bindingSnapshotHash,
+      bindingSnapshotRevision: trusted.bindingSnapshotRevision,
+    }
+  }
+
   /**
    * 项目任务实例（plan 2026-11-07）：为工作项创建专属执行 Channel + 会话行。
    * 返回实例 Channel 与其 lead（root 任务 assignee）。幂等由调用方（项目派发）负责。
@@ -508,7 +607,6 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       {
         channels: { findById: id => this.deps.repos.channels.findById(id) },
         channelAgents: this.deps.repos.channelAgents as unknown as TaskInstanceDeps['channelAgents'],
-        bindings: getAgentNodeBindingRepo(),
         sessions: createChannelSessionRepo(this.deps.db) as unknown as TaskInstanceDeps['sessions'],
         createChannel: ch => this.createChannel({
           ...ch,

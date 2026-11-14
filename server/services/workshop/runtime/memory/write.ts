@@ -53,7 +53,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       // (实测:跨频道冻结约定标题含时间戳,save_memory 全量炸掉)。
       const matchQuery = buildMatchQuery(input.title)
       const near = matchQuery
-        ? this.repo.search(TEAM_AGENT_ID, matchQuery, 3).filter(r => r.kind === 'semantic')
+        ? this.repo.search(TEAM_AGENT_ID, matchQuery, 3, { channelId: this.opts.channelId }).filter(r => r.kind === 'semantic')
         : []
       const tokensOf = (t: string) => new Set(segmentCJK(t).split(/\s+/).filter(Boolean))
       const jaccard = (a: Set<string>, b: Set<string>) => {
@@ -127,6 +127,9 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     sessionId?: string | null
     taskId?: string | null
   }): Promise<{ scope: 'line' | 'global', dedupKey: string }> {
+    if (this.opts.industrialScopeEnabled !== true) {
+      throw new Error('industrial experience requires production_line_integrated mode')
+    }
     const policy = this.repo.sessionMemoryPolicy(input.sessionId ?? '')
     if (policy !== 'shared') {
       throw new Error(`memory policy "${policy}" 不允许写入 ${input.scope} 作用域经验(需会话 memoryPolicy=shared)`)
@@ -136,7 +139,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     }
     let scopeKey = ''
     if (input.scope === 'line') {
-      scopeKey = this.repo.channelScope(this.opts.channelId).lineId ?? ''
+      scopeKey = this.trustedScopeContext.lineId ?? ''
       if (!scopeKey) throw new Error('line 作用域经验需要频道已绑定产线(channels.line_id 为空)')
     }
     const rawKey = input.dedupKey?.trim() || `agent-save:${randomUUID().slice(0, 8)}`

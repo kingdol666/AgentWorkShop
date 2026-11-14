@@ -23,6 +23,9 @@ const { evaluateExperienceGate, evaluateProfileGate, rollbackTarget } = await im
 const { promoteExperience, promoteProfile, rollbackProfile } = await import('../server/services/workshop/experience/promote')
 const { recordBenchRun } = await import('../server/services/workshop/experience/bench-run')
 
+// These gate tests exercise industrial mode explicitly.
+;(globalThis as unknown as { __workshopManager?: unknown }).__workshopManager = { channelModeOf: () => 'production_line_integrated' }
+
 function fixture() {
   const db = openWorkshopDb(':memory:')
   db.exec('PRAGMA foreign_keys = OFF')

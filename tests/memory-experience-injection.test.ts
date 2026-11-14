@@ -22,16 +22,22 @@ const { createMemoryRepo } = await import('../server/services/workshop/db/memory
 const { AgentMemory } = await import('../server/services/workshop/runtime/memory')
 const { estimateTokens } = await import('../server/services/workshop/runtime/memory/helpers')
 const { handleSearchMemory } = await import('../server/services/workshop/agents/host-tool-bridge/tools/memory')
+const { canonicalHash, canonicalJson } = await import('../shared/context/hash')
 
 const now = new Date().toISOString()
 
-function fixture(lineId = 'line-1') {
+function fixture(lineId = 'line-1', productId: string | null = 'prod-9') {
   const db = openWorkshopDb(':memory:')
   db.exec('PRAGMA foreign_keys = OFF')
   db.prepare(`INSERT INTO channels (id, name, description, scenario_prompt, llm_json, workspace, enabled, version, line_id, created_at, updated_at)
     VALUES ('ch-1','C','','','','{}',1,1,?,?,?)`).run(lineId, now, now)
+  db.prepare(`INSERT INTO channel_sessions (id, channel_id, title, status, memory_policy, channel_mode, product_id, line_id, binding_snapshot_json, binding_snapshot_hash, binding_snapshot_revision, created_at)
+    VALUES ('sess-trusted','ch-1','S','active','shared','production_line_integrated',?,?,?, ?,1,?)`).run(productId, lineId, JSON.stringify({ schemaVersion: 1, channelId: 'ch-1', bindingRevision: 1, productId, lineId, recipes: [], agentBindings: [], executionProfile: {} }), '', now)
   const repo = createMemoryRepo(db)
-  const mem = new AgentMemory(repo, { channelId: 'ch-1', agentId: 'agent-a' })
+  const snapshot = { schemaVersion: 1, channelId: 'ch-1', bindingRevision: 1, productId, lineId, recipes: [], agentBindings: [], executionProfile: {} }
+  const snapshotJson = canonicalJson(snapshot)
+  db.prepare(`UPDATE channel_sessions SET product_id = ?, line_id = ?, binding_snapshot_json = ?, binding_snapshot_hash = ?, binding_snapshot_revision = 1 WHERE id = 'sess-trusted'`).run(productId, lineId, snapshotJson, canonicalHash(snapshot))
+  const mem = new AgentMemory(repo, { channelId: 'ch-1', agentId: 'agent-a', industrialScopeEnabled: true, lineId, productId, sessionId: 'sess-trusted' })
   return { db, repo, mem }
 }
 
@@ -64,25 +70,23 @@ test('频道作用域解析：channels.line_id → scopeContext.lineId', () => {
   }
 })
 
-test('同产线经验排序优先（+0.2）且不过滤非同产线行', async () => {
+test('可信 line scope 过滤异产线经验,匹配 scope 仅影响排序', async () => {
   const { db, repo, mem } = fixture('line-1')
   try {
     exp(repo, 'exp:other-line', { scopeKind: 'line', scopeKey: 'line-2' })
     exp(repo, 'exp:same-line', { scopeKind: 'line', scopeKey: 'line-1' })
     const rows = await mem.recallRows('均热段 温差 整定 经验', { limit: 10 })
-    const order = rows.map(r => r.id)
     const sameIdx = rows.findIndex(r => r.scopeKey === 'line-1')
-    const otherIdx = rows.findIndex(r => r.scopeKey === 'line-2')
-    assert.ok(sameIdx >= 0 && otherIdx >= 0, '两行都应被召回（加分不过滤）')
-    assert.ok(sameIdx < otherIdx, `同产线行应排前（实际 ${order.length} 行同产线 #${sameIdx} vs 异产线 #${otherIdx}）`)
-    assert.ok((rows[sameIdx]!.score) > (rows[otherIdx]!.score), '得分应严格更高')
+    assert.ok(sameIdx >= 0, '匹配可信 Session 产线的经验应被召回')
+    assert.equal(rows.some(r => r.scopeKey === 'line-2'), false, '异产线经验必须硬隔离')
+    assert.ok(rows[sameIdx]!.score > 0)
   }
   finally {
     db.close()
   }
 })
 
-test('同产品经验次强（+0.1）：产线 > 产品 > 无匹配', async () => {
+test('同产品经验在可信 Session 快照内参与排序', async () => {
   const { db, repo, mem } = fixture('line-1')
   try {
     exp(repo, 'exp:none', { scopeKind: 'channel' })
@@ -98,13 +102,13 @@ test('同产品经验次强（+0.1）：产线 > 产品 > 无匹配', async () =
   }
 })
 
-test('显式 scopeContext 覆盖自动解析（频道未绑线也能命中产品）', async () => {
-  const { db, repo, mem } = fixture('')
+test('工具提供的 product scope 不能覆盖 Session 的可信产品绑定', async () => {
+  const { db, repo, mem } = fixture('line-1', 'prod-9')
   try {
     exp(repo, 'exp:prod-2', { scopeKind: 'product', scopeKey: 'prod-2' })
     exp(repo, 'exp:x', { scopeKind: 'channel' })
     const rows = await mem.recallRows('均热段 温差 整定 经验', { limit: 10, scopeContext: { productId: 'prod-2' } })
-    assert.equal(rows[0]!.scopeKey, 'prod-2', '显式产品上下文生效')
+    assert.ok(rows.every(row => row.scopeKind !== 'product' || row.scopeKey === 'prod-9'), '显式参数不得替换 Session 产品锚点')
   }
   finally {
     db.close()
@@ -160,7 +164,7 @@ test('工具面 provenance：经验行标注 scope/outcome/status', async () => 
   const { db, repo } = fixture('line-1')
   try {
     exp(repo, 'exp:prov', { scopeKind: 'line', scopeKey: 'line-1', status: 'validated' })
-    const mem = new AgentMemory(repo, { channelId: 'ch-1', agentId: 'agent-a' })
+    const mem = new AgentMemory(repo, { channelId: 'ch-1', agentId: 'agent-a', industrialScopeEnabled: true, lineId: 'line-1', productId: 'prod-9', sessionId: 'sess-trusted' })
     const ws = {
       recallMemory: (input: { query: string, scope?: 'auto' | 'private' | 'shared' | 'session', limit?: number, sessionId?: string | null, scopeContext?: { lineId?: string | null, productId?: string | null } }) =>
         mem.recallRows(input.query, { scope: input.scope, limit: input.limit, sessionId: input.sessionId, scopeContext: input.scopeContext }),

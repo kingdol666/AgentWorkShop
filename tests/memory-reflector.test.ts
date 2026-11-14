@@ -220,6 +220,7 @@ test('采集器：任务事实含判据/失败分类/产线锚点（只读聚合
 
 test('故障注入：仓储写入抛错 → 反射返回 written=false 且不向调用方抛出', async () => {
   const brokenRepo = {
+    findByAgentDedup: () => null,
     upsertExperience: () => {
       throw new Error('db down')
     },

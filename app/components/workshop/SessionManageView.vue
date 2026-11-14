@@ -13,7 +13,8 @@
  * 选中会话为 active 时 10s 轻轮询消息与运行态(管理视图取向:显式刷新优先)。
  */
 import { message } from 'ant-design-vue'
-import { useWorkshopApi, type ChannelSessionSummaryDto, type ChannelMessageDto, type SessionBriefDto, type SessionHistoryDto } from '@/app/composables/workshop/useWorkshopApi'
+import { useWorkshopApi, type ChannelMode, type ChannelSessionSummaryDto, type ChannelMessageDto, type SessionBriefDto, type SessionHistoryDto } from '@/app/composables/workshop/useWorkshopApi'
+import type { ProductView } from '#shared/dcw-protocol'
 
 const { t } = useI18n()
 
@@ -47,6 +48,45 @@ const newClientMessageId = (): string => {
 
 const activeSession = computed(() => sessions.value.find(s => s.id === activeSessionId.value) ?? null)
 
+// Channel 产品绑定与 DCW 产品目录(创建会话时必须选择已绑定产品)
+const channelMode = ref<ChannelMode | null>(null)
+const channelProductIds = ref<string[]>([])
+const productRevision = ref(0)
+const dcwProducts = ref<ProductView[]>([])
+const createProductId = ref<string | undefined>()
+const productsLoading = ref(false)
+const productsError = ref('')
+const boundProducts = computed(() => {
+  const ids = new Set(channelProductIds.value)
+  return dcwProducts.value.filter(product => ids.has(product.id))
+})
+const productName = (productId?: string | null): string =>
+  dcwProducts.value.find(product => product.id === productId)?.name ?? productId ?? '—'
+const snapshotHashLabel = (hash?: string): string => hash || '—'
+async function loadProducts(): Promise<void> {
+  productsLoading.value = true
+  productsError.value = ''
+  channelMode.value = null
+  try {
+    const channels = await api.listChannels()
+    const channel = channels.data?.find(channel => channel.id === props.channelId)
+    if (!channel) throw new Error(t('sessionManage.channelUnavailable'))
+    channelMode.value = channel.channelMode === 'production_line_integrated' ? 'production_line_integrated' : 'generic'
+    if (channelMode.value === 'generic') return
+    const [bindings, catalog] = await Promise.all([api.getChannelProducts(props.channelId), api.getDcwCatalog()])
+    channelProductIds.value = bindings.data?.productIds ?? []
+    productRevision.value = bindings.data?.revision ?? 0
+    dcwProducts.value = (catalog.data?.products ?? bindings.data?.products ?? [])
+      .filter(product => channel.lineId && product.lineId === channel.lineId)
+  }
+  catch (err) {
+    productsError.value = apiErrorMessage(err)
+  }
+  finally {
+    productsLoading.value = false
+  }
+}
+
 /** cloneId → 成员静态面(名称/启停);memberMap 的 clone 可能已被移除(移除即无行) */
 function cloneInfo(cloneId: string) {
   return agentById.value[cloneId] ?? null
@@ -73,6 +113,7 @@ async function loadAll(): Promise<void> {
     api.listChannelAgents(props.channelId),
     api.queueOverview(props.channelId),
   ])
+  void loadProducts()
   if (sess.status === 'fulfilled') {
     sessions.value = [...(sess.value.data ?? [])].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
   }
@@ -208,12 +249,15 @@ const createOpen = ref(false)
 const createTitle = ref('')
 const creating = ref(false)
 async function submitCreate(): Promise<void> {
+  const productId = createProductId.value
+  if (!channelMode.value || creating.value || (channelMode.value === 'production_line_integrated' && (!productId || !channelProductIds.value.includes(productId)))) return
   creating.value = true
   try {
-    const res = await api.createChannelSession(props.channelId, { title: createTitle.value.trim() || undefined })
+    const res = await api.createChannelSession(props.channelId, { title: createTitle.value.trim() || undefined, productId: channelMode.value === 'production_line_integrated' ? productId : undefined })
     message.success(t('sessionManage.createOkMsg', { p0: res.data?.members?.length ?? 0 }))
     createOpen.value = false
     createTitle.value = ''
+    createProductId.value = undefined
     await loadAll()
     if (res.data?.sessionId) {
       const s = sessions.value.find(x => x.id === res.data!.sessionId)
@@ -275,6 +319,12 @@ watch(() => props.channelId, () => {
   activeSessionId.value = null
   messages.value = []
   pendingSessionSend.value = null
+  createProductId.value = undefined
+  channelMode.value = null
+  channelProductIds.value = []
+  dcwProducts.value = []
+  productsError.value = ''
+  productRevision.value = 0
   void loadAll()
 })
 </script>
@@ -365,7 +415,17 @@ watch(() => props.channelId, () => {
             >{{ s.status === 'active' ? t('sessionManage.active') : t('sessionManage.closed') }}</span>
           </div>
           <div class="sm-card-meta">
+            {{ t(s.channelMode === 'production_line_integrated' ? 'channelSessionList.modeIntegrated' : 'channelSessionList.modeGeneric') }}
+          </div>
+          <div class="sm-card-meta">
             {{ s.status === 'closed' && s.closedAt ? t('sessionManage.closedAt', { p0: fmtTime(s.closedAt) }) : t('sessionManage.createdAt', { p0: fmtTime(s.createdAt) }) }}
+          </div>
+          <div
+            v-if="s.productId"
+            class="sm-card-product"
+          >
+            <span>{{ t('sessionManage.product') }}: {{ productName(s.productId) }}</span>
+            <code>{{ snapshotHashLabel(s.bindingSnapshotHash) }}</code>
           </div>
           <!-- 项目任务实例（2026-11-07）：会话行携带任务溯源，标明「任务会话」 -->
           <div
@@ -425,6 +485,13 @@ watch(() => props.channelId, () => {
                   {{ t('sessionManage.closeBtn') }}
                 </a-button>
               </a-popconfirm>
+            </div>
+            <div
+              v-if="activeSession.productId"
+              class="sm-session-product"
+            >
+              <span>{{ t('sessionManage.product') }}: {{ productName(activeSession.productId) }} · {{ t('sessionManage.snapshotRevision') }} {{ activeSession.bindingSnapshotRevision ?? '—' }}</span>
+              <code :title="activeSession.bindingSnapshotHash || ''">{{ t('sessionManage.snapshotHash') }}: {{ snapshotHashLabel(activeSession.bindingSnapshotHash) }}</code>
             </div>
             <div class="sm-members">
               <span class="sm-members-label">{{ t('sessionManage.members') }}</span>
@@ -580,6 +647,7 @@ watch(() => props.channelId, () => {
       :confirm-loading="creating"
       :ok-text="t('sessionManage.createOk')"
       :cancel-text="t('sessionManage.createCancel')"
+      :ok-button-props="{ disabled: !channelMode || productsLoading || !!productsError || (channelMode === 'production_line_integrated' && (!createProductId || !channelProductIds.includes(createProductId))) }"
       @ok="submitCreate"
     >
       <a-input
@@ -587,6 +655,40 @@ watch(() => props.channelId, () => {
         :placeholder="t('sessionManage.createTitlePh')"
         :maxlength="120"
       />
+      <a-alert
+        v-if="productsError && channelMode !== 'production_line_integrated'"
+        type="error"
+        show-icon
+        :message="productsError"
+      />
+      <a-form-item
+        v-if="channelMode === 'production_line_integrated'"
+        :label="t('sessionManage.productLabel')"
+        required
+      >
+        <a-select
+          v-model:value="createProductId"
+          show-search
+          option-filter-prop="label"
+          :loading="productsLoading"
+          :disabled="productsLoading || !boundProducts.length || (!!createProductId && !channelProductIds.includes(createProductId))"
+          :options="boundProducts.map(product => ({ value: product.id, label: product.name }))"
+          :placeholder="t('sessionManage.productPlaceholder')"
+        />
+        <a-alert
+          v-if="productsError"
+          class="create-product-error"
+          type="error"
+          show-icon
+          :message="productsError"
+        />
+        <div
+          v-else-if="!productsLoading && !boundProducts.length"
+          class="sm-create-hint"
+        >
+          {{ t('sessionManage.noBoundProducts') }}
+        </div>
+      </a-form-item>
     </a-modal>
   </div>
 </template>
@@ -739,6 +841,24 @@ watch(() => props.channelId, () => {
   font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
 }
+.sm-card-product,
+.sm-session-product {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  font-size: var(--fs-micro);
+  color: var(--chat-ink-soft);
+}
+.sm-card-product code,
+.sm-session-product code {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  color: var(--chat-ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .sm-card-task {
   display: flex;
   align-items: center;
@@ -842,6 +962,14 @@ watch(() => props.channelId, () => {
   color: var(--chat-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.sm-create-hint,
+.create-product-error {
+  margin-top: 8px;
+}
+.sm-create-hint {
+  font-size: var(--fs-micro);
+  color: var(--chat-ink-faint);
 }
 .sm-members {
   display: flex;

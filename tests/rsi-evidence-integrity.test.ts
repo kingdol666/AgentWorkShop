@@ -22,6 +22,9 @@ const { mergeExperiences, promoteExperience } = await import('../server/services
 const { configureAmlRuntime } = await import('../server/services/workshop/aml/runtime')
 const { channelOverlayText, resetHarnessOverlayCache } = await import('../server/services/workshop/experience/overlay')
 
+// This suite exercises the existing industrial gates in an explicitly integrated environment.
+;(globalThis as unknown as { __workshopManager?: unknown }).__workshopManager = { channelModeOf: () => 'production_line_integrated' }
+
 function experience(repo: ReturnType<typeof createMemoryRepo>, channelId: string, dedupKey: string, taskIds: string[], status: 'candidate' | 'validated' = 'candidate', expiresAt: string | null = null) {
   return repo.upsertExperience({
     channelId, agentId: 'agent-a', kind: 'experience', title: dedupKey, titleFts: dedupKey,

@@ -15,6 +15,8 @@ import { canonicalHash } from '../shared/context/hash'
 import plugin from '../.AgentWorkShop/plugins/rsi-interface-beta/index.mjs'
 
 const capturedAt = '2026-11-14T10:00:00.000Z'
+// The fixture represents an integrated channel; generic denial is tested separately.
+;(globalThis as typeof globalThis & { __workshopManager?: unknown }).__workshopManager = { channelModeForAgent: () => 'production_line_integrated' }
 const nowMs = Date.parse(capturedAt)
 const authorization = {
   scope: { workspaceId: 'ws-1', channelId: 'ch-1', workerId: 'worker-1' },

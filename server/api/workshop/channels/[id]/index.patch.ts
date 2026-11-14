@@ -25,6 +25,7 @@ const channelLlmSchema = z.object({
 
 const patchChannelSchema = z.object({
   name: z.string().min(1).optional(),
+  channelMode: z.enum(['generic', 'production_line_integrated']).optional(),
   description: z.string().optional(),
   scenarioPrompt: z.string().optional(),
   workspace: z.string().min(1).optional(),

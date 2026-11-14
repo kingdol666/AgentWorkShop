@@ -59,9 +59,9 @@ test('session 档隔离:同 agent 两个会话的记忆互不可见', async () =
     assert.ok(gotA.length >= 1 && gotA.every(r => r.sessionId === 'sess-a'), 'session A 检索只回 A 行')
     assert.ok(gotB.length >= 1 && gotB.every(r => r.sessionId === 'sess-b'), 'session B 检索只回 B 行')
     assert.ok(!gotA.some(r => r.sessionId === 'sess-b') && !gotB.some(r => r.sessionId === 'sess-a'))
-    // 缺 sessionId 的 session 档:不过滤(保守回退为本人域检索)
+    // 缺 sessionId 的 session 档必须 fail-closed,不得回退到本人全量域。
     const loose = await f.mem.recallRows('阈值', { scope: 'session' })
-    assert.ok(loose.length >= 2)
+    assert.deepEqual(loose, [])
   }
   finally {
     f.db.close()

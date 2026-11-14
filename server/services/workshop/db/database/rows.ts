@@ -3,6 +3,8 @@
  * (由 server/services/workshop/db/database.ts 按职责拆出;内容逐行原文搬运)
  */
 
+export type ChannelMode = 'generic' | 'production_line_integrated'
+
 export interface ChannelRow {
   id: string
   name: string
@@ -29,6 +31,7 @@ export interface ChannelRow {
   version: number
   /** v18 绑定产线(空串=未绑定;只读扩权:成员可读该线日志/配方/历史/状态,写仍走节点授权) */
   lineId: string
+  channelMode: ChannelMode
   createdAt: string
   updatedAt: string
 }

@@ -7,7 +7,7 @@
  * - admin:全量视图(含他人私有),附创建者。
  */
 import { message } from 'ant-design-vue'
-import { useWorkshopApi, type ChannelTemplateDto, type AgentTemplateDto, type ChannelTemplateMemberDto } from '../../composables/workshop/useWorkshopApi'
+import { useWorkshopApi, type ChannelMode, type ChannelTemplateDto, type AgentTemplateDto, type ChannelTemplateMemberDto } from '../../composables/workshop/useWorkshopApi'
 import { useUserStore } from '../../stores/workshop/user'
 
 const { t: tt } = useI18n()
@@ -128,18 +128,16 @@ const toggleVisibility = async (t: ChannelTemplateDto, pub: boolean): Promise<vo
   }
 }
 
-/** 实例化(不挂载;工作区内挂载走会话栏):KB-capable 模板先弹确认,可启停知识库集成 */
+/** 实例化(不挂载;工作区内挂载走会话栏):选择频道模式及可选知识库集成 */
 const instantiating = ref<string | null>(null)
 const instOpen = ref(false)
 const instTarget = ref<ChannelTemplateDto | null>(null)
 const instKb = ref(true)
+const instMode = ref<ChannelMode>('generic')
 const openInstantiate = (t: ChannelTemplateDto): void => {
   instTarget.value = t
   instKb.value = true
-  if (!t.knowledgeBaseCapable) {
-    void confirmInstantiate()
-    return
-  }
+  instMode.value = 'generic'
   instOpen.value = true
 }
 const confirmInstantiate = async (): Promise<void> => {
@@ -148,7 +146,7 @@ const confirmInstantiate = async (): Promise<void> => {
   instantiating.value = t.id
   instOpen.value = false
   try {
-    const options = t.knowledgeBaseCapable ? { enableKnowledgeBase: instKb.value } : undefined
+    const options = { channelMode: instMode.value, ...(t.knowledgeBaseCapable ? { enableKnowledgeBase: instKb.value } : {}) }
     const res = await api.instantiateChannelTemplate(t.id, undefined, options)
     const data = (res as unknown as { data?: { channelId: string, agentCount: number } })?.data
     message.success(tt('ctpl.kefkfnl030', { p0: t.name, p1: data?.agentCount ?? 0 }))
@@ -376,16 +374,28 @@ useHead({ title: () => tt('titles.ctpl') })
       @ok="confirmInstantiate"
     >
       <a-form layout="vertical">
-        <a-form-item :label="$t('ctpl.kbOption')">
-          <a-switch
-            v-model:checked="instKb"
-            :checked-children="$t('ctpl.kbOn')"
-            :un-checked-children="$t('ctpl.kbOff')"
-          />
+        <a-form-item :label="$t('channelSessionList.channelMode')">
+          <a-radio-group v-model:value="instMode">
+            <a-radio value="generic">
+              {{ $t('channelSessionList.modeGeneric') }}
+            </a-radio>
+            <a-radio value="production_line_integrated">
+              {{ $t('channelSessionList.modeIntegrated') }}
+            </a-radio>
+          </a-radio-group>
         </a-form-item>
-        <p class="kb-hint">
-          {{ $t('ctpl.kbHint') }}
-        </p>
+        <template v-if="instTarget?.knowledgeBaseCapable">
+          <a-form-item :label="$t('ctpl.kbOption')">
+            <a-switch
+              v-model:checked="instKb"
+              :checked-children="$t('ctpl.kbOn')"
+              :un-checked-children="$t('ctpl.kbOff')"
+            />
+          </a-form-item>
+          <p class="kb-hint">
+            {{ $t('ctpl.kbHint') }}
+          </p>
+        </template>
       </a-form>
     </a-modal>
   </div>

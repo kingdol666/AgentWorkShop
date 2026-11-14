@@ -125,6 +125,8 @@ test('industrial read adapter bounds multi-line authorization to authorized line
     twins: { listAll: () => twins, findById: () => undefined },
   }
   const authorization = { scope: { workspaceId: 'ws-1', channelId: 'ch-1', workerId: 'agent-1', industrial: true }, principal: { id: 'operator' }, metadata: { boundLineIds: ['line-1', 'line-2'] }, industrial: true }
+  const g = globalThis as typeof globalThis & { __workshopManager?: unknown }
+  g.__workshopManager = { channelModeForAgent: () => 'production_line_integrated' }
   const adapter = createIndustrialReadAdapter({ services, authorize: () => authorization, now: () => capturedAt })
 
   const result = await adapter.snapshot!(request('snapshot', {}, authorization)) as { snapshot: ReturnType<typeof projectGenericFixture>, source: { counts: Record<string, number> } }
