@@ -23,3 +23,7 @@
 [US-2] DONE: a-steps change 绑在 .ant-steps-item-container;ant select 需 mousedown;popconfirm OK 需二次点击;runs/profile 表是 ant-table-tbody;U1.10 表无 model 列;U1.15 错误在 .field-error。额外三个真实缺陷:DaqAlarmBar setup 顶层 setInterval → /daq SSR 500(onMounted 包裹修复);/optimizer 水合损坏导致步骤条处理器失效(routeRules ssr:false);saveSpec 丢弃服务端分配 id(读回 specForm)。gotoReady 对 /daq 首编译放宽 240s。
 [US-3] DONE: lint PASS/redline 21 files 0 write;typecheck PASS;unit 1636/1636;build PASS;pack 43.6MB/4871。
 [US-4] DONE: optimizer live 105/105(W7 verified ACK 1/0、W8 回读=48=期望);model-loop 53/53;ontology-live 87/87;line 44/44;scientific 21/21;ontology offline 57/57。
+[US-5] DONE: PR #207 (quick-gate success) merged d4ac2e81; branch deleted.
+[US-6] DONE: main d4ac2e81 T0 五门禁+T1 全绿(unit 1636/1636 串行;tsdb-* 并行瞬态已单跑排除)+RSI runner(sim/baseline PASS, physical BLOCKED)+Mimosa 终扫封印但 partial/inconclusive(34 findings 已分诊,依赖 0,未宣称安全)。证据 2026-11-14-rsi-closure-final-gates.json 经 PR #208 合并(main 81868218)。
+[US-7] DONE: 独立评审 APPROVED——14/14 验收标准新证据逐条通过+最优性确认+3 个非阻塞 P3;deslop 零编辑(唯一 P3 重复在 /optimizer ssr:false 后失去触发条件,修复成本>收益);回归门禁重跑绿(lint/typecheck/聚焦 27)。
+[ROUND] COMPLETE: 7/7 stories passes:true。main=81868218。paper 工作树全程未触碰。
