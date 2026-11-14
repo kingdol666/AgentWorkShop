@@ -17,7 +17,8 @@ export const SCHEMA_SQL = `CREATE TABLE IF NOT EXISTS channels (
   workspace      TEXT NOT NULL DEFAULT '',
   enabled        INTEGER NOT NULL DEFAULT 1,
   created_at     TEXT NOT NULL,
-  updated_at     TEXT NOT NULL
+  updated_at     TEXT NOT NULL,
+  channel_mode   TEXT NOT NULL DEFAULT 'generic' CHECK (channel_mode IN ('generic', 'production_line_integrated'))
 );
 CREATE TABLE IF NOT EXISTS agents (
   id          TEXT PRIMARY KEY,
@@ -1674,6 +1675,19 @@ CREATE TABLE IF NOT EXISTS project_health (
   updated_at        TEXT NOT NULL,
   PRIMARY KEY (project_id, component)
 );`
+
+/** Additive channel-product binding schema; kept outside SCHEMA_SQL's version-1 fingerprint. */
+export const CHANNEL_PRODUCT_BINDINGS_SQL = `CREATE TABLE IF NOT EXISTS channel_product_bindings (
+  channel_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  product_id TEXT,
+  revision   INTEGER NOT NULL,
+  CHECK (product_id IS NULL OR product_id <> ''),
+  UNIQUE(channel_id, product_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_product_bindings_empty
+  ON channel_product_bindings(channel_id) WHERE product_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_channel_product_bindings_channel
+  ON channel_product_bindings(channel_id, product_id);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 

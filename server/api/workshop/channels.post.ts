@@ -13,6 +13,7 @@ import { assertSpawnConfigAllowed } from '../../services/workshop/agents/harness
 
 const createChannelSchema = z.object({
   name: z.string().min(1, 'name 必填'),
+  channelMode: z.enum(['generic', 'production_line_integrated']).optional(),
   description: z.string().optional(),
   /** channel 级作业场景 prompt(注入全部成员 harness;用户场景 × 系统设计组合) */
   scenarioPrompt: z.string().optional(),
@@ -44,6 +45,7 @@ export default defineApiHandler(async (event) => {
   const manager = getWorkshopManager()
   const result = await manager.createChannel({
     name: body.name,
+    channelMode: body.channelMode,
     description: body.description,
     scenarioPrompt: body.scenarioPrompt,
     workspace: body.workspace,

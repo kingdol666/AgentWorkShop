@@ -18,6 +18,7 @@ export default defineApiHandler(async (event) => {
   let byOwner = false
   if (who.kind === 'agent') {
     if (who.caller.channelId !== channelId) throw new AppError(403, 'SCOPE_VIOLATION', '仅本 channel 成员可观察 Agent 记忆')
+    if (who.caller.id !== agentId) throw new AppError(403, 'MEMORY_OWNER_REQUIRED', 'Agent 只能观察自己的私有记忆')
   }
   else {
     const ch = manager.getChannelForUser(channelId, who.user.id)

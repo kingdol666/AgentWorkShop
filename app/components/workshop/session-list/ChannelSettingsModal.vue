@@ -6,7 +6,8 @@
  * 保存成功 emit('saved'),由父组件刷新 channel 列表。
  */
 import { message } from 'ant-design-vue'
-import { useWorkshopApi, type ChannelDto } from '@/app/composables/workshop/useWorkshopApi'
+import { useWorkshopApi, type ChannelDto, type ChannelMode, type ChannelProductBindingsDto } from '@/app/composables/workshop/useWorkshopApi'
+import type { ProductView } from '#shared/dcw-protocol'
 import ChannelToolSettings from './ChannelToolSettings.vue'
 
 const { t } = useI18n()
@@ -21,7 +22,44 @@ const emit = defineEmits<{
 const api = useWorkshopApi()
 
 // ===== Channel 实例设置(场景/工作目录热更新)+ 保存为模板 =====
-const settingsForm = reactive({ name: '', scenarioPrompt: '', workspace: '', lineId: '' })
+const settingsForm = reactive({ name: '', scenarioPrompt: '', workspace: '', lineId: '', channelMode: 'generic' as ChannelMode })
+
+// ===== Channel 产品绑定(乐观并发;产品必须属于当前兼容产线) =====
+const productOptions = ref<ProductView[]>([])
+const boundProductIds = ref<string[]>([])
+const productRevision = ref(0)
+const productsLoading = ref(false)
+const productsError = ref('')
+const productsChanged = ref(false)
+const productsForLine = computed(() => {
+  const lineId = settingsForm.lineId
+  return lineId ? productOptions.value.filter(product => product.lineId === lineId) : []
+})
+const loadChannelProducts = async (): Promise<void> => {
+  productsLoading.value = true
+  productsError.value = ''
+  try {
+    const [bindings, catalog] = await Promise.all([
+      api.getChannelProducts(props.channelId),
+      api.getDcwCatalog(),
+    ])
+    const data = bindings?.data as ChannelProductBindingsDto | undefined
+    boundProductIds.value = [...(data?.productIds ?? [])]
+    productRevision.value = data?.revision ?? 0
+    productOptions.value = catalog?.data?.products ?? data?.products ?? []
+    productsChanged.value = false
+  }
+  catch (e) {
+    productsError.value = apiErrorMessage(e)
+  }
+  finally {
+    productsLoading.value = false
+  }
+}
+const onProductChange = (value: unknown): void => {
+  boundProductIds.value = Array.isArray(value) ? value.map(String) : []
+  productsChanged.value = true
+}
 
 // ===== v18 绑定产线(只读扩权:成员可读该线日志/配方/历史/状态;写仍走节点授权) =====
 interface LineOption { id: string, name: string, state?: string, controlMode?: string }
@@ -40,6 +78,13 @@ const loadLines = async (): Promise<void> => {
 const onLineChange = (v: unknown): void => {
   settingsForm.lineId = String(v ?? '')
   lineChanged.value = true
+  const lineId = settingsForm.lineId
+  const validIds = new Set(productOptions.value.filter(product => product.lineId === lineId).map(product => product.id))
+  const nextIds = boundProductIds.value.filter(id => validIds.has(id))
+  if (nextIds.length !== boundProductIds.value.length) {
+    boundProductIds.value = nextIds
+    productsChanged.value = true
+  }
 }
 
 // ===== 频道执行模式(observe/manual/auto;2026-10-28 三模式计划 M4)=====
@@ -147,8 +192,14 @@ const openSettings = (): void => {
   settingsForm.scenarioPrompt = meta?.scenarioPrompt ?? ''
   settingsForm.workspace = meta?.workspace ?? ''
   settingsForm.lineId = meta?.lineId ?? ''
+  settingsForm.channelMode = meta?.channelMode ?? 'generic'
   lineChanged.value = false
+  boundProductIds.value = []
+  productRevision.value = 0
+  productsChanged.value = false
+  productsError.value = ''
   void loadLines()
+  void loadChannelProducts()
   void loadExecMode()
   // 预填 channel 默认 LLM(llmJson 由列表接口透传)
   let saved: ChannelLlmDefaults | null = null
@@ -207,6 +258,7 @@ const saveSettings = async (): Promise<void> => {
   settingsSaving.value = true
   try {
     await api.patchChannel(props.channelId, {
+      channelMode: settingsForm.channelMode,
       scenarioPrompt: settingsForm.scenarioPrompt,
       workspace: settingsForm.workspace.trim() || undefined,
       llm: llmForm.enabled && llmForm.model
@@ -216,6 +268,16 @@ const saveSettings = async (): Promise<void> => {
     // v18 绑线变更单独提交(只读扩权;成员运行时自动回收重装配)
     if (lineChanged.value) {
       await api.bindChannelLine(props.channelId, settingsForm.lineId || null)
+    }
+    // 产品绑定由原子 revision endpoint 单独提交;失败时保留当前弹窗与草稿供重试。
+    if (productsChanged.value) {
+      const res = await api.putChannelProducts(props.channelId, {
+        expectedRevision: productRevision.value,
+        productIds: boundProductIds.value,
+      })
+      productRevision.value = res?.data?.revision ?? productRevision.value
+      boundProductIds.value = [...(res?.data?.productIds ?? boundProductIds.value)]
+      productsChanged.value = false
     }
     message.success(t('channelSessionList.kvsxlu6031'))
     open.value = false
@@ -246,6 +308,18 @@ const openSaveTemplate = (): void => {
     @ok="saveSettings"
   >
     <a-form layout="vertical">
+      <a-form-item :label="$t('channelSessionList.channelMode')">
+        <a-select
+          v-model:value="settingsForm.channelMode"
+          :options="[
+            { value: 'generic', label: $t('channelSessionList.modeGeneric') },
+            { value: 'production_line_integrated', label: $t('channelSessionList.modeIntegrated') },
+          ]"
+        />
+        <div class="bind-line-hint">
+          {{ $t('channelSessionList.modeHint') }}
+        </div>
+      </a-form-item>
       <a-form-item :label="$t('channelSessionList.bindLineLabel')">
         <a-select
           :value="settingsForm.lineId || undefined"
@@ -259,6 +333,27 @@ const openSaveTemplate = (): void => {
         />
         <div class="bind-line-hint">
           {{ $t('channelSessionList.bindLineHint') }}
+        </div>
+      </a-form-item>
+      <a-form-item :label="$t('channelSessionList.channelProductsLabel')">
+        <a-select
+          :value="boundProductIds"
+          mode="multiple"
+          :loading="productsLoading"
+          :disabled="productsLoading || !productsForLine.length"
+          :placeholder="$t('channelSessionList.channelProductsPlaceholder')"
+          :options="productsForLine.map(product => ({ value: product.id, label: product.name }))"
+          @change="onProductChange"
+        />
+        <a-alert
+          v-if="productsError"
+          class="product-error"
+          type="error"
+          show-icon
+          :message="productsError"
+        />
+        <div class="bind-line-hint">
+          {{ $t('channelSessionList.channelProductsHint') }}
         </div>
       </a-form-item>
       <a-form-item :label="t('channelSessionList.execModeLabel')">
@@ -481,6 +576,7 @@ const openSaveTemplate = (): void => {
 }
 .ws-hint { font-size: 11px; color: var(--ink-faint); }
 .bind-line-hint { margin-top: 4px; font-size: 11px; color: var(--ink-faint); line-height: 1.5; }
+.product-error { margin-top: 8px; }
 .exec-effective { display: flex; gap: 12px; flex-wrap: wrap; }
 .exec-suppressed { color: #d46b08; }
 .exec-actions { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }

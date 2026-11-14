@@ -1,6 +1,6 @@
 /**
  * POST /api/workshop/channels/:id/sessions —— 一键创建会话（克隆基础成员 + 复制绑定面）。
- * body: { title?, memoryPolicy? }；返回 { sessionId, members }。
+ * body: { productId, title?, memoryPolicy? }；返回 { sessionId, members, productId, lineId, bindingSnapshotHash, bindingSnapshotRevision }。
  */
 import { z } from 'zod'
 import { getRouterParam, readValidatedBody } from 'h3'
@@ -10,6 +10,7 @@ import { defineApiHandler } from '@/server/utils/response'
 import { getWorkshopManager } from '@/server/plugins/workshop'
 
 const schema = z.object({
+  productId: z.string().trim().min(1).optional(),
   title: z.string().max(120).optional(),
   /**
    * 会话记忆策略:session=只在本文会话语境内召回/写入(默认);
@@ -26,11 +27,12 @@ export default defineApiHandler(async (event) => {
   // 空 body 合法(标题可缺省):把"未提供"收敛进 schema,而不是 catch 掉校验错误。
   // 旧写法 .catch(() => ({ title: undefined })) 会把 title>120 一并吞成"无标题",
   // 用户提交的超长标题被静默改名为随机默认标题。
-  const body = await readValidatedBody(event, zValidator(schema.default({})))
+  const body = await readValidatedBody(event, zValidator(schema))
   return getWorkshopManager().createChannelSession({
     channelId,
     actor: { id: user.id, role: user.role },
     title: body.title,
+    productId: body.productId,
     memoryPolicy: body.memoryPolicy,
   })
 })

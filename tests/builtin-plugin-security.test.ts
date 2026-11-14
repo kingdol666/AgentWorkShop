@@ -97,6 +97,21 @@ function makeDiagCtx(kvStore = {}, grants = new Map()) {
   return { ctx, routes }
 }
 
+test('diagnostic tool handlers reject generic and missing agent modes before service access', async () => {
+  const plugin = (await import('../server/plugins-builtin/diag-bridge/host/index.mjs')).default
+  const { ctx } = makeDiagCtx()
+  const tools = new Map<string, { handler: (args: Record<string, unknown>, agent: { agentId: string } | null) => Promise<{ isError?: boolean }> }>()
+  ctx.omp.registerTool = tool => tools.set(tool.name, tool)
+  ctx.services.get = async () => ({ productionEnabled: () => false })
+  await plugin.setup(ctx)
+  for (const name of ['diag_run', 'diag_status', 'diag_results', 'diag_result_get', 'diag_result_annotate']) {
+    const tool = tools.get(name)
+    assert.ok(tool, `${name} registered`)
+    assert.equal((await tool.handler({ data_path: 'offline.csv' }, { agentId: 'generic-agent' })).isError, true, name)
+    assert.equal((await tool.handler({}, null)).isError, true, name)
+  }
+})
+
 test('diag-bridge /snapshot 无产线权限拒绝,只读授权放行(闸门语义)', async () => {
   const plugin = (await import('../server/plugins-builtin/diag-bridge/host/index.mjs')).default
   const { ctx, routes } = makeDiagCtx({}, new Map([['u1:ln-1', 'readonly']]))

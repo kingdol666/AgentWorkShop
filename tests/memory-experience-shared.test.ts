@@ -41,8 +41,9 @@ function session(db: ReturnType<typeof fixture>['db'], id: string, channelId: st
     VALUES (?,?,?,?,?,?)`).run(id, channelId, 's', 'active', policy, now)
 }
 
-function mem(repo: ReturnType<typeof fixture>['repo'], channelId: string, agentId = 'agent-a'): InstanceType<typeof AgentMemory> {
-  return new AgentMemory(repo, { channelId, agentId })
+function mem(repo: ReturnType<typeof fixture>['repo'], channelId: string, agentId = 'agent-a', sessionId = 'sess-trusted', productId: string | null = 'prod-9'): InstanceType<typeof AgentMemory> {
+  const lineId = repo.channelScope(channelId).lineId
+  return new AgentMemory(repo, { channelId, agentId, industrialScopeEnabled: true, lineId, productId, sessionId })
 }
 
 /** 直接写一条已加固的共享经验（绕过策略门，模拟已被门验证过的存量） */
@@ -169,6 +170,9 @@ function shim(db: ReturnType<typeof fixture>['db'], repo: ReturnType<typeof fixt
   const inst = Object.create(ManagerA2A.prototype) as unknown as {
     deps: unknown
     requireMember: (channelId: string, agentId: string) => unknown
+    channelModeForAgent: (agentId: string) => string
+    channelModeOf: (channelId: string) => string
+    channelSessionScopeOfAgent: (channelId: string, agentId: string) => { sessionId: string, productId: string, lineId: string, bindingSnapshotHash: string, bindingSnapshotRevision: number } | null
     otherSameOwnerChannels: (channelId: string) => unknown[]
     searchSharedExperience: (channelId: string, agentId: string, input: { query: string, scope: 'line' | 'product' | 'global', scopeKey?: string, limit?: number }) => Array<Record<string, unknown>>
   }
@@ -192,6 +196,8 @@ function shim(db: ReturnType<typeof fixture>['db'], repo: ReturnType<typeof fixt
     if (!list.some(x => x.id === agentId)) throw new Error(`not a member: ${agentId}@${channelId}`)
     return {}
   }
+  ;(inst as unknown as { channelSessionScopeOfAgent: () => { sessionId: string, productId: string, lineId: string, bindingSnapshotHash: string, bindingSnapshotRevision: number } }).channelSessionScopeOfAgent = () => ({ sessionId: 'session-a', productId: 'prod-9', lineId: 'line-1', bindingSnapshotHash: 'hash', bindingSnapshotRevision: 1 })
+  Object.assign(inst, { channelModeForAgent: () => 'production_line_integrated', channelModeOf: () => 'production_line_integrated' })
   return inst
 }
 
@@ -265,8 +271,8 @@ test('作用域锚点：product 需 scope_key；global 不需要', () => {
     seedExp(repo, { channelId: 'ch-a', scopeKind: 'global', dedupKey: 'exp:g' })
     const mgr = shim(db, repo, { 'ch-b': [{ id: 'worker-1', role: 'worker' }] })
     assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product' }).length, 0, '无 key → 空集')
-    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-9' }).length, 1)
-    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'global' }).length, 1)
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-9' }).length, 1, '产品须显式 scope_key 且同产品 Session 才可命中')
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'global' }).length, 1, 'global 经验保留无锚点跨频道语义')
   }
   finally {
     db.close()

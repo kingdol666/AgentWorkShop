@@ -8,6 +8,7 @@ import { getActiveLineRun } from '../../dcw/line-run'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { channelBoundLineId } from './ops-tools'
 import { queryLatest, queryTaggedLatest } from '../../daq/storage/latest-window'
 
@@ -84,6 +85,12 @@ function epochOfArg(v: unknown): number | null {
   return Number.isFinite(ms) ? ms : null
 }
 
+export interface DaqQueryExecutionScope {
+  sessionId: string
+  productId: string
+  lineId: string
+}
+
 export async function toolDaqQuery(agentId: string, args: {
   node_id?: string
   /** 多字段查询(逗号分隔或数组;与 node_id 二选一,最多 20 个) */
@@ -103,14 +110,57 @@ export async function toolDaqQuery(agentId: string, args: {
   bucket_ms?: number | string
   limit?: number | string
   agg?: string
-}): Promise<{ text: string, isError?: boolean }> {
-  const auth = daqTargetsOf(agentId, args.node_ids ?? args.node_id, args.line_id)
+}, scope?: DaqQueryExecutionScope): Promise<{ text: string, isError?: boolean }> {
+  const trustedScope = scope
+    ? {
+        sessionId: String(scope.sessionId ?? '').trim(),
+        productId: String(scope.productId ?? '').trim(),
+        lineId: String(scope.lineId ?? '').trim(),
+      }
+    : undefined
+  if (trustedScope && (!trustedScope.sessionId || !trustedScope.productId || !trustedScope.lineId)) {
+    return { text: '会话产品作用域缺少可信 sessionId/productId/lineId,拒绝查询。', isError: true }
+  }
+  const provided = (v: unknown): boolean => v !== undefined && v !== null && String(v).trim() !== ''
+  if (trustedScope) {
+    if (provided(args.product_id) && String(args.product_id).trim() !== trustedScope.productId) {
+      return { text: `product_id ${String(args.product_id).trim()} 与会话固定产品 ${trustedScope.productId} 不一致,拒绝查询。`, isError: true }
+    }
+    if (provided(args.line_id) && String(args.line_id).trim() !== trustedScope.lineId) {
+      return { text: `line_id ${String(args.line_id).trim()} 与会话固定产线 ${trustedScope.lineId} 不一致,拒绝查询。`, isError: true }
+    }
+    const recipeRepo = getDcwRecipeRepo()
+    if (provided(args.recipe_id)) {
+      const recipeId = String(args.recipe_id).trim()
+      const recipe = recipeRepo.byId(recipeId)
+      if (!recipe || recipe.productId !== trustedScope.productId || recipe.lineId !== trustedScope.lineId) {
+        return { text: `recipe_id ${recipeId} 不属于会话固定产品 ${trustedScope.productId} / 产线 ${trustedScope.lineId},拒绝查询。`, isError: true }
+      }
+    }
+    if (provided(args.run_id)) {
+      const runId = String(args.run_id).trim()
+      const run = recipeRepo.runById(runId)
+      if (!run || run.productId !== trustedScope.productId || run.lineId !== trustedScope.lineId) {
+        return { text: `run_id ${runId} 不属于会话固定产品 ${trustedScope.productId} / 产线 ${trustedScope.lineId},拒绝查询。`, isError: true }
+      }
+    }
+  }
+  const auth = daqTargetsOf(agentId, args.node_ids ?? args.node_id, trustedScope?.lineId ?? args.line_id)
   if ('error' in auth) return auth.error
   const { targets } = auth
-  const lineFilter = args.line_id ? String(args.line_id).trim() : ''
+  const lineFilter = trustedScope?.lineId ?? (args.line_id ? String(args.line_id).trim() : '')
+  if (trustedScope) {
+    const wrongLine = targets.filter((id) => {
+      const nodeLine = getDaqNodeRepo().byId(id)?.lineId ?? ''
+      return nodeLine !== trustedScope.lineId
+    })
+    if (wrongLine.length > 0) {
+      return { text: `节点 ${wrongLine.join(', ')} 不属于会话固定产线 ${trustedScope.lineId},拒绝查询。`, isError: true }
+    }
+  }
 
   // 参数校验:显式传入的非法值必须报错,不能静默回退(否则 Agent 以为按自己的窗口/条数查了)
-  const provided = (v: unknown): boolean => v !== undefined && v !== null && String(v).trim() !== ''
+
   const toArg = args.to ?? args.to_ms
   const fromArg = args.from ?? args.from_ms
   const toParsed = epochOfArg(toArg)
@@ -150,13 +200,14 @@ export async function toolDaqQuery(agentId: string, args: {
   }
   const limit = Math.min(Math.max(Math.round(Number(args.limit)) || 500, 1), 2000)
 
-  // 显式过滤优先级:recipe_id / run_id / product_id(任一给出即完全按调用方口径)
-  const explicitProduct = args.product_id ? String(args.product_id) : ''
+  const requestedProduct = args.product_id ? String(args.product_id) : ''
   const explicitRecipe = args.recipe_id ? String(args.recipe_id) : ''
   const explicitRun = args.run_id ? String(args.run_id) : ''
-  const explicitScoped = Boolean(explicitProduct || explicitRecipe || explicitRun)
-  /** scope=all:显式要求不过滤(跨配方/历史复盘),仅在无显式 id 时生效 */
-  const wantAll = !explicitScoped && String(args.scope ?? '').trim().toLowerCase() === 'all'
+  const requestedScoped = Boolean(requestedProduct || explicitRecipe || explicitRun)
+  const explicitScoped = requestedScoped
+  /** scope=all:跨配方读取,但可信会话仍固定产品维度 */
+  const wantAll = !requestedScoped && String(args.scope ?? '').trim().toLowerCase() === 'all'
+  const explicitProduct = trustedScope?.productId ?? requestedProduct
 
   const { getTsdb, tsdbReady, tsdbQueryHistory, tsdbRetentionInfo } = await import('../../daq/storage')
   await tsdbReady
@@ -168,7 +219,23 @@ export async function toolDaqQuery(agentId: string, args: {
   // 各节点库内最新样本(用于「库内滞后」;查询本身走 tail 取窗口末尾,末元素才是最新)
   let latestMap = new Map<string, { tsMs: number, value: number }>()
   try {
-    latestMap = await tsdb.latest()
+    if (trustedScope) {
+      const scopedLatest = await queryTaggedLatest(tsdb, {
+        lineId: trustedScope.lineId,
+        productId: trustedScope.productId,
+        nodeIds: targets,
+        fromMs: 0,
+        toMs: Date.now(),
+        limit: 1,
+      })
+      for (const [nodeId, points] of scopedLatest) {
+        const point = points[points.length - 1]
+        if (point) latestMap.set(nodeId, { tsMs: point.at, value: point.value ?? point.avg ?? Number.NaN })
+      }
+    }
+    else {
+      latestMap = await tsdb.latest()
+    }
   }
   catch { /* 新鲜度指标可选,读不到不影响查询 */ }
 
@@ -176,7 +243,7 @@ export async function toolDaqQuery(agentId: string, args: {
   let okNodes = 0
   let failedNodes = 0
   /** 实际生效的过滤口径(逐节点累计,用于文末 provenance 与表头) */
-  const applied: Array<{ nodeId: string, lineId: string, runId?: string, recipeId?: string, source: 'explicit' | 'active-run' | 'none' }> = []
+  const applied: Array<{ nodeId: string, lineId: string, runId?: string, recipeId?: string, source: 'explicit' | 'active-run' | 'session' | 'none' }> = []
   for (const nodeId of targets) {
     const node = getDaqNodeRepo().byId(nodeId)
     if (!node) {
@@ -188,18 +255,21 @@ export async function toolDaqQuery(agentId: string, args: {
     const ch = tpl?.ch ?? node.templateKey
     // 默认口径:该节点所属产线的**活动批次**(未开跑 → 不过滤,保持原有语义)
     const nodeLine = node.lineId || ''
-    const activeRun = !explicitScoped && !wantAll && nodeLine ? getActiveLineRun(nodeLine) : null
-    const scopeRun = explicitScoped
-      ? { runId: explicitRun || undefined, recipeId: explicitRecipe || undefined, productId: explicitProduct || undefined, source: 'explicit' as const }
-      : activeRun
-        ? { runId: activeRun.runId, recipeId: activeRun.recipeId, productId: activeRun.productId, source: 'active-run' as const }
-        : { runId: undefined, recipeId: undefined, productId: undefined, source: 'none' as const }
+    const activeRun = !trustedScope && !explicitScoped && !wantAll && nodeLine ? getActiveLineRun(nodeLine) : null
+    const scopeRun = trustedScope
+      ? { runId: explicitRun || undefined, recipeId: explicitRecipe || undefined, productId: trustedScope.productId, source: (requestedScoped ? 'explicit' : 'session') as 'explicit' | 'session' }
+      : explicitScoped
+        ? { runId: explicitRun || undefined, recipeId: explicitRecipe || undefined, productId: requestedProduct || undefined, source: 'explicit' as const }
+        : activeRun
+          ? { runId: activeRun.runId, recipeId: activeRun.recipeId, productId: activeRun.productId, source: 'active-run' as const }
+          : { runId: undefined, recipeId: undefined, productId: undefined, source: 'none' as const }
     applied.push({ nodeId, lineId: nodeLine, runId: scopeRun.runId, recipeId: scopeRun.recipeId, source: scopeRun.source })
     try {
       let points: Array<{ at: number, value?: number, avg?: number, min?: number, max?: number, cnt?: number }>
       let historyNote = ''
-      // 是否有可用的打标过滤:显式 id、或活动批次(配方/批次 id 齐备)
-      const useTagged = Boolean(scopeRun.recipeId || scopeRun.runId || scopeRun.productId)
+      // Scoped sessions and all explicit product/run selectors use tagged queries;
+      // scope=all only disables recipe/run filtering and never product isolation.
+      const useTagged = Boolean(trustedScope || scopeRun.recipeId || scopeRun.runId || scopeRun.productId)
       if (needHistory) {
         // 超出原始保留期:走分层历史(1m/1h 聚合;跨边界时老段聚合 + 新段原始)
         const h = await tsdbQueryHistory(nodeId, {
@@ -240,11 +310,13 @@ export async function toolDaqQuery(agentId: string, args: {
       }
       const scopeTag = scopeRun.source === 'explicit'
         ? `批次过滤(显式)${scopeRun.runId ? ` run=${scopeRun.runId}` : ''}${scopeRun.recipeId ? ` 配方=${scopeRun.recipeId}` : ''}${scopeRun.productId ? ` 产品=${scopeRun.productId}` : ''}`
-        : scopeRun.source === 'active-run'
-          ? `当前活动批次 run=${scopeRun.runId ?? ''} 配方「${(scopeRun.recipeId && getDcwController().listRecipes().find(r => r.id === scopeRun.recipeId)?.name) || scopeRun.recipeId}」(${scopeRun.recipeId})(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)`
-          : wantAll
-            ? '全量窗口(scope=all,不做配方过滤)'
-            : '未过滤(该产线当前未开跑 → 无活动批次可限定)'
+        : scopeRun.source === 'session'
+          ? `会话固定产品过滤 产品=${scopeRun.productId}${scopeRun.runId ? ` run=${scopeRun.runId}` : ''}${scopeRun.recipeId ? ` 配方=${scopeRun.recipeId}` : ''}${wantAll ? '(跨配方/批次)' : ''}`
+          : scopeRun.source === 'active-run'
+            ? `当前活动批次 run=${scopeRun.runId ?? ''} 配方「${(scopeRun.recipeId && getDcwController().listRecipes().find(r => r.id === scopeRun.recipeId)?.name) || scopeRun.recipeId}」(${scopeRun.recipeId})(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)`
+            : wantAll
+              ? '全量窗口(scope=all,不做配方过滤)'
+              : '未过滤(该产线当前未开跑 → 无活动批次可限定)'
       // 表头携带节点 id(2026-10-30):多节点查询时模型/人可把数值精确回指到节点
       const head = `■ ${node.name}[id=${nodeId}](${ch})单位 ${node.unit},正常量程 ${node.min}~${node.max}${node.unit},当前状态 ${node.state},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}(降采样 ${bucketMs}ms,聚合 ${agg})\n  ${scopeTag}${historyNote ? `\n  ${historyNote}` : ''}`
       // 工况判读容器(具体判读在 values 计算后追加)
@@ -308,7 +380,7 @@ export async function toolDaqQuery(agentId: string, args: {
   }
   // 文末口径声明:逐节点列出**实际生效**的过滤来源(显式 / 活动批次 / 未过滤),
   // 便于审计"这条结论用的是哪个批次的数据",也避免"以为默认过滤了其实没有"。
-  const scopedNodes = applied.filter(a => a.source !== 'none')
+  const scopedNodes = applied.filter(a => a.source === 'active-run')
   const unscoped = applied.filter(a => a.source === 'none')
   const provLines: string[] = []
   if (lineFilter) provLines.push(`产线 ${lineFilter}`)
@@ -316,6 +388,8 @@ export async function toolDaqQuery(agentId: string, args: {
   if (explicitRecipe) provLines.push(`配方 ${explicitRecipe}`)
   if (explicitRun) provLines.push(`批次 ${explicitRun}`)
   if (explicitScoped) provLines.push('—— 显式过滤值优先,逐样本打标精确切批')
+  else if (trustedScope && wantAll) provLines.push('—— 会话固定产品内 scope=all:跨配方/批次查询,产品过滤仍生效')
+  else if (trustedScope) provLines.push('—— 会话固定产品过滤生效')
   else if (wantAll) provLines.push('—— scope=all:不做配方过滤,窗口内跨配方样本全部返回')
   else if (scopedNodes.length > 0) {
     const ids = [...new Set(scopedNodes.map(a => `${a.recipeId ?? '-'}${a.runId ? `@${a.runId}` : ''}`))]

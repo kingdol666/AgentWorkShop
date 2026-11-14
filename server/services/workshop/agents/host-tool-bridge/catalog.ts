@@ -13,6 +13,14 @@ import { amlTwinFeatureFlags } from '../../aml/twin/feature-flags'
 import { applyChannelToolPolicy } from '../../tools/policy'
 import type { ToolExclusion } from '../../tools/types'
 import { registerToolReferenceDeclarations } from '../tool-reference-spec'
+import { channelModeOf } from '../../channel-mode'
+
+/** Shared injection/dispatch classification, including production plugin tools. */
+export function isProductionTool(name: string, plugin?: string | null): boolean {
+  return plugin === 'diag-bridge' || plugin === 'serial-bridge'
+    || /^(?:my_industrial_|industrial_|daq_|dcw_|param_|recipe_|line_|mes_|aml_|twin_|optimizer_|ontology_|diag_|serial_|exp_|analysis_)/.test(name)
+    || new Set(['ops_log', 'intervention_history', 'optimization_explore', 'mpc_optimize', 'team_grant_nodes', 'team_revoke_nodes']).has(name)
+}
 
 /** host tool 定义(外置 .AgentWorkShop/prompts/host-tools.json;加载器缓存) */
 export const HOST_TOOLS: RpcHostToolDefinition[] = loadHostToolDefs()
@@ -177,7 +185,7 @@ export interface HostToolScope {
  * 按角色装配 host tools,同时记录硬规则排除原因。
  * 这是全引擎唯一的“合格工具集合”来源;Channel 逐工具选择只在结果上做减法。
  */
-export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: string, locale: 'zh' | 'en' = 'zh'): HostToolScope {
+export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: string, locale: 'zh' | 'en' = 'zh', effectiveMode = channelModeOf(channelId ?? '')): HostToolScope {
   const excluded = new Map<string, ToolExclusion>()
   const allTools = locale === 'zh' ? HOST_TOOLS : loadHostToolDefs(locale)
   const base = role === 'lead'
@@ -283,6 +291,11 @@ export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: strin
     ? narrow(scoped, t => !HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES.has(t.name), 'WRITE_GUARD', '当前 Channel 档位不允许产线直接写工具')
     : [...scoped]
 
+  if (effectiveMode !== 'production_line_integrated') {
+    const generic = narrow(out, t => !isProductionTool(t.name), 'PROFILE_DENIED', '通用频道不开放产线工业工具')
+    out.splice(0, out.length, ...generic)
+  }
+
   // 团队级插件开关:显式配置过的 channel 按行过滤;未配置(无行)= 全启用,向后兼容
   const channelOff = channelId
     ? getChannelPluginsRepo().explicitFor(channelId)
@@ -295,6 +308,10 @@ export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: strin
       continue
     }
     const owner = pluginOfTool(name)
+    if (effectiveMode !== 'production_line_integrated' && isProductionTool(name, owner)) {
+      excluded.set(name, { reason: 'PROFILE_DENIED', message: '通用频道不开放产线工业工具' })
+      continue
+    }
     if (channelOff && owner && channelOff.get(owner) === false) {
       excluded.set(name, { reason: 'CHANNEL_PLUGIN_DISABLED', message: `本 Channel 已关闭插件「${owner}」` })
       continue
@@ -315,7 +332,7 @@ export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: strin
  * 最后应用 Channel 逐工具选择(无策略 = 全部合格工具,向后兼容)。
  * 全 harness 共用:omp 经 set_host_tools 下发;其余引擎经 MCP 桥 tools/list 拉取。
  */
-export function hostToolsForRole(role: 'lead' | 'worker', channelId?: string, locale: 'zh' | 'en' = 'zh'): RpcHostToolDefinition[] {
-  const scoped = scopeHostToolsForRole(role, channelId, locale)
+export function hostToolsForRole(role: 'lead' | 'worker', channelId?: string, locale: 'zh' | 'en' = 'zh', effectiveMode = channelModeOf(channelId ?? '')): RpcHostToolDefinition[] {
+  const scoped = scopeHostToolsForRole(role, channelId, locale, effectiveMode)
   return applyChannelToolPolicy(scoped.tools, channelId)
 }

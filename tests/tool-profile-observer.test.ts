@@ -115,7 +115,7 @@ test('真实 HOST_TOOLS 按白名单收敛:读面/协作面保留,目录内写�
 
 const db = openWorkshopDb(join(process.env.AW_HOME!, 'tool-profile-test.sqlite'))
 configureAmlRuntime(db)
-const insertChannel = db.prepare('INSERT OR IGNORE INTO channels (id, name, description, enabled, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)')
+const insertChannel = db.prepare(`INSERT OR IGNORE INTO channels (id, name, description, enabled, channel_mode, created_at, updated_at) VALUES (?, ?, ?, 1, 'production_line_integrated', ?, ?)`)
 const mkChannel = (id: string, name: string) => {
   const now = new Date().toISOString()
   insertChannel.run(id, name, 'tool-profile-observer-test', now, now)
@@ -129,14 +129,14 @@ for (const [channelId, profile] of [[chMiner, 'exp-miner'], [chDoctor, 'line-doc
 }
 
 test('hostToolsForRole:exp-miner 频道注入清单含读面/协作面,零写族', () => {
-  const surface = namesOf(hostToolsForRole('lead', chMiner))
+  const surface = namesOf(hostToolsForRole('lead', chMiner, 'zh', 'production_line_integrated'))
   assert.ok(surface.has('ops_log') && surface.has('line_log') && surface.has('line_context') && surface.has('daq_query'), 'exp-miner 注入清单缺观察读面')
   assert.ok(surface.has('save_memory') && surface.has('search_memory') && surface.has('send_cross_channel_message'), 'exp-miner 注入清单缺协作面')
   assertNoWriteFamily(surface, 'exp-miner(端到端)')
 })
 
 test('hostToolsForRole:line-doctor 频道含 AML 只读面,零写族且无优化执行族', () => {
-  const surface = namesOf(hostToolsForRole('lead', chDoctor))
+  const surface = namesOf(hostToolsForRole('lead', chDoctor, 'zh', 'production_line_integrated'))
   for (const tool of ['aml_model_find', 'aml_model_reference', 'twin_gate_evaluate', 'daq_query']) {
     assert.ok(surface.has(tool), `line-doctor 注入清单缺 ${tool}`)
   }
@@ -145,7 +145,7 @@ test('hostToolsForRole:line-doctor 频道含 AML 只读面,零写族且无优化
 })
 
 test('hostToolsForRole:legacy 频道工具面不受观察面白名单影响(对照回归)', () => {
-  const surface = namesOf(hostToolsForRole('lead', chLegacy))
+  const surface = namesOf(hostToolsForRole('lead', chLegacy, 'zh', 'production_line_integrated'))
   assert.ok(!surface.has('dcw_control') && !surface.has('param_control'), '权限模型 v2:直写工具已从工具面摘除')
   assert.ok(surface.has('recipe_update') && surface.has('recipe_apply'), 'legacy 频道保持配方操作面')
 })

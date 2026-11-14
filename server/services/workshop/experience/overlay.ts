@@ -14,6 +14,7 @@ import { createMemoryRepo } from '../db/memory.repo'
 import { createHarnessProfileRepo, renderHarnessOverlay } from './harness-profile'
 import { advisoryBlock } from './advisory'
 import { unsegmentCJK } from '../runtime/memory/helpers'
+import { channelModeForAgent, channelModeOf } from '../channel-mode'
 
 /** 进程内缓存：同一频道 60s 内不重复查库（profile 变更最迟 1 分钟生效，可接受） */
 const CACHE_TTL_MS = 60_000
@@ -24,18 +25,25 @@ export function resetHarnessOverlayCache(): void {
   cache.clear()
 }
 
-export function channelOverlayText(channelId: string): string {
+export function channelOverlayText(channelId: string, agentId?: string): string {
   if (!channelId) return ''
-  const hit = cache.get(channelId)
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.text
+  if (agentId ? channelModeForAgent(agentId) !== 'production_line_integrated' : channelModeOf(channelId) !== 'production_line_integrated') return ''
   let text: string
   try {
     const db = getAmlRuntime().db
+    const memRepo = createMemoryRepo(db)
+    const manager = (globalThis as unknown as { __workshopManager?: {
+      channelSessionScopeOfAgent?: (channelId: string, agentId: string) => { sessionId: string, lineId: string, productId: string } | null
+    } }).__workshopManager
+    const session = agentId ? manager?.channelSessionScopeOfAgent?.(channelId, agentId) ?? null : null
+    // Never substitute mutable channel bindings for an agent's missing session snapshot.
+    const scope = agentId ? { lineId: session?.lineId ?? null, productId: session?.productId ?? null } : memRepo.channelScope(channelId)
+    const cacheKey = JSON.stringify([channelId, agentId ?? '', session?.sessionId ?? '', scope.lineId, scope.productId])
+    const hit = cache.get(cacheKey)
+    if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.text
     const profile = createHarnessProfileRepo(db).activeOf(channelId)
     const parts: string[] = []
     if (profile) {
-      const memRepo = createMemoryRepo(db)
-      const scope = memRepo.channelScope(channelId)
       const pinned = (profile.layers.pins ?? [])
         .map(id => memRepo.getById(id))
         .filter((r): r is NonNullable<typeof r> => {
@@ -57,10 +65,10 @@ export function channelOverlayText(channelId: string): string {
     const advisory = advisoryBlock(db, channelId)
     if (advisory) parts.push(advisory)
     text = parts.join('\n\n')
+    cache.set(cacheKey, { at: Date.now(), text })
+    return text
   }
   catch {
-    text = ''
+    return ''
   }
-  cache.set(channelId, { at: Date.now(), text })
-  return text
 }

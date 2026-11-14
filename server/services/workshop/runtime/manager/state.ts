@@ -536,7 +536,8 @@ export abstract class ManagerState extends ManagerContracts {
         agentId: task.assigneeId ?? 'system:task',
       })
       if (!fact) return
-      void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch((err) => {
+      const industrialScopeEnabled = (this as unknown as { channelModeForAgent?: (id: string) => string }).channelModeForAgent?.(fact.agentId) === 'production_line_integrated'
+      void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact, { industrialScopeEnabled }).catch((err) => {
         log.warn('[memory] 任务经验反射失败:', err instanceof Error ? err.message : err)
       })
       // WP-C1：任务终态先补扫本频道待验证写入并归属到该任务（定时器全库补扫之外的即时路径）。

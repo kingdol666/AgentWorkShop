@@ -133,8 +133,25 @@ export function createMemoryRepo(db: DatabaseSync) {
      WHERE agent_memories_fts MATCH ? AND m.agent_id IN (?, ?) AND m.session_id = ?
      ORDER BY f.rank LIMIT ?`,
   )
+  const searchInChannelStmt = db.prepare(
+    `SELECT ${COLS}, f.rank AS bm25
+     FROM agent_memories_fts f
+     JOIN agent_memories m ON m.rowid = f.memory_rowid
+     WHERE agent_memories_fts MATCH ? AND m.agent_id IN (?, ?) AND m.channel_id = ?
+     ORDER BY f.rank LIMIT ?`,
+  )
+  const searchInSessionChannelStmt = db.prepare(
+    `SELECT ${COLS}, f.rank AS bm25
+     FROM agent_memories_fts f
+     JOIN agent_memories m ON m.rowid = f.memory_rowid
+     WHERE agent_memories_fts MATCH ? AND m.agent_id IN (?, ?) AND m.session_id = ? AND m.channel_id = ?
+     ORDER BY f.rank LIMIT ?`,
+  )
   const listRecentStmt = db.prepare(
     `SELECT ${COLS} FROM agent_memories m WHERE m.agent_id = ? ORDER BY m.created_at DESC LIMIT ?`,
+  )
+  const listRecentInChannelStmt = db.prepare(
+    `SELECT ${COLS} FROM agent_memories m WHERE m.agent_id = ? AND m.channel_id = ? ORDER BY m.created_at DESC LIMIT ?`,
   )
   const findByDedupStmt = db.prepare(
     `SELECT id, rowid FROM agent_memories WHERE channel_id = ? AND agent_id = ? AND dedup_key = ?`,
@@ -303,24 +320,41 @@ export function createMemoryRepo(db: DatabaseSync) {
     },
 
     /**
-     * 频道的作用域上下文(WP-A3):line 绑定来自 channels.line_id(迁移列)。
-     * product 目前无频道级绑定列 → 恒 null,由调用方显式传 scopeContext.productId 覆盖。
+     * 频道的作用域上下文(WP-A3):line 绑定来自 channels.line_id,单一 product 绑定来自 channel_product_bindings。
+     * 多产品或无产品绑定 → productId 为 null,由调用方显式传 scopeContext.productId 覆盖显式检索。
      * 查询失败(极端旧库)返回空对象,不阻断召回。
      */
     channelScope(channelId: string): { lineId: string | null, productId: string | null } {
       try {
-        const row = db.prepare('SELECT line_id AS lineId FROM channels WHERE id = ?').get(channelId) as { lineId?: string } | undefined
-        return { lineId: row?.lineId || null, productId: null }
+        const row = db.prepare(`
+          SELECT c.line_id AS lineId,
+            (SELECT CASE WHEN COUNT(*) = 1 THEN MIN(cp.product_id) END FROM channel_product_bindings cp
+             WHERE cp.channel_id = c.id AND cp.product_id IS NOT NULL) AS productId
+          FROM channels c WHERE c.id = ?
+        `).get(channelId) as { lineId?: string, productId?: string } | undefined
+        return { lineId: row?.lineId || null, productId: row?.productId || null }
       }
       catch {
-        return { lineId: null, productId: null }
+        try {
+          const row = db.prepare('SELECT line_id AS lineId FROM channels WHERE id = ?').get(channelId) as { lineId?: string } | undefined
+          return { lineId: row?.lineId || null, productId: null }
+        }
+        catch {
+          return { lineId: null, productId: null }
+        }
       }
     },
 
     /** bm25 检索(恒含 team 共享行;matchQuery 为 OR 连接切分词;sessionId 给定→仅该 session 作用域行) */
-    search(agentId: string, matchQuery: string, limit: number, opts: { sessionId?: string } = {}): Array<MemoryRow & { bm25: number }> {
+    search(agentId: string, matchQuery: string, limit: number, opts: { sessionId?: string, channelId?: string } = {}): Array<MemoryRow & { bm25: number }> {
+      if (opts.sessionId && opts.channelId) {
+        return searchInSessionChannelStmt.all(matchQuery, agentId, TEAM_AGENT_ID, opts.sessionId, opts.channelId, limit) as unknown as Array<MemoryRow & { bm25: number }>
+      }
       if (opts.sessionId) {
         return searchInSessionStmt.all(matchQuery, agentId, TEAM_AGENT_ID, opts.sessionId, limit) as unknown as Array<MemoryRow & { bm25: number }>
+      }
+      if (opts.channelId) {
+        return searchInChannelStmt.all(matchQuery, agentId, TEAM_AGENT_ID, opts.channelId, limit) as unknown as Array<MemoryRow & { bm25: number }>
       }
       return searchStmt.all(matchQuery, agentId, TEAM_AGENT_ID, limit) as unknown as Array<MemoryRow & { bm25: number }>
     },
@@ -406,8 +440,10 @@ export function createMemoryRepo(db: DatabaseSync) {
       }
     },
 
-    listRecent(agentId: string, limit: number): MemoryRow[] {
-      return listRecentStmt.all(agentId, limit) as unknown as MemoryRow[]
+    listRecent(agentId: string, limit: number, opts: { channelId?: string } = {}): MemoryRow[] {
+      return (opts.channelId
+        ? listRecentInChannelStmt.all(agentId, opts.channelId, limit)
+        : listRecentStmt.all(agentId, limit)) as unknown as MemoryRow[]
     },
 
     listByAgent(agentId: string, limit: number): MemoryRow[] {
@@ -500,7 +536,7 @@ export function createMemoryRepo(db: DatabaseSync) {
 
     /** 按 id 取单行(brief 置顶注入等直取场景;不存在返回 null) */
     getById(id: string): MemoryRow | null {
-      return (getByIdStmt.get(id) as MemoryRow | undefined) ?? null
+      return (getByIdStmt.get(id) as unknown as MemoryRow | undefined) ?? null
     },
 
     // ===== vec:延迟建表(vecInit)/ 刷新写入(vecSet)/ 删除(vecDelete)/ 分区 kNN(vecSearch)=====

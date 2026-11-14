@@ -55,7 +55,7 @@ test('observeModeAllowedToolNames:含 MES 只读族(G3)与读面核心', () => {
 
 const db = openWorkshopDb(join(process.env.AW_HOME!, 'execmode-surface-test.sqlite'))
 configureAmlRuntime(db)
-const insertChannel = db.prepare('INSERT OR IGNORE INTO channels (id, name, description, enabled, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)')
+const insertChannel = db.prepare(`INSERT OR IGNORE INTO channels (id, name, description, enabled, channel_mode, created_at, updated_at) VALUES (?, ?, ?, 1, 'production_line_integrated', ?, ?)`)
 const mkChannel = (id: string, name: string) => {
   const now = new Date().toISOString()
   insertChannel.run(id, name, 'execmode-surface-test', now, now)
@@ -68,7 +68,7 @@ setHybridChannelProfile({ channelId: chAuto, profile: 'legacy', capability: {}, 
 
 test('hostToolsForRole:observe 频道注入清单零写族,读面/MES 只读在,配方操作面摘除', () => {
   assert.ok(HOST_TOOLS.length > 0, 'HOST_TOOLS 应已加载(host-tools.json)')
-  const surface = namesOf(hostToolsForRole('lead', chObserve))
+  const surface = namesOf(hostToolsForRole('lead', chObserve, 'zh', 'production_line_integrated'))
   for (const tool of WRITE_FAMILY) {
     assert.ok(!surface.has(tool), `observe 频道注入了产线操作工具 ${tool}`)
   }
@@ -78,7 +78,7 @@ test('hostToolsForRole:observe 频道注入清单零写族,读面/MES 只读在,
 })
 
 test('hostToolsForRole:auto 对照频道保持 legacy 配方操作面(中性缺省零行为变化)', () => {
-  const surface = namesOf(hostToolsForRole('lead', chAuto))
+  const surface = namesOf(hostToolsForRole('lead', chAuto, 'zh', 'production_line_integrated'))
   assert.ok(surface.has('recipe_update') && surface.has('recipe_apply'), 'auto(中性)频道应保持配方操作面')
   assert.ok(!surface.has('dcw_control') && !surface.has('param_control'), '权限模型 v2:直写工具已从工具面摘除(两模式一致)')
 })

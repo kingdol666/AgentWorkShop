@@ -22,6 +22,7 @@ import { randomUUID } from 'node:crypto'
 import { parseJson } from '../db/database'
 import { AppError } from '../../../utils/errors'
 import { inheritChannelProfile } from './task-channel-profile'
+import type { ChannelMode } from '../db/database/rows'
 
 export const TASK_INSTANCE_MARKER = '·任务·'
 const EXCLUDED_NAME_MARKERS = [TASK_INSTANCE_MARKER, '·session·']
@@ -38,15 +39,11 @@ export interface TaskInstanceMemberRow {
 
 export interface TaskInstanceDeps {
   channels: {
-    findById(channelId: string): { id: string, name: string, scenarioPrompt: string, llmJson: string, ownerUserId: string | null } | undefined
+    findById(channelId: string): { id: string, name: string, scenarioPrompt: string, llmJson: string, ownerUserId: string | null, channelMode?: ChannelMode } | undefined
   }
   channelAgents: {
     listByChannel(channelId: string): TaskInstanceMemberRow[]
     create(input: { channelId: string, templateId: null, name: string, harness: string, config: Record<string, unknown>, role: string }): { id: string, name: string, role: string }
-  }
-  bindings: {
-    byAgent(agentId: string): Array<{ nodeId: string, kind: string, mode?: string }>
-    bind(agentId: string, nodeId: string, kind: string, mode?: string): unknown
   }
   sessions: {
     create(input: {
@@ -58,6 +55,7 @@ export interface TaskInstanceDeps {
       projectWorkItemId?: string | null
       createdByKind?: 'user' | 'project'
       instanceKind?: 'manual' | 'task'
+      channelMode?: ChannelMode
     }): { id: string }
   }
   /** 建 Channel（含 lead 内联模板实例）+ owner 成员行 + workspace 目录 */
@@ -68,6 +66,7 @@ export interface TaskInstanceDeps {
     llm?: { provider?: string, model?: string, effort?: string } | null
     ownerUserId?: string | null
     leadAgent: { name: string, harness: string, config?: Record<string, unknown> }
+    channelMode?: ChannelMode
   }): Promise<{ channelId: string, leadAgentId?: string, workspace: string }>
   notify?: (channelId: string, payload: { op: 'added', agentId: string, name: string, role: 'lead' | 'worker', harness: string }) => void
 }
@@ -116,6 +115,9 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
       return null
     }
   })()
+  // Work items have no trusted product selector; task instances remain generic even
+  // when cloned from an integrated template until a validated product binding exists.
+  const taskChannelMode: ChannelMode = 'generic'
   // 1) 建实例 Channel（含 lead 内联模板实例；workspace 独立 → 任务间文件系统隔离）
   const created = await deps.createChannel({
     name: instanceName,
@@ -123,6 +125,7 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
     scenarioPrompt: template.scenarioPrompt,
     llm,
     ownerUserId: template.ownerUserId,
+    channelMode: taskChannelMode,
     leadAgent: {
       name: `${lead.name}${memberSuffix}`,
       harness: lead.harness,
@@ -134,9 +137,7 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
   const members: Array<{ templateAgentId: string, instanceId: string, name: string, role: string }> = [
     { templateAgentId: lead.id, instanceId: created.leadAgentId, name: `${lead.name}${memberSuffix}`, role: 'lead' },
   ]
-  // 2) 复制 lead 的节点绑定面
-  for (const b of deps.bindings.byAgent(lead.id)) deps.bindings.bind(created.leadAgentId, b.nodeId, b.kind, b.mode)
-  // 3) 克隆其余成员（worker 身份）+ 绑定面
+  // 2) 克隆其余成员（worker 身份）；项目任务没有可信产品选择器，保持纯协作面
   for (const base of bases) {
     if (base.role === 'lead') continue
     const inst = deps.channelAgents.create({
@@ -149,7 +150,6 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
     })
     memberMap[base.id] = inst.id
     members.push({ templateAgentId: base.id, instanceId: inst.id, name: `${base.name}${memberSuffix}`, role: 'worker' })
-    for (const b of deps.bindings.byAgent(base.id)) deps.bindings.bind(inst.id, b.nodeId, b.kind, b.mode)
     deps.notify?.(created.channelId, { op: 'added', agentId: inst.id, name: inst.name, role: 'worker', harness: base.harness })
   }
   // 4) 会话行（任务实例上下文；templateMemberId → 实例成员 id）
@@ -162,6 +162,7 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
     projectWorkItemId: input.workItemId,
     createdByKind: 'project',
     instanceKind: 'task',
+    channelMode: taskChannelMode,
   })
   // 5) RSI WP-D5:继承母频道 AML profile（降档 + 不继承模型绑定；legacy 不写）
   inheritChannelProfile(input.templateChannelId, created.channelId)

@@ -121,8 +121,9 @@ export async function seedRuntimeServices() {
   servicesExt.register('agentScope', async () => {
     const m = await import('@/server/services/workshop/agents/industrial/tool-verify')
     return {
-      readableLines: agentId => [...m.resolveRefFaces(agentId).readableLines],
-      boundNodes: agentId => [...m.resolveRefFaces(agentId).boundNodes],
+      productionEnabled: agentId => g.__workshopManager?.channelModeForAgent?.(agentId) === 'production_line_integrated',
+      readableLines: agentId => g.__workshopManager?.channelModeForAgent?.(agentId) === 'production_line_integrated' ? [...m.resolveRefFaces(agentId).readableLines] : [],
+      boundNodes: agentId => g.__workshopManager?.channelModeForAgent?.(agentId) === 'production_line_integrated' ? [...m.resolveRefFaces(agentId).boundNodes] : [],
     }
   })
   servicesExt.register('plugins', async () => pluginManifest())

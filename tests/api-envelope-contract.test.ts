@@ -94,7 +94,12 @@ test('B6:三处会话/任务端点不得再用 .catch 吞校验错误', () => {
   ]) {
     const src = codeOnly(readFileSync(join(ROOT, rel), 'utf-8'))
     assert.ok(!/\.catch\(\(\)\s*=>/.test(src), `${rel} 仍残留 .catch(() => ...):超长字段被静默丢弃`)
-    assert.match(src, /\.default\(\{\}\)/, `${rel} 必须用 schema.default({}) 承接空 body`)
+    if (rel.endsWith('sessions/index.post.ts')) {
+      assert.match(src, /productId/, `${rel} 必须声明 Session productId`)
+    }
+    else {
+      assert.match(src, /\.default\(\{\}\)/, `${rel} 必须用 schema.default({}) 承接空 body`)
+    }
   }
 })
 

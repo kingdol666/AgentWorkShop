@@ -209,9 +209,11 @@ test('D-P1-2:带 owner FK 的老库升级后:外键消失、列集不变、业�
   initWorkshopDb(db)
 
   assert.deepEqual(userFkTables(db), [], '升级后不得再持有 users 外键')
-  // 列集不漂移(重建白名单漏列 → 这里立刻红)
+  // 既有列不得漂移；channels 仅允许增加本次的 channel_mode 列。
   for (const t of ['workspaces', 'channels', 'agents', 'teams']) {
-    assert.deepEqual(colNames(db, t), beforeCols[t], `${t} 列集在升级中漂移`)
+    const expected = [...(beforeCols[t] ?? [])]
+    if (t === 'channels') expected.push('channel_mode')
+    assert.deepEqual(colNames(db, t), expected.sort(), `${t} 列集在升级中漂移`)
   }
   // 业务数据逐列保留(审查原缺陷:scenario_prompt/llm_json 被静默清空)
   const ch = db.prepare('SELECT * FROM channels WHERE id = ?').get('ch-1') as Record<string, unknown>
@@ -219,6 +221,7 @@ test('D-P1-2:带 owner FK 的老库升级后:外键消失、列集不变、业�
   assert.equal(ch.llm_json, '{"provider":"p","model":"m"}')
   assert.equal(ch.description, 'desc-保真')
   assert.equal(ch.line_id, 'ln-1')
+  assert.equal(ch.channel_mode, 'production_line_integrated')
   assert.equal(ch.version, 3)
   assert.equal(ch.approval_policy, 'owner_only')
   assert.equal(ch.owner_user_id, 'u-1')

@@ -70,6 +70,9 @@ test('状态单调性:重放/重存不得把 validated 打回 candidate,也不�
 
 test('合并端点:证据并集 + 不自动晋级(人审批)', () => {
   const { db, repo } = fixture()
+  const globalMode = globalThis as unknown as { __workshopManager?: unknown }
+  const previousManager = globalMode.__workshopManager
+  globalMode.__workshopManager = { channelModeOf: () => 'production_line_integrated' }
   try {
     const tasks = completedTasks(db, 'ch-1', 2)
     const a = seed(repo, 'exp:m1', [tasks[0]!.id])
@@ -84,6 +87,7 @@ test('合并端点:证据并集 + 不自动晋级(人审批)', () => {
     assert.equal(promoted.ok, true, promoted.reasons.join('；'))
   }
   finally {
+    globalMode.__workshopManager = previousManager
     db.close()
   }
 })

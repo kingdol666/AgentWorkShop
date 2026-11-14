@@ -62,7 +62,7 @@ export interface DcwWriteHistoryEntry {
  * (节点才是真实下发 PLC 的执行体;模板仅分类)。templateRef 为展示冗余,
  * 缺失时按节点自动补全。配方级窗口须 min <= value <= max。
  */
-const normParams = (params: RecipeParam[] | undefined, lineId = ''): RecipeParam[] =>
+const normParams = (params: RecipeParam[] | undefined, lineId = '', bindUnassigned = true): RecipeParam[] =>
   (params ?? [])
     .filter(p => p && Number.isFinite(Number(p.value)))
     .map((p) => {
@@ -80,7 +80,9 @@ const normParams = (params: RecipeParam[] | undefined, lineId = ''): RecipeParam
       if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `配方参数绑定的控制节点不存在: ${nodeId}`)
       // 产线隔离硬约束:参数节点必须属于配方产线;未分配节点自动收编,跨线节点拒绝
       if (lineId) {
-        if (!node.lineId) node.lineId = lineId
+        if (!node.lineId) {
+          if (bindUnassigned) node.lineId = lineId
+        }
         else if (node.lineId !== lineId) {
           throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `参数节点「${node.name}」属于其他产线,不可挂入本产线配方(产线隔离)`)
         }
@@ -118,7 +120,7 @@ const normParams = (params: RecipeParam[] | undefined, lineId = ''): RecipeParam
  * 配方级数采监控窗口归一化:绑定数采节点(必填),产线隔离守卫
  * (未分配自动收编/跨线拒绝),窗口需至少一侧且 min <= max。
  */
-const normDaqWindows = (windows: RecipeDaqWindow[] | undefined, lineId = ''): RecipeDaqWindow[] =>
+const normDaqWindows = (windows: RecipeDaqWindow[] | undefined, lineId = '', bindUnassigned = true): RecipeDaqWindow[] =>
   (windows ?? []).map((w) => {
     const nodeId = String(w.nodeId ?? '').trim()
     if (!nodeId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '数采监控窗口必须绑定数采节点(nodeId 必填)')
@@ -126,8 +128,10 @@ const normDaqWindows = (windows: RecipeDaqWindow[] | undefined, lineId = ''): Re
     if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `监控窗口绑定的数采节点不存在: ${nodeId}`)
     if (lineId) {
       if (!node.lineId) {
-        node.lineId = lineId
-        getDaqNodeRepo().flushNow()
+        if (bindUnassigned) {
+          node.lineId = lineId
+          getDaqNodeRepo().flushNow()
+        }
       }
       else if (node.lineId !== lineId) {
         throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `数采节点「${node.name}」属于其他产线,不可挂入本产线配方(产线隔离)`)
@@ -218,19 +222,54 @@ class DcwRecipeRepo {
   update(id: string, patch: Partial<RecipeInput>, meta?: RecipeUpdateMeta): RecipeView {
     const r = this.byId(id)
     if (!r) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${id}`)
-    if (patch.productId !== undefined && patch.productId !== r.productId) {
-      const product = getDcwProductRepo().byId(String(patch.productId))
-      if (!product) throw new AppError(404, ErrorCodes.NOT_FOUND, `产品不存在: ${patch.productId}`)
-      r.productId = String(patch.productId)
+
+    const productId = patch.productId === undefined ? r.productId : String(patch.productId)
+    const product = productId === r.productId ? undefined : getDcwProductRepo().byId(productId)
+    if (productId !== r.productId && !product) {
+      throw new AppError(404, ErrorCodes.NOT_FOUND, `产品不存在: ${patch.productId}`)
     }
+    const lineId = product?.lineId ?? r.lineId
+    let name: string | undefined
     if (patch.name !== undefined) {
-      const name = String(patch.name).trim()
+      name = String(patch.name).trim()
       if (!name) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Recipe 名称必填')
-      r.name = name
     }
+    const switchingProduct = product !== undefined
+    const params = patch.params === undefined
+      ? switchingProduct ? normParams(r.params, lineId, false) : undefined
+      : normParams(patch.params, lineId, false)
+    const daqWindows = patch.daqWindows === undefined
+      ? switchingProduct ? normDaqWindows(r.daqWindows, lineId, false) : undefined
+      : normDaqWindows(patch.daqWindows, lineId, false)
+    const opIntervalMs = patch.opIntervalMs === undefined ? undefined : normOpIntervalMs(patch.opIntervalMs)
+
+    let dcwBindingsChanged = false
+    for (const param of params ?? []) {
+      const node = getDcwNodeRepo().byId(param.nodeId)!
+      if (lineId && !node.lineId) {
+        node.lineId = lineId
+        dcwBindingsChanged = true
+      }
+    }
+    let daqBindingsChanged = false
+    for (const window of daqWindows ?? []) {
+      const node = getDaqNodeRepo().byId(window.nodeId)!
+      if (lineId && !node.lineId) {
+        node.lineId = lineId
+        daqBindingsChanged = true
+      }
+    }
+    if (dcwBindingsChanged) getDcwNodeRepo().flushNow()
+    if (daqBindingsChanged) getDaqNodeRepo().flushNow()
+
+    if (product) {
+      r.productId = product.id
+      r.lineId = lineId
+    }
+    if (name !== undefined) r.name = name
     if (patch.description !== undefined) r.description = String(patch.description).trim()
-    if (patch.params !== undefined) {
-      const fresh = normParams(patch.params, r.lineId)
+    if (params !== undefined) {
+      const fresh = params
       // 参数版本化(调控闭环):活动批次外的参数修改 → 版本自增 + 旧版入史(cap 20);
       // 归因元数据(by/actorName/actor/description)随版本入史,前端/Agent 可查谁改的为什么改
       const changed = JSON.stringify(fresh) !== JSON.stringify(r.params)
@@ -251,7 +290,7 @@ class DcwRecipeRepo {
       }
       r.params = fresh
     }
-    if (patch.daqWindows !== undefined) r.daqWindows = normDaqWindows(patch.daqWindows, r.lineId)
+    if (daqWindows !== undefined) r.daqWindows = daqWindows
     if (patch.access !== undefined) {
       // 二级权限归一:requireAuth 布尔;授权清单去重去空(requireAuth=true 且清单空 = fail-closed 无人可操作)
       const raw = (patch.access ?? {}) as { requireAuth?: unknown, authorizedAgentIds?: unknown }
@@ -262,9 +301,8 @@ class DcwRecipeRepo {
     }
     // 治理配置(非工艺参数):与 access 同口径原地改,不进 paramsHistory/不增版本
     if (patch.opIntervalMs !== undefined) {
-      const v = normOpIntervalMs(patch.opIntervalMs)
-      if (v === undefined) delete r.opIntervalMs
-      else r.opIntervalMs = v
+      if (opIntervalMs === undefined) delete r.opIntervalMs
+      else r.opIntervalMs = opIntervalMs
     }
     r.updatedAt = new Date().toISOString()
     this.flushRecipes()

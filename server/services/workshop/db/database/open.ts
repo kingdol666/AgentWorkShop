@@ -4,11 +4,11 @@
  */
 import type * as sqliteVec from 'sqlite-vec'
 import { DatabaseSync } from 'node:sqlite'
-import { SCHEMA_SQL } from './schema'
+import { CHANNEL_PRODUCT_BINDINGS_SQL, SCHEMA_SQL } from './schema'
 import { createRequire } from 'node:module'
-import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateAmlChannelOptimizationColumns, migrateAmlModelIdentityColumns, migrateAnalysisEditColumns, migrateApprovalPayloadColumns, migrateAuditQueryIndexes, migrateAuditScopeColumn, migrateChannelExecutionModeColumn, migrateDropOwnerFks, migrateDualDriveColumns, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns, migrateOptimizerFoundationColumns, migrateAgentTokenGraceColumns } from './migrations'
+import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateAmlChannelOptimizationColumns, migrateAmlModelIdentityColumns, migrateAnalysisEditColumns, migrateApprovalPayloadColumns, migrateAuditQueryIndexes, migrateAuditScopeColumn, migrateChannelExecutionModeColumn, migrateChannelModeColumn, migrateDropOwnerFks, migrateDualDriveColumns, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns, migrateOptimizerFoundationColumns, migrateAgentTokenGraceColumns } from './migrations'
 import { migrateProjectColumns, ensureProjectIndexes, migrateApprovedSlotScope } from './migrations-project'
-import { migrateSessionContextColumns, ensureSessionIndexes } from './migrations-session'
+import { migrateSessionContextColumns, migrateSessionChannelModeColumn, ensureSessionIndexes } from './migrations-session'
 import { migrateExperienceColumns, ensureExperienceIndexes } from './migrations-experience'
 import { migrateImprovementProposals } from './migrations-improvement'
 import { migrateHarnessProfiles } from './migrations-harness-profile'
@@ -47,6 +47,7 @@ export function initWorkshopDb(db: DatabaseSync): void {
   const contractFingerprint = fingerprintMigration(SCHEMA_SQL)
   assertMigrationFingerprint(db, 1, contractFingerprint)
   recordMigration(db, { version: 1, name: 'schema-contract', fingerprint: contractFingerprint })
+  db.exec(CHANNEL_PRODUCT_BINDINGS_SQL)
   // Add guardrail metadata before any legacy tasks-table rebuild so values can be copied safely.
   migrateAgentTeamTaskGuardrailColumns(db)
   migrateAgentTeamTaskQueueColumns(db)
@@ -109,6 +110,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   // RSI 独立回读验证表(WP-C1)；只建表不重建,幂等
   migrateBlindVerifications(db)
   migrateGroupChatV17(db)
+  migrateChannelModeColumn(db)
+  migrateSessionChannelModeColumn(db)
   migrateAmlTwinProviderColumns(db)
   migrateAmlModelIdentityColumns(db)
   migrateAmlChannelOptimizationColumns(db)

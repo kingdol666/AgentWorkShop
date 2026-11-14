@@ -40,6 +40,14 @@ export interface ExpEpisode {
   source: 'manual' | 'agent' | 'recipe' | 'inferred'
   actor: string
   actorKind: 'user' | 'agent' | 'system'
+  /** 关联的配方生产批次;无可信 run registry 记录时为 null */
+  recipeRunId: string | null
+  /** 从 recipe run registry 解析的产品;未知时为 null */
+  productId: string | null
+  /** 从 recipe run registry 解析的配方;未知时为 null */
+  recipeId: string | null
+  /** 可信采集上下文提供的会话;未提供时为 null */
+  sessionId: string | null
   params: Array<{ nodeId: string, from: number | null, to: number, unit?: string }>
   at: string
   /** 证据锚 id 集(锚账本;推断动作为空) */
@@ -52,6 +60,10 @@ export interface ExpEpisode {
   /** 语义哈希(去重键;collect 重试/重复采集不重记) */
   hash: string
 }
+
+/** recordEpisodes 接收的草稿:身份由采集器补全,旧调用方可省略并按 null 落盘。 */
+export type ExpEpisodeDraftInput = Omit<ExpEpisode, 'id' | 'lineId' | 'status' | 'hash' | 'recipeRunId' | 'productId' | 'recipeId' | 'sessionId'>
+  & Partial<Pick<ExpEpisode, 'recipeRunId' | 'productId' | 'recipeId' | 'sessionId'>>
 
 /** 推断动作待确认卡片(确认队列;产线可写者可裁决) */
 export interface ExpConfirmation {
@@ -107,14 +119,19 @@ function emptyDb(): ExpStateDb {
 }
 
 /**
- * episode 语义哈希(去重键):lineId+kind+source+params+at+锚 id 集。
+ * episode 语义哈希(去重键):lineId+kind+source+身份+params+at+锚 id 集。
  * 与展示性字段(actor/auditIds/comments)无关 —— 归因增强不产生新 episode。
  */
-export function episodeHashOf(e: Pick<ExpEpisode, 'lineId' | 'kind' | 'source' | 'params' | 'at' | 'anchors'>): string {
+export function episodeHashOf(e: Pick<ExpEpisode, 'lineId' | 'kind' | 'source' | 'params' | 'at' | 'anchors'>
+  & Partial<Pick<ExpEpisode, 'recipeRunId' | 'productId' | 'recipeId' | 'sessionId'>>): string {
   const canonical = JSON.stringify({
     lineId: e.lineId,
     kind: e.kind,
     source: e.source,
+    recipeRunId: e.recipeRunId ?? null,
+    productId: e.productId ?? null,
+    recipeId: e.recipeId ?? null,
+    sessionId: e.sessionId ?? null,
     params: [...e.params].sort((a, b) => a.nodeId.localeCompare(b.nodeId)),
     at: e.at,
     anchors: [...e.anchors].sort(),
@@ -158,11 +175,22 @@ export class ExpStateRepo {
    * 记录 episode(按 hash 去重,补 id/status/hash),cap 500 FIFO 淘汰。
    * 返回本轮真正新增的 episode(与去重后的入账集一致)。
    */
-  recordEpisodes(lineId: string, drafts: Array<Omit<ExpEpisode, 'id' | 'lineId' | 'status' | 'hash'>>): ExpEpisode[] {
+  recordEpisodes(lineId: string, drafts: ExpEpisodeDraftInput[]): ExpEpisode[] {
     const known = new Set(this.db.episodes.map(e => e.hash))
     const added: ExpEpisode[] = []
     for (const d of drafts) {
-      const hash = episodeHashOf({ lineId, kind: d.kind, source: d.source, params: d.params, at: d.at, anchors: d.anchors })
+      const hash = episodeHashOf({
+        lineId,
+        kind: d.kind,
+        source: d.source,
+        recipeRunId: d.recipeRunId,
+        productId: d.productId,
+        recipeId: d.recipeId,
+        sessionId: d.sessionId,
+        params: d.params,
+        at: d.at,
+        anchors: d.anchors,
+      })
       if (known.has(hash)) continue
       known.add(hash)
       // 显式构造:草稿上的内部字段(如聚合用的 untilAt)不透传入库
@@ -174,6 +202,10 @@ export class ExpStateRepo {
         source: d.source,
         actor: d.actor,
         actorKind: d.actorKind,
+        recipeRunId: d.recipeRunId ?? null,
+        productId: d.productId ?? null,
+        recipeId: d.recipeId ?? null,
+        sessionId: d.sessionId ?? null,
         params: d.params.map(p => (p.unit != null ? { ...p } : { nodeId: p.nodeId, from: p.from, to: p.to })),
         at: d.at,
         anchors: [...d.anchors],
@@ -325,7 +357,13 @@ function loadDb(filePath: string): ExpStateDb {
   const parsed = loadJsonFile(filePath, emptyDb()) as Partial<ExpStateDb>
   return {
     lines: parsed.lines ?? {},
-    episodes: parsed.episodes ?? [],
+    episodes: (parsed.episodes ?? []).map(e => ({
+      ...e,
+      recipeRunId: e.recipeRunId ?? null,
+      productId: e.productId ?? null,
+      recipeId: e.recipeId ?? null,
+      sessionId: e.sessionId ?? null,
+    })),
     confirmations: parsed.confirmations ?? [],
     registry: parsed.registry ?? {},
   }

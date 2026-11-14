@@ -22,6 +22,7 @@ import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { MES_REST_DRIVER_KIND, mesCatalogEntryOf } from '../../mes/mes-controller'
 import { contextRef, projectContext, type ProjectionResult, type ProjectionSource, type ProjectionWindow } from '../projection'
+import { channelModeForAgent } from '../../channel-mode'
 
 export const INDUSTRIAL_READ_ADAPTER_ID = 'industrial-read'
 export const INDUSTRIAL_READ_ADAPTER_VERSION = '1.0.0'
@@ -639,8 +640,14 @@ export function createIndustrialReadAdapter(options: {
   const services = options.services ?? defaultServices()
   const operational: IndustrialOperationalPorts = { ...defaultOperationalPorts(), ...options.operational }
   const now = options.now ?? (() => new Date().toISOString())
+  const assertProduction = (authorization: ContextAdapterAuthorizationContext | undefined) => {
+    if (options.authorize && authorization && (!authorization.scope.workerId || channelModeForAgent(authorization.scope.workerId) !== 'production_line_integrated')) {
+      throw new Error('industrial adapter requires a production channel')
+    }
+  }
   const snapshot = (request: ContextAdapterOperationRequest): IndustrialReadPayload => {
     const authorization = request.authorization
+    assertProduction(authorization)
     const boundLineIds = boundLineIdsOf(authorization)
     if (options.authorize && (!authorization?.industrial || boundLineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
     const requested = payloadOf(request)
@@ -662,6 +669,7 @@ export function createIndustrialReadAdapter(options: {
   }
   const discover = (request: ContextAdapterOperationRequest) => {
     const authorization = request.authorization
+    assertProduction(authorization)
     const boundLineIds = boundLineIdsOf(authorization)
     if (options.authorize && (!authorization?.industrial || boundLineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
     const payload = payloadOf(request)
@@ -678,6 +686,7 @@ export function createIndustrialReadAdapter(options: {
   /** PR-C:只读运行证据(DAQ latest/history/tagged/frames + DCW ACK/回读/写审计)。 */
   const observe = async (request: ContextAdapterOperationRequest): Promise<IndustrialOperationalEvidence> => {
     const authorization = request.authorization
+    assertProduction(authorization)
     const boundLineIds = boundLineIdsOf(authorization)
     if (options.authorize && (!authorization?.industrial || boundLineIds.length === 0)) throw new Error('operational evidence requires authorized line bindings')
     const payload = payloadOf(request) as IndustrialOperationalRequest

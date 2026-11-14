@@ -44,6 +44,11 @@ export default defineApiHandler(async (event) => {
     summary: s.summary,
     lastActiveAt: s.lastActiveAt,
     generation: s.generation,
+    channelMode: s.channelMode,
+    productId: s.productId,
+    lineId: s.lineId,
+    bindingSnapshotHash: s.bindingSnapshotHash,
+    bindingSnapshotRevision: s.bindingSnapshotRevision,
     brief: manager.getSessionBrief(sessionId),
   }
 })

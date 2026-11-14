@@ -18,6 +18,7 @@ import { foldList as foldListImpl, sortedById } from './description-budget'
 import { promptLocaleOf, tr, type PromptLocale } from '../prompt-i18n'
 import { getProjectService } from '../../projects/service'
 import { filterLeaderToolSurface, filterProjectToolSurface, type ProjectToolMode } from '../../projects/tool-surface'
+import { channelModeForAgent } from '../../channel-mode'
 
 function projectToolModeOfAgent(agentId: string): ProjectToolMode {
   try {
@@ -122,13 +123,15 @@ const foldList = (prefix: string, items: string[]): string => foldListImpl(prefi
 /** 在角色过滤后的工具面上追加 Agent 绑定资源描述 + 优化器绑定裁剪 */
 export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', channelId?: string, localeInput?: PromptLocale) {
   const locale = localeInput ?? promptLocaleOf(agentId, channelId)
-  const tools = hostToolsForRole(role, channelId, locale)
+  const mode = channelModeForAgent(agentId)
+  const tools = hostToolsForRole(role, channelId, locale, mode)
   // Project 层（PR8）：leader 走项目工具白名单；成员按 channel lead/worker 裁剪；
   // 非项目 Channel 的 project 工具为 0。执行层 dispatch 同源再判一次。
   const projectMode = projectToolModeOfAgent(agentId)
   const scoped = projectMode === 'leader'
     ? filterLeaderToolSurface(tools)
     : filterProjectToolSurface(tools, projectMode)
+  if (mode !== 'production_line_integrated') return scoped
   // G4.3 #10:无有效绑定时移除 solve/status/cancel/plan_get(保留 capabilities 作解释入口);
   // 多绑定时在描述中列出 bindingId(solve 需显式选择)。过滤不改变返回类型。
   const bindings = listOptimizerBindings(agentId)

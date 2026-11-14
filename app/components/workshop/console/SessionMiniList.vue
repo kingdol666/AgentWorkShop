@@ -73,6 +73,7 @@ const onPick = (s: ChannelSessionSummaryDto): void => {
           :class="{ on: s.status === 'active' }"
         />
         <span class="mini-name">{{ s.title }}</span>
+        <span class="mini-tag">{{ $t(s.channelMode === 'production_line_integrated' ? 'channelSessionList.modeIntegrated' : 'channelSessionList.modeGeneric') }}</span>
         <span
           v-if="s.instanceKind === 'task'"
           class="mini-tag"

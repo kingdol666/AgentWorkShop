@@ -12,6 +12,11 @@ import { getExpStateRepo } from '../../exp/exp-state.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 
+/** Dispatch-only context; never populated from the tool argument object. */
+export interface ExpCollectTrustedScope {
+  sessionId?: string | null
+}
+
 /** episode 来源 → 人话标签(汇报行内归因) */
 const EXP_SOURCE_LABEL: Record<string, string> = {
   manual: '用户',
@@ -54,7 +59,7 @@ function episodeLine(e: { at: string, source: string, actor: string, params: Arr
 export async function toolExpCollect(agentId: string, args: {
   line_id?: string
   lineId?: string
-} = {}): Promise<{ text: string, isError?: boolean }> {
+} = {}, trustedScope?: ExpCollectTrustedScope): Promise<{ text: string, isError?: boolean }> {
   const scope = agentOpsScope(agentId)
   if (!scope) return { text: '你尚未绑定任何工业节点,所在频道也未绑定产线,无可采集的产线(采集权限跟随节点绑定或频道绑线)。', isError: true }
   const readable = [...new Set([...scope.lineIds, ...scope.boundLineIds])]
@@ -71,7 +76,7 @@ export async function toolExpCollect(agentId: string, args: {
   for (const lid of lineIds) {
     const line = getDcwLineRepo().byId(lid)
     try {
-      const { episodes, confirmations } = await collectEpisodes(lid)
+      const { episodes, confirmations } = await collectEpisodes(lid, {}, { sessionId: trustedScope?.sessionId ?? null })
       totalEpisodes += episodes.length
       totalPending += confirmations.pending
       const parts: string[] = [`■ 产线 ${line?.name ?? lid}(${lid})`]

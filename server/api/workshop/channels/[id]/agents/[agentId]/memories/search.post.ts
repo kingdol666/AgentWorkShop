@@ -37,6 +37,14 @@ export default defineApiHandler(async (event) => {
     byOwner = true
   }
   const body = await readValidatedBody(event, zValidator(searchSchema))
+  if (body.scope === 'session') {
+    if (!body.sessionId) throw new AppError(400, 'SESSION_REQUIRED', 'scope=session 需要 sessionId')
+    const session = manager.listChannelSessions(channelId).find(s => s.id === body.sessionId && s.status === 'active' && s.instanceKind !== 'project')
+    if (!session) throw new AppError(403, 'SESSION_SCOPE_FORBIDDEN', 'sessionId 不属于当前 Channel 的活动会话')
+    const memberMap = JSON.parse(session.memberMapJson || '{}') as Record<string, string>
+    const caller = who.kind === 'agent' ? who.caller.id : agentId
+    if (!Object.values(memberMap).includes(caller)) throw new AppError(403, 'SESSION_SCOPE_FORBIDDEN', 'sessionId 不属于当前 Agent')
+  }
   return manager.searchAgentMemories(channelId, who.kind === 'agent' && !byOwner ? who.caller.id : agentId, agentId, {
     query: body.query,
     scope: body.scope,

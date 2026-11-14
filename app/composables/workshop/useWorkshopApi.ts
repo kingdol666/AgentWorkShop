@@ -3,10 +3,14 @@
  * 统一走 $http(Bearer cookie 注入 + envelope 解包);错误由拦截器统一 toast。
  */
 import type { AepSnapshot } from '#shared/workshop-protocol'
+import type { ProductView } from '#shared/dcw-protocol'
+
+export type ChannelMode = 'generic' | 'production_line_integrated'
 
 export interface ChannelDto {
   id: string
   name: string
+  channelMode?: ChannelMode
   description?: string
   /** channel 级默认 LLM JSON(透传 llmJson;前端解析) */
   llmJson?: string
@@ -93,8 +97,23 @@ export interface TaskDto {
   updatedAt: string
 }
 
+export interface ChannelProductBindingsDto {
+  productIds: string[]
+  revision: number
+  products?: ProductView[]
+}
+
+/** Channel session 的不可变产品/绑定快照标识 */
+export interface ChannelSessionProductSnapshotDto {
+  productId: string | null
+  lineId: string | null
+  bindingSnapshotHash: string
+  bindingSnapshotRevision: number
+}
+
 /** 频道多会话(S1):一条会话 = 从基础成员克隆出的独立 agent 实例组(独立 runtime/记忆域) */
-export interface ChannelSessionDto {
+export interface ChannelSessionDto extends ChannelSessionProductSnapshotDto {
+  channelMode: ChannelMode
   id: string
   /** 仅详情路由返回 */
   channelId?: string
@@ -222,11 +241,11 @@ export function useWorkshopApi() {
   return {
     // channels
     listChannels: () => http.get<{ data: ChannelDto[] }>('/workshop/channels'),
-    createChannel: (body: { name: string, description?: string, scenarioPrompt?: string, workspace?: string, leadAgent?: { name: string, harness: string, config?: Record<string, unknown> } }) =>
+    createChannel: (body: { name: string, channelMode?: ChannelMode, description?: string, scenarioPrompt?: string, workspace?: string, leadAgent?: { name: string, harness: string, config?: Record<string, unknown> } }) =>
       http.post<{ data: { channelId: string, leadAgentId?: string, workspace: string } }>('/workshop/channels', body),
     deleteChannel: (id: string) => http.delete<{ data: unknown }>(`/workshop/channels/${id}`),
     /** 修改 Channel 实例设置(场景 prompt / 工作目录热更新;成员运行时自动回收重装配) */
-    patchChannel: (id: string, body: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null }) =>
+    patchChannel: (id: string, body: { name?: string, channelMode?: ChannelMode, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null }) =>
       http.request<{ data: ChannelDto }>({ method: 'PATCH', url: `/workshop/channels/${id}`, data: body }),
     /** v18 绑定/解绑产线(lineId=null = 解绑;只读扩权,成员运行时自动回收) */
     bindChannelLine: (id: string, lineId: string | null) =>
@@ -239,11 +258,17 @@ export function useWorkshopApi() {
       http.request<{ data: { channelId: string, executionMode: 'observe' | 'manual' | 'auto', changed: boolean, effective: { channelMode: string, lineMode: 'auto' | 'manual' | null, bindings: { manual: number, auto: number }, suppressed: boolean } } }>({ method: 'PATCH', url: `/workshop/channels/${id}/execution-mode`, data: body }),
     /** 产线清单(绑线选择器数据源) */
     listDcwLines: () => http.get<{ data: { lines: Array<{ id: string, name: string, state?: string }> } }>('/workshop/dcw/lines?limit=200'),
+    /** 频道产品绑定(乐观并发;提交完整 productIds 集合) */
+    getChannelProducts: (id: string) => http.get<{ data: ChannelProductBindingsDto }>(`/workshop/channels/${id}/products`),
+    putChannelProducts: (id: string, body: { expectedRevision: number, productIds: string[] }) =>
+      http.put<{ data: ChannelProductBindingsDto }>(`/workshop/channels/${id}/products`, body),
+    /** DCW catalog：产品选项需按 ProductView.lineId 与频道兼容产线过滤 */
+    getDcwCatalog: () => http.get<{ data: { products: ProductView[] } }>('/workshop/dcw'),
     // channel sessions(S1 多会话:Channel=模板,会话=从基础成员克隆的独立实例组)
     listChannelSessions: (id: string) => http.get<{ data: ChannelSessionSummaryDto[] }>(`/workshop/channels/${id}/sessions`),
     /** 单会话详情(sid 不属于该频道 → 404) */
     getChannelSession: (id: string, sid: string) => http.get<{ data: ChannelSessionDto }>(`/workshop/channels/${id}/sessions/${sid}`),
-    createChannelSession: (id: string, body: { title?: string }) =>
+    createChannelSession: (id: string, body: { title?: string, productId?: string }) =>
       http.post<{ data: { sessionId: string, title: string, members: SessionCloneMemberDto[] } }>(`/workshop/channels/${id}/sessions`, body),
     /** 关闭会话(级联:在飞任务按树取消 + clone 实例停用;幂等) */
     closeChannelSession: (id: string, sid: string, body?: { reason?: string }) =>
@@ -342,7 +367,7 @@ export function useWorkshopApi() {
     updateChannelTemplate: (id: string, body: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, visibility?: 'private' | 'public' }) =>
       http.request<{ data: ChannelTemplateDto }>({ method: 'PATCH', url: `/workshop/channel-templates/${id}`, data: body }),
     deleteChannelTemplate: (id: string) => http.delete<{ data: unknown }>(`/workshop/channel-templates/${id}`),
-    instantiateChannelTemplate: (id: string, name?: string, options?: { enableKnowledgeBase?: boolean }) =>
+    instantiateChannelTemplate: (id: string, name?: string, options?: { enableKnowledgeBase?: boolean, channelMode?: ChannelMode }) =>
       http.post<{ data: { channelId: string, workspace: string, agentCount: number, leadAgentId?: string } }>(`/workshop/channel-templates/${id}/instantiate`, { name, ...options }),
     /** 从 Channel 模板实例化并挂载到 workspace(替代"挂载已有 Channel") */
     mountChannelTemplate: (wsId: string, tplId: string, name?: string) =>

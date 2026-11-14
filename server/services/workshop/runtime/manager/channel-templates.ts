@@ -6,6 +6,7 @@ import { ManagerTeams } from './teams'
 import type { ActingUser, ChannelTemplateDetail } from './types'
 import type { ChannelTemplateMember, ChannelTemplateRepo } from '../../db/channel-template.repo'
 import type { ChannelTemplateRow } from '../../db/database'
+import type { ChannelMode } from '../../channel-mode'
 import { AppError } from '../../../../utils/errors'
 import { KNOWN_HARNESSES } from './helpers'
 import { parseJson } from '../../db/database'
@@ -106,7 +107,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
    * 场景/工作目录照搬;lead 内联创建;成员逐个克隆(引用模板时校验操作者可读)。
    * 返回 createChannel 同构结果 + 成员实例数。
    */
-  async instantiateChannelTemplate(templateId: string, user: ActingUser, nameOverride?: string, options?: { scene?: Record<string, unknown>, promptVariables?: Record<string, unknown>, objective?: Record<string, unknown>, toolProfile?: string, controlPolicy?: 'recommendation_only' | 'hitl_governed' | 'bounded_auto', providerId?: string, providerVersion?: string, providerHash?: string, scenePackId?: string, optimizationMode?: 'exploration' | 'aml', boundModelId?: string, enableKnowledgeBase?: boolean }): Promise<{ channelId: string, workspace: string, agentCount: number, leadAgentId?: string, agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> }> {
+  async instantiateChannelTemplate(templateId: string, user: ActingUser, nameOverride?: string, options?: { channelMode?: ChannelMode, scene?: Record<string, unknown>, promptVariables?: Record<string, unknown>, objective?: Record<string, unknown>, toolProfile?: string, controlPolicy?: 'recommendation_only' | 'hitl_governed' | 'bounded_auto', providerId?: string, providerVersion?: string, providerHash?: string, scenePackId?: string, optimizationMode?: 'exploration' | 'aml', boundModelId?: string, enableKnowledgeBase?: boolean }): Promise<{ channelId: string, workspace: string, agentCount: number, leadAgentId?: string, agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> }> {
     const tpl = this.deps.repos.channelTemplates.findById(templateId)
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Channel 模板不存在: ${templateId}`)
     this.requireTemplateReadable(tpl, user, 'Channel 模板')
@@ -122,6 +123,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
       : tpl.scenarioPrompt
     const created = await this.createChannel({
       name: (nameOverride && nameOverride.trim()) || tpl.name,
+      channelMode: options?.channelMode ?? 'generic',
       description: tpl.description,
       scenarioPrompt,
       workspace: tpl.workspace || undefined,

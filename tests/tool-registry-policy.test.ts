@@ -40,6 +40,11 @@ function mkChannel(id: string, name: string): string {
 }
 
 const chLegacy = mkChannel('trp-legacy', 'legacy 工具策略测试')
+// These tests exercise the existing production tool-policy behavior.
+;(globalThis as typeof globalThis & { __workshopManager?: unknown }).__workshopManager = {
+  channelModeOf: () => 'production_line_integrated',
+  channelModeForAgent: () => 'production_line_integrated',
+}
 const chObserver = mkChannel('trp-observer', 'observer 工具策略测试')
 setHybridChannelProfile({
   channelId: chObserver,

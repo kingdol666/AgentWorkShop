@@ -374,15 +374,30 @@ export abstract class ManagerA2A extends ManagerTasks {
     visibility: MemoryVisibility
   }> {
     this.requireMember(channelId, agentId)
+    let others: ChannelRow[]
+    try {
+      if (this.channelModeForAgent(agentId) !== 'production_line_integrated') return []
+      const ownScope = this.channelSessionScopeOfAgent(channelId, agentId)
+      if ((input.scope === 'line' || input.scope === 'product') && !ownScope) return []
+      others = this.otherSameOwnerChannels(channelId).filter((c) => {
+        if (this.channelModeOf(c.id) !== 'production_line_integrated') return false
+        if (input.scope !== 'line') return true
+        const bindings = this.deps.repos.memories.channelScope(c.id)
+        return bindings.lineId === ownScope?.lineId
+      })
+    }
+    catch { return [] }
     const q = input.query.trim()
-    if (!q) return []
-    const others = this.otherSameOwnerChannels(channelId)
-    if (others.length === 0) return []
+    if (!q || others.length === 0) return []
     // line 档:未显式给 key 时用本 channel 的产线绑定;product 必须显式给 key;global 不需要 key
     let scopeKey = input.scopeKey?.trim() ?? ''
-    if (!scopeKey && input.scope === 'line') {
-      const self = this.deps.repos.channels.findById(channelId)
-      scopeKey = (self as unknown as { lineId?: string } | undefined)?.lineId ?? ''
+    if (input.scope === 'line') {
+      const selfSession = this.channelSessionScopeOfAgent(channelId, agentId)
+      if (!selfSession || !selfSession.lineId || (scopeKey && scopeKey !== selfSession.lineId)) return []
+      scopeKey = selfSession.lineId
+    }
+    else if (input.scope === 'product' && !scopeKey) {
+      return []
     }
     const matchQuery = segmentCJK(q).split(/\s+/).filter(Boolean).join(' OR ')
     if (!matchQuery) return []

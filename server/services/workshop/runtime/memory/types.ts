@@ -6,6 +6,11 @@ import type { EmbeddingProvider } from '../embedding-provider'
 export interface AgentMemoryOptions {
   channelId: string
   agentId: string
+  /** Server-trusted immutable scope; never populate from tool arguments. */
+  lineId?: string | null
+  productId?: string | null
+  sessionId?: string | null
+  industrialScopeEnabled?: boolean
   /** 记忆引子(静态注入)引擎自主决定是否注入 prompt;预算覆盖默认 AW_MEMORY_PRIMER_TOKENS(300) */
   budgetTokens?: number
   /** 注入后 recall 混合检索 + record* 自动向量化;未注入纯 FTS */

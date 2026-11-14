@@ -14,8 +14,11 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
    * 解析失败/未绑定 → 空上下文(零加分,行为与旧版一致)。
    */
   protected resolveScopeContext(given?: ScopeContext): ScopeContext {
-    if (given) return given
-    return this.repo.channelScope(this.opts.channelId)
+    if (!given) return this.trustedScopeContext
+    return {
+      lineId: given.lineId && given.lineId !== this.trustedScopeContext.lineId ? this.trustedScopeContext.lineId : given.lineId ?? this.trustedScopeContext.lineId,
+      productId: given.productId && given.productId !== this.trustedScopeContext.productId ? this.trustedScopeContext.productId : given.productId ?? this.trustedScopeContext.productId,
+    }
   }
 
   /** 经验作用域加分(WP-A3):同产线 +0.2 / 同产品 +0.1(非经验行/未绑定 → 0) */
@@ -31,10 +34,10 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
    * FTS 榜与向量榜各按名次贡献 1/(k+rank) 累加,再按榜内最高分归一化到 0-1——
    * 相比 v1 的 max 距离归一化,弱首命中/两榜分纲不一致时排序依然稳定。
    */
-  protected async collectHits(query: string, scope: MemoryScope, sessionId?: string | null): Promise<Map<string, { row: MemoryRow, relevance: number }>> {
+  protected async collectHits(query: string, scope: MemoryScope, sessionId?: string | null, scopeContext?: ScopeContext, automatic = false): Promise<Map<string, { row: MemoryRow, relevance: number }>> {
     const rrf = new Map<string, { row: MemoryRow, score: number }>()
     const addRank = (row: MemoryRow, rank: number): void => {
-      if (!this.inScope(row, scope, sessionId)) return
+      if (!this.inScope(row, scope, sessionId, scopeContext, automatic)) return
       const inc = 1 / (RRF_K + rank + 1)
       const cur = rrf.get(row.id)
       if (cur) cur.score += inc
@@ -42,7 +45,10 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     }
     const match = buildMatchQuery(query)
     if (match) {
-      const found = this.repo.search(this.opts.agentId, match, FTS_POOL, sessionId && scope === 'session' ? { sessionId } : {})
+      const found = this.repo.search(this.opts.agentId, match, FTS_POOL, {
+        ...(sessionId && scope === 'session' ? { sessionId } : {}),
+        channelId: this.opts.channelId,
+      })
       found.forEach((row, i) => addRank(row, i))
     }
     // 向量分支:查询向量 + 本人/team 双域 kNN,按距离名次参与 RRF(失败退化纯 FTS)
@@ -86,7 +92,8 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
       hits.set(row.id, { row, relevance: best > 0 ? score / best : 0 })
     }
     if (scope !== 'shared' && scope !== 'session') {
-      for (const row of this.repo.listRecent(this.opts.agentId, RECENT_FALLBACK)) {
+      for (const row of this.repo.listRecent(this.opts.agentId, RECENT_FALLBACK, { channelId: this.opts.channelId })) {
+        if (!this.inScope(row, scope, sessionId, scopeContext, automatic)) continue
         if (CURATED_KINDS.has(row.kind)) continue
         // RSI(WP-A3):时近兜底同样排除退休经验(兜底路径不经 inScope)
         if (row.status === 'retired') continue
@@ -100,9 +107,9 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
   protected async rank(
     query: string,
     scope: MemoryScope,
-    opts: { excludeCurated?: boolean, relatedTaskIds?: string[], sessionId?: string | null, scopeContext?: ScopeContext } = {},
+    opts: { excludeCurated?: boolean, relatedTaskIds?: string[], sessionId?: string | null, scopeContext?: ScopeContext, automatic?: boolean } = {},
   ): Promise<Array<{ row: MemoryRow, relevance: number, score: number }>> {
-    const hits = await this.collectHits(query, scope, opts.sessionId)
+    const hits = await this.collectHits(query, scope, opts.sessionId, opts.scopeContext, opts.automatic ?? false)
     const related = opts.relatedTaskIds && opts.relatedTaskIds.length > 0 ? new Set(opts.relatedTaskIds) : null
     const scopeCtx = this.resolveScopeContext(opts.scopeContext)
     return [...hits.values()]
@@ -139,7 +146,8 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     const budget = explicit ?? memoryCfg().primer_tokens
     const totalBudget = explicit ?? memoryCfg().inject_total
     const scope = recallOpts.scope ?? 'auto'
-    const scored = await this.rank(query, scope, { excludeCurated: true, relatedTaskIds: recallOpts.relatedTaskIds, sessionId: recallOpts.sessionId, scopeContext: recallOpts.scopeContext })
+    const sessionId = recallOpts.sessionId ?? this.opts.sessionId
+    const scored = await this.rank(query, scope, { excludeCurated: true, relatedTaskIds: recallOpts.relatedTaskIds, sessionId, scopeContext: recallOpts.scopeContext, automatic: true })
 
     const lines: string[] = []
     const touched: string[] = []
@@ -225,7 +233,8 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     // 召回度量(2026-10-05 记忆治理最小版):hit/miss 计数 —— 72% 记忆从未被召回的
     // 问题先变成可观测数据,再决定是否值得做自动合并。
     const stats = recallStatsOf()
-    const scoredAll = await this.rank(query, scope, { relatedTaskIds: opts.relatedTaskIds, sessionId: opts.sessionId, scopeContext: opts.scopeContext })
+    const sessionId = opts.sessionId ?? this.opts.sessionId
+    const scoredAll = await this.rank(query, scope, { relatedTaskIds: opts.relatedTaskIds, sessionId, scopeContext: opts.scopeContext })
     if (scoredAll.length > 0) stats.hits++
     else stats.misses++
     const scored = scoredAll.slice(0, limit)

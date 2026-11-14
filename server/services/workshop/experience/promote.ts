@@ -13,6 +13,13 @@ import { recordOps } from '../ops/ops'
 import { createHarnessProfileRepo } from './harness-profile'
 import { evaluateExperienceGate, evaluateExperienceTaskEvidence, evidenceOf, evaluateProfileGate, rollbackTarget, type PairedBenchResult } from './gates'
 import { resolveBenchRunForPromote } from './bench-run'
+import { channelModeOf } from '../channel-mode'
+
+function industrialExperience(scope: string | null | undefined): boolean {
+  return scope === 'line' || scope === 'product' || scope === 'global'
+}
+
+const INDUSTRIAL_MODE_REQUIRED = 'industrial experience requires production_line_integrated mode'
 
 export interface PromoteResult<S extends string> {
   ok: boolean
@@ -65,6 +72,9 @@ export function mergeExperiences(
   const rows = ids.map(id => repo.getById(id))
   const invalid = rows.find(r => !r || r.channelId !== input.channelId || r.kind !== 'experience')
   if (invalid !== undefined) return { ok: false, reasons: ['存在不属于该频道的经验条目'] }
+  if (channelModeOf(input.channelId) !== 'production_line_integrated' && rows.some(r => industrialExperience(r?.scopeKind))) {
+    return { ok: false, reasons: [INDUSTRIAL_MODE_REQUIRED] }
+  }
   const base = rows[0]!
   const taskIds = [...new Set(rows.flatMap((r) => {
     const ev = evidenceOf(r!)
@@ -115,6 +125,9 @@ export function promoteExperience(db: DatabaseSync,
   const row = repo.getById(input.memoryId)
   if (!row || row.channelId !== input.channelId || row.kind !== 'experience') {
     return { ok: false, reasons: ['经验条目不存在或不属于该频道'] }
+  }
+  if (input.to === 'validated' && industrialExperience(row.scopeKind) && channelModeOf(input.channelId) !== 'production_line_integrated') {
+    return { ok: false, reasons: [INDUSTRIAL_MODE_REQUIRED] }
   }
   if (input.to === 'validated') {
     const taskIds = evidenceOf(row).taskIds

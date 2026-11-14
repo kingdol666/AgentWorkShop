@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS channels (
   workspace      TEXT NOT NULL DEFAULT '',    -- channel 独立工作目录(omp cwd)
   enabled        INTEGER NOT NULL DEFAULT 1,
   created_at     TEXT NOT NULL,
-  updated_at     TEXT NOT NULL
+  updated_at     TEXT NOT NULL,
+  channel_mode   TEXT NOT NULL DEFAULT 'generic' CHECK (channel_mode IN ('generic', 'production_line_integrated'))
 );
 
 CREATE TABLE IF NOT EXISTS agents (

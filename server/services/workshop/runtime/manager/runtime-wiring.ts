@@ -4,6 +4,7 @@
  */
 import { ManagerBus } from './bus'
 import type { AgentInfo } from '../../agents/agent-interface'
+import { parseJson } from '../../db/database'
 import type { ChannelAgentRow } from '../../db/database'
 import type { SchedulerLoopOptions } from '../scheduler-loop'
 import { AgentMemory } from '../memory'
@@ -17,14 +18,24 @@ import { harnessContinuityEnabled, rootQueueEnabled, workshopSettings } from '..
 import { TERMINAL_TASK_STATES, type TaskState } from '../../types/task'
 import { composeChannelSystemPrompt } from '../../aml/twin/prompt-composer'
 import { createChannelSessionRepo } from '../../db/channel-session.repo'
+import { activeSessionOfMember } from '../../agents/session-clone'
+import type { ChannelSessionExecutionScope } from '../../agents/host-tool-bridge'
+import { trustedSessionBindingIdentity } from '../../agents/session-snapshot'
 import { shouldRescueBusyStuck } from './rescue-policy'
 import { SessionContextService, formatBriefText } from '../../sessions/context'
+import { channelModeForAgent } from '../../channel-mode'
 
 /**
  * 有原生会话持久化的引擎 → session 注入用 brief 档（只注身份+关键事实，历史归引擎）。
  * 未知引擎缺省 full：平台三层装配是无持久化引擎的安全缺省。
  */
 const SESSION_BRIEF_PROFILE_ENGINES = new Set(['claude'])
+
+function memberMapContains(memberMapJson: string, memberId: string): boolean {
+  const map = parseJson<unknown>(memberMapJson, null)
+  return !!map && typeof map === 'object' && !Array.isArray(map)
+    && Object.values(map as Record<string, unknown>).some(value => value === memberId)
+}
 
 export abstract class ManagerRuntimeWiring extends ManagerBus {
   private sessionContextService: SessionContextService | null = null
@@ -46,16 +57,24 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const cr = this.ensureChannelRuntime(m.channelId)
     const bus = this.buses.get(m.channelId)!
     const mailbox = new Mailbox(this.deps.repos.messages, m.channelId, agent.id, () => cr.wakeScheduler())
-    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id, embedder: this.memoryEmbedder ?? undefined })
+    const sessionRow = activeSessionOfMember(createChannelSessionRepo(this.deps.db).listByChannel(m.channelId), agent.id)
+    const trustedSession = sessionRow ? trustedSessionBindingIdentity(sessionRow) : null
+    const channelSessionScope: ChannelSessionExecutionScope | null = trustedSession
+      ? { sessionId: trustedSession.sessionId, productId: trustedSession.productId, lineId: trustedSession.lineId, bindingSnapshotHash: trustedSession.bindingSnapshotHash, bindingSnapshotRevision: trustedSession.bindingSnapshotRevision }
+      : null
+    const integrated = channelModeForAgent(agent.id) === 'production_line_integrated' && (!sessionRow || !!trustedSession)
+    const channelLineId = integrated && !sessionRow ? this.deps.repos.channels.findById(m.channelId)?.lineId ?? null : null
+    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id, lineId: channelSessionScope?.lineId ?? channelLineId, productId: channelSessionScope?.productId ?? null, sessionId: sessionRow?.id ?? null, industrialScopeEnabled: integrated, embedder: this.memoryEmbedder ?? undefined })
     const workspace = this.buildWorkspace(agent, memory)
     const chWorkspace = this.channelWorkspace(m.channelId)
     // channel 级作业场景 prompt 注入 harness config(用户场景 × 系统设计组合的入口;
     // 变更经 updateChannel 回收成员运行时,下次装配拿到新场景)
     const scenarioPrompt = this.deps.repos.channels.findById(m.channelId)?.scenarioPrompt ?? ''
     const configWithCtx: Record<string, unknown> = { ...agent.config }
+    if (scenarioPrompt) configWithCtx.scenarioPrompt = scenarioPrompt
     // v18 频道绑定产线:注入产线简报(只读上下文;全员可 line_context 看实时全景,写仍需节点授权)
     try {
-      const boundLineId = this.deps.repos.channels.findById(m.channelId)?.lineId ?? ''
+      const boundLineId = integrated ? (sessionRow ? channelSessionScope?.lineId ?? '' : this.deps.repos.channels.findById(m.channelId)?.lineId ?? '') : ''
       const line = boundLineId ? getDcwLineRepo().byId(boundLineId) : undefined
       if (line) {
         const brief = `\n\n## 绑定产线(只读上下文)\n本频道已绑定产线「${line.name}」(${line.id})${line.description ? ` — ${line.description}` : ''}。全员可用 line_context 查看该产线实时全景(运行状态/活动批次/当前配方与参数窗口),ops_log / recipe_log / recipe_versions 查运维日志与配方历史(频道绑定 = 只读授权);参数下发等写操作仍需节点授权(lead 可用 team_grant_nodes/grant_node_ids 授予)。`
@@ -72,7 +91,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // AML 解耦:训练/工艺优化 Channel 的动态工况提示词(模式+goal+绑定节点调试元数据组装;
     // 模式/绑定变更经 twin-profile PATCH 回收成员运行时生效,与 scenarioPrompt 同链路)。
     try {
-      const composed = composeChannelSystemPrompt(m.channelId, agent.id, scenarioPrompt)
+      const composed = integrated ? composeChannelSystemPrompt(m.channelId, agent.id, scenarioPrompt) : ''
       if (composed) configWithCtx.systemPromptPrefix = composed
     }
     catch { /* 非工业 Channel/组装依赖未就绪:不注入 */ }
@@ -87,12 +106,16 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       if (!configWithCtx.effort && chLlm.effort) configWithCtx.effort = chLlm.effort
     }
     const agentWithCtx: AgentInfo = { ...agent, config: configWithCtx }
-    const runtime = new AgentRuntime(agent, this.deps.implFactory(agentWithCtx), {
+    const impl = this.deps.implFactory(agentWithCtx)
+    const setScope = (impl as { setChannelSessionScope?: (scope: ChannelSessionExecutionScope | null) => void }).setChannelSessionScope
+    setScope?.(channelSessionScope)
+    const runtime = new AgentRuntime(agent, impl, {
       mailbox,
       taskEngine: this.getTaskEngine(),
       bus,
       workspace,
       memory,
+      channelSessionScope,
       // Session Context：按 sessionId 装配平台上下文块；异常降级为 legacy 回合，不阻断执行。
       // profile 按引擎能力选择（harness 无关的唯一开关点）：有原生会话持久化的引擎
       // 只注入 brief 层（历史归引擎会话），其余引擎 full 三层装配。
@@ -198,15 +221,17 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // 已关闭会话的克隆不可被任何寻址路径重新拉起（历史行仍保留审计）。
     if (String(m.name ?? '').includes('·session·')) {
       try {
-        const active = this.deps.db.prepare(
-          `SELECT 1 AS ok FROM channel_sessions WHERE channel_id = ? AND status = 'active' AND member_map_json LIKE ? LIMIT 1`,
-        ).get(channelId, `%${agentId}%`) as { ok?: number } | undefined
-        if (!active) {
-          log.warn(`[AgentChannelManager] 拒绝装配已关闭会话的克隆 ${channelId.slice(0, 8)}/${agentId.slice(0, 8)}`)
+        const sessions = createChannelSessionRepo(this.deps.db).listByChannel(channelId)
+        const active = sessions.filter(session => session.status === 'active' && session.instanceKind !== 'project' && memberMapContains(session.memberMapJson, agentId))
+        if (active.length !== 1) {
+          log.warn(`[AgentChannelManager] 拒绝装配无唯一可信 Session 的克隆 ${channelId.slice(0, 8)}/${agentId.slice(0, 8)}`)
           return undefined
         }
       }
-      catch { /* 查询失败按可装配处理（不阻断正常装配） */ }
+      catch {
+        // Session membership is an execution authorization boundary: lookup failures fail closed.
+        return undefined
+      }
     }
     return this.wireMember(m)
   }

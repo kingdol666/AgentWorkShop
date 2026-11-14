@@ -46,6 +46,14 @@ export function migrateAddColumn(db: DatabaseSync, table: string, column: string
   }
 }
 
+/** Backfill legacy channels only when the mode column is first introduced. */
+export function migrateChannelModeColumn(db: DatabaseSync): void {
+  const cols = db.prepare('PRAGMA table_info(channels)').all() as Array<{ name: string }>
+  if (cols.some(c => c.name === 'channel_mode')) return
+  db.exec('ALTER TABLE channels ADD COLUMN channel_mode TEXT NOT NULL DEFAULT \'generic\' CHECK (channel_mode IN (\'generic\', \'production_line_integrated\'))')
+  db.exec('UPDATE channels SET channel_mode = \'production_line_integrated\' WHERE COALESCE(line_id, \'\') <> \'\'')
+}
+
 /**
  * v31(2026-10-24 WP3):agent token 轮换宽限列。
  * 轮换时把旧 token 与其失效时刻写入 prev_token/prev_token_until,宽限窗内双接受
