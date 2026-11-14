@@ -131,7 +131,7 @@ function makeDataset(id: string, nodes: string[]): string {
 }
 
 /** diag-bridge 插件宿主 fake ctx(config/kv/http/services/omp/route/timer/hooks/logger) */
-function makeCtx() {
+function makeCtx(options: { auditSink?: (entry: Record<string, unknown>) => void } = {}) {
   const tools: Record<string, { handler: ToolHandler }> = {}
   const routes: Record<string, (event?: unknown) => Promise<unknown>> = {}
   const kvStore = new Map<string, unknown>()
@@ -162,7 +162,9 @@ function makeCtx() {
           }
         : name === 'agentScope'
           ? { readableLines: () => ['ln-A'], boundNodes: () => [] }
-          : null,
+          : name === 'ops.record' && options.auditSink
+            ? options.auditSink
+            : null,
     },
     logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
     timer: { setInterval: () => {} },
@@ -267,4 +269,19 @@ test('diag_run 产线模式:不可读产线在取数前拒绝(插件工具授权
   assert.equal(r.isError, true)
   assert.match(String(r.text), /不在你的可读范围/)
   assert.match(String(r.text), /ln-A/)
+})
+
+test('snapshot 拒绝审计走宿主 ops.record 服务(插件动态装载下 @/server 别名不可用)', async () => {
+  const entries: Array<Record<string, unknown>> = []
+  const m = makeCtx({ auditSink: entry => entries.push(entry) })
+  const out = await m.routes['/snapshot']!({
+    awUser: { id: 'u-1', role: 'user', name: 'User' },
+    awBody: { line: 'line-x' },
+  }) as { success: boolean, error?: string }
+  assert.equal(out.success, false)
+  assert.match(String(out.error), /FORBIDDEN_LINE/)
+  assert.equal(entries.length, 1)
+  assert.equal(entries[0]?.action, 'diag.snapshot.access.denied')
+  assert.equal(entries[0]?.targetId, 'line-x')
+  assert.equal(entries[0]?.actor, 'u-1')
 })
