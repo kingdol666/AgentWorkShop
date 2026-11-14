@@ -3,6 +3,7 @@ import type {
   ContextAdapter,
   ContextAdapterOperationRequest,
   ContextAdapterAuthorizer,
+  ContextAdapterAuthorizationContext,
   ContextRef,
   ContextScope,
   ContextSubject,
@@ -312,6 +313,11 @@ function payloadOf(request: ContextAdapterOperationRequest): IndustrialReadReque
   return request.payload as IndustrialReadRequest
 }
 
+function boundLineIdsOf(authorization: ContextAdapterAuthorizationContext | undefined): string[] {
+  const raw = authorization?.metadata?.boundLineIds
+  return Array.isArray(raw) ? raw.map(text).filter((lineId): lineId is string => Boolean(lineId)) : []
+}
+
 export function createIndustrialReadAdapter(options: {
   adapterId?: string
   version?: string
@@ -327,7 +333,8 @@ export function createIndustrialReadAdapter(options: {
   const now = options.now ?? (() => new Date().toISOString())
   const snapshot = (request: ContextAdapterOperationRequest): IndustrialReadPayload => {
     const authorization = request.authorization
-    if (options.authorize && (!authorization || authorization.lineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
+    const boundLineIds = boundLineIdsOf(authorization)
+    if (options.authorize && (!authorization?.industrial || boundLineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
     const requested = payloadOf(request)
     const requestedLineId = text(requested.lineId) || undefined
     const requestedScope = requested.scope as IndustrialReadScope | undefined
@@ -336,24 +343,25 @@ export function createIndustrialReadAdapter(options: {
       ...(Array.isArray(requestedScope?.lineIds) ? requestedScope.lineIds : []),
     ].map(text).filter((lineId): lineId is string => Boolean(lineId)))]
     if (authorization) {
-      const allowed = new Set(authorization.lineIds)
+      const allowed = new Set(boundLineIdsOf(authorization))
       if (requestedLineId && !allowed.has(requestedLineId)) throw new Error('industrial projection line is outside authorized bindings')
       if (requestedLineIds.some(lineId => !allowed.has(lineId))) throw new Error('industrial projection line is outside authorized bindings')
     }
     const lineId = requestedLineId ?? (requestedLineIds.length === 1 ? requestedLineIds[0] : undefined)
-    const authorizedLineIds = authorization?.lineIds ?? []
+    const authorizedLineIds = boundLineIds
     if (authorization && requestedLineIds.length === 0 && authorizedLineIds.length === 0) throw new Error('industrial adapter requires authorized line bindings')
     return projectIndustrialRead(services, { ...requested, lineId, lineIds: authorizedLineIds }, adapterId, version, now())
   }
   const discover = (request: ContextAdapterOperationRequest) => {
     const authorization = request.authorization
-    if (options.authorize && (!authorization || authorization.lineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
+    const boundLineIds = boundLineIdsOf(authorization)
+    if (options.authorize && (!authorization?.industrial || boundLineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
     const payload = payloadOf(request)
     const requestedLineId = text(payload.lineId) || undefined
     const requestedLineIds = Array.isArray(payload.lineIds) ? payload.lineIds.map(text).filter(Boolean) : []
-    if (authorization && requestedLineId && !authorization.lineIds.includes(requestedLineId)) throw new Error('industrial discovery line is outside authorized bindings')
-    if (authorization && requestedLineIds.some(lineId => !authorization.lineIds.includes(lineId))) throw new Error('industrial discovery line is outside authorized bindings')
-    const authorizedLineIds = authorization?.lineIds ?? []
+    if (authorization && requestedLineId && !boundLineIds.includes(requestedLineId)) throw new Error('industrial discovery line is outside authorized bindings')
+    if (authorization && requestedLineIds.some(lineId => !boundLineIds.includes(lineId))) throw new Error('industrial discovery line is outside authorized bindings')
+    const authorizedLineIds = boundLineIds
     const lineIds = authorization ? (requestedLineId ? [requestedLineId] : requestedLineIds.length ? requestedLineIds : [...authorizedLineIds]) : (requestedLineId ? [requestedLineId] : requestedLineIds.length ? requestedLineIds : undefined)
 
     const lines = lineIds ? services.lines.all().filter(item => lineIds.includes(text(item.id))) : services.lines.all()

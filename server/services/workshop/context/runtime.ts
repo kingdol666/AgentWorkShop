@@ -23,6 +23,10 @@ export type ContextRuntimeScope = {
   workspaceId?: string
   channelId?: string
   workerId?: string
+  lineId?: string
+  lineIds?: readonly string[]
+  projection?: string
+  industrial?: boolean
 }
 type NormalizedContextRuntimeScope = ContextRuntimeScope & { workspaceId: string, channelId: string, workerId: string }
 export type ContextRuntimeAuthorization
@@ -159,11 +163,14 @@ export class ContextRuntimeService {
   authorizeAdapterRequest(input: Omit<ContextAdapterAuthorizationInput, 'authorization'> & { principal: ContextRuntimePrincipal, scope: ContextRuntimeScope }): ContextAdapterAuthorizationContext | false {
     const decision = this.authorizeScope({ principal: input.principal, scope: input.scope })
     if (!decision.ok) return false
+    const industrialScope = input.scope as ContextRuntimeScope
+    const industrial = Boolean(industrialScope.lineId || industrialScope.lineIds?.length || industrialScope.projection === 'industrial' || industrialScope.industrial)
     const lineIds = this.lineIdsForScope(decision.scope)
     return {
       scope: decision.scope,
       principal: { id: input.principal.id, ...(input.principal.role ? { role: input.principal.role } : {}) },
-      lineIds,
+      metadata: { boundLineIds: lineIds },
+      industrial,
     }
   }
 

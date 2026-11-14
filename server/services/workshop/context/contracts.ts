@@ -65,8 +65,10 @@ export type ContextAdapterAuthorizationScope = ContextScope & {
 export type ContextAdapterAuthorizationContext = {
   scope: ContextAdapterAuthorizationScope
   principal: { id: string, role?: string }
-  /** Derived bindings returned by authorization; never accepted from caller input. */
-  lineIds: readonly string[]
+  /** Generic authorization metadata; domain adapters may narrow it locally. */
+  metadata?: Record<string, unknown>
+  /** Generic capability context marker; domain adapters may use local policy. */
+  industrial?: boolean
 }
 
 export type ContextAdapterAuthorizationInput = {
