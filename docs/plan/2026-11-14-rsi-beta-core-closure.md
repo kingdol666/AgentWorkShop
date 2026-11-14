@@ -1,6 +1,6 @@
 # RSI Beta / Core Job-Flow Closure Plan
 
-This tracked copy is the implementation plan for the 2026-11-14 audit. The authoritative base is `origin/main` at `abb678748f7ae7d06c8a6dd21c25e4f8f2437705`; implementation is isolated in `D:/codes/ABO/aw-rsi-final-accept-20261114` and must never touch the dirty paper tree `D:/codes/ABO/AgentWorkShop`.
+This tracked copy is the implementation plan for the 2026-11-14 audit. Base: `origin/main` at `abb678748f7ae7d06c8a6dd21c25e4f8f2437705`; implementation is isolated in `D:/codes/ABO/aw-rsi-final-accept-20261114`; the dirty paper tree `D:/codes/ABO/AgentWorkShop` is protected.
 
 ## Boundary
 
@@ -10,7 +10,7 @@ This tracked copy is the implementation plan for the 2026-11-14 audit. The autho
 - Simulation/mock/SQLite/fixture evidence never proves physical HIL or production control.
 - Every PR is independently tested, reviewed, pushed, CI-checked, merged, then the next PR starts from actual `origin/main`.
 
-## Baseline evidence
+## Baseline
 
 On merged main `abb678748` in a clean isolated checkout:
 
@@ -33,7 +33,7 @@ On merged main `abb678748` in a clean isolated checkout:
 - Preserve shared DCW write throat as final authority.
 - Separate approval state from execution/ACK state: an approved card with failed/unverified execution cannot be reported as successful.
 - Add node/parameter/recipe stricter-limit, unit conversion, drift, zero-write and unchanged-readback tests.
-- Update the live optimizer fixture to derive expected limits from the actual effective node state rather than hardcoding only the model limit.
+- Update the live optimizer fixture to derive expected limits from actual effective node state rather than hardcoding only the model limit.
 
 ## PR-B — host-owned Beta scope and capability truth
 
