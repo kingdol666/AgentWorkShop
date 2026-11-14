@@ -29,9 +29,15 @@ function readAdapter(authorizationCalls: unknown[] = []): ContextAdapter {
     timeout: { defaultMs: 1000, maxMs: 5000 },
     owner: { ownerId: 'rsi-interface-beta', dispose: async () => undefined },
     requiresAuthorization: true,
-    authorize: ({ principal, scope: requested }) => principal?.id === 'operator' && JSON.stringify(requested) === JSON.stringify(scope)
-      ? { scope: requested, principal: { id: 'operator', role: 'user' }, lineIds: ['line-authorized'] }
-      : false,
+    authorize: ({ principal, scope: requested }) => {
+      // Beta always marks industrial projection; the host authorizer normalizes scope
+      // back to the three deployment keys before returning authorization.
+      const value = requested as Record<string, unknown> | undefined
+      const normalized = value ? { workspaceId: value.workspaceId, channelId: value.channelId, workerId: value.workerId } : undefined
+      return principal?.id === 'operator' && JSON.stringify(normalized) === JSON.stringify(scope)
+        ? { scope: normalized as typeof scope, principal: { id: 'operator', role: 'user' }, lineIds: ['line-authorized'] }
+        : false
+    },
     discover: operation,
     snapshot: operation,
     observe: operation,

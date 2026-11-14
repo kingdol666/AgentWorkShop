@@ -13,7 +13,6 @@ import { createIndustrialReadAdapter } from '../server/services/workshop/context
 import { ContextAdapterRegistry } from '../server/services/workshop/context/registry'
 import { canonicalHash } from '../shared/context/hash'
 import plugin from '../.AgentWorkShop/plugins/rsi-interface-beta/index.mjs'
-import { SCOPE_STATE_KEY } from '../.AgentWorkShop/plugins/rsi-interface-beta/scope.mjs'
 
 const capturedAt = '2026-11-14T10:00:00.000Z'
 const nowMs = Date.parse(capturedAt)
@@ -231,9 +230,8 @@ test('plugin exposes POST /evidence/operational and forwards an authorized, read
   for (const name of names) process.env[name] = '1'
   try {
     const scope = { workspaceId: 'ws-1', channelId: 'ch-1', workerId: 'worker-1' }
-    const store: Record<string, unknown> = {
-      [SCOPE_STATE_KEY]: { ...scope, enabled: true, templateId: 'rsi-interface-beta', updatedAt: new Date().toISOString() },
-    }
+    // 真实部署不预置 kv scope:宿主推导(live binding)必须单独支撑 metadata/操作面。
+    const store: Record<string, unknown> = {}
     const routes = new Map<string, (event?: unknown) => unknown>()
     const registry = new ContextAdapterRegistry()
     const invocations: Array<{ capability: string, payload: Record<string, unknown> }> = []
@@ -327,6 +325,15 @@ test('plugin exposes POST /evidence/operational and forwards an authorized, read
     assert.equal(denied.ok, false)
     assert.equal(denied.code, 'SCOPE_FORBIDDEN')
     assert.equal(invocations.length, 1, '拒绝路径不得触达 adapter')
+
+    const metadataUnbound = routes.get('GET /metadata')!({ awUser: { id: 'operator', role: 'user' }, query: {} }) as Record<string, unknown>
+    assert.equal(metadataUnbound.visible, true, '无 kv 预置时面板仍可见(不再是永久 default-deny)')
+    assert.equal(metadataUnbound.code, 'SCOPE_UNBOUND')
+    assert.equal(metadataUnbound.scopeState, 'unbound')
+    assert.equal(metadataUnbound.available, false)
+    const metadataScoped = routes.get('GET /metadata')!({ awUser: { id: 'operator', role: 'user' }, query: { ...scope } }) as Record<string, unknown>
+    assert.equal(metadataScoped.status, 'ready')
+    assert.deepEqual(metadataScoped.scope, scope)
   }
   finally {
     for (const name of names) {

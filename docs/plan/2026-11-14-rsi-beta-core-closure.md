@@ -75,6 +75,14 @@ On merged main `abb678748` in a clean isolated checkout:
 
 Add an isolated host-level matrix connecting Workspace → Channel → Worker/AgentTeam → Session/Project/Scheduler context → Recipe/DAQ evidence → HITL outcome references → DCW ACK/readback evidence, with Beta remaining read-only. Include paired feature-off/on behavior, current DOM UI selectors, and explicit mock/simulation vs physical-HIL labels.
 
+## Implementation status (2026-11-14)
+
+- PR-A → #207; PR-B/PR-D → #211; PR-E → #212; PR-F → #210.
+- PR-C → #214: `industrial-read` `observe` capability (DAQ latest/history/tagged/frames + DCW value/readback/ACK + intervention-ledger write audit) and `POST /evidence/operational`; responses carry `readOnly: true`, `writeCount: 0`, content hash/source revision, and fail closed on foreign lines/nodes.
+- PR-G → this PR: `scripts/acceptance-rsi-compatibility-matrix.mjs` (off/on isolated host matrix: Workspace → Channel → Worker → Session/Project → Recipe/DAQ → HITL → DCW ACK/readback → RSI read-only evidence) with evidence under `docs/audit/evidence/2026-11-14-rsi-compatibility-matrix/`.
+- Live-wiring defects exposed by PR-G and fixed here: plugin modules cannot resolve `@/server` under the runtime dynamic loader (research/evidence/ops factories now come from host `ctx.services`); metadata no longer reports a permanent default-deny when no kv scope is provisioned (`SCOPE_UNBOUND` is explicit); `/status` no longer reports `READY` while the adapter is unregistered; Beta research defaults the industrial projection marker.
+- Still not claimed: physical HIL (NOT RUN); Mimosa completeness/security pass (partial/inconclusive); any production device write.
+
 ## Exit criteria
 
 - Every PR independently reviewed, CI green, merged with recorded SHA.

@@ -1,0 +1,212 @@
+{
+  "manifestVersion": "rsi-compatibility-matrix.v1",
+  "recordedAt": "2026-11-14T11:37:23.233Z",
+  "head": "3e1b7ff262fb4805045fb9d7d636ed8c1624965c",
+  "branch": "feat/rsi-compatibility-matrix-20261114",
+  "environment": {
+    "mode": "isolated AW_HOME",
+    "drivers": "mock (DCW/DAQ) — not physical hardware",
+    "simulator": "none; shared :4010 not used",
+    "physicalHil": "NOT RUN",
+    "security": "Mimosa not run/not a pass for this script; no security claim"
+  },
+  "ids": {
+    "workspaceId": "4587e776-3969-4f90-8952-c4bf21fed225",
+    "channelId": "41449662-b8c2-4feb-b53d-17a25a36b7c5",
+    "leadId": "00a7d676-4d92-4c6f-b325-25508c1f423d",
+    "workerId": "f7205c20-6428-40bc-a0f4-43c7bcb0be9f",
+    "lineId": "ln-c1bd0dcd",
+    "dcwNodeId": "dw-01eb2ec3",
+    "daqNodeId": "dn-bb8ddf80",
+    "recipeId": "rc-664c8049",
+    "sessionId": "cs-890f531b",
+    "projectId": "1f60fb06-daa0-4aca-ab08-fe2e3a281458"
+  },
+  "checks": [
+    {
+      "id": "ENV-OFF",
+      "name": "off 相隔离实例就绪",
+      "pass": true,
+      "detail": "port=3897"
+    },
+    {
+      "id": "OFF-1",
+      "name": "隔离实例首管理员注册",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "OFF-2",
+      "name": "feature-off:插件 status 路由不存在(404)",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "OFF-3",
+      "name": "feature-off:插件 metadata 路由不存在(404)",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "OFF-4",
+      "name": "feature-off:research 路由不存在(404)",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "OFF-5",
+      "name": "feature-off:既有产线 API 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "off-UI1",
+      "name": "off: /plugins 面板可见性符合预期",
+      "pass": true,
+      "detail": "panel absent"
+    },
+    {
+      "id": "off-UI3",
+      "name": "off: /daq 页面水合可用",
+      "pass": true,
+      "detail": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0"
+    },
+    {
+      "id": "ENV-ON",
+      "name": "on 相隔离实例就绪",
+      "pass": true,
+      "detail": "port=3897"
+    },
+    {
+      "id": "ON-1",
+      "name": "feature-on:管理员登录(同一隔离 home)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "ON-2",
+      "name": "Workspace/Channel/Worker 创建并挂载",
+      "pass": true,
+      "detail": "{\"workspaceId\":\"4587e776-3969-4f90-8952-c4bf21fed225\",\"channelId\":\"41449662-b8c2-4feb-b53d-17a25a36b7c5\",\"leadId\":\"00a7d676-4d92-4c6f-b325-25508c1f423d\",\"workerId\":\"f7205c20-6428-40bc-a0f4-43c7bcb0be9f\",\"mount\":200}"
+    },
+    {
+      "id": "ON-3",
+      "name": "Recipe/DAQ/绑线/控制网关就绪",
+      "pass": true,
+      "detail": "{\"lineId\":\"ln-c1bd0dcd\",\"dcw\":\"dw-01eb2ec3\",\"recipe\":\"rc-664c8049\",\"daq\":\"dn-bb8ddf80\",\"bind\":200,\"ctrl\":200}"
+    },
+    {
+      "id": "ON-4",
+      "name": "Session/Project 上下文创建",
+      "pass": true,
+      "detail": "{\"session\":\"cs-890f531b\",\"project\":\"1f60fb06-daa0-4aca-ab08-fe2e3a281458\"}"
+    },
+    {
+      "id": "ON-5",
+      "name": "HITL:line_start 生成审批卡",
+      "pass": true,
+      "detail": "ap-67b3c435"
+    },
+    {
+      "id": "ON-6",
+      "name": "HITL:审批提交成功",
+      "pass": true,
+      "detail": "{\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"ok\":true,\"kind\":\"dcw-approval\",\"id\":\"ap-67b3c435\",\"status\":\"approved\",\"nativeConfirmed\":true,\"decisionId\":\"7a03c7a2-216e-4a19-af21-b428a93fb319\",\"approva"
+    },
+    {
+      "id": "ON-7",
+      "name": "HITL 批准后开线成功且参数设备证实",
+      "pass": true,
+      "detail": "产线「矩阵产线-mxbx39r」已开跑(批次 rr-17839,配方「矩阵配方-mxbx39r」参数已全部设备证实)。用 daq_query 复测确认数采窗口激活。"
+    },
+    {
+      "id": "ON-8",
+      "name": "HITL 终态留痕(approved)",
+      "pass": true,
+      "detail": "{\"id\":\"ap-67b3c435\",\"kind\":\"dcw-approval\",\"requestType\":\"approval\",\"nativeRequestId\":\"\",\"channelId\":\"41449662-b8c2-4feb-b53d-17a25a36b7c5\",\"agentId\":\"00a7d676-4d92-4c6f-b325-25508c1f423d\",\"agentName\":\"矩阵lead-mxbx39r\",\"sessionId\":\"\",\"harness"
+    },
+    {
+      "id": "ON-9",
+      "name": "RSI Beta status 在宿主 scope 下 ready",
+      "pass": true,
+      "detail": "{\"status\":200,\"apiVersion\":\"rsi-interface-beta.v1\",\"plugin\":\"rsi-interface-beta\",\"ok\":true,\"available\":true,\"code\":\"READY\",\"capability\":null,\"scope\":{\"workspaceId\":\"4587e776-3969-4f90-8952-c4bf21fed225\",\"channelId\":\"41449662-b8c2-4feb-b53d-17a25a36b7c5\",\"worke"
+    },
+    {
+      "id": "ON-10",
+      "name": "无 kv 预置时 metadata 不再是永久 default-deny",
+      "pass": true,
+      "detail": "{\"status\":\"degraded\",\"apiVersion\":\"rsi-interface-beta.v1\",\"plugin\":\"rsi-interface-beta\",\"available\":false,\"visible\":true,\"code\":\"SCOPE_UNBOUND\",\"flags\":{\"AW_RSI_BETA_ENABLED\":true,\"AW_RSI_BETA_RESEARCH_ENABLED\":true,\"AW_"
+    },
+    {
+      "id": "ON-11",
+      "name": "metadata 随精确 scope 转 ready 且能力真相可见",
+      "pass": true,
+      "detail": "[\"discover\",\"snapshot\",\"observe\",\"query\"]"
+    },
+    {
+      "id": "ON-12",
+      "name": "operational evidence:只读边界与来源哈希",
+      "pass": true,
+      "detail": "{\"ok\":true,\"readOnly\":true,\"writeCount\":0}"
+    },
+    {
+      "id": "ON-13",
+      "name": "operational evidence:DCW 回读/ACK/写审计可达",
+      "pass": true,
+      "detail": "{\"nodeId\":\"dw-01eb2ec3\",\"lineId\":\"ln-c1bd0dcd\",\"name\":\"矩阵数控-mxbx39r\",\"unit\":\"℃\",\"enabled\":true,\"value\":80,\"readValue\":80,\"lastAckAt\":\"2026-11-14T19:36:52.905+08:00\",\"ackAgeMs\":2696,\"ackFresh\":true,\"lastWriteAt\":\"2026-11-14T19:36:52.905+08:00\",\"state\":\"ok\",\"lastError\":null,\"stepLimit\":20,\"limits\":{\"m"
+    },
+    {
+      "id": "ON-14",
+      "name": "operational evidence:DAQ latest 新鲜度可判定",
+      "pass": true,
+      "detail": "{\"value\":166.1,\"at\":1794656215130,\"ageMs\":471,\"freshness\":\"fresh\"}"
+    },
+    {
+      "id": "ON-15",
+      "name": "写审计保留来源路径(recipe/agent/manual)",
+      "pass": true,
+      "detail": "[\"recipe\"]"
+    },
+    {
+      "id": "ON-16",
+      "name": "research:只读 observe 计划可执行并产出候选证据",
+      "pass": true,
+      "detail": "{\"status\":200,\"ok\":true,\"available\":true,\"scope\":{\"workspaceId\":\"4587e776-3969-4f90-8952-c4bf21fed225\",\"channelId\":\"41449662-b8c2-4feb-b53d-17a25a36b7c5\",\"workerId\":\"f7205c20-6428-40bc-a0f4-43c7bcb0be9f\"},\"run\":{\"id\":\"matrix-run-mxbx39r\",\"idempotencyKey\":\"matrix-key-mxbx39r\",\"state\":\"completed\",\"objective\":\"读取运行证据\",\"question\":\"当前线是否已开跑且回读一致?\",\"subjectRefs\":[{\"namespace\":\"industrial.line\",\"id\":\"ln-"
+    },
+    {
+      "id": "ON-17",
+      "name": "research:actuate 能力被拒(只读边界)",
+      "pass": true,
+      "detail": "{\"status\":200,\"ok\":false,\"available\":false,\"code\":\"RESEARCH_READ_ONLY_FORBIDDEN\",\"reason\":\"research routes accept read capabilities only\",\"candidateOnly\":true,\"actuation\":false,\"promotion\":false}"
+    },
+    {
+      "id": "ON-18",
+      "name": "foreign worker scope 被拒",
+      "pass": true,
+      "detail": "{\"status\":200,\"apiVersion\":\"rsi-interface-beta.v1\",\"plugin\":\"rsi-interface-beta\",\"ok\":false,\"available\":false,\"code\":\"SCOPE_FORBIDDEN\",\"reason\":\"requested Beta scope is not authorized against host records\",\"capability\":n"
+    },
+    {
+      "id": "on-UI1",
+      "name": "on: /plugins 面板可见性符合预期",
+      "pass": true,
+      "detail": "panel present"
+    },
+    {
+      "id": "on-UI2",
+      "name": "on: 面板展示能力/边界",
+      "pass": true,
+      "detail": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0.11.2 / dev 插件管理 2 简体中文 矩 矩阵管理员-mxbx39r "
+    },
+    {
+      "id": "on-UI3",
+      "name": "on: /daq 页面水合可用",
+      "pass": true,
+      "detail": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0"
+    }
+  ],
+  "summary": {
+    "total": 30,
+    "pass": 30,
+    "fail": 0
+  }
+}
