@@ -11,13 +11,30 @@ export const servicesExt = (g.__awPluginServices ??= {
   register(name, get) {
     this.registry.set(String(name), get)
   },
-  /** 插件供服务(自动加 `<plugin>.` 前缀;同前缀同名覆盖) */
+  /** 插件供服务(自动加 `<plugin>.` 前缀;同前缀同名覆盖;owner 归属供重载清理) */
   provide(plugin, name, get) {
     this.registry.set(`${plugin}.${String(name)}`, get)
+    this.owners.set(`${plugin}.${String(name)}`, String(plugin))
   },
   names() {
     return [...this.registry.keys()]
   },
+  /**
+   * P1(2026-11-14):按 owner 清理插件供服务 —— 重载/停用后旧插件的
+   * services 条目必须消失,否则其他插件仍可经 ctx.services.get 拿到旧资源。
+   * 只清理 provide(带 owner)条目;宿主 register 的核心服务不受影响。
+   */
+  unregisterOwner(plugin) {
+    this.owners ??= new Map()
+    const prefix = `${String(plugin)}.`
+    for (const key of [...this.registry.keys()]) {
+      if (key.startsWith(prefix) && this.owners.get(key) === String(plugin)) {
+        this.registry.delete(key)
+        this.owners.delete(key)
+      }
+    }
+  },
+  owners: new Map(),
   /** 取运行时服务对象(惰性求值并缓存;失败抛错由调用方兜底) */
   async get(name) {
     const get = this.registry.get(String(name))

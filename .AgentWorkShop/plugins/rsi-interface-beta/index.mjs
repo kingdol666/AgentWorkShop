@@ -450,14 +450,9 @@ export default {
               return { orchestrator, candidates }
             })()
             state.researchPersistenceReady = restoreResearchState(state)
-            ctx.onDispose(async () => {
-              try {
-                await state.runtime.registry.unregister(industrial.adapterId, industrial.version)
-              }
-              catch {
-                // host registry may already be disposing
-              }
-            })
+            // P1 生命周期(2026-11-14):dispose 不再自行注销 adapter ——
+            // 热重载期间先卸后装曾留下"路由可见但 adapter 已死"的窗口;
+            // 现在交给宿主:重载后按 ownerId 清理不再活跃插件的注册(见 reload.mjs)。
           }
           catch (error) {
             logger.warn(`adapter registration failed: ${error?.message ?? error}`)

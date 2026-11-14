@@ -6,19 +6,19 @@ import { registerDecoder, type DaqDecoder } from './decoders'
 
 interface DaqPluginBridge {
   pendingDrivers: unknown[]
-  pendingProcessors: Array<{ kind: string, name: string, fn: unknown }>
-  pendingTemplates: unknown[]
+  pendingProcessors: Array<{ kind: string, name: string, fn: unknown, owner?: string }>
+  pendingTemplates: Array<{ def: unknown, owner?: string }>
   pendingDecoders: Array<{ name: string, fn: unknown, owner?: string }>
   /** 回放槽(drain 接管后设置;注册即时回调) */
   _drain?: () => void
   registerDriver(d: unknown): void
-  registerProcessor(kind: string, name: string, fn: unknown): void
-  registerTemplate(t: unknown): void
+  registerProcessor(kind: string, name: string, fn: unknown, owner?: string): void
+  registerTemplate(t: unknown, owner?: string): void
   registerDecoder(name: string, fn: unknown, owner?: string): void
   drain(
     onDriver: (d: unknown) => void,
-    onProcessor: (kind: string, name: string, fn: unknown) => void,
-    onTemplate: (t: unknown) => void,
+    onProcessor: (kind: string, name: string, fn: unknown, owner?: string) => void,
+    onTemplate: (t: unknown, owner?: string) => void,
     onDecoder: (name: string, fn: unknown, owner?: string) => void,
   ): void
 }
@@ -34,12 +34,12 @@ function makeDaqBridge(): DaqPluginBridge {
       this.pendingDrivers.push(d)
       this._drain?.()
     },
-    registerProcessor(kind, name, fn) {
-      this.pendingProcessors.push({ kind, name, fn })
+    registerProcessor(kind, name, fn, owner) {
+      this.pendingProcessors.push({ kind, name, fn, owner })
       this._drain?.()
     },
-    registerTemplate(t) {
-      this.pendingTemplates.push(t)
+    registerTemplate(t, owner) {
+      this.pendingTemplates.push({ def: t, owner })
       this._drain?.()
     },
     registerDecoder(name, fn, owner) {
@@ -49,8 +49,8 @@ function makeDaqBridge(): DaqPluginBridge {
     drain(onDriver, onProcessor, onTemplate, onDecoder) {
       this._drain = () => {
         for (const d of this.pendingDrivers.splice(0)) onDriver(d)
-        for (const p of this.pendingProcessors.splice(0)) onProcessor(p.kind, p.name, p.fn)
-        for (const t of this.pendingTemplates.splice(0)) onTemplate(t)
+        for (const p of this.pendingProcessors.splice(0)) onProcessor(p.kind, p.name, p.fn, p.owner)
+        for (const t of this.pendingTemplates.splice(0)) onTemplate(t.def, t.owner)
         for (const d of this.pendingDecoders.splice(0)) onDecoder(d.name, d.fn, d.owner)
       }
       this._drain()
@@ -70,11 +70,11 @@ export function attachDaqPluginBridge(): void {
   g.__daqPluginExt = bridge
   bridge.drain(
     d => registerPluginDriver(d as Parameters<typeof registerPluginDriver>[0]),
-    (kind, name, fn) => registerFrameProcessor({
+    (kind, name, fn, owner) => registerFrameProcessor({
       name,
       applies: kind === 'vector' ? 'vector' : kind === 'image' ? 'image' : 'any',
       process: fn as Parameters<typeof registerFrameProcessor>[0]['process'],
-    }),
+    }, owner),
     (t) => {
       try {
         getDaqTemplateRegistry().registerPlugin(t as DaqTemplateDef)

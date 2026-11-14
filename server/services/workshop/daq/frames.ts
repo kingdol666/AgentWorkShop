@@ -195,15 +195,29 @@ const qualityGate: DaqFrameProcessor = {
 
 const builtin = new Map<string, DaqFrameProcessor>([resample, deriveMetric, zones, thumbnail, qualityGate].map(p => [p.name, p]))
 
-const g = globalThis as typeof globalThis & { __daqFrameProcessors?: Map<string, DaqFrameProcessor> }
+const g = globalThis as typeof globalThis & { __daqFrameProcessors?: Map<string, DaqFrameProcessor>, __daqFrameProcessorOwners?: Map<string, string> }
 function registry(): Map<string, DaqFrameProcessor> {
   return g.__daqFrameProcessors ??= new Map()
 }
+function ownerRegistry(): Map<string, string> {
+  return g.__daqFrameProcessorOwners ??= new Map()
+}
 
-/** 插件处理器注册(同名覆盖内置并告警;热重载时重复注册幂等) */
-export function registerFrameProcessor(p: DaqFrameProcessor): void {
+/** 插件处理器注册(同名覆盖内置并告警;热重载时重复注册幂等;owner 供重载清理) */
+export function registerFrameProcessor(p: DaqFrameProcessor, owner?: string): void {
   if (builtin.has(p.name)) log.warn(`[daq-frames] 插件处理器覆盖内置:「${p.name}」`)
   registry().set(p.name, p)
+  if (owner) ownerRegistry().set(p.name, String(owner))
+}
+
+/** P1 生命周期(2026-11-14):按 owner 清理插件帧处理器(停用/重载后旧函数不得残留) */
+export function clearPluginFrameProcessors(owner: string): void {
+  const owners = ownerRegistry()
+  for (const [name, mapped] of [...owners.entries()]) {
+    if (mapped !== String(owner)) continue
+    registry().delete(name)
+    owners.delete(name)
+  }
 }
 
 /** 已注册处理器名清单(诊断/manifest 用) */

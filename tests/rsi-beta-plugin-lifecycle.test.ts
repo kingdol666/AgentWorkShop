@@ -257,8 +257,11 @@ test('enabled setup uses the optional registry seam and disposes on reload/disab
     assert.equal(metadata.actuation, false)
     assert.equal(metadata.promotion, false)
     for (const dispose of disposables) await dispose()
-    assert.equal(disposed, 1)
-    assert.equal(registered, null)
+    // P1 生命周期(2026-11-14):dispose 不再自行注销 adapter —— 热重载期间
+    // 先卸后装曾留下"路由可见但 adapter 已死"的窗口;注销职责移交宿主
+    // (doReload 后按 ownerId 清理不再活跃插件的注册,见 reload.mjs)。
+    assert.equal(disposed, 0)
+    assert.notEqual(registered, null, 'adapter 在 dispose 后仍注册(宿主清理负责)')
   })
 })
 

@@ -159,6 +159,17 @@ class DaqTemplateRegistry {
     return this.pluginTpls.has(key)
   }
 
+  /** P1 生命周期(2026-11-14):按插件 owner 清理模板(停用/重载后旧模板不得残留) */
+  clearPluginTemplates(owner: string): void {
+    for (const [key, tpl] of [...this.pluginTpls.entries()]) {
+      const tplOwner = String(tpl.plugin ?? '')
+      if (tplOwner === String(owner) || (tplOwner === 'plugin' && key.includes(String(owner)))) {
+        this.pluginTpls.delete(key)
+        log.info(`[daq] 插件模板清理:${key}(owner=${owner})`)
+      }
+    }
+  }
+
   /** 改删守卫:属主 / admin 放行;内置与插件模板不接受 REST 改删(调用方已先判) */
   private assertWritable(tpl: DaqTemplateDef, user?: { id: string, role: string }): void {
     if (!user) return

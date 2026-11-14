@@ -124,6 +124,45 @@ export async function doReload(host) {
       catch { /* 忽略 */ }
     }
   }
+  // P1 生命周期(2026-11-14):重载后清理失主扩展注册 ——
+  // ① servicesExt.provide 条目(旧插件服务不得残留可获取);
+  // ② context.runtime 注册表中 ownerId 不再活跃的 context adapter;
+  // ③ DAQ frame processors / plugin templates(此前完全没有清理面)。
+  try {
+    const { servicesExt } = await import('./services.mjs')
+    for (const gone of prevNames.filter(name => !host.plugins.has(name))) servicesExt.unregisterOwner(gone)
+  }
+  catch { /* 服务清理失败不影响重载结果 */ }
+  try {
+    const servicesMod = await import('./services.mjs')
+    const runtime = await servicesMod.servicesExt.get('context.runtime').catch(() => null)
+    if (runtime?.registry && typeof runtime.registry.list === 'function') {
+      for (const summary of runtime.registry.list({ includeDraining: true, includeRetired: true, includeFailed: true })) {
+        const owner = String(summary?.ownerId ?? '')
+        if (owner && !host.plugins.has(owner)) {
+          try {
+            await runtime.registry.unregister(summary.adapterId, summary.version)
+          }
+          catch { /* 已被并发清理 */ }
+        }
+      }
+    }
+  }
+  catch { /* context adapter 清理失败不影响重载结果 */ }
+  try {
+    const frames = await import('@/server/services/workshop/daq/frames')
+    if (typeof frames.clearPluginFrameProcessors === 'function') {
+      for (const gone of prevNames.filter(name => !host.plugins.has(name))) frames.clearPluginFrameProcessors(gone)
+    }
+  }
+  catch { /* frame processor 清理失败不影响重载结果 */ }
+  try {
+    const templates = await import('@/server/services/workshop/daq/daq-templates')
+    if (typeof templates.clearPluginTemplates === 'function') {
+      for (const gone of prevNames.filter(name => !host.plugins.has(name))) templates.clearPluginTemplates(gone)
+    }
+  }
+  catch { /* template 清理失败不影响重载结果 */ }
   await host.bus.emit('plugins:reloaded', { plugins: pluginManifest() })
   await syncPluginSettings()
   try {
