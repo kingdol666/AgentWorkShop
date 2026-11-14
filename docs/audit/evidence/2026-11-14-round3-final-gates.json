@@ -1,0 +1,69 @@
+{
+  "manifestVersion": "rsi-round3-final-gates.v1",
+  "kind": "post-merge-acceptance-evidence",
+  "recordedAt": "2026-11-14",
+  "branch": "main (detached acceptance checkout of origin/main)",
+  "tested": {
+    "head": "f600bb57a8e6d03cd046327cea3766d655e8a95d",
+    "headShort": "f600bb57",
+    "round": "3 (integration hardening)",
+    "prChain": [
+      { "pr": 210, "title": "fix(plugins): close serial probe and diagnostic export surfaces", "merge": "e6df87e7719b2e3e782fbc5afe833a43904b0faf" },
+      { "pr": 211, "title": "fix(rsi): resolve beta scope from host authority and harden evidence surface", "merge": "699db17a9470279d17d9df6e76440b8d5052d686" },
+      { "pr": 212, "title": "fix(plugins): make extension lifecycle rollback complete", "merge": "f600bb57a8e6d03cd046327cea3766d655e8a95d" }
+    ],
+    "note": "All three PRs passed PR CI (quick-gate) before merge; each merge is recorded above."
+  },
+  "gates": {
+    "lint": { "status": "PASS", "rsiRedline": { "files": 21, "deviceWriteCalls": 0 } },
+    "typecheck": { "status": "PASS" },
+    "docsSync": { "status": "PASS", "passed": 87, "failed": 0 },
+    "i18n": { "status": "PASS", "zhKeys": 3328, "enKeys": 3328, "unresolved": 0 },
+    "readmeLint": { "status": "PASS" },
+    "unit": { "status": "PASS", "tests": 1652, "pass": 1652, "fail": 0 },
+    "mcp": { "status": "PASS", "tests": 14 },
+    "pluginLifecycle": { "status": "PASS", "tests": 22 },
+    "sdkSurface": { "status": "PASS" },
+    "twinProvider": { "status": "PASS", "tests": 5 },
+    "skills": { "status": "PASS", "suites": 167 },
+    "build": { "status": "PASS" },
+    "packageDryRun": { "status": "PASS", "packageSize": "43.6 MB", "totalFiles": 4871 }
+  },
+  "liveSuites": {
+    "lineGovernance": { "status": "PASS", "cases": 44 },
+    "scientificFullChain": { "status": "PASS", "cases": 21, "boundary": "mock device/fixture response — platform contract evidence, not physical" },
+    "ontologyOffline": { "status": "PASS", "cases": 57 }
+  },
+  "acceptanceRunner": {
+    "simulation": { "status": "PASS", "report": "docs/audit/evidence/2026-11-14-round3-rsi-simulation.json" },
+    "isolatedHomeBaseline": { "status": "PASS", "report": "docs/audit/evidence/2026-11-14-round3-rsi-baseline.json" },
+    "physicalHil": { "status": "NOT RUN", "claim": false, "reason": "no authorized physical window this round; runner reports BLOCKED when invoked" }
+  },
+  "round3FixSummary": {
+    "serialProbe": "admin-only + sendLine removed end to end (backend/panel/i18n)",
+    "diagBridge": "snapshot/runs/report line-permission gated with recordOps audit; export datasets gain path containment + symlink rejection + sha256 verification (written at export time)",
+    "betaScope": "host-derived scope binding (resolveScopeBinding) with kv entry demoted to optional narrowing constraint; channel bound-line readonly scope unioned; workspace-owner precheck no longer kills the channel owner/member path; unknown scope fields fail closed",
+    "capabilityTruth": "metadata advertises registered adapter capabilities ∩ ALLOWED; snapshot legalized",
+    "evidenceIntegrity": "foreign ids audited SCOPE_FORBIDDEN; candidate add() validates envelope+hash at entry and deep-freezes records",
+    "lifecycle": "servicesExt.provide owner cleanup; DAQ frame processors/templates owner-tracked with reload prune; context adapters pruned by host after reload; rollbackPartialLoad awaits async disposers; kv retry timers fenced by dispose"
+  },
+  "security": {
+    "mimosa": {
+      "scanId": "scan-2026-11-14T10-43-51.726Z-be0527896c82",
+      "seal": "sha256:ad1d595e418ca652a121fb89ad9e5b3e130b8e8b194329792d50b2c97e1b0256",
+      "artifacts": "D:/tmp/aw-rsi-mimosa-round3/scan-2026-11-14T10-43-51.726Z-be0527896c82",
+      "completeness": "partial",
+      "runStatus": "inconclusive",
+      "selectedFiles": 1840,
+      "parseFailures": 0,
+      "findings": 34,
+      "dependencyRisk": 0,
+      "verdict": "NOT a security pass. Sealed artifacts exist but the scan remains partial/inconclusive. The three P1 plugin security/integrity findings from prior triage (serial probe arbitrary write, diag snapshot cross-line read, export path traversal) are FIXED in this round and covered by new regression tests; remaining findings are the previously-triaged static false positives/advisories."
+    }
+  },
+  "notClaimed": [
+    "Physical HIL execution (no authorized window).",
+    "A complete security audit or security-pass verdict (Mimosa remains partial/inconclusive).",
+    "Any production PLC/DCW/DAQ write from this round (all device evidence is mock/simulated with explicit boundaries)."
+  ]
+}
