@@ -89,6 +89,42 @@ test('replacement drains the previous generation and owner disposal retires it',
   assert.deepEqual(lifecycle, ['drain-1', 'retire-1', 'dispose-1', 'drain-2', 'retire-2', 'dispose-2'])
 })
 
+test('reload re-registers a draining same-generation adapter and preserves the new active pointer', async () => {
+  const lifecycle: string[] = []
+  const first = adapter({
+    adapterId: 'reload-reregister',
+    generation: 1,
+    observe: async request => ({ generation: request.generation, owner: 'first' }),
+    drain: async () => lifecycle.push('drain-first'),
+    retire: async () => lifecycle.push('retire-first'),
+    owner: { ownerId: 'reload-owner', dispose: async () => lifecycle.push('dispose-first') },
+  })
+  const registry = new ContextAdapterRegistry()
+  registry.registerOne(first)
+  registry.unregister(first.adapterId, first.version)
+
+  const second = adapter({
+    adapterId: first.adapterId,
+    version: first.version,
+    generation: first.generation,
+    observe: async request => ({ generation: request.generation, owner: 'second' }),
+    owner: { ownerId: 'reload-owner', dispose: async () => lifecycle.push('dispose-second') },
+  })
+  const registration = registry.registerOne(second)
+  assert.equal(registration.idempotent, undefined)
+  assert.equal(registration.generation, 2)
+  const invoked = await registry.invoke(first.adapterId, 'observe', {}, { idempotencyKey: 'reload-reregister-1', generation: registration.generation })
+  assert.deepEqual(invoked, { ok: true, payload: { generation: 2, owner: 'second' } })
+
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual(registry.list().map(item => `${item.adapterId}@${item.generation}`), ['reload-reregister@2'])
+  const stillActive = await registry.invoke(first.adapterId, 'observe', {}, { idempotencyKey: 'reload-reregister-2', generation: 2 })
+  assert.deepEqual(stillActive, { ok: true, payload: { generation: 2, owner: 'second' } })
+  assert.deepEqual(lifecycle, ['drain-first', 'retire-first', 'dispose-first'])
+  await registry.dispose()
+  assert.deepEqual(lifecycle, ['drain-first', 'retire-first', 'dispose-first', 'dispose-second'])
+})
+
 test('document/event/replay fixture exercises all capabilities without physical side effects', async () => {
   const registry = new ContextAdapterRegistry()
   registry.registerOne(createDocumentEventReplayAdapter({ adapterId: 'documents' }))

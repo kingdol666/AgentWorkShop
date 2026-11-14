@@ -1,5 +1,6 @@
 import { canonicalHash } from '@/shared/context/hash'
 import { CONTEXT_ADAPTER_CAPABILITIES } from '@/server/services/workshop/context/contracts'
+import { ContextAdapterRegistryError, CONTEXT_ADAPTER_ERROR_CODES } from '@/server/services/workshop/context/registry'
 import type { ContextAdapterRegistry } from '@/server/services/workshop/context/registry'
 import type {
   ContextAdapterCapability,
@@ -254,6 +255,7 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
     options.signal?.addEventListener('abort', onAbort, { once: true })
     if (options.signal?.aborted) controller.abort(options.signal.reason)
     const signal = controller.signal
+    let deadlineBoundAdapterCall = false
     try {
       this.checkCancellation(signal)
       const pendingCandidates: CandidateEvidenceEnvelope[] = []
@@ -261,9 +263,20 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
         this.checkCancellation(signal)
         assertDuration(startedAtMs, Date.parse(this.now()), run.budget)
         if (step.capability === ('actuate' as ContextAdapterCapability) || step.capability.toLowerCase() === 'actuate') throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.ACTUATE_FORBIDDEN, 'research cannot actuate')
+        const remainingMs = run.budget.maxDurationMs - Math.max(0, Date.parse(this.now()) - startedAtMs)
+        if (remainingMs <= 0) {
+          throw new ResearchBudgetError('RESEARCH_BUDGET_EXCEEDED', 'duration budget exceeded', { metric: 'durationMs', limit: run.budget.maxDurationMs, actual: run.budget.maxDurationMs - remainingMs })
+        }
+        const adapter = this.registry.list().find(item => item.adapterId === step.adapterId && item.state === 'ready')
+        const timeoutMs = Math.min(Math.floor(remainingMs), adapter?.timeout.maxMs ?? Math.floor(remainingMs))
+        deadlineBoundAdapterCall = timeoutMs === Math.floor(remainingMs)
+        if (timeoutMs <= 0) {
+          throw new ResearchBudgetError('RESEARCH_BUDGET_EXCEEDED', 'duration budget exceeded', { metric: 'durationMs', limit: run.budget.maxDurationMs, actual: run.budget.maxDurationMs - remainingMs })
+        }
         const result = await this.registry.invoke(step.adapterId, step.capability, clone(step.payload), {
           idempotencyKey: `${run.id}:${step.id}`,
           signal,
+          timeoutMs,
           ...(options.principal ?? run.principal ? { principal: options.principal ?? run.principal } : {}),
           ...(options.authorizationScope ?? run.authorizationScope ? { scope: options.authorizationScope ?? run.authorizationScope } : {}),
         })
@@ -305,6 +318,13 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
         run.errorMessage = error.message
         this.transitionIfAllowed(run, error.metric === 'durationMs' ? 'expired' : 'failed')
         throw new ResearchOrchestratorError(error.metric === 'durationMs' ? RESEARCH_ERROR_CODES.EXPIRED : RESEARCH_ERROR_CODES.BUDGET_EXCEEDED, error.message)
+      }
+      if (error instanceof ContextAdapterRegistryError && error.code === CONTEXT_ADAPTER_ERROR_CODES.TIMEOUT && deadlineBoundAdapterCall) {
+        const expired = new ResearchOrchestratorError(RESEARCH_ERROR_CODES.EXPIRED, 'duration budget exceeded')
+        run.errorCode = expired.code
+        run.errorMessage = expired.message
+        this.transitionIfAllowed(run, 'expired')
+        throw expired
       }
       if (this.isAbort(error, signal)) {
         run.errorCode = RESEARCH_ERROR_CODES.ABORTED

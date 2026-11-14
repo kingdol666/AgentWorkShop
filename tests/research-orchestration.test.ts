@@ -72,6 +72,31 @@ test('structured adapter failure fails the run without creating candidate eviden
   assert.equal(store.size(), 0)
 })
 
+test('maxDurationMs bounds an in-flight adapter that ignores abort signals', async () => {
+  const { registry, store } = create()
+  let receivedTimeout: number | undefined
+  registry.registerOne({
+    ...adapter(),
+    adapterId: 'slow.adapter',
+    timeout: { defaultMs: 1000, maxMs: 5000 },
+    observe: async (request) => {
+      receivedTimeout = request.timeoutMs
+      await new Promise(resolve => setTimeout(resolve, 100))
+      return { ok: true, payload: { late: true } }
+    },
+  })
+  const research = createResearchOrchestrator(registry, store)
+  research.create({ id: 'run-expired', idempotencyKey: 'key-expired', objective: 'observe', question: 'q', subjectRefs: [subject], scope, allowedCapabilities: ['observe'], budget: { maxDurationMs: 25 } })
+  research.plan('run-expired', { id: 'plan-expired', steps: [{ id: 'step-1', adapterId: 'slow.adapter', capability: 'observe', payload: {}, sourceRef: 'fixture:slow' }] })
+  research.approveRead('run-expired')
+
+  await assert.rejects(() => research.execute('run-expired'), (error: unknown) => error instanceof ResearchOrchestratorError && error.code === 'RESEARCH_EXPIRED')
+  assert.equal(receivedTimeout, 25)
+  assert.equal(research.get('run-expired').state, 'expired')
+  assert.equal(research.get('run-expired').errorCode, 'RESEARCH_EXPIRED')
+  assert.equal(store.size(), 0)
+})
+
 test('idempotency conflict and actuation are fail-closed', async () => {
   const { registry } = create()
   const research = createResearchOrchestrator(registry, undefined, { now: () => now })

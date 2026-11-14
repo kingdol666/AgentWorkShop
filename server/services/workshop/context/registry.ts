@@ -128,39 +128,72 @@ export class ContextAdapterRegistry {
       const registrationKey = key(adapter.adapterId, adapter.version)
       if (batchKeys.has(registrationKey)) throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.DUPLICATE, `duplicate adapter ${adapter.adapterId}@${adapter.version}`)
       batchKeys.add(registrationKey)
+
       const existing = this.records.get(registrationKey)
-      if (existing && existing.adapter.generation === adapter.generation) {
+      const activeKey = this.active.get(adapter.adapterId)
+      const active = activeKey ? this.records.get(activeKey) : undefined
+      const existingIsActiveReady = existing !== undefined
+        && existing.state === 'ready'
+        && activeKey === registrationKey
+        && active === existing
+      if (existing && existing.adapter.generation === adapter.generation && existingIsActiveReady) {
         if (existing.adapter.owner.ownerId !== adapter.owner.ownerId) throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.CONFLICT, `adapter ${adapter.adapterId}@${adapter.version} is already registered by another owner`)
         staged.push({ adapter, key: registrationKey })
         continue
       }
-      if (existing && existing.adapter.generation > adapter.generation) {
-        throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.GENERATION_STALE, `adapter ${adapter.adapterId}@${adapter.version} generation ${adapter.generation} is older than registered generation ${existing.adapter.generation}`)
-      }
-      const activeKey = this.active.get(adapter.adapterId)
-      const active = activeKey ? this.records.get(activeKey) : undefined
-      if (active && adapter.generation < active.adapter.generation) {
+      if (active && active.state === 'ready' && adapter.generation < active.adapter.generation) {
         throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.GENERATION_STALE, `adapter ${adapter.adapterId} generation ${adapter.generation} is older than active generation ${active.adapter.generation}`)
       }
-      staged.push({ adapter, key: registrationKey })
+      if (existing && existing.adapter.generation > adapter.generation && existing.state === 'ready') {
+        throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.GENERATION_STALE, `adapter ${adapter.adapterId}@${adapter.version} generation ${adapter.generation} is older than registered generation ${existing.adapter.generation}`)
+      }
+      if (existing && existing.adapter.owner.ownerId !== adapter.owner.ownerId && existing.adapter.generation === adapter.generation && existingIsActiveReady) {
+        throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.CONFLICT, `adapter ${adapter.adapterId}@${adapter.version} is already registered by another owner`)
+      }
+
+      let generation = adapter.generation
+      const maxKnownGeneration = Math.max(
+        adapter.generation,
+        ...[...this.records.values()]
+          .filter(record => record.adapter.adapterId === adapter.adapterId)
+          .map(record => record.adapter.generation),
+      )
+      if (existing && !existingIsActiveReady) generation = Math.max(generation, maxKnownGeneration + 1)
+      if (active && active.state !== 'ready') generation = Math.max(generation, maxKnownGeneration + 1)
+      if (active && active.state === 'ready' && generation < active.adapter.generation) {
+        throw new ContextAdapterRegistryError(CONTEXT_ADAPTER_ERROR_CODES.GENERATION_STALE, `adapter ${adapter.adapterId} generation ${generation} is older than active generation ${active.adapter.generation}`)
+      }
+      staged.push({ adapter: generation === adapter.generation ? adapter : { ...adapter, generation }, key: registrationKey })
     }
 
     const results: ContextAdapterRegistrationResult[] = []
     const retired: AdapterRecord[] = []
+    const retiredSet = new Set<AdapterRecord>()
     for (const item of staged) {
       const existing = this.records.get(item.key)
-      if (existing && existing.adapter.generation === item.adapter.generation) {
+      const activeKey = this.active.get(item.adapter.adapterId)
+      const active = activeKey ? this.records.get(activeKey) : undefined
+      const existingIsActiveReady = existing !== undefined
+        && existing.state === 'ready'
+        && activeKey === item.key
+        && active === existing
+      if (existing && existing.adapter.generation === item.adapter.generation && existingIsActiveReady) {
         results.push({ ok: true, adapterId: item.adapter.adapterId, version: item.adapter.version, generation: item.adapter.generation, state: 'ready', idempotent: true, drainedGenerations: [] })
         continue
       }
-      const activeKey = this.active.get(item.adapter.adapterId)
-      const active = activeKey ? this.records.get(activeKey) : undefined
-      if (active && active.adapter.generation < item.adapter.generation && active.state === 'ready') {
-        active.state = 'draining'
-        active.drainingAt = now()
-        active.drainingReason = 'replaced'
-        retired.push(active)
+      const retire = (record: AdapterRecord): void => {
+        if (record.state === 'ready') {
+          record.state = 'draining'
+          record.drainingAt = now()
+          record.drainingReason = 'replaced'
+        }
+        if (!retiredSet.has(record) && record.state === 'draining') {
+          retiredSet.add(record)
+          retired.push(record)
+        }
       }
+      if (existing && existing !== active && existing.state === 'ready') retire(existing)
+      if (active && active.adapter.generation < item.adapter.generation && active.state === 'ready') retire(active)
       const record: AdapterRecord = { adapter: item.adapter, state: 'ready', inFlight: 0, operations: new Set(), registeredAt: now(), errors: [], drainWaiters: new Set() }
       this.records.set(item.key, record)
       this.active.set(item.adapter.adapterId, item.key)
