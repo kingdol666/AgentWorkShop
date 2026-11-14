@@ -81,11 +81,12 @@
       "id": "US-7",
       "title": "独立评审按 PRD 复核",
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "评审代理对照本 PRD 验收标准逐条核验实现与证据,返回 APPROVED/REJECTED",
         "REJECTED 时修复后复验直至 APPROVED"
-      ]
+      ],
+      "verified": "独立评审 APPROVED(81868218):14/14 验收标准逐条新证据通过、最优性确认(声明/运行时限界分离+输出钳制为最小正确修法)、3 个非阻塞 P3(_dbg 探针保留属仓库惯例;M6.3 重试在 ssr:false 后失去触发条件;US-7 即本评审);deslop 零编辑、回归门禁重跑绿(lint/typecheck/聚焦 27 用例)"
     }
   ]
 }
