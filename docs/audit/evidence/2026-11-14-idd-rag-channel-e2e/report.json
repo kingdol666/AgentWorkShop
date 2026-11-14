@@ -1,0 +1,210 @@
+{
+  "manifestVersion": "idd-rag-channel-e2e.v2",
+  "recordedAt": "2026-11-14T16:01:36.615Z",
+  "environment": {
+    "idd": "industrial-deep-diagnostic :3210, omp + ustc/deepseek-flash",
+    "rag": "rag-knowledge backend :8771, web :6789, KB aw-industrial",
+    "agentWorkshop": "isolated :3994, Channel omp lead+worker, diag-bridge + rag-bridge",
+    "boundary": "isolated AW_HOME, mock DCW/DAQ line; not physical HIL"
+  },
+  "iddRun": {
+    "runId": "064cb296",
+    "status": "completed",
+    "reportPath": "D:/codes/idd-run-archive/diagnostic-runs/202611141526122_idd-rag-rr-15b83-liveness/report.md",
+    "intent": "quick-screen",
+    "harness": "omp"
+  },
+  "deepRun": {
+    "runId": "954d6fa7",
+    "status": "failed",
+    "error": "omp_timeout",
+    "note": "deep-diagnosis exceeded 40min budget; quick-screen completed"
+  },
+  "checks": [
+    {
+      "id": "R1",
+      "name": "IDD 报告入库 RAG(aw-industrial)",
+      "pass": true,
+      "detail": "{\"status\":200,\"success\":true,\"vector_index\":{\"collection\":\"kb_3aea5973-1d8a-4db6-b415-6d4432f514bb\",\"chunk_id_prefix\":\"diagnostics/idd-quick-screen-064cb296.md__chunk_\",\"total_chunks\":36,\"embedding_model\":\"bge-m3\",\"indexed_at\":\"2026-11-14T16:01:32.393736+00:00\",\"graph_doc_id\":\"doc::diagnostics/idd-quick-screen-064cb296.md\"},\"graph_index\":{},\"graph_stats\":{}}"
+    },
+    {
+      "id": "R2",
+      "name": "RAG 向量检索命中 IDD 报告",
+      "pass": true,
+      "detail": "{\"content\":\"### 3.2 挤出压力 — 无法判定（UNDETERMINED）\\r\\n\\r\\n`manifest.nodes[dn-13a80b2b]` 的元数据逐项错配：\\r\\n\\r\\n| 字段 | 声明值 | 观测/上下文 | 冲突 |\\r\\n|---|---|---|---|\\r\\n| `unit` | ℃ | 节点名为\\\"挤出压力\\\"；批次注记写\\\"熔体压力设定 6.2bar\\\" | 单位标签与节点语义冲突 |\\r\\n| `range` | [150, 185] | 观测 161.3–174.6 | 与温度节点量程**逐字相同** |\\r\\n| `warn` | [4.5, 8.5] | 观测跨度 13.3，约为该带宽的 1.92 倍 | 量纲不同（bar 级 vs 161–175 级） |\\r\\n| `semantics` | \\\"熔体/箱体温度…\\\" | 与温度节点**逐字相同** | 文本复用 |\\r\\n\\r\\n证据链：压力节点与温度节点的元数据\\\"单位/量程/semantics\\\"三项完全一致，仅 warn 带不同；而两条实测序列并非同一信号（水平相关 −0.3319，一阶差分相关 −0.1638，最佳滞后 17 行 r = −0.2575\",\"score\":0.783662736415863,\"doc_path\":\"diagnostics/idd-quick-screen-064cb296.md\",\"kb_id\":\"3aea5973-1d8a-4db6-b415-6d4432f514bb\",\"chunk_index\":13,\"collection\""
+    },
+    {
+      "id": "R3",
+      "name": "命中内容包含关键诊断结论",
+      "pass": true,
+      "detail": "### 3.2 挤出压力 — 无法判定（UNDETERMINED）\r\n\r\n`manifest.nodes[dn-13a80b2b]` 的元数据逐项错配：\r\n\r\n| 字段 | 声明值 | 观测/上下文 | 冲突 |\r\n|---|---|---|---|\r\n| `unit` | ℃ | 节点名为\"挤出压力\"；批次注记写\"熔体压力设定 6.2bar\" | 单位标签与节点语义冲突 |\r\n| `range` | [150, 185] | 观测 161.3–174.6 | 与温度节点量程**逐字相同** |\r\n| `warn` | [4.5, 8.5] | 观测跨度 13.3，约为该带宽的 1.92 倍 | 量纲不同（bar 级 vs 161–175 级） |\r\n| `semantics` | \"熔体/箱体温度…\" | 与温度节点**逐字相同** | 文本复用 |\r\n\r\n证据链：压力节点与温度节点的元数据\"单位/量程/semantics\"三项完全一致，仅 warn 带不同；而两条实测序列并非同一信号（水平相关 −0.3319，一阶差分相关 −0.1638，最佳滞后 17 行 r = −0.2575"
+    },
+    {
+      "id": "R4",
+      "name": "rag-bridge 插件检索路由命中",
+      "pass": true,
+      "detail": "{\"status\":200,\"success\":true,\"query\":\"IDD 快筛 压力 元数据 越限\",\"total_results\":47,\"results\":[{\"content\":\"## 3. 越限判定\",\"doc_path\":\"diagnostics/idd-quick-screen-064cb296.md\",\"score\":0.6619898080825806,\"chunk_index\":11,\"kb_id\":\"3aea5973-1d8a-4db6-b415-6d4432f514bb\",\"stage1_score\":4.3353353129232275,\"source\":\"keyword\",\"stage1_sources\":[\"keyword\"],\"score_source\":\"vector\"},{\"content\":\"## 6. 数据与结论边界\\n\\n1. 无保压压力实测通道：`melt-pressure-pv` 为塑化/熔体压力，不等于保压压力；保压实际值不可直接验证，只能用克重/缩痕作代理。\\n2. 13:12–13:19 熔体压力 904 bar 与熔体温度 31 ℃ 属冷态/停机段异常读数，已剔除；窗口前 40 min 含停机段，活动批次有效运行段为 13:29–13:51（约 22 min）。\\n3. `cycle-time` 恒 15.3 s 判为采集冻结候选，未用于任何效率/节拍结论。\\n4. 壁厚轮廓、表面图像两节点 0 行，壁厚与外观形貌不可验证。\\n5. 增益常数 0.0524–0.0574 g/bar 为**跨线迁移**（ln-dd4d6163 / ln-dd4d6163 验收线 / ln-b0413f88），非本线实测；本线尚无保压↔克重受控试验记录。\\n6. 本报告未下发参数；执行需要节点/配方写绑定与人工审批。\\n7. IDD"
+    },
+    {
+      "id": "C1",
+      "name": "Channel lead 生成根任务并按 worker 拆分",
+      "pass": true,
+      "detail": "{\"rootTask\":{\"id\":\"3fd608bb-0fb4-4eeb-8e9c-3c276f9f41cb\",\"title\":\"IDD-RAG 产线诊断闭环:取数/导出 → IDD 诊断 → 知识库检索既往结论(只读)\",\"state\":\"CANCELED\",\"assignee_id\":\"2402cc15-187f-4963-9225-58af5185bcbd\",\"parent_id\":null,\"updated_at\":\"2026-11-14T22:52:42.486+08:00\"},\"workerTask\":{\"id\":\"a6952741-6a10-4ff9-8e6a-1de0f8c9b320\",\"title\":\"IDD 深度诊断:批次 rr-15b83 导出数据集(只读)\",\"state\":\"COMPLETED\",\"assignee_id\":\"695f7b33-58ea-4693-9759-be337953372b\",\"parent_id\":\"3fd608bb-0fb4-4eeb-8e9c-3c276f9f41cb\",\"updated_at\":\"2026-11-14T22:59:10.348+08:00\"}}"
+    },
+    {
+      "id": "C2",
+      "name": "worker 任务进入执行态/收口",
+      "pass": true,
+      "detail": "{\"id\":\"a6952741-6a10-4ff9-8e6a-1de0f8c9b320\",\"title\":\"IDD 深度诊断:批次 rr-15b83 导出数据集(只读)\",\"state\":\"COMPLETED\",\"assignee_id\":\"695f7b33-58ea-4693-9759-be337953372b\",\"parent_id\":\"3fd608bb-0fb4-4eeb-8e9c-3c276f9f41cb\",\"updated_at\":\"2026-11-14T22:59:10.348+08:00\"}"
+    },
+    {
+      "id": "C3",
+      "name": "Channel 消息轨记录 Agent 产出",
+      "pass": true,
+      "detail": "[{\"id\":\"pn-451eae9b-d31d-4d60-8317-495d28c896c4\",\"task_id\":null,\"from_agent_id\":null,\"to_agent_id\":\"2402cc15-187f-4963-9225-58af5185bcbd\",\"role\":\"ROLE_USER\",\"p\":\"[{\\\"text\\\":\\\"[异步回执] 快速筛查完成(产线 offline-data)(tool=diag_run, job=064cb296, 结果=完成)\\\\n总结=# 产线哨兵快筛报告 — idd-rag-rr-15b83-liveness\\\\r\\\\n\\\\r\\\\n- **运行目录**：`workspace/diagnostic-runs/202611141526122_idd-rag-rr-15b83-liveness`\\\\r\\\\n- **执行技能*\",\"created_at\":\"2026-11-14T23:58:59.806+08:00\"},{\"id\":\"a9c653f3-9c12-41ad-84eb-ad2c4e250020\",\"task_id\":null,\"from_agent_id\":\"2402cc15-187f-4963-9225-58af5185bcbd\",\"to_agent_id\":\"695f7b33-58ea-4693-9759-be337953372b\",\"role\":\"ROLE_AGENT\",\"p\":\"[{\\\"text\\\":\\\"【记录更正 · 一处小口径错误,不需回复】你 2/2『交叉校验』段写的『warn 607/609↔606/6"
+    }
+  ],
+  "db": {
+    "tasks": [
+      {
+        "id": "3fd608bb-0fb4-4eeb-8e9c-3c276f9f41cb",
+        "title": "IDD-RAG 产线诊断闭环:取数/导出 → IDD 诊断 → 知识库检索既往结论(只读)",
+        "state": "CANCELED",
+        "assignee_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "parent_id": null,
+        "updated_at": "2026-11-14T22:52:42.486+08:00"
+      },
+      {
+        "id": "a6952741-6a10-4ff9-8e6a-1de0f8c9b320",
+        "title": "IDD 深度诊断:批次 rr-15b83 导出数据集(只读)",
+        "state": "COMPLETED",
+        "assignee_id": "695f7b33-58ea-4693-9759-be337953372b",
+        "parent_id": "3fd608bb-0fb4-4eeb-8e9c-3c276f9f41cb",
+        "updated_at": "2026-11-14T22:59:10.348+08:00"
+      }
+    ],
+    "recentMessages": [
+      {
+        "id": "pn-451eae9b-d31d-4d60-8317-495d28c896c4",
+        "task_id": null,
+        "from_agent_id": null,
+        "to_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "role": "ROLE_USER",
+        "p": "[{\"text\":\"[异步回执] 快速筛查完成(产线 offline-data)(tool=diag_run, job=064cb296, 结果=完成)\\n总结=# 产线哨兵快筛报告 — idd-rag-rr-15b83-liveness\\r\\n\\r\\n- **运行目录**：`workspace/diagnostic-runs/202611141526122_idd-rag-rr-15b83-liveness`\\r\\n- **执行技能*",
+        "created_at": "2026-11-14T23:58:59.806+08:00"
+      },
+      {
+        "id": "a9c653f3-9c12-41ad-84eb-ad2c4e250020",
+        "task_id": null,
+        "from_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "to_agent_id": "695f7b33-58ea-4693-9759-be337953372b",
+        "role": "ROLE_AGENT",
+        "p": "[{\"text\":\"【记录更正 · 一处小口径错误,不需回复】你 2/2『交叉校验』段写的『warn 607/609↔606/608(差为 2 个 offline 样本计数口径)』不准确:两集离线样本都是 2 条,差额来自窗口截断 —— 3c795d 有 609 行(含 22:45:19.580 尾点)、01d966 截到整秒只有 608 行(末点 22:45:18.559)。warn 计数本身就是『行数 − offline 数』:60",
+        "created_at": "2026-11-14T23:53:59.790+08:00"
+      },
+      {
+        "id": "795a1b0c-a008-47b2-b08c-1c3cfdfdc913",
+        "task_id": null,
+        "from_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "to_agent_id": "695f7b33-58ea-4693-9759-be337953372b",
+        "role": "ROLE_AGENT",
+        "p": "[{\"text\":\"【最终验收 · a6952741 通过(整份交付物)】2/2 已收到并核完。A/B/C/D 全部通过,3 处数字按下述口径落定,无需再改稿:①9s 块均值残余 sd 采用 1.199/1.395℃(不重叠 9 点分块),你的 1.249/1.417 作『重叠分块法』留注;②主周期统一写 ≈17.3s/55.2s(DFT,N=607),另法 18.1/57.6 标注『窗口敏感,差约 3%』;③最大正相关 +0.6157",
+        "created_at": "2026-11-14T23:52:01.806+08:00"
+      },
+      {
+        "id": "04a6369d-f3f9-4699-aa60-d49c2f388b98",
+        "task_id": null,
+        "from_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "to_agent_id": "695f7b33-58ea-4693-9759-be337953372b",
+        "role": "ROLE_AGENT",
+        "p": "[{\"text\":\"【验收结论 · A/B 段 通过(4 项精确一致,3 项小偏差须改数字)】\\n我按你给的数据集 daqexp-20261114232445-01d966 独立复算,逐项对照:\\n✅ 精确一致:白噪声底座 sd(diff)/√2 = 0.638 / 0.694℃(占 sd 37.7%/37.5%);一阶差分 r=-0.1636;60s 滚动极差 >2℃ = 549/549,中位 5.80/7.90℃;斜率 -0.077",
+        "created_at": "2026-11-14T23:46:29.521+08:00"
+      },
+      {
+        "id": "70270b7f-ccb2-45c4-a35a-0eaed3c6f93b",
+        "task_id": null,
+        "from_agent_id": "695f7b33-58ea-4693-9759-be337953372b",
+        "to_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "role": "ROLE_AGENT",
+        "p": "[{\"text\":\"【补件 2/2 · C/D 正文 + diag 终态】\\n\\n■ C 设备/工艺风险结论\\nC1 无工艺越限证据、无设备安全风险:唯一可判工艺的量是熔体温度通道,其工程带 150~185℃,实测 161.1~171.3℃ 未越界;压力通道数值不可采信 → 不能判『压力越限/熔压波动过大』。本窗口不支持任何停机/降载动作。\\nC2 最高优先级风险=监测盲区:挤出熔压(安全关键量)无可用测点 —— 只有设定值 6.2 b",
+        "created_at": "2026-11-14T23:40:08.221+08:00"
+      },
+      {
+        "id": "8259f390-9278-43f5-9939-fe54d5e6e9f3",
+        "task_id": null,
+        "from_agent_id": "695f7b33-58ea-4693-9759-be337953372b",
+        "to_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "role": "ROLE_AGENT",
+        "p": "[{\"text\":\"【补件 1/2 · A/B 正文】task a6952741 交付物重建(只读复算,未重提交 diag_run,未改任何参数)\\n\\n数据基础:本地产出集 daqexp-20261114232445-01d966(D:\\\\tmp\\\\aw-idd-rag-home-20261114\\\\data\\\\daq-exports\\\\daqexp-20261114232445-01d966),两节点各 608 行原始样本(无降采样",
+        "created_at": "2026-11-14T23:37:41.281+08:00"
+      },
+      {
+        "id": "pn-4341db63-9750-4456-97b4-f2f2c2eb5df0",
+        "task_id": null,
+        "from_agent_id": null,
+        "to_agent_id": "695f7b33-58ea-4693-9759-be337953372b",
+        "role": "ROLE_USER",
+        "p": "[{\"text\":\"[异步回执] 深度根因诊断失败(产线 ln-1e3fbd3d)(tool=diag_run, job=954d6fa7, 结果=失败)\\n原因:Query stopped: omp_timeout\"}]",
+        "created_at": "2026-11-14T23:32:59.063+08:00"
+      },
+      {
+        "id": "d9ae2e7a-96ab-42c4-8644-1875cc6e3e40",
+        "task_id": null,
+        "from_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "to_agent_id": "695f7b33-58ea-4693-9759-be337953372b",
+        "role": "ROLE_AGENT",
+        "p": "[{\"text\":\"【补件第二次请求 · 只回文字,不要再调用任何工具】你的任务 a6952741 成果被平台截断为 500 字,我看不到正文。请立刻用 send_message_to_agent(to_agent_id=\\\"2402cc15-187f-4963-9225-58af5185bcbd\\\", in_reply_to=\\\"a66824c3\\\") 把交付物正文 A/B/C/D 四段以纯文本回传(可分两条,每条 ≤6000 字):",
+        "created_at": "2026-11-14T23:21:08.811+08:00"
+      },
+      {
+        "id": "pn-2aff6740-8745-46b0-aa40-c303e184cb1c",
+        "task_id": null,
+        "from_agent_id": null,
+        "to_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "role": "ROLE_USER",
+        "p": "[{\"text\":\"[异步回执] 知识库任务失败(tool=kb_agent, job=kbt_mwgjmzzm_bbc6a0f6, 结果=失败)\\n任务以 failed 结束:agent turn timed out after 540000ms before a final result frame\"}]",
+        "created_at": "2026-11-14T23:20:43.560+08:00"
+      },
+      {
+        "id": "2cbaebb5-7e78-4aae-ad13-d1f4851b4aa3",
+        "task_id": null,
+        "from_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "to_agent_id": null,
+        "role": "ROLE_AGENT",
+        "p": "[{\"text\":\".1) diag_status：深诊 run `954d6fa7`（deep-diagnosis，ln-1e3fbd3d）仍 **running**（已约 12 分钟，未进终态）；此前一条 `d4eb5f91` 快速筛查 **失败**（`omp_process_exit:1`）。\\n2) 知识库既往结论（aw-industrial 经 MCP 两阶段召回 + 经验库，均已落来源）：**有**直接判例支持「节点单位/量",
+        "created_at": "2026-11-14T23:15:43.089+08:00"
+      },
+      {
+        "id": "a66824c3-4d43-4552-8ad9-a222f2b2230a",
+        "task_id": null,
+        "from_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "to_agent_id": "695f7b33-58ea-4693-9759-be337953372b",
+        "role": "ROLE_AGENT",
+        "p": "[{\"text\":\"【Lead 验收反馈 · 缺证补件,勿重跑 diag_run】\\n任务 a6952741「IDD 深度诊断:批次 rr-15b83 导出数据集(只读)」已收到提交,但成果预览被平台截断(仅 500 字),且提交时刻 IDD 任务仍在 running,不满足验收条款「IDD 任务进入终态(成功或明确失败)且回传 diag task_id/run_id;不得只报已提交」。请只做以下两件补件动作,不要重新提交 diag_r",
+        "created_at": "2026-11-14T23:05:03.077+08:00"
+      },
+      {
+        "id": "pn-186befda-ef47-4ddc-ad59-16e9d8f38c47",
+        "task_id": null,
+        "from_agent_id": null,
+        "to_agent_id": "2402cc15-187f-4963-9225-58af5185bcbd",
+        "role": "ROLE_USER",
+        "p": "[{\"text\":\"[异步回执] 快速筛查失败(产线 offline-data)(tool=diag_run, job=d4eb5f91, 结果=失败)\\n原因:Query stopped: omp_process_exit:1\"}]",
+        "created_at": "2026-11-14T22:57:58.030+08:00"
+      }
+    ]
+  },
+  "ragHit": {
+    "content": "### 3.2 挤出压力 — 无法判定（UNDETERMINED）\r\n\r\n`manifest.nodes[dn-13a80b2b]` 的元数据逐项错配：\r\n\r\n| 字段 | 声明值 | 观测/上下文 | 冲突 |\r\n|---|---|---|---|\r\n| `unit` | ℃ | 节点名为\"挤出压力\"；批次注记写\"熔体压力设定 6.2bar\" | 单位标签与节点语义冲突 |\r\n| `range` | [150, 185] | 观测 161.3–174.6 | 与温度节点量程**逐字相同** |\r\n| `warn` | [4.5, 8.5] | 观测跨度 13.3，约为该带宽的 1.92 倍 | 量纲不同（bar 级 vs 161–175 级） |\r\n| `semantics` | \"熔体/箱体温度…\" | 与温度节点**逐字相同** | 文本复用 |\r\n\r\n证据链：压力节点与温度节点的元数据\"单位/量程/semantics\"三项完全一致，仅 warn 带不同；而两条实测序列并非同一信号（水平相关 −0.3319，一阶差分相关 −0.1638，最佳滞后 17 行 r = −0.2575",
+    "score": 0.783662736415863,
+    "doc_path": "diagnostics/idd-quick-screen-064cb296.md",
+    "kb_id": "3aea5973-1d8a-4db6-b415-6d4432f514bb",
+    "chunk_index": 13,
+    "collection": "kb_3aea5973-1d8a-4db6-b415-6d4432f514bb"
+  },
+  "summary": {
+    "total": 7,
+    "pass": 7,
+    "fail": 0
+  }
+}

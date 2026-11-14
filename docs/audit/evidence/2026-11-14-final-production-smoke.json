@@ -1,7 +1,7 @@
 {
   "manifestVersion": "production-start-smoke.v1",
-  "recordedAt": "2026-11-14T14:18:20.707Z",
-  "base": "main e4885f654ed164f89d578714d4a6e0f3af207517",
+  "recordedAt": "2026-11-14T16:25:43.561Z",
+  "base": "main b6847187c01b7bd2bd68bb0e3f19491cf020b0d6",
   "command": "node .output/server/index.mjs",
   "environment": {
     "mode": "isolated AW_HOME",
