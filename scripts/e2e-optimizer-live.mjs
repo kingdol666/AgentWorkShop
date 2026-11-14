@@ -623,32 +623,104 @@ page.on('pageerror', e => pageErrors.push(`${e.message} | ${String(e.stack ?? ''
 const shot = name => page.screenshot({ path: join(EVID, `${name}.png`), fullPage: true })
 
 async function clickText(selector, text) {
-  const ok = await page.evaluate((sel, txt) => {
-    const el = Array.from(document.querySelectorAll(sel)).find(e => (e.textContent || '').trim().includes(txt))
-    if (!el) return false
-    el.click()
+  // 渲染节奏有波动(水合/分节挂载):带重试的等待点击,不做一次性快照判定
+  const t0 = Date.now()
+  for (;;) {
+    const ok = await page.evaluate((sel, txt) => {
+      const el = Array.from(document.querySelectorAll(sel)).find(e => (e.textContent || '').trim().includes(txt))
+      if (!el) return false
+      el.click()
+      return true
+    }, selector, text)
+    if (ok) break
+    if (Date.now() - t0 > 10_000) throw new Error(`找不到可点击元素 ${selector} 含「${text}」`)
+    await sleep(300)
+  }
+  await sleep(300)
+}
+// 2026-11 重构后治理流用 a-steps(不再有 .tabs button):change 处理器绑在
+// .ant-steps-item-container(Step.js accessibilityProps),必须点容器节点;
+// 点击后校验 active 步骤真的切换,未切换重试(渲染/水合时序抖动)
+async function clickStep(titleText) {
+  const t0 = Date.now()
+  for (;;) {
+    await page.evaluate((txt) => {
+      const steps = Array.from(document.querySelectorAll('.ant-steps-item'))
+      const step = steps.find(e => (e.querySelector('.ant-steps-item-title')?.textContent ?? e.textContent ?? '').trim() === txt)
+        ?? steps.find(e => (e.textContent || '').trim().includes(txt))
+      const container = step?.querySelector('.ant-steps-item-container')
+      if (!container) return false
+      container.click()
+      return true
+    }, titleText)
+    await sleep(500)
+    const active = await page.evaluate(() => document.querySelector('.ant-steps-item-active .ant-steps-item-title')?.textContent?.trim() ?? '')
+    if (active === titleText) return
+    if (Date.now() - t0 > 15_000) {
+      const titles = await page.evaluate(() => Array.from(document.querySelectorAll('.ant-steps-item-title')).map(e => e.textContent?.trim()))
+      throw new Error(`步骤「${titleText}」点击未切换(active=${active};steps=${JSON.stringify(titles)})`)
+    }
+    await sleep(300)
+  }
+}
+async function setAntSelectByLabel(labelTextArg, optionText) {
+  // a-select 是自定义控件:selector 上 mousedown 打开下拉,再 mousedown+click 选项
+  await page.evaluate((targetLabel) => {
+    const labels = Array.from(document.querySelectorAll('label'))
+    const field = labels.find(l => (l.textContent || '').trim().startsWith(targetLabel))
+    const selector = field?.querySelector('.ant-select-selector')
+    if (!selector) throw new Error(`label「${targetLabel}」下没有 ant-select`)
+    selector.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    selector.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    selector.click()
+  }, labelTextArg)
+  await sleep(600)
+  const picked = await page.evaluate((txt) => {
+    const dropdowns = Array.from(document.querySelectorAll('.ant-select-dropdown')).filter(d => !d.classList.contains('ant-select-dropdown-hidden'))
+    const options = dropdowns.flatMap(d => Array.from(d.querySelectorAll('.ant-select-item-option')))
+    const option = options.find(e => (e.textContent || '').trim() === txt)
+      ?? options.find(e => (e.textContent || '').trim().includes(txt))
+    if (!option) return false
+    option.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    option.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    option.click()
     return true
-  }, selector, text)
-  if (!ok) throw new Error(`找不到可点击元素 ${selector} 含「${text}」`)
+  }, optionText)
+  if (!picked) throw new Error(`下拉中找不到选项「${optionText}」`)
   await sleep(300)
 }
 async function setInputByLabel(labelTextArg, value, tag = 'input') {
-  const ok = await page.evaluate((targetLabel, val, elTag) => {
-    const labels = Array.from(document.querySelectorAll('label'))
-    const field = labels.find(l => (l.textContent || '').trim().startsWith(targetLabel))
-    const el = field?.querySelector(elTag)
-    if (!el) return false
-    const proto = elTag === 'select'
-      ? window.HTMLSelectElement.prototype
-      : elTag === 'textarea' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype
-    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set
-    setter.call(el, String(val))
-    el.dispatchEvent(new Event('input', { bubbles: true }))
-    el.dispatchEvent(new Event('change', { bubbles: true }))
-    return true
-  }, labelTextArg, value, tag)
-  if (!ok) throw new Error(`找不到字段「${labelTextArg}」`)
+  // 分节挂载有渲染窗口:带重试;超时后附带当前可见 label 清单便于定位
+  const t0 = Date.now()
+  for (;;) {
+    const ok = await page.evaluate((targetLabel, val, elTag) => {
+      const labels = Array.from(document.querySelectorAll('label'))
+      const field = labels.find(l => (l.textContent || '').trim().startsWith(targetLabel))
+      const el = field?.querySelector(elTag)
+      if (!el) return false
+      const proto = elTag === 'select'
+        ? window.HTMLSelectElement.prototype
+        : elTag === 'textarea' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype
+      const setter = Object.getOwnPropertyDescriptor(proto, 'value').set
+      setter.call(el, String(val))
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+      return true
+    }, labelTextArg, value, tag)
+    if (ok) break
+    if (Date.now() - t0 > 10_000) {
+      const visible = await page.evaluate(() => Array.from(document.querySelectorAll('label')).map(l => (l.textContent || '').trim().slice(0, 18)).filter(Boolean).slice(0, 40))
+      throw new Error(`找不到字段「${labelTextArg}」;可见 label=${JSON.stringify(visible)}`)
+    }
+    await sleep(300)
+  }
   await sleep(150)
+}
+// Profile/绑定/运行三表是 antdv a-table;spec 段变量表仍是旧 .tbl
+async function tableText() {
+  return page.evaluate(() =>
+    document.querySelector('.ant-table-tbody')?.textContent
+    ?? document.querySelector('.tbl tbody')?.textContent ?? '')
 }
 async function waitNotice(fragment, timeout = 180_000) {
   const t0 = Date.now()
@@ -687,8 +759,8 @@ try {
     }).observe(document.body, { subtree: true, childList: true, characterData: true })
   })
   const title = await page.evaluate(() => document.querySelector('.aw-page-head h1')?.textContent?.trim() ?? '')
-  const tabs = await page.evaluate(() => Array.from(document.querySelectorAll('.tabs button')).map(b => b.textContent.trim()))
-  check('U1.1', '/optimizer 可打开(标题+五 tab)', title.includes('优化器') && tabs.length === 5, `title=${title} tabs=${tabs.join('|')}`)
+  const tabs = await page.evaluate(() => Array.from(document.querySelectorAll('.ant-steps-item-title')).map(b => b.textContent.trim()))
+  check('U1.1', '/optimizer 可打开(标题+五步治理流)', title.includes('优化器') && tabs.length === 5, `title=${title} steps=${tabs.join('|')}`)
   check('U1.2', '首屏无 pageerror(平台级 unhead dispose 已单列)', pageErrors.length === 0 || pageErrors.every(e => e.includes('dispose')), `${pageErrors.slice(0, 2).join(';')} | control=${controlErrors.slice(0, 1).join(';')}`)
   await shot('ui-01-spec-empty')
 
@@ -711,7 +783,7 @@ try {
   await clickText('button', '添加变量')
   // 变量 2(cv)
   await setInputByLabel('变量 id', 'cv1')
-  await setInputByLabel('角色', 'cv', 'select')
+  await setAntSelectByLabel('角色', 'cv')
   await setInputByLabel('节点 id', CV_ID)
   await setInputByLabel('单位', 'μm')
   await setInputByLabel('下限', 0)
@@ -729,7 +801,7 @@ try {
   const dsNotice = await waitNotice('数据集已构建', 180_000)
   check('U1.5', 'UI 构建数据集(v2)成功', /数据集已构建:[^\s(]+\(\d+ 窗\)/.test(dsNotice), dsNotice)
 
-  await clickText('.tabs button', '资格报告')
+  await clickStep('资格报告')
   await clickText('button', '评估资格')
   await waitNotice('资格评估完成', 120_000)
   await sleep(400)
@@ -737,7 +809,7 @@ try {
   check('U1.6', 'UI 资格报告渲染(具备资格 + simulation + 证据)', eligText.includes('具备优化资格') && eligText.includes('simulation') && !eligText.includes('尚未评估'), eligText.replace(/\s+/g, ' ').slice(0, 160))
   await shot('ui-02-eligibility')
 
-  await clickText('.tabs button', '模型规格')
+  await clickStep('模型规格')
   await clickText('button', '提交训练')
   const trainNotice = await waitNotice('训练作业已提交', 60_000)
   const uiJobId = /训练作业已提交:([^\s]+)/.exec(trainNotice)?.[1] ?? ''
@@ -752,7 +824,7 @@ try {
   check('U1.8', 'UI 训练作业完成并产出模型', uiJob?.status === 'done' && Boolean(uiJob?.modelId), `status=${uiJob?.status} model=${uiJob?.modelId}`)
   const uiModelId = uiJob?.modelId
 
-  await clickText('.tabs button', 'Profile / Solver')
+  await clickStep('Profile / Solver')
   await setInputByLabel('id', `optp-ui-${TAG}`)
   await setInputByLabel('模型 id', uiModelId)
   await setInputByLabel('processSpecRef', `${savedSpecId}@1`)
@@ -764,12 +836,35 @@ try {
     return false
   })
   check('U1.9', 'UI 登记 Profile 并出现发布按钮', pubBtn)
+  // 发布是治理态变更,套了 a-popconfirm 二次确认:轮询弹出层并点 OK(文案同为「发布」)
+  const tConfirm = Date.now()
+  let confirmed = false
+  let popDiag = ''
+  while (!confirmed && Date.now() - tConfirm < 8000) {
+    await sleep(400)
+    const state = await page.evaluate(() => {
+      const overlays = Array.from(document.querySelectorAll('.ant-popconfirm, .ant-popover'))
+      const visible = overlays.filter(el => !el.classList.contains('ant-popover-hidden') && getComputedStyle(el).display !== 'none')
+      for (const scope of visible) {
+        const ok = Array.from(scope.querySelectorAll('button')).find(b => (b.textContent || '').trim() === '发布' || b.classList.contains('ant-btn-primary'))
+        if (ok) {
+          ok.click()
+          return { found: true, seen: `${scope.className}` }
+        }
+      }
+      return { found: false, seen: overlays.map(el => el.className).join('|').slice(0, 200) }
+    })
+    confirmed = state.found
+    popDiag = state.seen
+  }
+  if (!confirmed) throw new Error(`发布 popconfirm 确认按钮未出现;overlays=${popDiag}`)
   await waitNotice('Profile 已发布', 60_000)
-  const profileRowText = await page.evaluate(() => document.querySelector('.tbl tbody')?.textContent ?? '')
-  check('U1.10', 'UI Profile 表格显示 published', profileRowText.includes('published') && profileRowText.includes(uiModelId), profileRowText.replace(/\s+/g, ' ').slice(0, 160))
+  const profileRowText = await tableText()
+  // Profile 表列 = profile/name/desc/status/solver/op(无 model 列):断言 id + published
+  check('U1.10', 'UI Profile 表格显示 published', profileRowText.includes('published') && profileRowText.includes(`optp-ui-${TAG}`), profileRowText.replace(/\s+/g, ' ').slice(0, 160))
   await shot('ui-03-profile')
 
-  await clickText('.tabs button', 'Agent 绑定')
+  await clickStep('Agent 绑定')
   await setInputByLabel('workspaceId', workspaceId)
   await setInputByLabel('channelId', channelId)
   await setInputByLabel('Agent 实例 id', leadAgentId)
@@ -777,30 +872,30 @@ try {
   await setInputByLabel('profileVersion', 1)
   await clickText('button', '创建绑定')
   await waitNotice('绑定已创建', 60_000)
-  const bindRow = await page.evaluate(() => document.querySelector('.tbl tbody')?.textContent ?? '')
+  const bindRow = await tableText()
   check('U1.11', 'UI 创建绑定并回读行', bindRow.includes(leadAgentId) && bindRow.includes(`optp-ui-${TAG}`), bindRow.replace(/\s+/g, ' ').slice(0, 140))
   await shot('ui-04-binding')
 
-  await clickText('.tabs button', '运行 / 建议')
+  await clickStep('运行 / 建议')
   await setInputByLabel('Agent 实例 id', leadAgentId)
   writeFreshTail()
   await clickText('button', '求解一次')
   await waitNotice('求解完成', 180_000)
   await sleep(800)
-  const runRowText = await page.evaluate(() => document.querySelector('.tbl tbody')?.textContent ?? '')
+  const runRowText = await tableText()
   const unverified = await page.evaluate(() => document.querySelector('.unverified')?.textContent ?? '')
   check('U1.12', 'UI 求解成功并渲染运行/建议行(状态徽章二态)', runRowText.includes('optimal') && /未验证|已验证/.test(runRowText), runRowText.replace(/\s+/g, ' ').slice(0, 200))
   check('U1.13', '建议状态徽章醒目标识(.unverified)', /未验证|已验证/.test(unverified), unverified.slice(0, 80))
   await shot('ui-05-runs')
 
   // 前端错误面:非法 JSON 必须在本地被拦住并给出可读提示
-  await clickText('.tabs button', 'Profile / Solver')
+  await clickStep('Profile / Solver')
   await setInputByLabel('id', `optp-ui-bad-${TAG}`)
   await setInputByLabel('问题配置', '{invalid', 'textarea')
   await clickText('button', '登记 Profile')
   let errText = ''
   for (let i = 0; i < 60; i++) {
-    errText = await page.evaluate(() => document.querySelector('.banner.error')?.textContent ?? '')
+    errText = await page.evaluate(() => document.querySelector('.field-error')?.textContent ?? document.querySelector('.banner.error')?.textContent ?? '')
     if (errText) break
     await sleep(100)
   }
@@ -1227,6 +1322,11 @@ console.log('\n=== 11. live closed-loop value ===')
     // 治理 profile 绑定线A(line/recipe)—— 开跑线A(配方A 参数整批下发)。
     const wStart = await api('POST', `/api/workshop/dcw/lines/${line.id}/start`, { recipeId: recipe.id }, token)
     check('W6b', '治理下发的运行门前置:线A 开跑(活动批次=配方A)', wStart.status === 200, `status=${wStart.status} msg=${String(wStart?.message ?? '').slice(0, 140)}`)
+    // 开线的配方写(50)会刷新节点 lastChangeAt;治理下发是 agent 在线写,
+    // 受 60s 防震荡间隔卡控(write() 咽喉有意防线,不豁免)。
+    // 真实作业语义一致:开线后等待整定期再下发首个优化动作。
+    console.log('    (等待 61s:开线配方写后的 60s 在线写间隔——write() 咽喉防震荡防线,不豁免)')
+    await sleep(61_000)
     const decide = await api('POST', `/api/workshop/agent-tools/approvals/${encodeURIComponent(card.id)}/decide`, { approved: true, choice: 0, comment: '集成验收批准' }, token)
     const decided = data(decide)
     const dispatchResult = decided?.dispatch

@@ -169,7 +169,12 @@ export interface LinearMpcProblem {
   /** MV 变量名顺序(= dynamics 输入顺序) */
   mvOrder: string[]
   cvOrder: string[]
+  /** Profile-declared MV bounds; these participate in the structural IR hash. */
   mvBounds: ProblemBounds[]
+  /** Current physical DCW limits intersected at solve time; not part of the structural hash. */
+  runtimeMvBounds?: ProblemBounds[]
+  /** Actuator-anchored rate/Δu base for the current solve; not part of the structural hash. */
+  runtimeUPrev?: number[]
   /** 上一时刻已生效输入(Δu 基准,模型单位) */
   uPrev: number[]
 }
@@ -182,7 +187,12 @@ export interface StaticResponseProblem {
   coefficients: Record<string, number[]>
   featureOrder: string[]
   cvTargets: number[]
+  /** Profile-declared MV bounds; these participate in the structural IR hash. */
   mvBounds: ProblemBounds[]
+  /** Current physical DCW limits intersected at solve time; not part of the structural hash. */
+  runtimeMvBounds?: ProblemBounds[]
+  /** Actuator-anchored rate base for the current solve; not part of the structural hash. */
+  runtimeUPrev?: number[]
   cvBounds: ProblemBounds[]
   uPrev: number[]
 }
@@ -225,9 +235,10 @@ export type ProblemIR = (ProblemIRBase & { problem: LinearMpcProblem | StaticRes
 export function computeProblemIrHash(ir: Omit<ProblemIR, 'hash'> | ProblemIR): string {
   const { hash: _hash, context: _context, ...rest } = ir as ProblemIR
   const problem = rest.problem
-  const structuralProblem = problem.template === 'linear_mpc_quadratic@1'
-    ? { ...problem, dynamics: { ...problem.dynamics, x0: [] }, uPrev: [] }
-    : { ...problem, uPrev: [] }
+  const { runtimeMvBounds: _runtimeMvBounds, runtimeUPrev: _runtimeUPrev, ...declaredProblem } = problem as ProblemIR['problem'] & { runtimeMvBounds?: ProblemBounds[], runtimeUPrev?: number[] }
+  const structuralProblem = declaredProblem.template === 'linear_mpc_quadratic@1'
+    ? { ...declaredProblem, dynamics: { ...declaredProblem.dynamics, x0: [] }, uPrev: [] }
+    : { ...declaredProblem, uPrev: [] }
   return sha256(canonicalJson({ ...rest, problem: structuralProblem }))
 }
 

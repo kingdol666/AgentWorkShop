@@ -8,6 +8,8 @@
  *  - MV 有效域与 maxStep 必须来自 spec(不允许"看起来合理"的缺省)。
  */
 import { AppError } from '../../../utils/errors'
+import { getDcwController } from '../dcw/dcw-controller'
+import { stepLimitOf } from '../dcw/param-limits'
 import type { ContextSnapshot } from '../process-model/context'
 import type { ProcessModelSpec } from '../process-model/contracts'
 import { assertSolverSupportsArtifact } from '../process-model/contracts'
@@ -42,10 +44,53 @@ export interface StaticResponseLike {
 
 export type ModelArtifact = LinearStateSpaceLike | StaticResponseLike
 
-function boundsFor(spec: ProcessModelSpec, variableId: string): ProblemBounds {
+type BoundsPair = { declared: ProblemBounds, effective: ProblemBounds }
+
+function boundsFor(spec: ProcessModelSpec, variableId: string, enforcePhysicalLimits = false): BoundsPair {
   const domain = spec.effectiveDomain.mv[variableId]
   if (!domain) throw new AppError(422, 'PROBLEM_DOMAIN_MISSING', `MV ${variableId} 缺少有效域;拒绝编译问题`)
-  return { min: domain.min, max: domain.max, maxStep: domain.maxStep }
+  const declared = { min: domain.min, max: domain.max, maxStep: domain.maxStep }
+  if (!enforcePhysicalLimits) return { declared, effective: declared }
+
+  const variable = spec.variables.find(item => item.id === variableId)
+  // 只有声明了 controlNodeId(可执行节点)的 MV 才做物理限界收窄;
+  // 仅带观测 nodeId 的 spec 本就无法治理下发,保持声明域(与既有 solve-only 行为一致)。
+  const nodeId = variable?.controlNodeId
+  const node = nodeId ? getDcwController().byId(nodeId) : undefined
+  if (variable && !nodeId) return { declared, effective: declared }
+  if (!variable || !node || node.lineId !== spec.lineId || !node.enabled) {
+    throw new AppError(422, 'PROBLEM_CONTROL_NODE_UNAVAILABLE', `MV ${variableId} 的执行节点不存在、已停用或不属于规格产线;拒绝生成可下发建议`)
+  }
+  const physicalStepLimit = stepLimitOf(node).value
+  if (physicalStepLimit == null) {
+    throw new AppError(422, 'PROBLEM_STEP_LIMIT_MISSING', `MV ${variableId} 的执行节点未配置有限物理步限;拒绝生成可下发建议`)
+  }
+  // 换算到模型单位,并与声明域/节点量程取交集
+  const modelStepLimit = physicalStepLimit * Math.abs(variable.scale)
+  const modelNodeMin = node.min * variable.scale + variable.offset
+  const modelNodeMax = node.max * variable.scale + variable.offset
+  // 步限锚 = 执行器当前值(write() 咽喉同口径:value 优先,readValue 兜底),
+  // 而不是 TSDB 上下文 uPrev —— 两者可能漂移,只有执行器锚能保证首步可写。
+  const currentEng = typeof node.value === 'number' ? node.value : typeof node.readValue === 'number' ? node.readValue : null
+  const modelMinBase = Math.max(domain.min, Math.min(modelNodeMin, modelNodeMax))
+  const modelMaxBase = Math.min(domain.max, Math.max(modelNodeMin, modelNodeMax))
+  if (modelMinBase > modelMaxBase) {
+    throw new AppError(422, 'PROBLEM_DOMAIN_EMPTY', `MV ${variableId} 的规格范围与 DCW 节点工程量程没有交集`)
+  }
+  if (currentEng == null) {
+    // 执行器无当前值:write() 对首写豁免步限,只收窄量程,不加速率窗
+    return { declared, effective: { min: modelMinBase, max: modelMaxBase, maxStep: declared.maxStep } }
+  }
+  const currentModel = currentEng * variable.scale + variable.offset
+  const effective = {
+    min: Math.max(modelMinBase, currentModel - modelStepLimit),
+    max: Math.min(modelMaxBase, currentModel + modelStepLimit),
+    maxStep: declared.maxStep == null ? modelStepLimit : Math.min(declared.maxStep, modelStepLimit),
+  }
+  if (effective.min > effective.max) {
+    throw new AppError(422, 'PROBLEM_STEP_WINDOW_EMPTY', `MV ${variableId} 当前执行器值 ${currentEng}${node.unit ?? ''} 与可写范围没有交集(有效域 ${modelMinBase}~${modelMaxBase},步限 ${modelStepLimit});请先人工调整节点或放宽单步限制`)
+  }
+  return { declared, effective }
 }
 
 function scalingOf(spec: ProcessModelSpec): ProblemScaling {
@@ -65,6 +110,8 @@ export function buildProblemIR(input: {
   artifact: ModelArtifact
   context: ContextSnapshot
   runId: string
+  /** Runtime solve/dispatch drift checks must include current physical DCW limits. */
+  enforcePhysicalStepLimits?: boolean
 }): ProblemIR {
   const { profile, spec, artifact, context } = input
   assertSolverSupportsArtifact(profile.solverRef, profile.modelRef.artifactKind)
@@ -139,6 +186,18 @@ export function buildProblemIR(input: {
     })
     const cvWeights = Object.fromEntries(cvOrder.map(id => [id, cfg.cvWeights[id]!]))
     const duWeights = Object.fromEntries(mvOrder.map(id => [id, cfg.duWeights[id]!]))
+    const bounds = mvOrder.map(id => boundsFor(spec, id, input.enforcePhysicalStepLimits === true))
+    // 运行时速率锚:执行器当前值(write() 同锚);无执行器值的 MV 回退上下文 uPrev
+    const runtimeUPrev = input.enforcePhysicalStepLimits
+      ? mvOrder.map((id, m) => {
+          const variable = spec.variables.find(item => item.id === id)
+          const node = variable?.controlNodeId ? getDcwController().byId(variable.controlNodeId) : undefined
+          const currentEng = node && (typeof node.value === 'number' || typeof node.readValue === 'number')
+            ? (typeof node.value === 'number' ? node.value : node.readValue)
+            : null
+          return currentEng == null ? uPrev[m]! : currentEng * variable!.scale + variable!.offset
+        })
+      : undefined
     const ir: Omit<ProblemIR, 'hash'> = {
       ...base,
       weights: {
@@ -160,7 +219,8 @@ export function buildProblemIR(input: {
         cvBounds,
         mvOrder,
         cvOrder,
-        mvBounds: mvOrder.map(id => boundsFor(spec, id)),
+        mvBounds: bounds.map(pair => pair.declared),
+        ...(input.enforcePhysicalStepLimits ? { runtimeMvBounds: bounds.map(pair => pair.effective), runtimeUPrev } : {}),
         uPrev,
       },
     }
@@ -188,6 +248,18 @@ export function buildProblemIR(input: {
       if (value === undefined) throw new AppError(422, 'PROBLEM_CONTEXT_MISSING', `上下文缺少 MV ${id} 的当前值`)
       return value
     })
+    const bounds = mvOrder.map(id => boundsFor(spec, id, input.enforcePhysicalStepLimits === true))
+    // 运行时速率锚:执行器当前值(write() 同锚);无执行器值的 MV 回退上下文 uPrev
+    const runtimeUPrev = input.enforcePhysicalStepLimits
+      ? mvOrder.map((id, m) => {
+          const variable = spec.variables.find(item => item.id === id)
+          const node = variable?.controlNodeId ? getDcwController().byId(variable.controlNodeId) : undefined
+          const currentEng = node && (typeof node.value === 'number' || typeof node.readValue === 'number')
+            ? (typeof node.value === 'number' ? node.value : node.readValue)
+            : null
+          return currentEng == null ? uPrev[m]! : currentEng * variable!.scale + variable!.offset
+        })
+      : undefined
     const ir: Omit<ProblemIR, 'hash'> = {
       ...base,
       weights: { cv: { ...cfg.cvWeights }, du: {}, terminal: 0, economic: { ...cfg.economicWeights } },
@@ -198,7 +270,8 @@ export function buildProblemIR(input: {
         coefficients: artifact.coefficients,
         featureOrder: artifact.featureOrder,
         cvTargets,
-        mvBounds: mvOrder.map(id => boundsFor(spec, id)),
+        mvBounds: bounds.map(pair => pair.declared),
+        ...(input.enforcePhysicalStepLimits ? { runtimeMvBounds: bounds.map(pair => pair.effective), runtimeUPrev } : {}),
         cvBounds: cvOrder.map((id) => {
           const domain = spec.effectiveDomain.cv?.[id]
           return domain ? { min: domain.min, max: domain.max } : {}
@@ -231,7 +304,8 @@ export function evaluateCandidateCost(ir: ProblemIR, candidate: SolveCandidate):
     const last = predicted[predicted.length - 1]
     if (last) for (let j = 0; j < p.cvOrder.length; j++) cost += ir.weights.terminal * cvWeights[j]! * (last[j]! - p.cvSetpoints[j]!) ** 2
     for (let t = 0; t < controls.length; t++) {
-      const prev = t === 0 ? p.uPrev : controls[t - 1]!
+      const duBase = p.runtimeUPrev ?? p.uPrev
+      const prev = t === 0 ? duBase : controls[t - 1]!
       for (let m = 0; m < p.mvOrder.length; m++) cost += duWeights[m]! * (controls[t]![m]! - prev[m]!) ** 2
     }
     return cost
@@ -277,12 +351,15 @@ export function constraintReport(ir: ProblemIR, candidate: SolveCandidate): impo
   const reports: import('./contracts').ConstraintReport[] = []
   if (ir.problem.template !== 'linear_mpc_quadratic@1') {
     const p = ir.problem
+    // 独立复核按 runtime 物理限界(存在时):声明限界只进结构 hash,可行性以可下发为准
+    const effectiveBounds = p.runtimeMvBounds ?? p.mvBounds
     for (let m = 0; m < p.mvOrder.length; m++) {
       const value = candidate.controls[0]?.[m] ?? 0
-      const b = p.mvBounds[m] ?? {}
+      const b = effectiveBounds[m] ?? {}
       reports.push({ id: `mv.${p.mvOrder[m]}.bound`, kind: 'bound', satisfied: (b.min == null || value >= b.min - 1e-9) && (b.max == null || value <= b.max + 1e-9), residual: Math.max(0, (b.min ?? value) - value, value - (b.max ?? value)), tolerance: 1e-6 })
       if (b.maxStep != null) {
-        const delta = Math.abs(value - p.uPrev[m]!)
+        const rateBase = p.runtimeUPrev ?? p.uPrev
+        const delta = Math.abs(value - rateBase[m]!)
         reports.push({ id: `mv.${p.mvOrder[m]}.rate`, kind: 'rate', satisfied: delta <= b.maxStep + 1e-9, residual: Math.max(0, delta - b.maxStep), tolerance: 1e-6 })
       }
     }
@@ -298,10 +375,11 @@ export function constraintReport(ir: ProblemIR, candidate: SolveCandidate): impo
   }
   const p = ir.problem
   const mvCount = p.mvOrder.length
+  const effectiveBounds = p.runtimeMvBounds ?? p.mvBounds
   for (let t = 0; t < candidate.controls.length; t++) {
     for (let m = 0; m < mvCount; m++) {
       const value = candidate.controls[t]?.[m] ?? 0
-      const b = p.mvBounds[m] ?? {}
+      const b = effectiveBounds[m] ?? {}
       const lo = b.min ?? Number.NEGATIVE_INFINITY
       const hi = b.max ?? Number.POSITIVE_INFINITY
       reports.push({
@@ -310,7 +388,8 @@ export function constraintReport(ir: ProblemIR, candidate: SolveCandidate): impo
         residual: Math.max(0, lo - value, value - hi), tolerance: 1e-6,
       })
       if (b.maxStep != null) {
-        const prev = t === 0 ? p.uPrev[m] ?? value : candidate.controls[t - 1]?.[m] ?? value
+        const rateBase = p.runtimeUPrev ?? p.uPrev
+        const prev = t === 0 ? rateBase[m] ?? value : candidate.controls[t - 1]?.[m] ?? value
         const delta = Math.abs(value - prev)
         reports.push({ id: `mv.${p.mvOrder[m]}.t${t}.rate`, kind: 'rate', satisfied: delta <= b.maxStep + 1e-9, residual: Math.max(0, delta - b.maxStep), tolerance: 1e-6 })
       }

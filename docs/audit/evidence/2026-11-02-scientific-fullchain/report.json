@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-09T06:25:47.958Z",
+  "at": "2026-11-14T07:31:33.400Z",
   "suite": "scientific-fullchain",
   "scope": {
     "deviceLayer": "mock",
@@ -54,7 +54,7 @@
     {
       "id": "F4b",
       "name": "模型已注册(linear_state_space,非 stub)",
-      "detail": "mdl-mw8vno28-r9nhb8"
+      "detail": "mdl-mwg37hfo-kydst6"
     },
     {
       "id": "F4c",
@@ -89,7 +89,7 @@
     {
       "id": "F6c2",
       "name": "末步设定真实落到节点(随机序回读)",
-      "detail": "value=1.1 lastLevel=1.1"
+      "detail": "value=1.2 lastLevel=1.2"
     },
     {
       "id": "F6d",
@@ -118,13 +118,13 @@
     }
   ],
   "job": {
-    "id": "job-mw8vno28-r9nhb8",
+    "id": "job-mwg37hfo-kydst6",
     "status": "done",
-    "modelId": "mdl-mw8vno28-r9nhb8",
+    "modelId": "mdl-mwg37hfo-kydst6",
     "trainerRef": "linear_arx@1"
   },
   "model": {
-    "id": "mdl-mw8vno28-r9nhb8",
+    "id": "mdl-mwg37hfo-kydst6",
     "artifactKind": "linear_state_space@1",
     "metrics": {
       "platform": {
@@ -175,7 +175,7 @@
     "trueGain": 1
   },
   "dataset": {
-    "id": "ds-mw8vno1q-vz4n8r",
+    "id": "ds-mwg37heo-dgtq5p",
     "rows": 633,
     "runs": 3,
     "actionCoverage": {
@@ -211,7 +211,7 @@
     }
   },
   "experiment": {
-    "planId": "pexp-mw8vnow3-ch0z",
+    "planId": "pexp-mwg37idi-f87n",
     "status": "done",
     "executed": 2,
     "ledgerRows": 2,
@@ -221,6 +221,6 @@
     ],
     "evidenceRows": 2,
     "refute": 2,
-    "nodeReadback": 1.1
+    "nodeReadback": 1.2
   }
 }

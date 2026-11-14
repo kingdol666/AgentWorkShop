@@ -103,14 +103,16 @@ const binding = getBindingRepo().insert({
   profileId: 'profile-d', profileVersion: 1, capabilities: [], mode: 'recommendation',
 })
 
-const dwNode = new DcwNode({ id: 'dw-1', templateRef: 'dcw-temp-sp', driver: 'mock', min: 0, max: 100, unit: 'bar', decimals: 1 })
+const dwNode = new DcwNode({ id: 'dw-1', templateRef: 'dcw-temp-sp', driver: 'mock', min: 0, max: 100, unit: 'bar', decimals: 1, stepLimit: 20 })
 dwNode.value = 50
 ;(dwNode as unknown as { lineId: string }).lineId = 'ln-d'
 const controller = getDcwController()
+controller.byId = (id: string) => id === 'dw-1' ? dwNode : undefined
 const recipeView = {
   id: 'rc-d', name: '配方D', lineId: 'ln-d', version: 1, productId: 'pd-d',
   params: [{ nodeId: 'dw-1', min: 0, max: 100, unit: 'bar' }],
 }
+controller.listRecipes = () => [recipeView as never]
 const context = {
   lineId: 'ln-d', productId: 'pd-d', recipeId: 'rc-d', recipeVersion: 1, conditionId: 'c-d',
   capturedAt: now, eventAsOf: Date.now(), availabilityWatermark: null, dtMs: 1000,
@@ -135,6 +137,7 @@ const irHash = (() => {
     artifact: modelRoundTrip as never,
     context: snapshot as never,
     runId: 'run-d',
+    enforcePhysicalStepLimits: true,
   }))
 })()
 
@@ -293,6 +296,8 @@ test('单一咽喉:批准 → D13 通过 → committed 抢占 → applyRecipe �
   })
   assert.equal(result.handled, true)
   assert.equal(result.approved, true)
+  assert.equal(result.execution?.status, 'verified')
+  assert.deepEqual(result.execution?.acks, { verified: 1, unverified: 0, failed: 0, total: 1 })
   assert.equal(applyRecipeCalls.length, 1)
   const override = applyRecipeCalls[0]!.overrides[0]!
   assert.equal(override.nodeId, 'dw-1')
@@ -336,6 +341,29 @@ test('业务拒绝:批准时门序失败(工件被换)→ 零写 + denied + comm
   assert.equal(dispatchState(recId), 'denied')
   assert.equal(auditCount('optimizer.dispatch.reject'), 1)
   db.prepare('UPDATE aml_models SET artifact_hash = ? WHERE id = ?').run(artifactHash, 'mdl-d')
+})
+
+test('D13 物理步限:节点 stepLimit(2) < 模型 maxStep(20) → 建卡即拒(DISPATCH_STEP_EXCEEDED)且零写', async () => {
+  cleanupDispatchCards()
+  try {
+    const { resetRecipeOpAnchors } = await import('@/server/services/workshop/dcw/recipe-op-anchor')
+    resetRecipeOpAnchors()
+  }
+  catch { /* 无该测试钩子时改用时间豁免 */ }
+  const originalStepLimit = dwNode.stepLimit
+  dwNode.stepLimit = 2
+  try {
+    const recId = seedRunRec({})
+    const writesBefore = applyRecipeCalls.length
+    // 候选 55 vs 当前 50:模型步限 20 放行,但物理步限 2 必须在建卡门即拒绝
+    await assert.rejects(createDispatchCard(admin as never, recId, '物理步限测试'), (err: { status?: number, code?: string }) =>
+      err.status === 403 && err.code === 'DISPATCH_STEP_EXCEEDED')
+    assert.equal(applyRecipeCalls.length, writesBefore, '建卡被拒不得触发 applyRecipe')
+    assert.equal(dispatchState(recId), 'idle', '拒绝时锚不占位(仍 idle,可修正后重试)')
+  }
+  finally {
+    dwNode.stepLimit = originalStepLimit
+  }
 })
 
 test('取消先赢:撤权收敛在飞卡(cancelPendingDispatchForUser)→ cancelled', async () => {

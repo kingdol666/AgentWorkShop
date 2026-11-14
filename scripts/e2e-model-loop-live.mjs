@@ -802,11 +802,16 @@ process.env.AW_BASE = BASE
       return false
     }
     await gotoReady(page, '/optimizer', { wait: 2500 })
+    // 2026-11 重构后治理流是 a-steps:change 处理器在 .ant-steps-item-container,
+    // 点「Profile / Solver」步骤容器进入 Profile 视图
     await page.evaluate(() => {
-      const btn = Array.from(document.querySelectorAll('button')).find(b => (b.textContent || '').includes('Profile'))
-      if (btn) btn.click()
+      const steps = Array.from(document.querySelectorAll('.ant-steps-item'))
+      const step = steps.find(e => (e.querySelector('.ant-steps-item-title')?.textContent ?? '').trim() === 'Profile / Solver')
+        ?? steps.find(e => (e.textContent || '').includes('Profile'))
+      const container = step?.querySelector('.ant-steps-item-container')
+      if (container) container.click()
     })
-    await sleep(600)
+    await sleep(800)
     const profileDescVisible = await waitText('产线A 膜厚闭环')
     check('M6.3', 'UI:Profile 描述在 /optimizer 台账可见', profileDescVisible)
     await shot('page-optimizer-profile')
