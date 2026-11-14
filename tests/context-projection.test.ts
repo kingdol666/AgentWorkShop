@@ -56,7 +56,7 @@ test('industrial read adapter projects line and industrial metadata without chan
   assert.equal(adapter.sideEffect, 'none')
   assert.equal(adapter.capabilities.snapshot, true)
   assert.equal(adapter.capabilities.query, true)
-  assert.equal(adapter.capabilities.observe, false)
+  assert.equal(adapter.capabilities.observe, true, 'PR-C: observe is the read-only operational evidence capability')
 
   const result = await adapter.snapshot!(request('snapshot', { lineId: 'line-1', window })) as { snapshot: ReturnType<typeof projectGenericFixture> }
   const snapshot = result.snapshot

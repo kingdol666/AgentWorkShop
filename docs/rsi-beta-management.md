@@ -21,6 +21,15 @@ The panel has no execute, approve, promote, control-write, or profile-activation
 - `AW_RSI_BETA_ACTUATION_ENABLED` or `AW_RSI_BETA_PROMOTION_ENABLED` set to `1` remains a hard denial.
 - When the plugin is disabled or its client entry is absent, the host plugin page and existing settings UI remain unchanged.
 
+## Read-only operational evidence (PR-C)
+
+`POST /api/plugins/rsi-interface-beta/evidence/operational` reads operational evidence through the registered `rsi-interface-beta` context adapter's `observe` capability, which in turn uses the existing DAQ/DCW authorities:
+
+- DAQ latest values with explicit `fresh`/`stale`/`missing` freshness and age, history via `tsdbQueryHistory` (explicit `fromMs < toMs` window required), tagged latest samples, and frame metadata/vector previews via `queryFrames`;
+- DCW engineering value, readback value, `lastAckAt`/liveness, effective step limit and range, plus recent write-audit rows from the intervention ledger (ack, actual readback, actor, approval/recipe references).
+
+Every response carries `readOnly: true`, `writeCount: 0`, a content hash and source revision. Requested line/node ids are validated against the host-derived bound-line set; foreign lines or nodes fail closed. The route never writes, acknowledges, approves, promotes, or provisions device authority, and it cannot be used with `actuate`/`simulate`/`replay`/`verify` capabilities.
+
 ## Provenance and limitations
 
 The panel displays contract metadata, not external payloads. It never presents candidate/anecdotal evidence as validated or control authority. Context, Research, and Evidence facts remain owned by their PR-1 through PR-8 contracts, adapters, and existing audit paths.
@@ -36,5 +45,6 @@ Beta remains a recommendation/evidence visibility boundary: it does not create a
 - No actuation, promotion, approval, or write controls in the UI
 - Existing /plugins and settings UI are unchanged when Beta is absent/off
 - Context/research/evidence provenance and limitations are visible
+- Operational evidence is read-only, line-bound, explicitly windowed, and hashed
 - RSI plugin lifecycle, UI contract, typecheck, lint, docs, i18n, and build checks pass
 ```
