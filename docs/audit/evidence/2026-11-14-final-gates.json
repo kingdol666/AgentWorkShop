@@ -1,0 +1,98 @@
+{
+  "manifestVersion": "rsi-final-acceptance.v1",
+  "kind": "post-merge-acceptance-evidence",
+  "recordedAt": "2026-11-14",
+  "base": {
+    "branch": "main (detached acceptance checkout of origin/main)",
+    "head": "e4885f654ed164f89d578714d4a6e0f3af207517",
+    "headShort": "e4885f65",
+    "prChain": [
+      { "pr": 214, "merge": "b7a326ae", "title": "feat(rsi): add read-only operational evidence for beta (plan PR-C)" },
+      { "pr": 215, "merge": "b1a09d75", "title": "fix(rsi): wire live plugin services and add off/on compatibility matrix (plan PR-G)" },
+      { "pr": 216, "merge": "e4885f65", "title": "fix(diag): audit denials through the host ops service seam" }
+    ],
+    "note": "Each PR passed the quick-gate CI (typecheck/lint/unit/i18n/check:cssvars/frontend-lifecycle) before merge."
+  },
+  "t0StaticGates": {
+    "lint": { "status": "PASS", "rsiRedline": { "files": 21, "deviceWriteCalls": 0 } },
+    "typecheck": { "status": "PASS" },
+    "docsSync": { "status": "PASS", "passed": 87, "failed": 0 },
+    "i18n": { "status": "PASS", "zhKeys": 3328, "enKeys": 3328, "unresolved": 0 },
+    "readmeLint": { "status": "PASS" },
+    "cssVariables": { "status": "PASS", "references": 161, "files": 260 },
+    "frontendLifecycleContract": { "status": "PASS", "tests": 3 }
+  },
+  "t1UnitContracts": {
+    "unit": { "status": "PASS", "tests": 1658, "pass": 1658, "fail": 0 },
+    "mcp": { "status": "PASS", "tests": 14 },
+    "pluginDiagRsi": { "status": "PASS", "tests": 67, "files": ["builtin-plugin-security", "plugin-lifecycle-hardening", "plugin-driver-registry", "plugin-governance", "plugin-reload-swap", "rsi-beta-plugin-lifecycle", "rsi-operational-evidence", "diag-bridge-exports", "diag-bridge-lifecycle", "diag-bridge-results-surface"] },
+    "sdkSurface": { "status": "PASS" },
+    "twinProvider": { "status": "PASS", "tests": 5 },
+    "skills": { "status": "PASS", "suites": 167 }
+  },
+  "liveSuites": {
+    "lineGovernance": { "status": "PASS", "cases": 44, "environment": "isolated host + mock DCW/DAQ" },
+    "scientificFullChain": { "status": "PASS", "cases": 21, "boundary": "mock device/fixture response — platform contract evidence, not physical" },
+    "ontologyOffline": { "status": "PASS", "cases": 57 }
+  },
+  "acceptanceRunners": {
+    "rsiSimulation": { "status": "PASS", "report": "docs/audit/evidence/2026-11-14-final-rsi-simulation.json", "physicalWrites": 0, "physicalHil": "not-available" },
+    "rsiIsolatedHomeBaseline": { "status": "PASS", "matched": true, "report": "docs/audit/evidence/2026-11-14-final-rsi-baseline-compare.json", "physicalWrites": 0 },
+    "compatibilityMatrix": {
+      "status": "PASS",
+      "checks": 30,
+      "report": "docs/audit/evidence/2026-11-14-rsi-compatibility-matrix/report.json",
+      "environment": "isolated AW_HOME; mock DCW/DAQ drivers; shared :4010 not used",
+      "coverage": "feature-off routes 404 + UI panel absent; workspace→channel→worker→session/project→recipe/DAQ→HITL→DCW readback/write-audit→RSI read-only evidence→research observe→actuate denial→foreign scope denial; /plugins and /daq UI hydrated",
+      "physicalHil": "NOT RUN"
+    },
+    "productionStartSmoke": {
+      "status": "PASS",
+      "checks": 18,
+      "report": "docs/audit/evidence/2026-11-14-final-production-smoke.json",
+      "command": "node .output/server/index.mjs",
+      "coverage": "flags off/on; /, /daq, /optimizer, /plugins HTTP 200 and hydrated; no uncaught page errors; Beta panel absent off / present on"
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "packageDryRun": "PASS",
+    "packageSize": "43.6 MB",
+    "totalFiles": 4880,
+    "packageShasum": "afc7f5d97014eaa126c2ef66b1c84ebe6d2eb804"
+  },
+  "security": {
+    "mimosa": {
+      "scanId": "scan-2026-11-14T11-57-38.763Z-4c55aab1ca97",
+      "seal": "sha256:37e396394405c6d0465ef65702b25d5d73419466fdd1c11abaf5957baff9dbaf",
+      "artifacts": "D:/tmp/aw-rsi-mimosa-final-20261114/scan-2026-11-14T11-57-38.763Z-4c55aab1ca97",
+      "completeness": "partial",
+      "runStatus": "inconclusive",
+      "selectedFiles": 1841,
+      "parseFailures": 0,
+      "findings": 34,
+      "severity": { "high": 23, "medium": 11 },
+      "dependencyRisk": { "packagesScanned": 62, "matchedAdvisories": 0, "unknown": 0 },
+      "verdict": "NOT a security pass. The scan remains partial/inconclusive because analysis phases are incomplete; findings are the same static pattern set triaged in prior rounds and include no finding against the new RSI operational-evidence/matrix files. No security-pass claim is made."
+    }
+  },
+  "review": {
+    "mode": "implementer self-review (no separate reviewer agent was run this round)",
+    "checked": [
+      "authorization only via host-derived bound lines; foreign line/node ids fail closed",
+      "operational evidence responses carry readOnly/writeCount=0 and no write or ACK path",
+      "plugin dynamic-loader imports now use host ctx.services seams (RSI research/evidence/ops and diag audit)",
+      "metadata SCOPE_UNBOUND does not grant a data plane; /status requires adapter registration for READY",
+      "mock/physical-HIL labels and Mimosa caveats are explicit in evidence"
+    ],
+    "residualNonBlocking": [
+      "IDD /results proxy visibility remains token-scoped and default-off (documented in the round-3 plan, unchanged)",
+      "plugin-bridge template drain still relies on def.plugin rather than the owner argument (prior P2, unchanged)"
+    ]
+  },
+  "notClaimed": [
+    "Physical HIL execution (no authorized window).",
+    "A complete security audit or security-pass verdict (Mimosa remains partial/inconclusive).",
+    "Any production PLC/DCW/DAQ write from this round (all device evidence is mock/simulated with explicit boundaries)."
+  ]
+}
