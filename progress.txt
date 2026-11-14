@@ -14,3 +14,12 @@
 [US-8] UI captures: project-page-desktop.png, session-view-desktop/mobile.png (landing-page-desktop/mobile pending from capture run).
 [learnings] acceptance L2: authorUserId stamp blocks owner self-approval (SELF_APPROVAL_FORBIDDEN) — correct governance; agent submission via invoke needs FULL task uuid + instanceChannelId lead + scope checks; result statuses: draft->submitted->reviewed->approved.
 [US-8] DONE: reviewer REJECTED first round (UI-2 fake pass — wsId undefined empty-state screenshot; hand-curated assertions; server.log missing; REPORT wording). ALL fixed: workspace created+mounted then re-captured with DOM waits; assertions machine-written (e2e-final-assertions.mjs / e2e-session-shot.mjs / e2e-page-shot.mjs); server.log landed; REPORT corrected. Final: acceptance 57/0, ui-capture 6/6 (UI-0..UI-5 scripted), regression 1189/1187/0, all prd stories passes:true.
+
+# ============ 2026-11-14 ralph round 2: RSI closure ============
+[setup] worktree=D:/codes/ABO/aw-rsi-final-accept-20261114 branch=feat/rsi-beta-closure-20261114 base=abb678748(PR#206). PRD rewritten for this round (7 stories). Paper tree untouched.
+[baseline] main abb678748: T0+T1+build+pack+RSI runner 绿; scientific 21/21; line 44/44; ontology-offline 57/57; optimizer live 89/93(W7/W8 real defect+UI selectors); model-loop 52/53(M6.3); ontology-live UI timeout; Mimosa sealed but incomplete.
+[US-1] in progress: runtimeMvBounds design — declared mvBounds stay in structural hash; runtime DCW limits as runtimeMvBounds (excluded from hash); solver+constraintReport+D13 must all honor.
+[US-1] DONE: runtimeMvBounds+runtimeUPrev(执行器锚,write() 同锚)进 IR、排除出结构 hash;Python solver/TS constraintReport/D13 assertStepLimit 三处同源;decide 返回 execution.status(verified|unverified|failed)+逐参数 ack/verify;manager.solve 输出钳制吸收 ≤1e-8 贴边残差。关键教训:TSDB 上下文 uPrev(54.9)与执行器实际值(50)会漂移,速率锚必须用执行器值;OSQP eps 1e-8 的贴边解会打破 1e-9 断言,钳制优于放宽咽喉。
+[US-2] DONE: a-steps change 绑在 .ant-steps-item-container;ant select 需 mousedown;popconfirm OK 需二次点击;runs/profile 表是 ant-table-tbody;U1.10 表无 model 列;U1.15 错误在 .field-error。额外三个真实缺陷:DaqAlarmBar setup 顶层 setInterval → /daq SSR 500(onMounted 包裹修复);/optimizer 水合损坏导致步骤条处理器失效(routeRules ssr:false);saveSpec 丢弃服务端分配 id(读回 specForm)。gotoReady 对 /daq 首编译放宽 240s。
+[US-3] DONE: lint PASS/redline 21 files 0 write;typecheck PASS;unit 1636/1636;build PASS;pack 43.6MB/4871。
+[US-4] DONE: optimizer live 105/105(W7 verified ACK 1/0、W8 回读=48=期望);model-loop 53/53;ontology-live 87/87;line 44/44;scientific 21/21;ontology offline 57/57。

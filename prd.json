@@ -1,120 +1,91 @@
 {
-  "task": "拉取最新 main 并启动项目,做完整端到端测试(Channel 会话/Project 管理/任务下发路由/多 Channel 协同/成果中间件共享/错误处理),并以「商品设计创造性落地页」为真实场景全链路实作",
+  "task": "检查系统是否有大问题,修复已证实缺口,全功能测试通过,PR 提交/验收/合并,并按 aw-system-acceptance skill 做最终验收(含 Mimosa 最终扫描)",
   "stories": [
     {
       "id": "US-1",
-      "title": "环境就绪:main 门禁 + 服务器健康启动",
+      "title": "PR-A:优化器下发遵守 DCW 有效物理步限 + ACK 语义如实",
       "priority": 1,
       "passes": true,
       "acceptanceCriteria": [
-        "AW-sessions-ui 检出 origin/main 最新提交(≥137ee7e9)且工作树无本任务外的脏改动",
-        "全量单元套件在 main 上 0 fail(记录 tests/pass/fail 数字)",
-        "nuxi build 成功且 .output/server/index.mjs 存在",
-        "服务器以 BACKUP_DISABLED=1 + 独立 AW_HOME 在端口 3001 启动,GET /api/health 返回 ok",
-        "引擎可用性已记录(哪些 harness 可用:mock 必有;真实 LLM 引擎按实际探测结果记录)"
+        "buildProblemIR 运行时模式(enforcePhysicalStepLimits)将 DCW 节点/参数/活动配方有效步限换算到模型单位并写入 runtimeMvBounds;声明 mvBounds 保持不变且结构 hash 不受 runtime 限界影响(computeProblemIrHash 排除 runtimeMvBounds)",
+        "Python solver(OSQP 线性 MPC + SLSQP 静态)在 runtimeMvBounds 存在时按其约束求解",
+        "constraintReport 独立复核使用 runtimeMvBounds(存在时)",
+        "D13 在模型 maxStep 之外用 assertStepLimit 复核当前物理步限;越限返回 DISPATCH_STEP_EXCEEDED 且零写",
+        "decideOptimizerDispatch 执行结果携带 execution.status(verified|unverified|failed)与逐参数 ack/verify;ACK 失败不得呈现为设备成功",
+        "tests/optimizer-dispatch.test.ts 全部通过,并新增用例:节点 stepLimit=2 < 模型 maxStep=20 时求解/建卡/D13 全链遵守 2"
       ],
-      "verified": "environment.json + 回归 1189/1187/0 + health ok(评审员亲核)"
+      "verified": "runtimeMvBounds/runtimeUPrev(执行器锚)进 IR 且排除出结构 hash;Python solver/TS 复核/D13 三处同源;decide 返回 execution.status;新增 stepLimit=2 拒卡与 worker 钳制用例,optimizer-dispatch 9/9 + solver-contracts 全绿"
     },
     {
       "id": "US-2",
-      "title": "Channel 会话功能端到端(注入/压缩/记忆戳实拍)",
+      "title": "E2E 选择器修复:optimizer live UI 步骤条/角色下拉 + model-loop M6.3",
       "priority": 2,
       "passes": true,
       "acceptanceCriteria": [
-        "创建 Channel(mock lead+worker)→ 创建 manual session → 发消息 → clone 回执落同一 session(metadata.session_id 正确)",
-        "brief?format=block 含分层头(Session Context/关键事实/近期对话)与 profile=full;压缩触发后早期上下文层出现且 pinned 原文保留",
-        "会话记忆戳:任务/协作路径落库的记忆行含 sessionId;search API scope=session 命中本会话、他 session 为空",
-        "UI:会话视图渲染 brief 卡+注入预览+composer 发送回执(截图桌面+移动,无横向溢出)"
+        "scripts/e2e-optimizer-live.mjs 的 tab 切换改为点击 a-steps 步骤项(.ant-steps-item),U1.1 断言统计 5 个步骤标题",
+        "角色选择改为 Ant Design select 交互(打开下拉点击 option),不再假设原生 <select>",
+        "scripts/e2e-model-loop-live.mjs M6.3 用相同步骤条交互进入 Profile 视图后再断言 Profile 描述可见"
       ],
-      "verified": "S2-1..S2-7 18/18 (running instance 3995; e2e-acceptance.json)"
+      "verified": "a-steps 容器点击+校验重试、ant select/popconfirm/tbody 选择器、U1.10 列断言修正、M6.3 步骤交互、ontology-live gotoReady 240s;另修复 /daq SSR 500(DaqAlarmBar setup 顶层 setInterval)+ /optimizer 水合损坏(routeRules ssr:false)+ Profile spec id 读回"
     },
     {
       "id": "US-3",
-      "title": "Project 管理功能端到端",
+      "title": "全量静态与单元门禁绿",
       "priority": 3,
       "passes": true,
       "acceptanceCriteria": [
-        "创建项目(含 leader)→ 绑定执行 Channel → 创建必选交付物(含验收标准)→ 创建工作项 → 激活 → plan 提交/批准,每步 200 且审计事件落库",
-        "项目创建生成 project session;observability 快照含 access.canManage/工作项/交付物状态",
-        "项目页 UI 渲染概览/会话卡/Leader 对话卡(截图)"
+        "pnpm run lint(含 RSI 红线)0 fail",
+        "pnpm run typecheck 通过",
+        "pnpm run test:unit 0 fail(记录 pass/fail 数字)",
+        "pnpm run build 成功;npm pack --dry-run 成功"
       ],
-      "verified": "S3-1..S3-11 (plan/observability/sessions/events all green)"
+      "verified": "lint(含红线 21 文件 0 写)PASS、typecheck PASS、unit 1636/1636、build PASS、pack 43.6MB/4871 files"
     },
     {
       "id": "US-4",
-      "title": "任务下发路由端到端",
+      "title": "实机套件在本分支全绿",
       "priority": 4,
       "passes": true,
       "acceptanceCriteria": [
-        "派发工作项 → 任务实例 Channel + task session 生成;root 任务树创建且 session_id 贯通 root/子任务/assign 消息",
-        "mock worker 执行 → 进度上报 → 终态 COMPLETED;attempt 记录 session",
-        "未批准 plan 时派发被拒(409 PLAN_*);错误响应为结构化 envelope(code/message)"
+        "optimizer live E2E 全部断言通过(此前 89/93,W7/W8/U1.1/UI 必须转绿)",
+        "model-loop live E2E 全部断言通过(此前 52/53,M6.3 转绿)",
+        "ontology live E2E 完整跑完不超时(串行执行,记录 n/n)",
+        "line governance 44/44;scientific fullchain 21/21;ontology offline 57/57 维持绿"
       ],
-      "verified": "S4-1..S4-7 (instance channel+task session+assign stamp+COMPLETED+memory stamp+scope isolation)"
+      "verified": "optimizer live 105/105(W7 execution.status=verified,acks 1/0,W8 回读 48=期望)、model-loop 53/53、ontology-live 87/87、line 44/44、scientific 21/21、ontology offline 57/57"
     },
     {
       "id": "US-5",
-      "title": "多 Channel 协同作业 + 成果中间件共享",
+      "title": "PR 提交、CI 绿、合并 main",
       "priority": 5,
       "passes": true,
       "acceptanceCriteria": [
-        "项目绑定 ≥2 个执行 Channel(设计/前端分工),各自有工作项且都派发成功(真并行实例频道)",
-        "跨频道 A2A:channel A 成员向 channel B 成员发 requireReply 消息,回执回源(channel B→A),metadata 带 x-aw-cross-channel",
-        "成果中间件共享:某频道产出的 artifact/结果可经交付物归属(ownerChannelId)与结果提交进入项目层,另一频道的工作项可引用/依赖该交付物(dependsOn)并推进",
-        "技术验收门:结果提交 → technical 门拦截未达标准提交 / 通过达标提交(记录 L1 拦截证据)"
+        "分支推送 origin,创建 PR,PR CI(quick-gate)success",
+        "PR 合并进 main(记录 merge SHA),远端分支按仓库惯例处理"
       ],
-      "blocked": "S5-7 blocked by real defect: P2 aggregated child-artifact evidence cannot be traced at submit (validator reads root task only)",
-      "verified": "S5-1..S5-7 (after US-9 fix merged; cross-channel A2A + reconcile + submit/review L1)"
+      "verified": "PR #207 创建(quick-gate success run 43572253720)→ merge commit d4ac2e81,远端分支已删"
     },
     {
       "id": "US-6",
-      "title": "错误处理矩阵",
+      "title": "合并后 main 最终验收",
       "priority": 6,
       "passes": true,
       "acceptanceCriteria": [
-        "未批准 plan 派发 → 409;重复 clientMessageId → 幂等(duplicates 标记);非 owner 写操作 → 403;非法角色/超限输入 → 400",
-        "投递失败路径:sendChatMessage 到不可达目标时返回 status=failed 而非 500(或等效优雅降级证据)",
-        "以上全部为结构化错误 envelope(code 可编程判别),逐条记录响应 JSON 到证据"
+        "干净工作树检出合并后 main,T0(lint/typecheck/docs/i18n/readme)+ T1(unit/mcp/plugin-lifecycle/sdk/twin/skills)全绿",
+        "RSI acceptance runner(all profile,simulation + isolated-home baseline)PASS",
+        "Mimosa 深度扫描重跑:完整封印结论如实记录;partial/inconclusive 不得宣称安全通过"
       ],
-      "verified": "S6-0..S6-6 (403/401/400/409/CHAT_DISABLED/幂等/ghost 降级 all structured)"
+      "verified": "main d4ac2e81 上 T0 五门禁 + T1(unit 1636/1636 串行、mcp 14、lifecycle 22、sdk、twin 5、skills 167)+ RSI runner(simulation/baseline PASS、physical BLOCKED)+ Mimosa 终扫(封印但 partial/inconclusive,34 findings,依赖风险 0,未宣称安全通过);证据 docs/audit/evidence/2026-11-14-rsi-closure-final-gates.json"
     },
     {
       "id": "US-7",
-      "title": "真实场景:商品设计创造性落地页全链路实作",
+      "title": "独立评审按 PRD 复核",
       "priority": 7,
-      "passes": true,
+      "passes": false,
       "acceptanceCriteria": [
-        "落地页项目含 ≥3 个工作项(市场定位与文案/视觉与结构/HTML 实现),分布 ≥2 个 Channel,全部走真实派发链路执行",
-        "最终交付物 landing-page.html 为完整可渲染 HTML(含商品卖点/FAQ/CTA/响应式样式),经结果提交+技术验收通过(accepted)",
-        "产物从任务 artifact 链路取回并落盘到证据目录;附渲染截图(桌面+移动)",
-        "全程使用会话/记忆/审计机制(session 戳、decision/事件、brief 演进有证据)"
-      ],
-      "verified": "W4 真实引擎文案腿 COMPLETED(omp,5148 字存证);HTML 合成腿 3 次真实尝试超预算(如实记录)→按预案 mock 编排链+owner 主编真实文案+agent 提交(project_submit_result)→L1 评审→证据门→L2 approved(W10 f21b881f,payload 含完整可渲染 HTML);S7-* 断言 57/0"
-    },
-    {
-      "id": "US-8",
-      "title": "验收闭环+证据归档+评审",
-      "priority": 8,
-      "passes": true,
-      "acceptanceCriteria": [
-        "全部断言 JSON(e2e-acceptance.json)+ 截图 + server.log 落盘 docs/audit/evidence/2026-11-07-e2e-landing/",
-        "progress.txt 记录每个 story 的实现/验证/学习",
-        "独立评审代理按 PRD 验收标准复核并给出 APPROVED/REJECTED",
-        "评审后回归:unit 全量 0 fail + 服务器仍健康"
-      ],
-      "verified": "acceptance.json(57/0,脚本产出)+5截图+server.log+progress.txt 落盘;回归 1189/1187/0;评审整改后复验通过"
-    },
-    {
-      "id": "US-9",
-      "title": "修复:证据回溯域=root+全部后代任务(P2 聚合证据不可提交的缺陷)",
-      "priority": 6.5,
-      "passes": true,
-      "acceptanceCriteria": [
-        "verifyEvidenceAgainstTask 支持树域(root+后代 artifacts_json 合并摘要);三个调用点(submitResult/agent submit/assertAcceptanceGates)全部传入树域",
-        "新单测:child artifact 证据经 ensureDraftFromTask → submitResult 成功;外来任务 artifact 仍被拒绝;assertAcceptanceGates 通过",
-        "全量 unit 0 fail + typecheck/lint/build 通过;PR 过 CI 合 main;E2E 服务器重建后 S5-7 通过"
-      ],
-      "verified": "PR #80 merged (ad63f711);unit 1189/1187/0;实机 S5-7 复验 submit 200"
+        "评审代理对照本 PRD 验收标准逐条核验实现与证据,返回 APPROVED/REJECTED",
+        "REJECTED 时修复后复验直至 APPROVED"
+      ]
     }
   ]
 }
