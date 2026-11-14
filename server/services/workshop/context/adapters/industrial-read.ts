@@ -4,6 +4,7 @@ import type {
   ContextAdapterOperationRequest,
   ContextAdapterAuthorizer,
   ContextRef,
+  ContextScope,
   ContextSubject,
   DomainObject,
   MaterialAssignment,
@@ -36,10 +37,19 @@ type ReadServices = {
   twins: { listAll(): readonly ReadRecord[], findById(id: string): ReadRecord | undefined }
 }
 
+export type IndustrialReadScope = ContextScope & {
+  /** Adapter-local selectors; generic context contracts do not carry these fields. */
+  lineId?: string
+  lineIds?: readonly string[]
+  projection?: string
+  industrial?: boolean
+}
+
 export type IndustrialReadRequest = {
   id?: string
   lineId?: string
-  scope?: Parameters<typeof projectContext>[0]['scope']
+  lineIds?: readonly string[]
+  scope?: IndustrialReadScope
   window?: ProjectionWindow
 }
 
@@ -73,8 +83,8 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value : value == null ? '' : String(value)
 }
 
-function sourceRef(lineId?: string): string {
-  return `industrial.read:${lineId || 'all'}`
+function sourceRef(lineId?: string, lineIds?: readonly string[]): string {
+  return `industrial.read:${lineId || (lineIds?.length ? lineIds.join(',') : 'all')}`
 }
 
 function sourceValue(value: unknown): Attribute['value'] {
@@ -116,9 +126,10 @@ function asView(item: ReadRecord): ReadRecord {
   return typeof toView === 'function' ? record(toView.call(item)) : { ...item }
 }
 
-function selected<T extends ReadRecord>(items: readonly T[], lineId: string | undefined): T[] {
-  if (!lineId) return [...items]
-  return items.filter(item => text(item.lineId) === lineId)
+function selected<T extends ReadRecord>(items: readonly T[], lineId: string | undefined, lineIds?: readonly string[]): T[] {
+  if (lineId) return items.filter(item => text(item.lineId) === lineId)
+  if (lineIds?.length) return items.filter(item => lineIds.includes(text(item.lineId)))
+  return [...items]
 }
 
 function selectedTwins(services: ReadServices, nodeRecords: readonly ReadRecord[], lineId?: string): ReadRecord[] {
@@ -135,13 +146,15 @@ function selectedTwins(services: ReadServices, nodeRecords: readonly ReadRecord[
 
 function projectIndustrialRead(services: ReadServices, request: IndustrialReadRequest, adapterId: string, version: string, now: string): IndustrialReadPayload {
   const lineId = text(request.lineId) || undefined
-  const lines = lineId ? services.lines.all().filter(item => text(item.id) === lineId) : [...services.lines.all()]
-  const products = selected(services.products.all(), lineId)
-  const recipes = selected(services.recipes.list(), lineId)
+  const lineIds = Array.isArray(request.lineIds) ? [...new Set(request.lineIds.map(text).filter(Boolean))] : undefined
+  const lines = lineId ? services.lines.all().filter(item => text(item.id) === lineId) : lineIds?.length ? services.lines.all().filter(item => lineIds.includes(text(item.id))) : [...services.lines.all()]
+  const selectedLineIds = lineId ? [lineId] : lineIds
+  const products = selected(services.products.all(), lineId, lineIds)
+  const recipes = selected(services.recipes.list(), lineId, lineIds)
   const recipeIds = new Set(recipes.map(item => text(item.id)))
-  const runs = selected(services.recipes.listRuns(), lineId).filter(item => !lineId || recipeIds.has(text(item.recipeId)))
-  const dcwNodes = selected(services.dcwNodes.all(), lineId).map(asView)
-  const daqNodes = selected(services.daqNodes.all(), lineId).map(asView)
+  const runs = selected(services.recipes.listRuns(), lineId, lineIds).filter(item => (!lineId && !lineIds?.length) || recipeIds.has(text(item.recipeId)))
+  const dcwNodes = selected(services.dcwNodes.all(), lineId, lineIds).map(asView)
+  const daqNodes = selected(services.daqNodes.all(), lineId, lineIds).map(asView)
   const bindings = [...services.bindings.all()].filter((item) => {
     if (!lineId) return true
     const kind = text(item.kind)
@@ -278,7 +291,7 @@ function projectIndustrialRead(services: ReadServices, request: IndustrialReadRe
   }
 
   const serializableSource = { lines, products, recipes, runs, dcwNodes, daqNodes, bindings, twins }
-  const source: ProjectionSource = { adapterId, version, sourceRef: sourceRef(lineId), sourceRevision: canonicalHash(serializableSource).slice(0, 16), contentHash: canonicalHash(serializableSource), capturedAt: now }
+  const source: ProjectionSource = { adapterId, version, sourceRef: sourceRef(lineId, selectedLineIds), sourceRevision: canonicalHash(serializableSource).slice(0, 16), contentHash: canonicalHash(serializableSource), capturedAt: now }
   const snapshot = projectContext({
     id: request.id ?? `industrial-context-${lineId ?? 'all'}`,
     scope: request.scope,
@@ -314,26 +327,35 @@ export function createIndustrialReadAdapter(options: {
   const now = options.now ?? (() => new Date().toISOString())
   const snapshot = (request: ContextAdapterOperationRequest): IndustrialReadPayload => {
     const authorization = request.authorization
-    if (options.authorize && (!authorization?.industrial || authorization.lineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
+    if (options.authorize && (!authorization || authorization.lineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
     const requested = payloadOf(request)
     const requestedLineId = text(requested.lineId) || undefined
-    const requestedScope = requested.scope as (typeof requested.scope & { lineIds?: readonly string[] }) | undefined
-    const requestedLineIds: string[] = Array.isArray(requestedScope?.lineIds) ? requestedScope.lineIds.map(text).filter((lineId): lineId is string => Boolean(lineId)) : []
+    const requestedScope = requested.scope as IndustrialReadScope | undefined
+    const requestedLineIds = [...new Set([
+      ...(Array.isArray(requested.lineIds) ? requested.lineIds : []),
+      ...(Array.isArray(requestedScope?.lineIds) ? requestedScope.lineIds : []),
+    ].map(text).filter((lineId): lineId is string => Boolean(lineId)))]
     if (authorization) {
       const allowed = new Set(authorization.lineIds)
       if (requestedLineId && !allowed.has(requestedLineId)) throw new Error('industrial projection line is outside authorized bindings')
       if (requestedLineIds.some(lineId => !allowed.has(lineId))) throw new Error('industrial projection line is outside authorized bindings')
     }
     const lineId = requestedLineId ?? (requestedLineIds.length === 1 ? requestedLineIds[0] : undefined)
-    return projectIndustrialRead(services, { ...requested, lineId }, adapterId, version, now())
+    const authorizedLineIds = authorization?.lineIds ?? []
+    if (authorization && requestedLineIds.length === 0 && authorizedLineIds.length === 0) throw new Error('industrial adapter requires authorized line bindings')
+    return projectIndustrialRead(services, { ...requested, lineId, lineIds: authorizedLineIds }, adapterId, version, now())
   }
   const discover = (request: ContextAdapterOperationRequest) => {
     const authorization = request.authorization
-    if (options.authorize && (!authorization?.industrial || authorization.lineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
+    if (options.authorize && (!authorization || authorization.lineIds.length === 0)) throw new Error('industrial adapter requires authorized line bindings')
     const payload = payloadOf(request)
     const requestedLineId = text(payload.lineId) || undefined
+    const requestedLineIds = Array.isArray(payload.lineIds) ? payload.lineIds.map(text).filter(Boolean) : []
     if (authorization && requestedLineId && !authorization.lineIds.includes(requestedLineId)) throw new Error('industrial discovery line is outside authorized bindings')
-    const lineIds = authorization ? (requestedLineId ? [requestedLineId] : [...authorization.lineIds]) : (requestedLineId ? [requestedLineId] : undefined)
+    if (authorization && requestedLineIds.some(lineId => !authorization.lineIds.includes(lineId))) throw new Error('industrial discovery line is outside authorized bindings')
+    const authorizedLineIds = authorization?.lineIds ?? []
+    const lineIds = authorization ? (requestedLineId ? [requestedLineId] : requestedLineIds.length ? requestedLineIds : [...authorizedLineIds]) : (requestedLineId ? [requestedLineId] : requestedLineIds.length ? requestedLineIds : undefined)
+
     const lines = lineIds ? services.lines.all().filter(item => lineIds.includes(text(item.id))) : services.lines.all()
     return { adapterId, version, lineId: requestedLineId, refs: lines.map(item => contextRef('industrial.line', text(item.id))), counts: { lines: lines.length, products: selected(services.products.all(), requestedLineId).length, recipes: selected(services.recipes.list(), requestedLineId).length } }
   }

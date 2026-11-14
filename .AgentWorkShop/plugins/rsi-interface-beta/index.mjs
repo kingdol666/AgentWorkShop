@@ -113,12 +113,13 @@ function publicAdapterStatus(status) {
   }
 }
 
-function publicMetadata(state) {
+function publicMetadata(state, event) {
   const flags = readBetaFlags()
   const persistence = state.persistenceReady ? readPersistence(state.ctx) : { ok: false, code: 'PERSISTENCE_UNAVAILABLE' }
   const persistedScope = persistence.ok && persistence.scope && typeof persistence.scope === 'object' ? persistence.scope : null
+  const principal = event?.awUser ?? event?.context?.awUser ?? event?.request?.principal ?? null
   const runtimeScope = persistedScope && state.runtime?.authorizeScope?.({
-    principal: state.ctx?.principal ?? null,
+    principal,
     scope: persistedScope,
   })
   const scopeResult = flags.globallyEnabled && persistence.ok && persistedScope && runtimeScope?.ok
@@ -402,7 +403,7 @@ export default {
     const statusHandler = event => routeResult(state, event, null)
     const healthHandler = event => routeResult(state, event, 'observe')
     const scopeHandler = event => routeResult(state, event, 'query')
-    const metadataHandler = () => publicMetadata(state)
+    const metadataHandler = event => publicMetadata(state, event)
     const adapterHandler = event => ({
       ...routeResult(state, event, null),
       adapterDescriptor,
@@ -447,6 +448,8 @@ export default {
       if (!authorized.ok) return authorized.response
       const { plan, execute, ...request } = body
       request.scope = authorized.scope
+      request.principal = event?.awUser ?? event?.context?.awUser ?? event?.request?.principal ?? null
+      request.authorizationScope = authorized.scope
       const planError = plan ? ensureReadPlan(plan) : null
       if (planError) return planError
       try {
@@ -456,7 +459,12 @@ export default {
           run = state.research.orchestrator.plan(run.id, plan)
           run = state.research.orchestrator.approveRead(run.id)
         }
-        if (execute === true) run = await state.research.orchestrator.execute(run.id)
+        if (execute === true) {
+          run = await state.research.orchestrator.execute(run.id, {
+            principal: request.principal,
+            authorizationScope: request.authorizationScope,
+          })
+        }
         if (!persistResearchState(state)) return researchError({ code: 'PERSISTENCE_UNAVAILABLE', message: 'research state could not be persisted' })
         state.researchPersistenceReady = true
         return { ok: true, available: true, scope: authorized.scope, run, idempotent: created.idempotent, candidateOnly: true, actuation: false, promotion: false }

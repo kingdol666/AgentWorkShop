@@ -63,6 +63,8 @@ type MutableRun = {
   question: string
   subjectRefs: readonly ContextRef[]
   scope: ResearchRequest['scope']
+  principal?: ResearchRequest['principal']
+  authorizationScope?: ResearchRequest['authorizationScope']
   contextSnapshotId?: string
   researchCaseId?: string
   allowedCapabilities: readonly ResearchCapability[]
@@ -148,6 +150,8 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
       question: request.question,
       subjectRefs: request.subjectRefs,
       scope: request.scope,
+      principal: request.principal,
+      authorizationScope: request.authorizationScope,
       contextSnapshotId: request.contextSnapshotId,
       researchCaseId: request.researchCaseId,
       allowedCapabilities,
@@ -156,7 +160,7 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
     const existingId = this.idempotency.get(request.idempotencyKey)
     if (existingId) {
       const existing = this.runs.get(existingId)!
-      const existingFingerprint = canonicalHash({ id: existing.id, idempotencyKey: existing.idempotencyKey, objective: existing.objective, question: existing.question, subjectRefs: existing.subjectRefs, scope: existing.scope, contextSnapshotId: existing.contextSnapshotId, researchCaseId: existing.researchCaseId, allowedCapabilities: existing.allowedCapabilities, budget: existing.budget })
+      const existingFingerprint = canonicalHash({ id: existing.id, idempotencyKey: existing.idempotencyKey, objective: existing.objective, question: existing.question, subjectRefs: existing.subjectRefs, scope: existing.scope, principal: existing.principal, authorizationScope: existing.authorizationScope, contextSnapshotId: existing.contextSnapshotId, researchCaseId: existing.researchCaseId, allowedCapabilities: existing.allowedCapabilities, budget: existing.budget })
       if (existingFingerprint !== requestFingerprint) throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.IDEMPOTENCY_CONFLICT, `idempotency key ${request.idempotencyKey} conflicts with an existing request`)
       return { run: freezeRun(existing), idempotent: true }
     }
@@ -169,6 +173,8 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
       question: request.question,
       subjectRefs: Object.freeze([...request.subjectRefs]),
       scope: Object.freeze({ ...request.scope }),
+      ...(request.principal ? { principal: Object.freeze({ ...request.principal }) } : {}),
+      ...(request.authorizationScope ? { authorizationScope: Object.freeze({ ...request.authorizationScope }) } : {}),
       ...(request.contextSnapshotId ? { contextSnapshotId: request.contextSnapshotId } : {}),
       ...(request.researchCaseId ? { researchCaseId: request.researchCaseId } : {}),
       allowedCapabilities,
@@ -255,7 +261,12 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
         this.checkCancellation(signal)
         assertDuration(startedAtMs, Date.parse(this.now()), run.budget)
         if (step.capability === ('actuate' as ContextAdapterCapability) || step.capability.toLowerCase() === 'actuate') throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.ACTUATE_FORBIDDEN, 'research cannot actuate')
-        const result = await this.registry.invoke(step.adapterId, step.capability, clone(step.payload), { idempotencyKey: `${run.id}:${step.id}`, signal })
+        const result = await this.registry.invoke(step.adapterId, step.capability, clone(step.payload), {
+          idempotencyKey: `${run.id}:${step.id}`,
+          signal,
+          ...(options.principal ?? run.principal ? { principal: options.principal ?? run.principal } : {}),
+          ...(options.authorizationScope ?? run.authorizationScope ? { scope: options.authorizationScope ?? run.authorizationScope } : {}),
+        })
         this.checkCancellation(signal)
         if (!result.ok) {
           throw new ResearchOrchestratorError(RESEARCH_ERROR_CODES.ADAPTER_FAILURE, `${step.adapterId} ${step.capability} failed: ${result.error.code}: ${result.error.message}`)
@@ -336,6 +347,8 @@ export class LocalResearchOrchestrator implements ResearchOrchestrator {
       question: value.question,
       subjectRefs: Object.freeze(structuredClone(value.subjectRefs) as ContextRef[]),
       scope: Object.freeze(structuredClone(value.scope) as ResearchRequest['scope']),
+      ...(isRecord(value.principal) && typeof value.principal.id === 'string' ? { principal: Object.freeze({ id: value.principal.id, ...(typeof value.principal.role === 'string' ? { role: value.principal.role } : {}) }) } : {}),
+      ...(isRecord(value.authorizationScope) ? { authorizationScope: Object.freeze(structuredClone(value.authorizationScope) as ResearchRequest['authorizationScope']) } : {}),
       ...(typeof value.contextSnapshotId === 'string' ? { contextSnapshotId: value.contextSnapshotId } : {}),
       ...(typeof value.researchCaseId === 'string' ? { researchCaseId: value.researchCaseId } : {}),
       allowedCapabilities: normalizeAllowedCapabilities(value.allowedCapabilities as ResearchCapability[] | undefined),

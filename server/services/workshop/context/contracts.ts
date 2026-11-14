@@ -56,22 +56,17 @@ export interface ContextAdapterLifecycleContext {
   signal: AbortSignal
 }
 
-export type ContextAdapterAuthorizationScope = {
-  workspaceId: string
-  channelId: string
-  workerId: string
-  lineId?: string
-  lineIds?: readonly string[]
-  projection?: string
-  industrial?: boolean
-  [key: string]: unknown
+export type ContextAdapterAuthorizationScope = ContextScope & {
+  workspaceId?: string
+  channelId?: string
+  workerId?: string
 }
 
 export type ContextAdapterAuthorizationContext = {
   scope: ContextAdapterAuthorizationScope
   principal: { id: string, role?: string }
+  /** Derived bindings returned by authorization; never accepted from caller input. */
   lineIds: readonly string[]
-  industrial: boolean
 }
 
 export type ContextAdapterAuthorizationInput = {

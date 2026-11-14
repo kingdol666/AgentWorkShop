@@ -13,8 +13,11 @@ const activeState = {
   updatedAt: new Date().toISOString(),
 }
 
-function readAdapter(): ContextAdapter {
-  const operation = async request => ({ ok: true as const, payload: { capability: request.capability, value: 1 } })
+function readAdapter(authorizationCalls: unknown[] = []): ContextAdapter {
+  const operation = async (request) => {
+    authorizationCalls.push(request.authorization)
+    return { ok: true as const, payload: { capability: request.capability, value: 1 } }
+  }
   return {
     adapterId: 'rsi-interface-beta',
     apiVersion: 'context-adapter.v1',
@@ -25,6 +28,10 @@ function readAdapter(): ContextAdapter {
     health: { status: 'healthy' },
     timeout: { defaultMs: 1000, maxMs: 5000 },
     owner: { ownerId: 'rsi-interface-beta', dispose: async () => undefined },
+    requiresAuthorization: true,
+    authorize: ({ principal, scope: requested }) => principal?.id === 'operator' && JSON.stringify(requested) === JSON.stringify(scope)
+      ? { scope: requested, principal: { id: 'operator', role: 'user' }, lineIds: ['line-authorized'] }
+      : false,
     discover: operation,
     snapshot: operation,
     observe: operation,
@@ -34,7 +41,7 @@ function readAdapter(): ContextAdapter {
   }
 }
 
-function makeContext(store: Record<string, unknown>, options: { deny?: boolean, failSet?: boolean } = {}) {
+function makeContext(store: Record<string, unknown>, options: { deny?: boolean, failSet?: boolean, authorizationCalls?: unknown[] } = {}) {
   const routes = new Map<string, (event?: unknown) => unknown>()
   const disposables: Array<() => unknown> = []
   const registry = new ContextAdapterRegistry()
@@ -46,11 +53,16 @@ function makeContext(store: Record<string, unknown>, options: { deny?: boolean, 
       return registry.registerOne(adapter)
     },
     createIndustrialReadAdapter() {
-      return readAdapter()
+      return readAdapter(options.authorizationCalls)
     },
     authorizeScope({ principal, scope: requested }: { principal?: { id?: string } | null, scope?: typeof scope }) {
-      if (options.deny || principal?.id !== 'operator' || JSON.stringify(requested) !== JSON.stringify(scope)) return { ok: false as const, code: 'SCOPE_FORBIDDEN' as const }
-      return { ok: true as const, scope }
+      if (options.deny || principal?.id !== 'operator' || !requested || Object.entries(scope).some(([key, value]) => requested[key] !== value)) return { ok: false as const, code: 'SCOPE_FORBIDDEN' as const }
+      return { ok: true as const, scope: requested }
+    },
+    authorizeAdapterRequest({ principal, scope: requested }: { principal?: { id?: string }, scope?: unknown }) {
+      return principal?.id === 'operator' && JSON.stringify(requested) === JSON.stringify(scope)
+        ? { scope: requested, principal: { id: 'operator', role: 'user' }, lineIds: ['line-authorized'] }
+        : false
     },
   }
   const context = {
@@ -162,6 +174,45 @@ test('research and candidate evidence survive plugin restart through ctx.kv', as
     const evidence = await second.routes.get('GET /evidence')!(event()) as Record<string, unknown>
     assert.equal(evidence.ok, true)
     assert.equal((evidence.evidence as unknown[]).length, 1)
+  })
+})
+
+test('metadata authorization uses the request event principal', async () => {
+  await enabledEnvironment(async () => {
+    const store: Record<string, unknown> = { [SCOPE_STATE_KEY]: activeState }
+    const { context, routes } = makeContext(store)
+    await plugin.setup(context as never)
+    const denied = routes.get('GET /metadata')!({ awUser: { id: 'intruder', role: 'user' } }) as Record<string, unknown>
+    assert.equal(denied.visible, false)
+    assert.equal(denied.code, 'SCOPE_FORBIDDEN')
+    const allowed = routes.get('GET /metadata')!(event()) as Record<string, unknown>
+    assert.equal(allowed.visible, true)
+    assert.deepEqual(allowed.scope, scope)
+  })
+})
+
+test('research execution forwards principal and authorized scope into adapter invocation', async () => {
+  await enabledEnvironment(async () => {
+    const store: Record<string, unknown> = { [SCOPE_STATE_KEY]: activeState }
+    const authorizationCalls: unknown[] = []
+    const { context, routes } = makeContext(store, { authorizationCalls })
+    await plugin.setup(context as never)
+    const created = await routes.get('POST /research/run')!(event({
+      id: 'run-auth-forward-1',
+      idempotencyKey: 'auth-forward-key-1',
+      objective: 'read',
+      question: 'authorized?',
+      subjectRefs: [{ namespace: 'fixture.subject', id: 'subject-1' }],
+      plan: { id: 'plan-auth-forward-1', steps: [{ id: 'step-1', adapterId: 'rsi-interface-beta', capability: 'query', payload: {}, sourceRef: 'fixture:query' }] },
+      execute: true,
+    })) as Record<string, unknown>
+    assert.equal(created.ok, true)
+    assert.equal(authorizationCalls.length, 1)
+    assert.deepEqual(authorizationCalls[0], {
+      scope,
+      principal: { id: 'operator', role: 'user' },
+      lineIds: ['line-authorized'],
+    })
   })
 })
 

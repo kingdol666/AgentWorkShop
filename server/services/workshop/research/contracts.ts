@@ -3,6 +3,7 @@ import type {
   EVIDENCE_KINDS,
   EVIDENCE_QUALITY,
   ContextAdapterCapability,
+  ContextAdapterAuthorizationScope,
   ContextRef,
   ContextScope,
   ContextWindow,
@@ -64,6 +65,8 @@ export interface ResearchRequest {
   readonly question: string
   readonly subjectRefs: readonly ContextRef[]
   readonly scope: ContextScope
+  readonly principal?: { id: string, role?: string }
+  readonly authorizationScope?: ContextAdapterAuthorizationScope
   readonly contextSnapshotId?: string
   readonly researchCaseId?: string
   readonly allowedCapabilities?: readonly ResearchCapability[]
@@ -113,6 +116,8 @@ export interface ResearchRun {
   readonly question: string
   readonly subjectRefs: readonly ContextRef[]
   readonly scope: ContextScope
+  readonly principal?: { id: string, role?: string }
+  readonly authorizationScope?: ContextAdapterAuthorizationScope
   readonly contextSnapshotId?: string
   readonly researchCaseId?: string
   readonly allowedCapabilities: readonly ResearchCapability[]
@@ -136,6 +141,7 @@ export interface ResearchCreateResult {
 export interface ResearchExecutionOptions {
   readonly signal?: AbortSignal
   readonly principal?: { id: string, role?: string }
+  readonly authorizationScope?: ContextAdapterAuthorizationScope
 }
 
 export interface ResearchOrchestratorOptions {

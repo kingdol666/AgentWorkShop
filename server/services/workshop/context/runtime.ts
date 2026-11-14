@@ -23,12 +23,6 @@ export type ContextRuntimeScope = {
   workspaceId?: string
   channelId?: string
   workerId?: string
-  /** Compatibility selectors for an industrial projection only. */
-  lineId?: string
-  lineIds?: readonly string[]
-  projection?: string
-  industrial?: boolean
-  [key: string]: unknown
 }
 type NormalizedContextRuntimeScope = ContextRuntimeScope & { workspaceId: string, channelId: string, workerId: string }
 export type ContextRuntimeAuthorization
@@ -69,6 +63,7 @@ export class ContextRuntimeService {
     return this.registry.registerOne(adapter)
   }
 
+  /** Build an industrial adapter with selectors owned by the adapter boundary. */
   createIndustrialReadAdapter(options: { adapterId?: string, version?: string, generation?: number, ownerId?: string } = {}): ContextAdapter {
     this.ensureOpen()
     const authorize: ContextAdapterAuthorizer = (input) => {
@@ -117,16 +112,7 @@ export class ContextRuntimeService {
     }
   }
 
-  /** Industrial selectors are optional compatibility filters, not generic scope requirements. */
-  isIndustrialScope(scope?: ContextRuntimeScope | null): boolean {
-    const normalized = this.normalizeScope(scope)
-    if (!normalized) return false
-    return normalized.industrial === true
-      || normalized.projection === 'industrial'
-      || typeof normalized.lineId === 'string'
-      || (Array.isArray(normalized.lineIds) && normalized.lineIds.length > 0)
-  }
-
+  /** Industrial selectors are adapter-owned; generic scope deployment only checks host bindings. */
   isDeployedScope(scope?: ContextRuntimeScope | null): boolean {
     const normalized = this.normalizeScope(scope)
     const repos = this.repos ?? this.resolveRepositories()
@@ -135,19 +121,11 @@ export class ContextRuntimeService {
       const workspace = repos.users.getWorkspace(normalized.workspaceId)
       const channel = repos.channels.findById(normalized.channelId)
       const worker = repos.channelAgents.findByChannelAgent(normalized.channelId, normalized.workerId)
-      const deployed = Boolean(workspace
+      return Boolean(workspace
         && repos.users.listMountedChannels(workspace.id).includes(normalized.channelId)
         && channel?.enabled === 1
         && worker?.enabled !== 0
         && worker?.role === 'worker')
-      if (!deployed) return false
-      if (!this.isIndustrialScope(normalized)) return true
-      const actualLineIds = this.lineIdsForScope(normalized)
-      if (actualLineIds.length === 0) return false
-      const requestedLineIds = normalized.lineId
-        ? [normalized.lineId]
-        : Array.isArray(normalized.lineIds) ? normalized.lineIds.map(String) : []
-      return requestedLineIds.every(lineId => actualLineIds.includes(lineId))
     }
     catch {
       return false
@@ -175,22 +153,17 @@ export class ContextRuntimeService {
   }
 
   /**
-   * Build the only industrial capability context accepted by the adapter. The
-   * returned lineIds are derived from persisted worker bindings, never from the
-   * caller payload, so a registry caller cannot turn an industrial adapter into
-   * a global read.
+   * Build adapter authorization from the generic deployment scope. Industrial
+   * bindings are derived here and exposed only as authorization output.
    */
   authorizeAdapterRequest(input: Omit<ContextAdapterAuthorizationInput, 'authorization'> & { principal: ContextRuntimePrincipal, scope: ContextRuntimeScope }): ContextAdapterAuthorizationContext | false {
     const decision = this.authorizeScope({ principal: input.principal, scope: input.scope })
     if (!decision.ok) return false
     const lineIds = this.lineIdsForScope(decision.scope)
-    const industrial = this.isIndustrialScope(decision.scope)
-    if (industrial && lineIds.length === 0) return false
     return {
       scope: decision.scope,
       principal: { id: input.principal.id, ...(input.principal.role ? { role: input.principal.role } : {}) },
       lineIds,
-      industrial,
     }
   }
 
@@ -203,23 +176,11 @@ export class ContextRuntimeService {
   private normalizeScope(scope?: ContextRuntimeScope | null): NormalizedContextRuntimeScope | null {
     if (!scope || typeof scope !== 'object') return null
     if (!scope.workspaceId || !scope.channelId || !scope.workerId) return null
-    const normalized: NormalizedContextRuntimeScope = {
-      ...scope,
+    return {
       workspaceId: String(scope.workspaceId),
       channelId: String(scope.channelId),
       workerId: String(scope.workerId),
     }
-    if (scope.lineId !== undefined) {
-      if (!String(scope.lineId)) return null
-      normalized.lineId = String(scope.lineId)
-    }
-    if (scope.lineIds !== undefined) {
-      if (!Array.isArray(scope.lineIds)) return null
-      normalized.lineIds = scope.lineIds.map(String).filter(Boolean)
-    }
-    if (scope.projection !== undefined) normalized.projection = String(scope.projection)
-    if (scope.industrial !== undefined && typeof scope.industrial !== 'boolean') return null
-    return normalized
   }
 
   private resolveRepositories(): ContextRuntimeRepositories | null {
