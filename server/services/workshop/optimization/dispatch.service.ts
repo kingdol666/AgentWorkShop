@@ -33,6 +33,7 @@ import { assertRecommendationUsable } from './recommendation.service'
 import { toModel } from '@/shared/units'
 import { getDcwController } from '../dcw/dcw-controller'
 import { evaluateRecipeParamLimits } from '../dcw/dcw-controller/write'
+import { assertStepLimit } from '../dcw/param-limits'
 import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { getActiveLineRun } from '../dcw/line-run'
 import { assertRecipeOpInterval } from '../dcw/recipe-op-anchor'
@@ -107,7 +108,7 @@ function assertNoDrift(rec: { id: string, problemIrHash: string, modelArtifactHa
   const artifact = JSON.parse(readFileSync(join(modelRow.path, 'model.json'), 'utf8')) as ModelArtifact
   // 重编译 IR(结构 hash 排除 context 实例量,快照只用于填 x0/uPrev)
   const snapshot = JSON.parse(snapshotJson) as Parameters<typeof buildProblemIR>[0]['context']
-  const ir = buildProblemIR({ profile, spec, artifact, context: snapshot, runId: `drift-check:${runId}` })
+  const ir = buildProblemIR({ profile, spec, artifact, context: snapshot, runId: `drift-check:${runId}`, enforcePhysicalStepLimits: true })
   const hash = computeProblemIrHash(ir)
   if (hash !== rec.problemIrHash) {
     throw new AppError(409, 'DISPATCH_DRIFTED',
@@ -184,7 +185,16 @@ export async function assertDispatchApprovable(recId: string, overrides?: { mode
       if (modelTo == null || !Number.isFinite(modelTo)) return { ok: false, code: 'DISPATCH_GATE_FIRSTMOVE_MISSING', comment: `MV ${mv.id} 缺模型单位首步值` }
       const maxStep = mv.maxStep ?? spec.effectiveDomain.mv[mv.id]?.maxStep
       if (maxStep != null && Math.abs(modelTo - currentModel) > maxStep + 1e-9) {
-        return { ok: false, code: 'DISPATCH_STEP_EXCEEDED', comment: `MV ${mv.id} 首步超步限(|${modelTo.toFixed(4)}−${currentModel.toFixed(4)}|>${maxStep});请重新 solve` }
+        return { ok: false, code: 'DISPATCH_STEP_EXCEEDED', comment: `MV ${mv.id} 首步超模型步限(|${modelTo.toFixed(4)}−${currentModel.toFixed(4)}|>${maxStep});请重新 solve` }
+      }
+      // The model-space gate is necessary but not sufficient: enforce the current
+      // physical node/parameter/recipe step limit before approval and again at D13.
+      const targetEng = (modelTo - mv.offset) / mv.scale
+      try {
+        assertStepLimit(node, targetEng, { includeSoft: true, skipRecipe: false }, currentEng)
+      }
+      catch (err) {
+        return { ok: false, code: 'DISPATCH_STEP_EXCEEDED', comment: err instanceof Error ? err.message : String(err) }
       }
     }
     // ⑦ preflight 复跑(工程值;配方窗口不豁免)
@@ -290,6 +300,7 @@ export async function decideOptimizerDispatch(input: {
     })
     db().prepare(`UPDATE optimizer_recommendations SET dispatch_state = 'executed' WHERE id = ?`).run(recId)
     const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
+    const executionStatus = acks.failed > 0 ? 'failed' : acks.unverified > 0 ? 'unverified' : 'verified'
     recordOps({
       actor: input.actingUser.id, actorName: input.actingUser.name, actorKind: 'user',
       action: 'optimizer.dispatch.execute', kind: 'system',
@@ -299,7 +310,18 @@ export async function decideOptimizerDispatch(input: {
       detail: { cardId: input.cardId, recommendationId: recId, runId: run.id, acks, via: input.via, initiatorUserId: readInitiator(recId) },
     })
     getToolApprovals().decide(input.cardId, true, input.comment, input.actingUser.id, input.actingUser.name, chosenIdx)
-    return { handled: true, approved: true, comment: input.comment, execution: { runId: run.id, acks } }
+    return {
+      handled: true,
+      approved: true,
+      comment: input.comment,
+      execution: {
+        runId: run.id,
+        status: executionStatus,
+        code: executionStatus === 'failed' ? 'DISPATCH_WRITE_FAILED' : executionStatus === 'unverified' ? 'DISPATCH_ACK_UNVERIFIED' : undefined,
+        acks,
+        results: run.results.map(result => ({ nodeId: result.nodeId, ok: result.ok, message: result.message, ack: result.ack, verify: result.verify })),
+      },
+    }
   }
   catch (err) {
     db().prepare(`UPDATE optimizer_recommendations SET dispatch_state = 'failed' WHERE id = ?`).run(recId)

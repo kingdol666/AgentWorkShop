@@ -17,10 +17,14 @@ const emit = defineEmits<{ ack: [id: string], ackAll: [] }>()
 const { t } = useI18n()
 const daq = useDaqStream()
 const now = ref(Date.now())
-const ageTimer = setInterval(() => {
-  now.value = Date.now()
-}, 30_000)
-onBeforeUnmount(() => clearInterval(ageTimer))
+// 年龄刷新定时器必须限定浏览器端:SSR 顶层 setInterval 会让 /daq 文档渲染直接 500
+// (Nuxt 禁止服务端 setInterval;/daq 此前整页 500、水合永远不完成即由此而起)
+onMounted(() => {
+  const ageTimer = setInterval(() => {
+    now.value = Date.now()
+  }, 30_000)
+  onBeforeUnmount(() => clearInterval(ageTimer))
+})
 
 function unitOf(a: DaqAlarmRow): string {
   const u = daq.nodes.find(n => n.id === a.nodeId)?.unit ?? ''

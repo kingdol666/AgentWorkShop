@@ -105,9 +105,42 @@ test('IR 结构 hash:context/x0/uPrev 不参与;weights/horizon/约束参与;键
   const bounds = JSON.parse(JSON.stringify(base)) as ProblemIR
   bounds.problem.mvBounds[0]!.max = 9
   assert.notEqual(computeProblemIrHash(bounds), h)
+  // runtime 物理限界是运行期实例量(随 DCW 节点状态变化),不得参与结构 hash
+  const runtimeBounds = JSON.parse(JSON.stringify(base)) as ProblemIR
+  ;(runtimeBounds.problem as { runtimeMvBounds?: unknown }).runtimeMvBounds = [{ min: 0, max: 4, maxStep: 1 }]
+  assert.equal(computeProblemIrHash(runtimeBounds), h)
   const template = JSON.parse(JSON.stringify(base)) as ProblemIR
   ;(template.problem as { template: string }).template = 'steady_response@1'
   assert.notEqual(computeProblemIrHash(template), h)
+})
+
+test('runtimeMvBounds 收紧物理步限:solver 首步不得越过运行时限界(声明限界不放宽)', async (t) => {
+  if (skip) return t.skip(skip)
+  initRuntime()
+  const pool = new SolverWorkerPool({ poolSize: 1, requestTimeoutMs: 120_000, threads: 1 })
+  try {
+    const ir = withHash(mpcIr())
+    // 声明 maxStep=2,运行时 DCW 有效步限 0.5:求解必须按 0.5 收紧
+    ;(ir.problem as { runtimeMvBounds?: unknown }).runtimeMvBounds = [{ min: 0, max: 10, maxStep: 0.5 }]
+    ir.hash = computeProblemIrHash(ir)
+    const solved = await pool.solve(ir)
+    const result = solved.result as { status: string, controls: number[][] }
+    assert.equal(result.status, 'optimal')
+    const first = result.controls[0]![0]!
+    assert.ok(
+      first >= 1 - 0.5 - 1e-6 && first <= 1 + 0.5 + 1e-6,
+      `首步 ${first} 超出运行时步限 [${1 - 0.5}, ${1 + 0.5}]`,
+    )
+    // 独立约束复核同样按 runtime 限界判定
+    const candidate = candidateOf(result as never)
+    const reports = constraintReport(ir, candidate)
+    const rateReports = reports.filter(r => r.id.startsWith('mv.mv1.') && r.kind === 'rate')
+    assert.ok(rateReports.length >= 1)
+    for (const report of rateReports) assert.equal(report.satisfied, true, `rate 违例: ${JSON.stringify(report)}`)
+  }
+  finally {
+    await pool.shutdown()
+  }
 })
 
 test('solverRef×template 分派矩阵:仅允许 osqp×linear 与 scipy×static', () => {

@@ -37,13 +37,17 @@ class LinearMpcProblem:
         self.D = _as_matrix(dyn["D"], self.cv_count, self.mv_count)
         self.x0 = np.asarray(dyn["x0"], dtype=float)
         self.bias = np.asarray(dyn.get("bias") or [0.0] * self.state_dim, dtype=float)
-        self.u_prev = np.asarray(problem["uPrev"], dtype=float)
         self.cv_setpoints = np.asarray(problem["cvSetpoints"], dtype=float)
         weights = ir["weights"]
         self.q = np.asarray([float(weights["cv"].get(cv, 1.0)) for cv in self.cv_order], dtype=float)
         self.r = np.asarray([float(weights["du"].get(mv, 0.0)) for mv in self.mv_order], dtype=float)
         self.terminal = float(weights.get("terminal") or 0.0)
-        self.mv_bounds = problem["mvBounds"]
+        # runtimeMvBounds = 当前 DCW 物理限界与声明限界的交集(平台编译期注入);
+        # runtimeUPrev = 执行器当前值锚(write() 咽喉同锚)。存在时优先使用 ——
+        # 求解结果必须物理可执行,而不只是声明可执行。
+        raw_mv_bounds = problem.get("runtimeMvBounds") or problem["mvBounds"]
+        self.mv_bounds = list(raw_mv_bounds)
+        self.u_prev = np.asarray(problem.get("runtimeUPrev") or problem["uPrev"], dtype=float)
         raw_cv_bounds = problem.get("cvBounds")
         self.cv_bounds = [{} for _ in self.cv_order] if raw_cv_bounds is None else list(raw_cv_bounds)
         if len(self.mv_bounds) != self.mv_count:
@@ -250,14 +254,15 @@ def solve_steady_response(ir: dict[str, Any], cancel_check) -> dict[str, Any]:
     weights = ir["weights"]
     economic = weights.get("economic") or {}
     cv_weights = weights.get("cv") or {}
-    mv_bounds = problem["mvBounds"]
+    # 与线性 MPC 同口径:runtime 物理限界/执行器锚存在时优先(求解结果必须可下发)
+    mv_bounds = list(problem.get("runtimeMvBounds") or problem["mvBounds"])
     raw_cv_bounds = problem.get("cvBounds")
     cv_bounds = [{} for _ in cv_order] if raw_cv_bounds is None else list(raw_cv_bounds)
     if len(mv_bounds) != len(mv_order):
         raise ValueError(f"mvBounds 维度 {len(mv_bounds)} != MV 数 {len(mv_order)}")
     if len(cv_bounds) != len(cv_order):
         raise ValueError(f"cvBounds 维度 {len(cv_bounds)} != CV 数 {len(cv_order)}")
-    x0 = np.asarray(problem["uPrev"], dtype=float)
+    x0 = np.asarray(problem.get("runtimeUPrev") or problem["uPrev"], dtype=float)
     lo = np.asarray([float(b.get("min", -1e9)) for b in mv_bounds])
     hi = np.asarray([float(b.get("max", 1e9)) for b in mv_bounds])
     for m, bounds in enumerate(mv_bounds):

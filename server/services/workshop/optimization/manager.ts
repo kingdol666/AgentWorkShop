@@ -19,7 +19,7 @@ import { getEligibilityRepo } from '../process-model/eligibility'
 import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import type { ProcessModelSpec } from '../process-model/contracts'
 import { buildProblemIR, constraintReport, evaluateCandidateCost, type LinearStateSpaceLike, type ModelArtifact, type StaticResponseLike } from './problem-builder'
-import type { Recommendation, SolveCandidate, SolveResult, SolveStatus } from './contracts'
+import type { ProblemIR, Recommendation, SolveCandidate, SolveResult, SolveStatus } from './contracts'
 import { getProfileRepo, parseProfileRow } from './profile.repo'
 import { resolveBinding, type ResolvedBinding } from './binding.service'
 import { getRunRepo } from './run.repo'
@@ -135,7 +135,7 @@ export async function solve(agentId: string, req: SolveRequest = {}): Promise<So
       getRunRepo().expireWhere({ bindingId: resolved.binding.id })
       throw new AppError(409, 'CONDITION_CHANGED', '运行工况/配方版本已变化;旧 Profile 计划失效,请重新装配')
     }
-    const ir = buildProblemIR({ profile, spec, artifact: artifact as LinearStateSpaceLike | StaticResponseLike, context, runId: '' })
+    const ir = buildProblemIR({ profile, spec, artifact: artifact as LinearStateSpaceLike | StaticResponseLike, context, runId: '', enforcePhysicalStepLimits: true })
     if (profile.problemIrHash && profile.problemIrHash !== ir.hash) {
       throw new AppError(409, 'PROBLEM_IR_CHANGED', `问题结构 hash 与发布时冻结值不一致(profile=${profile.problemIrHash.slice(0, 12)}, now=${ir.hash.slice(0, 12)})`)
     }
@@ -173,9 +173,14 @@ export async function solve(agentId: string, req: SolveRequest = {}): Promise<So
 
     const candidates: SolveCandidate[] = []
     if (payload.controls && payload.predicted) {
+      // 运行时物理限界激活时,把 solver 输出钳制到可行域内:
+      // OSQP eps_abs=1e-8 允许 ~1e-8 的约束残差,贴边解会让 1e-9 级的
+      // 约束复核/D13/write() 步限断言误拒。钳制调整量 ≤1e-8,远小于
+      // 代价/轨迹 1e-6 的一致性容差,不掩盖任何真实越界(越界由编译期拒绝)。
+      const clampedControls = clampToRuntimeBounds(ir, payload.controls)
       const candidate: SolveCandidate = {
         seq: 0,
-        controls: payload.controls,
+        controls: clampedControls,
         predicted: payload.predicted,
         cost: Number(payload.cost ?? 0),
         constraints: [],
@@ -281,6 +286,35 @@ function buildUqEvidence(
     calibrationFresh: isUqFresh(uq),
     inputDistance: distance,
   }
+}
+
+/**
+ * 把 solver 输出钳制到运行时物理可行域(runtimeMvBounds:box + 逐步速率窗,
+ * t=0 锚 = runtimeUPrev 执行器当前值)。只吸收 ≤solver 精度(1e-8)的贴边残差;
+ * 真实越界在编译期(boundsFor)已拒绝,不会到这里。
+ */
+function clampToRuntimeBounds(ir: ProblemIR, controls: number[][]): number[][] {
+  const problem = ir.problem
+  const bounds = problem.runtimeMvBounds
+  if (!bounds) return controls
+  const rateBase = problem.runtimeUPrev ?? problem.uPrev
+  const clamped: number[][] = []
+  for (let t = 0; t < controls.length; t++) {
+    const stepControls = controls[t] ?? []
+    const prevStep = t === 0 ? undefined : clamped[t - 1]
+    clamped.push(stepControls.map((value, m) => {
+      const b = bounds[m] ?? {}
+      let v = Number.isFinite(value) ? value : 0
+      if (b.min != null) v = Math.max(v, b.min)
+      if (b.max != null) v = Math.min(v, b.max)
+      if (b.maxStep != null) {
+        const prev = t === 0 ? rateBase[m] ?? v : prevStep?.[m] ?? v
+        v = Math.min(Math.max(v, prev - b.maxStep), prev + b.maxStep)
+      }
+      return v
+    }))
+  }
+  return clamped
 }
 
 export function getRunStatus(agentId: string, runId: string): { run: ReturnType<ReturnType<typeof getRunRepo>['getRun']>, recommendation: Recommendation | null, candidates: unknown[], crosscheck?: ReturnType<typeof deriveDualState> } {

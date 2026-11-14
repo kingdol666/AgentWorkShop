@@ -883,7 +883,8 @@ process.env.AW_BASE = BASE
       ['/analysis', 'analysis', '分析'],
     ]) {
       const errsBefore = pageErrors.length
-      await gotoReady(page, path, { wait: 2500 })
+      // dev 模式逐页冷编译:/daq 等重页首次编译可远超 90s,放宽到 240s
+      await gotoReady(page, path, { wait: 2500, timeout: 240_000 })
       await sleep(800)
       const bodyLen = await page.evaluate(() => (document.body.textContent ?? '').length)
       const ok = pageErrors.length === errsBefore && bodyLen > 400

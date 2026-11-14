@@ -140,7 +140,10 @@ async function saveSpec() {
     const body = buildSpec()
     const res = await processModelApi<{ spec: SpecRow }>('/specs', { method: 'POST', body })
     flash(t('optimizer.specSaved', { id: `${res.spec.id}@${res.spec.version}` }))
-    specForm.id = genId('pms')
+    // 读回服务端分配的 id/版本:id 为空时后端生成;后续数据集/资格/训练
+    // 都以这份已登记 spec 为准,不得用重新生成的占位 id(会 404/漂移)
+    specForm.id = res.spec.id
+    specForm.version = res.spec.version
     await loadAll()
   }
   catch (err) { fail(err) }

@@ -112,6 +112,14 @@ export default defineNuxtConfig({
     '@': fileURLToPath(new URL('.', import.meta.url)),
   },
 
+  // 优化器页关闭 SSR 水合(2026-11-14):antdv Steps/Table 等组件在 SSR 水合下
+  // 出现 vdom 映射损坏(hydrateNode null nodeType / patchElement null __vnode),
+  // 实测导致治理流步骤条 change 处理器间歇性失效(点步骤不切换 tab)。
+  // 该页是数据密集的管理控制台,SSR 价值低;客户端渲染后交互稳定。
+  routeRules: {
+    '/optimizer': { ssr: false },
+  },
+
   // 由 config.yml -> server.dev 驱动开发端口（`pnpm dev` 生效）
   devServer: {
     host: config.server.host,
