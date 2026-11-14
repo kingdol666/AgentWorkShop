@@ -224,26 +224,39 @@ export function verdictDetailOf(engine: IdentifiabilityVerdict): Record<string, 
   }
 }
 
+/** 共享查询体:数据库/模式故障必须抛出,由调用方决定降级语义。 */
+function queryInterventions(filter: { nodeId?: string, lineId?: string, limit?: number }): InterventionEventRow[] {
+  const limit = Math.min(200, Math.max(1, Math.floor(filter.limit ?? 20)))
+  const where: string[] = []
+  const args: Array<string | number> = []
+  if (filter.nodeId) {
+    where.push('node_id = ?')
+    args.push(filter.nodeId)
+  }
+  if (filter.lineId) {
+    where.push('line_id = ?')
+    args.push(filter.lineId)
+  }
+  const sql = `SELECT * FROM intervention_events ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY ts DESC LIMIT ?`
+  const rows = getAmlRuntime().db.prepare(sql).all(...args, limit) as Array<Record<string, unknown>>
+  return rows.map(mapRow)
+}
+
 export function listInterventions(filter: { nodeId?: string, lineId?: string, limit?: number } = {}): InterventionEventRow[] {
   try {
-    const limit = Math.min(200, Math.max(1, Math.floor(filter.limit ?? 20)))
-    const where: string[] = []
-    const args: Array<string | number> = []
-    if (filter.nodeId) {
-      where.push('node_id = ?')
-      args.push(filter.nodeId)
-    }
-    if (filter.lineId) {
-      where.push('line_id = ?')
-      args.push(filter.lineId)
-    }
-    const sql = `SELECT * FROM intervention_events ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY ts DESC LIMIT ?`
-    const rows = getAmlRuntime().db.prepare(sql).all(...args, limit) as Array<Record<string, unknown>>
-    return rows.map(mapRow)
+    return queryInterventions(filter)
   }
   catch {
     return []
   }
+}
+
+/**
+ * 严格读取(2026-11-14 评审):证据/审计面必须区分「无写入」与「台账不可读」——
+ * 旧 listInterventions 把所有故障吞成 []，会让只读证据把审计不可用伪装成零写入。
+ */
+export function listInterventionsStrict(filter: { nodeId?: string, lineId?: string, limit?: number } = {}): InterventionEventRow[] {
+  return queryInterventions(filter)
 }
 
 export function latestIntervention(nodeId: string): InterventionEventRow | null {

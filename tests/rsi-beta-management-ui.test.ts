@@ -21,9 +21,10 @@ test('RSI Beta metadata contract is documented and keeps the legacy UI additive'
   const plugin = read('.AgentWorkShop/plugins/rsi-interface-beta/index.mjs')
   const docs = read('docs/rsi-beta-management.md')
   assert.match(plugin, /metadataPath\s*=\s*['"]\/metadata['"]/, 'metadata route must be explicit')
-  assert.match(plugin, /const visible = flags\.globallyEnabled && persistence\.ok && \(!persistedScope \|\| scoped\)/,
-    'metadata visibility must follow server scope evaluation, with an explicit unbound state when no kv scope exists')
+  assert.match(plugin, /const visible = flags\.globallyEnabled && persistence\.ok && \(scoped \|\| \(!persistedScope && !hasRequestedScope\)\)/,
+    'metadata visibility must follow server scope evaluation, with an explicit unbound state only when no scope was requested')
   assert.match(plugin, /SCOPE_UNBOUND/, 'metadata must expose the explicit unbound state instead of a permanent default-deny')
+  assert.match(plugin, /code: 'SCOPE_FORBIDDEN'/, 'explicit foreign scopes must fail closed rather than report unbound')
   assert.match(plugin, /readOnly: true/, 'metadata must declare read-only')
   assert.match(plugin, /actuation: false/, 'metadata must deny actuation')
   assert.match(plugin, /promotion: false/, 'metadata must deny promotion')
