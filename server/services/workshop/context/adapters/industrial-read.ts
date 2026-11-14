@@ -132,7 +132,7 @@ function selected<T extends ReadRecord>(items: readonly T[], lineId: string | un
   return [...items]
 }
 
-function selectedTwins(services: ReadServices, nodeRecords: readonly ReadRecord[], lineId?: string): ReadRecord[] {
+function selectedTwins(services: ReadServices, nodeRecords: readonly ReadRecord[], lineId?: string, lineIds?: readonly string[]): ReadRecord[] {
   const ids = new Set<string>()
   for (const node of nodeRecords) {
     const deviceIds = Array.isArray(node.deviceIds) ? node.deviceIds : []
@@ -140,7 +140,7 @@ function selectedTwins(services: ReadServices, nodeRecords: readonly ReadRecord[
     if (node.deviceBindingId) ids.add(text(node.deviceBindingId))
   }
   const twins = services.twins.listAll()
-  if (!lineId) return ids.size > 0 ? twins.filter(twin => ids.has(text(twin.id))) : [...twins]
+  if (!lineId && !lineIds?.length) return ids.size > 0 ? twins.filter(twin => ids.has(text(twin.id))) : [...twins]
   return twins.filter(twin => ids.has(text(twin.id)))
 }
 
@@ -156,14 +156,14 @@ function projectIndustrialRead(services: ReadServices, request: IndustrialReadRe
   const dcwNodes = selected(services.dcwNodes.all(), lineId, lineIds).map(asView)
   const daqNodes = selected(services.daqNodes.all(), lineId, lineIds).map(asView)
   const bindings = [...services.bindings.all()].filter((item) => {
-    if (!lineId) return true
+    if (!lineId && !lineIds?.length) return true
     const kind = text(item.kind)
     const nodeId = text(item.nodeId)
-    if (kind === 'line-recipe') return nodeId === lineId
+    if (kind === 'line-recipe') return lineId ? nodeId === lineId : lineIds?.includes(nodeId) ?? false
     if (kind === 'recipe') return recipeIds.has(nodeId)
     return dcwNodes.some(node => text(node.id) === nodeId) || daqNodes.some(node => text(node.id) === nodeId)
   })
-  const twins = selectedTwins(services, [...dcwNodes, ...daqNodes], lineId)
+  const twins = selectedTwins(services, [...dcwNodes, ...daqNodes], lineId, lineIds)
   const lineRefById = new Map<string, ReturnType<typeof contextRef>>()
   const productRefById = new Map<string, ReturnType<typeof contextRef>>()
   const recipeRefById = new Map<string, ReturnType<typeof contextRef>>()
@@ -357,7 +357,7 @@ export function createIndustrialReadAdapter(options: {
     const lineIds = authorization ? (requestedLineId ? [requestedLineId] : requestedLineIds.length ? requestedLineIds : [...authorizedLineIds]) : (requestedLineId ? [requestedLineId] : requestedLineIds.length ? requestedLineIds : undefined)
 
     const lines = lineIds ? services.lines.all().filter(item => lineIds.includes(text(item.id))) : services.lines.all()
-    return { adapterId, version, lineId: requestedLineId, refs: lines.map(item => contextRef('industrial.line', text(item.id))), counts: { lines: lines.length, products: selected(services.products.all(), requestedLineId).length, recipes: selected(services.recipes.list(), requestedLineId).length } }
+    return { adapterId, version, lineId: requestedLineId, refs: lines.map(item => contextRef('industrial.line', text(item.id))), counts: { lines: lines.length, products: selected(services.products.all(), requestedLineId, lineIds).length, recipes: selected(services.recipes.list(), requestedLineId, lineIds).length } }
   }
   const capabilities = { discover: true, snapshot: true, observe: false, query: true, simulate: false, replay: false, verify: false, export: false } as const
   return {

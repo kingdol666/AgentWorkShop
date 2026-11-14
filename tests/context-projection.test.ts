@@ -9,8 +9,8 @@ import type { ContextAdapterOperationRequest } from '../server/services/workshop
 const capturedAt = '2026-11-13T00:00:00.000Z'
 const window = { from: '2026-11-12T00:00:00.000Z', to: capturedAt }
 
-function request(capability: ContextAdapterOperationRequest['capability'], payload: unknown): ContextAdapterOperationRequest {
-  return { adapterId: 'test', apiVersion: 'context-adapter.v1', version: '1.0.0', generation: 1, capability, payload, idempotencyKey: `test-${capability}`, timeoutMs: 1000, signal: new AbortController().signal }
+function request(capability: ContextAdapterOperationRequest['capability'], payload: unknown, authorization?: ContextAdapterOperationRequest['authorization']): ContextAdapterOperationRequest {
+  return { adapterId: 'test', apiVersion: 'context-adapter.v1', version: '1.0.0', generation: 1, capability, payload, idempotencyKey: `test-${capability}`, timeoutMs: 1000, signal: new AbortController().signal, ...(authorization ? { authorization } : {}) }
 }
 
 test('generic projection supports a non-line fixture and carries provenance, scope, window, and hash', () => {
@@ -72,6 +72,75 @@ test('industrial read adapter projects line and industrial metadata without chan
   assert.match(snapshot.contentHash, /^[a-f0-9]{64}$/)
   const { projection: _projection, contentHash: _contentHash, ...snapshotContent } = snapshot
   assert.equal(snapshot.contentHash, canonicalHash(snapshotContent))
+})
+
+test('industrial read adapter bounds multi-line authorization to authorized lines and discover counts', async () => {
+  const lines = [
+    { id: 'line-1', name: 'Line 1' },
+    { id: 'line-2', name: 'Line 2' },
+    { id: 'line-foreign', name: 'Foreign line' },
+  ]
+  const products = [
+    { id: 'product-1', lineId: 'line-1', description: 'Product 1', paramLimits: {} },
+    { id: 'product-2', lineId: 'line-2', description: 'Product 2', paramLimits: {} },
+    { id: 'product-foreign', lineId: 'line-foreign', description: 'Foreign product', paramLimits: {} },
+  ]
+  const recipes = [
+    { id: 'recipe-1', productId: 'product-1', lineId: 'line-1', description: 'Recipe 1', params: [], daqWindows: [], version: 1 },
+    { id: 'recipe-2', productId: 'product-2', lineId: 'line-2', description: 'Recipe 2', params: [], daqWindows: [], version: 1 },
+    { id: 'recipe-foreign', productId: 'product-foreign', lineId: 'line-foreign', description: 'Foreign recipe', params: [], daqWindows: [], version: 1 },
+  ]
+  const runs = [
+    { id: 'run-1', recipeId: 'recipe-1', productId: 'product-1', lineId: 'line-1', startedAt: capturedAt, results: [] },
+    { id: 'run-2', recipeId: 'recipe-2', productId: 'product-2', lineId: 'line-2', startedAt: capturedAt, results: [] },
+    { id: 'run-foreign', recipeId: 'recipe-foreign', productId: 'product-foreign', lineId: 'line-foreign', startedAt: capturedAt, results: [] },
+  ]
+  const dcwNodes = [
+    { id: 'dcw-1', lineId: 'line-1', name: 'DCW 1', enabled: true, state: 'ok', deviceIds: ['twin-1'] },
+    { id: 'dcw-2', lineId: 'line-2', name: 'DCW 2', enabled: true, state: 'ok', deviceIds: ['twin-2'] },
+    { id: 'dcw-foreign', lineId: 'line-foreign', name: 'Foreign DCW', enabled: true, state: 'ok', deviceIds: ['twin-foreign'] },
+  ]
+  const daqNodes = [
+    { id: 'daq-1', lineId: 'line-1', name: 'DAQ 1', enabled: true, state: 'ok', deviceIds: ['twin-1'] },
+    { id: 'daq-2', lineId: 'line-2', name: 'DAQ 2', enabled: true, state: 'ok', deviceIds: ['twin-2'] },
+    { id: 'daq-foreign', lineId: 'line-foreign', name: 'Foreign DAQ', enabled: true, state: 'ok', deviceIds: ['twin-foreign'] },
+  ]
+  const bindings = [
+    { id: 'binding-1', agentId: 'agent-1', nodeId: 'recipe-1', kind: 'recipe', mode: 'manual' },
+    { id: 'binding-2', agentId: 'agent-1', nodeId: 'dcw-2', kind: 'dcw', mode: 'manual' },
+    { id: 'binding-foreign', agentId: 'agent-1', nodeId: 'recipe-foreign', kind: 'recipe', mode: 'manual' },
+  ]
+  const twins = [
+    { id: 'twin-1', workspaceId: '', name: 'Twin 1', modelRef: 'model-1', kind: 'device', telemetry: {}, state: 'running' },
+    { id: 'twin-2', workspaceId: '', name: 'Twin 2', modelRef: 'model-2', kind: 'device', telemetry: {}, state: 'running' },
+    { id: 'twin-foreign', workspaceId: '', name: 'Foreign twin', modelRef: 'model-foreign', kind: 'device', telemetry: {}, state: 'running' },
+  ]
+  const services = {
+    lines: { all: () => lines, byId: () => undefined },
+    products: { all: () => products, byId: () => undefined },
+    recipes: { list: () => recipes, byId: () => undefined, listRuns: () => runs, runById: () => undefined },
+    dcwNodes: { all: () => dcwNodes },
+    daqNodes: { all: () => daqNodes },
+    bindings: { all: () => bindings },
+    twins: { listAll: () => twins, findById: () => undefined },
+  }
+  const authorization = { scope: {}, principal: { id: 'operator' }, lineIds: ['line-1', 'line-2'] }
+  const adapter = createIndustrialReadAdapter({ services, authorize: () => authorization, now: () => capturedAt })
+
+  const result = await adapter.snapshot!(request('snapshot', {}, authorization)) as { snapshot: ReturnType<typeof projectGenericFixture>, source: { counts: Record<string, number> } }
+  const projectedIds = result.snapshot.objects.map(item => item.ref.id)
+  assert.deepEqual(result.source.counts, { lines: 2, products: 2, recipes: 2, runs: 2, dcwNodes: 2, daqNodes: 2, bindings: 2, twins: 2 })
+  assert.equal(projectedIds.includes('line-foreign'), false)
+  assert.equal(projectedIds.includes('product-foreign'), false)
+  assert.equal(projectedIds.includes('recipe-foreign'), false)
+  assert.equal(projectedIds.includes('run-foreign'), false)
+  assert.equal(projectedIds.includes('dcw-foreign'), false)
+  assert.equal(projectedIds.includes('daq-foreign'), false)
+  assert.equal(projectedIds.includes('binding-foreign'), false)
+  assert.equal(projectedIds.includes('twin-foreign'), false)
+
+  const discovered = await adapter.discover!(request('discover', {}, authorization)) as { counts: Record<string, number> }
+  assert.deepEqual(discovered.counts, { lines: 2, products: 2, recipes: 2 })
 })
 
 test('industrial read adapter does not require lineId for an empty non-line repository', async () => {
