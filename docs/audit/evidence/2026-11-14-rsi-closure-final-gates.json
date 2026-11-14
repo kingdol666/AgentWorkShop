@@ -1,0 +1,60 @@
+{
+  "manifestVersion": "rsi-closure-final-gates.v1",
+  "kind": "post-merge-acceptance-evidence",
+  "recordedAt": "2026-11-14",
+  "branch": "main (detached acceptance checkout of origin/main)",
+  "tested": {
+    "head": "d4ac2e81f79986b4156e437349b8f51f15420a43",
+    "headShort": "d4ac2e81",
+    "mergeOf": "PR #207 (feat/rsi-beta-closure-20261114, f697cc72)",
+    "baseOfRound": "abb67874 (PR #206 merge)",
+    "note": "Ralph round 2 final gates on merged main; clean tree, paper worktree untouched."
+  },
+  "mainCi": { "run": 43572569756, "conclusion": "success" },
+  "gates": {
+    "lint": { "status": "PASS", "rsiRedline": { "files": 21, "deviceWriteCalls": 0 } },
+    "typecheck": { "status": "PASS" },
+    "docsSync": { "status": "PASS", "passed": 87, "failed": 0 },
+    "i18n": { "status": "PASS", "zhKeys": 3328, "enKeys": 3328, "unresolved": 0 },
+    "readmeLint": { "status": "PASS" },
+    "unit": { "status": "PASS", "tests": 1636, "pass": 1636, "fail": 0, "note": "serial rerun after transient parallel-load failures in tsdb-* (16/16 green in isolation and full suite green serially)" },
+    "mcp": { "status": "PASS", "tests": 14 },
+    "pluginLifecycle": { "status": "PASS", "tests": 22 },
+    "sdkSurface": { "status": "PASS" },
+    "twinProvider": { "status": "PASS", "tests": 5 },
+    "skills": { "status": "PASS", "suites": 167 }
+  },
+  "acceptanceRunner": {
+    "simulation": { "status": "PASS", "report": "docs/audit/evidence/2026-11-14-postmerge-rsi-simulation.json" },
+    "isolatedHomeBaseline": { "status": "PASS", "report": "docs/audit/evidence/2026-11-14-postmerge-rsi-baseline.json" },
+    "physicalHil": { "status": "BLOCKED", "exitCode": 2, "claim": false, "report": "docs/audit/evidence/2026-11-14-postmerge-rsi-physical.json" }
+  },
+  "prAGatesOnBranch": {
+    "optimizerLive": "105/105 (W7 execution.status=verified, acks verified=1/failed=0; W8 readback 48 = expected)",
+    "modelLoopLive": "53/53",
+    "ontologyLive": "87/87",
+    "lineGovernance": "44/44",
+    "scientificFullChain": "21/21 (mock device boundary stated)",
+    "ontologyOffline": "57/57",
+    "prCi": { "run": 43572253720, "conclusion": "success" }
+  },
+  "security": {
+    "mimosa": {
+      "scanId": "scan-2026-11-14T07-54-37.707Z-2e46902e3249",
+      "seal": "sha256:f4260e16a965641d818d9c855fcbd35509b9825951706b11d079cc0e80a8c630",
+      "artifacts": "D:/tmp/aw-rsi-mimosa-final-20261114/scan-2026-11-14T07-54-37.707Z-2e46902e3249",
+      "completeness": "partial",
+      "runStatus": "inconclusive",
+      "selectedFiles": 1837,
+      "parseFailures": 0,
+      "findings": 34,
+      "dependencyRisk": 0,
+      "verdict": "NOT a security pass. Sealed artifacts exist but the scan is partial/inconclusive; the 34 static findings were manually triaged (i18n label false positives, test fixtures, paper/bench snapshots, candidate-store throw-line false positive, advisories needing path-specific confirmation). No production security verdict is claimed."
+    }
+  },
+  "notClaimed": [
+    "Physical HIL execution (BLOCKED, no authorized window).",
+    "A complete security audit or security-pass verdict (Mimosa inconclusive).",
+    "Any production PLC/DCW/DAQ write from this acceptance round (all device evidence is mock/simulated with explicit boundaries)."
+  ]
+}
