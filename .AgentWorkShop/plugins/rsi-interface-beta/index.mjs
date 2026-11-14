@@ -143,28 +143,49 @@ function publicMetadata(state, event) {
   const persistence = state.persistenceReady ? readPersistence(state.ctx) : { ok: false, code: 'PERSISTENCE_UNAVAILABLE' }
   const persistedScope = persistence.ok && persistence.scope && typeof persistence.scope === 'object' ? persistence.scope : null
   const principal = event?.awUser ?? event?.context?.awUser ?? event?.request?.principal ?? null
-  const runtimeScope = persistedScope && state.runtime?.authorizeScope?.({
-    principal,
-    scope: persistedScope,
-  })
-  const scopeResult = flags.globallyEnabled && persistence.ok && persistedScope && runtimeScope?.ok
-    ? evaluateBetaScope({ flags, persistence, requested: persistedScope, persisted: persistedScope, maxAgeMs: state.maxAgeMs })
-    : { ok: false, code: flags.globallyEnabled ? (persistence.ok ? (runtimeScope?.code ?? 'SCOPE_FORBIDDEN') : persistence.code) : 'BETA_DISABLED' }
+  // P1(2026-11-14 PR-G):元数据面同样以宿主持久记录为准。无 kv scope 时不再
+  // 永久呈现 default-deny:请求携带精确 scope 则按 resolveScopeBinding 判定就绪,
+  // 未携带则如实显示 SCOPE_UNBOUND(面板可见,但 available=false,不授予任何数据面)。
+  const requested = requestedScopeFromEvent(event)
+  const hasRequestedScope = REQUIRED_SCOPE_KEYS.every(key => String(requested?.[key] ?? '').trim().length > 0)
+  const binding = hasRequestedScope && typeof state.runtime?.resolveScopeBinding === 'function'
+    ? state.runtime.resolveScopeBinding({ principal, scope: requested })
+    : null
+  let scopeResult
+  if (flags.globallyEnabled && persistence.ok && persistedScope) {
+    const narrowed = binding?.ok ? binding.scope : persistedScope
+    const runtimeScope = state.runtime?.authorizeScope?.({ principal, scope: narrowed })
+    scopeResult = runtimeScope?.ok
+      ? evaluateBetaScope({ flags, persistence, requested: narrowed, persisted: persistedScope, maxAgeMs: state.maxAgeMs })
+      : { ok: false, code: 'SCOPE_FORBIDDEN' }
+  }
+  else if (flags.globallyEnabled && persistence.ok && binding?.ok) {
+    scopeResult = { ok: true, scope: binding.scope }
+  }
+  else if (flags.globallyEnabled && persistence.ok) {
+    scopeResult = { ok: false, code: 'SCOPE_UNBOUND' }
+  }
+  else {
+    scopeResult = { ok: false, code: flags.globallyEnabled ? persistence.code : 'BETA_DISABLED' }
+  }
   const adapter = publicAdapterStatus(state.adapterStatus)
   const scoped = scopeResult.ok
   const ready = scoped && adapter.ok
+  // 仅当「flags 开 + 持久层可用 + 未被已 provision 的 kv 约束拒绝」时面板可见;
+  // 有 kv 约束但校验失败仍按 default-deny 隐藏(保持既有的 stale/foreign 语义)。
+  const visible = flags.globallyEnabled && persistence.ok && (!persistedScope || scoped)
   const caps = advertisedCapabilities(state)
   return {
     apiVersion: API_VERSION,
     plugin: PLUGIN_NAME,
-    status: ready ? 'ready' : scoped ? 'degraded' : 'default-deny',
+    status: ready ? 'ready' : scoped || visible ? 'degraded' : 'default-deny',
     available: ready,
-    visible: scoped,
+    visible,
     code: ready ? 'READY' : (flags.hardDenied ? 'BETA_HARD_DENY' : scopeResult.code ?? adapter.code),
     flags: publicFlags(flags),
     requiredFlags: ['AW_RSI_BETA_ENABLED', 'AW_RSI_BETA_RESEARCH_ENABLED', 'AW_RSI_BETA_UI_ENABLED'],
     requiredScope: [...REQUIRED_SCOPE_KEYS],
-    scopeState: scoped ? 'bound' : 'denied',
+    scopeState: scoped ? 'bound' : visible ? 'unbound' : 'denied',
     scopeCode: scoped ? 'SCOPE_BOUND' : scopeResult.code,
     scope: scoped ? scopeResult.scope : null,
     persistence: publicPersistence(persistence),
@@ -338,18 +359,56 @@ function routeResult(state, event, capability) {
   const authorized = authorizeScopeBinding(state, event, requestedScopeFromEvent(event), capability)
   if (!authorized.ok) return authorized.response
   const { binding } = authorized
+  // PR-G(2026-11-14):status 不得在 adapter 未注册时谎报 READY(此前 available 恒 true,
+  // live 中 adapter 注册失败仍显示就绪,前端/验收都被误导)。
+  const adapter = publicAdapterStatus(state.adapterStatus)
   return {
     apiVersion: API_VERSION,
     plugin: PLUGIN_NAME,
     ok: true,
-    available: true,
-    code: 'READY',
+    available: adapter.ok,
+    code: adapter.ok ? 'READY' : adapter.code,
     capability: capability ?? null,
     scope: binding.scope,
     flags: publicFlags(readBetaFlags()),
     persistence: publicPersistence(authorized.persistence),
-    adapter: publicAdapterStatus(state.adapterStatus),
+    adapter,
   }
+}
+
+/**
+ * PR-G(2026-11-14):插件经动态 import 装载,Nitro 的 `@/server` 别名在生产/开发宿主
+ * 不生效(实测 RSI adapter 注册整段失败)。研究/证据工厂优先取宿主注入服务;
+ * 回退分支只服务测试与未 seed 的嵌入场景。
+ */
+async function loadResearchKit(ctx) {
+  try {
+    const kit = await ctx?.services?.get?.('research.kit')
+    if (kit && typeof kit.LocalResearchOrchestrator === 'function' && typeof kit.CandidateEvidenceStore === 'function') return kit
+  }
+  catch { /* 宿主服务缺失:走回退 */ }
+  const [{ LocalResearchOrchestrator }, { CandidateEvidenceStore }] = await Promise.all([
+    import('@/server/services/workshop/research/orchestrator'),
+    import('@/server/services/workshop/evidence/candidate-store'),
+  ])
+  return { LocalResearchOrchestrator, CandidateEvidenceStore }
+}
+
+/** 拒绝审计:优先宿主注入的 ops.record;回退仅用于测试/嵌入场景。 */
+async function recordBetaDenial(ctx, entry) {
+  try {
+    const recordOps = await ctx?.services?.get?.('ops.record')
+    if (typeof recordOps === 'function') {
+      recordOps(entry)
+      return
+    }
+  }
+  catch { /* 宿主服务缺失:走回退 */ }
+  try {
+    const { recordOps } = await import('@/server/services/workshop/ops/ops')
+    recordOps(entry)
+  }
+  catch { /* 审计不可用不改变拒绝语义 */ }
 }
 
 function researchError(error) {
@@ -443,10 +502,7 @@ export default {
             const registration = state.runtime.registerOne(industrial, PLUGIN_NAME)
             state.adapterStatus = { ok: true, service: 'context.runtime', registration }
             state.research = await (async () => {
-              const [{ LocalResearchOrchestrator }, { CandidateEvidenceStore }] = await Promise.all([
-                import('@/server/services/workshop/research/orchestrator'),
-                import('@/server/services/workshop/evidence/candidate-store'),
-              ])
+              const { LocalResearchOrchestrator, CandidateEvidenceStore } = await loadResearchKit(ctx)
               const candidates = new CandidateEvidenceStore()
               const orchestrator = new LocalResearchOrchestrator(registry, candidates)
               return { orchestrator, candidates }
@@ -522,22 +578,17 @@ export default {
 
     /** 拒绝审计(隐私安全:只记 actor/scope/capability/原因,不带业务载荷) */
     function auditDenial(state, event, action, reason) {
-      try {
-        const principal = event?.awUser ?? event?.context?.awUser ?? null
-        void import('@/server/services/workshop/ops/ops').then(({ recordOps }) => {
-          recordOps({
-            actor: principal?.id ?? 'unknown',
-            actorName: principal?.name ?? '',
-            actorKind: principal ? 'user' : 'system',
-            action,
-            kind: 'read',
-            scope: 'system',
-            targetKind: 'rsi_beta_research',
-            summary: `RSI Beta 拒绝(${action}):${reason}`,
-          })
-        }).catch(() => { /* 审计不可用不改变拒绝语义 */ })
-      }
-      catch { /* 审计不可用不改变拒绝语义 */ }
+      const principal = event?.awUser ?? event?.context?.awUser ?? null
+      void recordBetaDenial(ctx, {
+        actor: principal?.id ?? 'unknown',
+        actorName: principal?.name ?? '',
+        actorKind: principal ? 'user' : 'system',
+        action,
+        kind: 'read',
+        scope: 'system',
+        targetKind: 'rsi_beta_research',
+        summary: `RSI Beta 拒绝(${action}):${reason}`,
+      })
     }
 
     const runResearch = async (event) => {
@@ -547,9 +598,13 @@ export default {
       const { plan, execute, ...request } = body
       request.scope = authorized.scope
       request.principal = event?.awUser ?? event?.context?.awUser ?? event?.request?.principal ?? null
+      // Beta 只暴露 industrial-read adapter:工业投影标记恒置位(仅驱动 adapter 侧的
+      // 绑线校验,不放大 scope)。此前依赖调用方显式传 industrial,真实前端/兼容矩阵
+      // 未传时 observe 步骤被 adapter 以「requires authorized line bindings」拒绝。
       request.authorizationScope = {
         ...authorized.scope,
-        ...(body.projection === 'industrial' || body.industrial === true ? { projection: 'industrial', industrial: true } : {}),
+        projection: 'industrial',
+        industrial: true,
       }
       const planError = plan ? ensureReadPlan(plan) : null
       if (planError) return planError

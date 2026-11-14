@@ -46,6 +46,20 @@ export const servicesExt = (g.__awPluginServices ??= {
 
 /** 插件可获取的后端运行时对象(只读取数面;懒加载避免循环导入,失败即抛由插件兜底) */
 export async function seedRuntimeServices() {
+  // 2026-11-14 PR-G:插件代码不能直接 `import('@/server/...')`(插件经动态 import
+  // 装载,Nitro 别名不生效 —— 实测 live 下 RSI adapter 注册整段失败)。研究/证据
+  // 工厂与审计入口经宿主服务注入,与 context.runtime 同族。
+  servicesExt.register('research.kit', async () => {
+    const [{ LocalResearchOrchestrator }, { CandidateEvidenceStore }] = await Promise.all([
+      import('@/server/services/workshop/research/orchestrator'),
+      import('@/server/services/workshop/evidence/candidate-store'),
+    ])
+    return { LocalResearchOrchestrator, CandidateEvidenceStore }
+  })
+  servicesExt.register('ops.record', async () => {
+    const { recordOps } = await import('@/server/services/workshop/ops/ops')
+    return recordOps
+  })
   if (servicesExt.registry.has('daq')) {
     if (!servicesExt.registry.has('context.runtime')) {
       servicesExt.register('context.runtime', async () => {
