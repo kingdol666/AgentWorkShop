@@ -1,7 +1,7 @@
 {
   "summary": {
-    "prTotal": 215,
-    "merged": 213,
+    "prTotal": 217,
+    "merged": 215,
     "closedUnmerged": [
       {
         "number": 204,
@@ -16,95 +16,99 @@
     ],
     "notInMain": [],
     "squashOrRebase": 45,
-    "mergeCommitsOnMain": 168,
+    "mergeCommitsOnMain": 170,
     "mergeCommitsNotFirstParent": [
       {
         "number": 14,
-        "mergeCommit": "319506f405158ba9fb12e49483d0a9e248b5dca0",
-        "title": "feat(mqtt): structured payload decoding to scalar/vector/image + user decoders/sinks",
-        "head": "feat/mqtt-structured-decode"
+        "title": "feat(mqtt): structured payload decoding to scalar/vector/image + user decoders/sinks"
       },
       {
         "number": 13,
-        "mergeCommit": "9143080acf295e6f07b58a1ee02240cd622840f9",
-        "title": "fix(mqtt): passive subscription ingest + latest-window reads + writeback verification",
-        "head": "fix/mqtt-passive-ingest-20261027"
+        "title": "fix(mqtt): passive subscription ingest + latest-window reads + writeback verification"
       },
       {
         "number": 12,
-        "mergeCommit": "8d626826364a4b34ac5a0527dc08da22c87d347f",
-        "title": "feat(bench): 论文级重复闭环实验驱动器与四场景三臂对照结果",
-        "head": "exp/repeat-campaign-20261027"
+        "title": "feat(bench): 论文级重复闭环实验驱动器与四场景三臂对照结果"
       },
       {
         "number": 11,
-        "mergeCommit": "edc49b0e5c299ac824328deba46842cda0a2bd5a",
-        "title": "fix(bench): 四工况 PV 反馈通道双层缺陷修复 + 3/4 工况达标;FIG.06 GIF 重建",
-        "head": "fix/bench-pv-feedback-20261027"
+        "title": "fix(bench): 四工况 PV 反馈通道双层缺陷修复 + 3/4 工况达标;FIG.06 GIF 重建"
       },
       {
         "number": 10,
-        "mergeCommit": "5c6d081ae96e6fa57f43f7f3bdf6c4e06b88f568",
-        "title": "docs(integration): 本体/求解器/AML 集成评审与四工况实测报告",
-        "head": "docs/integration-review-20261027"
+        "title": "docs(integration): 本体/求解器/AML 集成评审与四工况实测报告"
       },
       {
         "number": 9,
-        "mergeCommit": "4437456c30d1ed4763edc791c873aaa61743131f",
-        "title": "docs(acceptance): 2026-10-27 全功能验收报告与全套件证据",
-        "head": "docs/full-acceptance-20261027"
+        "title": "docs(acceptance): 2026-10-27 全功能验收报告与全套件证据"
       },
       {
         "number": 8,
-        "mergeCommit": "f541cdec94941450d53552cd62079189b17f716b",
-        "title": "docs(site): 演示视频外链收口与 EDA 工坊指南",
-        "head": "docs/demo-video-and-eda-guide-20261026"
+        "title": "docs(site): 演示视频外链收口与 EDA 工坊指南"
       },
       {
         "number": 7,
-        "mergeCommit": "051f89806b080f28cd1295200f134c4f339449a3",
-        "title": "fix(eda): 全功能验收与生产就绪报告 + 在线管道/B4 收口",
-        "head": "fix/eda-live-query-20261026"
+        "title": "fix(eda): 全功能验收与生产就绪报告 + 在线管道/B4 收口"
       },
       {
         "number": 6,
-        "mergeCommit": "375af4c2050676ba2b2bf18fce36c27a575326bb",
-        "title": "chore(repo): 清理过期脚本/文档 + 本体 L7 与 bench v2 迁移",
-        "head": "chore/repo-cleanup-20261026"
+        "title": "chore(repo): 清理过期脚本/文档 + 本体 L7 与 bench v2 迁移"
       },
       {
         "number": 5,
-        "mergeCommit": "c870ed40a1316d9687470817c01c8c3fa1993ee2",
-        "title": "docs(demo): 3 分钟英文界面宣传片 + EDA/i18n 修复",
-        "head": "tii-revision-20261017"
+        "title": "docs(demo): 3 分钟英文界面宣传片 + EDA/i18n 修复"
       },
       {
         "number": 3,
-        "mergeCommit": "d850c995318d21a66d7f44f470414bc805b69dd9",
-        "title": "v0.8.x 全量合入 main:本体闭环/优化器/结果库 + 文档站版本历史",
-        "head": "tii-revision-20261017"
+        "title": "v0.8.x 全量合入 main:本体闭环/优化器/结果库 + 文档站版本历史"
       },
       {
         "number": 2,
-        "mergeCommit": "b46bb9367bf9b0ea5859f6ac0b64c48d02b1d022",
-        "title": "fix(eda): board card render fallback, chart fidelity, KV retry",
-        "head": "tii-revision-20261017"
+        "title": "fix(eda): board card render fallback, chart fidelity, KV retry"
       },
       {
         "number": 1,
-        "mergeCommit": "4e58fc56abeaf6c6c8a90483a792e69430e8ae48",
-        "title": "feat(eda): merge latest platform and EDA updates into main",
-        "head": "tii-revision-20261017"
+        "title": "feat(eda): merge latest platform and EDA updates into main"
       }
     ],
-    "firstParentMergePRs": 156,
+    "firstParentMergePRs": 158,
     "firstParentMergeNotInPrList": [
       204
     ],
     "mergedNotFirstParent": 58,
-    "nonMergeMainCommits": 1078
+    "nonMergeMainCommits": 1081
   },
   "rows": [
+    {
+      "number": 221,
+      "state": "MERGED",
+      "title": "feat(workshop): isolate generic and production channel sessions",
+      "mergedAt": "2026-11-14T18:16:41Z",
+      "mergeCommit": "2f05f49ad7c82da944402f385ab4b47158659a4d",
+      "inMain": true,
+      "parentCount": 2,
+      "mergeSubject": "Merge pull request #221 from kingdol666/feat/channel-mode-rsi-isolation-20261114",
+      "firstParentMerge": true,
+      "head": "feat/channel-mode-rsi-isolation-20261114",
+      "additions": 3413,
+      "deletions": 275,
+      "changedFiles": 100
+    },
+    {
+      "number": 220,
+      "state": "MERGED",
+      "title": "docs(audit): audit all PRs merged into main",
+      "mergedAt": "2026-11-14T16:59:52Z",
+      "mergeCommit": "c6a1d4be4c0144ff37fe46a0b69c213a9c0861d6",
+      "inMain": true,
+      "parentCount": 2,
+      "mergeSubject": "Merge pull request #220 from kingdol666/docs/main-pr-audit-20261115",
+      "firstParentMerge": true,
+      "head": "docs/main-pr-audit-20261115",
+      "additions": 3650,
+      "deletions": 0,
+      "changedFiles": 2
+    },
     {
       "number": 219,
       "state": "MERGED",

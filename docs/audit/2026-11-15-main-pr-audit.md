@@ -1,26 +1,26 @@
 # main 主干 PR 审计报告
 
-> 生成:2026-11-15 · 仓库:`D:/codes/ABO/aw-rsi-final-accept-20261114` · 审计基线:`origin/main @ 16e5c568`（不含本报告 PR #220 的 docs-only merge）
+> 生成:2026-11-15 · 仓库:`D:/codes/ABO/aw-pr-audit-refresh-20261115` · 审计基线:`origin/main @ 2f05f49a`（不含本刷新 PR #222 的 docs-only merge）
 
 ## 1. 审计结论
 
 | 项目 | 结果 |
 |---|---|
-| main HEAD | `16e5c568`（代码状态 `b6847187`;之后仅 PR #219 文档/证据） |
-| 目标 main 的 PR 总数 | **215**（MERGED 213 / CLOSED 2） |
-| 真正进入 main 的 PR 内容 | **214/215**;#4 为重复/被替代的演示视频 PR,内容由 #5/#8 覆盖 |
-| 所有 MERGED PR 的 mergeCommit 在 main 祖先中 | **213/213 YES** |
+| main HEAD | `2f05f49a`（PR #221 合并;代码状态） |
+| 目标 main 的 PR 总数 | **217**（MERGED 215 / CLOSED 2） |
+| 真正进入 main 的 PR 内容 | **216/217**;#4 为重复/被替代的演示视频 PR,内容由 #5/#8 覆盖 |
+| 所有 MERGED PR 的 mergeCommit 在 main 祖先中 | **215/215 YES** |
 | 特殊合并 | #204 GitHub API 502 → 手工合并 `6e5a77c0`;tree 与 head `1ae8f590` 完全一致 |
-| 合并方式 | 213 个 MERGED PR = 168 个 merge commit（155 个 first-parent + 13 个早期侧分支合并）+ 45 个 squash/rebase;另有 #204 手工合并与 1 个无 PR 号的 release merge,first-parent 合并合计 157 |
-| 非 merge 提交 | 1078（含 squash/rebase 与日常提交） |
+| 合并方式 | 215 个 MERGED PR = 170 个 merge commit（157 个 first-parent + 13 个早期侧分支合并）+ 45 个 squash/rebase;另有 #204 手工合并与 1 个无 PR 号的 release merge,first-parent 合并合计 159 |
+| 非 merge 提交 | 1081（含 squash/rebase 与日常提交） |
 | 回滚提交 | 0 个 `^Revert` |
 | open PR | **0** |
-| main 与 origin/main | 一致（`16e5c568`） |
-| 代码完整性 | 全量门禁在 `b6847187` 通过;#219 仅文档/证据增量 |
+| main 与 origin/main | 一致（`2f05f49a`） |
+| 最新代码 PR | #221 `feat(workshop): isolate generic and production channel sessions`（PR 自测 unit 1714/1714） |
 
-**判定:main 主干内容完整,所有已合并 PR 的变更都包含在 main 的历史/树中;没有“PR 显示 merged 但 main 缺失”的情况。** 唯一的非标准状态是 #204(API 502 导致 PR 状态未翻转,但内容已由 `6e5a77c0` 合入并验证 tree 一致);#4 是关闭未合并的重复演示视频 PR,不影响 main。
+**判定:main 主干内容完整,所有已合并 PR 的变更都包含在 main 的历史/树中;没有“PR 显示 merged 但 main 缺失”的情况。** 唯一非标准状态是 #204(API 502 导致 PR 状态未翻转,但内容已由 `6e5a77c0` 合入并验证 tree 一致);#4 是关闭未合并的重复演示视频 PR,不影响 main。
 
-> 注:PR #220 合并本报告后,main 会再前进一个 docs-only merge;代码状态仍是 `b6847187`,不影响上述审计结论。
+> 注:本刷新 PR #222 合并后,main 会再前进一个 docs-only merge;代码状态仍是 `2f05f49a`,不影响上述审计结论。
 
 ## 2. 阶段小结
 
@@ -28,43 +28,43 @@
 
 - 数量:**14**（有效合入 13;closed 1）
 - 合并日期范围:2026-10-22 ~ 2026-10-27（号段不严格等于时间顺序）
-- 代表项:#1 feat(eda): merge latest platform and EDA updates into main;#2 fix(eda): board card render fallback, chart fidelity, KV retry;#4 docs: add AgentWorkShop core demo video;#5 docs(demo): 3 分钟英文界面宣传片 + EDA/i18n 修复;#6 chore(repo): 清理过期脚本/文档 + 本体 L7 与 bench v2 迁移;#7 fix(eda): 全功能验收与生产就绪报告 + 在线管道/B4 收口;#8 docs(site): 演示视频外链收口与 EDA 工坊指南;#9 docs(acceptance): 2026-10-27 全功能验收报告与全套件证据;#10 docs(integration): 本体/求解器/AML 集成评审与四工况实测报告;#11 fix(bench): 四工况 PV 反馈通道双层缺陷修复 + 3/4 工况达标;FIG.06 GIF 重建;#12 feat(bench): 论文级重复闭环实验驱动器与四场景三臂对照结果;#13 fix(mqtt): passive subscription ingest + latest-window reads + writeback verification
+- 代表项:#1 feat(eda): merge latest platform and EDA updates into main;#2 fix(eda): board card render fallback, chart fidelity, KV retry;#3 v0.8.x 全量合入 main:本体闭环/优化器/结果库 + 文档站版本历史;#4 docs: add AgentWorkShop core demo video;#5 docs(demo): 3 分钟英文界面宣传片 + EDA/i18n 修复;#6 chore(repo): 清理过期脚本/文档 + 本体 L7 与 bench v2 迁移;#7 fix(eda): 全功能验收与生产就绪报告 + 在线管道/B4 收口;#8 docs(site): 演示视频外链收口与 EDA 工坊指南;#9 docs(acceptance): 2026-10-27 全功能验收报告与全套件证据;#10 docs(integration): 本体/求解器/AML 集成评审与四工况实测报告;#11 fix(bench): 四工况 PV 反馈通道双层缺陷修复 + 3/4 工况达标;FIG.06 GIF 重建;#12 feat(bench): 论文级重复闭环实验驱动器与四场景三臂对照结果;#13 fix(mqtt): passive subscription ingest + latest-window reads + writeback verification;#14 feat(mqtt): structured payload decoding to scalar/vector/image + user decoders/sinks
 
 ### PR #15–#50 — 生产加固与全功能验收：HITL/权限/调度/Project/UI
 
 - 数量:**36**（有效合入 36;closed 0）
 - 合并日期范围:2026-11-02 ~ 2026-11-09（号段不严格等于时间顺序）
-- 代表项:#16 docs(evidence): 记录合并后 main 状态;#18 feat(heterogeneous): MES history to TSDB bridge + unified frames (H1-H8, v0.9.4);#19 test(acceptance): full T0-T5 matrix + v0.9.5 closeout;#20 test(scenario): real injection closed-loop 15/15 + D8 measure window;#21 docs(tii): major-revision rewrite after five-seat review;#22 fix(security): enforce spawn/workspace policy and deny agent-token management MCP;#23 feat(project): add V1 schema, migrations, and repos;#24 feat(project): add project office, leader identity, lifecycle APIs (draft);#25 feat(project): dispatch work items with project context propagation (draft);#26 test(security): make P0 cwd-outside assertions portable;#27 feat(project): results, approvals, audit, and reconciler (draft);#28 feat(project): project list/detail UI + browser smoke (draft)
+- 代表项:#35 fix(project): close remaining P0s from parallel review (PR13);#36 feat(project): API surface completion (plan §7.1) - update/retry/snapshot/trace/history;#37 feat(project): five-tab UI per plan §7.2 + interaction hardening;#38 fix(project): PR16 项目来源 root 取消护栏（lead 不可自取消项目 root）;#39 feat(project): PR17 M4 调度内核 —— 事件分级+双账本+Watchdog+Effects（S2/S3/S5/S6/S7/S11）;#40 fix(ops): PR18 dev 模式短会话密钥 fail-loud 告警 + Track B 演示密钥修复;#41 feat(tasks): PR19 派生进度（自报 vs 派生参照系）+ 演示脚本度量修复;#42 PR20 Project Route 派发闭环：完成回调 → 确定性派发下一就绪项（R1-R12）;#43 docs: PR20 evidence — acceptance/signoff updated to PR1-PR20;#44 docs: live route-loop demo — real-LLM landing page (zero manual dispatch) + full acceptance evidence;#45 demo: R2 full re-run of live route-loop acceptance (all tracks reproduced);#46 demo: Track D multi-Channel coordination (cross-channel relay via route loop, 10/10);#47 demo: Track E simple-vs-complex E2E + core audit + inventory + novelty assessment + paper-core figure;#48 docs: Project operational workflow figure (plan v3.0 + Router v3 target design);#49 docs: workflow figure — English, lower density (visual-gate PASS r1);#50 docs: three-figure set — design panorama, end-to-end execution (industry + agent internals), SuperAgent architecture
 
 ### PR #51–#90 — Router v3 / Project / 群聊工作台 / 前端重构
 
 - 数量:**39**（有效合入 39;closed 0）
 - 合并日期范围:2026-11-05 ~ 2026-11-07（号段不严格等于时间顺序）
-- 代表项:#51 feat(project): Router v3 — truth gates, handoff contract, delegated acceptance, execution workbench;#52 docs(project): Router v3 two-scenario observation evidence (A PASS, B PARTIAL);#53 docs(project): final two-scenario closure — both projects PASS, runtime caveats documented;#54 fix(project): close Router v3 acceptance — leader route + delegated L1 review;#56 fix(project): harden L1 acceptance — reviewer grant, rework, resubmission;#57 feat(ui): 逐界面优化落主分支——设计系统收口+交互宪法+逐页业务驱动优化;#58 feat(ui): redesign the AI conversation workspace (ChatGPT/DeepSeek direction);#59 fix(project): P0 hardening for multi-channel collaboration (batch 1);#60 fix(pilot): live pilot refinements from first full PASS run;#61 feat(project): P1 batch A - blueprint templates, digest, watchdog ratio, mailbox observability;#62 feat(project): terminate cascade, channel visibility, leader model selection (P1 batch B);#63 fix(project): snapshot exposes routingPolicy + lock leader reconcile/routing conventions
+- 代表项:#75 feat(session): platform session context for channel and project;#76 feat(project): continuation chat + project page UI polish (rebased on main);#77 feat(session): tiered context assembly with extractive compression (injection v2);#78 feat(memory): session-scoped memories with runtime tool passthrough;#79 docs(evidence): session injection v2 + memory runtime round report;#80 fix(project): evidence traceability domain = root + descendant tasks;#81 docs(e2e): landing-page scenario evidence + ralph PRD round;#82 fix(project): approved result slots scoped per work item + structured duplicate work-item error;#83 docs(evidence): full-system E2E acceptance + lifecycle demo (42/42);#84 fix(project): 派发原子化（WP1）——同工作项串行化 + attempt 冲突可重试;#85 test(session): 稳定 V2 压缩验收轮询（消除并行套件竞态）;#86 fix(runtime): 会话关闭生命周卫 + 任务实例读面对称 + busy-stuck 救援（WP2/WP9）;#87 fix(governance): 配方下发 Agent 归因 + HITL 鉴权 fail-closed;#88 fix(task-engine): WORKING→WORKING 幂等（D3 调度器假错误收口）;#89 docs(audit): 测试问题与坑总账 + 合并后实机复验（17/17）;#90 feat(runtime): 容量可配 + 看门狗设置面 + 连续性补探 + rescue ops（WP4/WP8/WP10/WP11/WP6）
 
 ### PR #91–#130 — 生产就绪、AgentBlock、AML/推理/工件
 
 - 数量:**37**（有效合入 37;closed 0）
 - 合并日期范围:2026-11-07 ~ 2026-11-09（号段不严格等于时间顺序）
-- 代表项:#91 docs(audit): 产线工具三上下文实机验收 35/35（Channel/Session/Project）;#92 test: 验收脚本确定性修正（sessions 视图 composer + 写间隔冷却）;#93 test: 修复 http-drivers 在 Windows force-exit 下的 libuv 卸载崩溃;#94 docs(audit): 多Channel组成Project协同作业实机验收 67/67（分析/调优/建模）;#95 docs(audit): 全功能验收战役入库——doc-to-project skill + 四期递进/多会话/WWTP E2E 证据与驱动;#96 feat(protocol): AgentBlock v1 —— 跨 harness 统一工具调用块 + agent.block AEP 帧 + 全 harness adapter;#97 fix(agents): P0-1 one-shot 家族构造崩溃 + restore 兜底 + 全引擎构造契约测试;#98 fix(config): P0-2 危险默认治理（禁静默 mock 驱动 + leaderHarness 去默认）;#99 fix(runtime): P1 activate 装配 deadline + 引擎装配失败指标;#100 fix(settings): P1 设置热重载 watcher 修 + CLI 文案诚实化;#101 docs(ops): 生产部署 runbook（上线清单/env pin/轮换/升级/恢复演练/故障速查）;#102 docs(acceptance): 上线前终验 —— BRG-5 MQTT 新产线 12/12 + 记账软件 Project 58/58
+- 代表项:#115 docs(acceptance): 三维度修复统一验收证据（六层矩阵）;#116 fix(api): 补齐剩余四个子资源主路径 GET;#117 fix(api): 三个高频 GET 的 query 参数改 zod 校验;#118 feat(rsi): WP-A1 经验数据模型（证据链/作用域/生命周期）;#119 feat(rsi): WP-A2 经验反射器（三触发确定性蒸馏）;#120 fix(harness): 会话身份探测不再竞态（建连 await + 回合落定补探）;#121 feat(rsi): WP-A3 经验注入与检索扩展（作用域加分/provenance/过期退休）;#122 feat(rsi): WP-A4 跨 Channel 共享经验 + memoryPolicy 落地;#123 feat(rsi): WP-A5 经验看板 API + Stage-1 验收脚本 + 注入预算核算修正;#124 fix(api): 补 GET /dcw/lines/:id 产线详情（计划原文项）;#125 feat(rsi): WP-D1 配方证据链（recipe_run_id 外键 + verdict→成效聚合）;#126 feat(rsi): WP-D2 改进提案链（identifiable_effect → 配方固化候选）;#127 test(acceptance): Channel/Project 全流程实机验收（v0.10.0）;#128 feat(rsi): WP-D3/D4/D5 Stage-1D 收口（知识工件候选 + 实例 profile 继承）;#129 feat(rsi): WP-B1 Harness Profile 版本化（可进化外壳的版本载体）;#130 feat(rsi): WP-B3/B4 晋升门 + 回滚（经验/Profile 生命周期收口）
 
 ### PR #131–#170 — RSI 实施与 P1 修复（证据/看门狗/真实动作）
 
 - 数量:**40**（有效合入 40;closed 0）
 - 合并日期范围:2026-11-09 ~ 2026-11-11（号段不严格等于时间顺序）
-- 代表项:#131 feat(rsi): WP-C3/C4 元层成效表 + 判据数值扩展;#132 docs(rsi): 实施状态与剩余 WP 交接（2026-11-09）;#133 test(acceptance): 全功能实机验收 @ main 91b1f116;#134 test(rsi): 全系统验收证据 2026-11-09（T0-T5 + RSI 实机）;#135 feat(rsi): WP-C0/C2 插件热重载原子化 + 学习性护栏;#136 feat(rsi): WP-C1/C2 独立回读验证器 + E5-lite 配对评测;#137 fix(rsi): 经验看板只统计经验行 + 自进化全链验收脚本;#138 fix(rsi): 计划对照补齐（红线进 lint / C1 接 L1+C4 / 元层 API / E5 文档）;#139 fix(rsi): 产线写台账频道归因 + 真实环境 RSI 端到端验收（32/32）;#140 fix(dcw): P0 写面安全 —— 拒绝 null/空串/数组折叠成 0 下发 + 审批裁决显式布尔;#141 fix(api): 校验失败错误码在 HTTP 层可达 + 会话/任务端点不再吞校验错误;#142 fix(industrial): 产线治理一致性 —— 死开关接上、写意图门补齐、二级认证不再绕过
+- 代表项:#155 fix(project): 无在飞停滞可见 + 失败事件进慢路径 + 兜底复核复算内容哈希;#156 fix(hitl): 决策旁路补 finalize + 登记降级留痕 + 新增历史读面;#157 fix(rsi): bench 门 provenance —— 评测台账 + promote 只认 benchRunId + 关两条旁路;#158 fix(rsi): 经验状态单调性 + 合并端点 + 提案生命周期(按源收口/过期/人工裁决);#159 fix(rsi): bench 落库兼容 harness-ab 字符串 seed + 验收脚本走新契约;#160 docs(rsi): 第二轮验收——RSI 越用越聪明实证 + AML/本体/求解器复用审计;#161 style: 修 main lint 红（state.ts quote-props 一致性）;#162 fix(scheduler): 根任务过期收口解耦到调度锁外（P1: ROOT_TIMEOUT 饿死修复）;#163 fix(runtime): 消息级活性看门狗 + supervise ensureClient 超时（P1: 空闲 lead 信箱卡死修复）;#164 feat(process-model): 真实线动作证据从干预台账派生（P1-C: real 作用域优化资格打通）;#165 fix(project): 取消/终止硬停 —— 开工栅栏 + 派发后 CAS + 任务树 abort;#166 fix(aml): 数据集网格对齐改最近邻+容差（修真实多节点 50% 缺失）;#167 fix(process-model): real 动作证据按 MV 节点收窄（防同批次 ACK 污染）;#168 fix(process-model): action evidence filter covers MV exec node (DCW) and DAQ mirror;#169 test(scheduler): lock-held ordering regression + P1 verify evidence;#170 fix(aep): agent.block 协议面补全 —— 帧类型入册/分组/派生块 harness 归因/移除死字段
 
 ### PR #171–#205 — 前端舒适度、上下文学习、Project 完整性、RSI 收口
 
 - 数量:**35**（有效合入 35;closed 0）
 - 合并日期范围:2026-11-11 ~ 2026-11-13（号段不严格等于时间顺序）
-- 代表项:#171 fix(harness): 能力声明对齐事实 —— mock supervise/crush bridge/pi 发射面/HITL 证据机检;#172 fix(web): agent.block 前端硬化 —— 渲染防御/过滤对称/注意力同档;#173 feat(workshop): 频道工具用量聚合 API —— agent.block 下游业务消费者;#174 fix(omp): identity 重写补 harness;治理审计 WIP 测试恢复全绿;#175 fix(hitl): 三族桥应答映射抽纯函数并单测锁定;#176 fix(project): harden cancellation and terminal state gates;#177 feat(ui): P0 shell, tokens and navigation a11y;#178 feat(ui): ChatGPT-style chat rhythm and chat accessibility;#179 feat(ui): dashboard shift band and real alarm queue;#180 fix(rsi): enforce evidence integrity and lifecycle CAS gates;#181 fix(workshop): session message idempotency + DAQ provenance + shutdown races;#182 fix(db): 存量库升级不再因 client 幂等索引崩溃
+- 代表项:#190 feat(ui): unified work surfaces, chat receipts and approvals;#191 fix(ui): tablet DAQ cards and touch hit areas;#192 fix(ui): close responsive acceptance gaps;#193 fix(ui): close round-2 audit findings;#194 fix(security): harden industrial control boundaries;#195 docs(plan): define domain-neutral context learning framework;#196 fix(session): isolate context and advance message compaction;#197 feat(auth): secure browser sessions and websocket tickets;#198 feat(ops): harden API contracts and database recovery;#199 fix(project): revalidate draft dependency contracts;#200 fix(session): normalize legacy compressed brief budget;#201 feat(daq): expose signal quality and stale state;#202 fix(ui): close lifecycle theme and delivery gates;#203 fix(review): close post-merge hardening findings;#204 fix(closed-loop): restore dispatch attribution and independent readback;#205 fix(goal): block out-of-band task completion + repair P12 pre-goal setup
 
-### PR #206–#219 — RSI Beta、插件安全、兼容矩阵、终验（本轮）
+### PR #206–#221 — RSI Beta、插件安全、兼容矩阵、终验、Channel 隔离与 PR 审计
 
-- 数量:**14**（有效合入 14;closed 0）
+- 数量:**16**（有效合入 16;closed 0）
 - 合并日期范围:2026-11-14 ~ 2026-11-14（号段不严格等于时间顺序）
-- 代表项:#206 feat(rsi): Beta RSI context/research/evidence/learning interface plugin;#207 fix(optimizer): honor physical DCW step limits in governed dispatch;#208 docs(rsi): record post-merge final gates evidence;#209 docs(rsi): record independent review approval for rsi closure round;#210 fix(plugins): close serial probe and diagnostic export surfaces;#211 fix(rsi): resolve beta scope from host authority and harden evidence surface;#212 fix(plugins): make extension lifecycle rollback complete;#213 docs(rsi): record round-3 final gate evidence;#214 feat(rsi): add read-only operational evidence for beta;#215 fix(rsi): wire live plugin services and add off/on compatibility matrix;#216 fix(diag): audit denials through the host ops service seam;#217 docs(rsi): record final acceptance on e4885f65
+- 代表项:#206 feat(rsi): Beta RSI context/research/evidence/learning interface plugin;#207 fix(optimizer): honor physical DCW step limits in governed dispatch;#208 docs(rsi): record post-merge final gates evidence;#209 docs(rsi): record independent review approval for rsi closure round;#210 fix(plugins): close serial probe and diagnostic export surfaces;#211 fix(rsi): resolve beta scope from host authority and harden evidence surface;#212 fix(plugins): make extension lifecycle rollback complete;#213 docs(rsi): record round-3 final gate evidence;#214 feat(rsi): add read-only operational evidence for beta;#215 fix(rsi): wire live plugin services and add off/on compatibility matrix;#216 fix(diag): audit denials through the host ops service seam;#217 docs(rsi): record final acceptance on e4885f65;#218 fix(rsi): harden operational evidence and scope truth;#219 docs(audit): record round-4 system evaluation and IDD/RAG evidence;#220 docs(audit): audit all PRs merged into main;#221 feat(workshop): isolate generic and production channel sessions
 
 ## 3. 特殊 PR 说明
 
@@ -72,7 +72,7 @@
 
 - 内容:`fix(closed-loop): restore dispatch attribution and independent readback`（优化器归因、独立回读、RSI 脚本 CAS、users 页鉴权/溢出）
 - 原因:GitHub merge API 返回 502,PR 状态未翻转;维护者手工创建合并提交 `6e5a77c0`（父 `e17546f2f` + `1ae8f590`）
-- 验证:`6e5a77c0` 是 `origin/main` 祖先;`git diff 1ae8f590 6e5a77c0` 为空(树完全一致);分支 head 的 quick-gate 已通过
+- 验证:`6e5a77c0` 是 `origin/main` 祖先;`git diff 1ae8f590 6e5a77c0` 为空(树完全一致)
 - 结论:**内容已真正合入 main**,仅 GitHub PR 元数据状态异常
 
 ### #4 — 关闭未合并(不影响 main)
@@ -300,17 +300,19 @@
 | 217 | MERGED | merge commit (first-parent) | `ff306531f812` | 2026-11-14 | YES | docs(rsi): record final acceptance on e4885f65 |
 | 218 | MERGED | merge commit (first-parent) | `b6847187c01b` | 2026-11-14 | YES | fix(rsi): harden operational evidence and scope truth |
 | 219 | MERGED | merge commit (first-parent) | `16e5c5680fc4` | 2026-11-14 | YES | docs(audit): record round-4 system evaluation and IDD/RAG evidence |
+| 220 | MERGED | merge commit (first-parent) | `c6a1d4be4c01` | 2026-11-14 | YES | docs(audit): audit all PRs merged into main |
+| 221 | MERGED | merge commit (first-parent) | `2f05f49ad7c8` | 2026-11-14 | YES | feat(workshop): isolate generic and production channel sessions |
 
 ## 5. 复核命令
 
 ```bash
 git fetch origin
-git log --oneline -3 origin/main                 # 16e5c568
-git log --first-parent --merges origin/main | wc -l   # 157
+git log --oneline -3 origin/main                 # 2f05f49a
+git log --first-parent --merges origin/main | wc -l   # 159
 git log origin/main --oneline --grep="^Revert"        # 空
 gh pr list --state open --limit 20                     # 空
 git merge-base --is-ancestor 6e5a77c0 origin/main     # #204 手工合并
 git diff 1ae8f590 6e5a77c0                             # #204 tree 一致(空)
 ```
 
-> 说明:本报告统计的是 **base=main** 的 PR;功能分支内部的中间 PR/分支不计入。全部 213 个 MERGED PR 的 `mergeCommit` 均已用 `git rev-list origin/main` 祖先集合校验通过。
+> 说明:本报告统计的是 **base=main** 的 PR;功能分支内部的中间 PR/分支不计入。全部 215 个 MERGED PR 的 `mergeCommit` 均已用 `git rev-list origin/main` 祖先集合校验通过。
