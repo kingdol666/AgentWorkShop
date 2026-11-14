@@ -1,0 +1,126 @@
+{
+  "manifestVersion": "production-start-smoke.v1",
+  "recordedAt": "2026-11-14T14:18:20.707Z",
+  "base": "main e4885f654ed164f89d578714d4a6e0f3af207517",
+  "command": "node .output/server/index.mjs",
+  "environment": {
+    "mode": "isolated AW_HOME",
+    "backup": "BACKUP_DISABLED=1",
+    "physicalHil": "NOT RUN"
+  },
+  "checks": [
+    {
+      "id": "P1",
+      "name": "production .output 启动(flags off)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "P2",
+      "name": "生产实例首管理员注册",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P3",
+      "name": "feature-off 插件路由 404",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "P4",
+      "name": "health/workshop ready",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "HTTP /",
+      "name": "/ HTTP 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "HTTP /daq",
+      "name": "/daq HTTP 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "HTTP /optimizer",
+      "name": "/optimizer HTTP 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "HTTP /plugins",
+      "name": "/plugins HTTP 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "UI /plugins",
+      "name": "/plugins 渲染可见文本",
+      "pass": true,
+      "detail": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0"
+    },
+    {
+      "id": "UI /plugins panel",
+      "name": "/plugins Beta panel absent",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "UI /daq",
+      "name": "/daq 渲染可见文本",
+      "pass": true,
+      "detail": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0"
+    },
+    {
+      "id": "UI /optimizer",
+      "name": "/optimizer 渲染可见文本",
+      "pass": true,
+      "detail": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0"
+    },
+    {
+      "id": "UI errors",
+      "name": "页面无未捕获异常",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "P5",
+      "name": "production .output 启动(flags on)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "P6",
+      "name": "feature-on metadata 显式 unbound(无 kv 预置)",
+      "pass": true,
+      "detail": "{\"status\":\"degraded\",\"apiVersion\":\"rsi-interface-beta.v1\",\"plugin\":\"rsi-interface-beta\",\"available\":false,\"visible\":true,\"code\":\"SCOPE_UNBOUND\",\"flags\":{\"AW_RSI_BETA_ENABLED\":true,\"AW_RSI_BETA_RESEARCH_ENABLED\":true,\"AW_RSI_BETA_UI_ENABLED\""
+    },
+    {
+      "id": "UI /plugins",
+      "name": "/plugins 渲染可见文本",
+      "pass": true,
+      "detail": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0"
+    },
+    {
+      "id": "UI /plugins panel",
+      "name": "/plugins Beta panel present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "UI errors",
+      "name": "页面无未捕获异常",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "summary": {
+    "total": 18,
+    "pass": 18,
+    "fail": 0
+  }
+}

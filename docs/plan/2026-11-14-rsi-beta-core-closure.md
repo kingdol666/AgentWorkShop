@@ -82,6 +82,7 @@ Add an isolated host-level matrix connecting Workspace → Channel → Worker/Ag
 - PR-G → this PR: `scripts/acceptance-rsi-compatibility-matrix.mjs` (off/on isolated host matrix: Workspace → Channel → Worker → Session/Project → Recipe/DAQ → HITL → DCW ACK/readback → RSI read-only evidence) with evidence under `docs/audit/evidence/2026-11-14-rsi-compatibility-matrix/`.
 - Live-wiring defects exposed by PR-G and fixed here: plugin modules cannot resolve `@/server` under the runtime dynamic loader (research/evidence/ops factories now come from host `ctx.services`); metadata no longer reports a permanent default-deny when no kv scope is provisioned (`SCOPE_UNBOUND` is explicit); `/status` no longer reports `READY` while the adapter is unregistered; Beta research defaults the industrial projection marker.
 - Still not claimed: physical HIL (NOT RUN); Mimosa completeness/security pass (partial/inconclusive); any production device write.
+- Final acceptance on `e4885f65` (2026-11-14): T0/T1 gates, line 44/44, scientific 21/21, ontology 57/57, RSI runner sim+baseline, compatibility matrix 30/30, production `.output` start smoke 18/18, build/pack PASS — evidence `docs/audit/evidence/2026-11-14-final-gates.json`.
 
 ## Exit criteria
 
