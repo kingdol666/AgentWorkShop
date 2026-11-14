@@ -99,7 +99,7 @@ async function startServer(phase, flags) {
     AW_RSI_BETA_UI_ENABLED: '0',
     ...flags,
   }
-  child = spawn(process.execPath, [join(REPO, 'bin', 'aw.mjs'), 'dev', '--port', String(port)], {
+  child = spawn(process.execPath, [join(REPO, 'bin', 'aw.mjs'), 'dev', '--port', String(port), '--host', '127.0.0.1'], {
     cwd: REPO,
     env,
     stdio: ['ignore', logFd, logFd],
@@ -311,8 +311,10 @@ try {
     const daqEvidence = (evidence?.daq ?? []).find(item => item.nodeId === daqNode?.id)
     ok('ON-12', 'operational evidence:只读边界与来源哈希',
       operational?.ok === true && evidence?.readOnly === true && evidence?.writeCount === 0 && /^[a-f0-9]{64}$/.test(String(evidence?.source?.contentHash ?? ''))
-      && evidence?.source?.writeAuditAvailable !== false,
-      JSON.stringify({ ok: operational?.ok, code: operational?.code, readOnly: evidence?.readOnly, writeCount: evidence?.writeCount, auditAvailable: evidence?.source?.writeAuditAvailable }).slice(0, 260))
+      && evidence?.source?.writeAuditRequested === true
+      && evidence?.source?.writeAuditAvailable === true
+      && !evidence?.source?.writeAuditError,
+      JSON.stringify({ ok: operational?.ok, code: operational?.code, readOnly: evidence?.readOnly, writeCount: evidence?.writeCount, auditAvailable: evidence?.source?.writeAuditAvailable }).slice(0, 280))
     ok('ON-13', 'operational evidence:DCW 回读/ACK/写审计可达',
       Boolean(dcwEvidence)
       && typeof dcwEvidence?.readValue === 'number' && Number.isFinite(dcwEvidence.readValue)

@@ -74,58 +74,59 @@ function makeAdapter(
     audit: [] as string[],
     auditFilters: [] as Array<Record<string, unknown>>,
   }
+  const operational: IndustrialOperationalPorts = {
+    now: () => nowMs,
+    latest: async (nodeId) => {
+      calls.latest.push(nodeId)
+      if (nodeId === 'daq-a') return [{ at: nowMs - 30_000, value: 42.5 }]
+      if (nodeId === 'daq-b') return [{ at: nowMs - 3_600_000, value: 3.2 }]
+      return []
+    },
+    history: async (nodeId, q) => {
+      calls.history.push(nodeId)
+      calls.historyQueries.push(q as unknown as Record<string, unknown>)
+      return {
+        points: [{ at: q.fromMs + 1000, value: 1 }, { at: q.toMs - 1000, value: 2 }],
+        resolution: 'raw' as const,
+        coverage: {
+          requestedFromMs: q.fromMs,
+          requestedToMs: q.toMs,
+          availableFromMs: q.fromMs,
+          rawFromMs: q.fromMs,
+          truncated: false,
+          note: 'fixture window',
+        },
+      }
+    },
+    tagged: async () => {
+      calls.tagged += 1
+      return new Map([['daq-a', [{ at: nowMs - 30_000, value: 42.5 }]]])
+    },
+    frames: async (nodeId) => {
+      calls.frames.push(nodeId)
+      return [{
+        at: nowMs - 60_000,
+        kind: 'vector' as const,
+        points: Array.from({ length: 300 }, (_, index) => index),
+        metrics: { avg: 149.5 },
+        meta: { source: 'fixture', points: Array.from({ length: 300 }, (_, index) => index), objectKey: `frames/${nodeId}.png` },
+        productId: 'product-1',
+        recipeId: 'recipe-1',
+        runId: 'run-1',
+      }]
+    },
+    writeAudit: async (filter) => {
+      calls.audit.push(String(filter.nodeId))
+      calls.auditFilters.push(filter as unknown as Record<string, unknown>)
+      return [writeAuditRow]
+    },
+    ...overrides,
+  }
   const adapter = createIndustrialReadAdapter({
     services: services as never,
     authorize: () => auth,
     now: () => capturedAt,
-    operational: {
-      now: () => nowMs,
-      latest: async (nodeId) => {
-        calls.latest.push(nodeId)
-        if (nodeId === 'daq-a') return [{ at: nowMs - 30_000, value: 42.5 }]
-        if (nodeId === 'daq-b') return [{ at: nowMs - 3_600_000, value: 3.2 }]
-        return []
-      },
-      history: async (nodeId, q) => {
-        calls.history.push(nodeId)
-        calls.historyQueries.push(q as unknown as Record<string, unknown>)
-        return {
-          points: [{ at: q.fromMs + 1000, value: 1 }, { at: q.toMs - 1000, value: 2 }],
-          resolution: 'raw' as const,
-          coverage: {
-            requestedFromMs: q.fromMs,
-            requestedToMs: q.toMs,
-            availableFromMs: q.fromMs,
-            rawFromMs: q.fromMs,
-            truncated: false,
-            note: 'fixture window',
-          },
-        }
-      },
-      tagged: async () => {
-        calls.tagged += 1
-        return new Map([['daq-a', [{ at: nowMs - 30_000, value: 42.5 }]]])
-      },
-      frames: async (nodeId) => {
-        calls.frames.push(nodeId)
-        return [{
-          at: nowMs - 60_000,
-          kind: 'vector' as const,
-          points: Array.from({ length: 300 }, (_, index) => index),
-          metrics: { avg: 149.5 },
-          meta: { source: 'fixture', points: Array.from({ length: 300 }, (_, index) => index), objectKey: `frames/${nodeId}.png` },
-          productId: 'product-1',
-          recipeId: 'recipe-1',
-          runId: 'run-1',
-        }]
-      },
-      writeAudit: async (filter) => {
-        calls.audit.push(String(filter.nodeId))
-        calls.auditFilters.push(filter as unknown as Record<string, unknown>)
-        return [writeAuditRow]
-      },
-      ...overrides,
-    },
+    operational,
   })
   return { adapter, calls }
 }
@@ -301,10 +302,38 @@ test('aggregate point budget truncates evidence instead of materializing unbound
     history: true,
   })) as Record<string, unknown>
   const daq = result.daq as Array<Record<string, unknown>>
-  const firstHistory = daq.find(node => node.nodeId === 'daq-a')?.history as Record<string, unknown>
-  assert.equal((firstHistory.points as unknown[]).length, 20_000, '单请求历史点总数上限 20000')
-  assert.equal(firstHistory.truncated, true)
+  const histories = daq.map(node => node.history as Record<string, unknown> | undefined).filter(Boolean)
+  const total = histories.reduce((sum, history) => sum + ((history?.points as unknown[] | undefined)?.length ?? 0), 0)
+  assert.equal(total, 20_000, '跨节点历史点总数上限 20000(不是每节点各 20000)')
+  assert.equal(histories[0]?.truncated, true)
   assert.equal((result.source as Record<string, unknown>).truncated, true)
+})
+
+test('tagged budget keeps the newest samples and flags truncation', async () => {
+  const tagged = Array.from({ length: 25_000 }, (_, index) => ({ at: nowMs - 25_000 + index, value: index }))
+  const { adapter } = makeAdapter({
+    tagged: async () => new Map([['daq-a', tagged]]),
+  })
+  const result = await adapter.observe!(request({
+    lineId: 'line-a',
+    window: { fromMs: nowMs - 60_000, toMs: nowMs, limit: 1000 },
+    tagged: true,
+  })) as Record<string, unknown>
+  const daq = result.daq as Array<Record<string, unknown>>
+  const tags = daq.find(node => node.nodeId === 'daq-a')?.tagged as Array<Record<string, unknown>>
+  assert.equal(tags.length, 20_000)
+  assert.equal(tags[0]?.value, 5_000, '预算截断必须保留最新一段(tail),而不是最旧一段')
+  assert.equal(tags[tags.length - 1]?.value, 24_999)
+  assert.equal((result.source as Record<string, unknown>).truncated, true)
+})
+
+test('missing write-audit reader is reported as unavailable, not zero writes', async () => {
+  const { adapter } = makeAdapter({ writeAudit: null as never })
+  const result = await adapter.observe!(request({ lineId: 'line-a' })) as Record<string, unknown>
+  assert.equal((result.source as Record<string, unknown>).writeAuditRequested, true)
+  assert.equal((result.source as Record<string, unknown>).writeAuditAvailable, false)
+  assert.match(String((result.source as Record<string, unknown>).writeAuditError), /unavailable/)
+  assert.equal(((result.dcw as Array<Record<string, unknown>>)[0]!).writeAuditAvailable, false)
 })
 
 test('source revision is a stable content hash over the returned evidence', async () => {
@@ -443,6 +472,9 @@ test('plugin exposes POST /evidence/operational and forwards an authorized, read
     assert.equal(metadataForeign.visible, false, '显式 foreign scope 必须隐藏面板')
     assert.equal(metadataForeign.code, 'SCOPE_FORBIDDEN')
     assert.equal(metadataForeign.scopeState, 'denied')
+    const adapterInfo = routes.get('GET /adapter')!({ awUser: { id: 'operator', role: 'user' }, query: { ...scope } }) as Record<string, unknown>
+    assert.deepEqual(adapterInfo.capabilities, ['observe'], '/adapter 必须展示注册 adapter 的真实能力')
+    assert.deepEqual((adapterInfo.adapterDescriptor as Record<string, unknown>).capabilities, ['observe'])
   }
   finally {
     for (const name of names) {

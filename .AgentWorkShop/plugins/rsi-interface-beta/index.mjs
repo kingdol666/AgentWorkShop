@@ -124,10 +124,10 @@ function publicAdapterStatus(status) {
 function fallbackCapabilities(state) {
   const base = adapterDescriptor.capabilities
   // 2026-11-14 评审:registry 不可用时不能回退到静态 ALLOWED(simulate/replay/verify
-  // 未实现)。优先用本插件实际注册的 adapter capabilities,其次保守的已实现集合。
+  // 未实现)。adapter 未注册 → 无能力;已注册 → 用其真实 capabilities(即使是空集)。
+  if (state.adapterStatus?.ok !== true) return []
   if (state.adapterCapabilities && typeof state.adapterCapabilities === 'object') {
-    const truth = base.filter(capability => state.adapterCapabilities[capability] === true)
-    if (truth.length) return truth
+    return base.filter(capability => state.adapterCapabilities[capability] === true)
   }
   return base.filter(capability => ['discover', 'snapshot', 'observe', 'query'].includes(capability))
 }
@@ -559,15 +559,21 @@ export default {
     const healthHandler = event => routeResult(state, event, 'observe')
     const scopeHandler = event => routeResult(state, event, 'query')
     const metadataHandler = event => publicMetadata(state, event)
-    const adapterHandler = event => ({
-      ...routeResult(state, event, null),
-      adapterDescriptor,
-      requiredScope: REQUIRED_SCOPE_KEYS,
-      registered: state.adapterStatus.ok === true,
-      readOnly: true,
-      actuation: false,
-      promotion: false,
-    })
+    const adapterHandler = (event) => {
+      // /adapter 与 /metadata 必须同一能力真相:静态 descriptor 的 ALLOWED 是
+      // policy 集合,不是实现集合(2026-11-14 评审)。
+      const capabilities = advertisedCapabilities(state)
+      return {
+        ...routeResult(state, event, null),
+        adapterDescriptor: { ...adapterDescriptor, capabilities },
+        capabilities,
+        requiredScope: REQUIRED_SCOPE_KEYS,
+        registered: state.adapterStatus.ok === true,
+        readOnly: true,
+        actuation: false,
+        promotion: false,
+      }
+    }
 
     ctx.route('GET', statusPath, statusHandler)
     ctx.route('GET', healthPath, healthHandler)

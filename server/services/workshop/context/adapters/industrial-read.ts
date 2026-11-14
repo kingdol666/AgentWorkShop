@@ -115,6 +115,7 @@ export type IndustrialOperationalEvidence = {
     contentHash: string
     sourceRevision: string
     truncated?: boolean
+    writeAuditRequested?: boolean
     writeAuditAvailable: boolean
     writeAuditError?: string
   }
@@ -572,7 +573,8 @@ async function projectIndustrialOperational(
     else if (history && ports.history) truncated = true
     const allTags = taggedPoints?.get(nodeId) ?? []
     const tagRemaining = Math.max(0, MAX_OPERATIONAL_POINTS - taggedCount)
-    const tags = tagRemaining > 0 ? allTags.slice(0, tagRemaining) : []
+    // 升序点列取**最新**一段(与 history 一致),否则预算截断会把最新样本丢掉。
+    const tags = tagRemaining > 0 ? allTags.slice(-tagRemaining) : []
     if (tags.length < allTags.length) truncated = true
     taggedCount += tags.length
     let frames: Array<Record<string, unknown>> | undefined
@@ -621,8 +623,9 @@ async function projectIndustrialOperational(
   const auditRequested = request.writeAudit !== false
   const auditLimit = Math.max(1, Math.min(finiteNumber(typeof request.writeAudit === 'object' ? request.writeAudit?.limit : undefined) ?? 10, 50))
   let auditRows = 0
-  let writeAuditAvailable = true
-  let writeAuditError: string | undefined
+  // 请求了审计但没有读取端口 = 审计不可用,不能返回「零写入 + available」。
+  let writeAuditAvailable = !auditRequested || Boolean(ports.writeAudit)
+  let writeAuditError = auditRequested && !ports.writeAudit ? 'write audit reader unavailable' : undefined
   const dcw: Array<Record<string, unknown>> = []
   for (const node of dcwNodes) {
     throwIfAborted(signal)
@@ -631,8 +634,8 @@ async function projectIndustrialOperational(
     const ackMs = timeMsOf(lastAckAt)
     const ackAgeMs = ackMs == null ? null : Math.max(0, nowMs - ackMs)
     let rows: InterventionEventRow[] = []
-    let nodeAuditAvailable = true
-    let nodeAuditError: string | undefined
+    let nodeAuditAvailable = !(auditRequested && !ports.writeAudit)
+    let nodeAuditError = auditRequested && !ports.writeAudit ? 'write audit reader unavailable' : undefined
     if (auditRequested && ports.writeAudit) {
       try {
         const read = await ports.writeAudit({ nodeId, lineId: text(node.lineId), limit: auditLimit })
@@ -720,6 +723,7 @@ async function projectIndustrialOperational(
       contentHash,
       sourceRevision: contentHash.slice(0, 16),
       truncated,
+      writeAuditRequested: auditRequested,
       writeAuditAvailable,
       ...(writeAuditError ? { writeAuditError } : {}),
     },
