@@ -178,9 +178,15 @@ export default {
 
     ctx.route('GET', '/health', () => healthPayload())
 
-    // 连接探针(不落库):按给定参数开串口读一次;ascii 模式可选先行下发探测行。
-    // 复用驱动工厂的连接池与超时语义 —— probe 通过 = 该参数创建节点后必可采。
+    // 连接探针(不落库):按给定参数开串口读一次。
+    // P1 安全收敛(2026-11-14):探针可触达任意本机串口 —— 仅管理员可用;
+    // 原先 ascii 探测的「先行下发一行」已整体移除:那是对任意设备的无审计命令写入面,
+    // 正式下发必须走数采/数控节点与治理咽喉,不经探针。
     ctx.route('POST', '/probe', async (event) => {
+      const user = event?.awUser
+      if (!user || user.role !== 'admin') {
+        return { success: false, error: 'FORBIDDEN_ADMIN: 串口探针仅管理员可用(可触达任意本机串口设备)' }
+      }
       const b = event?.awBody ?? {}
       const driverConfig = {
         mode: b.mode,
@@ -197,15 +203,11 @@ export default {
         jsonPath: b.jsonPath,
         timeoutMs: b.timeoutMs,
       }
-      const { cfg, errors } = normalizeSerialConfig(driverConfig)
+      // 参数校验仍先行(ascii 先行下发已移除,cfg 不再单独使用;校验语义由 test() 保持)
+      const { errors } = normalizeSerialConfig(driverConfig)
       if (errors.length) return { success: false, error: errors.join(';') }
       const t0 = Date.now()
       try {
-        // ascii 探测行:先发一条(如「?」问询帧),给主动上报型设备一个触发
-        if (cfg.mode === 'ascii-line' && b.sendLine) {
-          const conn = await factory.getConn(cfg)
-          await conn.line.writeLine(String(b.sendLine))
-        }
         const r = await factory.readDriver.test(driverConfig)
         return { success: true, ...r, latencyMs: r.latencyMs ?? Date.now() - t0 }
       }

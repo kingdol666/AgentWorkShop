@@ -604,18 +604,47 @@ export default {
       }
     })
 
-    ctx.route('GET', '/runs', () => ({
-      success: true,
-      runs: kvRuns(ctx)
-        .sort((a, b) => (b.meta?.createdAt ?? 0) - (a.meta?.createdAt ?? 0))
-        .map(({ id, meta }) => ({ runId: id, ...meta })),
-    }))
+    // P1 安全收敛(2026-11-14):快照读取产线 DAQ 时序并上传外部诊断服务,
+    // 必须按用户×产线授权收敛 —— readonly 及以上才可访问;授予/拒绝均留审计痕。
+    async function lineGate(event, line, action) {
+      const user = event?.awUser
+      if (!user?.id) return { ok: false, error: 'FORBIDDEN_LINE: 无法解析请求用户(需要用户 token)' }
+      const mode = typeof ctx.permissions?.lineMode === 'function'
+        ? ctx.permissions.lineMode(user, line)
+        : 'none'
+      if (mode === 'none') {
+        try {
+          const { recordOps } = await import('@/server/services/workshop/ops/ops')
+          recordOps({
+            actor: user.id, actorName: user.name ?? '', actorKind: 'user',
+            action: `${action}.denied`, kind: 'read', scope: 'system',
+            targetKind: 'line', targetId: line,
+            summary: `诊断访问被拒(无产线权限):${line}`,
+          })
+        }
+        catch { /* 审计不可用不改变拒绝语义 */ }
+        return { ok: false, error: `FORBIDDEN_LINE: 无产线 ${line} 权限(需只读及以上,请联系管理员授权)` }
+      }
+      try {
+        const { recordOps } = await import('@/server/services/workshop/ops/ops')
+        recordOps({
+          actor: user.id, actorName: user.name ?? '', actorKind: 'user',
+          action, kind: 'read', scope: 'system',
+          targetKind: 'line', targetId: line,
+          summary: `诊断产线数据访问(${mode}):${line}`,
+        })
+      }
+      catch { /* 审计不可用不改变授权语义 */ }
+      return { ok: true, mode }
+    }
 
     ctx.route('POST', '/snapshot', async (event) => {
       try {
         const b = event?.awBody ?? {}
         const line = String(b.line ?? '').trim()
         if (!line) return { success: false, error: 'line 必填(产线 id)' }
+        const gate = await lineGate(event, line, 'diag.snapshot.access')
+        if (!gate.ok) return { success: false, error: gate.error }
         const toMs = Number(b.to_ms) > 0 ? Number(b.to_ms) : Date.now()
         const fromMs = Number(b.from_ms) > 0 ? Number(b.from_ms) : toMs - 60 * MIN
         if (fromMs >= toMs) return { success: false, error: 'from_ms 必须小于 to_ms' }
@@ -628,12 +657,46 @@ export default {
       }
     })
 
+    // 运行列表:按用户产线可见面收敛(无产线归属的历史 run 仅管理员可见)
+    ctx.route('GET', '/runs', async (event) => {
+      const user = event?.awUser
+      if (!user?.id) return { success: false, error: 'FORBIDDEN_LINE: 无法解析请求用户(需要用户 token)' }
+      const visible = typeof ctx.permissions?.visibleLineIds === 'function'
+        ? ctx.permissions.visibleLineIds(user)
+        : null // null = 不限(仅 admin;editor 也走 grant 面)
+      if (user.role !== 'admin' && visible == null) {
+        return { success: false, error: 'FORBIDDEN_LINE: 无法解析产线授权面,请重新登录' }
+      }
+      const rows = kvRuns(ctx)
+        .sort((a, b) => (b.meta?.createdAt ?? 0) - (a.meta?.createdAt ?? 0))
+        .filter(({ meta }) => {
+          const line = String(meta?.line ?? '').trim()
+          if (!line) return user.role === 'admin'
+          return visible == null ? true : visible.has(line)
+        })
+        .map(({ id, meta }) => ({ runId: id, ...meta }))
+      return { success: true, runs: rows }
+    })
+
     // 报告查看(面板/前端):run_id → 诊断任务 → workspace run 目录 → report md 内容
     ctx.route('GET', '/report', async (event) => {
       try {
         const u = new URL(String(event?.path ?? event?.node?.req?.url ?? ''), 'http://local')
         const runId = String(u.searchParams.get('run_id') ?? '').trim()
         if (!runId) return { success: false, error: 'run_id 必填' }
+        // P1:报告按 run 归属产线收敛(无产线归属的历史 run 仅管理员可读)
+        const meta = ctx.kv.get(runKey(runId)) ?? {}
+        const runLine = String(meta?.line ?? '').trim()
+        const user = event?.awUser
+        if (!user?.id) return { success: false, error: 'FORBIDDEN_LINE: 无法解析请求用户(需要用户 token)' }
+        if (user.role !== 'admin') {
+          const visible = typeof ctx.permissions?.visibleLineIds === 'function'
+            ? ctx.permissions.visibleLineIds(user)
+            : new Set()
+          if (!runLine || (visible != null && !visible.has(runLine))) {
+            return { success: false, error: `FORBIDDEN_LINE: 无权查看诊断 ${runId} 的报告(产线归属不满足)` }
+          }
+        }
         const base = baseOf(ctx)
         if (!base) return { success: false, error: 'diag.base_url 非法' }
         const st = (await jget(ctx, `${base}/api/diagnosis/tasks/${encodeURIComponent(runId)}`, 8000)).data ?? {}
@@ -642,7 +705,6 @@ export default {
         }
         const ws = (await jget(ctx, `${base}/api/files/workspace`, 8000)).data ?? []
         const names = (Array.isArray(ws) ? ws : [])
-        const meta = ctx.kv.get(runKey(runId)) ?? {}
         // 目录命名不统一(<ts>_<scene> 或 <ts>_<scene>_<runId>):runId → scene → 最新 逐级兜底
         const hit = names.find(e => String(e?.name ?? '').includes(runId))
           ?? names.find(e => meta?.scene && String(e?.name ?? '').toLowerCase().includes(String(meta.scene).toLowerCase()))
