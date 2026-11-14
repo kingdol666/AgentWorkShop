@@ -61,6 +61,7 @@ export async function loadAllPlugins(host, { config, paths }) {
           dir,
           entry,
           clientPath: def.client ? resolve(dir, def.client) : null,
+          clientFlags: Array.isArray(def.clientFlags) ? def.clientFlags.map(String).filter(Boolean) : [],
           i18nPath: pluginI18nPath(dir),
           settings: [],
           groups: [],
@@ -87,6 +88,7 @@ export async function loadAllPlugins(host, { config, paths }) {
         dir,
         entry,
         clientPath: def.client ? resolve(dir, def.client) : null,
+        clientFlags: Array.isArray(def.clientFlags) ? def.clientFlags.map(String).filter(Boolean) : [],
         i18nPath: pluginI18nPath(dir),
         settings: settingsCheck.descriptors,
         /** 本插件声明的配置分组(独占命名空间;卸载时随插件一起摘除) */

@@ -1,0 +1,8 @@
+{
+  "id": "service-workflow",
+  "fixtureId": "context-learning-base",
+  "adapter": { "id": "fixture.context.service-workflow", "version": "1.0.0", "sideEffect": "none", "capabilities": ["discover", "snapshot", "query", "simulate"] },
+  "context": { "subjectIds": ["service-workflow"], "objectIds": ["service-workflow-object"], "attributeIds": ["service-workflow-state"], "tags": ["service-workflow", "read-only"] },
+  "research": { "objective": "learn service workflow context", "question": "What bounded service workflow context is available?", "steps": [{ "id": "workflow-snapshot", "capability": "snapshot", "sourceRef": "fixture:service-workflow/context", "kind": "observation" }, { "id": "workflow-simulation", "capability": "simulate", "sourceRef": "fixture:service-workflow/simulation", "kind": "simulation" }] },
+  "acceptance": { "expectedClassification": "simulation", "maxCandidateEvidence": 2, "requireNoPhysicalWrites": true }
+}

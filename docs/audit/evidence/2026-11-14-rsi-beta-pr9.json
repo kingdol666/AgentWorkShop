@@ -1,0 +1,41 @@
+{
+  "manifestVersion": "rsi-beta-pr9.v1",
+  "kind": "read-only-beta-management-evidence",
+  "recordedAt": "2026-11-14",
+  "plugin": "rsi-interface-beta",
+  "apiVersion": "rsi-interface-beta.v1",
+  "surface": {
+    "panel": ".AgentWorkShop/plugins/rsi-interface-beta/client.mjs",
+    "metadataRoute": "GET /api/plugins/rsi-interface-beta/metadata",
+    "auth": "user",
+    "readOnly": true,
+    "actuation": false,
+    "promotion": false,
+    "approvalControls": false
+  },
+  "visibility": {
+    "featureOff": "metadata.visible=false and code=BETA_DISABLED",
+    "missingScope": "metadata.visible=false and scopeCode is a denial code",
+    "staleOrForeignScope": "server-side evaluateBetaScope denies the request",
+    "hardDenyFlags": [
+      "AW_RSI_BETA_ACTUATION_ENABLED",
+      "AW_RSI_BETA_PROMOTION_ENABLED"
+    ]
+  },
+  "provenance": {
+    "context": "shared/context/contracts.ts",
+    "research": "server/services/workshop/research/contracts.ts",
+    "evidence": "server/services/workshop/evidence/normalizer.ts"
+  },
+  "focusedChecks": {
+    "rsiBetaLifecycleAndUi": "10/10 pass",
+    "pluginLifecycle": "22/22 pass",
+    "i18n": "3328/3328 parity, 0 unresolved",
+    "rsiRedline": "19 files, 0 device-write calls",
+    "build": "pass"
+  },
+  "fullGateNotes": [
+    "At the time of this PR-9 slice, full typecheck/lint were blocked by unrelated in-progress overlay-registry changes in the shared worktree; those conditions were transient, not product defects.",
+    "All final gates were re-run cleanly on the isolated branch at tested head c4f3f60a; see 2026-11-14-rsi-beta-final-gates.json for the exact-head lint/typecheck/unit/build/pack results and the acceptance runner reports."
+  ]
+}

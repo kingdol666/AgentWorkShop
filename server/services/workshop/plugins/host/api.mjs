@@ -46,6 +46,23 @@ export function readClientScript(name) {
   return { status: 200, code: readFileSync(rec.clientPath, 'utf8'), contentType: 'text/javascript; charset=utf-8' }
 }
 
+function clientAvailability(record) {
+  if (!record?.clientPath) return false
+  const flags = Array.isArray(record.clientFlags) ? record.clientFlags : []
+  const enabled = name => process.env[String(name)] === '1'
+  // RSI has a composite availability contract: UI is not usable when the
+  // global/research gate is off, and reserved write gates always deny it.
+  if (record.name === 'rsi-interface-beta') {
+    return enabled('AW_RSI_BETA_ENABLED')
+      && enabled('AW_RSI_BETA_RESEARCH_ENABLED')
+      && enabled('AW_RSI_BETA_UI_ENABLED')
+      && !enabled('AW_RSI_BETA_ACTUATION_ENABLED')
+      && !enabled('AW_RSI_BETA_PROMOTION_ENABLED')
+  }
+  // Legacy plugins have no clientFlags and remain available exactly as before.
+  return flags.length === 0 || flags.every(enabled)
+}
+
 /** 清单(非敏感只读;含启停状态与路由)。builtin = 随项目检出提供的内置示例插件 */
 export function pluginManifest() {
   const host = getPluginHost()
@@ -58,6 +75,8 @@ export function pluginManifest() {
     builtin: r.scope === 'project' || r.scope === 'builtin',
     enabled: r.enabled !== false,
     hasClient: Boolean(r.clientPath),
+    clientFlags: Array.isArray(r.clientFlags) && r.clientFlags.length ? [...r.clientFlags] : undefined,
+    clientAvailable: clientAvailability(r),
     hasI18n: Boolean(r.i18nPath),
     settingsCount: Array.isArray(r.settings) ? r.settings.length : 0,
     /** 本插件声明的配置分组(设置页独立分区;id 已收敛进 plugin-<name> 命名空间) */

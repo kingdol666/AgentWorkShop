@@ -359,6 +359,8 @@ export interface PluginDef {
   configGroups?: PluginGroupDecl[]
   setup?(ctx: PluginContext): void | Promise<void>
   client?: string
+  /** Optional environment flags required before the client entry is available. */
+  clientFlags?: string[]
   routes?: PluginRouteDef[]
 }
 

@@ -1,0 +1,8 @@
+{
+  "id": "document-event",
+  "fixtureId": "context-learning-base",
+  "adapter": { "id": "fixture.context.document-event", "version": "1.0.0", "sideEffect": "candidate-only", "capabilities": ["discover", "snapshot", "observe", "query", "replay", "verify", "export"] },
+  "context": { "subjectIds": ["document-event"], "objectIds": ["document-event-object"], "attributeIds": ["document-event-type"], "tags": ["document-event", "candidate-only"] },
+  "research": { "objective": "learn document event context", "question": "Which document event records are available?", "steps": [{ "id": "document-discover", "capability": "discover", "sourceRef": "fixture:document-event/discover", "kind": "document" }, { "id": "document-replay", "capability": "replay", "sourceRef": "fixture:document-event/replay", "kind": "replay" }, { "id": "document-verify", "capability": "verify", "sourceRef": "fixture:document-event/verify", "kind": "verification" }] },
+  "acceptance": { "expectedClassification": "simulation", "maxCandidateEvidence": 3, "requireNoPhysicalWrites": true }
+}

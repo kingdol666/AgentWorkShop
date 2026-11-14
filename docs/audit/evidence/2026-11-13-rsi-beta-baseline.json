@@ -1,0 +1,138 @@
+{
+  "manifestVersion": "rsi-beta-baseline.v1",
+  "kind": "architecture-baseline-evidence",
+  "contract": "docs/architecture/2026-11-13-adr-rsi-beta-boundary-contract.md",
+  "plan": "docs/plans/2026-11-13-operational-context-research-learning-framework.md",
+  "recordedAt": "2026-11-13",
+  "repository": {
+    "name": "AgentWorkShop",
+    "baselineCommit": "6e5a77c02394251a6cb382105a57b5de4715c7b0",
+    "baselineBranch": "feat/rsi-interface-beta-20261113",
+    "sourceRoot": "server/services/workshop"
+  },
+  "runtimeChangePolicy": {
+    "runtimeSourceModifiedByPr0": false,
+    "reservedFlagsImplementedByPr0": false,
+    "defaultBetaPosture": {
+      "rsiBetaEnabled": false,
+      "researchEnabled": false,
+      "simulatorEnabled": false,
+      "physicalHilEnabled": false,
+      "actuationEnabled": false,
+      "promotionEnabled": false
+    }
+  },
+  "stableAuthorities": [
+    {
+      "id": "dcw-write-throat",
+      "stablePath": "dcw/dcw-controller/write.ts",
+      "actualRepositoryPath": "server/services/workshop/dcw/dcw-controller/write.ts",
+      "authority": "physical-write-throat",
+      "sha256": "e4e397b917cae63ca1117b7e5a0085e52cc02b1943ab60cf2cd1397e28d6dc3a",
+      "hashAlgorithm": "sha256-content-hash",
+      "requiredInvariant": "All accepted and rejected DCW writes remain subject to the existing interlocks, limits, pacing, hold window, driver call, and outcome path."
+    },
+    {
+      "id": "tool-approvals",
+      "stablePath": "agents/tool-approvals.ts",
+      "actualRepositoryPath": "server/services/workshop/agents/tool-approvals.ts",
+      "authority": "tool-level-approval-wait",
+      "sha256": "1743d806fed1326c680d567d86b1b8a66bdcf5f503a3164af6ea29cdcc6239fd",
+      "hashAlgorithm": "sha256-content-hash",
+      "requiredInvariant": "Approval remains explicit; expiry and cancellation resolve as denial; approval history remains auditable."
+    },
+    {
+      "id": "hitl-decision",
+      "stablePath": "agents/hitl-decision/decide.ts",
+      "actualRepositoryPath": "server/services/workshop/agents/hitl-decision/decide.ts",
+      "authority": "unified-hitl-decision",
+      "sha256": "41391bae7e3542a6eed00584d63dbb2fcaf58eca54112c0acc3832cdfd82f820",
+      "hashAlgorithm": "sha256-content-hash",
+      "requiredInvariant": "Authorization, atomic claim, native dispatch, confirmed finalization, failure, unknown delivery, and audit remain one decision flow."
+    },
+    {
+      "id": "hitl-respond-route",
+      "stablePath": "api/workshop/hitl/respond.post.ts",
+      "actualRepositoryPath": "server/api/workshop/hitl/respond.post.ts",
+      "authority": "hitl-http-boundary",
+      "sha256": "281115e8ef3a6ac706b10e2f32995ef78ef3d4d71885c651e89bde655b906dcc",
+      "hashAlgorithm": "sha256-content-hash",
+      "requiredInvariant": "The route validates input and delegates to the unified decision service; it is not a second decision authority."
+    },
+    {
+      "id": "ops",
+      "stablePath": "ops/ops.ts",
+      "actualRepositoryPath": "server/services/workshop/ops/ops.ts",
+      "authority": "operations-and-audit-sink",
+      "sha256": "0c41ac2dd57d078aa58f35f09654f23c6a47d32f25bb5fb78bd90dd7e1c743fd",
+      "hashAlgorithm": "sha256-content-hash",
+      "requiredInvariant": "Scope normalization and audit/ops logging remain fail-safe and cannot be bypassed by Beta code."
+    },
+    {
+      "id": "dcw-write-audit",
+      "stablePath": "dcw/dcw-controller/write-audit.ts",
+      "actualRepositoryPath": "server/services/workshop/dcw/dcw-controller/write-audit.ts",
+      "authority": "successful-write-evidence",
+      "sha256": "20312f31f82ec82883b2484d8e5acb93a520d693d1342ef978d2fa8a8efd0932",
+      "hashAlgorithm": "sha256-content-hash",
+      "requiredInvariant": "Successful writes retain operator/source/task/approval context, outcome/readback, and intervention evidence at the existing audit point."
+    }
+  ],
+  "reservedBetaFlags": [
+    {
+      "name": "AW_RSI_BETA_ENABLED",
+      "default": false,
+      "status": "reserved-not-implemented",
+      "meaning": "Enable the additive Beta surface only after explicit deployment opt-in."
+    },
+    {
+      "name": "AW_RSI_BETA_RESEARCH_ENABLED",
+      "default": false,
+      "status": "reserved-not-implemented",
+      "meaning": "Enable generic research orchestration without granting actuation or promotion."
+    },
+    {
+      "name": "AW_RSI_BETA_SIMULATOR_ENABLED",
+      "default": false,
+      "status": "reserved-not-implemented",
+      "meaning": "Enable an explicitly selected simulator/replay profile; simulator evidence remains simulation evidence."
+    },
+    {
+      "name": "AW_RSI_BETA_PHYSICAL_HIL_ENABLED",
+      "default": false,
+      "status": "reserved-not-implemented",
+      "meaning": "Enable a separately reviewed physical-HIL acceptance profile without granting Beta actuation."
+    },
+    {
+      "name": "AW_RSI_BETA_ACTUATION_ENABLED",
+      "default": false,
+      "status": "reserved-not-implemented",
+      "meaning": "Reserved for a separately approved future change; false for the Beta baseline."
+    },
+    {
+      "name": "AW_RSI_BETA_PROMOTION_ENABLED",
+      "default": false,
+      "status": "reserved-not-implemented",
+      "meaning": "Reserved for a separately approved future change; false for the Beta baseline."
+    }
+  ],
+  "safetyInvariants": {
+    "scope": "default-deny",
+    "actuation": "forbidden-in-beta",
+    "promotion": "forbidden-in-beta",
+    "agentSelfApproval": "forbidden",
+    "simulatorPhysicalHilEquivalence": "forbidden",
+    "rollback": {
+      "firstAction": "disable-relevant-beta-flags",
+      "preserveHistoricalEvidence": true,
+      "automaticDegradationRollback": false,
+      "stableAuthoritiesRemainAvailable": true
+    }
+  },
+  "evidenceSemantics": {
+    "simulator": "simulation-or-replay-evidence-only",
+    "physicalHil": "separate-reviewed-evidence-class",
+    "productionControl": "not-authorized-by-this-baseline",
+    "promotion": "not-authorized-by-this-baseline"
+  }
+}

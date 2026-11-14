@@ -1,0 +1,8 @@
+{
+  "id": "pva",
+  "fixtureId": "context-learning-base",
+  "adapter": { "id": "fixture.context.pva", "version": "1.0.0", "sideEffect": "none", "capabilities": ["discover", "snapshot", "query", "simulate"] },
+  "context": { "subjectIds": ["pva"], "objectIds": ["pva-object"], "attributeIds": ["pva-state"], "tags": ["pva", "read-only"] },
+  "research": { "objective": "learn PVA context", "question": "What bounded context is available for PVA?", "steps": [{ "id": "pva-snapshot", "capability": "snapshot", "sourceRef": "fixture:pva/context", "kind": "observation" }, { "id": "pva-simulation", "capability": "simulate", "sourceRef": "fixture:pva/simulation", "kind": "simulation" }] },
+  "acceptance": { "expectedClassification": "simulation", "maxCandidateEvidence": 2, "requireNoPhysicalWrites": true }
+}

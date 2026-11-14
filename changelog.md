@@ -1,4 +1,10 @@
-## v0.11.2 — Final acceptance closeout: recipe preflight × AML regression × strict input (2026-11-12)
+## Next — PR-9 RSI Beta management surface (2026-11-14)
+
+- Added a read-only RSI Beta management panel to the plugin page with server-reported status, strict flags/scope, adapter health, Context/Research/Evidence provenance, and limitations.
+- Added an authenticated metadata route and fail-closed visibility: absent/off flags or absent, stale, or foreign scope never expose an operational Beta surface.
+- No approve, promote, actuate, control-write, or profile activation controls were added; existing UI/runtime behavior remains unchanged when Beta is absent or disabled.
+- Release notes and operational boundaries: `docs/rsi-beta-management.md`.
+
 
 - `recipe_trial` now rejects deterministic out-of-range and active recipe-window-invalid candidates before HITL, with no approval card, driver write, execution batch, or device mutation.
 - Runtime input validation is fail-closed for null, booleans, empty strings, NaN, Infinity and nonnumeric strings; finite numbers and numeric strings remain supported.

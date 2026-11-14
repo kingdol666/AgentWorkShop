@@ -1,0 +1,65 @@
+{
+  "manifestVersion": "rsi-beta-final-gates.v1",
+  "kind": "beta-rsi-exact-head-gate-evidence",
+  "recordedAt": "2026-11-14",
+  "branch": "feat/rsi-interface-beta-20261113",
+  "tested": {
+    "head": "c4f3f60a192780392ea205fdea5a0977eacc4dac",
+    "headShort": "c4f3f60a",
+    "base": "origin/main",
+    "baseHead": "c5542b4b9b9bdda8581ae00a9b5a88476807351e",
+    "note": "This evidence file is committed in a docs-only commit on top of the tested head; no product code differs."
+  },
+  "review": {
+    "verdict": "APPROVED",
+    "reviewedHead": "c4f3f60a192780392ea205fdea5a0977eacc4dac",
+    "blockers": { "p0": 0, "p1": 0 },
+    "reviewerNotes": [
+      "Delta from 6fdf5d42 is the package.json files dedupe only: 0 additions, 3 deletions.",
+      "A transient parallel-run failure in tests/http-drivers.test.ts was not reproducible; the file passes 10/10 in isolation and the full suite passes serially."
+    ]
+  },
+  "gates": {
+    "lint": { "status": "PASS", "rsiRedline": { "files": 21, "deviceWriteCalls": 0 } },
+    "typecheck": { "status": "PASS" },
+    "unit": { "status": "PASS", "tests": 1634, "pass": 1634, "fail": 0, "skipped": 0 },
+    "focusedContextAndRsiSuites": { "status": "PASS", "files": 14, "tests": 65, "pass": 65, "fail": 0 },
+    "i18n": { "status": "PASS", "zhKeys": 3328, "enKeys": 3328, "unresolved": 0 },
+    "docsSync": { "status": "PASS", "passed": 87, "failed": 0 },
+    "build": { "status": "PASS" },
+    "packageDryRun": { "status": "PASS", "packageSize": "43.6 MB", "pluginIncluded": true, "managementDocIncluded": true, "adrIncluded": true }
+  },
+  "acceptanceRunner": {
+    "script": "scripts/acceptance-context-learning.mjs",
+    "profile": "all",
+    "simulation": {
+      "status": "PASS",
+      "exitCode": 0,
+      "report": "docs/audit/evidence/2026-11-14-rsi-beta-final-runner.json",
+      "acceptanceFingerprint": "11acb3b287b4f9bddd72f145d963aedb28ed9b6d6583065e8d8018f11852acb5",
+      "sideEffects": "none beyond candidate evidence"
+    },
+    "isolatedHomeBaseline": {
+      "status": "PASS",
+      "baseline": "docs/audit/evidence/2026-11-14-rsi-beta-final-baseline.json",
+      "report": "docs/audit/evidence/2026-11-14-rsi-beta-final-runner-isolated.json",
+      "baselineMatched": true
+    },
+    "physicalHil": {
+      "status": "BLOCKED",
+      "exitCode": 2,
+      "claim": false,
+      "reason": "physical-HIL is not available in this runner; no physical-HIL claim is made",
+      "report": "docs/audit/evidence/2026-11-14-rsi-beta-final-runner-physical.json"
+    }
+  },
+  "security": {
+    "mimosa": "inconclusive (scanner_enobufs); no security-pass claim is made"
+  },
+  "notClaimed": [
+    "Physical HIL execution or verification.",
+    "Any production PLC/DCW/DAQ write, actuation, or promotion.",
+    "A complete security audit or security-pass verdict.",
+    "Any change to the existing SchedulerLoop, AgentTeam, HITL, Recipe gate, ACK/readback, or audit paths."
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "id": "all",
+  "fixtureId": "context-learning-base",
+  "adapter": { "id": "fixture.context.all", "version": "1.0.0", "sideEffect": "candidate-only", "capabilities": ["discover", "snapshot", "observe", "query", "simulate", "replay", "verify", "export"] },
+  "context": { "tags": ["all", "read-only", "bounded"] },
+  "research": { "objective": "learn all parameterized contexts", "question": "What bounded context and candidate evidence are available across the configured profiles?", "steps": [{ "id": "all-discover", "capability": "discover", "sourceRef": "fixture:all/discover", "kind": "observation" }, { "id": "all-snapshot", "capability": "snapshot", "sourceRef": "fixture:all/context", "kind": "observation" }, { "id": "all-query", "capability": "query", "sourceRef": "fixture:all/query", "kind": "observation" }, { "id": "all-simulate", "capability": "simulate", "sourceRef": "fixture:all/simulation", "kind": "simulation" }] },
+  "acceptance": { "expectedClassification": "simulation", "maxCandidateEvidence": 4, "requireNoPhysicalWrites": true }
+}

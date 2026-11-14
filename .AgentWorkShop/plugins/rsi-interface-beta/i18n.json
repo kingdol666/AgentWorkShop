@@ -1,0 +1,66 @@
+{
+  "zh-CN": {
+    "panel": {
+      "title": "RSI Beta 管理状态",
+      "status": "状态",
+      "code": "判定",
+      "refresh": "刷新",
+      "loading": "加载中…",
+      "error": "不可达",
+      "loadFailed": "状态读取失败",
+      "flags": "Beta 旗标",
+      "scope": "作用域",
+      "adapter": "适配器",
+      "boundary": "边界",
+      "readOnly": "只读;不含执行/审批/晋级",
+      "reviewRequired": "需人工复核",
+      "capabilities": "允许能力",
+      "provenance": "上下文 / 研究 / 证据来源",
+      "scopeRequired": "所需作用域",
+      "notBound": "未绑定",
+      "denied": "默认拒绝",
+      "state": {
+        "ready": "可观察",
+        "degraded": "受限",
+        "default-deny": "未启用或无作用域"
+      },
+      "provenanceKind": {
+        "context": "上下文",
+        "research": "研究",
+        "evidence": "证据"
+      }
+    }
+  },
+  "en": {
+    "panel": {
+      "title": "RSI Beta management status",
+      "status": "Status",
+      "code": "Decision",
+      "refresh": "Refresh",
+      "loading": "Loading…",
+      "error": "Unreachable",
+      "loadFailed": "Failed to load status",
+      "flags": "Beta flags",
+      "scope": "Scope",
+      "adapter": "Adapter",
+      "boundary": "Boundary",
+      "readOnly": "Read-only; no execute/approve/promote",
+      "reviewRequired": "Human review required",
+      "capabilities": "Allowed capabilities",
+      "provenance": "Context / research / evidence provenance",
+      "scopeRequired": "Required scope",
+      "notBound": "Not bound",
+      "denied": "Default denied",
+      "state": {
+        "ready": "Observable",
+        "degraded": "Restricted",
+        "default-deny": "Off or out of scope"
+      },
+      "provenanceKind": {
+        "context": "Context",
+        "research": "Research",
+        "evidence": "Evidence"
+      }
+    }
+  }
+}

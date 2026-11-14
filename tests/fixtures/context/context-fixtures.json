@@ -1,0 +1,51 @@
+{
+  "fixtures": {
+    "context-learning-base": {
+      "revision": "fixture-r1",
+      "capturedAt": "2026-11-13T00:00:00.000Z",
+      "workspaceId": "workspace-context-learning",
+      "sourceRef": "fixture:context-learning/base",
+      "subjects": [
+        { "id": "pva", "type": "industrial.process", "label": "PVA process context" },
+        { "id": "injection", "type": "industrial.injection", "label": "Injection process context" },
+        { "id": "wwtp", "type": "industrial.wwtp", "label": "WWTP process context" },
+        { "id": "document-event", "type": "document.event", "label": "Document event context" },
+        { "id": "batch-material", "type": "material.batch", "label": "Batch material context" },
+        { "id": "service-workflow", "type": "service.workflow", "label": "Service workflow context" },
+        { "id": "simulation", "type": "simulation.case", "label": "Simulation case context" },
+        { "id": "custom-driver", "type": "driver.custom", "label": "Custom driver context" }
+      ],
+      "objects": [
+        { "id": "pva-object", "type": "industrial.asset", "subjectId": "pva", "role": "process" },
+        { "id": "injection-object", "type": "industrial.asset", "subjectId": "injection", "role": "process" },
+        { "id": "wwtp-object", "type": "industrial.asset", "subjectId": "wwtp", "role": "process" },
+        { "id": "document-event-object", "type": "document.record", "subjectId": "document-event", "role": "event" },
+        { "id": "batch-material-object", "type": "material.batch-record", "subjectId": "batch-material", "role": "material" },
+        { "id": "service-workflow-object", "type": "service.case", "subjectId": "service-workflow", "role": "workflow" },
+        { "id": "simulation-object", "type": "simulation.model", "subjectId": "simulation", "role": "model" },
+        { "id": "custom-driver-object", "type": "driver.endpoint", "subjectId": "custom-driver", "role": "adapter" }
+      ],
+      "attributes": [
+        { "id": "pva-state", "ownerId": "pva-object", "key": "process.state", "value": "ready", "valueKind": "scalar" },
+        { "id": "injection-state", "ownerId": "injection-object", "key": "process.state", "value": "ready", "valueKind": "scalar" },
+        { "id": "wwtp-state", "ownerId": "wwtp-object", "key": "process.state", "value": "ready", "valueKind": "scalar" },
+        { "id": "document-event-type", "ownerId": "document-event-object", "key": "document.event-type", "value": "document.created", "valueKind": "event" },
+        { "id": "batch-material-lot", "ownerId": "batch-material-object", "key": "material.lot", "value": "lot-001", "valueKind": "scalar" },
+        { "id": "service-workflow-state", "ownerId": "service-workflow-object", "key": "workflow.state", "value": "queued", "valueKind": "scalar" },
+        { "id": "simulation-kind", "ownerId": "simulation-object", "key": "simulation.kind", "value": "digital-twin", "valueKind": "scalar" },
+        { "id": "custom-driver-kind", "ownerId": "custom-driver-object", "key": "driver.kind", "value": "fixture", "valueKind": "scalar" }
+      ],
+      "materials": [],
+      "relations": [
+        { "id": "pva-process-state", "kind": "context.has-state", "srcId": "pva-object", "dstId": "pva" },
+        { "id": "injection-process-state", "kind": "context.has-state", "srcId": "injection-object", "dstId": "injection" },
+        { "id": "wwtp-process-state", "kind": "context.has-state", "srcId": "wwtp-object", "dstId": "wwtp" },
+        { "id": "document-event-record", "kind": "context.records", "srcId": "document-event-object", "dstId": "document-event" },
+        { "id": "batch-material-record", "kind": "context.records", "srcId": "batch-material-object", "dstId": "batch-material" },
+        { "id": "service-workflow-record", "kind": "context.records", "srcId": "service-workflow-object", "dstId": "service-workflow" },
+        { "id": "simulation-model-record", "kind": "context.models", "srcId": "simulation-object", "dstId": "simulation" },
+        { "id": "custom-driver-record", "kind": "context.exposes", "srcId": "custom-driver-object", "dstId": "custom-driver" }
+      ]
+    }
+  }
+}

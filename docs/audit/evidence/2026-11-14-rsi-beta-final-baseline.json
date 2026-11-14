@@ -1,0 +1,28 @@
+{
+  "manifestVersion": "context-learning.acceptance-baseline.v1",
+  "kind": "context-learning-acceptance-baseline",
+  "generatedAt": "2026-11-14T03:10:59.280Z",
+  "runner": "scripts/acceptance-context-learning.mjs",
+  "reportVersion": "context-learning.acceptance.v1",
+  "profile": {
+    "id": "all",
+    "fixtureId": "context-learning-base"
+  },
+  "execution": {
+    "mode": "isolated-home",
+    "classification": "simulation",
+    "simulation": true,
+    "physicalHIL": {
+      "requested": false,
+      "executed": false,
+      "verified": false,
+      "claim": false,
+      "status": "not-available"
+    },
+    "network": {
+      "disabled": false,
+      "calls": 0
+    }
+  },
+  "acceptanceFingerprint": "2976f64c372b1ae227490bc6c250dc7b4ee79ed5e3591e3609bf110af8de48f0"
+}
