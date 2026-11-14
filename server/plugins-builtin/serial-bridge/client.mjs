@@ -66,11 +66,11 @@ export function setup(ctx) {
       const baudInp = ctx.el('input', { class: 'aw-serial-inp', type: 'number', value: '9600' })
       const unitInp = ctx.el('input', { class: 'aw-serial-inp', type: 'number', value: '1' })
       const regInp = ctx.el('input', { class: 'aw-serial-inp', type: 'number', placeholder: '40001' })
-      const lineInp = ctx.el('input', { class: 'aw-serial-inp grow', placeholder: t('sendLine') })
+      // P1 收敛:探针只读(不再支持先行下发任意行;正式下发走治理节点)
       const probeBtn = ctx.el('button', { class: 'aw-serial-btn', onclick: () => void runProbe() })
       const result = ctx.el('div', { class: 'aw-serial-hint' }, [t('probe_hint')])
       const form = ctx.el('div', { class: 'aw-serial-form' }, [
-        probeSel, modeSel, baudInp, unitInp, regInp, lineInp, probeBtn,
+        probeSel, modeSel, baudInp, unitInp, regInp, probeBtn,
       ])
       root.append(form, result)
 
@@ -172,7 +172,6 @@ export function setup(ctx) {
               baudRate: Number(baudInp.value) || 9600,
               unitId: Number(unitInp.value) || 1,
               register: regInp.value === '' ? undefined : Number(regInp.value),
-              sendLine: modeSel.value === 'ascii-line' && lineInp.value ? lineInp.value : undefined,
             },
           })
           const body = r ?? {}

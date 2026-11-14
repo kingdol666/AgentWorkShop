@@ -254,7 +254,8 @@ test('/report 路由:任务 completed → workspace 匹配 run → 代理返回�
   reportContent = '# 深度诊断报告\n根因:进料波动'
   statusScript = [{ status: 'completed', result: { score: 88, verdict: 'ENDORSED', report_md_path: 'D:/idd/w/20261002_demo_tid42/report.md' } }]
   const handler = ctx.routes['/report']!
-  const out = await handler({ path: `/api/plugins/diag-bridge/report?run_id=tid42` }) as { success: boolean, report?: { content?: string } }
+  // P1 收敛后 /report 需要请求用户:管理员全量可见(无产线归属 run 亦然)
+  const out = await handler({ awUser: { id: 'a', role: 'admin', name: 'a' }, path: `/api/plugins/diag-bridge/report?run_id=tid42` }) as { success: boolean, report?: { content?: string } }
   assert.equal(out.success, true)
   assert.match(out.report?.content ?? '', /根因:进料波动/)
   assert.equal(reportHits, 1)

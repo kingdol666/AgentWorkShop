@@ -10,7 +10,7 @@
  *   - Channel 下 worker(harness agent)直接按目录绝对路径读全量数据做分析。
  * 导出核心 exportDaqDataset 不依赖仓储单例(readPoints/nodeOf 注入),单测可全内存构造。
  */
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { closeSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs'
 import { join } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
@@ -227,7 +227,9 @@ async function exportFrames(
       n += 1
     }
     const fileRel = `frames/${safeFileId(id)}.csv`
-    writeFileSync(join(dir, fileRel), rows.join('\r\n'), 'utf8')
+    const vectorBody = rows.join('\r\n')
+    writeFileSync(join(dir, fileRel), vectorBody, 'utf8')
+    const vectorSha256 = createHash('sha256').update(vectorBody, 'utf8').digest('hex')
     const metricEntries = frames.flatMap(f => Object.entries(f.metrics ?? {}))
     const metricSummary: Record<string, number> = {}
     for (const [k, v] of metricEntries) if (Number.isFinite(v)) metricSummary[k] = v
@@ -235,6 +237,7 @@ async function exportFrames(
       id, name: meta.name, kind: 'vector', line_id: meta.lineId,
       semantics: meta.semantics || '', unit: meta.unit,
       file: fileRel, frames: n, points: rows.length - 1,
+      sha256: vectorSha256,
       value_range_observed: null, state_summary: {},
       ...(meta.vector ? { vector: meta.vector } : {}),
       metrics_summary: metricSummary,
@@ -367,11 +370,14 @@ export async function exportDaqDataset(opts: {
     let minV = Number.POSITIVE_INFINITY
     let maxV = Number.NEGATIVE_INFINITY
     const fd = openSync(join(dir, fileRel), 'w')
+    // P1 完整性(2026-11-14):写入即逐块算 sha256,manifest 落账;读取/上传前复核
+    const fileHash = createHash('sha256')
     let wroteAny = false
     const writeLine = (line: string): void => {
       // 行间分隔(首行前不写,末行后不留空行):与旧 join('\r\n') 的字节契约一致
       const buf = Buffer.from(`${wroteAny ? '\r\n' : ''}${line}`, 'utf8')
       wroteAny = true
+      fileHash.update(buf)
       let off = 0
       while (off < buf.length) off += writeSync(fd, buf, off, buf.length - off)
     }
@@ -426,6 +432,7 @@ export async function exportDaqDataset(opts: {
       name: meta.name,
       unit: meta.unit,
       line_id: meta.lineId,
+      sha256: fileHash.digest('hex'),
       range: { min: meta.min ?? null, max: meta.max ?? null },
       warn: { low: meta.warnLow ?? null, high: meta.warnHigh ?? null },
       interval_ms: meta.intervalMs ?? null,
