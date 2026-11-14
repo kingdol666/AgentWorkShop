@@ -1,7 +1,7 @@
 {
   "manifestVersion": "rsi-compatibility-matrix.v1",
-  "recordedAt": "2026-11-14T11:30:57.689Z",
-  "head": "b7a326ae89ece5d006ebdbb9360586024d4894bc",
+  "recordedAt": "2026-11-14T11:37:23.233Z",
+  "head": "3e1b7ff262fb4805045fb9d7d636ed8c1624965c",
   "branch": "feat/rsi-compatibility-matrix-20261114",
   "environment": {
     "mode": "isolated AW_HOME",
@@ -11,16 +11,16 @@
     "security": "Mimosa not run/not a pass for this script; no security claim"
   },
   "ids": {
-    "workspaceId": "06020ab6-fc1d-40f4-8906-d83e8f9da09e",
-    "channelId": "e1dcaf1e-9a1a-4233-a225-3926db495cf3",
-    "leadId": "673d3d2b-f76a-4cf9-8af1-35009a10db12",
-    "workerId": "42129035-9614-4ec2-b62f-7324b1c6ca61",
-    "lineId": "ln-d80ebc2c",
-    "dcwNodeId": "dw-c40dbd94",
-    "daqNodeId": "dn-492745ee",
-    "recipeId": "rc-58c0e678",
-    "sessionId": "cs-a7d831a5",
-    "projectId": "816101ab-da63-4c75-ac18-36a9f0b375e5"
+    "workspaceId": "4587e776-3969-4f90-8952-c4bf21fed225",
+    "channelId": "41449662-b8c2-4feb-b53d-17a25a36b7c5",
+    "leadId": "00a7d676-4d92-4c6f-b325-25508c1f423d",
+    "workerId": "f7205c20-6428-40bc-a0f4-43c7bcb0be9f",
+    "lineId": "ln-c1bd0dcd",
+    "dcwNodeId": "dw-01eb2ec3",
+    "daqNodeId": "dn-bb8ddf80",
+    "recipeId": "rc-664c8049",
+    "sessionId": "cs-890f531b",
+    "projectId": "1f60fb06-daa0-4aca-ab08-fe2e3a281458"
   },
   "checks": [
     {
@@ -87,49 +87,49 @@
       "id": "ON-2",
       "name": "Workspace/Channel/Worker 创建并挂载",
       "pass": true,
-      "detail": "{\"workspaceId\":\"06020ab6-fc1d-40f4-8906-d83e8f9da09e\",\"channelId\":\"e1dcaf1e-9a1a-4233-a225-3926db495cf3\",\"leadId\":\"673d3d2b-f76a-4cf9-8af1-35009a10db12\",\"workerId\":\"42129035-9614-4ec2-b62f-7324b1c6ca61\",\"mount\":200}"
+      "detail": "{\"workspaceId\":\"4587e776-3969-4f90-8952-c4bf21fed225\",\"channelId\":\"41449662-b8c2-4feb-b53d-17a25a36b7c5\",\"leadId\":\"00a7d676-4d92-4c6f-b325-25508c1f423d\",\"workerId\":\"f7205c20-6428-40bc-a0f4-43c7bcb0be9f\",\"mount\":200}"
     },
     {
       "id": "ON-3",
       "name": "Recipe/DAQ/绑线/控制网关就绪",
       "pass": true,
-      "detail": "{\"lineId\":\"ln-d80ebc2c\",\"dcw\":\"dw-c40dbd94\",\"recipe\":\"rc-58c0e678\",\"daq\":\"dn-492745ee\",\"bind\":200,\"ctrl\":200}"
+      "detail": "{\"lineId\":\"ln-c1bd0dcd\",\"dcw\":\"dw-01eb2ec3\",\"recipe\":\"rc-664c8049\",\"daq\":\"dn-bb8ddf80\",\"bind\":200,\"ctrl\":200}"
     },
     {
       "id": "ON-4",
       "name": "Session/Project 上下文创建",
       "pass": true,
-      "detail": "{\"session\":\"cs-a7d831a5\",\"project\":\"816101ab-da63-4c75-ac18-36a9f0b375e5\"}"
+      "detail": "{\"session\":\"cs-890f531b\",\"project\":\"1f60fb06-daa0-4aca-ab08-fe2e3a281458\"}"
     },
     {
       "id": "ON-5",
       "name": "HITL:line_start 生成审批卡",
       "pass": true,
-      "detail": "ap-8930ab07"
+      "detail": "ap-67b3c435"
     },
     {
       "id": "ON-6",
       "name": "HITL:审批提交成功",
       "pass": true,
-      "detail": "{\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"ok\":true,\"kind\":\"dcw-approval\",\"id\":\"ap-8930ab07\",\"status\":\"approved\",\"nativeConfirmed\":true,\"decisionId\":\"dbb7674b-b7dd-48dc-94e2-c56d12db758d\",\"approva"
+      "detail": "{\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"ok\":true,\"kind\":\"dcw-approval\",\"id\":\"ap-67b3c435\",\"status\":\"approved\",\"nativeConfirmed\":true,\"decisionId\":\"7a03c7a2-216e-4a19-af21-b428a93fb319\",\"approva"
     },
     {
       "id": "ON-7",
       "name": "HITL 批准后开线成功且参数设备证实",
       "pass": true,
-      "detail": "产线「矩阵产线-mxbp0qw」已开跑(批次 rr-5dc7e,配方「矩阵配方-mxbp0qw」参数已全部设备证实)。用 daq_query 复测确认数采窗口激活。"
+      "detail": "产线「矩阵产线-mxbx39r」已开跑(批次 rr-17839,配方「矩阵配方-mxbx39r」参数已全部设备证实)。用 daq_query 复测确认数采窗口激活。"
     },
     {
       "id": "ON-8",
       "name": "HITL 终态留痕(approved)",
       "pass": true,
-      "detail": "{\"id\":\"ap-8930ab07\",\"kind\":\"dcw-approval\",\"requestType\":\"approval\",\"nativeRequestId\":\"\",\"channelId\":\"e1dcaf1e-9a1a-4233-a225-3926db495cf3\",\"agentId\":\"673d3d2b-f76a-4cf9-8af1-35009a10db12\",\"agentName\":\"矩阵lead-mxbp0qw\",\"sessionId\":\"\",\"harness"
+      "detail": "{\"id\":\"ap-67b3c435\",\"kind\":\"dcw-approval\",\"requestType\":\"approval\",\"nativeRequestId\":\"\",\"channelId\":\"41449662-b8c2-4feb-b53d-17a25a36b7c5\",\"agentId\":\"00a7d676-4d92-4c6f-b325-25508c1f423d\",\"agentName\":\"矩阵lead-mxbx39r\",\"sessionId\":\"\",\"harness"
     },
     {
       "id": "ON-9",
       "name": "RSI Beta status 在宿主 scope 下 ready",
       "pass": true,
-      "detail": "{\"status\":200,\"apiVersion\":\"rsi-interface-beta.v1\",\"plugin\":\"rsi-interface-beta\",\"ok\":true,\"available\":true,\"code\":\"READY\",\"capability\":null,\"scope\":{\"workspaceId\":\"06020ab6-fc1d-40f4-8906-d83e8f9da09e\",\"channelId\":\"e1dcaf1e-9a1a-4233-a225-3926db495cf3\",\"worke"
+      "detail": "{\"status\":200,\"apiVersion\":\"rsi-interface-beta.v1\",\"plugin\":\"rsi-interface-beta\",\"ok\":true,\"available\":true,\"code\":\"READY\",\"capability\":null,\"scope\":{\"workspaceId\":\"4587e776-3969-4f90-8952-c4bf21fed225\",\"channelId\":\"41449662-b8c2-4feb-b53d-17a25a36b7c5\",\"worke"
     },
     {
       "id": "ON-10",
@@ -153,13 +153,13 @@
       "id": "ON-13",
       "name": "operational evidence:DCW 回读/ACK/写审计可达",
       "pass": true,
-      "detail": "{\"nodeId\":\"dw-c40dbd94\",\"lineId\":\"ln-d80ebc2c\",\"name\":\"矩阵数控-mxbp0qw\",\"unit\":\"℃\",\"enabled\":true,\"value\":80,\"readValue\":80,\"lastAckAt\":\"2026-11-14T19:30:24.882+08:00\",\"ackAgeMs\":2649,\"ackFresh\":true,\"lastWriteAt\":\"2026-11-14T19:30:24.882+08:00\",\"state\":\"ok\",\"lastError\":null,\"stepLimit\":20,\"limits\":{\"m"
+      "detail": "{\"nodeId\":\"dw-01eb2ec3\",\"lineId\":\"ln-c1bd0dcd\",\"name\":\"矩阵数控-mxbx39r\",\"unit\":\"℃\",\"enabled\":true,\"value\":80,\"readValue\":80,\"lastAckAt\":\"2026-11-14T19:36:52.905+08:00\",\"ackAgeMs\":2696,\"ackFresh\":true,\"lastWriteAt\":\"2026-11-14T19:36:52.905+08:00\",\"state\":\"ok\",\"lastError\":null,\"stepLimit\":20,\"limits\":{\"m"
     },
     {
       "id": "ON-14",
       "name": "operational evidence:DAQ latest 新鲜度可判定",
       "pass": true,
-      "detail": "{\"value\":168,\"at\":1794655827108,\"ageMs\":423,\"freshness\":\"fresh\"}"
+      "detail": "{\"value\":166.1,\"at\":1794656215130,\"ageMs\":471,\"freshness\":\"fresh\"}"
     },
     {
       "id": "ON-15",
@@ -171,7 +171,7 @@
       "id": "ON-16",
       "name": "research:只读 observe 计划可执行并产出候选证据",
       "pass": true,
-      "detail": "{\"status\":200,\"ok\":true,\"available\":true,\"scope\":{\"workspaceId\":\"06020ab6-fc1d-40f4-8906-d83e8f9da09e\",\"channelId\":\"e1dcaf1e-9a1a-4233-a225-3926db495cf3\",\"workerId\":\"42129035-9614-4ec2-b62f-7324b1c6ca61\"},\"run\":{\"id\":\"matrix-run-mxbp0qw\",\"idempotencyKey\":\"matrix-key-mxbp0qw\",\"state\":\"completed\",\"objective\":\"读取运行证据\",\"question\":\"当前线是否已开跑且回读一致?\",\"subjectRefs\":[{\"namespace\":\"industrial.line\",\"id\":\"ln-"
+      "detail": "{\"status\":200,\"ok\":true,\"available\":true,\"scope\":{\"workspaceId\":\"4587e776-3969-4f90-8952-c4bf21fed225\",\"channelId\":\"41449662-b8c2-4feb-b53d-17a25a36b7c5\",\"workerId\":\"f7205c20-6428-40bc-a0f4-43c7bcb0be9f\"},\"run\":{\"id\":\"matrix-run-mxbx39r\",\"idempotencyKey\":\"matrix-key-mxbx39r\",\"state\":\"completed\",\"objective\":\"读取运行证据\",\"question\":\"当前线是否已开跑且回读一致?\",\"subjectRefs\":[{\"namespace\":\"industrial.line\",\"id\":\"ln-"
     },
     {
       "id": "ON-17",
@@ -195,7 +195,7 @@
       "id": "on-UI2",
       "name": "on: 面板展示能力/边界",
       "pass": true,
-      "detail": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0.11.2 / dev 插件管理 2 简体中文 矩 矩阵管理员-mxbp0qw "
+      "detail": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0.11.2 / dev 插件管理 2 简体中文 矩 矩阵管理员-mxbx39r "
     },
     {
       "id": "on-UI3",
