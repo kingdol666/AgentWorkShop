@@ -35,8 +35,7 @@
     "build": "pass"
   },
   "fullGateNotes": [
-    "Full typecheck was blocked by unrelated pre-existing server/services/workshop/context/overlay-registry.ts errors in the concurrent worktree.",
-    "Full lint was blocked by unrelated overlay-registry and context-overlay-scope changes in the concurrent worktree.",
-    "Only PR-9 paths are staged for the release commit; unrelated staged and unstaged changes remain untouched."
+    "At the time of this PR-9 slice, full typecheck/lint were blocked by unrelated in-progress overlay-registry changes in the shared worktree; those conditions were transient, not product defects.",
+    "All final gates were re-run cleanly on the isolated branch at tested head c4f3f60a; see 2026-11-14-rsi-beta-final-gates.json for the exact-head lint/typecheck/unit/build/pack results and the acceptance runner reports."
   ]
 }
