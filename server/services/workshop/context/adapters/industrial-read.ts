@@ -99,7 +99,7 @@ export type IndustrialOperationalPorts = {
   history?: (nodeId: string, q: TsdbHistoryQuery) => Promise<TsdbHistoryResult>
   tagged?: (q: TsdbTagQuery) => Promise<Map<string, TsdbPoint[]>>
   frames?: (nodeId: string, q: DaqFrameQueryOpts) => Promise<DaqFrameRecord[]>
-  writeAudit?: (filter: { nodeId?: string, lineId?: string, limit?: number }) => Promise<InterventionEventRow[]>
+  writeAudit?: (filter: { nodeId?: string, lineId?: string, limit?: number }) => Promise<InterventionEventRow[] | { rows: InterventionEventRow[], available: boolean, error?: string }>
 }
 
 export type IndustrialOperationalEvidence = {
@@ -114,6 +114,9 @@ export type IndustrialOperationalEvidence = {
     counts: Record<string, number>
     contentHash: string
     sourceRevision: string
+    truncated?: boolean
+    writeAuditAvailable: boolean
+    writeAuditError?: string
   }
   daq: Array<Record<string, unknown>>
   dcw: Array<Record<string, unknown>>
@@ -145,8 +148,9 @@ function defaultOperationalPorts(): IndustrialOperationalPorts {
       return getTsdb().queryFrames(nodeId, q)
     },
     writeAudit: async (filter) => {
-      const { listInterventions } = await import('../../aml/intervention-ledger')
-      return listInterventions(filter)
+      // strict 读取:台账不可读时抛错,由证据面显式标记降级,绝不伪装成「零写入」。
+      const { listInterventionsStrict } = await import('../../aml/intervention-ledger')
+      return { rows: listInterventionsStrict(filter), available: true }
     },
   }
 }
@@ -413,6 +417,34 @@ function uniqueStrings(values: readonly unknown[] | undefined): string[] {
 }
 
 const MAX_OPERATIONAL_NODES = 50
+/** 聚合读预算(2026-11-14 评审):单请求不得把整库/整线序列一次性拉进内存。 */
+const MAX_OPERATIONAL_POINTS = 20_000
+const MAX_OPERATIONAL_FRAMES = 200
+const MAX_FRAME_PREVIEW_POINTS = 128
+const MAX_OPERATIONAL_PAYLOAD_BYTES = 2_000_000
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw new Error('operational evidence aborted')
+}
+
+/** 帧 meta 可能携带完整向量/图像 blob(生产写入方历史行为),预览面必须剔除。 */
+function sanitizeFrameMeta(meta: unknown): Record<string, unknown> {
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return {}
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(meta)) {
+    if (key === 'points' || key === 'blob' || key === 'thumbBlob' || key === 'image' || key === 'pixels') continue
+    if (typeof value === 'string') {
+      out[key] = value.length > 2000 ? `${value.slice(0, 2000)}…` : value
+      continue
+    }
+    if (Array.isArray(value)) {
+      out[key] = value.slice(0, 32)
+      continue
+    }
+    out[key] = value
+  }
+  return out
+}
 
 function selectOperationalNodes(
   views: ReadRecord[],
@@ -441,7 +473,9 @@ async function projectIndustrialOperational(
   adapterId: string,
   version: string,
   capturedAt: string,
+  signal?: AbortSignal,
 ): Promise<IndustrialOperationalEvidence> {
+  throwIfAborted(signal)
   const requestedLineId = text(request.lineId) || undefined
   const requestedLineIds = uniqueStrings([
     ...(Array.isArray(request.lineIds) ? request.lineIds : []),
@@ -454,7 +488,9 @@ async function projectIndustrialOperational(
     : requestedLineIds.length > 0
       ? requestedLineIds
       : [...authorizationLineIds]
-  const inScope = (lineValue: unknown): boolean => lineIds.length === 0 || lineIds.includes(text(lineValue))
+  // 无宿主授权线 = 无数据面(2026-11-14 评审:此前空集被解释为「全部产线」,fail-open)。
+  if (lineIds.length === 0) throw new Error('operational evidence requires authorized line bindings')
+  const inScope = (lineValue: unknown): boolean => lineIds.includes(text(lineValue))
   const daqNodes = selectOperationalNodes(
     services.daqNodes.all().map(asView).filter(node => inScope(node.lineId)),
     request.daqNodeIds,
@@ -471,7 +507,7 @@ async function projectIndustrialOperational(
   const windowFrom = finiteNumber(request.window?.fromMs)
   const windowTo = finiteNumber(request.window?.toMs)
   const bucketMs = Math.max(100, finiteNumber(request.window?.bucketMs) ?? 1000)
-  const pointLimit = Math.max(1, Math.min(finiteNumber(request.window?.limit) ?? 200, 5000))
+  const pointLimit = Math.max(1, Math.min(finiteNumber(request.window?.limit) ?? 200, 1000))
   const history = request.history === true
   const tagged = request.tagged === true
   if ((history || tagged) && (windowFrom == null || windowTo == null || windowFrom >= windowTo)) {
@@ -481,24 +517,27 @@ async function projectIndustrialOperational(
   const latestTo = windowTo ?? nowMs
   if (latestFrom >= latestTo) throw new Error('operational window must satisfy fromMs < toMs')
 
-  const taggedPoints = tagged && ports.tagged
+  const taggedPoints = tagged && ports.tagged && daqNodes.length > 0
     ? await ports.tagged({ nodeIds: daqNodes.map(node => text(node.id)), fromMs: windowFrom!, toMs: windowTo!, bucketMs, limit: pointLimit })
     : undefined
   const frameRequest = request.frames === true
     ? {}
     : request.frames && typeof request.frames === 'object' ? request.frames : null
   const frameKind = frameRequest?.kind === 'vector' || frameRequest?.kind === 'image' ? frameRequest.kind : undefined
-  const frameLimit = Math.max(1, Math.min(finiteNumber(frameRequest?.limit) ?? 20, 100))
+  const frameLimit = Math.max(1, Math.min(finiteNumber(frameRequest?.limit) ?? 20, 50))
 
   const daq: Array<Record<string, unknown>> = []
   let historyPoints = 0
   let taggedCount = 0
   let frameCount = 0
+  let truncated = false
   for (const node of daqNodes) {
+    throwIfAborted(signal)
     const nodeId = text(node.id)
     const points = ports.latest
       ? await ports.latest(nodeId, { fromMs: latestFrom, toMs: latestTo, bucketMs, limit: Math.min(pointLimit, 500) })
       : []
+    throwIfAborted(signal)
     const lastPoint = points.length > 0 ? points[points.length - 1]! : null
     const atCandidates = [timeMsOf(node.lastAt), lastPoint?.at]
       .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
@@ -506,24 +545,63 @@ async function projectIndustrialOperational(
     const value = finiteNumber(node.value) ?? finiteNumber(lastPoint?.value) ?? finiteNumber(lastPoint?.avg)
     const ageMs = at == null ? null : Math.max(0, nowMs - at)
     const freshness = ageMs == null ? 'missing' : ageMs <= staleAfterMs ? 'fresh' : 'stale'
-    const historyResult = history && ports.history
-      ? await ports.history(nodeId, { fromMs: windowFrom!, toMs: windowTo!, bucketMs, limit: pointLimit })
+    const historyResult = history && ports.history && historyPoints < MAX_OPERATIONAL_POINTS
+      ? await ports.history(nodeId, {
+          fromMs: windowFrom!,
+          toMs: windowTo!,
+          bucketMs,
+          limit: pointLimit,
+          ...(text(node.lineId) ? { lineId: text(node.lineId) } : {}),
+        })
       : undefined
-    if (historyResult) historyPoints += historyResult.points.length
-    const tags = taggedPoints?.get(nodeId) ?? []
+    throwIfAborted(signal)
+    let historyPayload: Record<string, unknown> | undefined
+    if (historyResult) {
+      const all = Array.isArray(historyResult.points) ? historyResult.points : []
+      const remaining = Math.max(0, MAX_OPERATIONAL_POINTS - historyPoints)
+      const kept = all.length > remaining ? all.slice(-remaining) : all
+      if (kept.length < all.length) truncated = true
+      historyPoints += kept.length
+      historyPayload = {
+        resolution: historyResult.resolution,
+        coverage: historyResult.coverage,
+        points: kept,
+        ...(kept.length < all.length ? { truncated: true } : {}),
+      }
+    }
+    else if (history && ports.history) truncated = true
+    const allTags = taggedPoints?.get(nodeId) ?? []
+    const tagRemaining = Math.max(0, MAX_OPERATIONAL_POINTS - taggedCount)
+    const tags = tagRemaining > 0 ? allTags.slice(0, tagRemaining) : []
+    if (tags.length < allTags.length) truncated = true
     taggedCount += tags.length
-    const frames = frameRequest && ports.frames
-      ? (await ports.frames(nodeId, { fromMs: latestFrom, toMs: latestTo, ...(frameKind ? { kind: frameKind } : {}), limit: frameLimit })).map(frame => ({
+    let frames: Array<Record<string, unknown>> | undefined
+    if (frameRequest && ports.frames) {
+      const frameRemaining = MAX_OPERATIONAL_FRAMES - frameCount
+      if (frameRemaining <= 0) {
+        truncated = true
+      }
+      else {
+        const rawFrames = await ports.frames(nodeId, {
+          fromMs: latestFrom,
+          toMs: latestTo,
+          ...(frameKind ? { kind: frameKind } : {}),
+          limit: Math.min(frameLimit, frameRemaining),
+        })
+        throwIfAborted(signal)
+        frames = rawFrames.slice(0, frameRemaining).map(frame => ({
           at: frame.at,
           kind: frame.kind,
           metrics: frame.metrics,
-          meta: frame.meta,
-          ...(Array.isArray(frame.points) ? { pointCount: frame.points.length, points: frame.points.slice(0, 256) } : {}),
+          meta: sanitizeFrameMeta(frame.meta),
+          ...(Array.isArray(frame.points) ? { pointCount: frame.points.length, points: frame.points.slice(0, MAX_FRAME_PREVIEW_POINTS) } : {}),
           productId: frame.productId ?? null,
           recipeId: frame.recipeId ?? null,
           runId: frame.runId ?? null,
         }))
-      : undefined
+        if (rawFrames.length > frames.length) truncated = true
+      }
+    }
     frameCount += frames?.length ?? 0
     daq.push({
       nodeId,
@@ -534,7 +612,7 @@ async function projectIndustrialOperational(
       enabled: node.enabled === true,
       latest: { value, at, ageMs, freshness },
       ...(lastPoint ? { latestPoint: lastPoint } : {}),
-      ...(historyResult ? { history: { resolution: historyResult.resolution, coverage: historyResult.coverage, points: historyResult.points } } : {}),
+      ...(historyPayload ? { history: historyPayload } : {}),
       ...(tagged ? { tagged: tags } : {}),
       ...(frames ? { frames } : {}),
     })
@@ -543,15 +621,41 @@ async function projectIndustrialOperational(
   const auditRequested = request.writeAudit !== false
   const auditLimit = Math.max(1, Math.min(finiteNumber(typeof request.writeAudit === 'object' ? request.writeAudit?.limit : undefined) ?? 10, 50))
   let auditRows = 0
+  let writeAuditAvailable = true
+  let writeAuditError: string | undefined
   const dcw: Array<Record<string, unknown>> = []
   for (const node of dcwNodes) {
+    throwIfAborted(signal)
     const nodeId = text(node.id)
     const lastAckAt = text(node.lastAckAt) || null
     const ackMs = timeMsOf(lastAckAt)
     const ackAgeMs = ackMs == null ? null : Math.max(0, nowMs - ackMs)
-    const rows = auditRequested && ports.writeAudit
-      ? await ports.writeAudit({ nodeId, lineId: text(node.lineId), limit: auditLimit })
-      : []
+    let rows: InterventionEventRow[] = []
+    let nodeAuditAvailable = true
+    let nodeAuditError: string | undefined
+    if (auditRequested && ports.writeAudit) {
+      try {
+        const read = await ports.writeAudit({ nodeId, lineId: text(node.lineId), limit: auditLimit })
+        if (Array.isArray(read)) {
+          rows = read
+        }
+        else {
+          rows = Array.isArray(read?.rows) ? read.rows : []
+          nodeAuditAvailable = read?.available !== false
+          nodeAuditError = read?.error
+        }
+      }
+      catch (error) {
+        // 台账不可读 ≠ 无写入:显式降级标记,不把故障伪装成零审计。
+        nodeAuditAvailable = false
+        nodeAuditError = error instanceof Error ? error.message : String(error)
+      }
+    }
+    throwIfAborted(signal)
+    if (!nodeAuditAvailable) {
+      writeAuditAvailable = false
+      writeAuditError ??= nodeAuditError ?? 'write audit unavailable'
+    }
     auditRows += rows.length
     dcw.push({
       nodeId,
@@ -584,6 +688,8 @@ async function projectIndustrialOperational(
         verdict: row.verdict,
         effect: row.effect,
       })),
+      writeAuditAvailable: nodeAuditAvailable,
+      ...(nodeAuditError ? { writeAuditError: nodeAuditError } : {}),
     })
   }
 
@@ -595,7 +701,12 @@ async function projectIndustrialOperational(
     frames: frameCount,
     writeAudit: auditRows,
   }
-  const contentHash = canonicalHash({ lineIds, daq, dcw })
+  const payload = { lineIds, daq, dcw }
+  const contentHash = canonicalHash(payload)
+  const payloadBytes = Buffer.byteLength(JSON.stringify(payload), 'utf8')
+  if (payloadBytes > MAX_OPERATIONAL_PAYLOAD_BYTES) {
+    throw new Error(`operational evidence payload exceeds ${MAX_OPERATIONAL_PAYLOAD_BYTES} bytes`)
+  }
   return {
     adapterId,
     version,
@@ -608,6 +719,9 @@ async function projectIndustrialOperational(
       counts,
       contentHash,
       sourceRevision: contentHash.slice(0, 16),
+      truncated,
+      writeAuditAvailable,
+      ...(writeAuditError ? { writeAuditError } : {}),
     },
     daq,
     dcw,
@@ -679,9 +793,13 @@ export function createIndustrialReadAdapter(options: {
   const observe = async (request: ContextAdapterOperationRequest): Promise<IndustrialOperationalEvidence> => {
     const authorization = request.authorization
     const boundLineIds = boundLineIdsOf(authorization)
-    if (options.authorize && (!authorization?.industrial || boundLineIds.length === 0)) throw new Error('operational evidence requires authorized line bindings')
+    // 运行证据面没有「无授权但可读」的合法场景(2026-11-14 评审:此前仅在有
+    // authorize 选项时才检查,直接构造 adapter 时 fail-open)。强制宿主绑线。
+    if (!authorization?.industrial || boundLineIds.length === 0) {
+      throw new Error('operational evidence requires authorized line bindings')
+    }
     const payload = payloadOf(request) as IndustrialOperationalRequest
-    return projectIndustrialOperational(services, operational, payload, boundLineIds, adapterId, version, now())
+    return projectIndustrialOperational(services, operational, payload, boundLineIds, adapterId, version, now(), request.signal)
   }
   const capabilities = { discover: true, snapshot: true, observe: true, query: true, simulate: false, replay: false, verify: false, export: false } as const
   return {

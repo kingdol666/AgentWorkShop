@@ -16,8 +16,10 @@ The panel has no execute, approve, promote, control-write, or profile-activation
 
 ## Default deny and visibility
 
-- Missing flags, values other than the exact `1`, unavailable persistence, or missing/stale/foreign scope return `visible: false`; the panel shows only the default-deny reason.
-- The panel never infers or expands scope from client state; every operational Beta route still re-checks `evaluateBetaScope` server-side.
+- Missing flags, values other than the exact `1`, or unavailable persistence return `visible: false`; the panel shows only the default-deny reason.
+- A request that supplies an exact scope which the host rejects (foreign/stale/unauthorized worker) returns `SCOPE_FORBIDDEN` with `visible: false`. With no scope supplied and no provisioned kv scope, metadata reports `SCOPE_UNBOUND` with `visible: true` and `available: false` — it is a discovery state, not a grant.
+- The kv `rsi.beta.scope` entry is an optional provisioning constraint: when present it narrows/denies; when absent the host-derived `resolveScopeBinding` is authoritative.
+- The panel never infers or expands scope from client state; every operational Beta route still re-checks host-derived scope (and the kv constraint when present) server-side.
 - `AW_RSI_BETA_ACTUATION_ENABLED` or `AW_RSI_BETA_PROMOTION_ENABLED` set to `1` remains a hard denial.
 - When the plugin is disabled or its client entry is absent, the host plugin page and existing settings UI remain unchanged.
 
@@ -28,7 +30,7 @@ The panel has no execute, approve, promote, control-write, or profile-activation
 - DAQ latest values with explicit `fresh`/`stale`/`missing` freshness and age, history via `tsdbQueryHistory` (explicit `fromMs < toMs` window required), tagged latest samples, and frame metadata/vector previews via `queryFrames`;
 - DCW engineering value, readback value, `lastAckAt`/liveness, effective step limit and range, plus recent write-audit rows from the intervention ledger (ack, actual readback, actor, approval/recipe references).
 
-Every response carries `readOnly: true`, `writeCount: 0`, a content hash and source revision. Requested line/node ids are validated against the host-derived bound-line set; foreign lines or nodes fail closed. The route never writes, acknowledges, approves, promotes, or provisions device authority, and it cannot be used with `actuate`/`simulate`/`replay`/`verify` capabilities.
+Every response carries `readOnly: true`, `writeCount: 0`, a content hash and source revision. Requested line/node ids are validated against the host-derived bound-line set; foreign lines, nodes, or an empty bound-line set fail closed. Frame metadata is sanitized (full vector/image payloads such as `meta.points` are removed; previews are capped), history/tagged points and frames have a per-request aggregate budget with an explicit `source.truncated` marker, and abort signals are checked between reads. If the intervention ledger is unreadable, the response sets `source.writeAuditAvailable: false` with an error instead of pretending there were no writes. The route never writes, acknowledges, approves, promotes, or provisions device authority, and it cannot be used with `actuate`/`simulate`/`replay`/`verify` capabilities.
 
 ## Provenance and limitations
 

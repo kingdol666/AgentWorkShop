@@ -90,6 +90,7 @@ async function startServer(phase, flags) {
     ...process.env,
     AW_MODE: 'home',
     AW_HOME: HOME,
+    HOST: '127.0.0.1',
     AW_RATE_LIMIT_OFF: '1',
     NUXT_SESSION_PASSWORD: SESSION_PASSWORD,
     NO_PROXY: '127.0.0.1,localhost',
@@ -130,8 +131,8 @@ async function uiCheck(phase, expectation) {
       const panel = await page.$('.aw-rsi-beta')
       ok(`${phase}-UI1`, `${phase}: /plugins 面板可见性符合预期`, expectation.panel ? Boolean(panel) : !panel, panel ? 'panel present' : 'panel absent')
       if (panel) {
-        const body = await page.evaluate(() => document.body.innerText)
-        ok(`${phase}-UI2`, `${phase}: 面板展示能力/边界`, /capabilit|能力/i.test(body) && /read.?only|只读/i.test(body), body.slice(0, 200).replace(/\s+/g, ' '))
+        const panelText = await panel.evaluate(el => el.innerText)
+        ok(`${phase}-UI2`, `${phase}: 面板展示能力/边界`, /capabilit|能力/i.test(panelText) && /read.?only|只读/i.test(panelText), panelText.slice(0, 240).replace(/\s+/g, ' '))
         await page.screenshot({ path: join(EVIDENCE, `${phase}-plugins.png`) })
       }
       await gotoReady(page, '/daq', { timeout: 240_000 })
@@ -287,8 +288,13 @@ try {
       JSON.stringify(metadataUnbound).slice(0, 220))
     const metadataScoped = await api('GET', `/api/plugins/rsi-interface-beta/metadata?${scopeQuery}`)
     ok('ON-11', 'metadata 随精确 scope 转 ready 且能力真相可见',
-      metadataScoped?.status === 'ready' && Array.isArray(metadataScoped?.capabilities) && metadataScoped.capabilities.includes('observe'),
+      metadataScoped?.status === 'ready' && Array.isArray(metadataScoped?.capabilities) && metadataScoped.capabilities.includes('observe')
+      && !metadataScoped.capabilities.includes('simulate') && !metadataScoped.capabilities.includes('replay') && !metadataScoped.capabilities.includes('verify'),
       JSON.stringify(metadataScoped?.capabilities ?? []).slice(0, 160))
+    const metadataForeign = await api('GET', `/api/plugins/rsi-interface-beta/metadata?workspaceId=${encodeURIComponent(workspaceId)}&channelId=${encodeURIComponent(channelId)}&workerId=foreign-worker`)
+    ok('ON-19', 'metadata 显式 foreign scope 报 SCOPE_FORBIDDEN 且不可见',
+      metadataForeign?.visible === false && metadataForeign?.code === 'SCOPE_FORBIDDEN',
+      JSON.stringify(metadataForeign).slice(0, 260))
 
     await sleep(2500)
     const window = { fromMs: Date.now() - 10 * 60_000, toMs: Date.now(), bucketMs: 1000, limit: 100 }
@@ -304,10 +310,15 @@ try {
     const dcwEvidence = (evidence?.dcw ?? []).find(item => item.nodeId === dcwNode?.id)
     const daqEvidence = (evidence?.daq ?? []).find(item => item.nodeId === daqNode?.id)
     ok('ON-12', 'operational evidence:只读边界与来源哈希',
-      operational?.ok === true && evidence?.readOnly === true && evidence?.writeCount === 0 && /^[a-f0-9]{64}$/.test(String(evidence?.source?.contentHash ?? '')),
-      JSON.stringify({ ok: operational?.ok, code: operational?.code, readOnly: evidence?.readOnly, writeCount: evidence?.writeCount }).slice(0, 240))
-    ok('ON-13', 'operational evidence:DCW 回读/ACK/写审计可达', Boolean(dcwEvidence) && Number.isFinite(Number(dcwEvidence?.readValue)) && Array.isArray(dcwEvidence?.writeAudit) && dcwEvidence.writeAudit.length > 0,
-      JSON.stringify(dcwEvidence ?? {}).slice(0, 300))
+      operational?.ok === true && evidence?.readOnly === true && evidence?.writeCount === 0 && /^[a-f0-9]{64}$/.test(String(evidence?.source?.contentHash ?? ''))
+      && evidence?.source?.writeAuditAvailable !== false,
+      JSON.stringify({ ok: operational?.ok, code: operational?.code, readOnly: evidence?.readOnly, writeCount: evidence?.writeCount, auditAvailable: evidence?.source?.writeAuditAvailable }).slice(0, 260))
+    ok('ON-13', 'operational evidence:DCW 回读/ACK/写审计可达',
+      Boolean(dcwEvidence)
+      && typeof dcwEvidence?.readValue === 'number' && Number.isFinite(dcwEvidence.readValue)
+      && Array.isArray(dcwEvidence?.writeAudit) && dcwEvidence.writeAudit.length > 0
+      && dcwEvidence.writeAudit.some(row => Boolean(row?.ack) || row?.actualValue != null),
+      JSON.stringify(dcwEvidence ?? {}).slice(0, 320))
     ok('ON-14', 'operational evidence:DAQ latest 新鲜度可判定', Boolean(daqEvidence) && ['fresh', 'stale', 'missing'].includes(String(daqEvidence?.latest?.freshness)),
       JSON.stringify(daqEvidence?.latest ?? {}).slice(0, 200))
     const auditPaths = new Set((dcwEvidence?.writeAudit ?? []).map(row => row.path))

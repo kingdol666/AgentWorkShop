@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { ContextAdapter, ContextAdapterOperationRequest } from '../server/services/workshop/context/contracts'
-import { createIndustrialReadAdapter } from '../server/services/workshop/context/adapters/industrial-read'
+import { createIndustrialReadAdapter, type IndustrialOperationalPorts } from '../server/services/workshop/context/adapters/industrial-read'
 import { ContextAdapterRegistry } from '../server/services/workshop/context/registry'
 import { canonicalHash } from '../shared/context/hash'
 import plugin from '../.AgentWorkShop/plugins/rsi-interface-beta/index.mjs'
@@ -61,11 +61,22 @@ const writeAuditRow = {
   ciLow: null, ciHigh: null, mde: null, verdictDetail: null, createdAt: capturedAt, updatedAt: capturedAt,
 }
 
-function makeAdapter() {
-  const calls = { latest: [] as string[], history: [] as string[], tagged: 0, frames: [] as string[], audit: [] as string[] }
+function makeAdapter(
+  overrides: Partial<IndustrialOperationalPorts> = {},
+  auth: typeof authorization = authorization,
+) {
+  const calls = {
+    latest: [] as string[],
+    history: [] as string[],
+    historyQueries: [] as Array<Record<string, unknown>>,
+    tagged: 0,
+    frames: [] as string[],
+    audit: [] as string[],
+    auditFilters: [] as Array<Record<string, unknown>>,
+  }
   const adapter = createIndustrialReadAdapter({
     services: services as never,
-    authorize: () => authorization,
+    authorize: () => auth,
     now: () => capturedAt,
     operational: {
       now: () => nowMs,
@@ -77,6 +88,7 @@ function makeAdapter() {
       },
       history: async (nodeId, q) => {
         calls.history.push(nodeId)
+        calls.historyQueries.push(q as unknown as Record<string, unknown>)
         return {
           points: [{ at: q.fromMs + 1000, value: 1 }, { at: q.toMs - 1000, value: 2 }],
           resolution: 'raw' as const,
@@ -101,7 +113,7 @@ function makeAdapter() {
           kind: 'vector' as const,
           points: Array.from({ length: 300 }, (_, index) => index),
           metrics: { avg: 149.5 },
-          meta: { source: 'fixture' },
+          meta: { source: 'fixture', points: Array.from({ length: 300 }, (_, index) => index), objectKey: `frames/${nodeId}.png` },
           productId: 'product-1',
           recipeId: 'recipe-1',
           runId: 'run-1',
@@ -109,14 +121,21 @@ function makeAdapter() {
       },
       writeAudit: async (filter) => {
         calls.audit.push(String(filter.nodeId))
+        calls.auditFilters.push(filter as unknown as Record<string, unknown>)
         return [writeAuditRow]
       },
+      ...overrides,
     },
   })
   return { adapter, calls }
 }
 
-function request(payload: Record<string, unknown>, withAuthorization = true): ContextAdapterOperationRequest {
+function request(
+  payload: Record<string, unknown>,
+  withAuthorization = true,
+  signal: AbortSignal = new AbortController().signal,
+  auth: typeof authorization = authorization,
+): ContextAdapterOperationRequest {
   return {
     adapterId: 'industrial-read',
     apiVersion: 'context-adapter.v1',
@@ -126,12 +145,13 @@ function request(payload: Record<string, unknown>, withAuthorization = true): Co
     payload,
     idempotencyKey: 'operational-test-key',
     timeoutMs: 5000,
-    ...(withAuthorization ? { authorization } : {}),
+    signal,
+    ...(withAuthorization ? { authorization: auth } : {}),
   } as ContextAdapterOperationRequest
 }
 
 test('observe reads DAQ freshness and DCW ACK/readback/write-audit without any write path', async () => {
-  const { adapter } = makeAdapter()
+  const { adapter, calls } = makeAdapter()
   assert.equal(adapter.capabilities.observe, true)
   const before = JSON.stringify({ daqFresh, daqStale, dcwNode })
   const result = await adapter.observe!(request({ lineId: 'line-a' })) as Record<string, unknown>
@@ -155,6 +175,11 @@ test('observe reads DAQ freshness and DCW ACK/readback/write-audit without any w
   assert.equal(audit[0]?.actualValue, 51.9)
   assert.equal(audit[0]?.approvalId, 'approval-1')
   assert.equal('hypothesis' in (audit[0] ?? {}), false, '写审计不得外泄假设文本')
+  assert.equal(dcw.writeAuditAvailable, true)
+  assert.equal(calls.audit.length, 1)
+  assert.equal(calls.auditFilters[0]?.nodeId, 'dcw-a')
+  assert.equal(calls.auditFilters[0]?.lineId, 'line-a')
+  assert.deepEqual(calls.latest.sort(), ['daq-a', 'daq-b'], 'latest 端口必须逐节点调用')
   assert.equal((result.source as Record<string, unknown>).sourceRevision, String((result.source as Record<string, unknown>).contentHash).slice(0, 16))
 })
 
@@ -179,12 +204,19 @@ test('history/tagged/frames require an explicit window and read through the DAQ 
   const frames = fresh.frames as Array<Record<string, unknown>>
   assert.equal(frames[0]?.kind, 'vector')
   assert.equal(frames[0]?.pointCount, 300)
-  assert.equal((frames[0]?.points as unknown[]).length, 256, '向量预览截断到 256 点')
+  assert.equal((frames[0]?.points as unknown[]).length, 128, '向量预览截断到 128 点')
+  const frameMeta = frames[0]?.meta as Record<string, unknown>
+  assert.equal('points' in frameMeta, false, '帧 meta 不得携带完整向量(2026-11-14 评审)')
+  assert.equal(frameMeta.objectKey, 'frames/daq-a.png')
   assert.equal(calls.tagged, 1)
   assert.deepEqual(calls.frames.sort(), ['daq-a', 'daq-b'])
+  assert.deepEqual(calls.history.sort(), ['daq-a', 'daq-b'])
+  assert.equal(calls.historyQueries.length, 2)
+  assert.equal(calls.historyQueries[0]?.lineId, 'line-a', '历史查询必须携带 lineId 以命中逐线保留期策略')
   const counts = (result.source as Record<string, unknown>).counts as Record<string, number>
   assert.equal(counts.historyPoints, 4)
   assert.equal(counts.frames, 2)
+  assert.equal((result.source as Record<string, unknown>).truncated, false)
 })
 
 test('cross-line lines and nodes fail closed, including explicit foreign node ids', async () => {
@@ -209,6 +241,70 @@ test('cross-line lines and nodes fail closed, including explicit foreign node id
     () => adapter.observe!(request({ lineId: 'line-a' }, false)) as Promise<unknown>,
     /requires authorized line bindings/,
   )
+  const emptyBinding = { ...authorization, metadata: { boundLineIds: [] } }
+  await assert.rejects(
+    () => adapter.observe!(request({ lineId: 'line-a' }, true, new AbortController().signal, emptyBinding)) as Promise<unknown>,
+    /requires authorized line bindings/,
+  )
+})
+
+test('aborted requests stop before any DAQ/DCW read', async () => {
+  const { adapter, calls } = makeAdapter()
+  const controller = new AbortController()
+  controller.abort()
+  await assert.rejects(
+    () => adapter.observe!(request({ lineId: 'line-a' }, true, controller.signal)) as Promise<unknown>,
+    /aborted/,
+  )
+  assert.equal(calls.latest.length, 0)
+  assert.equal(calls.audit.length, 0)
+})
+
+test('write-audit read failures are surfaced as degraded evidence, not as zero writes', async () => {
+  const failing = makeAdapter({
+    writeAudit: async () => {
+      throw new Error('ledger down')
+    },
+  })
+  const failed = await failing.adapter.observe!(request({ lineId: 'line-a' })) as Record<string, unknown>
+  const failedDcw = (failed.dcw as Array<Record<string, unknown>>)[0]!
+  assert.equal(failedDcw.writeAuditAvailable, false)
+  assert.match(String(failedDcw.writeAuditError), /ledger down/)
+  assert.equal((failed.source as Record<string, unknown>).writeAuditAvailable, false)
+  assert.match(String((failed.source as Record<string, unknown>).writeAuditError), /ledger down/)
+
+  const degraded = makeAdapter({ writeAudit: async () => ({ rows: [], available: false, error: 'db unavailable' }) })
+  const result = await degraded.adapter.observe!(request({ lineId: 'line-a' })) as Record<string, unknown>
+  assert.equal(((result.dcw as Array<Record<string, unknown>>)[0]!).writeAuditAvailable, false)
+  assert.equal((result.source as Record<string, unknown>).writeAuditAvailable, false)
+})
+
+test('aggregate point budget truncates evidence instead of materializing unbounded series', async () => {
+  const many = Array.from({ length: 25_000 }, (_, index) => ({ at: nowMs - index, value: index }))
+  const { adapter } = makeAdapter({
+    history: async (_nodeId, q) => ({
+      points: many,
+      resolution: 'raw' as const,
+      coverage: {
+        requestedFromMs: q.fromMs,
+        requestedToMs: q.toMs,
+        availableFromMs: q.fromMs,
+        rawFromMs: q.fromMs,
+        truncated: false,
+        note: 'large fixture',
+      },
+    }),
+  })
+  const result = await adapter.observe!(request({
+    lineId: 'line-a',
+    window: { fromMs: nowMs - 60_000, toMs: nowMs, limit: 1000 },
+    history: true,
+  })) as Record<string, unknown>
+  const daq = result.daq as Array<Record<string, unknown>>
+  const firstHistory = daq.find(node => node.nodeId === 'daq-a')?.history as Record<string, unknown>
+  assert.equal((firstHistory.points as unknown[]).length, 20_000, '单请求历史点总数上限 20000')
+  assert.equal(firstHistory.truncated, true)
+  assert.equal((result.source as Record<string, unknown>).truncated, true)
 })
 
 test('source revision is a stable content hash over the returned evidence', async () => {
@@ -272,8 +368,10 @@ test('plugin exposes POST /evidence/operational and forwards an authorized, read
       registry,
       registerOne: (registered: ContextAdapter) => registry.registerOne(registered),
       createIndustrialReadAdapter: () => adapter,
-      authorizeScope: ({ scope: requested }: { scope?: Record<string, unknown> }) => requested ? { ok: true as const, scope: requested } : { ok: false as const, code: 'SCOPE_FORBIDDEN' as const },
-      resolveScopeBinding: ({ principal, scope: requested }: { principal?: { id?: string } | null, scope?: Record<string, unknown> }) => principal?.id === 'operator' && requested
+      authorizeScope: ({ scope: requested }: { scope?: Record<string, unknown> }) => requested && requested.workerId === 'worker-1'
+        ? { ok: true as const, scope: requested }
+        : { ok: false as const, code: 'SCOPE_FORBIDDEN' as const },
+      resolveScopeBinding: ({ principal, scope: requested }: { principal?: { id?: string } | null, scope?: Record<string, unknown> }) => principal?.id === 'operator' && requested && requested.workerId === 'worker-1'
         ? { ok: true as const, scope: requested, boundLineIds: ['line-a'], channelLineId: 'line-a' }
         : { ok: false as const, code: 'SCOPE_FORBIDDEN' as const },
     }
@@ -334,6 +432,17 @@ test('plugin exposes POST /evidence/operational and forwards an authorized, read
     const metadataScoped = routes.get('GET /metadata')!({ awUser: { id: 'operator', role: 'user' }, query: { ...scope } }) as Record<string, unknown>
     assert.equal(metadataScoped.status, 'ready')
     assert.deepEqual(metadataScoped.scope, scope)
+    assert.equal((metadataScoped.capabilities as string[]).includes('observe'), true)
+    assert.equal((metadataScoped.capabilities as string[]).includes('simulate'), false, '未实现的 simulate 不得对外宣称')
+    assert.equal((metadataScoped.capabilities as string[]).includes('replay'), false)
+    assert.equal((metadataScoped.capabilities as string[]).includes('verify'), false)
+    const metadataForeign = routes.get('GET /metadata')!({
+      awUser: { id: 'operator', role: 'user' },
+      query: { ...scope, workerId: 'foreign-worker' },
+    }) as Record<string, unknown>
+    assert.equal(metadataForeign.visible, false, '显式 foreign scope 必须隐藏面板')
+    assert.equal(metadataForeign.code, 'SCOPE_FORBIDDEN')
+    assert.equal(metadataForeign.scopeState, 'denied')
   }
   finally {
     for (const name of names) {

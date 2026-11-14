@@ -121,6 +121,17 @@ function publicAdapterStatus(status) {
  * 不再照抄静态 descriptor(adapter 支持 snapshot;observe/simulate/replay/verify
  * 未实现即不展示)。registry 不可用时回退 descriptor(保守:只列总是可判定的键)。
  */
+function fallbackCapabilities(state) {
+  const base = adapterDescriptor.capabilities
+  // 2026-11-14 评审:registry 不可用时不能回退到静态 ALLOWED(simulate/replay/verify
+  // 未实现)。优先用本插件实际注册的 adapter capabilities,其次保守的已实现集合。
+  if (state.adapterCapabilities && typeof state.adapterCapabilities === 'object') {
+    const truth = base.filter(capability => state.adapterCapabilities[capability] === true)
+    if (truth.length) return truth
+  }
+  return base.filter(capability => ['discover', 'snapshot', 'observe', 'query'].includes(capability))
+}
+
 function advertisedCapabilities(state) {
   const base = adapterDescriptor.capabilities
   try {
@@ -129,12 +140,12 @@ function advertisedCapabilities(state) {
       : []
     const mine = summaries.find(item => item?.adapterId === ADAPTER_ID)
       ?? summaries.find(item => item?.ownerId === PLUGIN_NAME)
-    if (!mine || typeof mine.capabilities !== 'object') return [...base]
+    if (!mine || typeof mine.capabilities !== 'object') return fallbackCapabilities(state)
     const truth = base.filter(capability => mine.capabilities[capability] === true)
-    return truth.length ? truth : [...base]
+    return truth.length ? truth : fallbackCapabilities(state)
   }
   catch {
-    return [...base]
+    return fallbackCapabilities(state)
   }
 }
 
@@ -152,28 +163,33 @@ function publicMetadata(state, event) {
     ? state.runtime.resolveScopeBinding({ principal, scope: requested })
     : null
   let scopeResult
-  if (flags.globallyEnabled && persistence.ok && persistedScope) {
+  if (!flags.globallyEnabled || !persistence.ok) {
+    scopeResult = { ok: false, code: flags.globallyEnabled ? persistence.code : 'BETA_DISABLED' }
+  }
+  else if (hasRequestedScope && !binding?.ok) {
+    // 请求携带了 scope 但宿主拒绝:这是 SCOPE_FORBIDDEN,不是「未绑定」。
+    // 2026-11-14 评审:此前会落进 SCOPE_UNBOUND/visible:true,把拒绝误报成未配置。
+    scopeResult = { ok: false, code: 'SCOPE_FORBIDDEN' }
+  }
+  else if (persistedScope) {
     const narrowed = binding?.ok ? binding.scope : persistedScope
     const runtimeScope = state.runtime?.authorizeScope?.({ principal, scope: narrowed })
     scopeResult = runtimeScope?.ok
       ? evaluateBetaScope({ flags, persistence, requested: narrowed, persisted: persistedScope, maxAgeMs: state.maxAgeMs })
       : { ok: false, code: 'SCOPE_FORBIDDEN' }
   }
-  else if (flags.globallyEnabled && persistence.ok && binding?.ok) {
+  else if (binding?.ok) {
     scopeResult = { ok: true, scope: binding.scope }
   }
-  else if (flags.globallyEnabled && persistence.ok) {
-    scopeResult = { ok: false, code: 'SCOPE_UNBOUND' }
-  }
   else {
-    scopeResult = { ok: false, code: flags.globallyEnabled ? persistence.code : 'BETA_DISABLED' }
+    scopeResult = { ok: false, code: 'SCOPE_UNBOUND' }
   }
   const adapter = publicAdapterStatus(state.adapterStatus)
   const scoped = scopeResult.ok
   const ready = scoped && adapter.ok
-  // 仅当「flags 开 + 持久层可用 + 未被已 provision 的 kv 约束拒绝」时面板可见;
-  // 有 kv 约束但校验失败仍按 default-deny 隐藏(保持既有的 stale/foreign 语义)。
-  const visible = flags.globallyEnabled && persistence.ok && (!persistedScope || scoped)
+  // UNBOUND 仅用于「没带 scope 且没有 kv 约束」的纯面板发现态;
+  // 显式 scope 被拒(kv 或宿主)一律隐藏,保持 default-deny 语义。
+  const visible = flags.globallyEnabled && persistence.ok && (scoped || (!persistedScope && !hasRequestedScope))
   const caps = advertisedCapabilities(state)
   return {
     apiVersion: API_VERSION,
@@ -472,6 +488,7 @@ export default {
       flags: readBetaFlags(),
       maxAgeMs: Number(ctx?.config?.get?.(`plugins.${PLUGIN_NAME}.scope_max_age_ms`)) || DEFAULT_SCOPE_MAX_AGE_MS,
       adapterStatus: { ok: false, code: 'BETA_DISABLED' },
+      adapterCapabilities: null,
       persistenceReady: false,
       researchPersistenceReady: false,
       runtime: null,
@@ -496,18 +513,29 @@ export default {
         const industrial = typeof state.runtime.createIndustrialReadAdapter === 'function'
           ? state.runtime.createIndustrialReadAdapter({ adapterId: ADAPTER_ID, version: ADAPTER_VERSION, ownerId: PLUGIN_NAME })
           : null
+        state.adapterCapabilities = industrial?.capabilities ?? null
         const registry = state.runtime.registry
         if (industrial && registry && typeof state.runtime.registerOne === 'function') {
           try {
             const registration = state.runtime.registerOne(industrial, PLUGIN_NAME)
             state.adapterStatus = { ok: true, service: 'context.runtime', registration }
-            state.research = await (async () => {
-              const { LocalResearchOrchestrator, CandidateEvidenceStore } = await loadResearchKit(ctx)
-              const candidates = new CandidateEvidenceStore()
-              const orchestrator = new LocalResearchOrchestrator(registry, candidates)
-              return { orchestrator, candidates }
-            })()
-            state.researchPersistenceReady = restoreResearchState(state)
+            // 研究编排接线失败不得回滚已成功的 adapter 注册(2026-11-14 评审:
+            // 旧 catch 会把 research.kit 导入失败误标成 ADAPTER_REGISTRATION_FAILED,
+            // 让 /evidence/operational 与 /status 一起失效)。
+            try {
+              state.research = await (async () => {
+                const { LocalResearchOrchestrator, CandidateEvidenceStore } = await loadResearchKit(ctx)
+                const candidates = new CandidateEvidenceStore()
+                const orchestrator = new LocalResearchOrchestrator(registry, candidates)
+                return { orchestrator, candidates }
+              })()
+              state.researchPersistenceReady = restoreResearchState(state)
+            }
+            catch (error) {
+              state.research = null
+              state.researchPersistenceReady = false
+              logger.warn(`research wiring failed (adapter remains registered): ${error?.message ?? error}`)
+            }
             // P1 生命周期(2026-11-14):dispose 不再自行注销 adapter ——
             // 热重载期间先卸后装曾留下"路由可见但 adapter 已死"的窗口;
             // 现在交给宿主:重载后按 ownerId 清理不再活跃插件的注册(见 reload.mjs)。
