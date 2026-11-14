@@ -604,6 +604,27 @@ export default {
       }
     })
 
+    /**
+     * 审计接入(2026-11-14):插件经动态 import 装载,Nitro 的 `@/server` 别名在
+     * live 宿主不生效(与 RSI 插件同因,实测 adapter 注册整段失败)。宿主注入的
+     * ops.record 优先;回退分支只服务测试/未 seed 的嵌入场景。
+     */
+    async function recordLineAudit(entry) {
+      try {
+        const recordOps = await ctx?.services?.get?.('ops.record')
+        if (typeof recordOps === 'function') {
+          recordOps(entry)
+          return
+        }
+      }
+      catch { /* 宿主服务缺失:走回退 */ }
+      try {
+        const { recordOps } = await import('@/server/services/workshop/ops/ops')
+        recordOps(entry)
+      }
+      catch { /* 审计不可用不改变授权语义 */ }
+    }
+
     // P1 安全收敛(2026-11-14):快照读取产线 DAQ 时序并上传外部诊断服务,
     // 必须按用户×产线授权收敛 —— readonly 及以上才可访问;授予/拒绝均留审计痕。
     async function lineGate(event, line, action) {
@@ -613,28 +634,20 @@ export default {
         ? ctx.permissions.lineMode(user, line)
         : 'none'
       if (mode === 'none') {
-        try {
-          const { recordOps } = await import('@/server/services/workshop/ops/ops')
-          recordOps({
-            actor: user.id, actorName: user.name ?? '', actorKind: 'user',
-            action: `${action}.denied`, kind: 'read', scope: 'system',
-            targetKind: 'line', targetId: line,
-            summary: `诊断访问被拒(无产线权限):${line}`,
-          })
-        }
-        catch { /* 审计不可用不改变拒绝语义 */ }
+        await recordLineAudit({
+          actor: user.id, actorName: user.name ?? '', actorKind: 'user',
+          action: `${action}.denied`, kind: 'read', scope: 'system',
+          targetKind: 'line', targetId: line,
+          summary: `诊断访问被拒(无产线权限):${line}`,
+        })
         return { ok: false, error: `FORBIDDEN_LINE: 无产线 ${line} 权限(需只读及以上,请联系管理员授权)` }
       }
-      try {
-        const { recordOps } = await import('@/server/services/workshop/ops/ops')
-        recordOps({
-          actor: user.id, actorName: user.name ?? '', actorKind: 'user',
-          action, kind: 'read', scope: 'system',
-          targetKind: 'line', targetId: line,
-          summary: `诊断产线数据访问(${mode}):${line}`,
-        })
-      }
-      catch { /* 审计不可用不改变授权语义 */ }
+      await recordLineAudit({
+        actor: user.id, actorName: user.name ?? '', actorKind: 'user',
+        action, kind: 'read', scope: 'system',
+        targetKind: 'line', targetId: line,
+        summary: `诊断产线数据访问(${mode}):${line}`,
+      })
       return { ok: true, mode }
     }
 
