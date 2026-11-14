@@ -11,6 +11,8 @@ import type {
   MaterialAssignment,
 } from '../contracts'
 import { canonicalHash } from '@/shared/context/hash'
+import type { DaqFrameQueryOpts, DaqFrameRecord, TsdbHistoryQuery, TsdbHistoryResult, TsdbPoint, TsdbTagQuery } from '../../daq/storage/tsdb-port'
+import type { InterventionEventRow } from '../../aml/intervention-ledger'
 import { getAgentNodeBindingRepo } from '../../agents/node-bindings.repo'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getDeviceTwinRepo } from '../../assets/device-twin.repo'
@@ -61,6 +63,91 @@ export type IndustrialReadPayload = {
     version: string
     lineId?: string
     counts: Record<string, number>
+  }
+}
+
+/**
+ * PR-C(2026-11-14):只读运行证据 —— 通过既有 DAQ/DCW 权威读取
+ * (TSDB latest/history/tagged/frames、DCW 节点回读/ACK 状态、干预台账写审计),
+ * 不引入任何写入/审批路径。窗口必须由调用方显式给出(历史读取),避免隐式全表扫描。
+ */
+export type IndustrialOperationalWindow = {
+  fromMs: number
+  toMs: number
+  bucketMs?: number
+  limit?: number
+}
+
+export type IndustrialOperationalRequest = {
+  id?: string
+  lineId?: string
+  lineIds?: readonly string[]
+  scope?: IndustrialReadScope
+  daqNodeIds?: readonly string[]
+  dcwNodeIds?: readonly string[]
+  window?: IndustrialOperationalWindow
+  history?: boolean
+  tagged?: boolean
+  frames?: boolean | { kind?: 'vector' | 'image', limit?: number }
+  writeAudit?: boolean | { limit?: number }
+  staleAfterMs?: number
+}
+
+export type IndustrialOperationalPorts = {
+  now?: () => number
+  latest?: (nodeId: string, q: { fromMs: number, toMs: number, bucketMs?: number, limit?: number }) => Promise<TsdbPoint[]>
+  history?: (nodeId: string, q: TsdbHistoryQuery) => Promise<TsdbHistoryResult>
+  tagged?: (q: TsdbTagQuery) => Promise<Map<string, TsdbPoint[]>>
+  frames?: (nodeId: string, q: DaqFrameQueryOpts) => Promise<DaqFrameRecord[]>
+  writeAudit?: (filter: { nodeId?: string, lineId?: string, limit?: number }) => Promise<InterventionEventRow[]>
+}
+
+export type IndustrialOperationalEvidence = {
+  adapterId: string
+  version: string
+  capturedAt: string
+  readOnly: true
+  writeCount: 0
+  source: {
+    lineId?: string
+    lineIds: string[]
+    counts: Record<string, number>
+    contentHash: string
+    sourceRevision: string
+  }
+  daq: Array<Record<string, unknown>>
+  dcw: Array<Record<string, unknown>>
+}
+
+function defaultOperationalPorts(): IndustrialOperationalPorts {
+  return {
+    now: () => Date.now(),
+    latest: async (nodeId, q) => {
+      const [{ getTsdb }, { queryLatest }] = await Promise.all([
+        import('../../daq/storage'),
+        import('../../daq/storage/latest-window'),
+      ])
+      return queryLatest(getTsdb(), nodeId, q)
+    },
+    history: async (nodeId, q) => {
+      const { tsdbQueryHistory } = await import('../../daq/storage')
+      return tsdbQueryHistory(nodeId, q)
+    },
+    tagged: async (q) => {
+      const [{ getTsdb }, { queryTaggedLatest }] = await Promise.all([
+        import('../../daq/storage'),
+        import('../../daq/storage/latest-window'),
+      ])
+      return queryTaggedLatest(getTsdb(), q)
+    },
+    frames: async (nodeId, q) => {
+      const { getTsdb } = await import('../../daq/storage')
+      return getTsdb().queryFrames(nodeId, q)
+    },
+    writeAudit: async (filter) => {
+      const { listInterventions } = await import('../../aml/intervention-ledger')
+      return listInterventions(filter)
+    },
   }
 }
 
@@ -308,6 +395,225 @@ function projectIndustrialRead(services: ReadServices, request: IndustrialReadRe
   return { snapshot, source: { adapterId, version, ...(lineId ? { lineId } : {}), counts: { lines: lines.length, products: products.length, recipes: recipes.length, runs: runs.length, dcwNodes: dcwNodes.length, daqNodes: daqNodes.length, bindings: bindings.length, twins: twins.length } } }
 }
 
+function finiteNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const number = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function timeMsOf(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  const parsed = Date.parse(String(value))
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function uniqueStrings(values: readonly unknown[] | undefined): string[] {
+  return [...new Set((Array.isArray(values) ? values : []).map(text).filter(Boolean))]
+}
+
+const MAX_OPERATIONAL_NODES = 50
+
+function selectOperationalNodes(
+  views: ReadRecord[],
+  explicitIds: readonly unknown[] | undefined,
+  kind: 'DAQ' | 'DCW',
+): ReadRecord[] {
+  const ids = uniqueStrings(explicitIds)
+  if (ids.length > MAX_OPERATIONAL_NODES) throw new Error(`too many ${kind} nodes requested (max ${MAX_OPERATIONAL_NODES})`)
+  if (ids.length === 0) {
+    if (views.length > MAX_OPERATIONAL_NODES) throw new Error(`too many ${kind} nodes in scope (${views.length}); specify ${kind === 'DAQ' ? 'daqNodeIds' : 'dcwNodeIds'}`)
+    return views
+  }
+  const byId = new Map(views.map(node => [text(node.id), node]))
+  return ids.map((id) => {
+    const node = byId.get(id)
+    if (!node) throw new Error(`${kind} node is outside authorized line bindings: ${id}`)
+    return node
+  })
+}
+
+async function projectIndustrialOperational(
+  services: ReadServices,
+  ports: IndustrialOperationalPorts,
+  request: IndustrialOperationalRequest,
+  authorizationLineIds: string[],
+  adapterId: string,
+  version: string,
+  capturedAt: string,
+): Promise<IndustrialOperationalEvidence> {
+  const requestedLineId = text(request.lineId) || undefined
+  const requestedLineIds = uniqueStrings([
+    ...(Array.isArray(request.lineIds) ? request.lineIds : []),
+    ...(Array.isArray(request.scope?.lineIds) ? request.scope.lineIds : []),
+  ])
+  if (requestedLineId && !authorizationLineIds.includes(requestedLineId)) throw new Error('operational line is outside authorized bindings')
+  if (requestedLineIds.some(lineId => !authorizationLineIds.includes(lineId))) throw new Error('operational line is outside authorized bindings')
+  const lineIds = requestedLineId
+    ? [requestedLineId]
+    : requestedLineIds.length > 0
+      ? requestedLineIds
+      : [...authorizationLineIds]
+  const inScope = (lineValue: unknown): boolean => lineIds.length === 0 || lineIds.includes(text(lineValue))
+  const daqNodes = selectOperationalNodes(
+    services.daqNodes.all().map(asView).filter(node => inScope(node.lineId)),
+    request.daqNodeIds,
+    'DAQ',
+  )
+  const dcwNodes = selectOperationalNodes(
+    services.dcwNodes.all().map(asView).filter(node => inScope(node.lineId)),
+    request.dcwNodeIds,
+    'DCW',
+  )
+
+  const nowMs = ports.now?.() ?? (Number.isFinite(Date.parse(capturedAt)) ? Date.parse(capturedAt) : Date.now())
+  const staleAfterMs = Math.max(1, Math.min(finiteNumber(request.staleAfterMs) ?? 60_000, 86_400_000))
+  const windowFrom = finiteNumber(request.window?.fromMs)
+  const windowTo = finiteNumber(request.window?.toMs)
+  const bucketMs = Math.max(100, finiteNumber(request.window?.bucketMs) ?? 1000)
+  const pointLimit = Math.max(1, Math.min(finiteNumber(request.window?.limit) ?? 200, 5000))
+  const history = request.history === true
+  const tagged = request.tagged === true
+  if ((history || tagged) && (windowFrom == null || windowTo == null || windowFrom >= windowTo)) {
+    throw new Error('operational history requires an explicit fromMs < toMs window')
+  }
+  const latestFrom = windowFrom ?? nowMs - 15 * 60_000
+  const latestTo = windowTo ?? nowMs
+  if (latestFrom >= latestTo) throw new Error('operational window must satisfy fromMs < toMs')
+
+  const taggedPoints = tagged && ports.tagged
+    ? await ports.tagged({ nodeIds: daqNodes.map(node => text(node.id)), fromMs: windowFrom!, toMs: windowTo!, bucketMs, limit: pointLimit })
+    : undefined
+  const frameRequest = request.frames === true
+    ? {}
+    : request.frames && typeof request.frames === 'object' ? request.frames : null
+  const frameKind = frameRequest?.kind === 'vector' || frameRequest?.kind === 'image' ? frameRequest.kind : undefined
+  const frameLimit = Math.max(1, Math.min(finiteNumber(frameRequest?.limit) ?? 20, 100))
+
+  const daq: Array<Record<string, unknown>> = []
+  let historyPoints = 0
+  let taggedCount = 0
+  let frameCount = 0
+  for (const node of daqNodes) {
+    const nodeId = text(node.id)
+    const points = ports.latest
+      ? await ports.latest(nodeId, { fromMs: latestFrom, toMs: latestTo, bucketMs, limit: Math.min(pointLimit, 500) })
+      : []
+    const lastPoint = points.length > 0 ? points[points.length - 1]! : null
+    const atCandidates = [timeMsOf(node.lastAt), lastPoint?.at]
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+    const at = atCandidates.length > 0 ? Math.max(...atCandidates) : null
+    const value = finiteNumber(node.value) ?? finiteNumber(lastPoint?.value) ?? finiteNumber(lastPoint?.avg)
+    const ageMs = at == null ? null : Math.max(0, nowMs - at)
+    const freshness = ageMs == null ? 'missing' : ageMs <= staleAfterMs ? 'fresh' : 'stale'
+    const historyResult = history && ports.history
+      ? await ports.history(nodeId, { fromMs: windowFrom!, toMs: windowTo!, bucketMs, limit: pointLimit })
+      : undefined
+    if (historyResult) historyPoints += historyResult.points.length
+    const tags = taggedPoints?.get(nodeId) ?? []
+    taggedCount += tags.length
+    const frames = frameRequest && ports.frames
+      ? (await ports.frames(nodeId, { fromMs: latestFrom, toMs: latestTo, ...(frameKind ? { kind: frameKind } : {}), limit: frameLimit })).map(frame => ({
+          at: frame.at,
+          kind: frame.kind,
+          metrics: frame.metrics,
+          meta: frame.meta,
+          ...(Array.isArray(frame.points) ? { pointCount: frame.points.length, points: frame.points.slice(0, 256) } : {}),
+          productId: frame.productId ?? null,
+          recipeId: frame.recipeId ?? null,
+          runId: frame.runId ?? null,
+        }))
+      : undefined
+    frameCount += frames?.length ?? 0
+    daq.push({
+      nodeId,
+      lineId: text(node.lineId),
+      name: labelOf(node, nodeId),
+      unit: text(node.unit),
+      driver: text(node.driver),
+      enabled: node.enabled === true,
+      latest: { value, at, ageMs, freshness },
+      ...(lastPoint ? { latestPoint: lastPoint } : {}),
+      ...(historyResult ? { history: { resolution: historyResult.resolution, coverage: historyResult.coverage, points: historyResult.points } } : {}),
+      ...(tagged ? { tagged: tags } : {}),
+      ...(frames ? { frames } : {}),
+    })
+  }
+
+  const auditRequested = request.writeAudit !== false
+  const auditLimit = Math.max(1, Math.min(finiteNumber(typeof request.writeAudit === 'object' ? request.writeAudit?.limit : undefined) ?? 10, 50))
+  let auditRows = 0
+  const dcw: Array<Record<string, unknown>> = []
+  for (const node of dcwNodes) {
+    const nodeId = text(node.id)
+    const lastAckAt = text(node.lastAckAt) || null
+    const ackMs = timeMsOf(lastAckAt)
+    const ackAgeMs = ackMs == null ? null : Math.max(0, nowMs - ackMs)
+    const rows = auditRequested && ports.writeAudit
+      ? await ports.writeAudit({ nodeId, lineId: text(node.lineId), limit: auditLimit })
+      : []
+    auditRows += rows.length
+    dcw.push({
+      nodeId,
+      lineId: text(node.lineId),
+      name: labelOf(node, nodeId),
+      unit: text(node.unit),
+      enabled: node.enabled === true,
+      value: finiteNumber(node.value),
+      readValue: finiteNumber(node.readValue),
+      lastAckAt,
+      ackAgeMs,
+      ackFresh: ackAgeMs != null && ackAgeMs <= staleAfterMs,
+      lastWriteAt: text(node.lastWriteAt) || null,
+      state: text(node.state) || null,
+      lastError: text(node.lastError) || null,
+      stepLimit: finiteNumber(node.stepLimit),
+      limits: { min: finiteNumber(node.min), max: finiteNumber(node.max) },
+      writeAudit: rows.map(row => ({
+        id: row.id,
+        at: row.ts,
+        fromValue: row.fromValue,
+        toValue: row.toValue,
+        actualValue: row.actualValue,
+        ack: row.ack,
+        path: row.path,
+        actor: row.actor,
+        actorName: row.actorName,
+        approvalId: row.approvalId,
+        recipeRunId: row.recipeRunId,
+        verdict: row.verdict,
+        effect: row.effect,
+      })),
+    })
+  }
+
+  const counts = {
+    daqNodes: daq.length,
+    dcwNodes: dcw.length,
+    historyPoints,
+    taggedPoints: taggedCount,
+    frames: frameCount,
+    writeAudit: auditRows,
+  }
+  const contentHash = canonicalHash({ lineIds, daq, dcw })
+  return {
+    adapterId,
+    version,
+    capturedAt,
+    readOnly: true,
+    writeCount: 0,
+    source: {
+      ...(requestedLineId ? { lineId: requestedLineId } : {}),
+      lineIds,
+      counts,
+      contentHash,
+      sourceRevision: contentHash.slice(0, 16),
+    },
+    daq,
+    dcw,
+  }
+}
+
 function payloadOf(request: ContextAdapterOperationRequest): IndustrialReadRequest {
   if (!request.payload || typeof request.payload !== 'object' || Array.isArray(request.payload)) return {}
   return request.payload as IndustrialReadRequest
@@ -324,12 +630,14 @@ export function createIndustrialReadAdapter(options: {
   generation?: number
   ownerId?: string
   services?: ReadServices
+  operational?: IndustrialOperationalPorts
   now?: () => string
   authorize?: ContextAdapterAuthorizer
 } = {}): ContextAdapter {
   const adapterId = options.adapterId ?? INDUSTRIAL_READ_ADAPTER_ID
   const version = options.version ?? INDUSTRIAL_READ_ADAPTER_VERSION
   const services = options.services ?? defaultServices()
+  const operational: IndustrialOperationalPorts = { ...defaultOperationalPorts(), ...options.operational }
   const now = options.now ?? (() => new Date().toISOString())
   const snapshot = (request: ContextAdapterOperationRequest): IndustrialReadPayload => {
     const authorization = request.authorization
@@ -367,7 +675,15 @@ export function createIndustrialReadAdapter(options: {
     const lines = lineIds ? services.lines.all().filter(item => lineIds.includes(text(item.id))) : services.lines.all()
     return { adapterId, version, lineId: requestedLineId, refs: lines.map(item => contextRef('industrial.line', text(item.id))), counts: { lines: lines.length, products: selected(services.products.all(), requestedLineId, lineIds).length, recipes: selected(services.recipes.list(), requestedLineId, lineIds).length } }
   }
-  const capabilities = { discover: true, snapshot: true, observe: false, query: true, simulate: false, replay: false, verify: false, export: false } as const
+  /** PR-C:只读运行证据(DAQ latest/history/tagged/frames + DCW ACK/回读/写审计)。 */
+  const observe = async (request: ContextAdapterOperationRequest): Promise<IndustrialOperationalEvidence> => {
+    const authorization = request.authorization
+    const boundLineIds = boundLineIdsOf(authorization)
+    if (options.authorize && (!authorization?.industrial || boundLineIds.length === 0)) throw new Error('operational evidence requires authorized line bindings')
+    const payload = payloadOf(request) as IndustrialOperationalRequest
+    return projectIndustrialOperational(services, operational, payload, boundLineIds, adapterId, version, now())
+  }
+  const capabilities = { discover: true, snapshot: true, observe: true, query: true, simulate: false, replay: false, verify: false, export: false } as const
   return {
     adapterId,
     apiVersion: 'context-adapter.v1',
@@ -381,6 +697,7 @@ export function createIndustrialReadAdapter(options: {
     owner: { ownerId: options.ownerId ?? 'industrial-context', dispose: async () => undefined },
     discover,
     snapshot,
+    observe,
     query: snapshot,
     drain: async () => undefined,
     retire: async () => undefined,

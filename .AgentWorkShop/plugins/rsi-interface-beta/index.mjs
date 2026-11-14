@@ -27,6 +27,7 @@ const researchPath = '/research'
 const researchRunPath = '/research/run'
 const researchCancelPath = '/research/cancel'
 const evidencePath = '/evidence'
+const operationalEvidencePath = '/evidence/operational'
 const RESEARCH_STATE_KEY = 'rsi.beta.research.state'
 const RESEARCH_STATE_VERSION = 1
 const READ_CAPABILITIES = new Set(['discover', 'snapshot', 'observe', 'query'])
@@ -51,6 +52,7 @@ const BETA_PROVENANCE = Object.freeze({
 
 const BETA_LIMITATIONS = Object.freeze([
   'Read-only diagnostics and bounded candidate research only; no domain operation is exposed here.',
+  'Operational evidence (DAQ latest/history/tagged/frames, DCW ACK/readback/write-audit) is read-only and never writes or acknowledges device commands.',
   'Actuation, approval, promotion, and profile activation are outside the Beta boundary.',
   'Candidate evidence is not validated control authority and cannot be promoted by this plugin.',
   'A request without the exact active worker scope is denied; no implicit scope inheritance is used.',
@@ -634,8 +636,69 @@ export default {
       }
     }
 
+    /**
+     * PR-C 只读运行证据:经注册 adapter 的 observe 能力读取既有 DAQ/DCW 权威
+     * (TSDB latest/history/tagged/frames + DCW ACK/回读/干预台账)。授权仍由
+     * 宿主 resolveScopeBinding 推导的绑线集合约束,适配器内部对节点做同源校验;
+     * 本路由不写、不 ACK、不审批。
+     */
+    const operationalEvidence = async (event) => {
+      const body = bodyOf(event)
+      const authorized = authorizeScopeBinding(state, event, scopeOf(event, body), 'observe')
+      if (!authorized.ok) return authorized.response
+      const { binding } = authorized
+      const principal = event?.awUser ?? event?.context?.awUser ?? null
+      try {
+        if (!state.runtime?.registry || state.adapterStatus.ok !== true) {
+          return researchError({ code: 'ADAPTER_UNAVAILABLE', message: 'RSI Beta adapter is not registered' })
+        }
+        const result = await state.runtime.registry.invoke(ADAPTER_ID, 'observe', {
+          ...(body.lineId ? { lineId: String(body.lineId) } : {}),
+          ...(Array.isArray(body.lineIds) ? { lineIds: body.lineIds } : {}),
+          ...(Array.isArray(body.daqNodeIds) ? { daqNodeIds: body.daqNodeIds } : {}),
+          ...(Array.isArray(body.dcwNodeIds) ? { dcwNodeIds: body.dcwNodeIds } : {}),
+          ...(body.window && typeof body.window === 'object' ? { window: body.window } : {}),
+          history: body.history === true,
+          tagged: body.tagged === true,
+          ...(body.frames !== undefined ? { frames: body.frames } : {}),
+          ...(body.writeAudit !== undefined ? { writeAudit: body.writeAudit } : {}),
+          ...(body.staleAfterMs !== undefined ? { staleAfterMs: body.staleAfterMs } : {}),
+        }, {
+          idempotencyKey: `rsi-operational-${String(principal?.id ?? 'anon')}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          ...(principal?.id ? { principal: { id: String(principal.id), ...(principal.role ? { role: String(principal.role) } : {}) } } : {}),
+          scope: {
+            ...authorized.scope,
+            lineIds: binding.boundLineIds,
+            projection: 'industrial',
+            industrial: true,
+          },
+          timeoutMs: 15_000,
+        })
+        if (!result || result.ok !== true) {
+          return researchError({
+            code: result?.error?.code ?? 'ADAPTER_FAILURE',
+            message: result?.error?.message ?? 'operational evidence read failed',
+          })
+        }
+        return {
+          ok: true,
+          available: true,
+          scope: authorized.scope,
+          evidence: result.payload,
+          candidateOnly: true,
+          readOnly: true,
+          actuation: false,
+          promotion: false,
+        }
+      }
+      catch (error) {
+        return researchError(error)
+      }
+    }
+
     // These routes are registered only after the global feature gate passes.
     ctx.route('GET', researchPath, listResearch)
+    ctx.route('POST', operationalEvidencePath, operationalEvidence)
     ctx.route('POST', researchRunPath, runResearch)
     ctx.route('POST', researchCancelPath, cancelResearch)
     ctx.route('GET', evidencePath, listEvidence)
