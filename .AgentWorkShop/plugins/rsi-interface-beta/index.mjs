@@ -449,7 +449,10 @@ export default {
       const { plan, execute, ...request } = body
       request.scope = authorized.scope
       request.principal = event?.awUser ?? event?.context?.awUser ?? event?.request?.principal ?? null
-      request.authorizationScope = authorized.scope
+      request.authorizationScope = {
+        ...authorized.scope,
+        ...(body.projection === 'industrial' || body.industrial === true ? { projection: 'industrial', industrial: true } : {}),
+      }
       const planError = plan ? ensureReadPlan(plan) : null
       if (planError) return planError
       try {
