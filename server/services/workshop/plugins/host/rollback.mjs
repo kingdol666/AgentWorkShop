@@ -5,14 +5,17 @@
 import { getPluginHost } from './api.mjs'
 import { hostLoggerFallback } from './config.mjs'
 
-export function rollbackPartialLoad(host, name) {
+export async function rollbackPartialLoad(host, name) {
   if (!name) return
   try {
     const removed = host.routes.unregisterPlugin?.(name) ?? 0
     const disposables = host.disposables.get(name) ?? []
     for (const d of disposables.splice(0)) {
       try {
-        d?.()
+        // P1(2026-11-14):异步 dispose 必须 await —— 插件可注册异步清理
+        // (关串口/网络/句柄),fire-and-forget 会在清理完成前继续装载其他插件,
+        // 且 unhandled rejection 可能成为进程级崩溃源。
+        await d?.()
       }
       catch (e) {
         host.logger.warn(`[插件回滚] dispose 失败 ${name}:`, e?.message ?? e)

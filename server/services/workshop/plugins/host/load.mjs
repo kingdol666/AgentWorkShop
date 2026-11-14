@@ -211,12 +211,12 @@ export async function loadAllPlugins(host, { config, paths }) {
           this.pendingDrivers.push(d)
           this._drain?.()
         },
-        registerProcessor(kind, name, fn) {
-          this.pendingProcessors.push({ kind, name, fn })
+        registerProcessor(kind, name, fn, owner) {
+          this.pendingProcessors.push({ kind, name, fn, owner })
           this._drain?.()
         },
-        registerTemplate(def) {
-          this.pendingTemplates.push(def)
+        registerTemplate(def, owner) {
+          this.pendingTemplates.push({ def, owner })
           this._drain?.()
         },
         registerDecoder(name, fn, owner) {
@@ -226,8 +226,8 @@ export async function loadAllPlugins(host, { config, paths }) {
         drain(onDriver, onProcessor, onTemplate, onDecoder) {
           this._drain = () => {
             for (const d of this.pendingDrivers.splice(0)) onDriver(d)
-            for (const p of this.pendingProcessors.splice(0)) onProcessor(p.kind, p.name, p.fn)
-            for (const t of this.pendingTemplates.splice(0)) onTemplate(t)
+            for (const p of this.pendingProcessors.splice(0)) onProcessor(p.kind, p.name, p.fn, p.owner)
+            for (const t of this.pendingTemplates.splice(0)) onTemplate(t.def, t.owner)
             for (const d of this.pendingDecoders.splice(0)) onDecoder(d.name, d.fn, d.owner)
           }
           this._drain()
@@ -235,9 +235,10 @@ export async function loadAllPlugins(host, { config, paths }) {
       })
       ctx.daq = {
         registerDriver: d => daqExt.registerDriver(d),
-        registerProcessor: (kind, name, fn) => daqExt.registerProcessor(kind, name, fn),
+        // owner 透传(P1 生命周期):停用/重载后按插件清理 processor/template
+        registerProcessor: (kind, name, fn) => daqExt.registerProcessor(kind, name, fn, def.name),
         /** 注册数采节点模板(signalKind/sink.processors/metrics 全量可用;同名覆盖) */
-        registerTemplate: def => daqExt.registerTemplate(def),
+        registerTemplate: def2 => daqExt.registerTemplate({ ...def2, plugin: def2?.plugin ?? def.name }, def.name),
         /**
          * 注册自定义载荷解码器(结构化报文 → scalar/vector/image;同名覆盖)。
          * 节点 driverConfig.decoder = name 即启用;入参 { raw, bytes, json, config, signalKind, nodeId },
@@ -317,7 +318,8 @@ export async function loadAllPlugins(host, { config, paths }) {
     }
     catch (err) {
       // setup/注册失败:逐项回滚已产生的半注册状态,保证"要么完整装载,要么完全无痕"
-      rollbackPartialLoad(host, def?.name)
+      // (P1:回滚现在是异步的 —— 必须 await,否则后续插件装载与异步 dispose 竞态)
+      await rollbackPartialLoad(host, def?.name)
       host.failures.push({ source: entry, error: err?.message ?? String(err) })
       host.logger.error(`装载失败 ${entry}:`, err?.message ?? err)
     }

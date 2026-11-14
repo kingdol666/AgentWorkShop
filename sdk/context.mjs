@@ -428,6 +428,11 @@ export function createPluginContext(opts) {
     }
   })()
   let kvFlushTimer = null
+  // P1(2026-11-14):重试定时器必须受 generation 防护并随 dispose 取消 ——
+  // 否则热重载后旧插件实例的重试仍会把旧内存态写回同一 kv.json,
+  // 覆盖新实例已写入的状态(跨 generation 旧状态覆盖)。
+  let kvDisposed = false
+  const kvRetryTimers = new Set()
   // 多实例共享同一配置根时(不支持也不推荐的部署形态),kv.json 的 tmp+rename 会与另一
   // 实例互斥(Windows EPERM/EBUSY)。对这两类瞬态冲突做有限退避重试;仍失败则**聚合限频**
   // 告警 —— 逐条 warn 在共享根场景每分钟可刷上百条(2026-10-22-eda-ui-fix-plan F4b)。
@@ -445,6 +450,7 @@ export function createPluginContext(opts) {
   }
   // 'done' = 成功或已终局告警;'retry' = 瞬态冲突,可退避重试
   const flushKvAttempt = (attempt) => {
+    if (kvDisposed) return 'done'
     try {
       mkdirSync(kvDir, { recursive: true })
       // tmp 名带时间戳:防抖重试与新一轮 flush 并发时不再互相覆盖同名 tmp
@@ -461,9 +467,13 @@ export function createPluginContext(opts) {
     }
   }
   const scheduleKvRetry = (attempt) => {
-    setTimeout(() => {
+    if (kvDisposed) return
+    const handle = setTimeout(() => {
+      kvRetryTimers.delete(handle)
+      if (kvDisposed) return
       if (flushKvAttempt(attempt) === 'retry') scheduleKvRetry(attempt + 1)
     }, KV_RETRY_DELAYS_MS[attempt])
+    kvRetryTimers.add(handle)
   }
   const flushKvNow = () => {
     if (flushKvAttempt(0) === 'retry') scheduleKvRetry(1)
@@ -472,10 +482,14 @@ export function createPluginContext(opts) {
     clearTimeout(kvFlushTimer)
     kvFlushTimer = setTimeout(flushKvNow, 200)
   }
-  // 关停兜底:取消挂起防抖并同步落盘(否则进程退出前 200ms 内的 kv.set 全部丢失)
+  // 关停兜底:先同步落盘最后一态,再置 disposed 并取消全部重试 ——
+  // (顺序不能反:flushKvAttempt 在 disposed 后直接短路)
   onDispose(() => {
     clearTimeout(kvFlushTimer)
-    flushKvNow()
+    for (const handle of kvRetryTimers) clearTimeout(handle)
+    kvRetryTimers.clear()
+    flushKvAttempt(0)
+    kvDisposed = true
   })
 
   const ctx = {
