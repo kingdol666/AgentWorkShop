@@ -1,0 +1,1158 @@
+{
+  "reportVersion": "context-learning.acceptance.v1",
+  "profile": {
+    "id": "all",
+    "fixtureId": "context-learning-base"
+  },
+  "fixture": {
+    "id": "context-learning-base",
+    "revision": "fixture-r1",
+    "capturedAt": "2026-11-13T00:00:00.000Z"
+  },
+  "seed": "context-learning-default",
+  "execution": {
+    "mode": "isolated-home",
+    "classification": "simulation",
+    "simulation": true,
+    "physicalHIL": {
+      "requested": false,
+      "executed": false,
+      "verified": false,
+      "claim": false,
+      "status": "not-available"
+    },
+    "network": {
+      "disabled": false,
+      "calls": 0
+    }
+  },
+  "contextSnapshot": {
+    "id": "context-snapshot-all",
+    "scope": {
+      "workspaceId": "workspace-context-learning",
+      "tags": [
+        "all",
+        "read-only",
+        "bounded"
+      ],
+      "subjectRefs": [
+        {
+          "namespace": "context.subject",
+          "id": "pva"
+        },
+        {
+          "namespace": "context.subject",
+          "id": "injection"
+        },
+        {
+          "namespace": "context.subject",
+          "id": "wwtp"
+        },
+        {
+          "namespace": "context.subject",
+          "id": "document-event"
+        },
+        {
+          "namespace": "context.subject",
+          "id": "batch-material"
+        },
+        {
+          "namespace": "context.subject",
+          "id": "service-workflow"
+        },
+        {
+          "namespace": "context.subject",
+          "id": "simulation"
+        },
+        {
+          "namespace": "context.subject",
+          "id": "custom-driver"
+        }
+      ],
+      "objectRefs": [
+        {
+          "namespace": "context.object",
+          "id": "pva-object"
+        },
+        {
+          "namespace": "context.object",
+          "id": "injection-object"
+        },
+        {
+          "namespace": "context.object",
+          "id": "wwtp-object"
+        },
+        {
+          "namespace": "context.object",
+          "id": "document-event-object"
+        },
+        {
+          "namespace": "context.object",
+          "id": "batch-material-object"
+        },
+        {
+          "namespace": "context.object",
+          "id": "service-workflow-object"
+        },
+        {
+          "namespace": "context.object",
+          "id": "simulation-object"
+        },
+        {
+          "namespace": "context.object",
+          "id": "custom-driver-object"
+        }
+      ],
+      "attributeRefs": [
+        {
+          "namespace": "context.attribute",
+          "id": "pva-state"
+        },
+        {
+          "namespace": "context.attribute",
+          "id": "injection-state"
+        },
+        {
+          "namespace": "context.attribute",
+          "id": "wwtp-state"
+        },
+        {
+          "namespace": "context.attribute",
+          "id": "document-event-type"
+        },
+        {
+          "namespace": "context.attribute",
+          "id": "batch-material-lot"
+        },
+        {
+          "namespace": "context.attribute",
+          "id": "service-workflow-state"
+        },
+        {
+          "namespace": "context.attribute",
+          "id": "simulation-kind"
+        },
+        {
+          "namespace": "context.attribute",
+          "id": "custom-driver-kind"
+        }
+      ]
+    },
+    "subjects": [
+      {
+        "ref": {
+          "namespace": "context.subject",
+          "id": "pva"
+        },
+        "subjectType": "industrial.process",
+        "label": "PVA process context",
+        "scope": {
+          "workspaceId": "workspace-context-learning",
+          "tags": [
+            "all",
+            "read-only",
+            "bounded"
+          ]
+        },
+        "status": "active",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.subject",
+          "id": "injection"
+        },
+        "subjectType": "industrial.injection",
+        "label": "Injection process context",
+        "scope": {
+          "workspaceId": "workspace-context-learning",
+          "tags": [
+            "all",
+            "read-only",
+            "bounded"
+          ]
+        },
+        "status": "active",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.subject",
+          "id": "wwtp"
+        },
+        "subjectType": "industrial.wwtp",
+        "label": "WWTP process context",
+        "scope": {
+          "workspaceId": "workspace-context-learning",
+          "tags": [
+            "all",
+            "read-only",
+            "bounded"
+          ]
+        },
+        "status": "active",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.subject",
+          "id": "document-event"
+        },
+        "subjectType": "document.event",
+        "label": "Document event context",
+        "scope": {
+          "workspaceId": "workspace-context-learning",
+          "tags": [
+            "all",
+            "read-only",
+            "bounded"
+          ]
+        },
+        "status": "active",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.subject",
+          "id": "batch-material"
+        },
+        "subjectType": "material.batch",
+        "label": "Batch material context",
+        "scope": {
+          "workspaceId": "workspace-context-learning",
+          "tags": [
+            "all",
+            "read-only",
+            "bounded"
+          ]
+        },
+        "status": "active",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.subject",
+          "id": "service-workflow"
+        },
+        "subjectType": "service.workflow",
+        "label": "Service workflow context",
+        "scope": {
+          "workspaceId": "workspace-context-learning",
+          "tags": [
+            "all",
+            "read-only",
+            "bounded"
+          ]
+        },
+        "status": "active",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.subject",
+          "id": "simulation"
+        },
+        "subjectType": "simulation.case",
+        "label": "Simulation case context",
+        "scope": {
+          "workspaceId": "workspace-context-learning",
+          "tags": [
+            "all",
+            "read-only",
+            "bounded"
+          ]
+        },
+        "status": "active",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.subject",
+          "id": "custom-driver"
+        },
+        "subjectType": "driver.custom",
+        "label": "Custom driver context",
+        "scope": {
+          "workspaceId": "workspace-context-learning",
+          "tags": [
+            "all",
+            "read-only",
+            "bounded"
+          ]
+        },
+        "status": "active",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      }
+    ],
+    "objects": [
+      {
+        "ref": {
+          "namespace": "context.object",
+          "id": "pva-object"
+        },
+        "objectType": "industrial.asset",
+        "subjectRefs": [
+          {
+            "namespace": "context.subject",
+            "id": "pva"
+          }
+        ],
+        "role": "process",
+        "attributes": [
+          {
+            "namespace": "context.attribute",
+            "id": "pva-state"
+          }
+        ],
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.object",
+          "id": "injection-object"
+        },
+        "objectType": "industrial.asset",
+        "subjectRefs": [
+          {
+            "namespace": "context.subject",
+            "id": "injection"
+          }
+        ],
+        "role": "process",
+        "attributes": [
+          {
+            "namespace": "context.attribute",
+            "id": "injection-state"
+          }
+        ],
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.object",
+          "id": "wwtp-object"
+        },
+        "objectType": "industrial.asset",
+        "subjectRefs": [
+          {
+            "namespace": "context.subject",
+            "id": "wwtp"
+          }
+        ],
+        "role": "process",
+        "attributes": [
+          {
+            "namespace": "context.attribute",
+            "id": "wwtp-state"
+          }
+        ],
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.object",
+          "id": "document-event-object"
+        },
+        "objectType": "document.record",
+        "subjectRefs": [
+          {
+            "namespace": "context.subject",
+            "id": "document-event"
+          }
+        ],
+        "role": "event",
+        "attributes": [
+          {
+            "namespace": "context.attribute",
+            "id": "document-event-type"
+          }
+        ],
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.object",
+          "id": "batch-material-object"
+        },
+        "objectType": "material.batch-record",
+        "subjectRefs": [
+          {
+            "namespace": "context.subject",
+            "id": "batch-material"
+          }
+        ],
+        "role": "material",
+        "attributes": [
+          {
+            "namespace": "context.attribute",
+            "id": "batch-material-lot"
+          }
+        ],
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.object",
+          "id": "service-workflow-object"
+        },
+        "objectType": "service.case",
+        "subjectRefs": [
+          {
+            "namespace": "context.subject",
+            "id": "service-workflow"
+          }
+        ],
+        "role": "workflow",
+        "attributes": [
+          {
+            "namespace": "context.attribute",
+            "id": "service-workflow-state"
+          }
+        ],
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.object",
+          "id": "simulation-object"
+        },
+        "objectType": "simulation.model",
+        "subjectRefs": [
+          {
+            "namespace": "context.subject",
+            "id": "simulation"
+          }
+        ],
+        "role": "model",
+        "attributes": [
+          {
+            "namespace": "context.attribute",
+            "id": "simulation-kind"
+          }
+        ],
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.object",
+          "id": "custom-driver-object"
+        },
+        "objectType": "driver.endpoint",
+        "subjectRefs": [
+          {
+            "namespace": "context.subject",
+            "id": "custom-driver"
+          }
+        ],
+        "role": "adapter",
+        "attributes": [
+          {
+            "namespace": "context.attribute",
+            "id": "custom-driver-kind"
+          }
+        ],
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      }
+    ],
+    "attributes": [
+      {
+        "ref": {
+          "namespace": "context.attribute",
+          "id": "pva-state"
+        },
+        "ownerRef": {
+          "namespace": "context.object",
+          "id": "pva-object"
+        },
+        "key": "process.state",
+        "value": "ready",
+        "valueKind": "scalar",
+        "accessMode": "observe",
+        "quality": "raw",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.attribute",
+          "id": "injection-state"
+        },
+        "ownerRef": {
+          "namespace": "context.object",
+          "id": "injection-object"
+        },
+        "key": "process.state",
+        "value": "ready",
+        "valueKind": "scalar",
+        "accessMode": "observe",
+        "quality": "raw",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.attribute",
+          "id": "wwtp-state"
+        },
+        "ownerRef": {
+          "namespace": "context.object",
+          "id": "wwtp-object"
+        },
+        "key": "process.state",
+        "value": "ready",
+        "valueKind": "scalar",
+        "accessMode": "observe",
+        "quality": "raw",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.attribute",
+          "id": "document-event-type"
+        },
+        "ownerRef": {
+          "namespace": "context.object",
+          "id": "document-event-object"
+        },
+        "key": "document.event-type",
+        "value": "document.created",
+        "valueKind": "event",
+        "accessMode": "observe",
+        "quality": "raw",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.attribute",
+          "id": "batch-material-lot"
+        },
+        "ownerRef": {
+          "namespace": "context.object",
+          "id": "batch-material-object"
+        },
+        "key": "material.lot",
+        "value": "lot-001",
+        "valueKind": "scalar",
+        "accessMode": "observe",
+        "quality": "raw",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.attribute",
+          "id": "service-workflow-state"
+        },
+        "ownerRef": {
+          "namespace": "context.object",
+          "id": "service-workflow-object"
+        },
+        "key": "workflow.state",
+        "value": "queued",
+        "valueKind": "scalar",
+        "accessMode": "observe",
+        "quality": "raw",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.attribute",
+          "id": "simulation-kind"
+        },
+        "ownerRef": {
+          "namespace": "context.object",
+          "id": "simulation-object"
+        },
+        "key": "simulation.kind",
+        "value": "digital-twin",
+        "valueKind": "scalar",
+        "accessMode": "observe",
+        "quality": "raw",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      },
+      {
+        "ref": {
+          "namespace": "context.attribute",
+          "id": "custom-driver-kind"
+        },
+        "ownerRef": {
+          "namespace": "context.object",
+          "id": "custom-driver-object"
+        },
+        "key": "driver.kind",
+        "value": "fixture",
+        "valueKind": "scalar",
+        "accessMode": "observe",
+        "quality": "raw",
+        "provenance": [
+          {
+            "adapterId": "fixture.context.all",
+            "sourceRef": "fixture:context-learning/base",
+            "sourceRevision": "fixture-r1",
+            "capturedAt": "2026-11-13T00:00:00.000Z",
+            "contentHash": "215ed975288d5c6eb38c7148e06b1d47f50bc27a0060d49fa1906c733322e97f"
+          }
+        ]
+      }
+    ],
+    "materialAssignments": [],
+    "relations": [
+      {
+        "id": "pva-process-state",
+        "kind": "context.has-state",
+        "src": {
+          "namespace": "context.object",
+          "id": "pva-object"
+        },
+        "dst": {
+          "namespace": "context.subject",
+          "id": "pva"
+        },
+        "evidenceRefs": []
+      },
+      {
+        "id": "injection-process-state",
+        "kind": "context.has-state",
+        "src": {
+          "namespace": "context.object",
+          "id": "injection-object"
+        },
+        "dst": {
+          "namespace": "context.subject",
+          "id": "injection"
+        },
+        "evidenceRefs": []
+      },
+      {
+        "id": "wwtp-process-state",
+        "kind": "context.has-state",
+        "src": {
+          "namespace": "context.object",
+          "id": "wwtp-object"
+        },
+        "dst": {
+          "namespace": "context.subject",
+          "id": "wwtp"
+        },
+        "evidenceRefs": []
+      },
+      {
+        "id": "document-event-record",
+        "kind": "context.records",
+        "src": {
+          "namespace": "context.object",
+          "id": "document-event-object"
+        },
+        "dst": {
+          "namespace": "context.subject",
+          "id": "document-event"
+        },
+        "evidenceRefs": []
+      },
+      {
+        "id": "batch-material-record",
+        "kind": "context.records",
+        "src": {
+          "namespace": "context.object",
+          "id": "batch-material-object"
+        },
+        "dst": {
+          "namespace": "context.subject",
+          "id": "batch-material"
+        },
+        "evidenceRefs": []
+      },
+      {
+        "id": "service-workflow-record",
+        "kind": "context.records",
+        "src": {
+          "namespace": "context.object",
+          "id": "service-workflow-object"
+        },
+        "dst": {
+          "namespace": "context.subject",
+          "id": "service-workflow"
+        },
+        "evidenceRefs": []
+      },
+      {
+        "id": "simulation-model-record",
+        "kind": "context.models",
+        "src": {
+          "namespace": "context.object",
+          "id": "simulation-object"
+        },
+        "dst": {
+          "namespace": "context.subject",
+          "id": "simulation"
+        },
+        "evidenceRefs": []
+      },
+      {
+        "id": "custom-driver-record",
+        "kind": "context.exposes",
+        "src": {
+          "namespace": "context.object",
+          "id": "custom-driver-object"
+        },
+        "dst": {
+          "namespace": "context.subject",
+          "id": "custom-driver"
+        },
+        "evidenceRefs": []
+      }
+    ],
+    "schemaRefs": [
+      {
+        "extensionId": "context-learning-fixture",
+        "version": "1.0.0"
+      }
+    ],
+    "adapterRefs": [
+      {
+        "adapterId": "fixture.context.all",
+        "version": "1.0.0"
+      }
+    ],
+    "createdAt": "2026-11-13T00:00:00.000Z",
+    "contentHash": "b8ba321b918393d8ff2f9b14fe8577a56efed8fcf99993e0851b31e9e32e2d9d"
+  },
+  "research": {
+    "id": "research-run-all",
+    "state": "completed",
+    "objective": "learn all parameterized contexts",
+    "question": "What bounded context and candidate evidence are available across the configured profiles?",
+    "budget": {
+      "maxDurationMs": 60000,
+      "maxSteps": 32,
+      "maxBytes": 1048576,
+      "maxSources": 16,
+      "maxOutputBytes": 524288,
+      "maxRsiIterations": 8
+    },
+    "counters": {
+      "steps": 4,
+      "bytes": 8,
+      "sources": 4,
+      "outputBytes": 1273,
+      "rsiIterations": 0
+    },
+    "plan": [
+      {
+        "id": "all-discover",
+        "adapterId": "fixture.context.all",
+        "capability": "discover",
+        "sourceRef": "fixture:all/discover",
+        "kind": "observation",
+        "bytes": 2,
+        "outputBytes": 308
+      },
+      {
+        "id": "all-snapshot",
+        "adapterId": "fixture.context.all",
+        "capability": "snapshot",
+        "sourceRef": "fixture:all/context",
+        "kind": "observation",
+        "bytes": 2,
+        "outputBytes": 318
+      },
+      {
+        "id": "all-query",
+        "adapterId": "fixture.context.all",
+        "capability": "query",
+        "sourceRef": "fixture:all/query",
+        "kind": "observation",
+        "bytes": 2,
+        "outputBytes": 289
+      },
+      {
+        "id": "all-simulate",
+        "adapterId": "fixture.context.all",
+        "capability": "simulate",
+        "sourceRef": "fixture:all/simulation",
+        "kind": "simulation",
+        "bytes": 2,
+        "outputBytes": 358
+      }
+    ],
+    "verdict": {
+      "summary": "bounded fixture research completed; evidence remains candidate-only",
+      "claimLevel": "candidate",
+      "evidenceIds": [
+        "evidence-candidate-d80e84877d2aa593760c7980",
+        "evidence-candidate-a15a4a3a49ff890d220cfb3a",
+        "evidence-candidate-42e320c2458c1bd52e3bda24",
+        "evidence-candidate-0ebce1f102c119e143abd47b"
+      ]
+    },
+    "evidenceIds": [
+      "evidence-candidate-d80e84877d2aa593760c7980",
+      "evidence-candidate-a15a4a3a49ff890d220cfb3a",
+      "evidence-candidate-42e320c2458c1bd52e3bda24",
+      "evidence-candidate-0ebce1f102c119e143abd47b"
+    ],
+    "outputs": [
+      {
+        "stepId": "all-discover",
+        "capability": "discover",
+        "sourceRef": "fixture:all/discover",
+        "bytes": 308
+      },
+      {
+        "stepId": "all-snapshot",
+        "capability": "snapshot",
+        "sourceRef": "fixture:all/context",
+        "bytes": 318
+      },
+      {
+        "stepId": "all-query",
+        "capability": "query",
+        "sourceRef": "fixture:all/query",
+        "bytes": 289
+      },
+      {
+        "stepId": "all-simulate",
+        "capability": "simulate",
+        "sourceRef": "fixture:all/simulation",
+        "bytes": 358
+      }
+    ]
+  },
+  "candidateEvidence": [
+    {
+      "id": "evidence-candidate-d80e84877d2aa593760c7980",
+      "kind": "observation",
+      "subjectRefs": [
+        {
+          "namespace": "context.subject",
+          "id": "pva"
+        }
+      ],
+      "researchRunId": "research-run-all",
+      "source": {
+        "adapterId": "fixture.context.all",
+        "sourceRef": "fixture:all/discover#0",
+        "sourceRevision": "fixture-r1"
+      },
+      "payloadRef": "fixture://context-learning-base/research-run-all/all-discover/0",
+      "payloadHash": "a3c33c382ec25f256aadefb88cf2b4999da0554b00a78cf860267cbd93f5724b",
+      "quality": "raw",
+      "claimLevel": "candidate",
+      "accessScope": {
+        "workspaceId": "workspace-context-learning",
+        "tags": [
+          "context-learning",
+          "all"
+        ]
+      },
+      "createdAt": "2026-11-13T00:00:00.000Z",
+      "candidateOnly": true,
+      "classification": "fixture-observation",
+      "contentHash": "9e2b1d5b97fa498a04b27ad7b7bb3e94b1fc07cf094d0240fc665c438a56f2dc"
+    },
+    {
+      "id": "evidence-candidate-a15a4a3a49ff890d220cfb3a",
+      "kind": "observation",
+      "subjectRefs": [
+        {
+          "namespace": "context.subject",
+          "id": "pva"
+        }
+      ],
+      "researchRunId": "research-run-all",
+      "source": {
+        "adapterId": "fixture.context.all",
+        "sourceRef": "fixture:all/context#1",
+        "sourceRevision": "fixture-r1"
+      },
+      "payloadRef": "fixture://context-learning-base/research-run-all/all-snapshot/1",
+      "payloadHash": "90a2f98c4f2d605cda2309b03ed8365374a8318e5b4bcec331ed765f1c2f38cc",
+      "quality": "raw",
+      "claimLevel": "candidate",
+      "accessScope": {
+        "workspaceId": "workspace-context-learning",
+        "tags": [
+          "context-learning",
+          "all"
+        ]
+      },
+      "createdAt": "2026-11-13T00:00:00.000Z",
+      "candidateOnly": true,
+      "classification": "fixture-observation",
+      "contentHash": "b5f38bfbdb56700b47f8f852b7fdfb4f62b7f64d54e21e12fd42fa50132b0d88"
+    },
+    {
+      "id": "evidence-candidate-42e320c2458c1bd52e3bda24",
+      "kind": "observation",
+      "subjectRefs": [
+        {
+          "namespace": "context.subject",
+          "id": "pva"
+        }
+      ],
+      "researchRunId": "research-run-all",
+      "source": {
+        "adapterId": "fixture.context.all",
+        "sourceRef": "fixture:all/query#2",
+        "sourceRevision": "fixture-r1"
+      },
+      "payloadRef": "fixture://context-learning-base/research-run-all/all-query/2",
+      "payloadHash": "7f41a65d4bf538f5ac2732dc067360f2ab3b7e3ec812f8954c9225cdee6fd0fa",
+      "quality": "raw",
+      "claimLevel": "candidate",
+      "accessScope": {
+        "workspaceId": "workspace-context-learning",
+        "tags": [
+          "context-learning",
+          "all"
+        ]
+      },
+      "createdAt": "2026-11-13T00:00:00.000Z",
+      "candidateOnly": true,
+      "classification": "fixture-observation",
+      "contentHash": "3747ab4b1230263f1ce075179d6824b5423ce727cee348ddd4c3b9c508d23d50"
+    },
+    {
+      "id": "evidence-candidate-0ebce1f102c119e143abd47b",
+      "kind": "simulation",
+      "subjectRefs": [
+        {
+          "namespace": "context.subject",
+          "id": "pva"
+        }
+      ],
+      "researchRunId": "research-run-all",
+      "source": {
+        "adapterId": "fixture.context.all",
+        "sourceRef": "fixture:all/simulation#3",
+        "sourceRevision": "fixture-r1"
+      },
+      "payloadRef": "fixture://context-learning-base/research-run-all/all-simulate/3",
+      "payloadHash": "123ef0516b2b6f82e0d7b007b72736e0e49809cb9dd2c14358220be1407a015a",
+      "quality": "raw",
+      "claimLevel": "candidate",
+      "accessScope": {
+        "workspaceId": "workspace-context-learning",
+        "tags": [
+          "context-learning",
+          "all"
+        ]
+      },
+      "createdAt": "2026-11-13T00:00:00.000Z",
+      "candidateOnly": true,
+      "classification": "simulation",
+      "contentHash": "b188ef7b04f0c08d84e6e679543766de043728c93b80e4c9ef7d1b6ac3cff611"
+    }
+  ],
+  "sideEffects": {
+    "adapter": {
+      "adapterId": "fixture.context.all",
+      "sideEffect": "candidate-only",
+      "invocations": 4
+    },
+    "counters": {
+      "readOperations": 3,
+      "simulationOperations": 1,
+      "candidateEvidenceWrites": 4,
+      "physicalWrites": 0,
+      "controlPathWrites": 0,
+      "networkCalls": 0,
+      "networkDisabled": false
+    },
+    "physicalHIL": {
+      "invocations": 0,
+      "verified": false,
+      "claim": false
+    }
+  },
+  "acceptance": {
+    "status": "PASS",
+    "errors": []
+  },
+  "baseline": {
+    "provided": false,
+    "matched": null
+  },
+  "acceptanceFingerprint": "2976f64c372b1ae227490bc6c250dc7b4ee79ed5e3591e3609bf110af8de48f0"
+}

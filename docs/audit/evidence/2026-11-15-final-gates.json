@@ -1,0 +1,118 @@
+{
+  "manifestVersion": "system-final-acceptance.v2",
+  "kind": "post-merge-acceptance-and-system-evaluation",
+  "recordedAt": "2026-11-15",
+  "evaluationReport": "docs/audit/2026-11-15-system-evaluation.md",
+  "base": {
+    "branch": "main (detached acceptance checkout of origin/main)",
+    "head": "b6847187c01b7bd2bd68bb0e3f19491cf020b0d6",
+    "headShort": "b6847187",
+    "prChain": [
+      { "pr": 214, "merge": "b7a326ae", "title": "RSI read-only operational evidence (PR-C)" },
+      { "pr": 215, "merge": "b1a09d75", "title": "live plugin service seam + off/on compatibility matrix (PR-G)" },
+      { "pr": 216, "merge": "e4885f65", "title": "diag audit host seam" },
+      { "pr": 217, "merge": "ff306531", "title": "round-3 final evidence" },
+      { "pr": 218, "merge": "b6847187", "title": "operational evidence + scope truth hardening (review findings)" }
+    ]
+  },
+  "t0StaticGates": {
+    "lint": { "status": "PASS", "rsiRedline": { "files": 21, "deviceWriteCalls": 0 } },
+    "typecheck": { "status": "PASS" },
+    "docsSync": { "status": "PASS", "passed": 87, "failed": 0 },
+    "i18n": { "status": "PASS", "zhKeys": 3328, "enKeys": 3328, "unresolved": 0 },
+    "readmeLint": { "status": "PASS" },
+    "cssVariables": { "status": "PASS", "references": 161, "files": 260 },
+    "frontendLifecycleContract": { "status": "PASS", "tests": 3 }
+  },
+  "t1UnitContracts": {
+    "unit": { "status": "PASS", "tests": 1663, "pass": 1663, "fail": 0 },
+    "mcp": { "status": "PASS", "tests": 14 },
+    "pluginDiagRsi": { "status": "PASS", "tests": 72 },
+    "sdkSurface": { "status": "PASS" },
+    "twinProvider": { "status": "PASS", "tests": 5 },
+    "skills": { "status": "PASS", "suites": 167 }
+  },
+  "liveSuites": {
+    "lineGovernance": { "status": "PASS", "cases": 44, "environment": "isolated host + mock DCW/DAQ" },
+    "scientificFullChain": { "status": "PASS", "cases": 21, "boundary": "mock device/fixture response — platform contract evidence, not physical" },
+    "ontologyOffline": { "status": "PASS", "cases": 57 },
+    "optimizerLive": { "status": "PASS", "cases": 105, "report": "docs/audit/evidence/2026-11-15-optimizer-live/report.json", "boundary": "simulated calibration + real browser UI + HITL; W7 execution.status=verified, W8 readback consistent" }
+  },
+  "acceptanceRunners": {
+    "rsiSimulation": { "status": "PASS", "report": "docs/audit/evidence/2026-11-15-final-rsi-simulation.json", "physicalWrites": 0 },
+    "rsiIsolatedHomeBaseline": { "status": "PASS", "matched": true, "report": "docs/audit/evidence/2026-11-15-final-rsi-baseline-compare.json", "physicalWrites": 0 },
+    "compatibilityMatrix": {
+      "status": "PASS",
+      "checks": 31,
+      "head": "b6847187c01b7bd2bd68bb0e3f19491cf020b0d6",
+      "report": "docs/audit/evidence/2026-11-14-rsi-compatibility-matrix/report.json",
+      "coverage": "feature-off routes/panel absent; workspace→channel→worker→session/project→recipe/DAQ→HITL→DCW readback/write-audit→RSI read-only evidence→research observe→actuate denial→foreign scope denial; metadata unbound/foreign; /adapter capability truth",
+      "physicalHil": "NOT RUN"
+    },
+    "productionStartSmoke": {
+      "status": "PASS",
+      "checks": 18,
+      "report": "docs/audit/evidence/2026-11-14-final-production-smoke.json",
+      "command": "node .output/server/index.mjs",
+      "coverage": "flags off/on; /, /daq, /optimizer, /plugins HTTP 200 and hydrated; no uncaught page errors; Beta panel absent off / present on"
+    },
+    "finalBuildRsiProbe": {
+      "status": "PASS",
+      "checks": 7,
+      "target": "existing simulated line ln-1e3fbd3d, channel 1c22531c, worker 695f7b33",
+      "coverage": "workspace mount, /status READY, /metadata ready + capability truth, /adapter capability equality, operational evidence readOnly/hash/writeAuditAvailable, DCW readback/ACK/write-audit, DAQ latest/history/frames with sanitized meta"
+    },
+    "iddRagChannel": {
+      "status": "PASS_WITH_LIMITATIONS",
+      "checks": 7,
+      "report": "docs/audit/evidence/2026-11-14-idd-rag-channel-e2e/report.json",
+      "narrative": "docs/audit/evidence/2026-11-14-idd-rag-channel-e2e/REPORT.md",
+      "iddQuickScreen": { "runId": "064cb296", "status": "completed", "reportBytes": 19815, "harness": "omp/ustc-deepseek-flash" },
+      "iddDeepDiagnosis": { "runId": "954d6fa7", "status": "failed", "error": "omp_timeout" },
+      "channelTask": { "id": "a6952741", "state": "COMPLETED", "rootTask": "3fd608bb CANCELED at 10min default stall" },
+      "rag": "report indexed (36 chunks) and retrieved; rag-bridge search hit",
+      "boundary": "mock line; physical HIL not run; KB approval approved by operator"
+    }
+  },
+  "build": {
+    "status": "PASS",
+    "packageDryRun": "PASS",
+    "packageSize": "43.6 MB",
+    "totalFiles": 4880,
+    "packageShasum": "7d524f9b0ce675efd0cee0638e1434144d75aa61"
+  },
+  "security": {
+    "mimosa": {
+      "scanId": "scan-2026-11-14T16-31-23.108Z-b901d3247eac",
+      "seal": "sha256:c2478c9a678a656ab310eb0def67eacd127077b9cf1f38256bf62d1621595a5c",
+      "artifacts": "D:/tmp/aw-rsi-mimosa-final-round4-20261115/scan-2026-11-14T16-31-23.108Z-b901d3247eac",
+      "completeness": "partial",
+      "runStatus": "inconclusive",
+      "selectedFiles": 1841,
+      "parseFailures": 0,
+      "findings": 34,
+      "dependencyRisk": { "packagesScanned": 62, "matchedAdvisories": 0, "unknown": 0 },
+      "verdict": "NOT a security pass. Selected/parsed 1841 files with 0 parse failures, but threatModel and findingDiscovery phases remain partial (0 entry points/authorization surfaces observed). 34 static findings are the previously triaged pattern set; no finding targets the new RSI/diag/RAG changed files. ESLint is fully green, but Mimosa cannot be called a pass."
+    }
+  },
+  "review": {
+    "mode": "bugbot-style correctness review + security review (general-purpose read-only agents; dedicated bugbot/security-review agent types unavailable)",
+    "round1": "REJECTED: frame meta payload bypass, unbounded aggregate read/no cancellation, audit fail-open, observe no-authorization fail-open, metadata foreign scope misreport, capability fallback, research/adapter coupling, matrix self-fulfilling assertions",
+    "round2": "REJECTED follow-up: tagged truncation kept oldest, /adapter still advertised policy capabilities, missing audit reader false-positive, matrix HOST no-op",
+    "fixes": "PR #218 (two commits): all medium/high findings fixed; tests strengthened (frame meta, lineId, abort, audit degradation, aggregate/tagged budgets, missing audit reader, /adapter truth, foreign metadata); matrix binds 127.0.0.1 and requires audit contract",
+    "residual": [
+      "P3: frame meta sanitizer is shallow (nested objects not recursively capped); production writers store points at top level",
+      "P3: default listInterventionsStrict DB-failure path is behaviorally wired but not covered by a live DB-failure test",
+      "P3: plugin route registration can trail health readiness by ~2s (observed one transient 404 immediately after restart)",
+      "P2 operational: default 10min harness stall cancels long lead turns (configurable via workshop.harness_stall_timeout_ms; set to 30min in acceptance)",
+      "P2 operational: IDD deep-diagnosis hit its 40min omp_timeout; quick-screen completed",
+      "P2 operational: RAG large-KB background reindex saturated the API during acceptance (HTTP 000/timeouts); needs queue/read isolation"
+    ]
+  },
+  "notClaimed": [
+    "Physical HIL execution or real PLC/DCW device writes (all device evidence is mock/simulated).",
+    "A complete security audit or security-pass verdict (Mimosa remains partial/inconclusive).",
+    "Unconditional autonomous deep-diagnosis reliability (deep run timed out at 40min).",
+    "Production-grade RAG availability under large background reindex."
+  ]
+}

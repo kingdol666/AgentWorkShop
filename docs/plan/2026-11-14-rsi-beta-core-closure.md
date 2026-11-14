@@ -83,6 +83,7 @@ Add an isolated host-level matrix connecting Workspace → Channel → Worker/Ag
 - Live-wiring defects exposed by PR-G and fixed here: plugin modules cannot resolve `@/server` under the runtime dynamic loader (research/evidence/ops factories now come from host `ctx.services`); metadata no longer reports a permanent default-deny when no kv scope is provisioned (`SCOPE_UNBOUND` is explicit); `/status` no longer reports `READY` while the adapter is unregistered; Beta research defaults the industrial projection marker.
 - Still not claimed: physical HIL (NOT RUN); Mimosa completeness/security pass (partial/inconclusive); any production device write.
 - Final acceptance on `e4885f65` (2026-11-14): T0/T1 gates, line 44/44, scientific 21/21, ontology 57/57, RSI runner sim+baseline, compatibility matrix 30/30, production `.output` start smoke 18/18, build/pack PASS — evidence `docs/audit/evidence/2026-11-14-final-gates.json`.
+- Round-4 evaluation on `b6847187` (2026-11-15, after review hardening #218): unit 1663/1663, plugin/diag/RSI 72/72, optimizer live 105/105, matrix 31/31, production smoke 18/18, RSI final-line probe 7/7; real IDD quick-screen completed and RAG ingestion/search verified; IDD deep-diagnosis timed out at 40min; physical HIL NOT RUN; Mimosa partial/inconclusive — see `docs/audit/2026-11-15-system-evaluation.md` and `docs/audit/evidence/2026-11-15-final-gates.json`.
 
 ## Exit criteria
 
