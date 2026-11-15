@@ -21,7 +21,7 @@
 | production build | **通过** | `.output` + prompts/schema.json/aml-python 资产齐全 |
 | 新构建启动 smoke | **通过** | health `workshop=ready`、`daq.degraded=false`、未授权 401、Channel/Project 创建、`aw stop` 505ms 不重启 |
 | Mimosa | **不构成安全通过** | 2 轮 deep scan，均 47 findings、**改动文件 0 命中**；扫描器 `inconclusive`（覆盖缺口） |
-| IDD 集成 | **通过（有数据量边界）** | quick-screen（omp）完成报告回读；第二轮 349 行产出真实结论（41 条告警=受控期望，无漂移/离群）；IDD 结果库总开关关闭 |
+| IDD 集成 | **通过（有数据量边界）** | quick-screen（omp）完成报告回读；第二轮 349 行 completed 并产出真实结论（41 条告警=受控期望，无漂移/离群）；IDD 结果库总开关关闭 |
 | RAG 检索 | **通过** | 插件 `/search` 命中 58 条真实知识（含 0.09g 锚点与适用范围限制、DOE R²/MDE） |
 | RAG 入库 | **部分通过 / 外部容量阻塞** | HITL 审批→异步任务受理通过；RAG 侧 agent 540s 硬超时（`agent turn timed out`），索引未完成 |
 | Channel 全链 | **通过（有编排/外部依赖缺陷）** | omp lead+worker 真实任务；lead 实际调用 `daq_query`/`diag_status`/`diag_results`/`kb_agent`/`kb_search_two_stage`；明确声明 0 设备写入；首回合曾被运行时卸载导致 10min 停滞 |
@@ -116,7 +116,7 @@
   - C3：349/349 steady，变点 0；C4 稳健 z 峰值 3.15 < 3.5，补充马氏 `max_d2=18.14 < 31.43`，0 越限 episode；
   - 结论：**统计受控，无越规格/变点/均值漂移/波动放大**；仅 `dn-ac004898` 轻微上漂（0.288σ/0.569h）建议下一窗复核；
   - 同时披露数据质量：2 个节点全窗缺测、1 个节点恒值、C2 因无 DOE 操作窗而明确跳过。
-- 任务状态 API 在本报告截稿时仍显示 `running`（IDD agent 收尾），但报告与告警工件已落盘且内容完整。
+- 任务状态：**completed**（2026-11-15 09:04:41Z / 17:04 +08），报告与告警工件均为终局产物（非中途快照）。
 
 ### 4.3 结果库
 - `/api/plugins/diag-bridge/results` 返回 `结果库未启用(results_enabled)`：IDD 服务的**可选结果库总开关关闭**。
