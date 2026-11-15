@@ -20,7 +20,8 @@ export interface ChannelSessionRow {
   id: string
   channelId: string
   title: string
-  status: 'active' | 'closed'
+  /** active=可寻址;closing=关闭级联进行中/中断待对账;closed=终态 */
+  status: 'active' | 'closing' | 'closed'
   memoryPolicy: string
   memberMapJson: string
   createdBy: string | null
@@ -120,7 +121,7 @@ export function createChannelSessionRepo(db: DatabaseSync) {
     },
 
     /** 按状态枚举（启动对账取 'closing'；active/closed 也可用于运维查询） */
-    listByStatus(status: ChannelSessionRow['status'] | 'closing'): ChannelSessionRow[] {
+    listByStatus(status: ChannelSessionRow['status']): ChannelSessionRow[] {
       return byStatusStmt.all(status) as unknown as ChannelSessionRow[]
     },
 

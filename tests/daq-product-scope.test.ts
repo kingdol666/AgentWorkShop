@@ -14,7 +14,7 @@ delete process.env.DAQ_TSDB_URL
 const { DaqNode } = await import('../server/services/workshop/daq/daq-node')
 const { getDaqNodeRepo } = await import('../server/services/workshop/daq/daq-node.repo')
 const { getAgentNodeBindingRepo } = await import('../server/services/workshop/agents/node-bindings.repo')
-const { getTsdb } = await import('../server/services/workshop/daq/storage')
+const { getTsdb, tsdbQueryHistory } = await import('../server/services/workshop/daq/storage')
 const { toolDaqQuery, toolDaqFrames, filterTaggedSessionRows } = await import('../server/services/workshop/agents/industrial/daq-tools')
 const { exportDaqDataset } = await import('../server/services/workshop/agents/industrial/daq-export')
 
@@ -76,6 +76,24 @@ test('scope=all remains filtered to the trusted session product', async () => {
   // 用词边界匹配数值:epoch 毫秒时间戳里可能天然含有 111/999 数字串
   assert.match(r.text, /\b111\b/)
   assert.doesNotMatch(r.text, /\b999\b/)
+})
+
+test('tagged history fallback never returns another product when rollup is unavailable', async () => {
+  // 无 DAQ_TSDB_URL → 无 rollup store → 走 tsdbQueryHistory 的降级分支。
+  // 修复前该分支调用 tsdb.query(nodeId) 不做任何标签过滤,会返回 prod-other 的 999。
+  const history = await tsdbQueryHistory('dn-product-scope', {
+    fromMs: NOW - 300_000,
+    toMs: NOW,
+    bucketMs: 5000,
+    limit: 500,
+    lineId: 'ln-product-scope',
+    productId: 'prod-fixed',
+  })
+  assert.ok(history.points.length >= 1, 'tagged history should return the fixed product samples')
+  for (const point of history.points) {
+    const value = point.avg ?? point.value
+    assert.equal(value, 111, `history leaked another product: ${JSON.stringify(point)}`)
+  }
 })
 
 test('scoped export uses tagged scalar and frame reads and never falls back to untagged readers', async () => {

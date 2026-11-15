@@ -166,6 +166,29 @@ test('H0 cancel during submit preserves CANCELED and compensates the late-create
   assert.equal(f.tasks.findRootBySource(s.member.channelId, attempt.sourceKey)?.state, 'CANCELED')
 })
 
+test('H0 cancel during submit + submit rejection must not resurrect the item', async () => {
+  const f = fixture()
+  const s = await activeProject(f)
+  let canceled = false
+  f.setOnSubmit(() => {
+    if (canceled) return
+    canceled = true
+    f.svc.cancelWorkItem(s.p.id, s.w.id, s.owner, 'cancel then fail submit')
+    // 关键:取消后 submit 抛错走通用失败补偿 —— 旧实现会把 CANCELED 回写成 DRAFT/BLOCKED
+    throw new Error('delivery failed after owner cancel')
+  })
+  await assert.rejects(
+    () => f.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner),
+    (err: unknown) => (err as { code?: string }).code === 'PROJECT_STATE_CHANGED' || /delivery failed/.test(String((err as Error).message)),
+  )
+  const workItem = f.svc.listWorkItems(s.p.id, s.owner).find(item => item.id === s.w.id)!
+  assert.equal(workItem.state, 'CANCELED', 'submit failure compensation must not reset a canceled work item')
+  assert.ok(workItem.closedAt, 'canceled item must keep its closedAt')
+  const attempts = f.db.prepare('SELECT closed_at AS closedAt FROM project_work_item_attempts WHERE work_item_id = ?').all(s.w.id) as Array<{ closedAt: string | null }>
+  assert.equal(attempts.length, 1)
+  assert.ok(attempts[0].closedAt, 'attempt must be closed')
+})
+
 test('H0 cancelWorkItem：关闭 attempt 的同时取消任务树', async () => {
   const f = fixture()
   const s = await activeProject(f)

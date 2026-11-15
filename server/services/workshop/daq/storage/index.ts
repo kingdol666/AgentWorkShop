@@ -16,6 +16,7 @@ import type {
   TsdbHistoryQuery,
   TsdbHistoryResult,
   TsdbLayoutInfo,
+  TsdbPoint,
   TsdbPort,
   TsdbRetentionInfo,
   TsdbRetentionPatch,
@@ -180,7 +181,31 @@ export async function tsdbQueryHistory(nodeId: string, q: TsdbHistoryQuery): Pro
   const store = getRollupStore()
   if (store) return store.queryHistory(nodeId, q)
   const limit = Math.max(1, Math.min(q.limit ?? 2000, 1_000_000))
-  const points = await tsdb.query(nodeId, { fromMs: q.fromMs, toMs: q.toMs, bucketMs: q.bucketMs, limit })
+  // 产线/产品/配方/批次过滤必须由后端 SQL 执行:历史窗口不能像热路径那样在 JS 侧
+  // 补过滤(聚合已丢失原始行)。缺少打标能力时 fail-closed,绝不返回可能跨产品/跨线
+  // 的聚合数据(与 frames/export 的 tagged reader 契约同源)。
+  const tagged = Boolean(q.lineId || q.productId || q.recipeId || q.runId)
+  let points: TsdbPoint[]
+  if (tagged) {
+    if (typeof tsdb.queryTagged !== 'function') {
+      throw new Error('TAGGED_HISTORY_UNAVAILABLE: 当前时序后端不支持打标历史查询,拒绝返回可能跨产品/产线的数据')
+    }
+    const series = await tsdb.queryTagged({
+      lineId: q.lineId,
+      productId: q.productId,
+      recipeId: q.recipeId,
+      runId: q.runId,
+      nodeIds: [nodeId],
+      fromMs: q.fromMs,
+      toMs: q.toMs,
+      bucketMs: q.bucketMs,
+      limit,
+    })
+    points = series.get(nodeId) ?? []
+  }
+  else {
+    points = await tsdb.query(nodeId, { fromMs: q.fromMs, toMs: q.toMs, bucketMs: q.bucketMs, limit })
+  }
   const rawRetentionH = daqRuntimeSettings().tsRetentionH
   const cutoff = rawCutoffMs(Date.now(), rawRetentionH)
   return {

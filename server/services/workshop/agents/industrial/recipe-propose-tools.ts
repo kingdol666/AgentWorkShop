@@ -13,6 +13,7 @@
  *  - 无依据(basis)与经验引用(exp_ref)的参数不得入包;
  *  - 多方案批准未携带有效 choice 一律按拒绝收敛(fail-closed,见 tool-approvals.normalizeRecipeProposeDecision)。
  */
+import type { ChannelSessionExecutionScope } from '../host-tool-bridge/types'
 import { agentBadgeLabel } from '../agent-badge'
 import { currentToolInvocation } from '../governance-harness-audit'
 import { executionModeOfAgent } from '../execution-mode'
@@ -27,7 +28,7 @@ import { recordOps } from '../../ops/ops'
 import { evaluateRecipeParamLimits } from '../../dcw/dcw-controller/write'
 import { GOVERNED_DISPATCH_HINT, RECOVERY_RETRY_HINT, RECOVERY_TRACE_HINT, RECOVERY_VERIFY_HINT } from './fallback-hints'
 import { amlActivityForLine } from './aml-activity'
-import { agentOpsScope, channelIdOfAgent, revalidateApprovedAction } from './ops-tools'
+import { agentOpsScope, channelIdOfAgent, revalidateApprovedAction, sessionRecipeError } from './ops-tools'
 import { recipeEvidenceText } from '../../dcw/recipe-evidence'
 
 /** 候选包上限(防审批卡被刷屏;1~3 套) */
@@ -84,7 +85,7 @@ export async function toolRecipePropose(agentId: string, args: {
   recipe_id?: string
   packages?: RecipeProposePackageInput[]
   emergency?: boolean | string
-}): Promise<{ text: string, isError?: boolean }> {
+}, sessionScope?: ChannelSessionExecutionScope): Promise<{ text: string, isError?: boolean }> {
   // ---------- ① 参数校验(packages 1..3;每参数 node_id/to/basis/exp_ref 必填) ----------
   const recipeId = String(args.recipe_id ?? '').trim()
   if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方 id)。', isError: true }
@@ -140,6 +141,10 @@ export async function toolRecipePropose(agentId: string, args: {
   // ---------- ② 配方存在性与产线归属(权限 mirror toolRecipeApply:节点授权线 ∪ 频道绑线 + 配方内至少一个授权节点) ----------
   const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  // Session 冻结边界优先于绑定面:克隆实例可能保留其他产线的历史绑定,
+  // 但 integrated Session 只能对本 Session 固定的产品/产线/配方快照提请下发。
+  const sessionBoundary = sessionRecipeError(sessionScope, recipe)
+  if (sessionBoundary) return sessionBoundary
   // 权限模型 v2:绑定 → 二级认证 → 运行门(整包审批本身即 HITL,门只做准入)
   const gate = assertRecipeOperation(agentId, recipe, 'dispatch')
   if (!gate.ok) return { text: gate.text, isError: true }

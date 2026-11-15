@@ -175,6 +175,8 @@ export function migrateMissingForeignKeys(db: DatabaseSync): void {
   if (!needTasks && !needSubs) return
 
   db.exec('PRAGMA foreign_keys = OFF;')
+  // 与另两处表重建一致:DELETE→CREATE→DROP→RENAME 必须原子,中断不得留下半迁移库。
+  db.exec('BEGIN IMMEDIATE;')
   try {
     if (needTasks) {
       db.exec(`DELETE FROM tasks WHERE channel_id NOT IN (SELECT id FROM channels);
@@ -239,6 +241,14 @@ export function migrateMissingForeignKeys(db: DatabaseSync): void {
       DROP TABLE subscriptions;
       ALTER TABLE subscriptions_new RENAME TO subscriptions;`)
     }
+    db.exec('COMMIT;')
+  }
+  catch (err) {
+    try {
+      db.exec('ROLLBACK;')
+    }
+    catch { /* 事务已失效:原始错误更重要 */ }
+    throw err
   }
   finally {
     db.exec('PRAGMA foreign_keys = ON;')
@@ -282,6 +292,15 @@ export function migrateDropOwnerFks(db: DatabaseSync): void {
       db.prepare('ALTER TABLE workspaces_new RENAME TO workspaces').run()
     }
     if (needChannels) {
+      // 重建会丢列:老库可能已有 channel_mode(晚于 owner-FK 引入),必须显式保留,
+      // 否则 integrated 频道会在重建后被默认成 generic(且后续迁移不会再回填)。
+      const channelsHaveMode = (db.prepare('PRAGMA table_info(channels)').all() as Array<{ name: string }>)
+        .some(c => c.name === 'channel_mode')
+      // 老库还没有 channel_mode 列:重建时按 line_id 推导(与 migrateChannelModeColumn 的回填规则一致)。
+      // 若这里只写 DEFAULT 'generic',后续迁移看到列已存在就不再回填,integrated 频道会被静默降级。
+      const modeSelect = channelsHaveMode
+        ? ', channel_mode'
+        : `, CASE WHEN COALESCE(line_id, '') <> '' THEN 'production_line_integrated' ELSE 'generic' END`
       db.prepare(`CREATE TABLE channels_new (
         id              TEXT PRIMARY KEY,
         name            TEXT NOT NULL,
@@ -299,14 +318,15 @@ export function migrateDropOwnerFks(db: DatabaseSync): void {
         approval_policy TEXT NOT NULL DEFAULT 'owner_only',
         chat_enabled    INTEGER NOT NULL DEFAULT 0,
         version         INTEGER NOT NULL DEFAULT 1,
-        line_id         TEXT NOT NULL DEFAULT ''
+        line_id         TEXT NOT NULL DEFAULT '',
+        channel_mode    TEXT NOT NULL DEFAULT 'generic' CHECK (channel_mode IN ('generic', 'production_line_integrated'))
       )`).run()
       db.prepare(`INSERT INTO channels_new (id, name, description, scenario_prompt, llm_json, lead_agent_id,
           workspace, enabled, created_at, updated_at, owner_user_id, visibility,
-          join_policy, approval_policy, chat_enabled, version, line_id)
+          join_policy, approval_policy, chat_enabled, version, line_id, channel_mode)
         SELECT id, name, description, scenario_prompt, llm_json, lead_agent_id,
           workspace, enabled, created_at, updated_at, owner_user_id, visibility,
-          join_policy, approval_policy, chat_enabled, version, line_id FROM channels`).run()
+          join_policy, approval_policy, chat_enabled, version, line_id${modeSelect} FROM channels`).run()
       db.prepare('DROP TABLE channels').run()
       db.prepare('ALTER TABLE channels_new RENAME TO channels').run()
     }

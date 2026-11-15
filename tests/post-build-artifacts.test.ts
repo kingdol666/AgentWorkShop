@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 
-const { postBuildArtifacts } = await import('../cli/core/post-build.mjs')
+const { postBuildArtifacts, outputAssetsReady } = await import('../cli/core/post-build.mjs')
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'aw-post-build-'))
@@ -47,4 +47,18 @@ test('postBuildArtifacts fails when required runtime assets are missing', () => 
     }
     finally { rmSync(root, { recursive: true, force: true }) }
   }
+})
+
+test('outputAssetsReady requires the server entry plus every runtime asset', () => {
+  const root = fixture()
+  try {
+    writeFileSync(join(root, '.output', 'server', 'index.mjs'), '')
+    // 入口存在但资产尚未随产物分发 → 不可启动(旧实现只看 index.mjs 会误判就绪)
+    assert.equal(outputAssetsReady(root), false)
+    postBuildArtifacts(root)
+    assert.equal(outputAssetsReady(root), true)
+    rmSync(join(root, '.output', '.AgentWorkShop', 'schema.json'))
+    assert.equal(outputAssetsReady(root), false)
+  }
+  finally { rmSync(root, { recursive: true, force: true }) }
 })

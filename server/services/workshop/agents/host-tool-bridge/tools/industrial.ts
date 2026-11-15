@@ -54,7 +54,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['mpc_optimize', (agentId, args) => toolMpcOptimize(agentId, args)],
   ['twin_gate_evaluate', (agentId, args) => toolTwinGateEvaluate(agentId, args)],
   ['twin_calibration_request', (agentId, args) => toolTwinCalibrationRequest(agentId, args)],
-  ['optimization_explore', (agentId, args, channelId) => toolOptimizationExplore(agentId, args as Parameters<typeof toolOptimizationExplore>[1], channelId)],
+  ['optimization_explore', (agentId, args, channelId, sessionScope) => toolOptimizationExplore(agentId, args as Parameters<typeof toolOptimizationExplore>[1], channelId, sessionScope)],
   ['twin_bayes_optimize', (agentId, args) => toolTwinBayesOptimize(agentId, args)],
   ['dcw_control', (agentId, args, channelId) => toolDcwControl(agentId, args as { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId)],
   ['param_control', (agentId, args, channelId) => toolParamControl(agentId, args as { param?: string, value?: number | string, hypothesis?: string, task_id?: string, line_id?: string }, channelId)],
@@ -87,7 +87,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['mes_datasets', (agentId, args) => toolMesDatasets(agentId, args as Parameters<typeof toolMesDatasets>[1])],
   ['exp_collect', (agentId, args, _channelId, sessionScope) => toolExpCollect(agentId, args as { line_id?: string, lineId?: string }, sessionScope ? { sessionId: sessionScope.sessionId } : undefined)],
   // 产线 Co-Pilot P2(诊断工程师下发面):整包方案审批 + AML 活动硬闸自查
-  ['recipe_propose', (agentId, args) => toolRecipePropose(agentId, args as Parameters<typeof toolRecipePropose>[1])],
+  ['recipe_propose', (agentId, args, _channelId, sessionScope) => toolRecipePropose(agentId, args as Parameters<typeof toolRecipePropose>[1], sessionScope)],
   ['line_start', (agentId, args, channelId) => toolLineStart(agentId, args as Parameters<typeof toolLineStart>[1], channelId)],
   ['line_stop', (agentId, args, channelId) => toolLineStop(agentId, args as Parameters<typeof toolLineStop>[1], channelId)],
   ['line_status', (agentId, args, channelId) => toolLineStatus(agentId, args as Parameters<typeof toolLineStatus>[1], channelId)],

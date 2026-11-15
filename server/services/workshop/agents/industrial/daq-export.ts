@@ -571,6 +571,7 @@ export async function toolDaqExport(agentId: string, args: {
   }
   // 目标解析:node_ids(可多个)> line_id 过滤 > 全部可见节点
   let targets = [...allowed]
+  let explicitTargets = false
   const wantedRaw = args.node_ids
   if (wantedRaw != null && String(wantedRaw).trim() !== '') {
     const wanted = (Array.isArray(wantedRaw) ? wantedRaw : String(wantedRaw).split(/[,\s;]+/))
@@ -581,12 +582,15 @@ export async function toolDaqExport(agentId: string, args: {
         return { text: `无权导出节点:${illegal.join(', ')}。你有权访问的数采节点:${[...allowed].join(', ')}。`, isError: true }
       }
       targets = wanted
+      explicitTargets = true
     }
   }
   if (sessionScope) {
     const snapshotLineNodes = getDaqNodeRepo().all().filter(n => n.lineId === sessionScope.lineId).map(n => n.id)
     const snapshotAllowed = new Set(snapshotLineNodes.filter(id => allowed.has(id)))
-    if (targets.some(id => !snapshotAllowed.has(id))) {
+    // 显式指定节点越界 → 拒绝;未指定时按"可见面 ∩ Session 固定产线"安全子集导出,
+    // 不因该 Agent 另有跨线历史绑定而整体拒绝(旧实现让多线技术员无法做默认导出)。
+    if (explicitTargets && targets.some(id => !snapshotAllowed.has(id))) {
       return { text: '指定节点不在 Session 固定产线及当前 DAQ 授权交集内,拒绝导出。', isError: true }
     }
     targets = targets.filter(id => snapshotAllowed.has(id))

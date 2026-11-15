@@ -546,10 +546,20 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
    * @returns 本次收敛为 closed 的会话数
    */
   reconcileInterruptedSessions(): number {
+    const terminal = new Set(['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'])
     const closed = reconcileClosingSessions(
       createChannelSessionRepo(this.deps.db),
       (_channelId, cloneId) => {
         this.deps.repos.channelAgents.update(cloneId, { enabled: 0 })
+      },
+      (channelId, cloneIds) => {
+        // 级联中途退出时可能仍有任务挂在 clone 上;仅停用成员不会让这些任务收口。
+        const set = new Set(cloneIds)
+        const engine = this.getTaskEngine()
+        for (const task of engine.list(channelId)) {
+          if (!set.has(String(task.assigneeId ?? '')) || terminal.has(task.state)) continue
+          engine.cancelTree(task.id, 'system', 'SESSION_CLOSE_RECOVERED')
+        }
       },
     )
     if (closed > 0) console.log(`[workshop] 启动对账:补齐 ${closed} 个中断的会话关闭`)

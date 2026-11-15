@@ -672,6 +672,20 @@ export function requireLeaderHarness(v: string | undefined | null): string {
     'Project 必须显式声明 leaderHarness(项目 Leader 引擎);缺省 mock 替身已移除 —— 演示/验收请显式传 "mock",生产请传实际引擎(如 omp/codex/claude)。')
 }
 
+/**
+ * 计划载荷语义等价:历史待批/版本行可能以插入序 JSON 保存(升级前写入),
+ * 直接比较字符串会把"同一计划"误判为 version reuse。按规范化内容比较。
+ */
+function samePlanPayload(a: string, b: string): boolean {
+  if (a === b) return true
+  try {
+    return canonicalJson(parseJson<Record<string, unknown>>(a, {})) === canonicalJson(parseJson<Record<string, unknown>>(b, {}))
+  }
+  catch {
+    return false
+  }
+}
+
 export class ProjectService {
   private readonly projects
   private readonly bindings
@@ -1719,21 +1733,39 @@ export class ProjectService {
         })
         if (!ownsClaim) throw err
         const nextState = retryable ? 'DRAFT' : 'BLOCKED'
-        this.workItems.update(wi.id, {
+        // CAS:只有仍处于 claim 态(DISPATCHING)才允许补偿回写。提交期间 owner 取消时
+        // cancelWorkItem 会保留 currentAttemptId,旧实现的无条件 update 会把 CANCELED
+        // 回写成 DRAFT/BLOCKED(复活已取消的工作项)。
+        const reverted = this.workItems.updateOwnedAttempt(wi.id, attempt.id, ['DISPATCHING'], {
           state: nextState,
           stateReason: message,
           currentAttemptId: null,
           deferredUntil: retryable ? new Date(Date.now() + backoffMs).toISOString() : null,
         })
+        if (!reverted) {
+          const latestItem = this.workItems.findById(wi.id)
+          if (latestItem?.state === 'CANCELED' || latestItem?.state === 'CANCELING') {
+            throw new AppError(409, 'PROJECT_STATE_CHANGED', '派发失败收口期间工作项已被取消/终止,保持终态不回退')
+          }
+          throw err
+        }
         const evtType = retryable ? 'work.retry_scheduled' : 'work.blocked'
         this.record(id, evtType, actor, { workItemId: wi.id, reason: message, failureClass: transient ? 'TRANSIENT' : 'CONTRACT', retryable }, wi.traceId || `trace:${wi.id}`, evtType, `work:${wi.id}:${retryable ? 'retry' : 'blocked'}:a${attempt.attemptNo}`, { workItemId: wi.id, reason: message, stage, failureClass: transient ? 'TRANSIENT' : 'CONTRACT', retryable, errno })
       }
       else {
-        this.workItems.update(wi.id, {
+        // 无 attempt(claim 前失败):同样用状态 CAS 保护,取消/终止后不得回写 BLOCKED。
+        const blocked = this.workItems.updateIfStates(wi.id, ['DRAFT'], {
           state: 'BLOCKED',
           stateReason: message,
           currentAttemptId: null,
         })
+        if (!blocked) {
+          const latestItem = this.workItems.findById(wi.id)
+          if (latestItem?.state === 'CANCELED' || latestItem?.state === 'CANCELING') {
+            throw new AppError(409, 'PROJECT_STATE_CHANGED', '派发失败收口期间工作项已被取消/终止,保持终态不回退')
+          }
+          throw err
+        }
         // P1-5：事件键含 Date.now() 使 blocked 重复不可去重 → leader 每轮刷屏。
         // 改为按 attempt 分幕：同 attempt 内重复 blocked 收敛为一键，新 attempt 是新信号。
         const attemptNo = wi.currentAttemptId ? (this.attempts.findById(wi.currentAttemptId)?.attemptNo ?? 0) : 0
@@ -2451,7 +2483,6 @@ export class ProjectService {
         })
         continue
       }
-      if (!attempt) continue
       const linkedAttempt = attempt
       const task = this.tasks.findById(linkedAttempt.channelTaskId!)
       if (!task) {
@@ -2806,17 +2837,23 @@ export class ProjectService {
     this.assertProjectNotCanceled(p)
     this.preflightApprovedPlan(p, input.plan)
     if (!Number.isInteger(input.version) || input.version <= 0) throw new AppError(400, 'BAD_REQUEST', 'plan version 必须为正整数')
-    if (input.version !== p.planVersion + 1) throw new AppError(409, 'PLAN_VERSION_STALE', `plan version 必须是当前版本 ${p.planVersion} 的直接后继`)
+    const expectedVersion = this.nextPlanVersion(id, p.planVersion)
+    if (input.version !== expectedVersion) {
+      throw new AppError(409, 'PLAN_VERSION_STALE', `plan version 必须是当前可提交版本 ${expectedVersion}(已批准版本 ${p.planVersion};已拒绝版本不可复用,请提交新版本)`)
+    }
     const planJson = canonicalJson(input.plan)
     const planHash = createHash('sha256').update(planJson).digest('hex')
     const subjectId = `plan:${id}:${input.version}`
     const existingVersion = this.kernelRepo.planVersions.get(id, input.version)
-    if (existingVersion && existingVersion.sha256 !== planHash) {
+    const versionContentMatches = Boolean(existingVersion && (existingVersion.sha256 === planHash || samePlanPayload(existingVersion.planJson, planJson)))
+    if (existingVersion && !versionContentMatches) {
       throw new AppError(409, 'PLAN_VERSION_REUSED', `plan version ${input.version} 已有不同内容的不可变快照`)
     }
+    // 历史行可能不是规范化 JSON:复用其原始文本作为本版本不可变载荷,避免改写快照。
+    const versionPayload = existingVersion ? existingVersion.planJson : planJson
     const pending = this.approvals.listPending(id).find(a => a.kind === 'plan_approval' && a.subjectId === subjectId)
     if (pending) {
-      if (pending.payloadJson !== planJson) throw new AppError(409, 'PLAN_VERSION_REUSED', `plan version ${input.version} 已有不同内容的待批审批`)
+      if (!samePlanPayload(pending.payloadJson, versionPayload)) throw new AppError(409, 'PLAN_VERSION_REUSED', `plan version ${input.version} 已有不同内容的待批审批`)
       return pending
     }
     if (existingVersion && existingVersion.status !== 'draft') {
@@ -2826,10 +2863,11 @@ export class ProjectService {
     withTransaction(this.db, () => {
       const freshProject = this.projects.findById(id)
       if (!freshProject) throw new AppError(404, 'NOT_FOUND', 'Project 不存在')
-      if (input.version !== freshProject.planVersion + 1) throw new AppError(409, 'PLAN_VERSION_STALE', `plan version 必须是当前版本 ${freshProject.planVersion} 的直接后继`)
-      this.kernelRepo.planVersions.upsert(id, input.version, planJson, planHash)
+      const freshExpected = this.nextPlanVersion(id, freshProject.planVersion)
+      if (input.version !== freshExpected) throw new AppError(409, 'PLAN_VERSION_STALE', `plan version 必须是当前可提交版本 ${freshExpected}`)
+      if (!existingVersion) this.kernelRepo.planVersions.upsert(id, input.version, planJson, planHash)
       const persisted = this.kernelRepo.planVersions.get(id, input.version)
-      if (!persisted || persisted.sha256 !== planHash || persisted.planJson !== planJson || persisted.status !== 'draft') {
+      if (!persisted || persisted.status !== 'draft' || !samePlanPayload(persisted.planJson, versionPayload)) {
         throw new AppError(409, 'PLAN_VERSION_REUSED', `plan version ${input.version} 不匹配当前不可变快照`)
       }
       approval = this.approvals.create({
@@ -2840,7 +2878,7 @@ export class ProjectService {
         subjectVersion: input.version,
         requestedByAgentId: actor.agentId ?? null,
         requestedByUserId: actor.agentId ? null : actor.id,
-        payloadJson: planJson,
+        payloadJson: persisted.planJson,
         reason: 'project plan approval',
         traceId: `plan:${id}:${input.version}`,
         expiresAt: new Date(Date.now() + 24 * 3600_000).toISOString(),
@@ -2848,6 +2886,33 @@ export class ProjectService {
       this.record(id, 'plan.requested', actor, { approvalId: approval.id, version: input.version }, approval.traceId, 'plan.requested', `plan:${id}:${input.version}:requested`, { approvalId: approval.id, version: input.version })
     })
     return approval
+  }
+
+  /**
+   * 下一个可提交的计划版本:跳过已拒绝的历史版本。
+   * 拒绝后 project.planVersion 不推进(它代表"已批准版本",派发门依赖它),
+   * 因此必须在这里跳过 rejected 行,否则项目会永久卡在"无法再次提交计划"。
+   */
+  private nextPlanVersion(projectId: string, approvedVersion: number): number {
+    let next = approvedVersion + 1
+    for (;;) {
+      const row = this.kernelRepo.planVersions.get(projectId, next)
+      if (!row || row.status !== 'rejected') return next
+      next += 1
+    }
+  }
+
+  /** 批准门:允许跳过全部"已拒绝"的中间版本(已批准 0、v1 拒绝 → 可批准 v2)。 */
+  private assertPlanVersionApprovable(projectId: string, approvedVersion: number, version: number): void {
+    if (!Number.isInteger(version) || version <= approvedVersion) {
+      throw new AppError(409, 'PLAN_VERSION_STALE', `计划版本 ${version} 早于或等于已批准版本 ${approvedVersion}`)
+    }
+    for (let v = approvedVersion + 1; v < version; v++) {
+      const row = this.kernelRepo.planVersions.get(projectId, v)
+      if (!row || row.status !== 'rejected') {
+        throw new AppError(409, 'PLAN_VERSION_STALE', `计划版本 ${version} 跳过了未拒绝的版本 ${v},不能批准`)
+      }
+    }
   }
 
   requestAcceptance(id: string, resultId: string, actor: ProjectActor): ProjectApprovalRow {
@@ -2956,9 +3021,9 @@ export class ProjectService {
       else if (approval.kind === 'plan_approval' && approve) {
         const version = approval.subjectVersion ?? p.planVersion
         const freshProject = this.projects.findById(id)
-        if (!freshProject || version !== freshProject.planVersion + 1) {
-          throw new AppError(409, 'PLAN_VERSION_STALE', `计划版本 ${version} 不再是当前版本 ${freshProject?.planVersion ?? 'missing'} 的直接后继`)
-        }
+        if (!freshProject) throw new AppError(404, 'NOT_FOUND', 'Project 不存在')
+        // 允许跳过已拒绝的中间版本(拒绝后可 replan 到更高版本);未拒绝的版本不允许跳过。
+        this.assertPlanVersionApprovable(id, freshProject.planVersion, version)
         const versionSnapshot = this.kernelRepo.planVersions.get(id, version)
         const approvalHash = createHash('sha256').update(approval.payloadJson).digest('hex')
         if (!versionSnapshot || versionSnapshot.status !== 'draft' || versionSnapshot.planJson !== approval.payloadJson || versionSnapshot.sha256 !== approvalHash) {
@@ -4398,17 +4463,19 @@ export class ProjectService {
     this.assertLeaderProjectMutable(ctx.project)
     const normalized = normalizeProjectPlan(plan)
     this.preflightApprovedPlan(ctx.project, normalized.raw)
-    const version = ctx.project.planVersion + 1
+    const version = this.nextPlanVersion(ctx.project.id, ctx.project.planVersion)
     const subjectId = `plan:${ctx.project.id}:${version}`
     const argsJson = canonicalJson(normalized.raw)
     const argsSha256 = createHash('sha256').update(argsJson).digest('hex')
     const versionRow = this.kernelRepo.planVersions.get(ctx.project.id, version)
-    if (versionRow && (versionRow.planJson !== argsJson || versionRow.sha256 !== argsSha256)) {
+    const versionContentMatches = Boolean(versionRow && (versionRow.sha256 === argsSha256 || samePlanPayload(versionRow.planJson, argsJson)))
+    if (versionRow && !versionContentMatches) {
       throw new AppError(409, 'PLAN_VERSION_REUSED', `leader plan version ${version} 已有不同内容的不可变快照`)
     }
+    const versionPayload = versionRow ? versionRow.planJson : argsJson
     const pending = this.approvals.listPending(ctx.project.id).find(a => a.kind === 'plan_approval' && a.subjectId === subjectId)
     if (pending) {
-      if (pending.payloadJson !== argsJson) throw new AppError(409, 'PLAN_VERSION_REUSED', `leader plan version ${version} 已有不同内容的待批审批`)
+      if (!samePlanPayload(pending.payloadJson, versionPayload)) throw new AppError(409, 'PLAN_VERSION_REUSED', `leader plan version ${version} 已有不同内容的待批审批`)
       const existing = this.decisions.listByProject(ctx.project.id).find(d => d.approvalId === pending.id)
       return { approval: pending, version, proposalId: existing?.id ?? '' }
     }
@@ -4417,10 +4484,10 @@ export class ProjectService {
     let proposal!: ProjectDecisionRow
     withTransaction(this.db, () => {
       const current = this.projects.findById(ctx.project.id)
-      if (!current || version !== current.planVersion + 1) throw new AppError(409, 'PLAN_VERSION_STALE', 'leader plan version is no longer the direct successor')
-      this.kernelRepo.planVersions.upsert(ctx.project.id, version, argsJson, argsSha256, current.planVersion > 0 ? current.planVersion : null)
+      if (!current || version !== this.nextPlanVersion(ctx.project.id, current.planVersion)) throw new AppError(409, 'PLAN_VERSION_STALE', 'leader plan version is no longer the next submittable version')
+      if (!versionRow) this.kernelRepo.planVersions.upsert(ctx.project.id, version, argsJson, argsSha256, current.planVersion > 0 ? current.planVersion : null)
       const savedVersion = this.kernelRepo.planVersions.get(ctx.project.id, version)
-      if (!savedVersion || savedVersion.status !== 'draft' || savedVersion.planJson !== argsJson || savedVersion.sha256 !== argsSha256) {
+      if (!savedVersion || savedVersion.status !== 'draft' || !samePlanPayload(savedVersion.planJson, versionPayload)) {
         throw new AppError(409, 'PLAN_VERSION_SNAPSHOT_MISMATCH', `leader plan version ${version} immutable snapshot mismatch`)
       }
       approval = this.approvals.create({
@@ -4430,7 +4497,7 @@ export class ProjectService {
         subjectId,
         subjectVersion: version,
         requestedByAgentId: agentId,
-        payloadJson: argsJson,
+        payloadJson: savedVersion.planJson,
         reason: 'project plan proposal',
         traceId: `plan:${ctx.project.id}:${version}`,
         expiresAt: new Date(Date.now() + 24 * 3600_000).toISOString(),
@@ -5103,13 +5170,27 @@ export class ProjectService {
     for (const workItem of normalized.workItems) {
       const channelId = resolvedChannels.get(workItem.channelId)!
       const dedupeKey = workItem.dedupeKey ?? `${workItem.deliverableKey}:${channelId}:${workItem.title}`
+      const deliverableId = deliverableIdByKey.get(workItem.deliverableKey)
+      if (!deliverableId) throw new AppError(409, 'PLAN_MATERIALIZE_REFERENCE_MISSING', `工作项 ${workItem.title} 的交付物未解析`)
       const existing = itemByDedupe.get(dedupeKey)
       if (existing) {
+        // 已批准的 replan 复用了仍在 DRAFT 的工作项:必须把 plan 内容同步到新版本,
+        // 否则执行仍按旧 brief/验收标准跑(preflight 只校验 key 维度,内容变更需在此落地)。
+        this.workItems.update(existing.id, {
+          deliverableId,
+          channelId,
+          title: workItem.title,
+          brief: workItem.brief,
+          acceptanceJson: JSON.stringify(workItem.acceptanceCriteria),
+          resultKey: workItem.resultKey,
+          execBudgetMinutes: workItem.execBudgetMinutes,
+          contractJson: JSON.stringify(workItem.contract ?? {}),
+          dedupeKey,
+          planVersion: version,
+        })
         workItemIdByKey.set(workItem.key, existing.id)
         continue
       }
-      const deliverableId = deliverableIdByKey.get(workItem.deliverableKey)
-      if (!deliverableId) throw new AppError(409, 'PLAN_MATERIALIZE_REFERENCE_MISSING', `工作项 ${workItem.title} 的交付物未解析`)
       const created = this.workItems.create({
         projectId: p.id,
         deliverableId,

@@ -538,6 +538,27 @@ export function createProjectWorkItemRepo(db: DatabaseSync) {
       return Number(result.changes ?? 0) === 1 ? next : undefined
     },
     /**
+     * 状态 CAS(不带 attempt 归属):仅当当前 state ∈ expectedStates 时写入。
+     * 用于派发失败补偿 —— 期间被 owner 取消(CANCELED)时不得被回写成 DRAFT/BLOCKED。
+     */
+    updateIfStates(id: string, expectedStates: readonly string[], patch: Partial<Omit<ProjectWorkItemRow, 'id' | 'projectId' | 'createdAt'>>): ProjectWorkItemRow | undefined {
+      const cur = selectById.get(id) as unknown as ProjectWorkItemRow | undefined
+      const states = [...new Set(expectedStates)]
+      if (!cur || !states.includes(cur.state) || states.length === 0 || states.length > 4) return undefined
+      const next: ProjectWorkItemRow = { ...cur, ...patch, id: cur.id, projectId: cur.projectId, createdAt: cur.createdAt, updatedAt: now() }
+      const stmt = db.prepare(`
+        UPDATE project_work_items
+        SET deliverable_id = ?, channel_id = ?, title = ?, brief = ?, state = ?, state_reason = ?, priority = ?, weight = ?, depends_on_json = ?, acceptance_json = ?, result_key = ?, current_attempt_id = ?, plan_version = ?, contract_json = ?, exec_budget_minutes = ?, trace_id = ?, dedupe_key = ?, deadline_at = ?, rework_count = ?, accepted_result_id = ?, last_result_status = ?, attempt_count = ?, max_attempts = ?, deferred_until = ?, instance_channel_id = ?, closed_at = ?, close_reason = ?, updated_at = ?
+        WHERE id = ? AND state IN (${states.map(() => '?').join(', ')})
+      `)
+      const result = stmt.run(next.deliverableId, next.channelId, next.title, next.brief, next.state, next.stateReason,
+        next.priority, next.weight, next.dependsOnJson, next.acceptanceJson, next.resultKey, next.currentAttemptId,
+        next.planVersion, next.contractJson, next.execBudgetMinutes, next.traceId, next.dedupeKey, next.deadlineAt,
+        next.reworkCount, next.acceptedResultId, next.lastResultStatus, next.attemptCount, next.maxAttempts,
+        next.deferredUntil, next.instanceChannelId, next.closedAt, next.closeReason, next.updatedAt, id, ...states)
+      return Number(result.changes ?? 0) === 1 ? next : undefined
+    },
+    /**
      * P0 派发 CAS：只有 DRAFT 且无 current_attempt 的工作项能赢得 claim。
      * 与 attempt 的 live 唯一索引一起构成「同工作项至多一个在飞 attempt」的双闸。
      */

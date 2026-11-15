@@ -116,6 +116,20 @@ export function isProcessAlive(pid: number): boolean {
 }
 
 /**
+ * 强制终止全部仍存活的 harness 进程树。
+ * 优雅停机超时(close 钩子卡死)的最后兜底:父进程不会再替服务子树收尸,
+ * 这里主动清掉注册表中的 omp/python 等子进程,避免 `aw stop` 后残留孤儿占资源。
+ */
+export function killAllAliveHarnessProcesses(): number {
+  let killed = 0
+  for (const entry of [...registry.values()]) {
+    if (!entry.alive || !isProcessAlive(entry.pid)) continue
+    if (killHarnessProcess(entry.pid)) killed += 1
+  }
+  return killed
+}
+
+/**
  * 强制终止进程树(异步;taskkill 需等进程树枚举+逐个终止,同步 spawn 会阻塞事件循环数百 ms)。
  * Windows: taskkill /pid <pid> /T /F(整棵进程树,含 omp 可能拉起的子进程);
  * POSIX: 先按进程组(-pid)后按单进程 SIGKILL(同步 signal,无阻塞)。

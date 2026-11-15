@@ -234,6 +234,34 @@ test('recipe_propose 预检:候选值越过当前配方窗口 → 在挂审批�
   }
 })
 
+test('recipe_propose 拒绝 Session 冻结产品/产线之外的配方(即使克隆仍有历史绑定)', async () => {
+  const node = mkNode({ id: 'rp-n-session', lineId: 'ln-session-a' })
+  getDcwNodeRepo().insert(node)
+  const product = getDcwProductRepo().create({ name: 'Session产品A', lineId: 'ln-session-a' })
+  const recipe = getDcwRecipeRepo().create({
+    name: 'Session配方A', productId: product.id,
+    params: [{ nodeId: node.id, value: 50, min: 40, max: 60 }],
+  })
+  // 克隆实例仍持有该配方绑定(模拟跨 Session 历史绑定),但 Session 固定到其他产品
+  getAgentNodeBindingRepo().bind('ag-session-propose', recipe.id, 'recipe', 'manual')
+  const packages = [{ name: '越界方案', params: [{ node_id: node.id, to: 55, basis: 'b', exp_ref: 'e' }] }]
+  const wrongProduct = await toolRecipePropose('ag-session-propose', { recipe_id: recipe.id, packages }, {
+    sessionId: 's1', lineId: 'ln-session-a', productId: 'prod-other',
+    bindingSnapshotHash: 'h', bindingSnapshotRevision: 1,
+    recipes: [{ id: recipe.id, version: 1, contentHash: 'unused' }],
+  })
+  assert.equal(wrongProduct.isError, true)
+  assert.match(wrongProduct.text, /不属于 Session 固定产品\/产线/)
+
+  const staleSnapshot = await toolRecipePropose('ag-session-propose', { recipe_id: recipe.id, packages }, {
+    sessionId: 's1', lineId: 'ln-session-a', productId: product.id,
+    bindingSnapshotHash: 'h', bindingSnapshotRevision: 1,
+    recipes: [{ id: recipe.id, version: 99, contentHash: 'stale' }],
+  })
+  assert.equal(staleSnapshot.isError, true)
+  assert.match(staleSnapshot.text, /冻结快照不一致/)
+})
+
 // ---------- toolRecipePropose 入参校验层 ----------
 
 test('recipe_propose 校验:recipe_id/packages 缺失与超量指明原因', async () => {

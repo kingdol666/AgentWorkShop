@@ -60,14 +60,19 @@ test('startup reconciliation completes a closing session and disables every clon
   assert.equal(repo.findById(session.id)?.status, 'closing')
 
   const disabled: string[] = []
+  const canceled: Array<{ channelId: string, cloneIds: readonly string[] }> = []
   const closed = reconcileClosingSessions(repo, (_channelId, cloneId) => {
     // 一个成员行已被删除(失败)不得阻断其余 clone 与会话收敛
     if (cloneId === 'clone-2') throw new Error('member row already gone')
     disabled.push(cloneId)
+  }, (channelId, cloneIds) => {
+    canceled.push({ channelId, cloneIds })
   })
 
   assert.equal(closed, 1)
   assert.deepEqual(disabled, ['clone-1'])
+  // 中断的关闭必须先取消 clone 名下任务,否则成员停用后任务永远无人消费
+  assert.deepEqual(canceled, [{ channelId: 'ch-1', cloneIds: ['clone-1', 'clone-2'] }])
   const after = repo.findById(session.id)
   assert.equal(after?.status, 'closed')
   assert.equal(typeof after?.closedAt, 'string')
@@ -77,6 +82,22 @@ test('startup reconciliation completes a closing session and disables every clon
     throw new Error('must not run')
   })
   assert.equal(again, 0)
+  db.close()
+})
+
+test('startup reconciliation never disables a project office session', () => {
+  const db = openWorkshopDb(':memory:')
+  const repo = createChannelSessionRepo(db)
+  const session = repo.create({ channelId: 'ch-proj', memberMap: { lead: 'project-lead' }, instanceKind: 'project' })
+  assert.equal(repo.beginClosing(session.id), true)
+  let touched = false
+  const closed = reconcileClosingSessions(repo, () => {
+    touched = true
+  })
+  assert.equal(closed, 0)
+  assert.equal(touched, false)
+  // 项目办公室会话由项目对账处理;这里保持 closing,不得把 project lead 停用
+  assert.equal(repo.findById(session.id)?.status, 'closing')
   db.close()
 })
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -49,5 +49,39 @@ test('withBuildLock removes its lock when the build callback fails', async () =>
   await withBuildLock(root, () => {
     entered = true
   })
+  assert.equal(entered, true)
+})
+
+test('withBuildLock reclaims a fresh lock whose holder pid is dead', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'aw-build-lock-dead-'))
+  const runtime = join(root, '.runtime')
+  mkdirSync(runtime, { recursive: true })
+  writeFileSync(join(runtime, 'build.lock'), JSON.stringify({
+    pid: 0x7ffffff0,
+    nonce: 'dead-holder',
+    startedAt: new Date().toISOString(),
+    appRoot: root,
+  }))
+  let entered = false
+  // 旧实现要求「pid 已死 且 锁龄 > 24h」才回收,残锁会把构建挡到超时;这里必须快速进入。
+  await withBuildLock(root, () => {
+    entered = true
+  }, { timeoutMs: 3000 })
+  assert.equal(entered, true)
+})
+
+test('withBuildLock keeps an empty young lock (writer is mid-acquire) but reclaims it after grace', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'aw-build-lock-empty-'))
+  const runtime = join(root, '.runtime')
+  mkdirSync(runtime, { recursive: true })
+  const lockPath = join(runtime, 'build.lock')
+  writeFileSync(lockPath, '')
+  await assert.rejects(() => withBuildLock(root, () => {}, { timeoutMs: 700 }), /Timed out waiting for build lock/)
+  const old = new Date(Date.now() - 120_000)
+  utimesSync(lockPath, old, old)
+  let entered = false
+  await withBuildLock(root, () => {
+    entered = true
+  }, { timeoutMs: 3000 })
   assert.equal(entered, true)
 })

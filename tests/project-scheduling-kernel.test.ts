@@ -99,16 +99,58 @@ test('S5 rejects out-of-order concurrent plan approvals without regressing appro
   }
 })
 
-test('S5 rejects reusing a rejected plan version with different immutable content', async () => {
+test('S5 rejected plan version cannot be reused, but replan advances to the next version', async () => {
   const s = await activeProject()
   try {
     const first = s.svc.requestPlanApproval(s.p.id, s.owner, { version: 1, plan: { facts: ['original'] } })
     s.svc.decideApproval(s.p.id, first.id, s.owner, false, 'reject')
+    // 拒绝后 v1 仍是不可变快照:再次提交 v1 必须被拒(版本号不可回退)
     assert.throws(
       () => s.svc.requestPlanApproval(s.p.id, s.owner, { version: 1, plan: { facts: ['changed'] } }),
-      (err: unknown) => (err as { code?: string }).code === 'PLAN_VERSION_REUSED',
+      (err: unknown) => (err as { code?: string }).code === 'PLAN_VERSION_STALE',
     )
     assert.equal(s.kernel.planVersions.get(s.p.id, 1)?.planJson, JSON.stringify({ facts: ['original'] }))
+    // 关键恢复路径:跳过已拒绝版本提交 v2,批准后项目代数前进
+    const second = s.svc.requestPlanApproval(s.p.id, s.owner, { version: 2, plan: { facts: ['changed'] } })
+    assert.equal(second.subjectVersion, 2)
+    s.svc.decideApproval(s.p.id, second.id, s.owner, true)
+    assert.equal(s.svc.get(s.p.id, s.owner).planVersion, 2)
+    assert.equal(s.kernel.planVersions.get(s.p.id, 2)?.status, 'approved')
+    assert.equal(s.kernel.planVersions.get(s.p.id, 1)?.status, 'rejected')
+  }
+  finally {
+    s.db.close()
+  }
+})
+
+test('S5 approved replan refreshes a reused DRAFT work item content and planVersion', async () => {
+  const s = await activeProject()
+  try {
+    const plan = (brief: string, criterion: string) => ({
+      deliverables: [{ key: 'ledger', name: '账本交付物' }],
+      work_items: [{
+        key: 'w1',
+        deliverableKey: 'ledger',
+        channelId: s.member.channelId,
+        title: '账本工作项',
+        dedupeKey: 'base-w1',
+        brief,
+        acceptanceCriteria: [criterion],
+      }],
+    })
+    const v1 = s.svc.requestPlanApproval(s.p.id, s.owner, { version: 1, plan: plan('v1 brief', 'v1 criterion') })
+    s.svc.decideApproval(s.p.id, v1.id, s.owner, true)
+    const afterV1 = s.svc.listWorkItems(s.p.id, s.owner).find(item => item.id === s.w.id)!
+    assert.equal(afterV1.brief, 'v1 brief')
+    assert.equal(afterV1.planVersion, 1)
+
+    const v2 = s.svc.requestPlanApproval(s.p.id, s.owner, { version: 2, plan: plan('v2 brief', 'v2 criterion') })
+    s.svc.decideApproval(s.p.id, v2.id, s.owner, true)
+    const afterV2 = s.svc.listWorkItems(s.p.id, s.owner).find(item => item.id === s.w.id)!
+    assert.equal(afterV2.id, s.w.id, 'same dedupeKey must reuse the DRAFT work item')
+    assert.equal(afterV2.brief, 'v2 brief', 'replan must not execute with the stale v1 brief')
+    assert.match(afterV2.acceptanceJson, /v2 criterion/)
+    assert.equal(afterV2.planVersion, 2)
   }
   finally {
     s.db.close()

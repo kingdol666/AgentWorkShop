@@ -19,7 +19,7 @@ export const meta = {
   needsProject: false,
 }
 
-const COPY_DIRS = ['app', 'server', 'shared', 'i18n', 'public', 'scripts', 'bin', 'cli']
+const COPY_DIRS = ['app', 'server', 'shared', 'i18n', 'public', 'scripts', 'bin', 'cli', '.AgentWorkShop/prompts']
 const COPY_FILES = [
   'config.yml',
   'nuxt.config.ts',

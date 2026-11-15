@@ -62,7 +62,21 @@ function shutdown(): void {
   markIntentionalStop()
   const force = setTimeout(() => {
     console.error('[shutdown] close 钩子未在 8s 内收口,强制退出(清理链已尽力执行)')
-    process.exit(0)
+    // close 卡死时 omp/python 等孙进程可能仍在跑;父进程只看到本进程 exit 0,
+    // 不会再做树杀。这里按 harness 注册表主动清掉仍存活的子进程树,再退出。
+    void (async () => {
+      try {
+        const { killAllAliveHarnessProcesses } = await import('../../services/workshop/agents/harness-process')
+        const killed = killAllAliveHarnessProcesses()
+        if (killed > 0) console.error(`[shutdown] 强制终止 ${killed} 个残留 harness 进程树`)
+      }
+      catch (err) {
+        console.error('[shutdown] 残留 harness 清理失败:', String((err as { message?: unknown } | null)?.message ?? err))
+      }
+      process.exit(0)
+    })()
+    // 动态导入/清理自身卡住的最后兜底:2s 后无条件退出
+    setTimeout(() => process.exit(0), 2000).unref?.()
   }, 8000)
   force.unref?.()
   setTimeout(() => {

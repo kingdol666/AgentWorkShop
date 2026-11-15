@@ -1,5 +1,9 @@
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeSync } from 'node:fs'
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
+
+/** 锁文件刚创建但内容尚未落盘的宽限窗(读不到 holder 时不得立即抢占)。 */
+const EMPTY_LOCK_GRACE_MS = 60_000
 
 function pidAlive(pid) {
   if (!Number.isInteger(pid) || pid <= 0) return false
@@ -12,21 +16,49 @@ function pidAlive(pid) {
   }
 }
 
-function readHolder(lockPath) {
+function readRaw(path) {
   try {
-    return JSON.parse(readFileSync(lockPath, 'utf8'))
+    return readFileSync(path, 'utf8')
   }
   catch {
     return null
   }
 }
 
-/** Cross-process lock shared by every CLI path that writes .nuxt/.output. */
-export async function withBuildLock(appRoot, fn, { timeoutMs = 30 * 60_000, staleMs = 24 * 60 * 60_000 } = {}) {
+function parseHolder(raw) {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  }
+  catch {
+    return null
+  }
+}
+
+function lockAgeMs(lockPath) {
+  try {
+    return Math.max(0, Date.now() - statSync(lockPath).mtimeMs)
+  }
+  catch {
+    return 0
+  }
+}
+
+/**
+ * Cross-process lock shared by every CLI path that writes .nuxt/.output.
+ *
+ * 回收规则(任一即可,且删除前二次确认锁内容未被替换):
+ *  - holder JSON 可读且 pid 已死 → 立即回收(残留锁不应把构建挡满 staleMs);
+ *  - 锁文件不可读(空/半写)且超过 60s 宽限 → 视为崩溃残留;
+ *  - 锁龄超过 staleMs(默认 2h)→ 视为 PID 复用/失控构建。
+ */
+export async function withBuildLock(appRoot, fn, { timeoutMs = 30 * 60_000, staleMs = 2 * 60 * 60_000 } = {}) {
   const runtimeDir = join(appRoot, '.runtime')
   const lockPath = join(runtimeDir, 'build.lock')
   mkdirSync(runtimeDir, { recursive: true })
   const started = Date.now()
+  const nonce = randomUUID()
   let fd
   while (fd === undefined) {
     try {
@@ -34,13 +66,21 @@ export async function withBuildLock(appRoot, fn, { timeoutMs = 30 * 60_000, stal
     }
     catch (err) {
       if (err?.code !== 'EEXIST') throw err
-      const holder = readHolder(lockPath)
-      const age = existsSync(lockPath) ? Date.now() - (Date.parse(holder?.startedAt ?? '') || 0) : 0
-      if (!pidAlive(Number(holder?.pid)) && (!holder || age > staleMs)) {
-        try {
-          rmSync(lockPath, { force: true })
+      const raw = readRaw(lockPath)
+      const holder = parseHolder(raw)
+      const age = lockAgeMs(lockPath)
+      const holderAlive = pidAlive(Number(holder?.pid))
+      const reclaim = (holder && !holderAlive)
+        || (!holder && age > EMPTY_LOCK_GRACE_MS)
+        || age > staleMs
+      if (reclaim) {
+        // 判定与删除之间可能有人重新持锁:内容变了就不删(下一轮重新判定)
+        if (readRaw(lockPath) === raw) {
+          try {
+            rmSync(lockPath, { force: true })
+          }
+          catch { /* 竞态:下一轮重试 */ }
         }
-        catch { /* 竞态:下一轮重试 */ }
         continue
       }
       if (Date.now() - started >= timeoutMs) {
@@ -50,7 +90,7 @@ export async function withBuildLock(appRoot, fn, { timeoutMs = 30 * 60_000, stal
       continue
     }
     try {
-      const body = Buffer.from(JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), appRoot }))
+      const body = Buffer.from(JSON.stringify({ pid: process.pid, nonce, startedAt: new Date().toISOString(), appRoot }))
       writeSync(fd, body)
     }
     catch (err) {
@@ -70,19 +110,19 @@ export async function withBuildLock(appRoot, fn, { timeoutMs = 30 * 60_000, stal
   }
   try {
     const serviceLockPath = join(runtimeDir, 'aw.lock')
-    if (existsSync(serviceLockPath)) {
-      const service = readHolder(serviceLockPath)
-      if (pidAlive(Number(service?.pid))) {
-        throw new Error(`Cannot rebuild .output while service pid ${service.pid} is running; stop the service first (${serviceLockPath})`)
-      }
+    const service = parseHolder(readRaw(serviceLockPath))
+    if (pidAlive(Number(service?.pid))) {
+      throw new Error(`Cannot rebuild .output while service pid ${service.pid} is running; stop the service first (${serviceLockPath})`)
     }
     return await fn()
   }
   finally {
-    try {
-      const owner = JSON.parse(readFileSync(lockPath, 'utf8'))
-      if (owner.pid === process.pid && owner.appRoot === appRoot) rmSync(lockPath, { force: true })
+    const owner = parseHolder(readRaw(lockPath))
+    if (owner?.pid === process.pid && owner?.nonce === nonce && owner?.appRoot === appRoot) {
+      try {
+        rmSync(lockPath, { force: true })
+      }
+      catch { /* 释放失败由 staleMs 兜底 */ }
     }
-    catch { /* Never delete a lock whose owner cannot be verified. */ }
   }
 }

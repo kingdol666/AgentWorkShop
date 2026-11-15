@@ -775,7 +775,7 @@ function resolveRecipeTarget(recipeIdRaw: unknown, lineIdRaw: unknown): { ok: tr
  * or dispatch side effect. Non-session integrated channel calls retain the
  * existing channel/Agent grant semantics.
  */
-function sessionRecipeError(scope: ChannelSessionExecutionScope | undefined, recipe: RecipeView): { text: string, isError: true } | null {
+export function sessionRecipeError(scope: ChannelSessionExecutionScope | undefined, recipe: RecipeView): { text: string, isError: true } | null {
   if (!scope) return null
   if (recipe.lineId !== scope.lineId || recipe.productId !== scope.productId) {
     return { text: `配方 ${recipe.id} 不属于 Session 固定产品/产线,拒绝操作。`, isError: true }

@@ -16,7 +16,7 @@ import { runChild } from '../core/child-lifecycle.mjs'
 import { runBootstrap } from '../../scripts/home-bootstrap.mjs'
 import { daqPreflight, printInfraGuidance } from '../infra.mjs'
 import { withBuildLock } from '../core/build-lock.mjs'
-import { postBuildArtifacts } from '../core/post-build.mjs'
+import { postBuildArtifacts, outputAssetsReady } from '../core/post-build.mjs'
 
 export const meta = {
   name: 'start',
@@ -40,9 +40,9 @@ export async function run(argv, ctx) {
   // home 模式:确保 AW Home 就绪(幂等;postinstall 被跳过时兜底)
   if (!isRepo) runBootstrap({ quiet: true })
 
-  // ---- 构建产物检查（home 模式缺产物则先构建一次） ----
+  // ---- 构建产物检查（入口 + 外置资产齐全才算可启动；缺任一则构建/补资产） ----
   const outputEntry = join(appRoot, '.output', 'server', 'index.mjs')
-  if (!existsSync(outputEntry)) {
+  if (!outputAssetsReady(appRoot)) {
     const nuxtBin = ctx.resolveNuxtBin()
     if (!nuxtBin) {
       console.log(`${color.red('✖')} 未找到生产构建且解析不到 nuxt CLI(依赖未安装?)`)
@@ -52,14 +52,17 @@ export async function run(argv, ctx) {
     console.log(`${color.cyan('›')} 首次启动:正在检查/构建生产产物(约 2-5 分钟,仅一次) ...`)
     try {
       await withBuildLock(appRoot, async () => {
-        if (existsSync(outputEntry)) return
-        const buildCode = await runChild(process.execPath, [nuxtBin, 'build'], {
-          cwd: appRoot,
-          stdio: 'inherit',
-          env: localBypassEnv(envExtra),
-        })
-        if (buildCode !== 0 || !existsSync(outputEntry)) throw new Error(`构建失败(exit=${buildCode})`)
+        // 半产物(上次构建失败残留 index.mjs)必须重建,不能直接沿用缺资产的 .output
+        if (!existsSync(outputEntry)) {
+          const buildCode = await runChild(process.execPath, [nuxtBin, 'build'], {
+            cwd: appRoot,
+            stdio: 'inherit',
+            env: localBypassEnv(envExtra),
+          })
+          if (buildCode !== 0 || !existsSync(outputEntry)) throw new Error(`构建失败(exit=${buildCode})`)
+        }
         postBuildArtifacts(appRoot)
+        if (!outputAssetsReady(appRoot)) throw new Error('构建产物不完整(入口或外置资产缺失)')
       })
     }
     catch (err) {

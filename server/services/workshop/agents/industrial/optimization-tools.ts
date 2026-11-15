@@ -14,7 +14,9 @@ import { getAmlRuntime } from '../../aml/runtime'
 import { getChannelTwinProfile } from '../../aml/twin/channel-profile'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
-import type { HostToolResult } from '../host-tool-bridge/types'
+import type { ChannelSessionExecutionScope, HostToolResult } from '../host-tool-bridge/types'
+import { getDaqNodeRepo } from '../../daq/daq-node.repo'
+import { sessionRecipeError } from './ops-tools'
 import { dcwControlGovernedInternal } from './dcw-tools'
 import { resolveRefFaces } from './tool-verify'
 // P1/P2(科学探索计划):可辨识性前置门 + 引擎判读 + 台账回填
@@ -31,7 +33,7 @@ export async function toolOptimizationExplore(agentId: string, args: {
   step?: number | string
   settle_seconds?: number | string
   hypothesis?: string
-}, channelId?: string): Promise<HostToolResult> {
+}, channelId?: string, sessionScope?: ChannelSessionExecutionScope): Promise<HostToolResult> {
   try {
     const profile = getChannelTwinProfile(channelId ?? '')
     if (profile.profile !== 'aml_optimization') return { text: 'optimization_explore 仅适用于工艺优化 Channel。', isError: true }
@@ -80,6 +82,23 @@ export async function toolOptimizationExplore(agentId: string, args: {
       return {
         text: `目标观测节点 ${targetNodeId} 不在你的数采可见范围(绑定数采节点:${[...faces.daqBoundNodes].join(', ') || '(无)'}${faces.channelLineNodes.size > 0 ? `;频道绑线只读节点:${[...faces.channelLineNodes].join(', ')}` : ''})。请让用户或 lead 绑定该数采节点,或改用上述节点重试。`,
         isError: true,
+      }
+    }
+    // Session 冻结边界:integrated Session 只能在本 Session 固定产线/产品/配方快照内激励。
+    // 克隆实例可能保留其他产线的历史绑定,绑定面通过 ≠ Session 允许。
+    if (sessionScope) {
+      if (!node.lineId || node.lineId !== sessionScope.lineId) {
+        return { text: `控制节点 ${controlNodeId} 不属于 Session 固定产线 ${sessionScope.lineId},拒绝探索。`, isError: true }
+      }
+      const targetNode = getDaqNodeRepo().byId(targetNodeId)
+      if (!targetNode || targetNode.lineId !== sessionScope.lineId) {
+        return { text: `目标观测节点 ${targetNodeId} 不属于 Session 固定产线 ${sessionScope.lineId},拒绝探索。`, isError: true }
+      }
+      for (const rb of recipeBindings) {
+        const boundRecipe = getDcwController().listRecipes().find(x => x.id === rb.nodeId)
+        if (!boundRecipe || !(boundRecipe.params ?? []).some(p => p.nodeId === controlNodeId)) continue
+        const boundary = sessionRecipeError(sessionScope, boundRecipe)
+        if (boundary) return boundary
       }
     }
 

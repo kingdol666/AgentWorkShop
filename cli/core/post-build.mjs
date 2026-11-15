@@ -30,6 +30,19 @@ const PATCH_TARGETS = [
 ]
 
 /**
+ * 产物完整性:入口 + 全部外置运行时资产都在。
+ * `aw start` 用它判断能否跳过构建 —— 只看 index.mjs 会在"上次构建失败留下半产物"时
+ * 直接启动一个缺 prompts/schema/aml-python 的实例(运行期才炸)。
+ */
+export function outputAssetsReady(root) {
+  const asDir = join(root, '.output', '.AgentWorkShop')
+  return existsSync(join(root, '.output', 'server', 'index.mjs'))
+    && existsSync(join(asDir, 'prompts'))
+    && existsSync(join(asDir, 'schema.json'))
+    && existsSync(join(asDir, 'aml-python'))
+}
+
+/**
  * 执行全部后处理。
  * @param {string} root 项目根(nuxt build 的 cwd)
  * @returns {{ patched: string[], alreadyOk: string[], missing: string[], assets: string[] }}

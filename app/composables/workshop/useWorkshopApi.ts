@@ -118,7 +118,7 @@ export interface ChannelSessionDto extends ChannelSessionProductSnapshotDto {
   /** 仅详情路由返回 */
   channelId?: string
   title: string
-  status: 'active' | 'closed'
+  status: 'active' | 'closing' | 'closed'
   /** 基础成员 id → clone 实例 id */
   memberMap: Record<string, string>
   createdBy?: string | null

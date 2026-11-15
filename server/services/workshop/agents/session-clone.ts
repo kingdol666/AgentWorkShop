@@ -293,14 +293,24 @@ export async function closeChannelSession(deps: SessionCloneDeps, input: {
  */
 export function reconcileClosingSessions(
   sessionRepo: {
-    listByStatus(status: 'closing'): Array<{ id: string, channelId: string, memberMapJson: string }>
+    listByStatus(status: 'closing'): Array<{ id: string, channelId: string, memberMapJson: string, instanceKind?: string }>
     close(id: string): boolean
   },
   disableAgent: (channelId: string, agentId: string) => void,
+  cancelTasks?: (channelId: string, cloneIds: readonly string[]) => void,
 ): number {
   let closed = 0
   for (const session of sessionRepo.listByStatus('closing')) {
+    // 项目办公室会话由项目生命周期对账负责:此处停用会把 project lead 一并关掉。
+    if (session.instanceKind === 'project') continue
     const clones = Object.values(parseJson<Record<string, string>>(session.memberMapJson, {}))
+    // 先取消 clone 名下未终态任务(进程在级联中途退出时任务仍可能挂在已停用成员上)
+    if (cancelTasks) {
+      try {
+        cancelTasks(session.channelId, clones)
+      }
+      catch { /* 单会话任务取消失败不阻断其余会话收敛 */ }
+    }
     for (const cloneId of clones) {
       try {
         disableAgent(session.channelId, cloneId)

@@ -188,7 +188,7 @@ export class TimescaleRollupStore {
     const policy = this.policyOf(q.lineId ?? '')
     const plan = planHistoryQuery({ fromMs, toMs, bucketMs: q.bucketMs, nowMs: now, policy, hasRollup: this.rollup.enabled })
     if (plan.source === 'raw' || plan.rollupResMs == null) {
-      const points = await this.queryRaw(nodeId, fromMs, toMs, plan.bucketMs, limit)
+      const points = await this.queryRaw(nodeId, fromMs, toMs, plan.bucketMs, limit, q)
       return {
         points, resolution: 'raw',
         coverage: {
@@ -202,7 +202,7 @@ export class TimescaleRollupStore {
     }
     const rollupPoints = await this.queryRollup(nodeId, plan.rollupResMs, plan.rollupFromMs!, plan.rollupToMs!, plan.bucketMs, limit, q)
     const rawPoints = plan.mixed
-      ? await this.queryRaw(nodeId, plan.rollupToMs ?? 0, toMs, plan.bucketMs, limit)
+      ? await this.queryRaw(nodeId, plan.rollupToMs ?? 0, toMs, plan.bucketMs, limit, q)
       : []
     const merged = mergeHistoryPoints(rollupPoints, rawPoints, limit)
     return {
@@ -219,15 +219,27 @@ export class TimescaleRollupStore {
     }
   }
 
-  private async queryRaw(nodeId: string, fromMs: number, toMs: number, bucketMs: number, limit: number): Promise<TsdbPoint[]> {
+  private async queryRaw(
+    nodeId: string,
+    fromMs: number,
+    toMs: number,
+    bucketMs: number,
+    limit: number,
+    q: Pick<TsdbHistoryQuery, 'lineId' | 'productId' | 'recipeId' | 'runId'> = {},
+  ): Promise<TsdbPoint[]> {
     // 2026-10-30 修复:DESC + JS 反转 —— ASC+LIMIT 在超窗时保留的是最旧段,
     // 与 mergeHistoryPoints「超限保留最新段」的契约相反,且 truncated 无法如实上报。
+    // 2026-11-15 安全修复:标签过滤必须在 SQL 内(聚合已丢原始行)。此前 raw/mixed 段
+    // 不带 product/recipe/run/line 条件,Session 固定产品会读到同节点其他产品的样本。
     const { rows } = await this.pool!.query(
       `SELECT time_bucket(make_interval(secs => $1::float8 / 1000.0), ts) AS b_at,
               avg(value)::double precision AS avg_v, min(value) AS min_v, max(value) AS max_v, count(*)::bigint AS cnt_v
        FROM daq_samples WHERE node_id = $2 AND ts >= $3 AND ts <= $4
+         AND ($6::text = '' OR product_id = $6) AND ($7::text = '' OR recipe_id = $7)
+         AND ($8::text = '' OR run_id = $8) AND ($9::text = '' OR line_id = $9)
        GROUP BY b_at ORDER BY b_at DESC LIMIT $5`,
-      [Math.max(100, bucketMs), nodeId, new Date(fromMs).toISOString(), new Date(toMs).toISOString(), limit],
+      [Math.max(100, bucketMs), nodeId, new Date(fromMs).toISOString(), new Date(toMs).toISOString(), limit,
+        q.productId ?? '', q.recipeId ?? '', q.runId ?? '', q.lineId ?? ''],
     ) as { rows: Array<{ b_at: string | Date, avg_v: number, min_v: number, max_v: number, cnt_v: string | number }> }
     return rows.reverse().map(r => ({ at: tsToMs(r.b_at), avg: Number(r.avg_v), min: Number(r.min_v), max: Number(r.max_v), cnt: Number(r.cnt_v) }))
   }
