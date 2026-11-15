@@ -1,0 +1,25 @@
+# Pre-fix failure (observed on 79723a85 before the scope-binding fix)
+# POST /api/workshop/channels with a real omp lead returned HTTP 500.
+
+[api] POST /api/workshop/users/register - 72ms
+[api] GET /api/workshop/users/me - 12ms
+[api] GET /api/workshop/harnesses - 245ms
+[api] POST /api/workshop/dcw/lines - 31ms
+[api] POST /api/workshop/daq - 26ms
+[api] POST /api/workshop/dcw/products - 19ms
+[api] unhandled error: TypeError: Cannot read properties of undefined (reading 'bridgeCtx')
+    at setChannelSessionScope (file:///D:/codes/ABO/AgentWorkShop/.output/server/chunks/_/nitro.mjs:71982:10)
+    at AgentChannelManager.wireMember (file:///D:/codes/ABO/AgentWorkShop/.output/server/chunks/_/nitro.mjs:84612:33)
+    at AgentChannelManager.ensureAgentRuntime (file:///D:/codes/ABO/AgentWorkShop/.output/server/chunks/_/nitro.mjs:84720:17)
+    at AgentChannelManager.ensureChannelActive (file:///D:/codes/ABO/AgentWorkShop/.output/server/chunks/_/nitro.mjs:84732:23)
+    at ensureLeadSchedulerLoop (file:///D:/codes/ABO/AgentWorkShop/.output/server/chunks/_/nitro.mjs:90526:11)
+    at file:///D:/codes/ABO/AgentWorkShop/.output/server/chunks/routes/api/workshop/channels.post.mjs:85:5
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async Object.handler (file:///D:/codes/ABO/AgentWorkShop/.output/server/chunks/_/nitro.mjs:8995:20)
+    at async Object.handler (file:///D:/codes/ABO/AgentWorkShop/.output/server/chunks/_/nitro.mjs:2748:19)
+    at async Server.toNodeHandle (file:///D:/codes/ABO/AgentWorkShop/.output/server/chunks/_/nitro.mjs:3026:7)
+[api] POST /api/workshop/channels - 27ms
+[aw-plugins] [rag-bridge] catalog 不可达(目标 127.0.0.1 是私网/环回地址,已按 SSRF 防护拒绝(如确需访问内网,设置 AW_ALLOW_PRIVATE_OUTBOUND=1)),跳过查找直接尝试建库
+[aw-plugins] [rag-bridge] ensureKB 未完成(不影响装载,工具会在服务可用后按需重试):创建知识库 aw-industrial 失败:目标 127.0.0.1 是私网/环回地址,已按 SSRF 防护拒绝(如确需访问内网,设置 AW_ALLOW_PRIVATE_OUTBOUND=1)
+{"t":"2026-11-15T11:19:53.250+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「kb_agent」(rag-bridge)"}
+[aw-plugins] [rag-bridge] 已注册 omp 工具:「kb_agent」

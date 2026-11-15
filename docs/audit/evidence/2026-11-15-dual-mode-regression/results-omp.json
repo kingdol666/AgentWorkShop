@@ -1,0 +1,920 @@
+{
+  "generatedAt": "2026-11-15T04:09:04.750Z",
+  "base": "http://127.0.0.1:3045",
+  "home": "D:/tmp/aw-omp-accept-home-20261115",
+  "stamp": "hb045r",
+  "model": {
+    "provider": "ustc",
+    "model": "deepseek-flash",
+    "thinkingLevel": "low",
+    "promptTimeoutMs": 1800000,
+    "superviseTimeoutMs": 1800000
+  },
+  "line": {
+    "id": "ln-7f812041",
+    "name": "OMP-LINE-hb045r"
+  },
+  "node": {
+    "id": "dn-553cc4c7",
+    "name": "OMP-PV-hb045r"
+  },
+  "product": {
+    "id": "pd-b6cef350",
+    "name": "OMP-PRODUCT-hb045r"
+  },
+  "channels": {
+    "generic": "0ee606c2-bb0a-450b-8fcc-1a284a6d06ca",
+    "integrated": "c33cd9d7-27d7-40d4-8390-ef2732833afd"
+  },
+  "sessions": {
+    "generic": "cs-f9ea7648",
+    "integrated": "cs-07289426"
+  },
+  "agents": {
+    "cgLeadId": "834c6317-9467-4265-9427-8352b96bc21e",
+    "cgWorkerId": "fbfd7d07-757c-40ad-b4a2-ceaaf8b8b653",
+    "ciLeadId": "17b273eb-6515-4749-b6c3-73401f92efdf",
+    "ciWorkerId": "e7bd3a9f-3ca3-40a2-85a2-d172fc559e13",
+    "cgCloneId": "1333c84a-af36-4020-a6a4-74f2551be33b",
+    "ciCloneId": "51ea5f47-c18b-4e38-a979-3f83bb122dfd"
+  },
+  "total": 50,
+  "pass": 50,
+  "fail": 0,
+  "results": [
+    {
+      "no": 1,
+      "id": "S0",
+      "name": "isolated instance ready (home mode, current .output)",
+      "ok": true,
+      "detail": {
+        "version": "0.11.2",
+        "workshop": "ready"
+      }
+    },
+    {
+      "no": 2,
+      "id": "A1",
+      "name": "bootstrap admin registered",
+      "ok": true,
+      "detail": {
+        "id": "15ada423-baa6-4335-9118-95d8d6c02c1e"
+      }
+    },
+    {
+      "no": 3,
+      "id": "A2",
+      "name": "first user is admin",
+      "ok": true,
+      "detail": {
+        "id": "15ada423-baa6-4335-9118-95d8d6c02c1e",
+        "name": "omp-admin-hb045r",
+        "role": "admin",
+        "createdAt": "2026-11-15 11:57:36",
+        "stats": {
+          "ownedChannels": 0,
+          "legacyChannels": 0,
+          "workspaces": 0
+        }
+      }
+    },
+    {
+      "no": 4,
+      "id": "S1",
+      "name": "real omp harness registered and available",
+      "ok": true,
+      "detail": {
+        "id": "omp",
+        "label": "omp(真实 LLM)",
+        "description": "omp 子进程(RPC 模式),默认推荐引擎",
+        "continuityMode": "persistent",
+        "homepage": "https://github.com/acidsugarx/oh-my-pi",
+        "capabilities": {
+          "steer": true,
+          "supervise": true,
+          "hitl": true,
+          "terminal": true,
+          "contextStats": true,
+          "compact": true,
+          "toolRefresh": "native"
+        },
+        "toolSurface": "bridge",
+        "available": true,
+        "inprocess": false,
+        "command": "omp",
+        "resolvedPath": "C:\\Users\\87287\\.bun\\bin\\omp.exe",
+        "error": null,
+        "toolSurfaceReady": true,
+        "toolSurfaceHint": null
+      }
+    },
+    {
+      "no": 5,
+      "id": "L1",
+      "name": "simulated line created",
+      "ok": true,
+      "detail": {
+        "id": "ln-7f812041",
+        "name": "OMP-LINE-hb045r",
+        "color": "#3aa0ff",
+        "description": "",
+        "controlMode": "manual",
+        "simulated": true,
+        "createdAt": "2026-11-15T11:57:36.661+08:00"
+      }
+    },
+    {
+      "no": 6,
+      "id": "L2",
+      "name": "mock DAQ node created on line",
+      "ok": true,
+      "detail": {
+        "id": "dn-553cc4c7",
+        "templateRef": "daq-temp-tc",
+        "name": "OMP-PV-hb045r",
+        "driver": "mock",
+        "enabled": true,
+        "intervalMs": 1000,
+        "publishIntervalMs": 0,
+        "unit": "MPa",
+        "decimals": 1,
+        "min": 0,
+        "max": 10,
+        "warnLow": 0.8,
+        "warnHigh": 9.2,
+        "deviceBindingId": null,
+        "deviceIds": [],
+        "driverConfig": {},
+        "lineId": "ln-7f812041",
+        "value": null,
+        "state": "offline",
+        "quality": "offline",
+        "lastAt": null,
+        "staleSince": null,
+        "lastError": null,
+        "createdAt": "2026-11-15T11:57:36.690+08:00"
+      }
+    },
+    {
+      "no": 7,
+      "id": "L3",
+      "name": "product created on line",
+      "ok": true,
+      "detail": {
+        "id": "pd-b6cef350",
+        "lineId": "ln-7f812041",
+        "name": "OMP-PRODUCT-hb045r",
+        "description": "",
+        "createdAt": "2026-11-15T11:57:36.721+08:00"
+      }
+    },
+    {
+      "no": 8,
+      "id": "C1",
+      "name": "generic channel + omp lead created",
+      "ok": true,
+      "detail": {
+        "channelId": "0ee606c2-bb0a-450b-8fcc-1a284a6d06ca",
+        "leadAgentId": "834c6317-9467-4265-9427-8352b96bc21e",
+        "workspace": "D:\\codes\\ABO\\AgentWorkShop\\data\\workspaces\\0ee606c2-bb0a-450b-8fcc-1a284a6d06ca"
+      }
+    },
+    {
+      "no": 9,
+      "id": "C2",
+      "name": "generic worker created",
+      "ok": true,
+      "detail": {
+        "id": "fbfd7d07-757c-40ad-b4a2-ceaaf8b8b653",
+        "channelId": "0ee606c2-bb0a-450b-8fcc-1a284a6d06ca",
+        "name": "G-Worker-hb045r",
+        "harness": "omp",
+        "role": "worker",
+        "agentKind": "channel_agent",
+        "config": {
+          "provider": "ustc",
+          "model": "deepseek-flash",
+          "thinkingLevel": "low",
+          "promptTimeoutMs": 1800000,
+          "superviseTimeoutMs": 1800000
+        },
+        "token":"<redacted>",
+        "enabled": 1,
+        "templateId": "d107cc5c-b2f9-4d3f-9957-8ab2fc9ebca9"
+      }
+    },
+    {
+      "no": 10,
+      "id": "C3",
+      "name": "generic channel activated (real omp schedulers, chat enabled)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "no": 11,
+      "id": "C4",
+      "name": "integrated channel + omp lead created",
+      "ok": true,
+      "detail": {
+        "channelId": "c33cd9d7-27d7-40d4-8390-ef2732833afd",
+        "leadAgentId": "17b273eb-6515-4749-b6c3-73401f92efdf",
+        "workspace": "D:\\codes\\ABO\\AgentWorkShop\\data\\workspaces\\c33cd9d7-27d7-40d4-8390-ef2732833afd"
+      }
+    },
+    {
+      "no": 12,
+      "id": "C5",
+      "name": "integrated worker created",
+      "ok": true,
+      "detail": {
+        "id": "e7bd3a9f-3ca3-40a2-85a2-d172fc559e13",
+        "channelId": "c33cd9d7-27d7-40d4-8390-ef2732833afd",
+        "name": "I-Worker-hb045r",
+        "harness": "omp",
+        "role": "worker",
+        "agentKind": "channel_agent",
+        "config": {
+          "provider": "ustc",
+          "model": "deepseek-flash",
+          "thinkingLevel": "low",
+          "promptTimeoutMs": 1800000,
+          "superviseTimeoutMs": 1800000
+        },
+        "token":"<redacted>",
+        "enabled": 1,
+        "templateId": "954eb96b-f1d5-4040-93e9-3302fdf867b0"
+      }
+    },
+    {
+      "no": 13,
+      "id": "C6",
+      "name": "integrated channel product binding written",
+      "ok": true,
+      "detail": {
+        "before": {
+          "channelId": "c33cd9d7-27d7-40d4-8390-ef2732833afd",
+          "productIds": [],
+          "revision": 0
+        },
+        "after": {
+          "channelId": "c33cd9d7-27d7-40d4-8390-ef2732833afd",
+          "productIds": [
+            "pd-b6cef350"
+          ],
+          "revision": 1
+        }
+      }
+    },
+    {
+      "no": 14,
+      "id": "C7",
+      "name": "integrated channel activated (chat enabled)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "no": 15,
+      "id": "SS1",
+      "name": "generic session created (no product, generic mode)",
+      "ok": true,
+      "detail": {
+        "sessionId": "cs-f9ea7648",
+        "title": "G-SESSION-hb045r",
+        "members": [
+          {
+            "baseAgentId": "834c6317-9467-4265-9427-8352b96bc21e",
+            "cloneId": "1333c84a-af36-4020-a6a4-74f2551be33b",
+            "name": "G-Lead-hb045r·session·1",
+            "role": "worker"
+          },
+          {
+            "baseAgentId": "fbfd7d07-757c-40ad-b4a2-ceaaf8b8b653",
+            "cloneId": "23c88632-8a35-4a61-9454-55a66979c866",
+            "name": "G-Worker-hb045r·session·2",
+            "role": "worker"
+          }
+        ],
+        "channelMode": "generic"
+      }
+    },
+    {
+      "no": 16,
+      "id": "SS2",
+      "name": "integrated session created with frozen product snapshot",
+      "ok": true,
+      "detail": {
+        "sessionId": "cs-07289426",
+        "title": "I-SESSION-hb045r",
+        "productId": "pd-b6cef350",
+        "lineId": "ln-7f812041",
+        "bindingSnapshotHash": "f2789a2508f3d345625dfd87386a062a2568c4971a6c67282d0909393980d4ae",
+        "bindingSnapshotRevision": 1,
+        "members": [
+          {
+            "baseAgentId": "17b273eb-6515-4749-b6c3-73401f92efdf",
+            "cloneId": "51ea5f47-c18b-4e38-a979-3f83bb122dfd",
+            "name": "I-Lead-hb045r·session·1",
+            "role": "worker"
+          },
+          {
+            "baseAgentId": "e7bd3a9f-3ca3-40a2-85a2-d172fc559e13",
+            "cloneId": "f3d1cb73-fabf-4e79-9c98-d0111e711267",
+            "name": "I-Worker-hb045r·session·2",
+            "role": "worker"
+          }
+        ],
+        "channelMode": "production_line_integrated"
+      }
+    },
+    {
+      "no": 17,
+      "id": "SS3",
+      "name": "integrated session exposes snapshot revision/hash",
+      "ok": true,
+      "detail": {
+        "id": "cs-07289426",
+        "channelId": "c33cd9d7-27d7-40d4-8390-ef2732833afd",
+        "title": "I-SESSION-hb045r",
+        "status": "active",
+        "memberMap": {
+          "17b273eb-6515-4749-b6c3-73401f92efdf": "51ea5f47-c18b-4e38-a979-3f83bb122dfd",
+          "e7bd3a9f-3ca3-40a2-85a2-d172fc559e13": "f3d1cb73-fabf-4e79-9c98-d0111e711267"
+        },
+        "createdBy": "15ada423-baa6-4335-9118-95d8d6c02c1e",
+        "createdAt": "2026-11-15T11:57:36.935+08:00",
+        "closedAt": null,
+        "projectId": null,
+        "projectWorkItemId": null,
+        "createdByKind": "user",
+        "instanceKind": "manual",
+        "summary": "manual session cs-07289426（active）；下一步：等待首个任务或消息",
+        "lastActiveAt": "2026-11-15T11:57:36.935+08:00",
+        "generation": 0,
+        "channelMode": "production_line_integrated",
+        "productId": "pd-b6cef350",
+        "lineId": "ln-7f812041",
+        "bindingSnapshotHash": "f2789a2508f3d345625dfd87386a062a2568c4971a6c67282d0909393980d4ae",
+        "bindingSnapshotRevision": 1,
+        "brief": {
+          "sessionId": "cs-07289426",
+          "kind": "manual",
+          "title": "I-SESSION-hb045r",
+          "status": "active",
+          "channelId": "c33cd9d7-27d7-40d4-8390-ef2732833afd",
+          "channelName": "OMP-INTEGRATED-hb045r",
+          "projectId": null,
+          "projectName": null,
+          "workItemId": null,
+          "workItemTitle": null,
+          "objective": "I-SESSION-hb045r",
+          "rootTaskId": null,
+          "currentTask": null,
+          "tasks": [],
+          "deliverables": [],
+          "recentMessages": [],
+          "recentTurns": [],
+          "compressed": {
+            "uptoSeq": 0,
+            "uptoCreatedAt": "",
+            "uptoMessageId": "",
+            "generation": 0,
+            "lines": []
+          },
+          "decisions": [],
+          "openQuestions": [],
+          "nextStep": "等待首个任务或消息",
+          "lastActiveAt": "2026-11-15T11:57:36.935+08:00",
+          "updatedAt": "2026-11-15T11:57:36.935+08:00"
+        }
+      }
+    },
+    {
+      "no": 18,
+      "id": "SS4",
+      "name": "both modes create session clone members",
+      "ok": true,
+      "detail": {
+        "cgClone": "G-Lead-hb045r·session·1",
+        "ciClone": "I-Lead-hb045r·session·1",
+        "ciLeadClone": "I-Lead-hb045r·session·1"
+      }
+    },
+    {
+      "no": 19,
+      "id": "T1",
+      "name": "generic lead: no industrial tools",
+      "ok": true,
+      "detail": {
+        "leaked": []
+      }
+    },
+    {
+      "no": 20,
+      "id": "T2",
+      "name": "generic lead: framework core kept (memory/mailbox/task)",
+      "ok": true,
+      "detail": {
+        "missing": []
+      }
+    },
+    {
+      "no": 21,
+      "id": "T3",
+      "name": "generic worker: core kept, no industrial",
+      "ok": true,
+      "detail": {
+        "missing": [],
+        "leaked": []
+      }
+    },
+    {
+      "no": 22,
+      "id": "T4",
+      "name": "generic session clone: core kept, no industrial, no lead-only submit_task",
+      "ok": true,
+      "detail": {
+        "missing": [],
+        "leaked": [],
+        "submit": false
+      }
+    },
+    {
+      "no": 23,
+      "id": "T5",
+      "name": "integrated lead: industrial tools injected + core kept",
+      "ok": true,
+      "detail": {
+        "missingInd": [],
+        "missingCore": []
+      }
+    },
+    {
+      "no": 24,
+      "id": "T6",
+      "name": "integrated worker: industrial tools injected + worker core kept",
+      "ok": true,
+      "detail": {
+        "missingInd": [],
+        "missingCore": []
+      }
+    },
+    {
+      "no": 25,
+      "id": "T7",
+      "name": "integrated session clone: industrial + worker core kept",
+      "ok": true,
+      "detail": {
+        "missingInd": [],
+        "missingCore": []
+      }
+    },
+    {
+      "no": 26,
+      "id": "X1",
+      "name": "generic lead direct line_context is rejected (no industrial execution gate)",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "通用频道不开放产线工业工具。",
+              "isError": true
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"通用频道不开放产线工业工具。\",\"isError\":true}}}"
+      }
+    },
+    {
+      "no": 27,
+      "id": "X2",
+      "name": "generic lead direct daq_query is rejected",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "通用频道不开放产线工业工具。",
+              "isError": true
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"通用频道不开放产线工业工具。\",\"isError\":true}}}"
+      }
+    },
+    {
+      "no": 28,
+      "id": "X3",
+      "name": "generic lead direct save_memory executes",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "已沉淀到Channel 公共记忆(全员可检索): \"DIRECT-G-hb045r\"(dedupKey=agent:834c6317-9467-4265-9427-8352b96bc21e:agent-save:4c00d868);频道级(跨会话可见)"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"已沉淀到Channel 公共记忆(全员可检索): \\\"DIRECT-G-hb045r\\\"(dedupKey=agent:834c6317-9467-4265-9427-8352b96bc21e:agent-save:4c00d868);频道级(跨会话可见)\"}}}"
+      }
+    },
+    {
+      "no": 29,
+      "id": "X4",
+      "name": "integrated lead direct line_context executes and returns line name",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "你控制的产线全景(1 条):\n\n■ 产线 OMP-LINE-hb045r(ln-7f812041)(频道绑定,只读) · 状态:待机/停线\n  我绑定的节点:数控 [无];数采 [无]\n  当前无活动配方(产线未开跑;该产线也暂无配方定义)\n\n说明:配方目标=开跑批次冻结的工艺窗口;PLC 当前值=实时读数;(频道绑定,只读)= 该线来自频道绑定的只读授权,可看日志/配方/状态,参数下发仍需节点授权。把验证过的最佳参数固化到配方用 recipe_update;回退配方到稳定版本用 recipe_rollback;逐节点参数变更史用 dcw_journal;配方版本史用 recipe_versions。"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"你控制的产线全景(1 条):\\n\\n■ 产线 OMP-LINE-hb045r(ln-7f812041)(频道绑定,只读) · 状态:待机/停线\\n  我绑定的节点:数控 [无];数采 [无]\\n  当前无活动配方(产线未开跑;该产线也暂无配方定义)\\n\\n说明:配方目标=开跑批次冻结的工艺窗口;PLC 当前值=实时读数;(频道绑定,只读)= 该线来自频道绑定的只读授权,可看日志/配方/状态,参数下发仍需节点授权。把验证过的最佳参数固化到配方用 recipe_update;回退配方到稳定版本用 recipe_rollback;逐节点参数变更史用 dcw_journal;配方版本史用 recipe_versions。\"}}}"
+      }
+    },
+    {
+      "no": 30,
+      "id": "X5",
+      "name": "integrated lead direct daq_query executes (read-only)",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "数采数据查询结果(1 个节点):\n\n■ OMP-PV-hb045r[id=dn-553cc4c7](熔体/箱体温度)单位 MPa,正常量程 0~10MPa,当前状态 offline,时间窗 2026-11-15T11:52 ~ 2026-11-15T11:57(降采样 15000ms,聚合 avg)\n  未过滤(该产线当前未开跑 → 无活动批次可限定)\n  窗口内无数据(产线未运行或过滤条件不匹配;仅产线运行中的样本被持久化打标)\n(过滤条件:—— 未过滤节点(所在产线未开跑,无活动批次可限定):dn-553cc4c7;含未开线时段样本(按节点所属产线打标,product/recipe/run 为空))\n\n数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ OMP-PV-hb045r[id=dn-553cc4c7](熔体/箱体温度)单位 MPa,正常量程 0~10MPa,当前状态 offline,时间窗 2026-11-15T11:52 ~ 2026-11-15T11:57(降采样 15000ms,聚合 avg)\\n  未过滤(该产线当前未开跑 → 无活动批次可限定)\\n  窗口内无数据(产线未运行或过滤条件不匹配;仅产线运行中的样本被持久化打标)\\n(过滤条件:—— 未过滤节点(所在产线未开跑,无活动批次可限定):dn-553cc4c7;含未开线时段样本(按节点所属产线打标,product/recipe/run 为空))\\n\\n数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。\"}}}"
+      }
+    },
+    {
+      "no": 31,
+      "id": "X6",
+      "name": "integrated session clone line_context uses frozen snapshot",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "你控制的产线全景(1 条):\n\n■ 产线 OMP-LINE-hb045r(ln-7f812041)(频道绑定,只读) · 状态:待机/停线\n  我绑定的节点:数控 [无];数采 [无]\n  当前无活动配方(产线未开跑;该产线也暂无配方定义)\n\n说明:配方目标=开跑批次冻结的工艺窗口;PLC 当前值=实时读数;(频道绑定,只读)= 该线来自频道绑定的只读授权,可看日志/配方/状态,参数下发仍需节点授权。把验证过的最佳参数固化到配方用 recipe_update;回退配方到稳定版本用 recipe_rollback;逐节点参数变更史用 dcw_journal;配方版本史用 recipe_versions。"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"你控制的产线全景(1 条):\\n\\n■ 产线 OMP-LINE-hb045r(ln-7f812041)(频道绑定,只读) · 状态:待机/停线\\n  我绑定的节点:数控 [无];数采 [无]\\n  当前无活动配方(产线未开跑;该产线也暂无配方定义)\\n\\n说明:配方目标=开跑批次冻结的工艺窗口;PLC 当前值=实时读数;(频道绑定,只读)= 该线来自频道绑定的只读授权,可看日志/配方/状态,参数下发仍需节点授权。把验证过的最佳参数固化到配方用 recipe_update;回退配方到稳定版本用 recipe_rollback;逐节点参数变更史用 dcw_journal;配方版本史用 recipe_versions。\"}}}"
+      }
+    },
+    {
+      "no": 32,
+      "id": "X7",
+      "name": "generic session clone direct daq_query is rejected",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "通用频道不开放产线工业工具。",
+              "isError": true
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"通用频道不开放产线工业工具。\",\"isError\":true}}}"
+      }
+    },
+    {
+      "no": 33,
+      "id": "R1",
+      "name": "generic chat delivered to real omp lead",
+      "ok": true,
+      "detail": {
+        "message": {
+          "id": "79571efd-1638-4847-a939-0dbd7ed09794",
+          "channelId": "0ee606c2-bb0a-450b-8fcc-1a284a6d06ca",
+          "senderType": "user",
+          "senderId": "15ada423-baa6-4335-9118-95d8d6c02c1e",
+          "senderName": "omp-admin-hb045r",
+          "text": "【回归 G1｜通用频道记忆】只做两步，不要委派给其它 Agent，也不要调用任务/工业工具：\n1) 调用 save_memory：title=\"通用频道回归G1\"，content=\"锚点 GEN-OMP-hb045r 通用频道记忆链路正常\"，scope=\"shared\"。\n2) 调用 search_memory：query=\"GEN-OMP-hb045r\"，limit=5，确认能召回上述内容。\n完成后只回复一行：检索命中就回复 GEN-OMP-hb045r PASS；否则回复 GEN-OMP-hb045r FAIL: <原因>。",
+          "mentions": [
+            {
+              "type": "agent",
+              "id": "834c6317-9467-4265-9427-8352b96bc21e",
+              "label": "G-Lead-hb045r"
+            }
+          ],
+          "replyToId": null,
+          "requesterUserId": "15ada423-baa6-4335-9118-95d8d6c02c1e",
+          "sourceChatMessageId": null,
+          "clientMessageId": "g1-hb045r",
+          "createdAt": "2026-11-15T11:57:37.193+08:00"
+        },
+        "deliveries": [
+          {
+            "deliveryId": "e873153a-1533-4130-9628-0721758aa63b",
+            "agentId": "834c6317-9467-4265-9427-8352b96bc21e",
+            "status": "delivered"
+          }
+        ],
+        "duplicates": false,
+        "unresolvedMentions": [],
+        "mentions": [
+          {
+            "type": "agent",
+            "id": "834c6317-9467-4265-9427-8352b96bc21e",
+            "label": "G-Lead-hb045r"
+          }
+        ]
+      }
+    },
+    {
+      "no": 34,
+      "id": "R2",
+      "name": "real omp generic lead replied memory PASS",
+      "ok": true,
+      "detail": {
+        "id": "243a96b6-5506-4c24-8565-adfe62399ab2",
+        "text": ".........第二层验证发现一个真实偏差：第二次写同 `dedup_key` 并未覆盖内容。**GEN-OMP-hb045r PASS**\n\n证据与一处自曝的副作用（不改变判定，但影响该条记忆的干净度）：\n\n| 步骤 | 实测 |\n|---|---|\n| save_memory（title=`通用频道回归G1`，content=`锚点 GEN-OMP-hb045r 通用频道记忆链路正常`，scope=shared） | `已沉淀到Channel 公共记忆(全员可检索)`，频道级跨会话，dedupKey 尾缀 `…:GEN-OMP-hb045r-g1-anchor:contested` |\n| search_memory（query=`GEN-OMP-hb045r`，limit=5，scope=shared） | 4 条返回，命中率 75%（hits=6/misses=2）；目标内容命中，**rank3、score=0.98**，正文逐字为 `锚点 GEN-OMP-hb045r 通用频道记忆链路正常` |\n\n副作用（我造成的，需记录）：\n- 上一轮我收到的群聊正文在 `content=\"锚点 GEN-OMP-hb045r 通用频道记忆` 处被截断，第一步按截断文本先写了一次。\n- 复核发现 `save_memory` 同 `dedup_key` + 内容不同 **不会覆盖**：旧行保留原文并追加 `[ 并存确认 <agentId> @时间 ]`，新内容需换 key 才能落库；换 key 后系统给标题加了 `[contested:d788f4d7]` 前缀。因此现在该频道有两条 `通用频道回归G1`（rank1 score=0.992 为旧行、rank3 为规范行），检索能召回但语义上互相竞争。\n- 平台未暴露记忆删除设备（`xd://` 138 个设备中无 delete_"
+      }
+    },
+    {
+      "no": 35,
+      "id": "R3",
+      "name": "generic memory persisted and searchable after omp turn",
+      "ok": true,
+      "detail": "[{\"id\":\"d788f4d7-225e-4cfc-a73e-ac00d8199d71\",\"kind\":\"semantic\",\"title\":\"通用频道回归G1\",\"content\":\"锚点 GEN-OMP-hb045r 通用频道记忆 [ 并存确认 834c6317-9467-4265-9427-8352b96bc21e @2026-11-15T12:03]\",\"importance\":0.9,\"createdAt\":\"2026-11-15T12:03:45.205+08:00\",\"score\":0.992,\"source\":\"shared\",\"channelId\":\"0ee606c2-bb0a-450b-8fcc-1a284a6d06ca\",\"taskId\":null,\"sessionId\":\"\",\"visibility\":\"channel-shared\",\"outcome\":\"neutral\",\"status\":\"active\",\"scopeKind\":\"session\",\"scopeKey\":\"\"},{\"id\":\"d8ef3755-3c67-4df0-aaf9-313f92ff53b6\",\"kind\":\"semantic\",\"title\":\"[contested:d788f4d7] 通用频道回归G1\",\"content\":\"锚点 GEN-OMP-hb045r 通用频道记忆链"
+    },
+    {
+      "no": 36,
+      "id": "R4",
+      "name": "generic channel task submitted through framework task API",
+      "ok": true,
+      "detail": {
+        "id": "23d44c8e-6e94-4933-8df8-b5d2eedb3646",
+        "channelId": "0ee606c2-bb0a-450b-8fcc-1a284a6d06ca",
+        "rootQueueSeq": 1,
+        "assigneeId": "834c6317-9467-4265-9427-8352b96bc21e",
+        "creatorId": "",
+        "title": "TASK-OMP-G-hb045r",
+        "description": "通用频道任务链路验收。请只调用一次 complete_task（task_id 可省略，平台使用当前任务）：summary 必须包含 GEN-TASK-hb045r，deliverable=\"GEN-TASK-hb045r\"。不要调用 submit_task，不要调用工业工具，不要委派其它 Agent。",
+        "state": "SUBMITTED",
+        "progress": 0,
+        "retryCount": 0,
+        "artifacts": [
+          {
+            "artifactId": "7746e8d7-8a72-4a7d-811e-57861a62a800",
+            "name": "input",
+            "parts": [
+              {
+                "text": "任务链路验收锚点 GEN-TASK-hb045r"
+              }
+            ]
+          }
+        ],
+        "history": [],
+        "deadlineAt": "2026-11-15T12:21:28.655+08:00",
+        "source": "channel",
+        "assignmentGeneration": 0,
+        "executionLeaseId": "90a40640-6606-408a-b149-62051e5b0a3f",
+        "executionLeaseAgentId": "834c6317-9467-4265-9427-8352b96bc21e",
+        "executionLeaseStartedAt": "2026-11-15T12:06:28.656+08:00",
+        "createdAt": "2026-11-15T12:06:28.656+08:00",
+        "updatedAt": "2026-11-15T12:06:28.656+08:00"
+      }
+    },
+    {
+      "no": 37,
+      "id": "R5",
+      "name": "real omp generic lead completed the submitted task",
+      "ok": true,
+      "detail": {
+        "taskId": "23d44c8e-6e94-4933-8df8-b5d2eedb3646",
+        "state": "COMPLETED"
+      }
+    },
+    {
+      "no": 38,
+      "id": "M1",
+      "name": "generic mailbox round-trip turn delivered",
+      "ok": true,
+      "detail": {
+        "message": {
+          "id": "684bc1e4-b99b-41a1-9a01-37c3f589059b",
+          "channelId": "0ee606c2-bb0a-450b-8fcc-1a284a6d06ca",
+          "senderType": "user",
+          "senderId": "15ada423-baa6-4335-9118-95d8d6c02c1e",
+          "senderName": "omp-admin-hb045r",
+          "text": "【回归 G2｜通用频道邮箱】请使用 host tools 完成一次真实信箱往返：\n1) 调用 send_message_to_agent：to_agent_id=\"fbfd7d07-757c-40ad-b4a2-ceaaf8b8b653\"，message=\"MAIL-OMP-hb045r 请回复：已收到 MAIL-OMP-hb045r（只回这一句）\"，require_reply=true，priority=\"task\"。\n2) 调用 poll_messages：wait_seconds=120，等待 worker 回执。\n3) 收到后，在群聊回复一行，必须包含 worker 回执原文与 MAIL-OMP-hb045r。\n如果超时未收到，请如实回复 TIMEOUT 与 MAIL-OMP-hb045r。",
+          "mentions": [
+            {
+              "type": "agent",
+              "id": "834c6317-9467-4265-9427-8352b96bc21e",
+              "label": "G-Lead-hb045r"
+            }
+          ],
+          "replyToId": null,
+          "requesterUserId": "15ada423-baa6-4335-9118-95d8d6c02c1e",
+          "sourceChatMessageId": null,
+          "clientMessageId": "g2-hb045r",
+          "createdAt": "2026-11-15T12:07:23.794+08:00"
+        },
+        "deliveries": [
+          {
+            "deliveryId": "8048097b-e55b-434c-bca3-99a5d6390566",
+            "agentId": "834c6317-9467-4265-9427-8352b96bc21e",
+            "status": "delivered"
+          }
+        ],
+        "duplicates": false,
+        "unresolvedMentions": [],
+        "mentions": [
+          {
+            "type": "agent",
+            "id": "834c6317-9467-4265-9427-8352b96bc21e",
+            "label": "G-Lead-hb045r"
+          }
+        ]
+      }
+    },
+    {
+      "no": 39,
+      "id": "M2",
+      "name": "mailbox lead->worker->lead round trip completed with real omp",
+      "ok": true,
+      "detail": {
+        "id": "4131f555-627b-4e5c-9ca6-b9b60b190b5c",
+        "text": ".**MAIL-OMP-hb045r PASS — worker 回执原文：已收到 MAIL-OMP-hb045r**\n\n证据（信箱往返全链路实测）：\n\n| 步骤 | 实测 |\n|---|---|\n| `send_message_to_agent` → `fbfd7d07`（priority=task，require_reply=true） | `消息 88193c8e… 已发送` |\n| `poll_messages(wait_seconds=120)` | 阻塞期内即返回，`[1/1] [from fbfd7d07…] (回复 88193c8e…) 已收到 MAIL-OMP-hb045r` |\n| 回执关联 | `in_reply_to` 正确挂载到我发出的 88193c8e，未串线 |\n\n结论：通用频道的 lead→worker→lead 信箱往返（task 优先级排队投递 + require_reply 回执注入 + in_reply_to 关联）实测通过，端到端延迟在 120s 窗口内且远小于窗口。"
+      }
+    },
+    {
+      "no": 40,
+      "id": "M3",
+      "name": "mailbox delivery log contains outbound + inbound anchors",
+      "ok": true,
+      "detail": {
+        "hits": 10
+      }
+    },
+    {
+      "no": 41,
+      "id": "I1",
+      "name": "integrated session message delivered to real omp clone",
+      "ok": true,
+      "detail": {
+        "messageId": "014a76fd-6c53-411f-8743-36cb5749d0b4",
+        "toAgentId": "51ea5f47-c18b-4e38-a979-3f83bb122dfd"
+      }
+    },
+    {
+      "no": 42,
+      "id": "I2",
+      "name": "real omp integrated session replied with line context anchor",
+      "ok": true,
+      "detail": {
+        "role": "ROLE_AGENT",
+        "text": "I'll execute the three host tool calls, then reply.PROD-OMP-hb045r｜产线名称 OMP-LINE-hb045r（ln-7f812041）｜节点 dn-553cc4c7（OMP-PV-hb045r，熔体/箱体温度）最新值：empty（状态 offline，近 10 分钟窗口 11:58–12:08 无数据；产线待机/停线、无活动配方，无运行样本被打标）；共享记忆已写入「产线集成回归I1」。"
+      }
+    },
+    {
+      "no": 43,
+      "id": "I3",
+      "name": "integrated session memory persisted and searchable in-session",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "记忆检索结果(1 条, scope=auto;召回度量 hits=9/misses=2/命中率=82%):\n  [shared · semantic · score=1 · channel-shared · channel=c33cd9d7 · session=cs-07289 · 2026-11-15 12:08] 产线集成回归I1\n    锚点 PROD-OMP-hb045r 产线集成频道记忆正常"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"记忆检索结果(1 条, scope=auto;召回度量 hits=9/misses=2/命中率=82%):\\n  [shared · semantic · score=1 · channel-shared · channel=c33cd9d7 · session=cs-07289 · 2026-11-15 12:08] 产线集成回归I1\\n    锚点 PROD-OMP-hb045r 产线集成频道记忆正常\"}}}"
+      }
+    },
+    {
+      "no": 44,
+      "id": "I3b",
+      "name": "integrated session memory row persisted in DB",
+      "ok": true,
+      "detail": {
+        "c": 1
+      }
+    },
+    {
+      "no": 45,
+      "id": "I4",
+      "name": "integrated channel task submitted through framework task API",
+      "ok": true,
+      "detail": {
+        "id": "c22321fd-6d2e-4a79-af3e-900aba759da6",
+        "channelId": "c33cd9d7-27d7-40d4-8390-ef2732833afd",
+        "rootQueueSeq": 1,
+        "assigneeId": "17b273eb-6515-4749-b6c3-73401f92efdf",
+        "creatorId": "",
+        "title": "TASK-OMP-I-hb045r",
+        "description": "产线集成频道任务链路验收。请只调用一次 complete_task（task_id 可省略，平台使用当前任务）：summary 必须包含 I-TASK-hb045r，deliverable=\"I-TASK-hb045r\"。不要调用 submit_task，不要执行任何产线写操作，不要委派其它 Agent。",
+        "state": "SUBMITTED",
+        "progress": 0,
+        "retryCount": 0,
+        "artifacts": [
+          {
+            "artifactId": "a7dfe4c7-a706-4555-a941-4724c0c44ef6",
+            "name": "input",
+            "parts": [
+              {
+                "text": "任务链路验收锚点 I-TASK-hb045r"
+              }
+            ]
+          }
+        ],
+        "history": [],
+        "deadlineAt": "2026-11-15T12:23:34.099+08:00",
+        "source": "channel",
+        "assignmentGeneration": 0,
+        "executionLeaseId": "df7a03ac-ec53-44b6-876d-cdcf8b92941e",
+        "executionLeaseAgentId": "17b273eb-6515-4749-b6c3-73401f92efdf",
+        "executionLeaseStartedAt": "2026-11-15T12:08:34.100+08:00",
+        "createdAt": "2026-11-15T12:08:34.100+08:00",
+        "updatedAt": "2026-11-15T12:08:34.100+08:00"
+      }
+    },
+    {
+      "no": 46,
+      "id": "I5",
+      "name": "real omp integrated lead completed the submitted task",
+      "ok": true,
+      "detail": {
+        "taskId": "c22321fd-6d2e-4a79-af3e-900aba759da6",
+        "state": "COMPLETED"
+      }
+    },
+    {
+      "no": 47,
+      "id": "MC1",
+      "name": "integrated -> generic recycles base lead to generic tool surface",
+      "ok": true,
+      "detail": {
+        "stillIndustrial": []
+      }
+    },
+    {
+      "no": 48,
+      "id": "MC2",
+      "name": "existing session clone keeps frozen integrated tool surface",
+      "ok": true,
+      "detail": {
+        "missingInd": []
+      }
+    },
+    {
+      "no": 49,
+      "id": "MC3",
+      "name": "generic -> integrated restores base lead industrial tool surface",
+      "ok": true,
+      "detail": {
+        "missingInd": []
+      }
+    },
+    {
+      "no": 50,
+      "id": "SS5",
+      "name": "live session snapshot hash/revision unchanged after channel rebind",
+      "ok": true,
+      "detail": {
+        "before": {
+          "h": "f2789a2508f3d345625dfd87386a062a2568c4971a6c67282d0909393980d4ae",
+          "r": 1
+        },
+        "after": {
+          "h": "f2789a2508f3d345625dfd87386a062a2568c4971a6c67282d0909393980d4ae",
+          "r": 1,
+          "p": "pd-b6cef350"
+        }
+      }
+    }
+  ]
+}

@@ -107,8 +107,10 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     }
     const agentWithCtx: AgentInfo = { ...agent, config: configWithCtx }
     const impl = this.deps.implFactory(agentWithCtx)
-    const setScope = (impl as { setChannelSessionScope?: (scope: ChannelSessionExecutionScope | null) => void }).setChannelSessionScope
-    setScope?.(channelSessionScope)
+    // 必须保留接收者调用:setChannelSessionScope 是原型方法,解构后裸调用会丢 this,
+    // 所有 BaseAgentImpl 系引擎(omp/claude/codex/…)在频道激活时直接 TypeError。
+    const sessionScopedImpl = impl as { setChannelSessionScope?: (scope: ChannelSessionExecutionScope | null) => void }
+    sessionScopedImpl.setChannelSessionScope?.(channelSessionScope)
     const runtime = new AgentRuntime(agent, impl, {
       mailbox,
       taskEngine: this.getTaskEngine(),

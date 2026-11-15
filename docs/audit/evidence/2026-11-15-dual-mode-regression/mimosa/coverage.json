@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "mimosa-security-scan-coverage/v1",
+  "scanId": "scan-2026-11-15T04-19-13.703Z-d5fddcefc407",
+  "completeness": "partial",
+  "runStatus": "inconclusive",
+  "source": {
+    "limit": 50000,
+    "selectedFiles": 2037,
+    "parsedFiles": 2037,
+    "truncated": false,
+    "omittedAtLeast": 0,
+    "readFailures": 0,
+    "parseFailures": 0
+  },
+  "phases": {
+    "threatModel": {
+      "status": "partial",
+      "observed": {
+        "entryPoints": 0,
+        "principals": 0,
+        "authorizationSurfaces": 0
+      }
+    },
+    "findingDiscovery": {
+      "status": "partial",
+      "observed": {
+        "findings": 47,
+        "businessLogicCandidates": 0
+      }
+    },
+    "validation": {
+      "status": "completed",
+      "observed": {
+        "investigated": 0,
+        "queries": 0
+      }
+    },
+    "pathAnalysis": {
+      "status": "completed",
+      "observed": {
+        "functions": 19441,
+        "callEdges": 27247,
+        "traces": 0
+      }
+    },
+    "reporting": {
+      "status": "completed",
+      "observed": {
+        "semanticArtifacts": 3,
+        "projections": 1
+      }
+    }
+  },
+  "gaps": [
+    "部分分析阶段未能完整覆盖"
+  ],
+  "openQuestions": []
+}
