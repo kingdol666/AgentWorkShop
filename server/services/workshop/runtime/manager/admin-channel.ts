@@ -131,34 +131,40 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
 
   async updateChannel(channelId: string, patch: { name?: string, channelMode?: ChannelMode, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null, chatEnabled?: number }, actor: SpawnActor = { role: 'user' }): Promise<ChannelRow> {
     const channel = this.requireChannelRow(channelId)
-    if (patch.workspace !== undefined && patch.workspace !== channel.workspace) {
-      assertChannelWorkspaceAllowed(patch.workspace, actor, channelId)
-      this.ensureWorkspaceDir(patch.workspace)
-      await this.unloadChannelAgents(channelId)
+    const workspaceChanged = patch.workspace !== undefined && patch.workspace !== channel.workspace
+    if (workspaceChanged) {
+      assertChannelWorkspaceAllowed(patch.workspace!, actor, channelId)
+      this.ensureWorkspaceDir(patch.workspace!)
     }
-    if (patch.enabled === 0 && channel.enabled !== 0) {
-      await this.unloadChannelAgents(channelId)
-    }
+    const disabling = patch.enabled === 0 && channel.enabled !== 0
     const modeChanged = patch.channelMode !== undefined && patch.channelMode !== channel.channelMode
-    if (modeChanged) await this.unloadChannelAgents(channelId)
-    // 场景 prompt 变更 → 回收成员运行时(下次装配注入新场景;进度任务不受影响,
-    // 排队任务在成员重新装配后按需恢复)
-    if (patch.scenarioPrompt !== undefined && patch.scenarioPrompt !== channel.scenarioPrompt) {
-      await this.unloadChannelAgents(channelId)
-    }
-    // channel 默认 LLM 变更 → 同样回收成员运行时(下次装配注入新默认;成员 config
-    // 显式指定的 model/provider 优先,不受影响)
+    // 场景 prompt / channel 默认 LLM 变更 → 成员运行时需按新配置重装(进度任务不打断;
+    // 排队消息在成员重新装配后继续消费)。先落库,重装时读到的一定是新配置。
+    const scenarioChanged = patch.scenarioPrompt !== undefined && patch.scenarioPrompt !== channel.scenarioPrompt
     const prevLlm = channel.llmJson
     const nextLlm = patch.llm !== undefined ? JSON.stringify(patch.llm) : undefined
-    if (nextLlm !== undefined && nextLlm !== prevLlm) {
+    const llmChanged = nextLlm !== undefined && nextLlm !== prevLlm
+    const updated = this.deps.repos.channels.update(channelId, patch)!
+    if (disabling) {
+      // 停用是管理动作:立即收敛(即使有在途回合);消息保留在信箱,重新启用后可继续。
       await this.unloadChannelAgents(channelId)
+      return updated
     }
-    const updated = this.deps.repos.channels.update(channelId, patch)
-    // 卸载后 channel 需重新激活(懒装配 lead + 恢复调度驱动)
-    if (updated && updated.leadAgentId && (modeChanged || patch.scenarioPrompt !== undefined || patch.workspace !== undefined || (nextLlm !== undefined && nextLlm !== prevLlm))) {
-      this.ensureChannelActive(channelId)
+    if (modeChanged) {
+      // 执行模式是授权边界:必须立即生效,不能等空闲后沿用旧模式的运行时。
+      const unloaded = await this.unloadChannelAgents(channelId)
+      if (unloaded && updated.leadAgentId) this.ensureChannelActive(channelId)
+      return updated
     }
-    return updated!
+    if (workspaceChanged || scenarioChanged || llmChanged) {
+      // 配置类变更:忙/有待消费时延迟到空闲,避免拆掉在途回合或让消息滞留看门狗。
+      await this.recycleChannelAgents(channelId, [
+        workspaceChanged ? 'workspace' : '',
+        scenarioChanged ? 'scenario' : '',
+        llmChanged ? 'llm' : '',
+      ].filter(Boolean).join('+'))
+    }
+    return updated
   }
 
   /** AML 解耦:读 Channel 的用户场景提示(prompt-composer 组装输入) */
@@ -228,9 +234,10 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
       }
       catch { /* 清理失败不阻断换线;工具层仍按绑定面+grant 复核(不放大权限) */ }
     }
-    // 与场景 prompt 变更同链路:回收成员运行时,下次装配注入新的产线简报
-    await this.unloadChannelAgents(channelId)
-    if (updated.leadAgentId) this.ensureChannelActive(channelId)
+    // 与场景 prompt 变更同链路:回收成员运行时,下次装配注入新的产线简报。
+    // 绑线是授权/数据面边界,必须立即生效(即使有在途回合也不沿用旧线运行时)。
+    const unloaded = await this.unloadChannelAgents(channelId)
+    if (unloaded && updated.leadAgentId) this.ensureChannelActive(channelId)
     return updated
   }
 
@@ -301,34 +308,8 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
   async recycleChannelForTwinProfile(channelId: string): Promise<void> {
     const channel = this.deps.repos.channels.findById(channelId)
     if (!channel) return
-    await this.unloadChannelAgents(channelId)
-    if (channel.leadAgentId) this.ensureChannelActive(channelId)
-  }
-
-  protected async unloadChannelAgents(channelId: string): Promise<void> {
-    const cr = this.channels.get(channelId)
-    if (cr) {
-      let releaseSchedulerStarts: (() => void) | null = null
-      let unloaded = false
-      try {
-        releaseSchedulerStarts = await cr.stopSchedulersAndWait()
-        const agents = [...cr.getAgents()]
-        for (const agent of agents) {
-          await agent.stop()
-          cr.detachAgent(agent.agentId)
-          this.agentIndex.delete(runtimeKey(channelId, agent.agentId))
-        }
-        if (cr.getAgents().length === 0) {
-          this.channels.delete(channelId)
-          this.buses.delete(channelId)
-        }
-        unloaded = true
-      }
-      finally {
-        // Reopening is safe only after every old runtime has been detached.
-        if (unloaded && this.channels.get(channelId) === cr) releaseSchedulerStarts?.()
-      }
-    }
+    // 工况提示词属于配置面:忙/有排队消息时延迟到空闲,避免打断在途回合。
+    await this.recycleChannelAgents(channelId, 'twin-profile')
   }
 
   async updateChannelWorkspace(channelId: string, workspace: string): Promise<ChannelRow> {

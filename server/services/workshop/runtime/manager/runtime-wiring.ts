@@ -22,6 +22,7 @@ import { activeSessionOfMember } from '../../agents/session-clone'
 import type { ChannelSessionExecutionScope } from '../../agents/host-tool-bridge'
 import { trustedSessionBindingIdentity } from '../../agents/session-snapshot'
 import { shouldRescueBusyStuck } from './rescue-policy'
+import { channelRecycleDecision } from './recycle-policy'
 import { SessionContextService, formatBriefText } from '../../sessions/context'
 import { channelModeForAgent } from '../../channel-mode'
 
@@ -375,7 +376,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // 项目办公室 leader 常驻：项目 active 期间不参与 idle 卸载（pause/archive 走显式停止）。
     if (runtime.agentKind === 'project_leader') return
     if (runtime.getState() !== 'idle') return
-    if (this.deps.repos.messages.listPendingByChannelAgent(channelId, agentId).length > 0) return
+    if (this.deps.repos.messages.hasUnconsumedByChannelAgent(channelId, agentId)) return
     // 生产化(2026-10-09):挂起中的 HITL 审批卡视为活跃 —— 真人审批常超空闲宽限
     // (~120s),而 stopAndDetach → runtime.stop() → cancelAllForAgent 会把卡收敛为
     // 「回合已被中止」的拒绝(误杀人工裁决,hold 模式也拦不住这条路径)。动态 import
@@ -388,8 +389,9 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     catch { /* 审批面未装配(测试/降级)→ 按原语义放行 */ }
     // 检查-卸载竞态:上面有 await(动态 import),期间 route 可能把群聊消息投进这个
     // 信箱并标记 delivered,随后 stopAndDetach 关箱 → 消息永久滞留。卸载前**重新**
-    // 校验同一判据(廉价,且不改变五重闸门语义)。
-    if (this.deps.repos.messages.listPendingByChannelAgent(channelId, agentId).length > 0) return
+    // 校验同一判据(廉价,且不改变五重闸门语义)。consuming 也必须计入:claim 后到
+    // 回合真正开始之间 runtime 仍可能是 idle。
+    if (this.deps.repos.messages.hasUnconsumedByChannelAgent(channelId, agentId)) return
     if (this.runtimeOf(channelId, agentId)?.getState() !== 'idle') return
     // §6.1 Runtime 卸载闸门(五条件)。§11 harness_continuity_enabled=false 时退回
     // 旧行为(只看 runtime idle),仅用于异常回滚 —— 默认必须走完整闸门。
@@ -414,6 +416,127 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     for (const rt of [...this.agentIndex.values()]) {
       await this.unloadAgent(rt.channelId, rt.agentId)
     }
+  }
+
+  /** 该 Channel 是否仍有未消费完的消息(pending/consuming;读失败按「有」处理,宁可延迟不可丢) */
+  protected hasPendingInbox(channelId: string, agentIds: string[]): boolean {
+    return agentIds.some((id) => {
+      try {
+        return this.deps.repos.messages.hasUnconsumedByChannelAgent(channelId, id)
+      }
+      catch {
+        return true
+      }
+    })
+  }
+
+  /** 挂起中的 HITL 审批同样视为活跃(重装会中止回合并收敛审批单) */
+  protected async hasPendingApprovals(agentIds: string[]): Promise<boolean> {
+    try {
+      const { getToolApprovals } = await import('../../agents/tool-approvals')
+      return agentIds.some(id => getToolApprovals().listPending(id).length > 0)
+    }
+    catch {
+      return false
+    }
+  }
+
+  /**
+   * Channel 级配置变更后的安全重装(workspace/scenarioPrompt/llm/twin-profile/绑线)。
+   *
+   * 旧行为:变更即 `unloadChannelAgents` —— 回合进行中会被直接拆掉,待消费消息留到
+   * 停滞看门狗(10min)才重投;未装配的频道还会被顺手冷启动一个 harness。
+   * 新语义:
+   *  - 未装配 → 直接返回(懒装配,下次任务按新配置 wire);
+   *  - 全 idle 且无待消费消息/挂起审批 → 立即卸载;仅当确有运行时被卸载才重新激活;
+   *  - 忙/有 pending → 入队,idle sweeper 在空闲后统一重装。
+   */
+  protected async recycleChannelAgents(channelId: string, reason: string): Promise<void> {
+    const cr = this.channels.get(channelId)
+    if (!cr) {
+      this.deferredChannelRecycles.delete(channelId)
+      return
+    }
+    const agents = [...cr.getAgents()]
+    const ids = agents.map(a => a.agentId)
+    const decision = channelRecycleDecision({
+      states: agents.map(a => String(a.getState?.() ?? 'unknown')),
+      hasPendingMessages: this.hasPendingInbox(channelId, ids),
+      hasPendingApprovals: await this.hasPendingApprovals(ids),
+    })
+    if (decision === 'skip') {
+      this.deferredChannelRecycles.delete(channelId)
+      return
+    }
+    if (decision === 'defer') {
+      this.deferredChannelRecycles.set(channelId, reason)
+      log.warn(`[AgentChannelManager] Channel ${channelId.slice(0, 8)} 配置变更(${reason})但仍有在途/待消费工作,延迟到空闲后重装`)
+      return
+    }
+    this.deferredChannelRecycles.delete(channelId)
+    const unloaded = await this.unloadChannelAgents(channelId)
+    if (unloaded) this.ensureChannelActive(channelId)
+  }
+
+  /** idle sweeper:执行延迟的配置重装(每轮一次;失败保留队列下轮重试) */
+  protected async flushDeferredChannelRecycles(): Promise<void> {
+    for (const [channelId, reason] of [...this.deferredChannelRecycles]) {
+      const cr = this.channels.get(channelId)
+      if (!cr) {
+        this.deferredChannelRecycles.delete(channelId)
+        continue
+      }
+      const agents = [...cr.getAgents()]
+      const ids = agents.map(a => a.agentId)
+      const decision = channelRecycleDecision({
+        states: agents.map(a => String(a.getState?.() ?? 'unknown')),
+        hasPendingMessages: this.hasPendingInbox(channelId, ids),
+        hasPendingApprovals: await this.hasPendingApprovals(ids),
+      })
+      if (decision !== 'now') continue
+      this.deferredChannelRecycles.delete(channelId)
+      try {
+        const unloaded = await this.unloadChannelAgents(channelId)
+        if (unloaded) {
+          log.warn(`[AgentChannelManager] Channel ${channelId.slice(0, 8)} 已空闲,执行延迟配置重装(${reason})`)
+          this.ensureChannelActive(channelId)
+        }
+      }
+      catch (err) {
+        log.error(`[AgentChannelManager] 延迟配置重装失败(下轮重试) ${channelId.slice(0, 8)}:`, err)
+        this.deferredChannelRecycles.set(channelId, reason)
+      }
+    }
+  }
+
+  /**
+   * 卸载 Channel 的全部成员运行时并停掉调度器。
+   * 返回 false = 没有已装配的 ChannelRuntime(未装配/已卸载),调用方据此决定是否重装。
+   */
+  protected async unloadChannelAgents(channelId: string): Promise<boolean> {
+    const cr = this.channels.get(channelId)
+    if (!cr) return false
+    let releaseSchedulerStarts: (() => void) | null = null
+    let unloaded = false
+    try {
+      releaseSchedulerStarts = await cr.stopSchedulersAndWait()
+      const agents = [...cr.getAgents()]
+      for (const agent of agents) {
+        await agent.stop()
+        cr.detachAgent(agent.agentId)
+        this.agentIndex.delete(runtimeKey(channelId, agent.agentId))
+      }
+      if (cr.getAgents().length === 0) {
+        this.channels.delete(channelId)
+        this.buses.delete(channelId)
+      }
+      unloaded = true
+    }
+    finally {
+      // Reopening is safe only after every old runtime has been detached.
+      if (unloaded && this.channels.get(channelId) === cr) releaseSchedulerStarts?.()
+    }
+    return unloaded
   }
 
   startIdleSweeper(options?: { intervalMs?: number, graceMs?: number }): () => void {
@@ -446,6 +569,9 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
           idleSince.delete(key)
         }
       }
+      void this.flushDeferredChannelRecycles().catch((err) => {
+        log.error(`[AgentChannelManager] 延迟配置重装扫描异常(下轮继续):`, err)
+      })
       void this.rescueStaleRoots().catch((err) => {
         log.error(`[AgentChannelManager] D1 兜底扫异常(下轮继续):`, err)
       })

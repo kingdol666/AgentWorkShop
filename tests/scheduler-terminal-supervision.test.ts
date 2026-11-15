@@ -14,6 +14,10 @@ class TestSchedulerLoop extends SchedulerLoopTick {
     this.lastFingerprint = this.superviseFingerprint(snapshot)
   }
 
+  resetFirstTick(): void {
+    this.lastSuperviseAt = 0
+  }
+
   shouldRun(snapshot: SupervisionSnapshot): boolean {
     return this.shouldSupervise(snapshot)
   }
@@ -44,6 +48,31 @@ test('terminal-task-only snapshot does not restart lead supervision; new mail an
   assert.equal(scheduler.shouldRun(snapshot('CANCELED')), false)
   assert.equal(scheduler.shouldRun(snapshot('CANCELED', ['message-1'])), true)
   assert.equal(scheduler.shouldRun(snapshot('WORKING')), true)
+})
+
+test('无可监督对象时不抢 execLock:仅邮件而无任务/成员工作 → false;有任务或成员工作 → true', () => {
+  const scheduler = new TestSchedulerLoop()
+  scheduler.resetFirstTick()
+  const empty = { tick: 0, activeRootId: null, tasks: [], members: [], mail: [] } as never
+
+  assert.equal(scheduler.shouldRun(empty), false, '空频道不得启动 supervision(会压住首条消息)')
+  assert.equal(scheduler.shouldRun({ ...empty, mail: [{ messageId: 'm-1' }] } as never), false, '纯群聊邮件由 runtime 消费循环处理,不需要调度监督')
+  assert.equal(scheduler.shouldRun({
+    ...empty,
+    tasks: [{ id: 'root-1', parentId: null, assigneeId: 'lead-1', state: 'SUBMITTED' }],
+  } as never), true, '有任务 → 需要监督')
+  assert.equal(scheduler.shouldRun({
+    ...empty,
+    tasks: [{ id: 'root-1', parentId: null, assigneeId: 'lead-1', state: 'CANCELED' }],
+  } as never), false, '仅有终态任务 → 无监督对象')
+  assert.equal(scheduler.shouldRun({
+    ...empty,
+    members: [{ agentId: 'w-1', state: 'busy', queued: 0 }],
+  } as never), true, '成员忙 → 需要监督')
+  assert.equal(scheduler.shouldRun({
+    ...empty,
+    members: [{ agentId: 'w-1', state: 'idle', queued: 2 }],
+  } as never), true, '成员有队列 → 需要监督')
 })
 
 // ===== P1(2026-11-10):过期收口解耦到锁外 —— enforceRootDeadlines =====

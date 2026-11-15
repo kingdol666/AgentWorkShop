@@ -1,5 +1,10 @@
 # 稳定性加固 × IDD/RAG/Channel 全系统测评报告
 
+> **后续更新（2026-11-15 晚）：** 本报告的剩余缺口已按《剩余缺口修复 × 最终验收报告》
+> （`docs/audit/2026-11-15-gap-closure-final-acceptance.md`）处理：P0-2 运行时消息投递、
+> P1-5 插件设置就绪、P1-7 节点元数据、P2 帧 meta 已修复；P0-4 IDD 结果库在含 §16 的
+> idd-doe-impl 上完成闭环；P0-3 RAG 入库仍受外部 600s 回合超时阻塞。以新报告为准。
+
 > 日期：2026-11-15
 > 被测代码：`main@203cefe9`（含 `375e1ece` 稳定性加固与 `203cefe9` 复审修复），已推送 `origin/main`
 > 环境：隔离 `AW_MODE=home` + 独立 `AW_HOME`；真实 IDD `:3210`、RAG backend `:8771` / web `:6789`；

@@ -11,6 +11,7 @@ import { AppError } from '../../../utils/errors'
 import { defineApiHandler } from '../../../utils/response'
 import { requireRole } from '../../workshop/caller'
 import { getSystemConfigService } from '../../../services/system-config'
+import { awaitPluginSettings } from '../../../services/system-config/readiness'
 import { recordOps } from '../../../services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
@@ -19,6 +20,12 @@ export default defineApiHandler(async (event) => {
   const overrides = body.override ?? body.overrides ?? body
   if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) {
     throw new AppError(400, 'VALIDATION_ERROR', '请求体应为 { "override": { key: value } }')
+  }
+  // 插件设置描述符是装载期注册的,宿主可能仍在启动:服务端等待就绪,客户端无需轮询重试。
+  const readiness = await awaitPluginSettings(Object.keys(overrides as Record<string, unknown>))
+  if (readiness.status === 'pending') {
+    throw new AppError(503, 'PLUGIN_SETTINGS_NOT_READY',
+      `插件宿主仍在装载设置定义,以下设置暂不可写: ${readiness.missing.join(', ')}。请稍后重试。`)
   }
   const res = getSystemConfigService().patch(overrides as Record<string, unknown>)
   // 高危管理面留痕:改了哪些键(值不落审计——可能含凭据),谁改的

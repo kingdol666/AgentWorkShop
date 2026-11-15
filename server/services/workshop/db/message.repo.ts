@@ -41,6 +41,14 @@ export function createMessageRepo(db: DatabaseSync) {
   const firstPending = db.prepare(
     `SELECT ${COLS} FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state = 'pending' ORDER BY createdAt ASC, rowid ASC LIMIT 1`,
   )
+  /**
+   * 是否有**未消费完**的消息(pending + consuming)。
+   * 卸载/重装闸门必须覆盖 consuming:claim 成功后到回合真正开始之间,
+   * 运行时状态仍可能是 idle,只看 pending 会在这个窗口把消息连同运行时一起拆掉。
+   */
+  const hasUnconsumed = db.prepare(
+    `SELECT 1 FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state IN ('pending', 'consuming') LIMIT 1`,
+  )
   const markConsumingStmt = db.prepare(
     `UPDATE messages SET state = 'consuming' WHERE id = ? AND state = 'pending'`,
   )
@@ -171,6 +179,11 @@ export function createMessageRepo(db: DatabaseSync) {
     /** 队头单条(dequeue 热路径:WHERE+ORDER 走 idx_messages_queue,LIMIT 1 免全量) */
     firstPendingByChannelAgent(channelId: string, toAgentId: string): MessageRow | undefined {
       return (firstPending.get(channelId, toAgentId) as MessageRow | undefined) ?? undefined
+    },
+
+    /** 是否有 pending 或 consuming 的消息(运行时卸载/配置重装闸门用) */
+    hasUnconsumedByChannelAgent(channelId: string, toAgentId: string): boolean {
+      return Boolean(hasUnconsumed.get(channelId, toAgentId))
     },
 
     /**

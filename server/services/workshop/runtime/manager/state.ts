@@ -119,6 +119,13 @@ export abstract class ManagerState extends ManagerContracts {
   }
 
   protected idleSweeperTimer: NodeJS.Timeout | null = null
+  /**
+   * Channel 配置变更的延迟重装队列(channelId → 触发原因)。
+   * 配置变更必须让新运行时读到新配置,但**不得**在回合进行中/信箱有待消费消息时
+   * 直接卸载(实测:改 LLM/加成员后首回合被拆掉,消息滞留到 10min 停滞看门狗才重投)。
+   * 忙/有待消费 → 先入队,idle sweeper 确认空闲后统一卸载并重新装配。
+   */
+  protected readonly deferredChannelRecycles = new Map<string, string>()
   protected memoryTimer: NodeJS.Timeout | null = null
   /** §7.3 outbox 独立补偿定时器(短周期重试;与记忆维护 6h 周期解耦) */
   protected outboxTimer: NodeJS.Timeout | null = null

@@ -10,6 +10,11 @@ export function getPluginHost() {
   return g.__awPluginHost ?? null
 }
 
+/** 宿主初始化是否已落定(成功装载或失败退出;用于设置写入的就绪闸门) */
+export function pluginHostReady() {
+  return Boolean(g.__awPluginHost?.ready)
+}
+
 /** scene-events 桥:全部无频道实时事件 → 插件 event:<type> */
 export function emitPluginEvent(type, payload) {
   void g.__awPluginHost?.bus.emit(`event:${type}`, payload)

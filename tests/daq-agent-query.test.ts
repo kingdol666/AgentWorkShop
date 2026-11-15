@@ -28,8 +28,11 @@ const NOW = Date.now()
 const repo = getDaqNodeRepo()
 repo.insert(new DaqNode({ id: 'dn-a', templateRef: 'daq-temp-tc', name: '一号温度', lineId: 'ln-1', driver: 'mock' }))
 repo.insert(new DaqNode({ id: 'dn-b', templateRef: 'daq-pressure-tx', name: '二号压力', lineId: 'ln-2', driver: 'mock' }))
+// 节点级语义覆盖模板(场景复用温度模板承载克重信号):Agent 文本必须按节点声明判读
+repo.insert(new DaqNode({ id: 'dn-c', templateRef: 'daq-temp-tc', name: '克重', unit: 'g', min: 25, max: 40, semantics: '制品克重(采集):闭环寻优的被控量,规格 32.5±0.35 g', lineId: 'ln-1', driver: 'mock' }))
 getAgentNodeBindingRepo().bind(AGENT, 'dn-a', 'daq', 'auto')
 getAgentNodeBindingRepo().bind(AGENT, 'dn-b', 'daq', 'auto')
+getAgentNodeBindingRepo().bind(AGENT, 'dn-c', 'daq', 'auto')
 
 const tsdb = getTsdb()
 await tsdb.query('warmup', { fromMs: 0, toMs: NOW, limit: 1 })
@@ -37,6 +40,7 @@ await tsdb.writeSamples([
   { nodeId: 'dn-a', lineId: 'ln-1', tsMs: NOW - 300_000, value: 168, state: 'ok' },
   { nodeId: 'dn-a', lineId: 'ln-1', tsMs: NOW - 120_000, value: 169, state: 'ok' },
   { nodeId: 'dn-b', lineId: 'ln-2', tsMs: NOW - 300_000, value: 0.82, state: 'ok' },
+  { nodeId: 'dn-c', lineId: 'ln-1', tsMs: NOW - 120_000, value: 31.26, state: 'ok' },
 ])
 
 const FROM = new Date(NOW - 600_000).toISOString()
@@ -57,6 +61,14 @@ test('node_ids + ISO 起止时间:两节点都返回物理语义与数值', asyn
   assert.match(r.text, /169/)
   assert.match(r.text, /0\.82/)
   assert.match(r.text, /时间窗/)
+})
+
+test('节点级 semantics 覆盖模板:克重节点不得被当成温度信号', async () => {
+  const r = await toolDaqQuery(AGENT, { node_id: 'dn-c', last_minutes: 30, scope: 'all' })
+  assert.equal(r.isError, undefined, r.text)
+  assert.match(r.text, /制品克重/)
+  assert.match(r.text, /31\.26/)
+  assert.doesNotMatch(r.text, /熔体\/箱体温度/, '模板 ch 不得覆盖节点声明的物理意义')
 })
 
 test('旧参数 node_id + last_minutes 完全兼容', async () => {

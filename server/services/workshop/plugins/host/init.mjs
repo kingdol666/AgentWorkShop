@@ -29,6 +29,8 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
     packageRoot,
     logger,
     configRelayOff: null,
+    /** 初始化是否已落定(设置描述符已注册;失败也会置 true,避免设置接口无谓等待) */
+    ready: false,
   }
   g.__awPluginHost = host
 
@@ -102,8 +104,18 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
   host.selfOrigin = () => selfOrigin
   host.logger.info(`自环 origin: ${selfOrigin}`)
 
-  await loadAllPlugins(host, { config, settingsPath, paths })
-  await syncPluginSettings()
+  try {
+    await loadAllPlugins(host, { config, settingsPath, paths })
+    await syncPluginSettings()
+  }
+  catch (err) {
+    // 装载失败也要把 ready 置位:设置接口据此快速返回「未知项」而不是空等超时。
+    host.initError = err
+    throw err
+  }
+  finally {
+    host.ready = true
+  }
   // 插件 settings 描述符在装载期才注册进 SystemConfigService(engine.loadEffective 的
   // 静态描述符表里没有 plugins.* 键)→ 装载完成后再从服务同步一次未掩码 effective,
   // 让 ctx.config.get('plugins.<name>.token') 从第一次调用起就能读到真值。

@@ -9,6 +9,7 @@ import { DaqNode } from '../daq-node'
 import { daqKeyFromRef, normalizeDataTransform, stripMaskedSecrets } from '../../../../../shared/daq-protocol'
 import { findDaqTemplate } from '../daq-templates'
 import { validateSinkOverrides } from '../frames'
+import { validateNodeMetadata } from '../node-metadata'
 import { getDaqHostPorts } from '../host-ports'
 import { requireDriverKind } from '../drivers'
 import { getObjectStore } from '../objectstore'
@@ -55,6 +56,19 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
       lineId: input.lineId,
       semantics: input.semantics,
     })
+    const metaErrors = validateNodeMetadata({
+      name: node.name,
+      unit: node.unit,
+      decimals: node.decimals,
+      min: node.min,
+      max: node.max,
+      warnLow: node.warnLow,
+      warnHigh: node.warnHigh,
+      semantics: node.semantics,
+    })
+    if (metaErrors.length > 0) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `节点元数据非法: ${metaErrors.join('; ')}`)
+    }
     this.repo.insert(node)
     this.syncRuntimes() // 新节点即刻入网关注册表(边缘运行时实例化)
     this.emitNodeChanged('added', node)
@@ -64,6 +78,21 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
   patch(id: string, patch: DaqPatchInput): DaqNode {
     const node = this.repo.byId(id)
     if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
+    // 元数据自洽性在**落库前**按合并后的有效值校验:半套 patch(只改 min)也不能
+    // 让节点进入 min>=max / warn 带反转的带病状态。
+    const metaErrors = validateNodeMetadata({
+      name: patch.name !== undefined ? patch.name : node.name,
+      unit: patch.unit !== undefined ? patch.unit : node.unit,
+      decimals: patch.decimals !== undefined ? patch.decimals : node.decimals,
+      min: patch.min !== undefined ? patch.min : node.min,
+      max: patch.max !== undefined ? patch.max : node.max,
+      warnLow: patch.warnLow !== undefined ? patch.warnLow : node.warnLow,
+      warnHigh: patch.warnHigh !== undefined ? patch.warnHigh : node.warnHigh,
+      semantics: patch.semantics !== undefined ? patch.semantics : node.semantics,
+    })
+    if (metaErrors.length > 0) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `节点元数据非法: ${metaErrors.join('; ')}`)
+    }
     if (patch.name !== undefined) node.name = patch.name
     if (patch.driver !== undefined) node.driver = requireDriverKind(patch.driver)
     // P0-2(2026-10-28 审查):GET 投影的 `******` 可能是整包 PATCH 回来的回显,

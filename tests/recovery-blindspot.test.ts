@@ -38,9 +38,10 @@ test('ensureAgentRuntime 对已停止实例必须重装配', () => {
   assert.match(SRC, /this\.agentIndex\.delete\(key\)/, '必须先摘索引再重装配')
 })
 
-test('unloadAgent 在 await 之后复查 pending(关闭检查-卸载竞态)', () => {
+test('unloadAgent 在 await 之后复查未消费消息(关闭检查-卸载竞态)', () => {
   const unload = SRC.slice(SRC.indexOf('async unloadAgent('), SRC.indexOf('async unloadIdleAgents'))
   const awaitIdx = unload.indexOf('await import(\'../../agents/tool-approvals\')')
-  const recheckIdx = unload.indexOf('listPendingByChannelAgent', awaitIdx)
-  assert.ok(awaitIdx > 0 && recheckIdx > awaitIdx, 'await 之后必须复查 pending')
+  // pending + consuming 都必须拦住卸载:claim 成功后到回合开始前 runtime 仍可能 idle
+  const recheckIdx = unload.indexOf('hasUnconsumedByChannelAgent', awaitIdx)
+  assert.ok(awaitIdx > 0 && recheckIdx > awaitIdx, 'await 之后必须复查未消费消息')
 })

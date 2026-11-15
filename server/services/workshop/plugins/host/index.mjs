@@ -20,4 +20,4 @@ export { statePathFor, readDisabledSet, writeDisabledSet, discoverPluginDirs } f
 export { initPluginHost } from './init.mjs'
 export { reloadPluginHost } from './reload.mjs'
 export { setPluginEnabled } from './toggle.mjs'
-export { getPluginHost, emitPluginEvent, emitDaqSample, emitDaqFrame, emitDcwWrite, emitLineLifecycle, readClientScript, pluginManifest, shutdownPluginHost } from './api.mjs'
+export { getPluginHost, pluginHostReady, emitPluginEvent, emitDaqSample, emitDaqFrame, emitDcwWrite, emitLineLifecycle, readClientScript, pluginManifest, shutdownPluginHost } from './api.mjs'

@@ -203,7 +203,17 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
 
   protected shouldSupervise(snapshot: SupervisionSnapshot): boolean {
     if (this.lead.supervise === null) return false // no Lead decision capability: recovery only
-    if (this.lastSuperviseAt === 0) return true
+    // 没有可监督对象时不得启动 supervise:新频道激活/纯群聊消息场景下 snapshot
+    // 无任务、无成员在忙/排队,这次回合却会与 lead 信箱消费共享同一把 execLock ——
+    // 实测首条群聊消息被压到 10min 停滞看门狗。信箱消息由 AgentRuntime 消费循环处理,
+    // 调度监督只在确有任务/成员工作需要编排时介入。
+    const hasActionableWork = snapshot.tasks.some(t => !TERMINAL_TASK_STATES[t.state])
+      || snapshot.members.some(m => m.state === 'busy' || (m.queued ?? 0) > 0)
+    // 首轮空监督会抢占 execLock:新频道激活后调度器立刻跑一次 supervise,若无开放
+    // 任务/成员工作,这次回合没有监督对象却会压住 lead 信箱消费(实测首条消息被压到
+    // 10min 看门狗)。首轮只在确有开放任务/成员工作时介入;后续 tick 仍按邮件/指纹
+    // 变化触发(新邮件可能是尚未落成任务的人类指令)。
+    if (this.lastSuperviseAt === 0) return hasActionableWork
     const fingerprint = this.superviseFingerprint(snapshot)
     if (fingerprint !== this.lastFingerprint) {
       const [, previousMembers, previousMail] = this.lastFingerprint.split('#')

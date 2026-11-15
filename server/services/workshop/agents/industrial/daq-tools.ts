@@ -262,7 +262,10 @@ export async function toolDaqQuery(agentId: string, args: {
       continue
     }
     const tpl = findDaqTemplate(node.templateKey)
-    const ch = tpl?.ch ?? node.templateKey
+    // 节点级 semantics 是模板语义的**覆盖**(如场景复用温度模板承载克重信号):
+    // 表头/物理意义必须优先节点自己的声明,否则 Agent 会按模板的「熔体/箱体温度」误判。
+    const ch = (node.semantics || '').trim().slice(0, 60) || tpl?.ch || node.templateKey
+    const physicalMeaning = (node.semantics || '').trim() || tpl?.semantics || ''
     // 默认口径:该节点所属产线的**活动批次**(未开跑 → 不过滤,保持原有语义)
     const nodeLine = node.lineId || ''
     const activeRun = !trustedScope && !explicitScoped && !wantAll && nodeLine ? getActiveLineRun(nodeLine) : null
@@ -328,7 +331,7 @@ export async function toolDaqQuery(agentId: string, args: {
               ? '全量窗口(scope=all,不做配方过滤)'
               : '未过滤(该产线当前未开跑 → 无活动批次可限定)'
       // 表头携带节点 id(2026-10-30):多节点查询时模型/人可把数值精确回指到节点
-      const head = `■ ${node.name}[id=${nodeId}](${ch})单位 ${node.unit},正常量程 ${node.min}~${node.max}${node.unit},当前状态 ${node.state},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}(降采样 ${bucketMs}ms,聚合 ${agg})\n  ${scopeTag}${historyNote ? `\n  ${historyNote}` : ''}`
+      const head = `■ ${node.name}[id=${nodeId}](${ch})单位 ${node.unit},正常量程 ${node.min}~${node.max}${node.unit},当前状态 ${node.state},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}(降采样 ${bucketMs}ms,聚合 ${agg})${physicalMeaning ? `\n  物理意义: ${physicalMeaning}` : ''}\n  ${scopeTag}${historyNote ? `\n  ${historyNote}` : ''}`
       // 工况判读容器(具体判读在 values 计算后追加)
       const readout: string[] = []
       if (points.length === 0) {
@@ -503,7 +506,7 @@ export async function toolDaqFrames(agentId: string, args: {
       }
       const frames = scope ? filterTaggedSessionRows(framesRaw, scope) : framesRaw
       if (frames.length === 0) {
-        sections.push(`■ ${node.name}(${tpl?.ch ?? node.templateKey}):窗口内无帧(产线未运行或过滤条件不匹配;仅产线运行中的帧被持久化)`)
+        sections.push(`■ ${node.name}(${(node.semantics || '').trim().slice(0, 60) || tpl?.ch || node.templateKey}):窗口内无帧(产线未运行或过滤条件不匹配;仅产线运行中的帧被持久化)`)
         okNodes++
         continue
       }
@@ -518,7 +521,7 @@ export async function toolDaqFrames(agentId: string, args: {
       const layout = vmeta
         ? ` | 单位 ${node.unit};量程 ${vmeta.min}~${vmeta.max}${vmeta.axis ? `;轴 ${vmeta.axis}` : ''};点位 ${vmeta.points} 个(${labelOf(0)}…${labelOf(Math.max(0, vmeta.points - 1))})${vmeta.pointUnit ? `,点单位 ${vmeta.pointUnit}` : ''}`
         : ` | 单位 ${node.unit};量程 ${node.min}~${node.max}`
-      const head = `■ ${node.name}(${tpl?.ch ?? node.templateKey})形态 ${signalKind},帧数 ${frames.length},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}${layout}${tpl?.semantics ? `\n  物理意义: ${tpl.semantics}` : ''}`
+      const head = `■ ${node.name}(${(node.semantics || '').trim().slice(0, 60) || tpl?.ch || node.templateKey})形态 ${signalKind},帧数 ${frames.length},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}${layout}${(node.semantics || tpl?.semantics) ? `\n  物理意义: ${(node.semantics || tpl?.semantics || '').trim()}` : ''}`
       const lines = frames.slice(0, 10).map((f) => {
         const at = new Date(f.at).toISOString().slice(11, 19)
         if (f.kind === 'vector') {

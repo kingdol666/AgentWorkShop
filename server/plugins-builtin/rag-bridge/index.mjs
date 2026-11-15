@@ -31,6 +31,7 @@ export default {
     { key: 'base_url', type: 'string', default: DEFAULT_BASE, group: 'default', labelKey: 'plugin.rag-bridge.settings.base_url', label: 'rag-knowledge 后端地址', description: 'FastAPI 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
     { key: 'web_url', type: 'string', default: DEFAULT_WEB, group: 'default', labelKey: 'plugin.rag-bridge.settings.web_url', label: 'rag-knowledge Web 地址', description: 'Nuxt Web(文档写盘/目录);保存即热生效' },
     { key: 'token', type: 'string', default: '', group: 'auth', labelKey: 'plugin.rag-bridge.settings.token', label: 'rag-knowledge API Token', description: '服务端开启鉴权时的 MCP/API Token(Authorization: Bearer);空=匿名;保存即热生效' },
+    { key: 'agent_harness', type: 'string', default: '', group: 'default', labelKey: 'plugin.rag-bridge.settings.agent_harness', label: '知识库 Agent 引擎', description: '可选:rag-knowledge chat 的 harness(如 omp/claude);空=使用 RAG 服务默认。仅选择知识库内部 Agent 引擎,不改变平台固定的权限档。' },
   ],
   async setup(ctx) {
     // ---- 运行态 ----
@@ -41,6 +42,9 @@ export default {
     // 鉴权 token(系统配置优先,kv 兜底):rag-knowledge 开启 server.auth 时所有 /api/*
     // 要求 Bearer;backend 与 web 都认 Authorization: Bearer / X-KB-Token 两种头
     const kbToken = () => String(ctx.config?.get?.('plugins.rag-bridge.token') || ctx.kv.get('kb.token') || '').trim()
+    // 可选:知识库内部 Agent 引擎(空=RAG 服务默认 claude)。只影响 RAG 侧执行器,
+    // 权限档仍由下方服务端固定为 default;便于与平台 omp 执行模型对齐/排障。
+    const agentHarness = () => String(ctx.config?.get?.('plugins.rag-bridge.agent_harness') || ctx.kv.get('kb.agent_harness') || '').trim()
     const authHeaders = () => {
       const t = kbToken()
       return t ? { 'authorization': `Bearer ${t}`, 'x-kb-token': t } : {}
@@ -307,7 +311,9 @@ export default {
         const waitSec = Math.min(Math.max(Math.round(Number(args.wait_seconds ?? 600) || 600), 10), 1800)
         // 权限档由服务端固定(不再接受调用方透传):历史参数 permission/harness 一律忽略。
         // 缺省 'default' 标准审批档;此前缺省传递 bypassPermissions 允许 Agent 自行提权。
-        const body = { prompt, timeout_ms: mode === 'sync' ? waitSec * 1000 : 540000, mode, permission: 'default' }
+        // RAG web 侧硬上限 600s(MAX_TIMEOUT_MS);异步入库给足上限,避免 540s 提前截断。
+        const harness = agentHarness()
+        const body = { prompt, timeout_ms: mode === 'sync' ? waitSec * 1000 : 600000, mode, permission: 'default', ...(harness ? { harness } : {}) }
 
         if (mode === 'async') {
           // 异步:立即返回 task_id,知识库后台完成;结果稍后用 kb_agent_status 查询

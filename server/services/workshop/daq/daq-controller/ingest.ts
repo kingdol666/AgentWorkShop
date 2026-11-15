@@ -12,6 +12,7 @@ import { findDaqTemplate } from '../daq-templates'
 import { getDaqHostPorts } from '../host-ports'
 import { getDaqQueue } from '../bus'
 import { tsdbRowOf } from './tsdb-row'
+import { sanitizeFrameMeta, sanitizeFrameMetrics } from '../frame-meta'
 import type { DaqFrameSample } from '../drivers'
 
 export abstract class DaqControllerIngest extends DaqControllerPush {
@@ -129,7 +130,7 @@ export abstract class DaqControllerIngest extends DaqControllerPush {
     // 产线批次打标(与标量样本同源取值)
     const lineRun = getDaqHostPorts()?.lineRun.activeRun(node.lineId) ?? null
     if (lineRun) getDaqHostPorts()?.lineRun.bumpTaggedSamples(node.lineId)
-    const metrics = f.metrics ?? {}
+    const metrics = sanitizeFrameMetrics(f.metrics)
     this.pushFrame({
       nodeId: node.id,
       tsMs,
@@ -141,9 +142,9 @@ export abstract class DaqControllerIngest extends DaqControllerPush {
       recipeId: lineRun?.recipeId ?? null,
       runId: lineRun?.runId ?? null,
       points: f.kind === 'vector' ? (f.points?.length ?? 0) : 0,
-      meta: f.kind === 'image'
+      meta: sanitizeFrameMeta(f.kind === 'image'
         ? { objectKey: f.objectKey, thumbKey: f.thumbKey, mime: f.mime, width: f.width, height: f.height, sha256: f.sha256, size: f.size }
-        : { points: f.points ?? [] },
+        : { points: f.points ?? [] }),
       metrics,
     })
     if (this.frameBuffer.length > FRAME_BUFFER_CAP) {
