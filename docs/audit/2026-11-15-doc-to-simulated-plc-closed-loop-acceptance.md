@@ -217,6 +217,7 @@ Mimosa：本轮未重新完成完整扫描；上一轮 deep scan `inconclusive`�
 | 供给/频道/验收配置 | 同目录 `provision.json`、`forge.json`、`forge-v3.json`、`verify.json`、`onboard.json` |
 | sim-twin | 同目录 `sim-twin.log`、`vector-response.json` |
 | V1–V6 | 同目录 `verify-line-6.log` |
+| 受保护线夹具 | 同目录 `seed-protected-line.md` |
 | onboard+smoke | 同目录 `onboard-smoke.log` |
 | 闭环 | 同目录 `closed-loop-results.json`、`closed-loop-3.log` |
 | 未授权写负例 | 同目录 `unauthorized-write.json` |
