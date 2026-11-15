@@ -36,6 +36,23 @@ const tok = await login()
 const scenario = cfg.scenario ?? 'optimize'
 assertNotProtected(cfg.lineId, '目标产线')
 const tag = fingerprint('CH', cfg.name)
+// 绑线频道默认 integrated:工业工具/四层限界/产线上下文按生产模式装配。
+// (模板默认是 generic;只 bindLineId 不会切模式,曾导致锻造出的线频道被工业工具面拒绝。)
+const desiredMode = cfg.channelMode ?? (cfg.lineId ? 'production_line_integrated' : 'generic')
+
+// 工况上下文块(scene/promptVariables → 频道提示词)。创建时随模板一次写入;
+// 复用频道才走 PATCH。避免“先建频道→再 PATCH prompt”触发 lead 重装导致 seed task 滞留。
+const contextMarker = '## 工况上下文（文档自动接入）'
+const contextLines = []
+for (const obj of [cfg.scene, cfg.promptVariables]) {
+  if (!obj || typeof obj !== 'object') continue
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined && v !== null && String(v).trim()) contextLines.push(`- ${k}: ${String(v).slice(0, 300)}`)
+  }
+}
+const contextBlock = contextLines.length > 0
+  ? `${contextMarker}\n${contextLines.join('\n')}\n\n> 以上上下文由工况文档/接入配置生成；写入仍受节点授权、量程/步长/60s 与 HITL 治理。`
+  : ''
 
 // ---------- 1. 频道(模板实例化;同名指纹复用) ----------
 const chList = await api('GET', '/api/workshop/channels', undefined, tok)
@@ -46,11 +63,17 @@ let channelId
 if (channel) {
   channelId = channel.id
   ok('频道已存在(复用)', true, channelId)
+  if (cfg.lineId && channel.channelMode !== desiredMode) {
+    const p = await api('PATCH', `/api/workshop/channels/${channelId}`, { channelMode: desiredMode }, tok)
+    ok('复用频道模式对齐', p.code === 0 || !!p.data, `${channel.channelMode} → ${desiredMode} ${p.message ?? ''}`)
+  }
 }
 else {
   const j = await api('POST', `/api/workshop/channel-templates/${cfg.templateId ?? DEFAULT_TEMPLATE[scenario]}/instantiate`, {
     name: cfg.name,
+    channelMode: desiredMode,
     bindLineId: cfg.lineId,
+    ...(contextBlock ? { scenarioPrompt: contextBlock } : {}),
     controlPolicy: DEFAULT_POLICY[scenario],
     ...(cfg.scene ? { scene: cfg.scene } : {}),
     ...(cfg.promptVariables ? { promptVariables: cfg.promptVariables } : {}),
@@ -59,6 +82,20 @@ else {
   ok(`模板实例化(${scenario})`, !!channelId, channelId ?? j.message ?? '')
 }
 if (!channelId) process.exit(1)
+
+// ---------- 1b. 复用频道的工况上下文补齐 ----------
+// 新建频道已在 instantiate 时携带 scenarioPrompt;只有复用频道才需要检查/补写。
+if (contextBlock) {
+  const ch = await api('GET', `/api/workshop/channels/${channelId}`, undefined, tok)
+  const currentPrompt = String(ch?.data?.scenarioPrompt ?? ch?.data?.channel?.scenarioPrompt ?? '')
+  if (!currentPrompt.includes(contextMarker)) {
+    const p = await api('PATCH', `/api/workshop/channels/${channelId}`, {
+      scenarioPrompt: `${currentPrompt}${currentPrompt ? '\n\n' : ''}${contextBlock}`,
+    }, tok)
+    ok('工况上下文写入频道(复用补齐)', p.code === 0 || !!p.data, p.message ?? `${contextLines.length} 项`)
+  }
+  else ok('工况上下文已存在(复用)', true, contextMarker)
+}
 
 // ---------- 2. 团队级插件开关(全量替换:未在配置中启用的已注册插件必须显式关闭) ----------
 const wantedPlugins = new Set(Object.entries(cfg.plugins ?? {}).filter(([, en]) => en === true).map(([name]) => name))
@@ -135,12 +172,23 @@ if (Array.isArray(cfg.mesFetchGrants) && cfg.mesFetchGrants.length > 0) {
   }
 }
 
-// ---------- 4. 线域授权(权限 v3:频道成员可见/可操作) ----------
-const userIds = [...new Set(agents.map(a => a.userId).filter(Boolean))]
+// ---------- 4. 线域授权(权限 v3:频道用户可见/可操作) ----------
+// Agent 实例不是人类用户:授权主体必须取 channel.ownerUserId + 群成员 userIds。
+// 旧实现从 /channels/:id/agents 取 userId,而该 DTO 不含 userId → 循环恒空转。
+const chDetail = await api('GET', `/api/workshop/channels/${channelId}`, undefined, tok)
+const ownerUserId = String(chDetail?.data?.ownerUserId ?? chDetail?.data?.channel?.ownerUserId ?? '')
+let memberUserIds = []
+try {
+  const mr = await api('GET', `/api/workshop/channels/${channelId}/members`, undefined, tok)
+  memberUserIds = (mr?.data?.members ?? []).map(m => String(m.userId ?? '')).filter(Boolean)
+}
+catch { /* 群聊未开启等场景:退回仅 owner 授权 */ }
+const userIds = [...new Set([ownerUserId, ...memberUserIds].filter(Boolean))]
 for (const uid of userIds) {
   const j = await api('PUT', '/api/workshop/permissions', { userId: uid, grants: [{ lineId: cfg.lineId, mode: 'operate' }] }, tok)
   ok(`线域授权[${String(uid).slice(0, 8)}]`, j.code === 0 || !!j.data, j.message ?? '')
 }
+ok('线域授权覆盖频道用户', userIds.length > 0, `users=${userIds.length}(owner+members)`)
 
 // ---------- 5. 种子任务(同题幂等:频道复用时不得重复派发) ----------
 if (cfg.seedTask) {

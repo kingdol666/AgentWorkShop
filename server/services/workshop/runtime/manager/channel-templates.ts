@@ -107,7 +107,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
    * 场景/工作目录照搬;lead 内联创建;成员逐个克隆(引用模板时校验操作者可读)。
    * 返回 createChannel 同构结果 + 成员实例数。
    */
-  async instantiateChannelTemplate(templateId: string, user: ActingUser, nameOverride?: string, options?: { channelMode?: ChannelMode, scene?: Record<string, unknown>, promptVariables?: Record<string, unknown>, objective?: Record<string, unknown>, toolProfile?: string, controlPolicy?: 'recommendation_only' | 'hitl_governed' | 'bounded_auto', providerId?: string, providerVersion?: string, providerHash?: string, scenePackId?: string, optimizationMode?: 'exploration' | 'aml', boundModelId?: string, enableKnowledgeBase?: boolean }): Promise<{ channelId: string, workspace: string, agentCount: number, leadAgentId?: string, agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> }> {
+  async instantiateChannelTemplate(templateId: string, user: ActingUser, nameOverride?: string, options?: { channelMode?: ChannelMode, scenarioPrompt?: string, scene?: Record<string, unknown>, promptVariables?: Record<string, unknown>, objective?: Record<string, unknown>, toolProfile?: string, controlPolicy?: 'recommendation_only' | 'hitl_governed' | 'bounded_auto', providerId?: string, providerVersion?: string, providerHash?: string, scenePackId?: string, optimizationMode?: 'exploration' | 'aml', boundModelId?: string, enableKnowledgeBase?: boolean }): Promise<{ channelId: string, workspace: string, agentCount: number, leadAgentId?: string, agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> }> {
     const tpl = this.deps.repos.channelTemplates.findById(templateId)
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Channel 模板不存在: ${templateId}`)
     this.requireTemplateReadable(tpl, user, 'Channel 模板')
@@ -118,9 +118,14 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
     // 显式 false → 显式停用(频道内 kb_* 工具不注入);缺省 → 不写开关行(平台默认)。
     const kb = options?.enableKnowledgeBase
     const kbOn = kb === true
-    const scenarioPrompt = kbOn && KNOWLEDGE_BASE_TEMPLATE_IDS.has(tpl.id)
+    const baseScenarioPrompt = kbOn && KNOWLEDGE_BASE_TEMPLATE_IDS.has(tpl.id)
       ? (tpl.scenarioPrompt ?? '') + KNOWLEDGE_BASE_PROMPT_SECTION
       : tpl.scenarioPrompt
+    // 工况上下文在创建时一次写入,避免创建后 PATCH 触发 lead 运行时重装(seed task 滞留根因之一)。
+    const extraScenarioPrompt = String(options?.scenarioPrompt ?? '').trim()
+    const scenarioPrompt = extraScenarioPrompt
+      ? `${baseScenarioPrompt ?? ''}${baseScenarioPrompt ? '\n\n' : ''}${extraScenarioPrompt}`
+      : baseScenarioPrompt
     const created = await this.createChannel({
       name: (nameOverride && nameOverride.trim()) || tpl.name,
       channelMode: options?.channelMode ?? 'generic',

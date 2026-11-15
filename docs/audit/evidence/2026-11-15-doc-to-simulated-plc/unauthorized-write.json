@@ -1,0 +1,10 @@
+{
+  "at": "2026-11-15T16:35:20.068Z",
+  "email": "no-grant-mwi0w35p@aw.local",
+  "status": 403,
+  "body": {
+    "code": "LINE_FORBIDDEN",
+    "message": "无该产线权限:请联系管理员在「权限管理」中授予(产线 ln-0eb8f9fa)",
+    "data": null
+  }
+}

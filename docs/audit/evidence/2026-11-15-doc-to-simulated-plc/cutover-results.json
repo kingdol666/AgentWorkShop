@@ -1,0 +1,113 @@
+{
+  "at": "2026-11-15T16:05:03.475Z",
+  "pass": 12,
+  "fail": 0,
+  "results": [
+    {
+      "id": "T1",
+      "name": "第二套协议兼容端点已就绪(inj-main-b)",
+      "pass": true,
+      "detail": "signals=5 port=37544"
+    },
+    {
+      "id": "T2",
+      "name": "切换前治理快照",
+      "pass": true,
+      "detail": "保压压力SP:min=45,step=2 | 保压时间SP:min=2,step=0.5 | 料温SP:min=180,step=3 | 熔体压力PV:min=0,step=- | 制品克重PV:min=25,step=-"
+    },
+    {
+      "id": "T2b",
+      "name": "切换前停线(关闭旧端点打标窗口)",
+      "pass": true,
+      "detail": "{\"code\":0,\"message\":\"ok\",\"data\":{\"run\":{\"id\":\"rr-97bcd681\",\"recipeId\":\"rc-605df683\",\"recipeName\":\"注塑克重基线配方\",\"productId\":\"pd-d02dc5ca\",\"lineId\":\"ln-0eb8f9fa\",\"re"
+    },
+    {
+      "id": "T3",
+      "name": "仅替换 5 个节点的 driverConfig 到第二端点",
+      "pass": true,
+      "detail": "patched=5/5"
+    },
+    {
+      "id": "T4",
+      "name": "治理配置零改动(量程/步长/单位/精度/hold/产线/语义)",
+      "pass": true,
+      "detail": "保压压力SP:45~85/45~85 | 保压时间SP:2~8/2~8 | 料温SP:180~240/180~240 | 熔体压力PV:0~100/0~100 | 制品克重PV:25~40/25~40"
+    },
+    {
+      "id": "T5a",
+      "name": "第二端点开新批次(批次状态与端点一致)",
+      "pass": true,
+      "detail": "{\"code\":0,\"message\":\"ok\",\"data\":{\"run\":{\"id\":\"rr-32bf32d2\",\"recipeId\":\"rc-605df683\",\"recipeName\":\"注塑克重基线配方\",\"productId\":\"pd-d02dc5ca\",\"lineId\":\"ln-0eb8f9fa\",\"re"
+    },
+    {
+      "id": "T5",
+      "name": "V1 数采复验:第二端点熔体压力/克重有真实样本",
+      "pass": true,
+      "detail": "melt=1 weight=1 latestWeight=31.223333333333333"
+    },
+    {
+      "id": "T6",
+      "name": "V3 写回环复验:第二端点 3/3 DCW 经 HITL 批量写并回读一致",
+      "pass": true,
+      "detail": "approved=true reads={\"dw-aed0ca16\":51,\"dw-66f4b8c6\":3.5,\"dw-56867d2f\":206} 方案「CUT-割接写控-zfgg」已获批准并整批下发,全部参数设备证实(3/3,批次 rr-662d3)。runId:rr-662d3dd1(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-662d3dd1（2026-11-16 0"
+    },
+    {
+      "id": "T4b",
+      "name": "绑定与插件状态零改动",
+      "pass": true,
+      "detail": "bindings=18->18 plugins=0->0"
+    },
+    {
+      "id": "T7",
+      "name": "Channel/绑定零改动(仍 integrated 且绑线)",
+      "pass": true,
+      "detail": "production_line_integrated ln-0eb8f9fa"
+    },
+    {
+      "id": "T7b",
+      "name": "切回前停线(关闭第二端点批次)",
+      "pass": true,
+      "detail": "{\"code\":0,\"message\":\"ok\",\"data\":{\"run\":{\"id\":\"rr-32bf32d2\",\"recipeId\":\"rc-605df683\",\"recipeName\":\"注塑克重基线配方\",\"productId\":\"pd-d02dc5ca\",\"lineId\":\"ln-0eb8f9fa\",\"re"
+    },
+    {
+      "id": "T8",
+      "name": "切回原端点并重开批次后数采恢复(可逆)",
+      "pass": true,
+      "detail": "back=5/5 samples=1"
+    }
+  ],
+  "extra": {
+    "before": {
+      "dw-aed0ca16": {
+        "min": 45,
+        "max": 85,
+        "stepLimit": 2,
+        "semantics": "保压压力设定(MPa):主控制量;升压提高克重但过大易飞边。单步≤2MPa,写入间隔≥60s。"
+      },
+      "dw-66f4b8c6": {
+        "min": 2,
+        "max": 8,
+        "stepLimit": 0.5,
+        "semantics": "保压时间设定(s):延长保压提高克重,过长增加节拍。单步≤0.5s。"
+      },
+      "dw-56867d2f": {
+        "min": 180,
+        "max": 240,
+        "stepLimit": 3,
+        "semantics": "料温设定(℃):影响熔体黏度与克重;热惯性大,调整后需等待。单步≤3℃。"
+      },
+      "dn-1698f09b": {
+        "min": 0,
+        "max": 100,
+        "semantics": "熔体压力实测(MPa):随保压压力变化,用于验证因果跟随。"
+      },
+      "dn-49f96bc3": {
+        "min": 25,
+        "max": 40,
+        "semantics": "制品克重实测(g):闭环目标 32.50±0.35g。"
+      }
+    },
+    "patched": 5,
+    "back": 5
+  }
+}

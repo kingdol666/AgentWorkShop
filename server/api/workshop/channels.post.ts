@@ -45,7 +45,9 @@ export default defineApiHandler(async (event) => {
   const manager = getWorkshopManager()
   const result = await manager.createChannel({
     name: body.name,
-    channelMode: body.channelMode,
+    // 绑线频道默认 integrated:工业工具/四层限界/产线上下文按生产模式装配;
+    // 调用方显式传 generic 时仍尊重(纯协作/观察频道)。
+    channelMode: body.channelMode ?? (body.lineId ? 'production_line_integrated' : undefined),
     description: body.description,
     scenarioPrompt: body.scenarioPrompt,
     workspace: body.workspace,

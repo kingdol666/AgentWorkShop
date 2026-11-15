@@ -1,0 +1,98 @@
+{
+  "scenario": "optimize",
+  "name": "精密注塑克重闭环频道-20261115",
+  "lineId": "ln-0eb8f9fa",
+  "plugins": {},
+  "provision": {
+    "lineId": "ln-0eb8f9fa",
+    "dcw": {
+      "保压压力SP": "dw-aed0ca16",
+      "保压时间SP": "dw-66f4b8c6",
+      "料温SP": "dw-56867d2f",
+      "冷却流量SP": "dw-60d51e51",
+      "保压压力SP（复检）": "dw-202ae9c6"
+    },
+    "daq": {
+      "熔体压力PV": "dn-1698f09b",
+      "制品克重PV": "dn-49f96bc3",
+      "模具温度PV": "dn-2281ff0b",
+      "缺陷率PV": "dn-35bfdda0",
+      "视觉置信度PV": "dn-1d9fa9f8",
+      "平均壁厚PV": "dn-df394b13",
+      "飞边PV": "dn-ad6789f1",
+      "节拍PV": "dn-ceecf902",
+      "厚度轮廓PV": "dn-1408dbc3"
+    },
+    "recipeId": "rc-605df683"
+  },
+  "bindings": [
+    {
+      "agentRole": "lead",
+      "kind": "recipe",
+      "nodeId": "$RECIPE",
+      "mode": "manual"
+    },
+    {
+      "agentRole": "worker:0",
+      "kind": "daq",
+      "nodeId": "$DAQ:制品克重PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "worker:0",
+      "kind": "daq",
+      "nodeId": "$DAQ:熔体压力PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "worker:0",
+      "kind": "daq",
+      "nodeId": "$DAQ:模具温度PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "worker:0",
+      "kind": "daq",
+      "nodeId": "$DAQ:飞边PV",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "worker:1",
+      "kind": "dcw",
+      "nodeId": "$DCW:保压压力SP",
+      "mode": "manual"
+    },
+    {
+      "agentRole": "worker:1",
+      "kind": "dcw",
+      "nodeId": "$DCW:保压时间SP",
+      "mode": "manual"
+    },
+    {
+      "agentRole": "worker:1",
+      "kind": "dcw",
+      "nodeId": "$DCW:料温SP",
+      "mode": "manual"
+    },
+    {
+      "agentRole": "worker:1",
+      "kind": "dcw",
+      "nodeId": "$DCW:冷却流量SP",
+      "mode": "manual"
+    }
+  ],
+  "seedTask": {
+    "title": "克重闭环首轮巡检",
+    "description": "读取最近 5 分钟制品克重、熔体压力、模温、飞边;判断克重是否在 32.50±0.35g;给出第一步调参建议(不写入)。",
+    "budget_minutes": 30
+  },
+  "scene": {
+    "lineName": "精密注塑克重闭环验证线-20261115",
+    "objective": "克重 32.50±0.35g,飞边≤0.4%,缺陷率≤0.5%,模温50–60℃"
+  },
+  "promptVariables": {
+    "targetWeight": "32.50",
+    "tolerance": "±0.35",
+    "safety": "所有写入必须 HITL;单步≤2MPa/≤0.5s/≤1L/min/≤3℃"
+  }
+}

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="420" viewBox="0 0 1100 420" font-family="Segoe UI, Microsoft YaHei, sans-serif">
+  <rect width="1100" height="420" fill="#0f1720"/>
+  <text x="550" y="36" fill="#e6edf3" font-size="22" text-anchor="middle" font-weight="700">精密注塑克重闭环验证线 · 协议拓扑</text>
+  <text x="550" y="62" fill="#8b98a5" font-size="13" text-anchor="middle">测试夹具：五协议模拟 PLC → DAQ/DCW → Channel 闭环；虚拟→真实仅换端点/寄存器</text>
+
+  <rect x="390" y="95" width="320" height="260" rx="18" fill="#17212b" stroke="#35e0a0" stroke-width="2"/>
+  <text x="550" y="128" fill="#35e0a0" font-size="17" text-anchor="middle" font-weight="700">AgentWorkShop</text>
+  <text x="550" y="154" fill="#c9d4df" font-size="13" text-anchor="middle">DAQ 数采 · DCW 写控 · 四层限界</text>
+  <text x="550" y="176" fill="#c9d4df" font-size="13" text-anchor="middle">HITL 审批 · 审计 · Channel/Agent</text>
+  <rect x="430" y="198" width="240" height="42" rx="8" fill="#0e2a22" stroke="#2f6f5a"/>
+  <text x="550" y="224" fill="#9de7c7" font-size="13" text-anchor="middle">闭环目标：克重 32.50 ± 0.35 g</text>
+  <rect x="430" y="252" width="240" height="42" rx="8" fill="#241b0e" stroke="#7a5a22"/>
+  <text x="550" y="278" fill="#f0cf8e" font-size="13" text-anchor="middle">写入：≤step、≥60s、全量审批</text>
+  <rect x="430" y="306" width="240" height="30" rx="8" fill="#161d27" stroke="#37424d"/>
+  <text x="550" y="326" fill="#9fb0c0" font-size="12" text-anchor="middle">vector 帧 · 设备语义 · 批次打标</text>
+
+  <g stroke-width="2" fill="none">
+    <path d="M390 145 H220" stroke="#4fc3f7"/>
+    <path d="M220 145 H60" stroke="#4fc3f7" stroke-dasharray="0"/>
+    <path d="M390 215 H220" stroke="#ffb74d"/>
+    <path d="M220 215 H60" stroke="#ffb74d"/>
+    <path d="M390 285 H220" stroke="#ba68c8"/>
+    <path d="M220 285 H60" stroke="#ba68c8"/>
+    <path d="M710 145 H880" stroke="#81c784"/>
+    <path d="M710 215 H880" stroke="#e57373"/>
+    <path d="M710 285 H880" stroke="#64b5f6"/>
+  </g>
+
+  <g font-size="12" text-anchor="middle">
+    <rect x="60" y="115" width="150" height="60" rx="10" fill="#10202c" stroke="#4fc3f7"/>
+    <text x="135" y="140" fill="#d9ecff" font-size="14" font-weight="700">注塑主机</text>
+    <text x="135" y="160" fill="#8fc7e8">Modbus TCP · inj-main</text>
+
+    <rect x="60" y="185" width="150" height="60" rx="10" fill="#2a1d0f" stroke="#ffb74d"/>
+    <text x="135" y="210" fill="#ffe0b2" font-size="14" font-weight="700">冷却单元</text>
+    <text x="135" y="230" fill="#e0b16e">Modbus RTU · cool-unit</text>
+
+    <rect x="60" y="255" width="150" height="60" rx="10" fill="#24152b" stroke="#ba68c8"/>
+    <text x="135" y="280" fill="#ecd7f5" font-size="14" font-weight="700">视觉门</text>
+    <text x="135" y="300" fill="#c79ad8">MQTT · vision-gate</text>
+
+    <rect x="880" y="115" width="160" height="60" rx="10" fill="#12261a" stroke="#81c784"/>
+    <text x="960" y="140" fill="#d7f5dc" font-size="14" font-weight="700">表面扫描</text>
+    <text x="960" y="160" fill="#96c79f">OPC UA · 平均壁厚</text>
+
+    <rect x="880" y="185" width="160" height="60" rx="10" fill="#2b1414" stroke="#e57373"/>
+    <text x="960" y="210" fill="#ffd9d9" font-size="14" font-weight="700">质量门</text>
+    <text x="960" y="230" fill="#d99a9a">HTTP · vector/flash</text>
+
+    <rect x="880" y="255" width="160" height="60" rx="10" fill="#122033" stroke="#64b5f6"/>
+    <text x="960" y="280" fill="#d9ecff" font-size="14" font-weight="700">割接目标</text>
+    <text x="960" y="300" fill="#8fb8e0">真实 PLC/网关（待现场）</text>
+  </g>
+
+  <text x="305" y="132" fill="#4fc3f7" font-size="11" text-anchor="middle">PV/SP</text>
+  <text x="305" y="202" fill="#ffb74d" font-size="11" text-anchor="middle">PV/SP</text>
+  <text x="305" y="272" fill="#ba68c8" font-size="11" text-anchor="middle">PV</text>
+  <text x="795" y="132" fill="#81c784" font-size="11" text-anchor="middle">PV</text>
+  <text x="795" y="202" fill="#e57373" font-size="11" text-anchor="middle">PV/SP</text>
+  <text x="795" y="272" fill="#64b5f6" font-size="11" text-anchor="middle">仅换 driverConfig</text>
+
+  <text x="550" y="400" fill="#66727e" font-size="11" text-anchor="middle">模拟夹具，不是物理 HIL；割接测试只验证配置级端点切换与治理零改动。</text>
+</svg>

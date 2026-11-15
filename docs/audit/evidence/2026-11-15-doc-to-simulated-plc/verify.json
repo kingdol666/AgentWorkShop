@@ -1,0 +1,91 @@
+{
+  "lineId": "ln-0eb8f9fa",
+  "recipeId": "rc-605df683",
+  "channelId": "4a8b542b-d014-4aa5-bdea-bbeefc001ced",
+  "dcw": [
+    {
+      "id": "dw-aed0ca16",
+      "name": "保压压力SP",
+      "min": 45,
+      "max": 85,
+      "stepLimit": 2,
+      "probeValue": 52
+    },
+    {
+      "id": "dw-66f4b8c6",
+      "name": "保压时间SP",
+      "min": 2,
+      "max": 8,
+      "stepLimit": 0.5,
+      "probeValue": 3.5
+    },
+    {
+      "id": "dw-56867d2f",
+      "name": "料温SP",
+      "min": 180,
+      "max": 240,
+      "stepLimit": 3,
+      "probeValue": 208
+    },
+    {
+      "id": "dw-60d51e51",
+      "name": "冷却流量SP",
+      "min": 10,
+      "max": 30,
+      "stepLimit": 1,
+      "probeValue": 15
+    },
+    {
+      "id": "dw-202ae9c6",
+      "name": "保压压力SP（复检）",
+      "min": 20,
+      "max": 60,
+      "stepLimit": 2,
+      "probeValue": 37
+    }
+  ],
+  "daq": [
+    "dn-1698f09b",
+    "dn-49f96bc3",
+    "dn-2281ff0b",
+    "dn-35bfdda0",
+    "dn-1d9fa9f8",
+    "dn-df394b13",
+    "dn-ad6789f1",
+    "dn-ceecf902",
+    "dn-1408dbc3"
+  ],
+  "plugins": [],
+  "recipeParams": [
+    {
+      "nodeId": "dw-aed0ca16",
+      "min": 45,
+      "max": 85,
+      "value": 50
+    },
+    {
+      "nodeId": "dw-66f4b8c6",
+      "min": 2,
+      "max": 8,
+      "value": 3
+    },
+    {
+      "nodeId": "dw-56867d2f",
+      "min": 180,
+      "max": 240,
+      "value": 205
+    },
+    {
+      "nodeId": "dw-60d51e51",
+      "min": 10,
+      "max": 30,
+      "value": 14
+    },
+    {
+      "nodeId": "dw-202ae9c6",
+      "min": 20,
+      "max": 60,
+      "value": 35
+    }
+  ]
+}

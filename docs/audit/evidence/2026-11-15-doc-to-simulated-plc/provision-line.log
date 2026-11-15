@@ -1,0 +1,37 @@
+✅ 产线已存在(指纹复用) — ln-0eb8f9fa 精密注塑克重闭环验证线-20261115
+✅ 跨线写点冲突预检 — 既有他线写控 0 节点,冲突 0
+✅ 节点复用[保压压力SP] — dw-aed0ca16
+✅ 节点配置对齐[保压压力SP] — driverConfig ok
+✅ 节点复用[保压时间SP] — dw-66f4b8c6
+✅ 节点配置对齐[保压时间SP] — driverConfig ok
+✅ 节点复用[料温SP] — dw-56867d2f
+✅ 节点配置对齐[料温SP] — driverConfig ok
+✅ 节点复用[熔体压力PV] — dn-1698f09b
+✅ 节点配置对齐[熔体压力PV] — driverConfig ok
+✅ 节点复用[制品克重PV] — dn-49f96bc3
+✅ 节点配置对齐[制品克重PV] — driverConfig ok
+✅ 节点复用[冷却流量SP] — dw-60d51e51
+✅ 节点配置对齐[冷却流量SP] — driverConfig ok
+✅ 节点复用[模具温度PV] — dn-2281ff0b
+✅ 节点配置对齐[模具温度PV] — driverConfig ok
+✅ 节点复用[缺陷率PV] — dn-35bfdda0
+✅ 节点配置对齐[缺陷率PV] — driverConfig ok
+✅ 节点复用[视觉置信度PV] — dn-1d9fa9f8
+✅ 节点配置对齐[视觉置信度PV] — driverConfig ok
+✅ 节点复用[平均壁厚PV] — dn-df394b13
+✅ 节点配置对齐[平均壁厚PV] — driverConfig ok
+✅ 节点复用[保压压力SP（复检）] — dw-202ae9c6
+✅ 节点配置对齐[保压压力SP（复检）] — driverConfig ok
+✅ 节点复用[飞边PV] — dn-ad6789f1
+✅ 节点配置对齐[飞边PV] — driverConfig ok
+✅ 节点复用[节拍PV] — dn-ceecf902
+✅ 节点配置对齐[节拍PV] — driverConfig ok
+✅ 节点复用[厚度轮廓PV] — dn-1408dbc3
+✅ 节点配置对齐[厚度轮廓PV] — driverConfig ok
+✅ 配方复用 — rc-605df683 v1
+✅ 开跑批次(已运行复用) — 批次保持运行:产线「精密注塑克重闭环验证线-20261115」已在运行(批次 rr-7f2322ea),请先停止当前数据采集
+✅ 采集总控启动 — running=true interval=5000ms
+
+{"lineId":"ln-0eb8f9fa","dcw":{"保压压力SP":"dw-aed0ca16","保压时间SP":"dw-66f4b8c6","料温SP":"dw-56867d2f","冷却流量SP":"dw-60d51e51","保压压力SP（复检）":"dw-202ae9c6"},"daq":{"熔体压力PV":"dn-1698f09b","制品克重PV":"dn-49f96bc3","模具温度PV":"dn-2281ff0b","缺陷率PV":"dn-35bfdda0","视觉置信度PV":"dn-1d9fa9f8","平均壁厚PV":"dn-df394b13","飞边PV":"dn-ad6789f1","节拍PV":"dn-ceecf902","厚度轮廓PV":"dn-1408dbc3"},"recipeId":"rc-605df683","reused":true}
+
+=== 产线供给: 33 通过 / 0 失败 ===

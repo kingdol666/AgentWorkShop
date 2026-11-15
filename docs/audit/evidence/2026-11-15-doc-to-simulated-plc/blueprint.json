@@ -1,0 +1,363 @@
+{
+  "simPort": 4050,
+  "devices": [
+    {
+      "id": "inj-main",
+      "name": "注塑主机（孪生）",
+      "protocol": "modbus-tcp",
+      "unitId": 1,
+      "signals": [
+        {
+          "id": "holdPressureSP",
+          "name": "保压压力SP",
+          "unit": "MPa",
+          "min": 45,
+          "max": 85,
+          "decimals": 1,
+          "kind": "sp",
+          "initial": 50
+        },
+        {
+          "id": "holdTimeSP",
+          "name": "保压时间SP",
+          "unit": "s",
+          "min": 2,
+          "max": 8,
+          "decimals": 1,
+          "kind": "sp",
+          "initial": 3
+        },
+        {
+          "id": "barrelTempSP",
+          "name": "料温SP",
+          "unit": "℃",
+          "min": 180,
+          "max": 240,
+          "decimals": 0,
+          "kind": "sp",
+          "initial": 205
+        },
+        {
+          "id": "meltPressurePV",
+          "name": "熔体压力PV",
+          "unit": "MPa",
+          "min": 0,
+          "max": 100,
+          "decimals": 2,
+          "kind": "pv",
+          "dynamics": {
+            "base": 50,
+            "tau": 3,
+            "noise": 0.15,
+            "follows": [
+              {
+                "sp": "保压压力SP",
+                "gain": 0.9
+              }
+            ]
+          }
+        },
+        {
+          "id": "partWeightPV",
+          "name": "制品克重PV",
+          "unit": "g",
+          "min": 25,
+          "max": 40,
+          "decimals": 2,
+          "kind": "pv",
+          "dynamics": {
+            "base": 31.21,
+            "tau": 4,
+            "noise": 0.02,
+            "follows": [
+              {
+                "sp": "保压压力SP",
+                "gain": 0.08
+              },
+              {
+                "sp": "保压时间SP",
+                "gain": 0.12
+              },
+              {
+                "sp": "料温SP",
+                "gain": 0.01
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "inj-main-b",
+      "name": "注塑主机（割接目标孪生）",
+      "protocol": "modbus-tcp",
+      "unitId": 1,
+      "signals": [
+        {
+          "id": "holdPressureSP",
+          "name": "保压压力SP",
+          "unit": "MPa",
+          "min": 45,
+          "max": 85,
+          "decimals": 1,
+          "kind": "sp",
+          "initial": 50
+        },
+        {
+          "id": "holdTimeSP",
+          "name": "保压时间SP",
+          "unit": "s",
+          "min": 2,
+          "max": 8,
+          "decimals": 1,
+          "kind": "sp",
+          "initial": 3
+        },
+        {
+          "id": "barrelTempSP",
+          "name": "料温SP",
+          "unit": "℃",
+          "min": 180,
+          "max": 240,
+          "decimals": 0,
+          "kind": "sp",
+          "initial": 205
+        },
+        {
+          "id": "meltPressurePV",
+          "name": "熔体压力PV",
+          "unit": "MPa",
+          "min": 0,
+          "max": 100,
+          "decimals": 2,
+          "kind": "pv",
+          "dynamics": {
+            "base": 50,
+            "tau": 3,
+            "noise": 0.15,
+            "follows": [
+              {
+                "sp": "保压压力SP",
+                "gain": 0.9
+              }
+            ]
+          }
+        },
+        {
+          "id": "partWeightPV",
+          "name": "制品克重PV",
+          "unit": "g",
+          "min": 25,
+          "max": 40,
+          "decimals": 2,
+          "kind": "pv",
+          "dynamics": {
+            "base": 31.21,
+            "tau": 4,
+            "noise": 0.02,
+            "follows": [
+              {
+                "sp": "保压压力SP",
+                "gain": 0.08
+              },
+              {
+                "sp": "保压时间SP",
+                "gain": 0.12
+              },
+              {
+                "sp": "料温SP",
+                "gain": 0.01
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "cool-unit",
+      "name": "冷却单元（孪生）",
+      "protocol": "modbus-rtu",
+      "unitId": 2,
+      "signals": [
+        {
+          "id": "coolFlowSP",
+          "name": "冷却流量SP",
+          "unit": "L/min",
+          "min": 10,
+          "max": 30,
+          "decimals": 1,
+          "kind": "sp",
+          "initial": 14
+        },
+        {
+          "id": "moldTempPV",
+          "name": "模具温度PV",
+          "unit": "℃",
+          "min": 30,
+          "max": 80,
+          "decimals": 1,
+          "kind": "pv",
+          "dynamics": {
+            "base": 58,
+            "tau": 8,
+            "noise": 0.2,
+            "follows": [
+              {
+                "sp": "冷却流量SP",
+                "gain": -0.5
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "vision-gate",
+      "name": "视觉门（孪生）",
+      "protocol": "mqtt",
+      "signals": [
+        {
+          "id": "defectRatePV",
+          "name": "缺陷率PV",
+          "unit": "%",
+          "min": 0,
+          "max": 5,
+          "decimals": 3,
+          "kind": "pv",
+          "dynamics": {
+            "base": 0.4,
+            "tau": 4,
+            "noise": 0.02,
+            "follows": [
+              {
+                "sp": "保压压力SP",
+                "gain": -0.008
+              }
+            ]
+          }
+        },
+        {
+          "id": "visionConfidencePV",
+          "name": "视觉置信度PV",
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "decimals": 1,
+          "kind": "pv",
+          "dynamics": {
+            "base": 96,
+            "tau": 5,
+            "noise": 0.8,
+            "follows": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "surface-scan",
+      "name": "表面扫描（孪生）",
+      "protocol": "opcua",
+      "signals": [
+        {
+          "id": "thicknessAvgPV",
+          "name": "平均壁厚PV",
+          "unit": "mm",
+          "min": 0.4,
+          "max": 0.65,
+          "decimals": 4,
+          "kind": "pv",
+          "dynamics": {
+            "base": 0.52,
+            "tau": 6,
+            "noise": 0.002,
+            "follows": [
+              {
+                "sp": "保压压力SP",
+                "gain": 0.002
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "quality-gate",
+      "name": "质量门（孪生）",
+      "protocol": "http",
+      "signals": [
+        {
+          "id": "packPressureSP",
+          "name": "保压压力SP（复检）",
+          "unit": "MPa",
+          "min": 20,
+          "max": 60,
+          "decimals": 1,
+          "kind": "sp",
+          "initial": 35
+        },
+        {
+          "id": "flashPV",
+          "name": "飞边PV",
+          "unit": "%",
+          "min": 0,
+          "max": 2,
+          "decimals": 3,
+          "kind": "pv",
+          "dynamics": {
+            "base": 0.18,
+            "tau": 5,
+            "noise": 0.01,
+            "follows": [
+              {
+                "sp": "保压压力SP（复检）",
+                "gain": 0.008
+              }
+            ]
+          }
+        },
+        {
+          "id": "cycleTimePV",
+          "name": "节拍PV",
+          "unit": "s",
+          "min": 10,
+          "max": 30,
+          "decimals": 1,
+          "kind": "pv",
+          "dynamics": {
+            "base": 21.5,
+            "tau": 3,
+            "noise": 0.1,
+            "follows": [
+              {
+                "sp": "保压压力SP（复检）",
+                "gain": 0.1
+              }
+            ]
+          }
+        },
+        {
+          "id": "thicknessProfilePV",
+          "name": "厚度轮廓PV",
+          "unit": "mm",
+          "min": 0.4,
+          "max": 0.65,
+          "decimals": 4,
+          "kind": "pv",
+          "format": "vector",
+          "code": "const p = Number.isFinite(vars['保压压力SP']) ? vars['保压压力SP'] : 50; const base = 0.52 + (p - 50) * 0.0008; return { points: Array.from({ length: 48 }, (_, i) => Math.max(min, Math.min(max, base + 0.012 * Math.sin(i / 6 + now / 1200)))) };",
+          "dynamics": {
+            "base": 0.52,
+            "tau": 2,
+            "noise": 0.001,
+            "follows": [
+              {
+                "sp": "保压压力SP",
+                "gain": 0.0008
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

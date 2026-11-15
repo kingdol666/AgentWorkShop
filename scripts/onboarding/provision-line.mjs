@@ -115,6 +115,7 @@ for (const n of cfg.nodes ?? []) {
     if (n.decimals !== undefined && found.decimals !== n.decimals) patch.decimals = n.decimals
     if (n.warnLow !== undefined && found.warnLow !== n.warnLow) patch.warnLow = n.warnLow
     if (n.warnHigh !== undefined && found.warnHigh !== n.warnHigh) patch.warnHigh = n.warnHigh
+    if (n.semantics !== undefined && found.semantics !== n.semantics) patch.semantics = n.semantics
     if (n.kind === 'dcw') {
       if (n.stepLimit !== undefined && found.stepLimit !== n.stepLimit) patch.stepLimit = n.stepLimit
       if (n.holdIntervalMs !== undefined && found.holdIntervalMs !== n.holdIntervalMs) patch.holdIntervalMs = n.holdIntervalMs
@@ -136,12 +137,14 @@ for (const n of cfg.nodes ?? []) {
         templateRef: n.templateRef,
         unit: n.unit ?? '', decimals: n.decimals ?? 1, min: n.min, max: n.max,
         warnLow: n.warnLow, warnHigh: n.warnHigh, intervalMs: n.intervalMs,
+        semantics: n.semantics,
       }
     : {
         name: n.name, lineId, driver: n.driver, driverConfig,
         unit: n.unit ?? '', decimals: n.decimals ?? 1, min: n.min, max: n.max,
         stepLimit: n.stepLimit, holdIntervalMs: n.holdIntervalMs ?? 120000,
         templateRef: n.templateRef, transform: n.transform,
+        semantics: n.semantics,
       }
   const j = await api('POST', n.kind === 'daq' ? '/api/workshop/daq' : '/api/workshop/dcw', body, tok)
   const id = j.data?.node?.id ?? j.data?.id ?? j.data?.daqNode?.id

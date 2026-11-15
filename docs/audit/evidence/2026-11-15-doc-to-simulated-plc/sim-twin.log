@@ -1,0 +1,12 @@
+[sim-twin] 模拟器 :4050 影子树 D:\tmp\aw-doc-real-20261115\sim-shadow
+  ✔ 设备 inj-main(modbus-tcp,5 信号)
+  ✔ 设备 inj-main-b(modbus-tcp,5 信号)
+  ✔ 设备 cool-unit(modbus-rtu,2 信号)
+  ✔ 设备 vision-gate(mqtt,2 信号)
+  ✔ 设备 surface-scan(opcua,1 信号)
+  ✔ 设备 quality-gate(http,4 信号)
+  ✔ 孪生 tick 活性(6/6 设备 PV 在动)
+
+════════════════════════════════════════
+  sim-twin:7 PASS / 0 FAIL
+{"simBase":"http://127.0.0.1:4050","shadowDir":"D:\\tmp\\aw-doc-real-20261115\\sim-shadow","devices":[{"id":"inj-main","protocol":"modbus-tcp","port":37542,"signals":5,"sourceNodes":null},{"id":"inj-main-b","protocol":"modbus-tcp","port":37544,"signals":5,"sourceNodes":null},{"id":"cool-unit","protocol":"modbus-rtu","port":37546,"signals":2,"sourceNodes":null},{"id":"vision-gate","protocol":"mqtt","port":null,"signals":2,"sourceNodes":null},{"id":"surface-scan","protocol":"opcua","port":37548,"signals":1,"sourceNodes":null},{"id":"quality-gate","protocol":"http","port":null,"signals":4,"sourceNodes":null}],"totalSignals":19,"driverSource":"sim-export","next":"对每设备 GET http://127.0.0.1:4050/api/nodes/<id>/export 取 items[].driverConfig,喂给 provision-line/onboard(driverConfig 替换为模拟器 export,量程/stepLimit 保留)"}

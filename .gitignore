@@ -17,6 +17,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+# 验收证据日志需随报告入库(可复核);其余 *.log 仍忽略
+!docs/audit/evidence/**/logs/
+!docs/audit/evidence/**/logs/*.log
+!docs/audit/evidence/**/gates/
+!docs/audit/evidence/**/gates/*.log
+!docs/audit/evidence/2026-11-15-doc-to-simulated-plc/*.log
 
 # Env files (keep the example)
 .env

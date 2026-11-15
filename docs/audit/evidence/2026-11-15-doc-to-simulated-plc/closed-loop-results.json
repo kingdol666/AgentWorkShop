@@ -1,0 +1,81 @@
+{
+  "at": "2026-11-15T15:26:26.637Z",
+  "pass": 8,
+  "fail": 0,
+  "results": [
+    {
+      "id": "C1",
+      "name": "持配方绑定的 Agent 可用",
+      "pass": true,
+      "detail": "88165f86-583"
+    },
+    {
+      "id": "C2",
+      "name": "基线读数(保压/克重)",
+      "pass": true,
+      "detail": "pressure=62MPa weight=32.313g"
+    },
+    {
+      "id": "C3-1",
+      "name": "闭环步 1:62→64MPa,克重 32.342→32.483g",
+      "pass": true,
+      "detail": "readback=64 HITL=true"
+    },
+    {
+      "id": "C3-2",
+      "name": "闭环步 2:64→66MPa,克重 32.483→32.650g",
+      "pass": true,
+      "detail": "readback=66 HITL=true"
+    },
+    {
+      "id": "C4",
+      "name": "闭环至少两步真实写控+HITL",
+      "pass": true,
+      "detail": "steps=2"
+    },
+    {
+      "id": "C5",
+      "name": "克重向目标方向移动",
+      "pass": true,
+      "detail": "Δ=0.313g final=32.626g"
+    },
+    {
+      "id": "C6",
+      "name": "最终克重进入 32.50±0.35g 或显著逼近",
+      "pass": true,
+      "detail": "final=32.626 pressure=66MPa"
+    },
+    {
+      "id": "C7",
+      "name": "闭环只使用持配方绑定 Agent + HITL",
+      "pass": true,
+      "detail": "approved=2/2"
+    }
+  ],
+  "extra": {
+    "startPressure": 62,
+    "startWeight": 32.313280000000006,
+    "finalPressure": 66,
+    "finalWeight": 32.626186666666676,
+    "steps": [
+      {
+        "step": 1,
+        "target": 64,
+        "readback": 64,
+        "weightBefore": 32.34234615384616,
+        "weightAfter": 32.48345833333333,
+        "approved": true,
+        "ok": true
+      },
+      {
+        "step": 2,
+        "target": 66,
+        "readback": 66,
+        "weightBefore": 32.48345833333333,
+        "weightAfter": 32.649846153846156,
+        "approved": true,
+        "ok": true
+      }
+    ]
+  }
+}

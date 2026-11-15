@@ -25,6 +25,15 @@ import { api, login, ok, summary, readConfig, pollUntil } from './lib.mjs'
 const cfg = await readConfig()
 const tok = await login()
 
+// V6 基线:受保护线 journal **切换前**快照。旧实现只筛本线节点再看 lineId,
+// 永远为 0(恒真);必须直接查询受保护线并在验收后比较新增锚点。
+const PROTECTED_LINE = 'ln-d7e0a2a2'
+const anchorKey = a => String(a.id ?? `${a.nodeId}:${a.at}:${a.newValue}:${a.source ?? ''}`)
+const lineList = await api('GET', '/api/workshop/dcw/lines', undefined, tok)
+const protectedExists = (lineList.data?.lines ?? []).some(l => l.id === PROTECTED_LINE)
+const protectedBefore = await api('GET', `/api/workshop/dcw/journal?lineId=${PROTECTED_LINE}&limit=500`, undefined, tok)
+const protectedBeforeKeys = new Set((protectedBefore.data?.anchors ?? []).map(anchorKey))
+
 // V1 数采落库(滑动窗口:每次轮询重算 now,避免 to=启动时刻冻结导致新样本落窗外)。
 // 多形态节点(向量/图像)数据在 daq_frames 不在 daq_samples:标量面 60s 内无点时回查帧面。
 for (const id of cfg.daq ?? []) {
@@ -122,7 +131,7 @@ const recParams = rec?.params ?? []
 const paramMismatch = expectedParams.filter((e) => {
   const p = recParams.find(x => x.nodeId === e.nodeId)
   if (!p) return true
-  return p.value !== e.value
+  return (e.value !== undefined && p.value !== e.value)
     || (e.min !== undefined && p.min !== e.min)
     || (e.max !== undefined && p.max !== e.max)
     || (e.stepLimit !== undefined && p.stepLimit !== e.stepLimit)
@@ -133,26 +142,28 @@ if (expectedParams.length > 0) {
     paramMismatch.length === 0 ? `${expectedParams.length} 项逐项一致` : `不匹配:${paramMismatch.map(p => p.nodeId).join(',')}`)
 }
 
-// V5 频道绑定与插件
+// V5 频道绑定与插件(plugins 显式数组:[] 表示期望零插件启用,同样要断言隔离)
 const ch = await api('GET', `/api/workshop/channels/${cfg.channelId}`, undefined, tok)
 const c = ch.data?.channel ?? ch.data
 ok('V5 频道绑线', c?.lineId === cfg.lineId, `${c?.lineId} vs ${cfg.lineId}`)
 const members = await api('GET', `/api/workshop/channels/${cfg.channelId}/agents`, undefined, tok)
 ok('V5 频道成员≥2', (members.data ?? []).length >= 2, `members=${(members.data ?? []).length}`)
-if (cfg.plugins?.length) {
+if (Array.isArray(cfg.plugins)) {
   const pj = await api('GET', `/api/workshop/channels/${cfg.channelId}/plugins`, undefined, tok)
   const enabled = new Set((pj.data?.plugins ?? []).filter(p => p.enabled).map(p => p.name))
   for (const name of cfg.plugins) ok(`V5 插件[${name}]`, enabled.has(name), enabled.has(name) ? 'enabled' : `实际=${[...enabled].join(',')}`)
   const unexpected = [...enabled].filter(n => !cfg.plugins.includes(n))
-  ok('V5 插件隔离(未配置插件不得被默认启用)', unexpected.length === 0, unexpected.length ? `意外启用:${unexpected.join(',')}` : '仅配置项启用')
+  ok('V5 插件隔离(未配置插件不得被默认启用)', unexpected.length === 0,
+    unexpected.length ? `意外启用:${unexpected.join(',')}` : `仅配置项启用(enabled=${enabled.size}, expected=${cfg.plugins.length})`)
 }
 
-// V6 演示线零扰动:本验收的写锚点必须全部落在新线上,受保护线(ln-d7e0a2a2)零新增锚点
-const journal = await api('GET', '/api/workshop/dcw/journal?limit=20', undefined, tok)
+// V6 演示线零扰动:本验收写入必须落在新线;受保护线 journal 新增锚点必须为 0
+const journal = await api('GET', '/api/workshop/dcw/journal?limit=500', undefined, tok)
 const mine = new Set([...(cfg.dcw ?? []).map(n => n.id)])
 const touched = (journal.data?.anchors ?? []).filter(a => mine.has(a.nodeId))
-const onProtected = touched.filter(a => a.lineId === 'ln-d7e0a2a2')
-ok('V6 受保护线零扰动(写锚点全落新线)', onProtected.length === 0,
-  `本线锚点=${touched.length} 溢出到受保护线=${onProtected.length}`)
+const protectedAfter = await api('GET', `/api/workshop/dcw/journal?lineId=${PROTECTED_LINE}&limit=500`, undefined, tok)
+const protectedNew = (protectedAfter.data?.anchors ?? []).filter(a => !protectedBeforeKeys.has(anchorKey(a)))
+ok('V6 受保护线零扰动(受保护线 journal 无新增锚点)', protectedExists && protectedNew.length === 0,
+  `受保护线存在=${protectedExists} 本线锚点=${touched.length} 受保护线新增=${protectedNew.length} 基线=${protectedBeforeKeys.size}`)
 
 summary('接入验收')

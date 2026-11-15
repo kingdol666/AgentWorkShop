@@ -1,0 +1,18 @@
+✔ [T1] 第二套协议兼容端点已就绪(inj-main-b) — signals=5 port=37544
+✔ [T2] 切换前治理快照 — 保压压力SP:min=45,step=2 | 保压时间SP:min=2,step=0.5 | 料温SP:min=180,step=3 | 熔体压力PV:min=0,step=- | 制品克重PV:min=25,step=-
+✔ [T2b] 切换前停线(关闭旧端点打标窗口) — {"code":0,"message":"ok","data":{"run":{"id":"rr-97bcd681","recipeId":"rc-605df683","recipeName":"注塑克重基线配方","productId":"pd-d02dc5ca","lineId":"ln-0eb8f9fa","re
+✔ [T3] 仅替换 5 个节点的 driverConfig 到第二端点 — patched=5/5
+✔ [T4] 治理配置零改动(量程/步长/单位/精度/hold/产线/语义) — 保压压力SP:45~85/45~85 | 保压时间SP:2~8/2~8 | 料温SP:180~240/180~240 | 熔体压力PV:0~100/0~100 | 制品克重PV:25~40/25~40
+✔ [T5a] 第二端点开新批次(批次状态与端点一致) — {"code":0,"message":"ok","data":{"run":{"id":"rr-32bf32d2","recipeId":"rc-605df683","recipeName":"注塑克重基线配方","productId":"pd-d02dc5ca","lineId":"ln-0eb8f9fa","re
+✔ [T5] V1 数采复验:第二端点熔体压力/克重有真实样本 — melt=1 weight=1 latestWeight=31.223333333333333
+✔ [T6] V3 写回环复验:第二端点 3/3 DCW 经 HITL 批量写并回读一致 — approved=true reads={"dw-aed0ca16":51,"dw-66f4b8c6":3.5,"dw-56867d2f":206} 方案「CUT-割接写控-zfgg」已获批准并整批下发,全部参数设备证实(3/3,批次 rr-662d3)。runId:rr-662d3dd1(后续轮次按此回访效果并回写经验)
+
+## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）
+- 批次 rr-662d3dd1（2026-11-16 0
+✔ [T4b] 绑定与插件状态零改动 — bindings=18->18 plugins=0->0
+✔ [T7] Channel/绑定零改动(仍 integrated 且绑线) — production_line_integrated ln-0eb8f9fa
+✔ [T7b] 切回前停线(关闭第二端点批次) — {"code":0,"message":"ok","data":{"run":{"id":"rr-32bf32d2","recipeId":"rc-605df683","recipeName":"注塑克重基线配方","productId":"pd-d02dc5ca","lineId":"ln-0eb8f9fa","re
+✔ [T8] 切回原端点并重开批次后数采恢复(可逆) — back=5/5 samples=1
+ℹ 边界:本演练为协议级端点切换,第二端点仍为模拟器;未接真实 PLC/DCW,不是物理 HIL
+
+═══ 割接演练: 12/12 PASS ═══

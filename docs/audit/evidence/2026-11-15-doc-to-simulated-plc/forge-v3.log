@@ -1,0 +1,19 @@
+✅ 模板实例化(optimize) — e9fbb32b-373b-4601-bb8f-7386b52d693b
+✅ 工况上下文已存在(复用) — ## 工况上下文（文档自动接入）
+✅ 插件开关(未配置项显式关闭) — ok
+✅ 绑定[lead→recipe:$RECIPE mode=manual] — nb-e4f7e98a
+✅ 绑定[worker:0→daq:$DAQ:制品克重PV mode=auto] — nb-48107334
+✅ 绑定[worker:0→daq:$DAQ:熔体压力PV mode=auto] — nb-d9c01375
+✅ 绑定[worker:0→daq:$DAQ:模具温度PV mode=auto] — nb-4302c5db
+✅ 绑定[worker:0→daq:$DAQ:飞边PV mode=auto] — nb-76750771
+✅ 绑定[worker:1→dcw:$DCW:保压压力SP mode=manual] — nb-8f50d172
+✅ 绑定[worker:1→dcw:$DCW:保压时间SP mode=manual] — nb-4a9f7a16
+✅ 绑定[worker:1→dcw:$DCW:料温SP mode=manual] — nb-834901a9
+✅ 绑定[worker:1→dcw:$DCW:冷却流量SP mode=manual] — nb-66def9f6
+✅ 线域授权[61837060] — ok
+✅ 线域授权覆盖频道用户 — users=1(owner+members)
+✅ 种子任务派发 — 402a74b9-1ed6-44c3-a42e-a7e8f332eb4d
+
+{"channelId":"e9fbb32b-373b-4601-bb8f-7386b52d693b","scenario":"optimize"}
+
+=== 频道锻造: 15 通过 / 0 失败 ===
