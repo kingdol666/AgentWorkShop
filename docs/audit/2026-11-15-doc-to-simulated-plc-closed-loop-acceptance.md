@@ -61,6 +61,8 @@ omp 冷启动下新频道种子任务自动派发出现 >3.5min 滞留；割接�
 - 一致性修正：`surface-scan`(OPC UA) = 平均壁厚标量；48 点厚度轮廓 vector 在
   `quality-gate`(HTTP)，文档/蓝图/拓扑已统一；所有 PV 均有 base/tau/noise/follows
   （vector 用 code 实现，同时保留 dynamics 元数据）。
+- 受保护线夹具：`ln-d7e0a2a2` 预置 1 个 mock DCW `dw-2a97d525` 与历史锚点
+  `anc-5946458d`（baseline=1），使 V6 非空、可证伪；验收写入只落新线。
 
 ---
 
@@ -94,13 +96,14 @@ omp 冷启动下新频道种子任务自动派发出现 >3.5min 滞留；割接�
 
 ### 3.4 接入验收 V1–V6
 
-`verify-line-4.log`：**25 PASS / 0 FAIL**。
+`verify-line-5.log`：**25 PASS / 0 FAIL**。
 
 - V1：9/9 DAQ 有真实样本/帧；V2：5/5 越界量程拒绝；V3：5/5 合法写回读一致；
 - V4：配方在册，5 参数逐项一致；
 - V5：绑线、4 成员、插件隔离（`plugins: []` → 断言 enabled=0）；
 - V6：先断言受保护线 `ln-d7e0a2a2` 存在，再比较其 journal 基线；日志
-  `受保护线存在=true 本线锚点=67 受保护线新增=0 基线=0`。
+  `受保护线存在=true->true 本线锚点=72 受保护线新增=0 基线=1`（夹具含 1 个 DCW
+  `dw-2a97d525` 与历史锚点 `anc-5946458d`，基线非空，检查非恒真）。
 
 ### 3.5 一键 onboard + smoke
 
@@ -211,7 +214,7 @@ Mimosa：本轮未重新完成完整扫描；上一轮 deep scan `inconclusive`�
 | 工况文档/拓扑/蓝图 | `docs/audit/evidence/2026-11-15-doc-to-simulated-plc/work-condition-doc.md`、`line-topology.svg`、`blueprint.json` |
 | 供给/频道/验收配置 | 同目录 `provision.json`、`forge.json`、`forge-v3.json`、`verify.json`、`onboard.json` |
 | sim-twin | 同目录 `sim-twin.log`、`vector-response.json` |
-| V1–V6 | 同目录 `verify-line-4.log` |
+| V1–V6 | 同目录 `verify-line-5.log` |
 | onboard+smoke | 同目录 `onboard-smoke.log` |
 | 闭环 | 同目录 `closed-loop-results.json`、`closed-loop-3.log` |
 | 未授权写负例 | 同目录 `unauthorized-write.json` |
