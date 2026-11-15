@@ -520,6 +520,23 @@ export function createProjectWorkItemRepo(db: DatabaseSync) {
         next.deferredUntil, next.instanceChannelId, next.closedAt, next.closeReason, next.updatedAt, id)
       return next
     },
+    updateOwnedAttempt(id: string, attemptId: string, expectedStates: readonly string[], patch: Partial<Omit<ProjectWorkItemRow, 'id' | 'projectId' | 'createdAt'>>): ProjectWorkItemRow | undefined {
+      const cur = selectById.get(id) as unknown as ProjectWorkItemRow | undefined
+      const states = [...new Set(expectedStates)]
+      if (!cur || cur.currentAttemptId !== attemptId || !states.includes(cur.state) || states.length === 0 || states.length > 4) return undefined
+      const next: ProjectWorkItemRow = { ...cur, ...patch, id: cur.id, projectId: cur.projectId, createdAt: cur.createdAt, updatedAt: now() }
+      const stmt = db.prepare(`
+        UPDATE project_work_items
+        SET deliverable_id = ?, channel_id = ?, title = ?, brief = ?, state = ?, state_reason = ?, priority = ?, weight = ?, depends_on_json = ?, acceptance_json = ?, result_key = ?, current_attempt_id = ?, plan_version = ?, contract_json = ?, exec_budget_minutes = ?, trace_id = ?, dedupe_key = ?, deadline_at = ?, rework_count = ?, accepted_result_id = ?, last_result_status = ?, attempt_count = ?, max_attempts = ?, deferred_until = ?, instance_channel_id = ?, closed_at = ?, close_reason = ?, updated_at = ?
+        WHERE id = ? AND current_attempt_id = ? AND state IN (${states.map(() => '?').join(', ')})
+      `)
+      const result = stmt.run(next.deliverableId, next.channelId, next.title, next.brief, next.state, next.stateReason,
+        next.priority, next.weight, next.dependsOnJson, next.acceptanceJson, next.resultKey, next.currentAttemptId,
+        next.planVersion, next.contractJson, next.execBudgetMinutes, next.traceId, next.dedupeKey, next.deadlineAt,
+        next.reworkCount, next.acceptedResultId, next.lastResultStatus, next.attemptCount, next.maxAttempts,
+        next.deferredUntil, next.instanceChannelId, next.closedAt, next.closeReason, next.updatedAt, id, attemptId, ...states)
+      return Number(result.changes ?? 0) === 1 ? next : undefined
+    },
     /**
      * P0 派发 CAS：只有 DRAFT 且无 current_attempt 的工作项能赢得 claim。
      * 与 attempt 的 live 唯一索引一起构成「同工作项至多一个在飞 attempt」的双闸。
@@ -545,7 +562,13 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
   const selectLive = db.prepare(`SELECT ${ATTEMPT_COLS} FROM project_work_item_attempts WHERE work_item_id = ? AND closed_at IS NULL LIMIT 1`)
   const selectByTask = db.prepare(`SELECT ${ATTEMPT_COLS} FROM project_work_item_attempts WHERE channel_task_id = ? LIMIT 1`)
   const selectByWorkItem = db.prepare(`SELECT ${ATTEMPT_COLS} FROM project_work_item_attempts WHERE work_item_id = ? ORDER BY attempt_no ASC`)
-  const updateDispatch = db.prepare(`UPDATE project_work_item_attempts SET channel_task_id = ?, state = ? WHERE id = ?`)
+  const linkTaskStmt = db.prepare(`UPDATE project_work_item_attempts SET channel_task_id = ? WHERE id = ? AND channel_task_id IS NULL`)
+  // CAS 语义:只允许从「未关联」或「已关联同一任务」推进到 DISPATCHED;已关联其他任务时
+  // 不覆盖(返回 false)。setDispatched 既可直接关联任务(旧调用面),也可在 linkTask 之后
+  // 只做状态推进,两种调用都保持幂等。
+  const updateDispatch = db.prepare(`UPDATE project_work_item_attempts
+    SET state = 'DISPATCHED', channel_task_id = COALESCE(channel_task_id, ?)
+    WHERE id = ? AND closed_at IS NULL AND (channel_task_id IS NULL OR channel_task_id = ?)`)
   const closeStmt = db.prepare(`UPDATE project_work_item_attempts SET state = ?, blocked_reason = ?, closed_at = ? WHERE id = ? AND closed_at IS NULL`)
   return {
     create(input: {
@@ -596,8 +619,15 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
     listByWorkItem(workItemId: string): ProjectAttemptRow[] {
       return selectByWorkItem.all(workItemId) as unknown as ProjectAttemptRow[]
     },
-    setDispatched(id: string, channelTaskId: string): void {
-      updateDispatch.run(channelTaskId, 'DISPATCHED', id)
+    /** Idempotently attach the canonical root id, even if cancellation closed the attempt while submit awaited. */
+    linkTask(id: string, channelTaskId: string): boolean {
+      const current = selectById.get(id) as unknown as ProjectAttemptRow | undefined
+      if (!current) return false
+      if (current.channelTaskId === channelTaskId) return true
+      return Number(linkTaskStmt.run(channelTaskId, id).changes ?? 0) === 1
+    },
+    setDispatched(id: string, channelTaskId: string): boolean {
+      return Number(updateDispatch.run(channelTaskId, id, channelTaskId).changes ?? 0) === 1
     },
     close(id: string, state = 'CLOSED', blockedReason: string | null = null): void {
       closeStmt.run(state, blockedReason, now(), id)

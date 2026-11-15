@@ -250,7 +250,12 @@ export async function closeChannelSession(deps: SessionCloneDeps, input: {
   sessionId: string
   actorId: string
   reason?: string
-  sessionRepo: { findById(id: string): { status: string, memberMapJson: string } | undefined, close(id: string): boolean }
+  sessionRepo: {
+    findById(id: string): { status: string, memberMapJson: string } | undefined
+    /** 持久化关闭意图（active|closing → closing），级联前调用。 */
+    beginClosing(id: string): boolean
+    close(id: string): boolean
+  }
 }): Promise<{ canceledTasks: number, clones: string[] }> {
   const session = input.sessionRepo.findById(input.sessionId)
   if (!session) throw new AppError(404, 'NOT_FOUND', `会话不存在: ${input.sessionId}`)
@@ -267,6 +272,9 @@ export async function closeChannelSession(deps: SessionCloneDeps, input: {
   if (closingSessions.has(input.sessionId)) return { canceledTasks: 0, clones: [] }
   closingSessions.add(input.sessionId)
   try {
+    // 先落关闭意图再级联:级联中途进程退出时,会话保持 closing,重启对账会完成关闭;
+    // 否则行仍是 active 但 clone 已部分停用 = "看起来能进、发消息没人处理"的半关闭态。
+    if (!input.sessionRepo.beginClosing(input.sessionId)) return { canceledTasks: 0, clones: [] }
     const canceledTasks = await cancelSessionClones(deps, input, clones, reason)
     if (!input.sessionRepo.close(input.sessionId)) return { canceledTasks: 0, clones: [] }
     return { canceledTasks, clones }
@@ -274,6 +282,34 @@ export async function closeChannelSession(deps: SessionCloneDeps, input: {
   finally {
     closingSessions.delete(input.sessionId)
   }
+}
+
+/**
+ * 启动对账:完成上次进程中断的会话关闭。
+ *
+ * closeChannelSession 已把关闭意图持久化为 closing,但对账必须补完 clone 停用与
+ * 终态收敛 —— 否则会话永远停在 closing(不可寻址也无法再次正常关闭)。幂等:
+ * 重复执行对已关闭会话无副作用;任何单 clone 停用失败都不阻断其余会话收敛。
+ */
+export function reconcileClosingSessions(
+  sessionRepo: {
+    listByStatus(status: 'closing'): Array<{ id: string, channelId: string, memberMapJson: string }>
+    close(id: string): boolean
+  },
+  disableAgent: (channelId: string, agentId: string) => void,
+): number {
+  let closed = 0
+  for (const session of sessionRepo.listByStatus('closing')) {
+    const clones = Object.values(parseJson<Record<string, string>>(session.memberMapJson, {}))
+    for (const cloneId of clones) {
+      try {
+        disableAgent(session.channelId, cloneId)
+      }
+      catch { /* 成员行可能已删除:继续收敛会话状态 */ }
+    }
+    if (sessionRepo.close(session.id)) closed += 1
+  }
+  return closed
 }
 
 /**

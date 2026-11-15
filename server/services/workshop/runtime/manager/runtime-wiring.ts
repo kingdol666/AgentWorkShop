@@ -60,7 +60,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const sessionRow = activeSessionOfMember(createChannelSessionRepo(this.deps.db).listByChannel(m.channelId), agent.id)
     const trustedSession = sessionRow ? trustedSessionBindingIdentity(sessionRow) : null
     const channelSessionScope: ChannelSessionExecutionScope | null = trustedSession
-      ? { sessionId: trustedSession.sessionId, productId: trustedSession.productId, lineId: trustedSession.lineId, bindingSnapshotHash: trustedSession.bindingSnapshotHash, bindingSnapshotRevision: trustedSession.bindingSnapshotRevision }
+      ? { sessionId: trustedSession.sessionId, productId: trustedSession.productId, lineId: trustedSession.lineId, bindingSnapshotHash: trustedSession.bindingSnapshotHash, bindingSnapshotRevision: trustedSession.bindingSnapshotRevision, recipes: trustedSession.recipes }
       : null
     const integrated = channelModeForAgent(agent.id) === 'production_line_integrated' && (!sessionRow || !!trustedSession)
     const channelLineId = integrated && !sessionRow ? this.deps.repos.channels.findById(m.channelId)?.lineId ?? null : null

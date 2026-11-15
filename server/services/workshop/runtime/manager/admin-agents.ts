@@ -12,7 +12,7 @@ import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { assertSpawnConfigAllowed, assertSpawnConfigPatchAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
 import { instanceToAgentInfo } from './helpers'
-import { createChannelSession, closeChannelSession, activeSessionIdOfMember, activeSessionOfMember, SESSION_MARKER } from '../../agents/session-clone'
+import { createChannelSession, closeChannelSession, reconcileClosingSessions, activeSessionIdOfMember, activeSessionOfMember, SESSION_MARKER } from '../../agents/session-clone'
 import { createChannelSessionBindingSnapshot, trustedSessionBindingIdentity } from '../../agents/session-snapshot'
 import { createChannelProductBindingRepo } from '../../db/channel-product-binding.repo'
 import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
@@ -540,6 +540,22 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     return createChannelSessionRepo(this.deps.db).listByChannel(channelId)
   }
 
+  /**
+   * 启动对账:补齐上次进程在关闭级联中途退出留下的 closing 会话。
+   * 由 workshop 插件在装配完成、开始服务请求前同步调用;幂等。
+   * @returns 本次收敛为 closed 的会话数
+   */
+  reconcileInterruptedSessions(): number {
+    const closed = reconcileClosingSessions(
+      createChannelSessionRepo(this.deps.db),
+      (_channelId, cloneId) => {
+        this.deps.repos.channelAgents.update(cloneId, { enabled: 0 })
+      },
+    )
+    if (closed > 0) console.log(`[workshop] 启动对账:补齐 ${closed} 个中断的会话关闭`)
+    return closed
+  }
+
   /** 会话详情（不存在 → undefined）。 */
   getChannelSession(sessionId: string): ChannelSessionRow | undefined {
     return createChannelSessionRepo(this.deps.db).findById(sessionId)
@@ -581,6 +597,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       lineId: trusted.lineId,
       bindingSnapshotHash: trusted.bindingSnapshotHash,
       bindingSnapshotRevision: trusted.bindingSnapshotRevision,
+      recipes: trusted.recipes,
     }
   }
 

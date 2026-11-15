@@ -261,7 +261,7 @@ test('生命周期过滤：candidate/retired 不外泄，active/validated 可读
   }
 })
 
-test('作用域锚点：product 需 scope_key；global 不需要', () => {
+test('作用域锚点：product 固定到可信 Session；global 不需要产品锚点', () => {
   const { db, repo } = fixture([
     { id: 'ch-a', owner: 'u-1', lineId: 'line-1' },
     { id: 'ch-b', owner: 'u-1', lineId: 'line-1' },
@@ -270,8 +270,9 @@ test('作用域锚点：product 需 scope_key；global 不需要', () => {
     seedExp(repo, { channelId: 'ch-a', scopeKind: 'product', scopeKey: 'prod-9', dedupKey: 'exp:p9' })
     seedExp(repo, { channelId: 'ch-a', scopeKind: 'global', dedupKey: 'exp:g' })
     const mgr = shim(db, repo, { 'ch-b': [{ id: 'worker-1', role: 'worker' }] })
-    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product' }).length, 0, '无 key → 空集')
-    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-9' }).length, 1, '产品须显式 scope_key 且同产品 Session 才可命中')
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product' }).length, 1, '省略 key 时使用可信 Session 产品')
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-9' }).length, 1, '显式匹配 Session 产品可命中')
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-1' }).length, 0, '不同产品不能由调用参数切换')
     assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'global' }).length, 1, 'global 经验保留无锚点跨频道语义')
   }
   finally {
@@ -314,15 +315,17 @@ test('跨频道授权：非本频道成员不可读（requireMember 先于检索
   }
 })
 
-test('product 档跨频道：同 product 命中，异 product 零命中', () => {
+test('product 档跨频道：只允许 Session 快照产品，调用参数不得切换 scope_key', () => {
   const { db, repo } = fixture([
     { id: 'ch-a', owner: 'u-1', lineId: 'line-1' },
     { id: 'ch-b', owner: 'u-1', lineId: 'line-2' },
   ])
   try {
     seedExp(repo, { channelId: 'ch-a', scopeKind: 'product', scopeKey: 'prod-1', dedupKey: 'exp:p1' })
+    seedExp(repo, { channelId: 'ch-a', scopeKind: 'product', scopeKey: 'prod-9', dedupKey: 'exp:p9' })
     const mgr = shim(db, repo, { 'ch-b': [{ id: 'worker-1', role: 'worker' }] })
-    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-1' }).length, 1)
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-9' }).length, 1, '可信 Session 产品可命中')
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-1' }).length, 0, '伪造不同产品 scope_key 必须 fail closed')
     assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: '均热段 温差', scope: 'product', scopeKey: 'prod-2' }).length, 0)
   }
   finally {

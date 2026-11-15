@@ -70,7 +70,7 @@ function derivePackageJson(ownPkg, name) {
     engines,
     scripts: {
       dev: 'node scripts/dev-guard.mjs dev',
-      build: 'nuxt build',
+      build: 'node bin/aw.mjs build',
       start: 'node scripts/start.mjs',
       preview: 'nuxt preview',
       generate: 'nuxt generate',

@@ -23,6 +23,7 @@ import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { channelBoundLineId } from './ops-tools'
+import type { ChannelSessionExecutionScope } from '../host-tool-bridge/types'
 import { settingOf } from '../../settings'
 import { PAGE_LIMIT, exportPagesPerNode, exportWindowMaxH, exportWindowMaxMs } from '../../daq/export-limits'
 
@@ -294,23 +295,28 @@ export async function exportDaqDataset(opts: {
   lines?: ExportLineContext[]
   rootDir: string
   now?: () => number
-  /** merge 模式:额外产出多节点按秒对齐的宽表 merged.csv */
+  /** Merge mode: emit a multi-node aligned wide table. */
   merge?: boolean
-  /** 帧节点取数(vector/image 元数据行)与图像内容取回;缺省=帧节点按零样本跳过 */
+  /** Query scalar samples with trusted product tags; required for Session exports. */
+  readTaggedPage?: (nodeId: string, win: { fromMs: number, toMs: number, limit: number, lineId: string, productId: string }) => Promise<Array<{ at: number, value?: number, state?: string }>>
+  /** Query frame rows with trusted product tags; required for Session exports with frame nodes. */
+  readTaggedFrames?: (nodeId: string, win: { fromMs: number, toMs: number, limit: number, lineId: string, productId: string }) => Promise<ExportFrameRow[]>
+  /** Frame-node data and optional image blob reader. */
   readFrames?: (nodeId: string, win: { fromMs: number, toMs: number, limit: number }) => Promise<ExportFrameRow[]>
   readFrameContent?: (nodeId: string, at: number) => Promise<{ data: Buffer, mime: string } | null>
-  /** 上限覆盖(单测用;缺省 400 页/节点、400 万行总量) */
+  /** Upper-bound overrides (tests); defaults are 400 pages/node, 4M rows total. */
   caps?: { pagesPerNode?: number, totalRows?: number, framesPerNode?: number }
-  /**
-   * H3(2026-11-03):CSV 追加环境/工况列(line_id,run_id,product_id,recipe_id)。
-   * 默认 **false**,保持既有 `ts_iso,ts_ms,value,state` 列契约(离线分析/IDD 管线
-   * 按列名消费,默认改列序是破坏性变更);需要行级批次归属时显式开启。
-   */
+  /** Append line/run/product/recipe context columns; false preserves the legacy CSV schema. */
   withContext?: boolean
-  /** 行级工况解析(caller 用 createRunContextResolver() 构造;缺省=空列) */
   contextOf?: (nodeId: string, lineId: string, tsMs: number) => ExportContextCols | null
+  /** Server-verified, immutable Session scope; never populated from tool arguments. */
+  sessionScope?: Pick<ChannelSessionExecutionScope, 'sessionId' | 'lineId' | 'productId'>
 }): Promise<DaqExportResult> {
   const { targets, nodeOf, readPoints, fromMs, toMs, title, note, lines, rootDir } = opts
+  const sessionScope = opts.sessionScope
+  if (sessionScope && (!sessionScope.sessionId || !sessionScope.lineId || !sessionScope.productId)) throw new Error('SESSION_EXPORT_SCOPE_INVALID')
+  if (sessionScope && !opts.readTaggedPage) throw new Error('SESSION_EXPORT_TAGGED_QUERY_UNAVAILABLE')
+  if (sessionScope && !opts.readTaggedFrames) throw new Error('SESSION_EXPORT_TAGGED_FRAME_QUERY_UNAVAILABLE')
   const withContext = opts.withContext === true
   const contextHeader = 'line_id,run_id,product_id,recipe_id'
   const contextCellsOf = (nodeId: string, lineId: string, tsMs: number): string[] => {
@@ -327,7 +333,8 @@ export async function exportDaqDataset(opts: {
   const dir = join(rootDir, exportId)
   const nodesDir = join(dir, 'nodes')
   mkdirSync(nodesDir, { recursive: true })
-  if (opts.readFrames) mkdirSync(join(dir, 'frames'), { recursive: true })
+  const hasFrameReader = Boolean(opts.readFrames || opts.readTaggedFrames)
+  if (hasFrameReader) mkdirSync(join(dir, 'frames'), { recursive: true })
 
   const files: DaqExportResult['files'] = []
   const truncated: string[] = []
@@ -340,14 +347,20 @@ export async function exportDaqDataset(opts: {
     // 帧节点(vector/image):导出帧文件而非标量 CSV —— 标量管线的 readPoints 查不到
     // 帧(帧只入 daq_frames),按标量导出会得到零行假象
     if (meta.signalKind === 'vector' || meta.signalKind === 'image') {
-      if (!opts.readFrames) {
+      if (!hasFrameReader) {
         nodeMetas.push({ id: meta.id, name: meta.name, kind: meta.signalKind, line_id: meta.lineId, semantics: meta.semantics || '', file: '', frames: 0, note: '未提供帧取数器(readFrames),帧节点跳过' })
         continue
       }
-      const frames = await opts.readFrames(id, { fromMs, toMs, limit: maxFrames })
-      // 时序契约:升序导出(适配器 queryFrames 为 DESC 最新在前,与 tsdb.query 同病)
+      const frameLimit = sessionScope ? MAX_FRAMES_PER_NODE : maxFrames
+      const framesRaw = sessionScope
+        ? opts.readTaggedFrames
+          ? await opts.readTaggedFrames(id, { fromMs, toMs, limit: frameLimit, lineId: sessionScope.lineId, productId: sessionScope.productId })
+          : null
+        : await (opts.readFrames?.(id, { fromMs, toMs, limit: frameLimit }) ?? Promise.resolve([]))
+      if (framesRaw === null) throw new Error('SESSION_EXPORT_TAGGED_FRAME_QUERY_UNAVAILABLE')
+      const frames = framesRaw
+      const hitFrameCap = framesRaw.length >= frameLimit
       frames.sort((a, b) => a.at - b.at)
-      const hitFrameCap = frames.length >= maxFrames
       if (hitFrameCap) truncated.push(id)
       const entry = await exportFrames(dir, meta, frames, opts.readFrameContent ?? (async () => null), hitFrameCap, withContext)
       nodeMetas.push(entry)
@@ -387,7 +400,9 @@ export async function exportDaqDataset(opts: {
           hitCap = true
           break
         }
-        const page = await readPoints(id, { fromMs: cursor, toMs, limit: PAGE_LIMIT })
+        const page = sessionScope
+          ? await opts.readTaggedPage!(id, { fromMs: cursor, toMs, limit: PAGE_LIMIT, lineId: sessionScope.lineId, productId: sessionScope.productId })
+          : await readPoints(id, { fromMs: cursor, toMs, limit: PAGE_LIMIT })
         if (!Array.isArray(page) || page.length === 0) break
         let lastAt = cursor - 1
         for (const p of page) {
@@ -537,7 +552,13 @@ export async function toolDaqExport(agentId: string, args: {
   merge?: boolean | string
   /** H3:CSV 追加环境/工况列(line_id,run_id,product_id,recipe_id;默认关闭保持列契约) */
   with_context?: boolean | string
-}): Promise<{ text: string, isError?: boolean }> {
+}, sessionScope?: ChannelSessionExecutionScope): Promise<{ text: string, isError?: boolean }> {
+  if (sessionScope && (!sessionScope.sessionId || !sessionScope.productId || !sessionScope.lineId)) {
+    return { text: 'Session 导出 scope 不完整,拒绝导出。', isError: true }
+  }
+  if (sessionScope && args.line_id && String(args.line_id).trim() !== sessionScope.lineId) {
+    return { text: `line_id 与 Session 固定产线 ${sessionScope.lineId} 不一致,拒绝导出。`, isError: true }
+  }
   const bindings = getAgentNodeBindingRepo().byAgent(agentId).filter(b => b.kind === 'daq')
   // 与 daq_query/daq_frames 同源:v28 频道绑线只读扩权同样覆盖全量导出
   const boundLine = channelBoundLineId(agentId)
@@ -561,6 +582,15 @@ export async function toolDaqExport(agentId: string, args: {
       }
       targets = wanted
     }
+  }
+  if (sessionScope) {
+    const snapshotLineNodes = getDaqNodeRepo().all().filter(n => n.lineId === sessionScope.lineId).map(n => n.id)
+    const snapshotAllowed = new Set(snapshotLineNodes.filter(id => allowed.has(id)))
+    if (targets.some(id => !snapshotAllowed.has(id))) {
+      return { text: '指定节点不在 Session 固定产线及当前 DAQ 授权交集内,拒绝导出。', isError: true }
+    }
+    targets = targets.filter(id => snapshotAllowed.has(id))
+    if (targets.length === 0) return { text: 'Session 固定产线没有当前授权的 DAQ 节点,拒绝导出。', isError: true }
   }
   const lineFilter = String(args.line_id ?? '').trim()
   if (lineFilter) {
@@ -644,6 +674,21 @@ export async function toolDaqExport(agentId: string, args: {
       targets,
       nodeOf,
       readPoints: (nodeId, win) => getTsdb().query(nodeId, win),
+      ...(sessionScope
+        ? {
+            readTaggedPage: async (nodeId: string, win: { fromMs: number, toMs: number, limit: number, lineId: string, productId: string }) => {
+              const tsdb = getTsdb()
+              if (!tsdb.queryTaggedPage) throw new Error('SESSION_EXPORT_TAGGED_PAGE_UNAVAILABLE')
+              return (await tsdb.queryTaggedPage(nodeId, win)).points
+            },
+            readTaggedFrames: async (nodeId: string, win: { fromMs: number, toMs: number, limit: number, lineId: string, productId: string }) => {
+              const tsdb = getTsdb()
+              if (!tsdb.queryTaggedFrames) throw new Error('SESSION_EXPORT_TAGGED_FRAME_QUERY_UNAVAILABLE')
+              return await tsdb.queryTaggedFrames(nodeId, win)
+            },
+            sessionScope,
+          }
+        : {}),
       fromMs,
       toMs,
       title: args.title ? String(args.title) : '',

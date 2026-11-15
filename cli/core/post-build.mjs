@@ -16,7 +16,7 @@
 //      (运行时经 fs 读取,nitro 不会打包它们)
 //   ③ 结果汇报(便于 CI 与排障)
 // ============================================================
-import { copyFileSync, cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /** nitropack 2.13.4 写入的 import.meta.url 占位兜底 */
@@ -66,17 +66,17 @@ export function postBuildArtifacts(root) {
   // 外置资产随产物分发(运行时 fs 读取;缺了它们不是启动失败而是运行期才炸)
   const assets = []
   const ship = (src, dest, label, { recursive = false } = {}) => {
-    try {
-      if (!existsSync(src)) return
-      if (recursive) cpSync(src, dest, { recursive: true })
-      else copyFileSync(src, dest)
-      assets.push(label)
+    if (!existsSync(src)) throw new Error(`[build] 必需运行时资产缺失:${label}(${src})`)
+    if (recursive) cpSync(src, dest, { recursive: true, force: true })
+    else {
+      mkdirSync(join(dest, '..'), { recursive: true })
+      copyFileSync(src, dest)
     }
-    catch (err) {
-      console.error(`[build] ${label} 复制失败:`, err?.message ?? err)
-    }
+    if (!existsSync(dest)) throw new Error(`[build] 必需运行时资产复制后不存在:${label}(${dest})`)
+    assets.push(label)
   }
   const asDir = join(outputRoot, '.AgentWorkShop')
+  mkdirSync(asDir, { recursive: true })
   ship(join(root, '.AgentWorkShop', 'prompts'), join(asDir, 'prompts'), 'prompts', { recursive: true })
   ship(join(root, 'shared', 'config', 'schema.json'), join(asDir, 'schema.json'), 'schema.json')
   ship(

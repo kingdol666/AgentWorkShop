@@ -15,6 +15,8 @@ import { localBypassEnv, preloadDotEnv } from '../core/context.mjs'
 import { runChild } from '../core/child-lifecycle.mjs'
 import { runBootstrap } from '../../scripts/home-bootstrap.mjs'
 import { daqPreflight, printInfraGuidance } from '../infra.mjs'
+import { withBuildLock } from '../core/build-lock.mjs'
+import { postBuildArtifacts } from '../core/post-build.mjs'
 
 export const meta = {
   name: 'start',
@@ -47,15 +49,21 @@ export async function run(argv, ctx) {
       console.log(`  › 请先执行 ${color.cyan('aw build')} 或在应用目录执行 pnpm install`)
       return 1
     }
-    console.log(`${color.cyan('›')} 首次启动:正在构建生产产物(约 2-5 分钟,仅一次) ...`)
-    // 同 build.mjs:转发信号 + 退出码传播(信号终止 → 128+N)
-    const buildCode = await runChild(process.execPath, [nuxtBin, 'build'], {
-      cwd: appRoot,
-      stdio: 'inherit',
-      env: localBypassEnv(),
-    })
-    if (buildCode !== 0 || !existsSync(outputEntry)) {
-      console.log(`${color.red('✖')} 构建失败(exit=${buildCode})`)
+    console.log(`${color.cyan('›')} 首次启动:正在检查/构建生产产物(约 2-5 分钟,仅一次) ...`)
+    try {
+      await withBuildLock(appRoot, async () => {
+        if (existsSync(outputEntry)) return
+        const buildCode = await runChild(process.execPath, [nuxtBin, 'build'], {
+          cwd: appRoot,
+          stdio: 'inherit',
+          env: localBypassEnv(envExtra),
+        })
+        if (buildCode !== 0 || !existsSync(outputEntry)) throw new Error(`构建失败(exit=${buildCode})`)
+        postBuildArtifacts(appRoot)
+      })
+    }
+    catch (err) {
+      console.log(`${color.red('✖')} 首启构建失败: ${err?.message ?? err}`)
       return 1
     }
   }

@@ -242,7 +242,18 @@ test('plan_approval：请求 → owner 批准 → planVersion/planJson 落库', 
   try {
     const approval = s.svc.requestPlanApproval(s.project.id, s.owner, {
       version: 1,
-      plan: { facts: ['产线/配方已确认'], deliverables: ['基线报告'], workItems: ['建立基线'] },
+      plan: {
+        facts: ['产线/配方已确认'],
+        // V1 计划 schema:交付物/工作项都是对象(批准即物化,preflight 必须先能解析)
+        deliverables: [{ key: 'baseline-report', name: '基线报告' }],
+        work_items: [{
+          key: 'baseline-supplement',
+          deliverableKey: 'baseline-report',
+          channelId: s.member.channelId,
+          title: '建立基线补充',
+          dedupeKey: 'plan-baseline-supplement',
+        }],
+      },
     })
     assert.equal(approval.kind, 'plan_approval')
     assert.equal(approval.status, 'pending')

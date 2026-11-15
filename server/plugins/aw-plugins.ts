@@ -67,7 +67,8 @@ export default defineNitroPlugin((nitroApp) => {
     capturePluginError('plugin-host-init', err)
     console.error('[aw-plugins] 插件宿主初始化失败(服务继续运行):', err instanceof Error ? err.message : err)
   })
-  nitroApp.hooks.hookOnce('close', () => {
-    void shutdownPluginHost()
-  })
+  // 必须返回(而非 void)Promise:close 钩子链会 await 每个钩子的返回值,
+  // fire-and-forget 会让 `aw stop` 的优雅停机在插件 dispose(关串口/网络/句柄)
+  // 完成前就进入 process.exit。单插件 dispose 超时由 shutdown 端点的 8s 强制兜底。
+  nitroApp.hooks.hookOnce('close', () => shutdownPluginHost())
 })

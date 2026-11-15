@@ -132,6 +132,89 @@ async function produceReviewed(f: Fixture, owner: { id: string, role: string }, 
   return { result: f.svc.listResults(p.id, owner).find(r => r.id === result.id)!, artifactId }
 }
 
+test('reconcile recovers a root task created before attempt.taskId persistence', async () => {
+  const f = fixture()
+  const { owner, p, w1, member } = await planProject(f)
+  const { createProjectWorkItemRepo } = await import('../server/services/workshop/db/project.repo')
+  const repo = createProjectWorkItemRepo(f.db)
+  try {
+    const attemptNo = 1
+    const sourceKey = `pw:${w1.id}:${attemptNo}`
+    const attempt = f.attempts.create({ projectId: p.id, workItemId: w1.id, attemptNo, channelId: member.channelId, sourceKey, traceId: `trace:${w1.id}` })
+    assert.equal(repo.claimForDispatch(w1.id, attempt.id), true)
+    const canonical = await f.manager.submitProjectRoot({
+      projectId: p.id, workItemId: w1.id, attemptNo, sourceKey, channelId: member.channelId,
+      title: w1.title, description: w1.brief,
+    })
+    assert.equal(canonical.created, true)
+    assert.equal(f.attempts.findById(attempt.id)?.channelTaskId, null, 'simulate process crash before attempt-task link')
+
+    f.svc.reconcile(p.id, owner)
+    assert.equal(f.attempts.findById(attempt.id)?.channelTaskId, canonical.task.id)
+    assert.equal(f.svc.listWorkItems(p.id, owner).find(w => w.id === w1.id)?.state, 'DISPATCHED')
+    assert.equal(f.tasks.listRoots(member.channelId).filter(task => task.sourceChatMessageId === sourceKey).length, 1)
+  }
+  finally {
+    f.db.close()
+  }
+})
+
+test('plan materialization preflight rejects an unbound channel and leaves approval/version/rows unchanged', async () => {
+  const f = fixture()
+  const owner = { id: 'u-owner', role: 'user' }
+  try {
+    const p = await f.svc.create({ name: `InvalidPlan-${randomUUID().slice(0, 8)}`, objective: 'preflight', planApprovalRequired: 1, autoDispatch: false, routingPolicy: 'legacy' }, owner)
+    assert.throws(
+      () => f.svc.requestPlanApproval(p.id, owner, {
+        version: 1,
+        plan: {
+          deliverables: [{ key: 'd1', name: 'Output' }],
+          work_items: [{ key: 'w1', deliverableKey: 'd1', channelId: 'not-bound-channel', title: 'Unroutable', resultKey: 'main' }],
+        },
+      }),
+      (err: unknown) => (err as { code?: string }).code === 'PLAN_CHANNEL_UNRESOLVED',
+    )
+    assert.equal(f.svc.get(p.id, owner).planVersion, 0)
+    assert.equal(f.svc.listApprovals(p.id, owner).length, 0)
+    assert.equal(f.svc.listDeliverables(p.id, owner).length, 0)
+    assert.equal(f.svc.listWorkItems(p.id, owner).length, 0)
+    assert.equal(f.svc.events.listByProject(p.id).some(event => event.type === 'plan.applied'), false)
+  }
+  finally {
+    f.db.close()
+  }
+})
+
+test('plan materialization SQLite failure rolls back approval/version/deliverables/work items atomically', async () => {
+  const f = fixture()
+  const owner = { id: 'u-owner', role: 'user' }
+  try {
+    const p = await f.svc.create({ name: `AtomicPlan-${randomUUID().slice(0, 8)}`, objective: 'atomic materialization', planApprovalRequired: 1, autoDispatch: false, routingPolicy: 'legacy' }, owner)
+    const member = await f.manager.createChannel({ name: `atomic-${randomUUID().slice(0, 6)}`, ownerUserId: owner.id, leadAgent: { name: 'Lead', harness: 'mock' } })
+    f.svc.bindChannel(p.id, member.channelId, owner)
+    const approval = f.svc.requestPlanApproval(p.id, owner, {
+      version: 1,
+      plan: {
+        deliverables: [{ key: 'd1', name: 'Atomic output' }],
+        work_items: [
+          { key: 'w1', deliverableKey: 'd1', channelId: member.channelId, title: 'First', resultKey: 'one' },
+          { key: 'w2', deliverableKey: 'd1', channelId: member.channelId, title: 'Second', resultKey: 'two' },
+        ],
+      },
+    })
+    f.db.exec(`CREATE TRIGGER fail_second_plan_item BEFORE INSERT ON project_work_items WHEN NEW.title = 'Second' BEGIN SELECT RAISE(ABORT, 'injected materialization failure'); END`)
+    assert.throws(() => f.svc.decideApproval(p.id, approval.id, owner, true), /injected materialization failure/)
+    assert.equal(f.svc.get(p.id, owner).planVersion, 0)
+    assert.equal(f.svc.listApprovals(p.id, owner).find(a => a.id === approval.id)?.status, 'pending')
+    assert.equal(f.svc.listDeliverables(p.id, owner).length, 0)
+    assert.equal(f.svc.listWorkItems(p.id, owner).length, 0)
+    assert.equal(f.svc.events.listByProject(p.id).some(event => event.type === 'plan.applied'), false)
+  }
+  finally {
+    f.db.close()
+  }
+})
+
 test('合同物化：交付物 dependsOn + contract.inputs UUID + 槽位唯一', async () => {
   const f = fixture()
   const { p, w1, w2, d1, d2, owner } = await planProject(f)

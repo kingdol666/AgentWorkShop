@@ -55,7 +55,9 @@ export function createChannelSessionRepo(db: DatabaseSync) {
   const byChannelStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE channel_id = ? ORDER BY created_at DESC`)
   const byWorkItemStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE project_work_item_id = ? ORDER BY created_at DESC`)
   const byProjectStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE project_id = ? ORDER BY created_at DESC`)
-  const closeStmt = db.prepare(`UPDATE channel_sessions SET status = 'closed', closed_at = ? WHERE id = ? AND status = 'active'`)
+  const closeStmt = db.prepare(`UPDATE channel_sessions SET status = 'closed', closed_at = ? WHERE id = ? AND status IN ('active', 'closing')`)
+  const beginClosingStmt = db.prepare(`UPDATE channel_sessions SET status = 'closing' WHERE id = ? AND status IN ('active', 'closing')`)
+  const byStatusStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE status = ? ORDER BY created_at ASC`)
 
   return {
     create(input: {
@@ -117,6 +119,11 @@ export function createChannelSessionRepo(db: DatabaseSync) {
       return byProjectStmt.all(projectId) as unknown as ChannelSessionRow[]
     },
 
+    /** 按状态枚举（启动对账取 'closing'；active/closed 也可用于运维查询） */
+    listByStatus(status: ChannelSessionRow['status'] | 'closing'): ChannelSessionRow[] {
+      return byStatusStmt.all(status) as unknown as ChannelSessionRow[]
+    },
+
     listActive(channelId: string): ChannelSessionRow[] {
       return this.listByChannel(channelId).filter(s => s.status === 'active')
     },
@@ -144,6 +151,16 @@ export function createChannelSessionRepo(db: DatabaseSync) {
     bumpGeneration(id: string): number {
       db.prepare('UPDATE channel_sessions SET generation = generation + 1 WHERE id = ?').run(id)
       return this.findById(id)?.generation ?? 0
+    },
+
+    /**
+     * 持久化关闭意图（active|closing → closing）。级联完成前进程退出时，
+     * 会话行保持 closing，重启对账据此补齐关闭，而不是留下"active 但不可用"。
+     * 幂等：已 closing 也返回 true（重试可重新跑级联）。
+     */
+    beginClosing(id: string): boolean {
+      const result = beginClosingStmt.run(id)
+      return Number(result.changes ?? 0) > 0
     },
 
     /** 关闭会话（幂等：已 closed 返回 false）。 */

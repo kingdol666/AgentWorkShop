@@ -129,6 +129,32 @@ export function markDaqInfraFailure(err: unknown): void {
   log.error('[daq-infra]', s.warning)
 }
 
+/** 运行期写入失败的日志节流窗口(30s;连接池坏死时每批都失败,不能每批刷日志) */
+const RUNTIME_FAILURE_LOG_MS = 30_000
+let lastRuntimeFailureLogAt = 0
+
+/**
+ * 运行期后端失联(时序库写入重试耗尽):标记 degraded 以触发 30s 自动重连。
+ *
+ * 与启动期 markDaqInfraFailure 区分:这里不停止采集、不清空缓冲 —— 失败批次已由
+ * 调用方计数丢弃,后续样本继续攒批;重连成功后 rebuildTsdb 换新连接池自动恢复。
+ * 若只计数不置降级,连接池坏死时状态会一直显示在线,丢样永远不会自愈。
+ *
+ * @param scope 区分样本/帧写入(告警文案用)
+ */
+export function markDaqRuntimeFailure(err: unknown, scope = '写入'): void {
+  const s = state().status
+  s.degraded = true
+  s.lastCheckAt = new Date().toISOString()
+  s.lastError = err instanceof Error ? err.message : String(err)
+  s.warning = `数采后端运行期${scope}失败(自动重连中):${s.lastError}`
+  const now = Date.now()
+  if (now - lastRuntimeFailureLogAt >= RUNTIME_FAILURE_LOG_MS) {
+    lastRuntimeFailureLogAt = now
+    log.error('[daq-infra]', s.warning)
+  }
+}
+
 /** 运行配置快照(启动插件装配时写入;重连端点复用) */
 export function daqInfraConfig(): DaqInfraConfig {
   return state().cfg
