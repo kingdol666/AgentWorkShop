@@ -1,3 +1,4 @@
+import { recipeDefinitionHash } from './industrial/recipe-snapshot'
 import { canonicalHash, canonicalJson } from '@/shared/context/hash'
 import { parseJson } from '../db/database'
 
@@ -42,6 +43,7 @@ export interface TrustedSessionBindingIdentity {
   lineId: string
   bindingSnapshotHash: string
   bindingSnapshotRevision: number
+  recipes: Array<{ id: string, version: number, contentHash: string }>
   channelMode: 'generic' | 'production_line_integrated'
 }
 
@@ -61,6 +63,14 @@ export function trustedSessionBindingIdentity(row: {
     const snapshot = parseJson<Record<string, unknown>>(row.bindingSnapshotJson, {})
     if (snapshot.channelId !== row.channelId || snapshot.productId !== row.productId || snapshot.lineId !== row.lineId || snapshot.bindingRevision !== row.bindingSnapshotRevision) return null
     if (canonicalJson(snapshot) !== row.bindingSnapshotJson || canonicalHash(snapshot) !== row.bindingSnapshotHash) return null
+    if (!Array.isArray(snapshot.recipes)) return null
+    const recipes = snapshot.recipes.flatMap((entry) => {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return []
+      const recipe = entry as Record<string, unknown>
+      if (typeof recipe.id !== 'string' || recipe.productId !== row.productId || recipe.lineId !== row.lineId || !Number.isSafeInteger(recipe.version) || typeof recipe.contentHash !== 'string') return []
+      return [{ id: recipe.id, version: recipe.version as number, contentHash: recipe.contentHash }]
+    })
+    if (recipes.length !== snapshot.recipes.length) return null
     return {
       channelId: row.channelId,
       sessionId: row.id,
@@ -68,6 +78,7 @@ export function trustedSessionBindingIdentity(row: {
       lineId: row.lineId,
       bindingSnapshotHash: row.bindingSnapshotHash,
       bindingSnapshotRevision: row.bindingSnapshotRevision,
+      recipes,
       channelMode: 'production_line_integrated',
     }
   }
@@ -91,7 +102,7 @@ export function createChannelSessionBindingSnapshot(input: ChannelSessionBinding
         productId: recipe.productId,
         lineId: recipe.lineId,
         version: recipe.version,
-        contentHash: canonicalHash({ params: recipe.params, daqWindows: recipe.daqWindows }),
+        contentHash: recipeDefinitionHash(recipe),
         params: recipe.params,
         daqWindows: recipe.daqWindows,
       }

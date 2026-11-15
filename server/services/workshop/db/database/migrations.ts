@@ -266,6 +266,9 @@ export function migrateDropOwnerFks(db: DatabaseSync): void {
   if (!needWorkspaces && !needChannels && !needAgents && !needTeams) return
 
   db.exec('PRAGMA foreign_keys = OFF;')
+  // 重建必须原子:CREATE new → INSERT SELECT → DROP old → RENAME 之间进程中断会留下
+  // 「旧表已删、新表未改名」的半迁移库(下次启动 IF NOT EXISTS 建空表 = 静默数据丢失)。
+  db.exec('BEGIN IMMEDIATE;')
   try {
     if (needWorkspaces) {
       db.prepare(`CREATE TABLE workspaces_new (
@@ -339,6 +342,14 @@ export function migrateDropOwnerFks(db: DatabaseSync): void {
     }
     // 重建会连带删除该表的索引;这 4 张表在 SCHEMA_SQL 里只有一个索引,原样补回
     db.prepare('CREATE INDEX IF NOT EXISTS idx_workspaces_owner ON workspaces(owner_user_id)').run()
+    db.exec('COMMIT;')
+  }
+  catch (err) {
+    try {
+      db.exec('ROLLBACK;')
+    }
+    catch { /* 事务已失效:原始错误更重要 */ }
+    throw err
   }
   finally {
     db.exec('PRAGMA foreign_keys = ON;')
@@ -376,6 +387,8 @@ export function migrateLegacySchema(db: DatabaseSync): void {
   if (!isV1) return
 
   db.exec('PRAGMA foreign_keys = OFF;')
+  // 同 migrateDropOwnerFks:多张表重建必须整体原子,中断不得留下半迁移库。
+  db.exec('BEGIN IMMEDIATE;')
   try {
     // 1. subscriptions 补 channel_id(从旧 agents.channel_id 推导),agent_id 指向实例
     const subCols = db.prepare(`PRAGMA table_info(subscriptions)`).all() as Array<{ name: string }>
@@ -452,6 +465,14 @@ export function migrateLegacySchema(db: DatabaseSync): void {
     );
     DROP TABLE agents;
     ALTER TABLE agents_new RENAME TO agents;`)
+    db.exec('COMMIT;')
+  }
+  catch (err) {
+    try {
+      db.exec('ROLLBACK;')
+    }
+    catch { /* 事务已失效:原始错误更重要 */ }
+    throw err
   }
   finally {
     db.exec('PRAGMA foreign_keys = ON;')

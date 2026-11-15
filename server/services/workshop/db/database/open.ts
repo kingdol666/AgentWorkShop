@@ -35,6 +35,17 @@ export function openWorkshopDb(path: string): DatabaseSync {
   return db
 }
 
+/**
+ * SCHEMA_SQL 契约版本。
+ *
+ * **每次修改 SCHEMA_SQL（向 CREATE TABLE 追加列/表、改约束）必须 +1。**
+ * 版本号是存量库不被新契约哈希拒绝启动的前提:老库只记录了旧版本号,
+ * assertMigrationFingerprint 查不到新版本行即放行并补录;同版本内的 SQL
+ * 漂移(手改/回滚 schema)仍会被哈希比对抓住。
+ * 历史:v1 初始契约;v2 2026-11-15 channels.channel_mode。
+ */
+const SCHEMA_CONTRACT_VERSION = 2
+
 /** 对已打开的库执行初始化:WAL + 外键约束 + 建表 + 增量迁移 */
 export function initWorkshopDb(db: DatabaseSync): void {
   db.exec('PRAGMA journal_mode = WAL;')
@@ -45,8 +56,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   ensureMigrationLedger(db)
   // Verify the recorded contract before incremental legacy migrations run; first boot records it.
   const contractFingerprint = fingerprintMigration(SCHEMA_SQL)
-  assertMigrationFingerprint(db, 1, contractFingerprint)
-  recordMigration(db, { version: 1, name: 'schema-contract', fingerprint: contractFingerprint })
+  assertMigrationFingerprint(db, SCHEMA_CONTRACT_VERSION, contractFingerprint)
+  recordMigration(db, { version: SCHEMA_CONTRACT_VERSION, name: 'schema-contract', fingerprint: contractFingerprint })
   db.exec(CHANNEL_PRODUCT_BINDINGS_SQL)
   // Add guardrail metadata before any legacy tasks-table rebuild so values can be copied safely.
   migrateAgentTeamTaskGuardrailColumns(db)

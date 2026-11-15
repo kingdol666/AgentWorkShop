@@ -1,0 +1,94 @@
+{
+  "generatedAt": "2026-11-15T12:20:00+08:00",
+  "head": "79723a8546a4b99047c87cb287491c71a1cc1718",
+  "branch": "main",
+  "environment": {
+    "node": "v24.19.0",
+    "appVersion": "0.11.2",
+    "mode": "home (isolated)",
+    "restHome": "D:/tmp/aw-dual-rest-home-20261115",
+    "restPort": 3044,
+    "ompHome": "D:/tmp/aw-omp-accept-home-20261115",
+    "ompPort": 3045,
+    "ompModel": "ustc/deepseek-flash",
+    "ompThinkingLevel": "low",
+    "ompPromptTimeoutMs": 1800000,
+    "daq": "simulated line + driver=mock (no physical PLC)",
+    "startInfrastructure": "never"
+  },
+  "static": {
+    "lint": { "pass": true, "detail": "RSI redline 21 files / 0 device writes; eslint 0 errors" },
+    "typecheck": { "pass": true },
+    "i18n": { "pass": true, "zhKeys": 3342, "enKeys": 3342, "usedKeys": 2917, "unresolved": 0 },
+    "docs": { "pass": true, "checks": 87, "failures": 0 }
+  },
+  "unit": {
+    "command": "npm run test:unit",
+    "tests": 1720,
+    "pass": 1720,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "note": "Includes new regression test tests/channel-session-scope-wiring.test.ts"
+  },
+  "focusedDualMode": {
+    "tests": 67,
+    "pass": 67,
+    "fail": 0,
+    "files": 19
+  },
+  "auxiliary": {
+    "mcp": { "tests": 14, "pass": 14, "fail": 0 },
+    "pluginLifecycle": { "pass": 22, "fail": 0 },
+    "sdkSurface": { "pass": true },
+    "twinProvider": { "tests": 5, "pass": 5, "fail": 0 },
+    "skills": { "pass": 167, "fail": 0 }
+  },
+  "build": {
+    "command": "npm run build",
+    "pass": true,
+    "output": ".output",
+    "productionInstance": "node .output/server/index.mjs (isolated home, /api/health ready)"
+  },
+  "liveRest": {
+    "script": "scripts/accept-rest.mjs",
+    "results": "results-rest.json",
+    "total": 68,
+    "pass": 68,
+    "fail": 0
+  },
+  "liveOmp": {
+    "script": "scripts/accept-omp.mjs",
+    "results": "results-omp.json",
+    "total": 50,
+    "pass": 50,
+    "fail": 0,
+    "note": "Real omp subprocesses + USTC/deepseek-flash; simulated line and mock DAQ only; no DCW/PLC writes"
+  },
+  "mimosa": {
+    "scanId": "scan-2026-11-15T04-19-13.703Z-d5fddcefc407",
+    "seal": "sha256:4fa12dfbf371f6384e94a3785f2ac9d9942a457a6857feca0c14f120d7437425",
+    "scanDir": "C:\\Users\\87287\\.mimosa\\security-scans\\project-4e069fc7aa01f0659de325cc\\scan-2026-11-15T04-19-13.703Z-d5fddcefc407",
+    "depth": "deep",
+    "runStatus": "inconclusive",
+    "completeness": "partial",
+    "findingCount": 47,
+    "source": { "selectedFiles": 2037, "parsedFiles": 2037, "truncated": false, "readFailures": 0, "parseFailures": 0 },
+    "dependencies": { "completion": "completed", "packagesScanned": 354, "matchedAdvisories": 0 },
+    "gaps": ["部分分析阶段未能完整覆盖"],
+    "verdict": "NOT a security pass; static advisories require manual confirmation"
+  },
+  "fix": {
+    "id": "channel-session-scope-binding",
+    "file": "server/services/workshop/runtime/manager/runtime-wiring.ts",
+    "test": "tests/channel-session-scope-wiring.test.ts",
+    "preFixEvidence": "pre-fix-failure.txt",
+    "impact": "PR #221 extracted setChannelSessionScope from the impl and called it without receiver; every BaseAgentImpl-backed harness (omp/claude/codex/...) crashed on channel activation with TypeError reading bridgeCtx"
+  },
+  "boundaries": [
+    "No physical PLC/HIL; industrial tools were read-only on a simulated line.",
+    "No browser pixel-level UI walkthrough this round; UI source-contract tests are included in unit.",
+    "Mimosa deep scan completed with a seal but coverage is partial/inconclusive (47 static findings); no security pass is claimed.",
+    "Group-chat-origin submit_task/complete_task is blocked by the existing §13.3 invocation scope; task acceptance used the framework task API."
+  ]
+}

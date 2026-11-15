@@ -212,6 +212,14 @@ export default function workshopPlugin(nitroApp: {
   // 创建 manager → 挂全局单例(后续 REST/A2A/WS 经 getWorkshopManager() 读取)
   const manager = createAgentChannelManager(deps)
   globalThis.__workshopManager = manager
+  // 启动对账:上次进程在会话关闭级联中途退出 → closing 会话在此补完 clone 停用与终态。
+  // 在开始处理请求前同步收敛;失败不阻断启动(下一次启动会再对账)。
+  try {
+    manager.reconcileInterruptedSessions()
+  }
+  catch (err) {
+    console.warn('[workshop] 会话关闭对账失败(不阻断启动):', err instanceof Error ? err.message : err)
+  }
   // Project 层 V1：项目办公室/生命周期/成员绑定（独立 service，项目状态唯一写者）
   // C11 line grant：人类 actor 的成果读取/操作按产线授权过滤（admin/agent 直通；service 内裁决）。
   const projectService = initProjectService(manager, db, {

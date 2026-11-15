@@ -82,6 +82,39 @@ function appendEvent(f: Fixture, projectId: string, type: string, eventKey: stri
   createProjectEventRepo(f.db).append({ projectId, type, eventKey, payloadJson: '{}', traceId: '' })
 }
 
+test('S5 rejects out-of-order concurrent plan approvals without regressing approved version', async () => {
+  const s = await activeProject()
+  try {
+    const v1 = s.svc.requestPlanApproval(s.p.id, s.owner, { version: 1, plan: { facts: ['v1'] } })
+    s.svc.decideApproval(s.p.id, v1.id, s.owner, true)
+    const v2 = s.svc.requestPlanApproval(s.p.id, s.owner, { version: 2, plan: { facts: ['v2'] } })
+    assert.throws(() => s.svc.requestPlanApproval(s.p.id, s.owner, { version: 3, plan: { facts: ['v3'] } }), (err: unknown) => (err as { code?: string }).code === 'PLAN_VERSION_STALE')
+    s.svc.decideApproval(s.p.id, v2.id, s.owner, true)
+    assert.equal(s.svc.get(s.p.id, s.owner).planVersion, 2)
+    assert.equal(s.kernel.planVersions.getApproved(s.p.id)?.version, 2)
+    assert.equal(s.kernel.planVersions.get(s.p.id, 2)?.status, 'approved')
+  }
+  finally {
+    s.db.close()
+  }
+})
+
+test('S5 rejects reusing a rejected plan version with different immutable content', async () => {
+  const s = await activeProject()
+  try {
+    const first = s.svc.requestPlanApproval(s.p.id, s.owner, { version: 1, plan: { facts: ['original'] } })
+    s.svc.decideApproval(s.p.id, first.id, s.owner, false, 'reject')
+    assert.throws(
+      () => s.svc.requestPlanApproval(s.p.id, s.owner, { version: 1, plan: { facts: ['changed'] } }),
+      (err: unknown) => (err as { code?: string }).code === 'PLAN_VERSION_REUSED',
+    )
+    assert.equal(s.kernel.planVersions.get(s.p.id, 1)?.planJson, JSON.stringify({ facts: ['original'] }))
+  }
+  finally {
+    s.db.close()
+  }
+})
+
 test('S5 双账本：plan_versions 不可变 + 单 approved；里程碑事件入 Progress Ledger', async () => {
   const s = await activeProject()
   try {

@@ -214,6 +214,8 @@ export interface TsdbPort {
   // ===== 多形态帧(v2:向量/图像;像素 blob 在对象存储,这里只存元数据+派生指标)=====
   writeFrames(rows: DaqFrameRow[]): Promise<void>
   queryFrames(nodeId: string, opts: DaqFrameQueryOpts): Promise<DaqFrameRecord[]>
+  /** Trusted batch-scoped frame query. Optional for legacy adapters; Session tools fail closed when absent. */
+  queryTaggedFrames?(nodeId: string, opts: DaqFrameQueryOpts & { lineId: string, productId: string }): Promise<DaqFrameRecord[]>
   // ===== 按产线分表后的运维面(可选实现:后端不支持时调用方降级)=====
   /** 布局/保留期/rollup 水位 */
   layoutInfo?(): Promise<TsdbLayoutInfo>

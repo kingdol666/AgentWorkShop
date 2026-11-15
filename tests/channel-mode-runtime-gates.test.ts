@@ -13,6 +13,7 @@ const { hostToolsForRole } = await import('../server/services/workshop/agents/ho
 const { hostToolsForAgent } = await import('../server/services/workshop/agents/host-tool-bridge/per-agent')
 const { dispatchHostTool } = await import('../server/services/workshop/agents/host-tool-bridge/dispatch')
 const { registerPluginTool, unregisterPluginTools } = await import('../server/services/workshop/agents/plugin-tools')
+const { ManagerHostTools } = await import('../server/services/workshop/runtime/manager/host-tools')
 
 const g = globalThis as typeof globalThis & { __workshopManager?: unknown }
 const oldManager = g.__workshopManager
@@ -56,7 +57,69 @@ test('channel line binding uses an active session snapshot and never falls back 
 
 const ctx = { identity: { agentId: 'worker-1', channelId: 'ch-1', role: 'worker' as const, name: 'worker' }, state: { currentTaskId: null, sessionId: null, sourceChatMessageId: null, sourceChatDeliveryId: null, replyContext: null }, getWorkspace: () => null }
 
+test('ManagerHostTools plugin shortcut applies the same generic-mode gate as native dispatch', async () => {
+  let serialCalled = false
+  let genericCalled = false
+  registerPluginTool('serial-bridge', {
+    name: 'serial_ports',
+    description: 'enumerate serial ports',
+    handler: async () => {
+      serialCalled = true
+      return { text: 'ports' }
+    },
+  })
+  registerPluginTool('generic-test', {
+    name: 'rsi_manager_generic_test',
+    description: 'generic plugin tool',
+    handler: async () => {
+      genericCalled = true
+      return { text: 'generic-ok' }
+    },
+  })
+  const manager = Object.create(ManagerHostTools.prototype) as Record<string, unknown>
+  const row = { id: 'manager-worker', enabled: 1, channelId: 'manager-channel', role: 'worker', name: 'worker', token: 'token' }
+  manager.lastToolInvokeAt = new Map()
+  manager.deps = {
+    repos: { channelAgents: { findById: () => row, isTokenValid: () => true } },
+  }
+  manager.activeScopeOf = () => null
+  manager.ensureAgentRuntime = () => ({
+    dispatchHostTool: async () => null,
+    workspace: {
+      sendMessageToAgent: async () => ({ messageId: 'm1' }),
+      recallMemory: async () => [],
+      saveMemory: async () => ({ scope: 'private', dedupKey: 'k' }),
+    },
+  })
+  manager.getTaskEngine = () => ({})
+  manager.channelSessionScopeOfAgent = () => null
+  manager.auditCollabInvocation = () => {}
+  g.__workshopManager = {
+    channelModeOf: () => 'generic',
+    channelModeForAgent: () => 'generic',
+    invocationScopeOf: () => null,
+  }
+  try {
+    const invoke = ManagerHostTools.prototype.invokeHostTool as (input: { agentId: string, token?: string, tool: string, args?: Record<string, unknown> }) => Promise<{ text: string, isError?: boolean }>
+    const serial = await invoke.call(manager, { agentId: row.id, token: 'token', tool: 'serial_ports', args: {} })
+    assert.equal(serial.isError, true)
+    assert.match(serial.text, /通用频道/)
+    assert.equal(serialCalled, false, 'generic mode must deny before plugin handler side effects')
+
+    const generic = await invoke.call(manager, { agentId: row.id, token: 'token', tool: 'rsi_manager_generic_test', args: {} })
+    assert.equal(generic.text, 'generic-ok')
+    assert.equal(genericCalled, true)
+  }
+  finally {
+    unregisterPluginTools('serial-bridge')
+    unregisterPluginTools('generic-test')
+    g.__workshopManager = oldManager
+  }
+})
+
 test('generic mode filters production tools and rejects direct invocation while keeping collaboration and generic plugin tools', async () => {
+  const initialAgentMode = agentMode
+  const initialChannelMode = channelMode
   let called = false
   registerPluginTool('diag-bridge', {
     name: 'diag_mode_test', description: 'diagnostic', handler: async () => {
@@ -78,16 +141,18 @@ test('generic mode filters production tools and rejects direct invocation while 
     assert.equal((await dispatchHostTool(ctx, { toolName: 'rsi_generic_test', arguments: {} })).text, 'ok')
 
     channelMode = 'production_line_integrated'
-    assert.equal(hostToolsForRole('worker', 'ch-1').some(t => t.name === 'daq_query'), true)
-    assert.equal(hostToolsForAgent('worker-1', 'worker', 'ch-1').some(t => t.name === 'daq_query'), false, 'agent snapshot overrides channel mode')
+    assert.equal(hostToolsForRole('worker', 'ch-1').some(t => t.name === 'daq_query'), false, 'without AML runtime, profile lookup fails closed to legacy')
+    assert.equal(hostToolsForAgent('worker-1', 'worker', 'ch-1').some(t => t.name === 'daq_query'), false, 'agent snapshot overrides channel mode even when profile is unavailable')
     agentMode = 'production_line_integrated'
-    assert.equal(hostToolsForAgent('worker-1', 'worker', 'ch-1').some(t => t.name === 'daq_query'), true)
+    assert.equal(hostToolsForAgent('worker-1', 'worker', 'ch-1').some(t => t.name === 'daq_query'), false, 'unavailable AML profile remains fail-closed')
     channelMode = 'generic'
-    assert.equal(hostToolsForAgent('worker-1', 'worker', 'ch-1').some(t => t.name === 'daq_query'), true, 'integrated snapshot survives channel change')
+    assert.equal(hostToolsForAgent('worker-1', 'worker', 'ch-1').some(t => t.name === 'daq_query'), false, 'generic snapshot stays filtered after channel change')
   }
   finally {
     unregisterPluginTools('diag-bridge')
     unregisterPluginTools('generic-test')
+    agentMode = initialAgentMode
+    channelMode = initialChannelMode
     g.__workshopManager = oldManager
   }
 })

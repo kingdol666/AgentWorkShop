@@ -9,7 +9,9 @@ import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
+import { recipeDefinitionHash } from './recipe-snapshot'
 import { channelBoundLineId } from './ops-tools'
+import type { ChannelSessionExecutionScope } from '../host-tool-bridge/types'
 import { queryLatest, queryTaggedLatest } from '../../daq/storage/latest-window'
 
 /**
@@ -85,10 +87,15 @@ function epochOfArg(v: unknown): number | null {
   return Number.isFinite(ms) ? ms : null
 }
 
-export interface DaqQueryExecutionScope {
-  sessionId: string
-  productId: string
-  lineId: string
+export type DaqQueryExecutionScope = ChannelSessionExecutionScope
+
+/** Session-bound data must carry exact product/line tags; untagged legacy rows fail closed. */
+export function filterTaggedSessionRows<T extends { lineId?: string | null, productId?: string | null }>(
+  rows: readonly T[],
+  scope?: Pick<ChannelSessionExecutionScope, 'lineId' | 'productId'>,
+): T[] {
+  if (!scope) return [...rows]
+  return rows.filter(row => row.lineId === scope.lineId && row.productId === scope.productId)
 }
 
 export async function toolDaqQuery(agentId: string, args: {
@@ -116,9 +123,10 @@ export async function toolDaqQuery(agentId: string, args: {
         sessionId: String(scope.sessionId ?? '').trim(),
         productId: String(scope.productId ?? '').trim(),
         lineId: String(scope.lineId ?? '').trim(),
+        recipes: scope.recipes,
       }
     : undefined
-  if (trustedScope && (!trustedScope.sessionId || !trustedScope.productId || !trustedScope.lineId)) {
+  if (trustedScope && (!trustedScope.sessionId || !trustedScope.productId || !trustedScope.lineId || !Array.isArray(trustedScope.recipes))) {
     return { text: '会话产品作用域缺少可信 sessionId/productId/lineId,拒绝查询。', isError: true }
   }
   const provided = (v: unknown): boolean => v !== undefined && v !== null && String(v).trim() !== ''
@@ -129,18 +137,20 @@ export async function toolDaqQuery(agentId: string, args: {
     if (provided(args.line_id) && String(args.line_id).trim() !== trustedScope.lineId) {
       return { text: `line_id ${String(args.line_id).trim()} 与会话固定产线 ${trustedScope.lineId} 不一致,拒绝查询。`, isError: true }
     }
-    const recipeRepo = getDcwRecipeRepo()
     if (provided(args.recipe_id)) {
       const recipeId = String(args.recipe_id).trim()
-      const recipe = recipeRepo.byId(recipeId)
-      if (!recipe || recipe.productId !== trustedScope.productId || recipe.lineId !== trustedScope.lineId) {
-        return { text: `recipe_id ${recipeId} 不属于会话固定产品 ${trustedScope.productId} / 产线 ${trustedScope.lineId},拒绝查询。`, isError: true }
+      const frozen = trustedScope.recipes.find(recipe => recipe.id === recipeId)
+      if (!frozen) return { text: `recipe_id ${recipeId} 不在会话配方快照中,拒绝查询。`, isError: true }
+      const current = getDcwRecipeRepo().byId(recipeId)
+      if (!current || current.productId !== trustedScope.productId || current.lineId !== trustedScope.lineId || (current.version ?? 1) !== frozen.version || recipeDefinitionHash(current) !== frozen.contentHash) {
+        return { text: `recipe_id ${recipeId} 已与会话配方快照不一致,拒绝查询。`, isError: true }
       }
     }
     if (provided(args.run_id)) {
       const runId = String(args.run_id).trim()
-      const run = recipeRepo.runById(runId)
-      if (!run || run.productId !== trustedScope.productId || run.lineId !== trustedScope.lineId) {
+      const run = getDcwRecipeRepo().runById(runId)
+      const runRecipe = run ? trustedScope.recipes.find(recipe => recipe.id === run.recipeId) : undefined
+      if (!run || run.productId !== trustedScope.productId || run.lineId !== trustedScope.lineId || !runRecipe || (run.recipeVersion && run.recipeVersion !== runRecipe.version)) {
         return { text: `run_id ${runId} 不属于会话固定产品 ${trustedScope.productId} / 产线 ${trustedScope.lineId},拒绝查询。`, isError: true }
       }
     }
@@ -419,8 +429,14 @@ export async function toolDaqFrames(agentId: string, args: {
   limit?: number | string
   include_points?: boolean | string
   point_limit?: number | string
-}): Promise<{ text: string, isError?: boolean }> {
-  const auth = daqTargetsOf(agentId, args.node_id, args.line_id)
+}, scope?: ChannelSessionExecutionScope): Promise<{ text: string, isError?: boolean }> {
+  if (scope && (!scope.sessionId || !scope.productId || !scope.lineId || !Array.isArray(scope.recipes))) {
+    return { text: '会话产品作用域不完整,数采帧查询拒绝执行。', isError: true }
+  }
+  if (scope && args.line_id && String(args.line_id).trim() !== scope.lineId) {
+    return { text: `line_id 与 Session 固定产线 ${scope.lineId} 不一致,拒绝查询。`, isError: true }
+  }
+  const auth = daqTargetsOf(agentId, args.node_id, scope?.lineId ?? args.line_id)
   if ('error' in auth) return auth.error
   const { targets } = auth
   if (args.kind != null && String(args.kind).trim() !== '' && args.kind !== 'vector' && args.kind !== 'image') {
@@ -475,7 +491,17 @@ export async function toolDaqFrames(agentId: string, args: {
       continue
     }
     try {
-      const frames = await tsdb.queryFrames(nodeId, { fromMs, toMs, kind, limit })
+      const framesRaw = scope
+        ? tsdb.queryTaggedFrames
+          ? await tsdb.queryTaggedFrames(nodeId, { fromMs, toMs, kind, limit, lineId: scope.lineId, productId: scope.productId })
+          : null
+        : await tsdb.queryFrames(nodeId, { fromMs, toMs, kind, limit })
+      if (framesRaw === null) {
+        sections.push(`■ ${node.name}:时序后端未实现带产品标签的帧查询,Session 读取 fail-closed。`)
+        failedNodes++
+        continue
+      }
+      const frames = scope ? filterTaggedSessionRows(framesRaw, scope) : framesRaw
       if (frames.length === 0) {
         sections.push(`■ ${node.name}(${tpl?.ch ?? node.templateKey}):窗口内无帧(产线未运行或过滤条件不匹配;仅产线运行中的帧被持久化)`)
         okNodes++

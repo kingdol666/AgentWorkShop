@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { color } from '../core/logger.mjs'
 import { isTruthy } from '../core/args.mjs'
+import { clearStopIntent } from '../../shared/config/stop-intent.mjs'
 
 const waitSync = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
 
@@ -141,6 +142,8 @@ export async function run(argv, ctx) {
     rmSync(join(configRoot, '.runtime', 'stop-token'), { force: true })
   }
   catch { /* ignore */ }
+  // 意图停机标记同样只属于本次实例;强杀回退路径下也要清掉,避免误判下次退出
+  clearStopIntent(configRoot)
   // 锁文件由退出钩子自清;残留则手动兜底
   for (let i = 0; i < 20 && existsSync(lockPath); i++) {
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200)

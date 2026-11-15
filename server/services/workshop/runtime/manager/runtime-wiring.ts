@@ -60,7 +60,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const sessionRow = activeSessionOfMember(createChannelSessionRepo(this.deps.db).listByChannel(m.channelId), agent.id)
     const trustedSession = sessionRow ? trustedSessionBindingIdentity(sessionRow) : null
     const channelSessionScope: ChannelSessionExecutionScope | null = trustedSession
-      ? { sessionId: trustedSession.sessionId, productId: trustedSession.productId, lineId: trustedSession.lineId, bindingSnapshotHash: trustedSession.bindingSnapshotHash, bindingSnapshotRevision: trustedSession.bindingSnapshotRevision }
+      ? { sessionId: trustedSession.sessionId, productId: trustedSession.productId, lineId: trustedSession.lineId, bindingSnapshotHash: trustedSession.bindingSnapshotHash, bindingSnapshotRevision: trustedSession.bindingSnapshotRevision, recipes: trustedSession.recipes }
       : null
     const integrated = channelModeForAgent(agent.id) === 'production_line_integrated' && (!sessionRow || !!trustedSession)
     const channelLineId = integrated && !sessionRow ? this.deps.repos.channels.findById(m.channelId)?.lineId ?? null : null
@@ -107,8 +107,10 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     }
     const agentWithCtx: AgentInfo = { ...agent, config: configWithCtx }
     const impl = this.deps.implFactory(agentWithCtx)
-    const setScope = (impl as { setChannelSessionScope?: (scope: ChannelSessionExecutionScope | null) => void }).setChannelSessionScope
-    setScope?.(channelSessionScope)
+    // 必须保留接收者调用:setChannelSessionScope 是原型方法,解构后裸调用会丢 this,
+    // 所有 BaseAgentImpl 系引擎(omp/claude/codex/…)在频道激活时直接 TypeError。
+    const sessionScopedImpl = impl as { setChannelSessionScope?: (scope: ChannelSessionExecutionScope | null) => void }
+    sessionScopedImpl.setChannelSessionScope?.(channelSessionScope)
     const runtime = new AgentRuntime(agent, impl, {
       mailbox,
       taskEngine: this.getTaskEngine(),

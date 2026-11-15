@@ -7,12 +7,13 @@
 // 另在启动前预载 .env（cwd 的 .env;NUXT_SESSION_PASSWORD 等密钥只经环境
 // 注入,绝不写入 config.yml/仓库;已导出的真实环境变量优先）。
 // ============================================================
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveRunMode } from '../shared/config/home.mjs'
+import { clearStopIntent, isIntentionalStop } from '../shared/config/stop-intent.mjs'
 import { setConfiguredTimeZone, installLocalIso, DEFAULT_TIME_ZONE } from '../shared/local-time.mjs'
 
 // 生产进程时间输出统一本地时区(先于 .env 预载与 worker 启动)
@@ -151,6 +152,8 @@ try {
 catch (err) {
   console.warn('› 停机令牌写入失败(aw stop 将回退强制终止):', String(err?.message ?? err))
 }
+// 清掉上次运行残留的停机意图标记:陈旧标记不得影响本次的"崩溃即重启"判定
+clearStopIntent(rm.configRoot)
 
 const childEnv = { ...process.env, AW_PARENT_PID: String(process.pid), AW_STOP_TOKEN: stopToken }
 // 堆限额固化:父进程未带 --max-old-space-size 时给子进程补默认 4096MB(3GB 事故线以上)
@@ -204,6 +207,18 @@ function spawnServiceChild() {
   serviceChild = c
   c.on('exit', (code, signal) => {
     if (givingUp || serviceChild !== c) return
+    // 意图停机握手:退出码 0 + 标记与本次启动令牌一致 → 不重启,监管进程退出。
+    // 任何异常退出(非 0/信号)即便存在标记也不会命中,仍按崩溃重启。
+    if (isIntentionalStop(rm.configRoot, stopToken, { exitCode: code, signal })) {
+      givingUp = true
+      console.log('[start] 收到 aw stop 意图停机标记 —— 不重启,监管进程退出')
+      clearStopIntent(rm.configRoot)
+      try {
+        rmSync(join(runtimeDir, 'stop-token'), { force: true })
+      }
+      catch { /* 残留令牌由下次启动覆盖 */ }
+      process.exit(0)
+    }
     const now = Date.now()
     restartTimes = restartTimes.filter(t => now - t < RESTART_WINDOW_MS)
     restartTimes.push(now)

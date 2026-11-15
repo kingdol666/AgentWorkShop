@@ -32,6 +32,8 @@ export interface ChannelSessionExecutionScope {
   lineId: string
   bindingSnapshotHash: string
   bindingSnapshotRevision: number
+  /** Recipes and frozen content hashes captured when this session was created. */
+  recipes: Array<{ id: string, version: number, contentHash: string }>
 }
 
 export interface HostToolBridgeContext {

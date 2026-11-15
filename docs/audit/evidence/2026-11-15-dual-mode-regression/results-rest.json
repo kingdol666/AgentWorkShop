@@ -1,0 +1,1058 @@
+{
+  "base": "http://127.0.0.1:3044",
+  "stamp": "haypsl",
+  "total": 68,
+  "pass": 68,
+  "fail": 0,
+  "results": [
+    {
+      "no": 1,
+      "name": "register admin returns token",
+      "ok": true,
+      "detail": {
+        "id": "96ed5efa-e07e-4685-b437-b19f94e47d72"
+      }
+    },
+    {
+      "no": 2,
+      "name": "first user is bootstrap admin",
+      "ok": true,
+      "detail": {
+        "id": "96ed5efa-e07e-4685-b437-b19f94e47d72",
+        "name": "acc-admin-haypsl",
+        "role": "admin",
+        "createdAt": "2026-11-15 11:56:25",
+        "stats": {
+          "ownedChannels": 0,
+          "legacyChannels": 0,
+          "workspaces": 0
+        }
+      }
+    },
+    {
+      "no": 3,
+      "name": "second non-owner user created & logged in",
+      "ok": true,
+      "detail": {
+        "id": "dea3609b-a82c-445f-a168-a80e6d45ada2"
+      }
+    },
+    {
+      "no": 4,
+      "name": "line L1 created simulated",
+      "ok": true,
+      "detail": {
+        "id": "ln-803db013",
+        "name": "SIM-L1-haypsl",
+        "color": "#3aa0ff",
+        "description": "",
+        "controlMode": "manual",
+        "simulated": true,
+        "createdAt": "2026-11-15T11:56:25.949+08:00"
+      }
+    },
+    {
+      "no": 5,
+      "name": "products PA/PB on L1, PC on L2",
+      "ok": true,
+      "detail": {
+        "pA": "pd-01512d35",
+        "pB": "pd-47715ec5",
+        "pC": "pd-0b19b2de"
+      }
+    },
+    {
+      "no": 6,
+      "name": "generic channel created with mode generic",
+      "ok": true,
+      "detail": {
+        "channelId": "dd16f335-4b32-4878-b8b8-df8780836eaf",
+        "leadAgentId": "d2455b34-af82-4b6c-8f45-a33b3b06c8b8",
+        "workspace": "D:\\codes\\ABO\\AgentWorkShop\\data\\workspaces\\dd16f335-4b32-4878-b8b8-df8780836eaf"
+      }
+    },
+    {
+      "no": 7,
+      "name": "generic channel GET exposes channelMode=generic",
+      "ok": true,
+      "detail": {
+        "channelMode": "generic"
+      }
+    },
+    {
+      "no": 8,
+      "name": "integrated channel created",
+      "ok": true,
+      "detail": {
+        "channelId": "ea1c9b93-a227-48a4-8d2c-4ee936393301",
+        "leadAgentId": "42116533-132a-451a-9f72-135273ae04d2",
+        "workspace": "D:\\codes\\ABO\\AgentWorkShop\\data\\workspaces\\ea1c9b93-a227-48a4-8d2c-4ee936393301"
+      }
+    },
+    {
+      "no": 9,
+      "name": "integrated channel GET exposes mode + line",
+      "ok": true,
+      "detail": {
+        "channelMode": "production_line_integrated",
+        "lineId": "ln-803db013"
+      }
+    },
+    {
+      "no": 10,
+      "name": "both modes accept a base worker member",
+      "ok": true,
+      "detail": {
+        "cgWorkerIdBase": "4afd68f6-2fa4-4722-95f4-29c00b940dff",
+        "ciWorkerIdBase": "7e424406-95c9-46f3-8f17-823b3b8dca2a"
+      }
+    },
+    {
+      "no": 11,
+      "name": "initial product binding empty with revision",
+      "ok": true,
+      "detail": {
+        "channelId": "ea1c9b93-a227-48a4-8d2c-4ee936393301",
+        "productIds": [],
+        "revision": 0
+      }
+    },
+    {
+      "no": 12,
+      "name": "PUT binding accepts same-line pair, bumps revision",
+      "ok": true,
+      "detail": {
+        "rev0": 0,
+        "rev1": 1
+      }
+    },
+    {
+      "no": 13,
+      "name": "GET binding returns sorted bound products",
+      "ok": true,
+      "detail": {
+        "channelId": "ea1c9b93-a227-48a4-8d2c-4ee936393301",
+        "productIds": [
+          "pd-01512d35",
+          "pd-47715ec5"
+        ],
+        "revision": 1
+      }
+    },
+    {
+      "no": 14,
+      "name": "stale revision rejected (409 CHANNEL_PRODUCT_BINDING_STALE)",
+      "ok": true,
+      "detail": {
+        "status": 409,
+        "code": "CHANNEL_PRODUCT_BINDING_STALE",
+        "message": "Channel product bindings have changed; reload and retry"
+      }
+    },
+    {
+      "no": 15,
+      "name": "mixed-line product set rejected",
+      "ok": true,
+      "detail": {
+        "status": 400,
+        "code": "CHANNEL_PRODUCTS_LINE_MISMATCH",
+        "message": "一个 Channel 的产品必须属于同一条产线"
+      }
+    },
+    {
+      "no": 16,
+      "name": "non-owner cannot edit bindings",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "code": "SCOPE_VIOLATION",
+        "message": "channel 不属于当前用户"
+      }
+    },
+    {
+      "no": 17,
+      "name": "generic session created",
+      "ok": true,
+      "detail": {
+        "sessionId": "cs-4b20f05c",
+        "title": "SG-通用会话",
+        "members": [
+          {
+            "baseAgentId": "d2455b34-af82-4b6c-8f45-a33b3b06c8b8",
+            "cloneId": "c86d5845-681d-420d-a665-79a27a562cb9",
+            "name": "Lead·通用·session·1",
+            "role": "worker"
+          },
+          {
+            "baseAgentId": "4afd68f6-2fa4-4722-95f4-29c00b940dff",
+            "cloneId": "6696320d-c623-4e8d-912e-2cdc13a100c1",
+            "name": "Worker·通用·session·2",
+            "role": "worker"
+          }
+        ],
+        "channelMode": "generic"
+      }
+    },
+    {
+      "no": 18,
+      "name": "session list shows generic mode, no product",
+      "ok": true,
+      "detail": {
+        "id": "cs-4b20f05c",
+        "title": "SG-通用会话",
+        "status": "active",
+        "memberMap": {
+          "d2455b34-af82-4b6c-8f45-a33b3b06c8b8": "c86d5845-681d-420d-a665-79a27a562cb9",
+          "4afd68f6-2fa4-4722-95f4-29c00b940dff": "6696320d-c623-4e8d-912e-2cdc13a100c1"
+        },
+        "createdAt": "2026-11-15T11:56:26.197+08:00",
+        "closedAt": null,
+        "channelMode": "generic",
+        "productId": null,
+        "lineId": null,
+        "bindingSnapshotHash": "",
+        "bindingSnapshotRevision": 0,
+        "projectId": null,
+        "projectWorkItemId": null,
+        "createdByKind": "user",
+        "instanceKind": "manual",
+        "summary": "manual session cs-4b20f05c（active）；下一步：等待首个任务或消息",
+        "lastActiveAt": "2026-11-15T11:56:26.197+08:00",
+        "kind": "manual",
+        "brief": {
+          "currentTask": null,
+          "nextStep": "等待首个任务或消息",
+          "openQuestions": [],
+          "deliverables": []
+        }
+      }
+    },
+    {
+      "no": 19,
+      "name": "generic session ignores caller productId (stays generic/null)",
+      "ok": true,
+      "detail": {
+        "channelMode": "generic",
+        "productId": null
+      }
+    },
+    {
+      "no": 20,
+      "name": "integrated session without product rejected (SESSION_PRODUCT_REQUIRED)",
+      "ok": true,
+      "detail": {
+        "status": 400,
+        "code": "SESSION_PRODUCT_REQUIRED",
+        "message": "集成产线会话必须选择已绑定产品"
+      }
+    },
+    {
+      "no": 21,
+      "name": "unbound product rejected (SESSION_PRODUCT_NOT_BOUND)",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "code": "SESSION_PRODUCT_NOT_BOUND",
+        "message": "产品 pd-0b19b2de 未绑定到当前 Channel"
+      }
+    },
+    {
+      "no": 22,
+      "name": "unknown product rejected",
+      "ok": true,
+      "detail": {
+        "status": 403,
+        "code": "SESSION_PRODUCT_NOT_BOUND",
+        "message": "产品 no-such-product 未绑定到当前 Channel"
+      }
+    },
+    {
+      "no": 23,
+      "name": "integrated session PA created with frozen snapshot",
+      "ok": true,
+      "detail": {
+        "sessionId": "cs-4b8eb06d",
+        "title": "SI-产品A",
+        "productId": "pd-01512d35",
+        "lineId": "ln-803db013",
+        "bindingSnapshotHash": "a120f3c58bce6fb755fe27605ac2d61044c6eae7a4b9d0a5d7193db6e001bd22",
+        "bindingSnapshotRevision": 1,
+        "members": [
+          {
+            "baseAgentId": "42116533-132a-451a-9f72-135273ae04d2",
+            "cloneId": "9c00ff4a-d30f-4804-aed3-00d438d16142",
+            "name": "Lead·产线·session·1",
+            "role": "worker"
+          },
+          {
+            "baseAgentId": "7e424406-95c9-46f3-8f17-823b3b8dca2a",
+            "cloneId": "bfd0e33c-5f06-4ae8-a717-5b6fcc4d3453",
+            "name": "Worker·产线·session·2",
+            "role": "worker"
+          }
+        ],
+        "channelMode": "production_line_integrated"
+      }
+    },
+    {
+      "no": 24,
+      "name": "integrated session PB created on same line",
+      "ok": true,
+      "detail": {
+        "sessionId": "cs-30e2e245",
+        "productId": "pd-47715ec5"
+      }
+    },
+    {
+      "no": 25,
+      "name": "session detail exposes mode/product/line/snapshot projection",
+      "ok": true,
+      "detail": {
+        "id": "cs-4b8eb06d",
+        "channelId": "ea1c9b93-a227-48a4-8d2c-4ee936393301",
+        "title": "SI-产品A",
+        "status": "active",
+        "memberMap": {
+          "42116533-132a-451a-9f72-135273ae04d2": "9c00ff4a-d30f-4804-aed3-00d438d16142",
+          "7e424406-95c9-46f3-8f17-823b3b8dca2a": "bfd0e33c-5f06-4ae8-a717-5b6fcc4d3453"
+        },
+        "createdBy": "96ed5efa-e07e-4685-b437-b19f94e47d72",
+        "createdAt": "2026-11-15T11:56:26.287+08:00",
+        "closedAt": null,
+        "projectId": null,
+        "projectWorkItemId": null,
+        "createdByKind": "user",
+        "instanceKind": "manual",
+        "summary": "manual session cs-4b8eb06d（active）；下一步：等待首个任务或消息",
+        "lastActiveAt": "2026-11-15T11:56:26.287+08:00",
+        "generation": 0,
+        "channelMode": "production_line_integrated",
+        "productId": "pd-01512d35",
+        "lineId": "ln-803db013",
+        "bindingSnapshotHash": "a120f3c58bce6fb755fe27605ac2d61044c6eae7a4b9d0a5d7193db6e001bd22",
+        "bindingSnapshotRevision": 1,
+        "brief": {
+          "sessionId": "cs-4b8eb06d",
+          "kind": "manual",
+          "title": "SI-产品A",
+          "status": "active",
+          "channelId": "ea1c9b93-a227-48a4-8d2c-4ee936393301",
+          "channelName": "CI-line-haypsl",
+          "projectId": null,
+          "projectName": null,
+          "workItemId": null,
+          "workItemTitle": null,
+          "objective": "SI-产品A",
+          "rootTaskId": null,
+          "currentTask": null,
+          "tasks": [],
+          "deliverables": [],
+          "recentMessages": [],
+          "recentTurns": [],
+          "compressed": {
+            "uptoSeq": 0,
+            "uptoCreatedAt": "",
+            "uptoMessageId": "",
+            "generation": 0,
+            "lines": []
+          },
+          "decisions": [],
+          "openQuestions": [],
+          "nextStep": "等待首个任务或消息",
+          "lastActiveAt": "2026-11-15T11:56:26.287+08:00",
+          "updatedAt": "2026-11-15T11:56:26.287+08:00"
+        }
+      }
+    },
+    {
+      "no": 26,
+      "name": "binding rebind drops PB, revision bumps",
+      "ok": true,
+      "detail": {
+        "rev1": 1,
+        "rev2": 2
+      }
+    },
+    {
+      "no": 27,
+      "name": "PA session snapshot unchanged after rebind",
+      "ok": true,
+      "detail": {
+        "before": "a120f3c58bce6fb755fe27605ac2d61044c6eae7a4b9d0a5d7193db6e001bd22",
+        "after": "a120f3c58bce6fb755fe27605ac2d61044c6eae7a4b9d0a5d7193db6e001bd22"
+      }
+    },
+    {
+      "no": 28,
+      "name": "PB session keeps frozen product/line/revision after PB unbound",
+      "ok": true,
+      "detail": {
+        "productId": "pd-47715ec5",
+        "revision": 1
+      }
+    },
+    {
+      "no": 29,
+      "name": "both channels expose lead member",
+      "ok": true,
+      "detail": {
+        "cgLead": "d2455b34-af82-4b6c-8f45-a33b3b06c8b8",
+        "ciLead": "42116533-132a-451a-9f72-135273ae04d2"
+      }
+    },
+    {
+      "no": 30,
+      "name": "generic lead surface has NO industrial tools",
+      "ok": true,
+      "detail": {
+        "leaked": []
+      }
+    },
+    {
+      "no": 31,
+      "name": "generic lead keeps framework core tools (memory/mailbox/task)",
+      "ok": true,
+      "detail": {
+        "missing": []
+      }
+    },
+    {
+      "no": 32,
+      "name": "integrated lead surface injects industrial tools",
+      "ok": true,
+      "detail": {
+        "missing": []
+      }
+    },
+    {
+      "no": 33,
+      "name": "integrated lead keeps framework core tools too",
+      "ok": true,
+      "detail": {
+        "missing": []
+      }
+    },
+    {
+      "no": 34,
+      "name": "both channels expose worker member",
+      "ok": true,
+      "detail": {
+        "cgWorker": "4afd68f6-2fa4-4722-95f4-29c00b940dff",
+        "ciWorker": "7e424406-95c9-46f3-8f17-823b3b8dca2a"
+      }
+    },
+    {
+      "no": 35,
+      "name": "generic worker: worker core kept, no industrial",
+      "ok": true,
+      "detail": {
+        "missing": [],
+        "leaked": []
+      }
+    },
+    {
+      "no": 36,
+      "name": "integrated worker: worker core + industrial tools",
+      "ok": true,
+      "detail": {
+        "missingCore": [],
+        "missingInd": []
+      }
+    },
+    {
+      "no": 37,
+      "name": "generic lead direct line_context rejected by execution gate",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "通用频道不开放产线工业工具。",
+              "isError": true
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"通用频道不开放产线工业工具。\",\"isError\":true}}}",
+        "rejected": true
+      }
+    },
+    {
+      "no": 38,
+      "name": "generic lead direct daq_query rejected by execution gate",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "通用频道不开放产线工业工具。",
+              "isError": true
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"通用频道不开放产线工业工具。\",\"isError\":true}}}",
+        "rejected": true
+      }
+    },
+    {
+      "no": 39,
+      "name": "generic lead direct save_memory executes (memory tool is mode-independent)",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "已沉淀到Channel 公共记忆(全员可检索): \"DIRECT-G-haypsl\"(dedupKey=agent:d2455b34-af82-4b6c-8f45-a33b3b06c8b8:agent-save:9904fdec);频道级(跨会话可见)"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"已沉淀到Channel 公共记忆(全员可检索): \\\"DIRECT-G-haypsl\\\"(dedupKey=agent:d2455b34-af82-4b6c-8f45-a33b3b06c8b8:agent-save:9904fdec);频道级(跨会话可见)\"}}}",
+        "rejected": false
+      }
+    },
+    {
+      "no": 40,
+      "name": "generic lead direct get_my_task_queue executes",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "我的任务队列(lead):\n执行中: (无)\n待执行(0,FIFO):\n已完成(0):"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"我的任务队列(lead):\\n执行中: (无)\\n待执行(0,FIFO):\\n已完成(0):\"}}}",
+        "rejected": false
+      }
+    },
+    {
+      "no": 41,
+      "name": "integrated lead direct line_context executes",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "你控制的产线全景(1 条):\n\n■ 产线 SIM-L1-haypsl(ln-803db013)(频道绑定,只读) · 状态:待机/停线\n  我绑定的节点:数控 [无];数采 [无]\n  当前无活动配方(产线未开跑;该产线也暂无配方定义)\n\n说明:配方目标=开跑批次冻结的工艺窗口;PLC 当前值=实时读数;(频道绑定,只读)= 该线来自频道绑定的只读授权,可看日志/配方/状态,参数下发仍需节点授权。把验证过的最佳参数固化到配方用 recipe_update;回退配方到稳定版本用 recipe_rollback;逐节点参数变更史用 dcw_journal;配方版本史用 recipe_versions。"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"你控制的产线全景(1 条):\\n\\n■ 产线 SIM-L1-haypsl(ln-803db013)(频道绑定,只读) · 状态:待机/停线\\n  我绑定的节点:数控 [无];数采 [无]\\n  当前无活动配方(产线未开跑;该产线也暂无配方定义)\\n\\n说明:配方目标=开跑批次冻结的工艺窗口;PLC 当前值=实时读数;(频道绑定,只读)= 该线来自频道绑定的只读授权,可看日志/配方/状态,参数下发仍需节点授权。把验证过的最佳参数固化到配方用 recipe_update;回退配方到稳定版本用 recipe_rollback;逐节点参数变更史用 dcw_journal;配方版本史用 recipe_versions。\"}}}",
+        "rejected": false
+      }
+    },
+    {
+      "no": 42,
+      "name": "integrated lead direct save_memory executes",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "已沉淀到Channel 公共记忆(全员可检索): \"DIRECT-I-haypsl\"(dedupKey=agent:42116533-132a-451a-9f72-135273ae04d2:agent-save:06236ac1);频道级(跨会话可见)"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"已沉淀到Channel 公共记忆(全员可检索): \\\"DIRECT-I-haypsl\\\"(dedupKey=agent:42116533-132a-451a-9f72-135273ae04d2:agent-save:06236ac1);频道级(跨会话可见)\"}}}",
+        "rejected": false
+      }
+    },
+    {
+      "no": 43,
+      "name": "integrated lead direct get_my_task_queue executes",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "我的任务队列(lead):\n执行中: (无)\n待执行(0,FIFO):\n已完成(0):"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"我的任务队列(lead):\\n执行中: (无)\\n待执行(0,FIFO):\\n已完成(0):\"}}}",
+        "rejected": false
+      }
+    },
+    {
+      "no": 44,
+      "name": "generic worker mailbox poll executes",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "收件箱为空(无未消费消息)。等待回复请用 wait_seconds 参数阻塞等待,不要反复空轮询。"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"收件箱为空(无未消费消息)。等待回复请用 wait_seconds 参数阻塞等待,不要反复空轮询。\"}}}",
+        "rejected": false
+      }
+    },
+    {
+      "no": 45,
+      "name": "integrated worker mailbox poll executes",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "收件箱为空(无未消费消息)。等待回复请用 wait_seconds 参数阻塞等待,不要反复空轮询。"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"收件箱为空(无未消费消息)。等待回复请用 wait_seconds 参数阻塞等待,不要反复空轮询。\"}}}",
+        "rejected": false
+      }
+    },
+    {
+      "no": 46,
+      "name": "generic lead mailbox send tool executes",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "消息 fa9c43d6… 已发送给 4afd68f6-2fa4-4722-95f4-29c00b940dff(priority=task)"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"消息 fa9c43d6… 已发送给 4afd68f6-2fa4-4722-95f4-29c00b940dff(priority=task)\"}}}",
+        "rejected": false
+      }
+    },
+    {
+      "no": 47,
+      "name": "integrated lead mailbox send tool executes",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "json": {
+          "code": 0,
+          "message": "ok",
+          "data": {
+            "result": {
+              "text": "消息 9b48033f… 已发送给 7e424406-95c9-46f3-8f17-823b3b8dca2a(priority=task)"
+            }
+          }
+        },
+        "text": "{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"消息 9b48033f… 已发送给 7e424406-95c9-46f3-8f17-823b3b8dca2a(priority=task)\"}}}",
+        "rejected": false
+      }
+    },
+    {
+      "no": 48,
+      "name": "session clones exist on both channels",
+      "ok": true,
+      "detail": {
+        "cgClone": "Lead·通用·session·1",
+        "ciClones": 4
+      }
+    },
+    {
+      "no": 49,
+      "name": "generic session clone: no industrial tools, worker core kept",
+      "ok": true,
+      "detail": {
+        "leak": [],
+        "missingCore": []
+      }
+    },
+    {
+      "no": 50,
+      "name": "integrated session clone: industrial + worker core tools present",
+      "ok": true,
+      "detail": {
+        "missingInd": [],
+        "missingCore": []
+      }
+    },
+    {
+      "no": 51,
+      "name": "generic agent memory write ok",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "agentId": "d2455b34-af82-4b6c-8f45-a33b3b06c8b8",
+        "scope": "shared"
+      }
+    },
+    {
+      "no": 52,
+      "name": "generic memory search recalls written anchor",
+      "ok": true,
+      "detail": {
+        "top": "[{\"id\":\"9573cd08-7d91-4c79-a2c4-50505d1b078b\",\"kind\":\"semantic\",\"title\":\"DIRECT-G-haypsl\",\"content\":\"DIRECT-G-haypsl\",\"importance\":0.85,\"createdAt\":\"2026-11-15T11:56:26.505+08:00\",\"score\":0.972,\"sourc"
+      }
+    },
+    {
+      "no": 53,
+      "name": "integrated agent memory write ok",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "agentId": "42116533-132a-451a-9f72-135273ae04d2",
+        "scope": "shared"
+      }
+    },
+    {
+      "no": 54,
+      "name": "integrated memory search recalls written anchor",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "no": 55,
+      "name": "generic team memory (lead curation) ok",
+      "ok": true,
+      "detail": [
+        {
+          "id": "094329a5-3c56-414e-adb7-ebab26e8c03c",
+          "channelId": "dd16f335-4b32-4878-b8b8-df8780836eaf",
+          "agentId": "__team__",
+          "kind": "semantic",
+          "title": "TEAM-G-haypsl",
+          "content": "通用频道团队共享记忆",
+          "dedupKey": "tg-haypsl",
+          "titleFts": "TEAM-G-haypsl",
+          "importance": 0.9,
+          "taskId": null,
+          "sessionId": "",
+          "accessCount": 0,
+          "lastAccessedAt": null,
+          "createdAt": "2026-11-15T11:56:26.738+08:00",
+          "outcome": "neutral",
+          "evidenceJson": "",
+          "scopeKind": "session",
+          "scopeKey": "",
+          "status": "active",
+          "expiresAt": null
+        },
+        {
+          "id": "4da5a665-9e16-4c5a-af0c-458f02f91bb5",
+          "channelId": "dd16f335-4b32-4878-b8b8-df8780836eaf",
+          "agentId": "__team__",
+          "kind": "semantic",
+          "title": "通用记忆",
+          "content": "通用频道记忆锚点 GEXACT-haypsl 越用越聪明",
+          "dedupKey": "agent:d2455b34-af82-4b6c-8f45-a33b3b06c8b8:agent-save:23947bc0",
+          "titleFts": " 通 用 记 忆 ",
+          "importance": 0.8,
+          "taskId": null,
+          "sessionId": "",
+          "accessCount": 1,
+          "lastAccessedAt": "2026-11-15T11:56:26.693+08:00",
+          "createdAt": "2026-11-15T11:56:26.677+08:00",
+          "outcome": "neutral",
+          "evidenceJson": "",
+          "scopeKind": "session",
+          "scopeKey": "",
+          "status": "active",
+          "expiresAt": null
+        },
+        {
+          "id": "9573cd08-7d91-4c79-a2c4-50505d1b078b",
+          "channelId": "dd16f335-4b32-4878-b8b8-df8780836eaf",
+          "agentId": "__team__",
+          "kind": "semantic",
+          "title": "DIRECT-G-haypsl",
+          "content": "DIRECT-G-haypsl",
+          "dedupKey": "agent:d2455b34-af82-4b6c-8f45-a33b3b06c8b8:agent-save:9904fdec",
+          "titleFts": "DIRECT-G-haypsl",
+          "importance": 0.85,
+          "taskId": null,
+          "sessionId": "",
+          "accessCount": 2,
+          "lastAccessedAt": "2026-11-15T11:56:26.693+08:00",
+          "createdAt": "2026-11-15T11:56:26.505+08:00",
+          "outcome": "neutral",
+          "evidenceJson": "",
+          "scopeKind": "session",
+          "scopeKey": "",
+          "status": "active",
+          "expiresAt": null
+        }
+      ]
+    },
+    {
+      "no": 56,
+      "name": "integrated team memory ok",
+      "ok": true,
+      "detail": [
+        {
+          "id": "d53c71cd-9c02-4091-ad96-c25b44e1fdf5",
+          "channelId": "ea1c9b93-a227-48a4-8d2c-4ee936393301",
+          "agentId": "__team__",
+          "kind": "semantic",
+          "title": "TEAM-I-haypsl",
+          "content": "产线频道团队共享记忆",
+          "dedupKey": "ti-haypsl",
+          "titleFts": "TEAM-I-haypsl",
+          "importance": 0.9,
+          "taskId": null,
+          "sessionId": "",
+          "accessCount": 0,
+          "lastAccessedAt": null,
+          "createdAt": "2026-11-15T11:56:26.750+08:00",
+          "outcome": "neutral",
+          "evidenceJson": "",
+          "scopeKind": "session",
+          "scopeKey": "",
+          "status": "active",
+          "expiresAt": null
+        },
+        {
+          "id": "96696a67-31b3-4050-a90e-9321794fb41d",
+          "channelId": "ea1c9b93-a227-48a4-8d2c-4ee936393301",
+          "agentId": "__team__",
+          "kind": "semantic",
+          "title": "产线记忆",
+          "content": "产线集成记忆锚点 IEXACT-haypsl 产品 A 工艺",
+          "dedupKey": "agent:42116533-132a-451a-9f72-135273ae04d2:agent-save:bf27ee21",
+          "titleFts": " 产 线 记 忆 ",
+          "importance": 0.8,
+          "taskId": null,
+          "sessionId": "",
+          "accessCount": 1,
+          "lastAccessedAt": "2026-11-15T11:56:26.720+08:00",
+          "createdAt": "2026-11-15T11:56:26.704+08:00",
+          "outcome": "neutral",
+          "evidenceJson": "",
+          "scopeKind": "session",
+          "scopeKey": "",
+          "status": "active",
+          "expiresAt": null
+        },
+        {
+          "id": "a50e3dbf-847a-470f-b3a2-8c4a32bb2d23",
+          "channelId": "ea1c9b93-a227-48a4-8d2c-4ee936393301",
+          "agentId": "__team__",
+          "kind": "semantic",
+          "title": "DIRECT-I-haypsl",
+          "content": "DIRECT-I-haypsl",
+          "dedupKey": "agent:42116533-132a-451a-9f72-135273ae04d2:agent-save:06236ac1",
+          "titleFts": "DIRECT-I-haypsl",
+          "importance": 0.85,
+          "taskId": null,
+          "sessionId": "",
+          "accessCount": 2,
+          "lastAccessedAt": "2026-11-15T11:56:26.719+08:00",
+          "createdAt": "2026-11-15T11:56:26.550+08:00",
+          "outcome": "neutral",
+          "evidenceJson": "",
+          "scopeKind": "session",
+          "scopeKey": "",
+          "status": "active",
+          "expiresAt": null
+        }
+      ]
+    },
+    {
+      "no": 57,
+      "name": "generic channel cannot recall integrated channel anchor",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "no": 58,
+      "name": "RSI experience observation surface available on both modes",
+      "ok": true,
+      "detail": {
+        "g": [
+          "lineId",
+          "total",
+          "byStatus",
+          "byScope",
+          "byOutcome"
+        ],
+        "i": [
+          "lineId",
+          "total",
+          "byStatus",
+          "byScope",
+          "byOutcome"
+        ]
+      }
+    },
+    {
+      "no": 59,
+      "name": "generic mailbox send accepted",
+      "ok": true,
+      "detail": {
+        "messageId": "d5afda6e-dbf0-472f-83f5-c73e7d37cba1",
+        "contextId": "dd16f335-4b32-4878-b8b8-df8780836eaf",
+        "role": "ROLE_AGENT",
+        "parts": [
+          {
+            "text": "MBX-G-haypsl 通用频道邮箱链路验收"
+          }
+        ],
+        "metadata": {
+          "x-aw-target-agent": "d2455b34-af82-4b6c-8f45-a33b3b06c8b8",
+          "x-aw-msg-priority": "immediate",
+          "x-aw-from-label": "acc-admin-haypsl"
+        }
+      }
+    },
+    {
+      "no": 60,
+      "name": "integrated mailbox send accepted",
+      "ok": true,
+      "detail": {
+        "messageId": "8e8d929b-90d6-4901-b242-c1cf26bb2721",
+        "contextId": "ea1c9b93-a227-48a4-8d2c-4ee936393301",
+        "role": "ROLE_AGENT",
+        "parts": [
+          {
+            "text": "MBX-I-haypsl 产线频道邮箱链路验收"
+          }
+        ],
+        "metadata": {
+          "x-aw-target-agent": "42116533-132a-451a-9f72-135273ae04d2",
+          "x-aw-msg-priority": "immediate",
+          "x-aw-from-label": "acc-admin-haypsl"
+        }
+      }
+    },
+    {
+      "no": 61,
+      "name": "generic mailbox message retrievable",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "no": 62,
+      "name": "integrated mailbox message retrievable",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "no": 63,
+      "name": "generic mailbox tool send visible in channel mail log",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "no": 64,
+      "name": "integrated mailbox tool send visible in channel mail log",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "no": 65,
+      "name": "generic channel task submitted & routed",
+      "ok": true,
+      "detail": {
+        "id": "d5763ed2-ec8e-40ea-8a7f-b924acc35c86",
+        "channelId": "dd16f335-4b32-4878-b8b8-df8780836eaf",
+        "rootQueueSeq": 1,
+        "assigneeId": "d2455b34-af82-4b6c-8f45-a33b3b06c8b8",
+        "creatorId": "",
+        "title": "TASK-G-haypsl",
+        "description": "通用频道任务链路验收",
+        "state": "SUBMITTED",
+        "progress": 0,
+        "retryCount": 0,
+        "artifacts": [
+          {
+            "artifactId": "a72f8b9f-dee8-42bb-af00-40e8a91becb8",
+            "name": "input",
+            "parts": [
+              {
+                "text": "请确认任务链路"
+              }
+            ]
+          }
+        ],
+        "history": [],
+        "deadlineAt": "2026-11-15T12:11:26.879+08:00",
+        "source": "channel",
+        "assignmentGeneration": 0,
+        "executionLeaseId": "542a315e-f8fe-46de-99b0-ad4eedb22b11",
+        "executionLeaseAgentId": "d2455b34-af82-4b6c-8f45-a33b3b06c8b8",
+        "executionLeaseStartedAt": "2026-11-15T11:56:26.880+08:00",
+        "createdAt": "2026-11-15T11:56:26.880+08:00",
+        "updatedAt": "2026-11-15T11:56:26.880+08:00"
+      }
+    },
+    {
+      "no": 66,
+      "name": "integrated channel task submitted & routed",
+      "ok": true,
+      "detail": {
+        "id": "6aa6e275-7abe-41fa-8195-ff92a9bfc23a",
+        "channelId": "ea1c9b93-a227-48a4-8d2c-4ee936393301",
+        "rootQueueSeq": 1,
+        "assigneeId": "42116533-132a-451a-9f72-135273ae04d2",
+        "creatorId": "",
+        "title": "TASK-I-haypsl",
+        "description": "产线频道任务链路验收",
+        "state": "SUBMITTED",
+        "progress": 0,
+        "retryCount": 0,
+        "artifacts": [
+          {
+            "artifactId": "1c6a402a-697d-4bc8-a69d-8a6e37e40862",
+            "name": "input",
+            "parts": [
+              {
+                "text": "请确认任务链路"
+              }
+            ]
+          }
+        ],
+        "history": [],
+        "deadlineAt": "2026-11-15T12:11:26.984+08:00",
+        "source": "channel",
+        "assignmentGeneration": 0,
+        "executionLeaseId": "fc9e0f1b-39d3-4351-a210-bf3f67f9f72e",
+        "executionLeaseAgentId": "42116533-132a-451a-9f72-135273ae04d2",
+        "executionLeaseStartedAt": "2026-11-15T11:56:26.985+08:00",
+        "createdAt": "2026-11-15T11:56:26.985+08:00",
+        "updatedAt": "2026-11-15T11:56:26.985+08:00"
+      }
+    },
+    {
+      "no": 67,
+      "name": "generic task list contains submitted task",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "no": 68,
+      "name": "integrated task list contains submitted task",
+      "ok": true,
+      "detail": null
+    }
+  ]
+}

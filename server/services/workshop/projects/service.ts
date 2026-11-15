@@ -36,6 +36,7 @@ import { collectReviewFact } from '../runtime/memory/reflect-collector'
 import { blindCheckForTask, blindMetricsForTask } from '../verify/blind-verifier'
 import type { TaskRow } from '../db/database'
 import { withTransaction } from '../db/transaction'
+import { canonicalJson } from '../../../../shared/context/hash'
 import { parseJson } from '../db/database'
 import { workshopSettings } from '../settings'
 import { resolveDispatchLimits } from './dispatch-limits'
@@ -146,12 +147,6 @@ export interface NormalizedPlan {
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
-}
-
-function asStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((v): v is string => typeof v === 'string').map(v => v.trim()).filter(Boolean)
-    : []
 }
 
 function asObject(value: unknown): Record<string, unknown> {
@@ -510,8 +505,8 @@ export function normalizeProjectPlan(plan: Record<string, unknown>): NormalizedP
       description: asString(d.description),
       required: d.required !== false,
       channelId: channelId || undefined,
-      acceptanceCriteria: asStringArray(d.acceptanceCriteria ?? d.acceptance_criteria),
-      dependsOn: asStringArray(d.dependsOn ?? d.depends_on),
+      acceptanceCriteria: strictStringArray(d.acceptanceCriteria ?? d.acceptance_criteria, `交付物「${name}」acceptanceCriteria`),
+      dependsOn: strictStringArray(d.dependsOn ?? d.depends_on, `交付物「${name}」dependsOn`),
     }
   })
   for (const d of deliverables) {
@@ -523,6 +518,7 @@ export function normalizeProjectPlan(plan: Record<string, unknown>): NormalizedP
   assertAcyclic(deliverables.map(d => ({ id: d.key, deps: d.dependsOn })), '交付物')
 
   const workKeys = new Set<string>()
+  const dedupeKeys = new Set<string>()
   const workItems = rawWorkItems.map((item, index) => {
     const w = asObject(item)
     const deliverableKey = asString(w.deliverableKey) || asString(w.deliverable_key)
@@ -538,17 +534,21 @@ export function normalizeProjectPlan(plan: Record<string, unknown>): NormalizedP
     if (!channelId) throw new AppError(400, 'PLAN_INVALID', `工作项「${title}」缺 channelId`)
     const budgetRaw = Number(w.execBudgetMinutes ?? w.exec_budget_minutes ?? 60)
     const execBudgetMinutes = Number.isFinite(budgetRaw) ? Math.min(24 * 60, Math.max(1, Math.floor(budgetRaw))) : 60
+    const dedupeKey = asString(w.dedupeKey) || asString(w.dedupe_key) || `${deliverableKey}:${channelId}:${title}`
+    if (dedupeKeys.has(dedupeKey)) throw new AppError(400, 'PLAN_INVALID', `工作项 dedupeKey 重复: ${dedupeKey}`)
+    dedupeKeys.add(dedupeKey)
+    const resultKey = asString(w.resultKey) || asString(w.result_key) || 'main'
     return {
       key,
       deliverableKey,
       channelId,
       title,
       brief: asString(w.brief),
-      dedupeKey: asString(w.dedupeKey) || asString(w.dedupe_key) || undefined,
-      dependsOn: asStringArray(w.dependsOn ?? w.depends_on),
+      dedupeKey,
+      dependsOn: strictStringArray(w.dependsOn ?? w.depends_on, `工作项「${title}」dependsOn`),
       execBudgetMinutes,
-      acceptanceCriteria: asStringArray(w.acceptanceCriteria ?? w.acceptance_criteria),
-      resultKey: asString(w.resultKey) || asString(w.result_key) || 'main',
+      acceptanceCriteria: strictStringArray(w.acceptanceCriteria ?? w.acceptance_criteria, `工作项「${title}」acceptanceCriteria`),
+      resultKey,
       contract: strictContract(w.contract, `工作项「${title}」contract`),
     }
   })
@@ -1510,6 +1510,8 @@ export class ProjectService {
     let stage: 'precheck' | 'submit' = 'precheck'
     /** 本次调用是否新建了任务实例（claim 未赢时用于回收自建实例，防孤儿 Channel）。 */
     let createdInstanceId: string | null = null
+    let submittedTaskId: string | null = null
+    let submittedTaskCreated = false
     try {
       const d = this.deliverables.listByProject(id).find(x => x.id === wi.deliverableId)
       if (!d) throw new AppError(404, 'NOT_FOUND', '工作项交付物不存在')
@@ -1551,7 +1553,7 @@ export class ProjectService {
       })
       stage = 'submit'
       // Session Context：任务实例 Channel 的 active session 是该 root 的权威上下文（上方已取）。
-      const { task } = await this.manager.submitProjectRoot({
+      const { task, created: rootCreated } = await this.manager.submitProjectRoot({
         projectId: id,
         workItemId: wi.id,
         attemptNo,
@@ -1565,6 +1567,21 @@ export class ProjectService {
         execBudgetMinutes: wi.execBudgetMinutes,
         parts: [{ text: handoff.text }],
       })
+      submittedTaskId = task.id
+      submittedTaskCreated = rootCreated
+      // Persist the idempotency root before checking mutable work-item state. This
+      // keeps cancel/restart recovery auditable if the owner canceled during submit.
+      const linkedBeforeFence = this.attempts.linkTask(attempt!.id, task.id)
+      if (!linkedBeforeFence) {
+        if (rootCreated) this.cancelTaskTreeForProject(task.id, 'system', 'PROJECT_ATTEMPT_LOST_BEFORE_LINK')
+        const latestAttempt = this.attempts.findById(attempt!.id)
+        const latestItem = this.workItems.findById(wi.id)
+        const latestProjectStatus = this.projects.findById(id)?.status
+        if (latestProjectStatus === 'canceled' || latestItem?.state === 'CANCELED' || latestItem?.state === 'CANCELING') {
+          throw new AppError(409, 'PROJECT_STATE_CHANGED', '派发期间项目或工作项被取消/终止，本次任务已取消')
+        }
+        throw new AppError(409, 'PROJECT_ATTEMPT_STALE', latestAttempt?.channelTaskId ? '派发 attempt 已关联其他任务' : '派发 attempt 已关闭')
+      }
       // H0 派发后栅栏：submitProjectRoot 在返回前已创建任务并可能唤醒 Agent。
       // 因此返回后必须重读项目/工作项/attempt，确认本次 claim 仍是唯一有效代次；
       // 若期间被 pause/terminate/cancelWorkItem 或新 attempt 抢占，立即取消任务树
@@ -1586,29 +1603,45 @@ export class ProjectService {
           })
         }
         const projectCanceled = freshProject?.status === 'canceled'
-        this.workItems.update(wi.id, {
-          state: projectCanceled ? 'CANCELED' : 'DRAFT',
-          stateReason: 'PROJECT_STATE_CHANGED_DURING_DISPATCH',
-          currentAttemptId: null,
-          closedAt: projectCanceled ? new Date().toISOString() : null,
-          closeReason: projectCanceled ? 'PROJECT_TERMINATED' : null,
-        })
+        if (ownsClaim && freshItem?.state === 'DISPATCHING') {
+          this.workItems.updateOwnedAttempt(wi.id, attempt!.id, ['DISPATCHING'], {
+            state: projectCanceled ? 'CANCELED' : 'DRAFT',
+            stateReason: 'PROJECT_STATE_CHANGED_DURING_DISPATCH',
+            currentAttemptId: null,
+            closedAt: projectCanceled ? new Date().toISOString() : null,
+            closeReason: projectCanceled ? 'PROJECT_TERMINATED' : null,
+          })
+        }
         this.record(id, 'work.dispatch_aborted', actor, {
           workItemId: wi.id, taskId: task.id, attemptNo, reason: 'PROJECT_STATE_CHANGED_DURING_DISPATCH',
         }, traceId, 'work.dispatch_aborted', `work:${wi.id}:dispatch-aborted:a${attemptNo}`, { workItemId: wi.id, taskId: task.id })
         throw new AppError(409, 'PROJECT_STATE_CHANGED', '派发期间项目状态已变更，本次任务已取消')
       }
-      this.attempts.setDispatched(attempt!.id, task.id)
-      const evtType = opts.auto ? 'work.dispatch_auto' : 'work.dispatched'
-      this.record(id, evtType, actor, { workItemId: wi.id, taskId: task.id, attemptNo, instanceChannelId, inputResultIds: handoff.upstream.map(r => r.id) }, traceId, evtType, `work:${wi.id}:${opts.auto ? 'auto' : 'dispatched'}:a${attemptNo}`, { workItemId: wi.id, taskId: task.id, attemptNo, auto: opts.auto, inputResultIds: handoff.upstream.map(r => r.id), planVersion: p.planVersion, channelId: wi.channelId, instanceChannelId })
-      return this.workItems.update(wi.id, {
-        state: 'DISPATCHED',
-        stateReason: null,
-        currentAttemptId: attempt!.id,
-        traceId,
-        planVersion: p.planVersion,
-        deferredUntil: null,
-      })!
+      let attemptLinked = true // task id was CAS-linked before the state fence
+      withTransaction(this.db, () => {
+        const persistedAttempt = this.attempts.findById(attempt!.id)
+        if (!persistedAttempt || persistedAttempt.closedAt || persistedAttempt.channelTaskId !== task.id) {
+          attemptLinked = false
+          return
+        }
+        if (!this.attempts.setDispatched(attempt!.id, task.id)) throw new AppError(409, 'PROJECT_ATTEMPT_STALE', 'attempt 无法从 dispatching 转为 dispatched')
+        const updatedItem = this.workItems.updateOwnedAttempt(wi.id, attempt!.id, ['DISPATCHING'], {
+          state: 'DISPATCHED',
+          stateReason: null,
+          currentAttemptId: attempt!.id,
+          traceId,
+          planVersion: p.planVersion,
+          deferredUntil: null,
+        })
+        if (!updatedItem) throw new AppError(409, 'PROJECT_ATTEMPT_STALE', '工作项状态已被并发操作改变,拒绝关联派发任务')
+        const evtType = opts.auto ? 'work.dispatch_auto' : 'work.dispatched'
+        this.record(id, evtType, actor, { workItemId: wi.id, taskId: task.id, attemptNo, instanceChannelId, inputResultIds: handoff.upstream.map(r => r.id) }, traceId, evtType, `work:${wi.id}:${opts.auto ? 'auto' : 'dispatched'}:a${attemptNo}`, { workItemId: wi.id, taskId: task.id, attemptNo, auto: opts.auto, inputResultIds: handoff.upstream.map(r => r.id), planVersion: p.planVersion, channelId: wi.channelId, instanceChannelId })
+      })
+      if (!attemptLinked) {
+        this.cancelTaskTreeForProject(task.id, 'system', 'PROJECT_ATTEMPT_LOST_BEFORE_LINK')
+        throw new AppError(409, 'PROJECT_ATTEMPT_STALE', '派发 attempt 已关闭或已关联其他任务,新建任务已取消')
+      }
+      return this.workItems.findById(wi.id)!
     }
     catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -1617,6 +1650,7 @@ export class ProjectService {
       // H0 派发后栅栏已把本次 attempt/工作项收敛到终态或 DRAFT，不能再走通用
       // close/回落逻辑覆盖（否则 CANCELED 会被改回 DRAFT/BLOCKED）。
       if (code === 'PROJECT_STATE_CHANGED') {
+        if (submittedTaskCreated && submittedTaskId) this.cancelTaskTreeForProject(submittedTaskId, 'system', 'PROJECT_STATE_CHANGED_DURING_DISPATCH')
         if (createdInstanceId) {
           try {
             this.bindings.setStatus(id, createdInstanceId, 'detached')
@@ -1625,6 +1659,14 @@ export class ProjectService {
           await this.releaseCreatedInstance(wi, createdInstanceId)
         }
         throw err
+      }
+      if (submittedTaskCreated && submittedTaskId) {
+        try {
+          this.cancelTaskTreeForProject(submittedTaskId, 'system', `PROJECT_DISPATCH_ABORTED:${code || 'ERROR'}`)
+        }
+        catch (cancelError) {
+          console.error('[project-dispatch] failed to cancel newly created root after dispatch abort', { taskId: submittedTaskId, error: cancelError instanceof Error ? cancelError.message : String(cancelError) })
+        }
       }
       const latestProject = this.projects.findById(id)
       if (latestProject?.status === 'canceled') {
@@ -2351,29 +2393,81 @@ export class ProjectService {
         })
         continue
       }
-      const attempt = wi.currentAttemptId ? this.attempts.findById(wi.currentAttemptId) : undefined
+      let attempt = wi.currentAttemptId ? this.attempts.findById(wi.currentAttemptId) : undefined
+      if (attempt && !attempt.channelTaskId) {
+        // Crash recovery: submitProjectRoot is idempotent by channel + sourceKey.
+        // A root may exist even if the process died before linking its id to the attempt.
+        const recovered = this.tasks.findRootBySource(attempt.channelId, attempt.sourceKey)
+        if (recovered) {
+          const matchesAttempt = recovered.projectId === attempt.projectId
+            && recovered.projectWorkItemId === attempt.workItemId
+            && recovered.projectAttemptNo === attempt.attemptNo
+            && recovered.source === 'project'
+          if (matchesAttempt) {
+            let recoveredLinked = false
+            withTransaction(this.db, () => {
+              const current = this.workItems.findById(wi.id)
+              if (!current || current.currentAttemptId !== attempt!.id || current.state !== 'DISPATCHING') return
+              if (!this.attempts.linkTask(attempt!.id, recovered.id)) return
+              if (!this.attempts.setDispatched(attempt!.id, recovered.id)) throw new AppError(409, 'PROJECT_ATTEMPT_STALE', 'attempt link persisted but dispatch state transition failed')
+              const updated = this.workItems.updateOwnedAttempt(wi.id, attempt!.id, ['DISPATCHING'], { state: 'DISPATCHED' })
+              if (!updated) throw new AppError(409, 'PROJECT_ATTEMPT_STALE', '工作项状态在 root 恢复期间变化')
+              recoveredLinked = true
+              attempt = this.attempts.findById(attempt!.id)
+              this.record(id, 'work.dispatch_recovered', actor, { workItemId: wi.id, taskId: recovered.id, attemptNo: attempt!.attemptNo, sourceKey: attempt!.sourceKey }, attempt!.traceId, 'work.dispatch_recovered', `work:${wi.id}:dispatch-recovered:a${attempt!.attemptNo}`, { workItemId: wi.id, taskId: recovered.id, attemptNo: attempt!.attemptNo })
+            })
+            if (!recoveredLinked) continue
+            attempt = this.attempts.findById(wi.currentAttemptId!)
+          }
+          else {
+            this.cancelTaskTreeForProject(recovered.id, 'system', 'PROJECT_ATTEMPT_SOURCE_CONFLICT')
+            withTransaction(this.db, () => {
+              const current = this.workItems.findById(wi.id)
+              if (!current || current.currentAttemptId !== attempt!.id || current.state !== 'DISPATCHING') return
+              const updated = this.workItems.updateOwnedAttempt(wi.id, attempt!.id, ['DISPATCHING'], { state: 'BLOCKED', stateReason: 'SOURCE_KEY_CONFLICT', currentAttemptId: null })
+              if (!updated) return
+              if (!attempt!.closedAt) this.attempts.close(attempt!.id, 'BLOCKED', 'SOURCE_KEY_CONFLICT')
+              this.record(id, 'work.blocked', actor, { workItemId: wi.id, taskId: recovered.id, reason: 'SOURCE_KEY_CONFLICT' }, wi.traceId, 'work.blocked', `work:${wi.id}:source-conflict:a${attempt!.attemptNo}`, { workItemId: wi.id, taskId: recovered.id, reason: 'SOURCE_KEY_CONFLICT' })
+            })
+            continue
+          }
+        }
+      }
       if (!attempt || !attempt.channelTaskId) {
+        const missingAttempt = attempt
         withTransaction(this.db, () => {
-          if (attempt && !attempt.closedAt) this.attempts.close(attempt.id, 'BLOCKED', 'ATTEMPT_MISSING')
-          this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'ATTEMPT_MISSING', currentAttemptId: null })
+          const current = this.workItems.findById(wi.id)
+          if (!current || current.state !== wi.state || current.currentAttemptId !== (wi.currentAttemptId ?? null)) return
+          if (missingAttempt) {
+            if (current.currentAttemptId !== missingAttempt.id || !['DISPATCHING', 'DISPATCHED'].includes(current.state)) return
+            const updated = this.workItems.updateOwnedAttempt(wi.id, missingAttempt.id, ['DISPATCHING', 'DISPATCHED'], { state: 'BLOCKED', stateReason: 'ATTEMPT_MISSING', currentAttemptId: null })
+            if (!updated) return
+            if (!missingAttempt.closedAt) this.attempts.close(missingAttempt.id, 'BLOCKED', 'ATTEMPT_MISSING')
+          }
+          else {
+            this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'ATTEMPT_MISSING', currentAttemptId: null })
+          }
           this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: 'ATTEMPT_MISSING' }, wi.traceId, 'work.blocked', `work:${wi.id}:attempt-missing`, { workItemId: wi.id, reason: 'ATTEMPT_MISSING' })
         })
         continue
       }
-      const task = this.tasks.findById(attempt.channelTaskId)
+      if (!attempt) continue
+      const linkedAttempt = attempt
+      const task = this.tasks.findById(linkedAttempt.channelTaskId!)
       if (!task) {
         withTransaction(this.db, () => {
-          if (!attempt.closedAt) this.attempts.close(attempt.id, 'BLOCKED', 'TASK_MISSING')
-          this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'TASK_MISSING', currentAttemptId: null })
+          const updated = this.workItems.updateOwnedAttempt(wi.id, linkedAttempt.id, ['DISPATCHED', 'RUNNING', 'DISPATCHING'], { state: 'BLOCKED', stateReason: 'TASK_MISSING', currentAttemptId: null })
+          if (!updated) return
+          if (!linkedAttempt.closedAt) this.attempts.close(linkedAttempt.id, 'BLOCKED', 'TASK_MISSING')
           this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: 'TASK_MISSING' }, wi.traceId, 'work.blocked', `work:${wi.id}:task-missing`, { workItemId: wi.id, reason: 'TASK_MISSING' })
         })
         continue
       }
       if (task.state === 'COMPLETED') {
         withTransaction(this.db, () => {
-          this.workItems.update(wi.id, { state: 'COMPLETED', stateReason: null, closedAt: new Date().toISOString(), closeReason: 'ROOT_COMPLETED' })
-          // 审查修复：attempt 必须闭合，否则 live 唯一索引让 FAILED/COMPLETED 工作项永久 IN_FLIGHT。
-          if (attempt) this.attempts.close(attempt.id, 'CLOSED')
+          const updated = this.workItems.updateOwnedAttempt(wi.id, linkedAttempt.id, ['DISPATCHED', 'RUNNING', 'DISPATCHING'], { state: 'COMPLETED', stateReason: null, closedAt: new Date().toISOString(), closeReason: 'ROOT_COMPLETED' })
+          if (!updated) return
+          this.attempts.close(linkedAttempt.id, 'CLOSED')
           this.ensureDraftFromTask(task.id)
           this.record(id, 'work.completed', actor, { workItemId: wi.id, taskId: task.id }, wi.traceId, 'work.completed', `work:${wi.id}:completed`, { workItemId: wi.id, taskId: task.id })
         })
@@ -2381,14 +2475,17 @@ export class ProjectService {
       }
       if (task.state === 'FAILED' || task.state === 'CANCELED') {
         withTransaction(this.db, () => {
-          this.workItems.update(wi.id, { state: task.state, stateReason: task.closeReason ?? task.state, closedAt: new Date().toISOString(), closeReason: task.closeReason ?? task.state })
-          if (attempt) this.attempts.close(attempt.id, 'CLOSED', task.closeReason ?? task.state)
+          const updated = this.workItems.updateOwnedAttempt(wi.id, linkedAttempt.id, ['DISPATCHED', 'RUNNING', 'DISPATCHING'], { state: task.state, stateReason: task.closeReason ?? task.state, closedAt: new Date().toISOString(), closeReason: task.closeReason ?? task.state })
+          if (!updated) return
+          this.attempts.close(linkedAttempt.id, 'CLOSED', task.closeReason ?? task.state)
           this.record(id, 'work.failed', actor, { workItemId: wi.id, taskId: task.id, state: task.state }, wi.traceId, 'work.failed', `work:${wi.id}:${task.state.toLowerCase()}`, { workItemId: wi.id, taskId: task.id, state: task.state })
         })
         continue
       }
       if (task.state === 'WORKING' || task.state === 'WAITING' || task.state === 'ASSIGNED') {
-        if (wi.state !== 'RUNNING') this.workItems.update(wi.id, { state: 'RUNNING', stateReason: null })
+        if (wi.currentAttemptId === attempt.id && ['DISPATCHED', 'DISPATCHING'].includes(wi.state)) {
+          this.workItems.updateOwnedAttempt(wi.id, linkedAttempt.id, ['DISPATCHED', 'DISPATCHING'], { state: 'RUNNING', stateReason: null })
+        }
         continue
       }
     }
@@ -2707,32 +2804,49 @@ export class ProjectService {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
     this.assertProjectNotCanceled(p)
+    this.preflightApprovedPlan(p, input.plan)
     if (!Number.isInteger(input.version) || input.version <= 0) throw new AppError(400, 'BAD_REQUEST', 'plan version 必须为正整数')
-    if (input.version <= p.planVersion) throw new AppError(409, 'PLAN_VERSION_STALE', `plan version ${input.version} <= 当前 ${p.planVersion}`)
+    if (input.version !== p.planVersion + 1) throw new AppError(409, 'PLAN_VERSION_STALE', `plan version 必须是当前版本 ${p.planVersion} 的直接后继`)
+    const planJson = canonicalJson(input.plan)
+    const planHash = createHash('sha256').update(planJson).digest('hex')
     const subjectId = `plan:${id}:${input.version}`
+    const existingVersion = this.kernelRepo.planVersions.get(id, input.version)
+    if (existingVersion && existingVersion.sha256 !== planHash) {
+      throw new AppError(409, 'PLAN_VERSION_REUSED', `plan version ${input.version} 已有不同内容的不可变快照`)
+    }
     const pending = this.approvals.listPending(id).find(a => a.kind === 'plan_approval' && a.subjectId === subjectId)
-    if (pending) return pending
-    const approval = this.approvals.create({
-      projectId: id,
-      kind: 'plan_approval',
-      subjectType: 'plan',
-      subjectId,
-      subjectVersion: input.version,
-      requestedByAgentId: actor.agentId ?? null,
-      requestedByUserId: actor.agentId ? null : actor.id,
-      payloadJson: JSON.stringify(input.plan),
-      reason: 'project plan approval',
-      traceId: `plan:${id}:${input.version}`,
-      expiresAt: new Date(Date.now() + 24 * 3600_000).toISOString(),
+    if (pending) {
+      if (pending.payloadJson !== planJson) throw new AppError(409, 'PLAN_VERSION_REUSED', `plan version ${input.version} 已有不同内容的待批审批`)
+      return pending
+    }
+    if (existingVersion && existingVersion.status !== 'draft') {
+      throw new AppError(409, 'PLAN_VERSION_REUSED', `plan version ${input.version} 已进入 ${existingVersion.status} 状态,不可复用`)
+    }
+    let approval!: ProjectApprovalRow
+    withTransaction(this.db, () => {
+      const freshProject = this.projects.findById(id)
+      if (!freshProject) throw new AppError(404, 'NOT_FOUND', 'Project 不存在')
+      if (input.version !== freshProject.planVersion + 1) throw new AppError(409, 'PLAN_VERSION_STALE', `plan version 必须是当前版本 ${freshProject.planVersion} 的直接后继`)
+      this.kernelRepo.planVersions.upsert(id, input.version, planJson, planHash)
+      const persisted = this.kernelRepo.planVersions.get(id, input.version)
+      if (!persisted || persisted.sha256 !== planHash || persisted.planJson !== planJson || persisted.status !== 'draft') {
+        throw new AppError(409, 'PLAN_VERSION_REUSED', `plan version ${input.version} 不匹配当前不可变快照`)
+      }
+      approval = this.approvals.create({
+        projectId: id,
+        kind: 'plan_approval',
+        subjectType: 'plan',
+        subjectId,
+        subjectVersion: input.version,
+        requestedByAgentId: actor.agentId ?? null,
+        requestedByUserId: actor.agentId ? null : actor.id,
+        payloadJson: planJson,
+        reason: 'project plan approval',
+        traceId: `plan:${id}:${input.version}`,
+        expiresAt: new Date(Date.now() + 24 * 3600_000).toISOString(),
+      })
+      this.record(id, 'plan.requested', actor, { approvalId: approval.id, version: input.version }, approval.traceId, 'plan.requested', `plan:${id}:${input.version}:requested`, { approvalId: approval.id, version: input.version })
     })
-    // PR17 不变量 12：计划版本不可变快照（draft，待审批）。
-    this.kernelRepo.planVersions.upsert(
-      id,
-      input.version,
-      JSON.stringify(input.plan),
-      createHash('sha256').update(JSON.stringify(input.plan)).digest('hex'),
-    )
-    this.record(id, 'plan.requested', actor, { approvalId: approval.id, version: input.version }, approval.traceId, 'plan.requested', `plan:${id}:${input.version}:requested`, { approvalId: approval.id, version: input.version })
     return approval
   }
 
@@ -2841,15 +2955,26 @@ export class ProjectService {
       }
       else if (approval.kind === 'plan_approval' && approve) {
         const version = approval.subjectVersion ?? p.planVersion
+        const freshProject = this.projects.findById(id)
+        if (!freshProject || version !== freshProject.planVersion + 1) {
+          throw new AppError(409, 'PLAN_VERSION_STALE', `计划版本 ${version} 不再是当前版本 ${freshProject?.planVersion ?? 'missing'} 的直接后继`)
+        }
+        const versionSnapshot = this.kernelRepo.planVersions.get(id, version)
+        const approvalHash = createHash('sha256').update(approval.payloadJson).digest('hex')
+        if (!versionSnapshot || versionSnapshot.status !== 'draft' || versionSnapshot.planJson !== approval.payloadJson || versionSnapshot.sha256 !== approvalHash) {
+          throw new AppError(409, 'PLAN_VERSION_SNAPSHOT_MISMATCH', `计划版本 ${version} 的不可变快照与审批载荷不一致`)
+        }
+        const plan = parseJson<Record<string, unknown>>(approval.payloadJson, {})
+        this.preflightApprovedPlan(freshProject, plan)
         const updated = this.projects.update(id, { planVersion: version, planJson: approval.payloadJson })
-        // PR17 不变量 12：先收编旧 approved，再批准新版本（部分唯一索引要求单 approved）。
         this.kernelRepo.planVersions.supersedeOthers(id, version)
-        this.kernelRepo.planVersions.markApproved(id, version, actor.id)
-        // leader 提案的 proposal decision 与审批联动收口（CAS）。
+        if (!this.kernelRepo.planVersions.markApproved(id, version, actor.id)) {
+          throw new AppError(409, 'PLAN_VERSION_STATE_INVALID', `计划版本 ${version} 未能从 draft 转为 approved`)
+        }
         for (const d of this.decisions.listByProject(id)) {
           if (d.approvalId === approvalId && d.state === 'proposed') this.decisions.markApplied(d.id, 'applied', 'approved plan')
         }
-        this.materializeApprovedPlan(updated ?? { ...p, planVersion: version, planJson: approval.payloadJson }, version, approval.payloadJson)
+        this.materializeApprovedPlan(updated ?? { ...freshProject, planVersion: version, planJson: approval.payloadJson }, version, plan)
       }
       else if (approval.kind === 'plan_approval' && !approve) {
         this.kernelRepo.planVersions.markRejected(id, approval.subjectVersion ?? p.planVersion)
@@ -4272,16 +4397,32 @@ export class ProjectService {
     const ctx = this.requireAgentContext(agentId, 'leader')
     this.assertLeaderProjectMutable(ctx.project)
     const normalized = normalizeProjectPlan(plan)
+    this.preflightApprovedPlan(ctx.project, normalized.raw)
     const version = ctx.project.planVersion + 1
     const subjectId = `plan:${ctx.project.id}:${version}`
+    const argsJson = canonicalJson(normalized.raw)
+    const argsSha256 = createHash('sha256').update(argsJson).digest('hex')
+    const versionRow = this.kernelRepo.planVersions.get(ctx.project.id, version)
+    if (versionRow && (versionRow.planJson !== argsJson || versionRow.sha256 !== argsSha256)) {
+      throw new AppError(409, 'PLAN_VERSION_REUSED', `leader plan version ${version} 已有不同内容的不可变快照`)
+    }
     const pending = this.approvals.listPending(ctx.project.id).find(a => a.kind === 'plan_approval' && a.subjectId === subjectId)
     if (pending) {
+      if (pending.payloadJson !== argsJson) throw new AppError(409, 'PLAN_VERSION_REUSED', `leader plan version ${version} 已有不同内容的待批审批`)
       const existing = this.decisions.listByProject(ctx.project.id).find(d => d.approvalId === pending.id)
       return { approval: pending, version, proposalId: existing?.id ?? '' }
     }
+    if (versionRow && versionRow.status !== 'draft') throw new AppError(409, 'PLAN_VERSION_REUSED', `leader plan version ${version} 已处于 ${versionRow.status} 状态`)
     let approval!: ProjectApprovalRow
     let proposal!: ProjectDecisionRow
     withTransaction(this.db, () => {
+      const current = this.projects.findById(ctx.project.id)
+      if (!current || version !== current.planVersion + 1) throw new AppError(409, 'PLAN_VERSION_STALE', 'leader plan version is no longer the direct successor')
+      this.kernelRepo.planVersions.upsert(ctx.project.id, version, argsJson, argsSha256, current.planVersion > 0 ? current.planVersion : null)
+      const savedVersion = this.kernelRepo.planVersions.get(ctx.project.id, version)
+      if (!savedVersion || savedVersion.status !== 'draft' || savedVersion.planJson !== argsJson || savedVersion.sha256 !== argsSha256) {
+        throw new AppError(409, 'PLAN_VERSION_SNAPSHOT_MISMATCH', `leader plan version ${version} immutable snapshot mismatch`)
+      }
       approval = this.approvals.create({
         projectId: ctx.project.id,
         kind: 'plan_approval',
@@ -4289,20 +4430,11 @@ export class ProjectService {
         subjectId,
         subjectVersion: version,
         requestedByAgentId: agentId,
-        payloadJson: JSON.stringify(normalized.raw),
+        payloadJson: argsJson,
         reason: 'project plan proposal',
         traceId: `plan:${ctx.project.id}:${version}`,
         expiresAt: new Date(Date.now() + 24 * 3600_000).toISOString(),
       })
-      const argsJson = JSON.stringify(normalized.raw)
-      // PR17 不变量 12：leader 提案的版本同样落不可变快照（draft，待 owner 批准）。
-      this.kernelRepo.planVersions.upsert(
-        ctx.project.id,
-        version,
-        argsJson,
-        createHash('sha256').update(argsJson).digest('hex'),
-        ctx.project.planVersion > 0 ? ctx.project.planVersion : null,
-      )
       proposal = this.decisions.append({
         projectId: ctx.project.id,
         source: 'leader',
@@ -4845,115 +4977,177 @@ export class ProjectService {
     return this.results.findById(resultId)!
   }
 
+  /** Read-only validation required before approval or any plan materialization side effect. */
+  private preflightApprovedPlan(p: ProjectRow, plan: Record<string, unknown>): void {
+    if (!Array.isArray(plan.deliverables)) return // legacy non-V1 approval payload
+    const normalized = normalizeProjectPlan(plan)
+    const channels = this.bindings.listByProject(p.id).filter(binding => binding.status === 'active')
+    const resolveChannel = (ref: string): string => {
+      const direct = channels.find(binding => binding.channelId === ref)
+      if (direct) return direct.channelId
+      const matches = channels.flatMap((binding) => {
+        const channel = this.manager.getChannelForUser(binding.channelId, p.ownerUserId)
+        return channel?.name === ref ? [binding.channelId] : []
+      })
+      if (matches.length !== 1) throw new AppError(409, matches.length ? 'PLAN_CHANNEL_AMBIGUOUS' : 'PLAN_CHANNEL_UNRESOLVED', `Channel ref ${ref} ${matches.length ? '不唯一' : '未绑定到当前 Project'}`)
+      return matches[0]!
+    }
+    const resolvedChannels = new Map<string, string>()
+    for (const deliverable of normalized.deliverables) if (deliverable.channelId) resolvedChannels.set(deliverable.channelId, resolveChannel(deliverable.channelId))
+    for (const workItem of normalized.workItems) resolvedChannels.set(workItem.channelId, resolveChannel(workItem.channelId))
+
+    const deliverables = this.deliverables.listByProject(p.id)
+    const deliverableByName = new Map<string, ProjectDeliverableRow>()
+    for (const deliverable of deliverables) {
+      if (deliverableByName.has(deliverable.name)) throw new AppError(409, 'PLAN_DELIVERABLE_AMBIGUOUS', `交付物名称「${deliverable.name}」已有多个匹配项`)
+      deliverableByName.set(deliverable.name, deliverable)
+    }
+    const existingItems = this.workItems.listByProject(p.id)
+    const existingByDedupe = new Map<string, ProjectWorkItemRow>()
+    for (const item of existingItems) {
+      if (existingByDedupe.has(item.dedupeKey)) throw new AppError(409, 'PLAN_DEDUPE_AMBIGUOUS', `dedupeKey ${item.dedupeKey} 已有多个工作项`)
+      existingByDedupe.set(item.dedupeKey, item)
+    }
+    const plannedDedupe = new Set<string>()
+    for (const workItem of normalized.workItems) {
+      const currentDeliverable = normalized.deliverables.find(deliverable => deliverable.key === workItem.deliverableKey)
+      const currentDeliverableRow = currentDeliverable ? deliverableByName.get(currentDeliverable.name) : undefined
+      const dedupeKey = workItem.dedupeKey ?? `${workItem.deliverableKey}:${resolvedChannels.get(workItem.channelId)}:${workItem.title}`
+      if (plannedDedupe.has(dedupeKey)) throw new AppError(400, 'PLAN_INVALID', `物化后的工作项 dedupeKey 重复: ${dedupeKey}`)
+      plannedDedupe.add(dedupeKey)
+      const existing = existingByDedupe.get(dedupeKey)
+      if (existing && (existing.state !== 'DRAFT' || !currentDeliverableRow || existing.title !== workItem.title || existing.channelId !== resolvedChannels.get(workItem.channelId) || existing.deliverableId !== currentDeliverableRow.id || existing.resultKey !== workItem.resultKey || existing.planVersion !== p.planVersion)) {
+        throw new AppError(409, 'PLAN_DEDUPE_CONFLICT', `dedupeKey ${dedupeKey} 已被其他版本/状态/契约的工作项占用`)
+      }
+    }
+  }
+
   /**
-   * Owner 批准计划后物化：交付物按 name 幂等、工作项按 dedupeKey 幂等、依赖二次回填。
-   * 物化失败不推翻已落地的审批（CAS 已赢），只记录 plan.apply_failed 事件等待人工处理。
+   * Owner 批准计划后同步物化；调用者必须在同一 SQLite transaction 中执行，异常向外传播以回滚全部写入。
    */
-  private materializeApprovedPlan(p: ProjectRow, version: number, planJson: string): void {
-    const raw = parseJson<Record<string, unknown>>(planJson, {})
-    if (!Array.isArray(raw.deliverables)) return
-    try {
-      const normalized = normalizeProjectPlan(raw)
-      const channels = this.bindings.listByProject(p.id).filter(b => b.status === 'active')
-      const resolveChannel = (ref: string): string | undefined => {
-        if (channels.some(b => b.channelId === ref)) return ref
-        for (const b of channels) {
-          const ch = this.manager.getChannelForUser(b.channelId, p.ownerUserId)
-          if (ch && ch.name === ref) return b.channelId
-        }
-        return undefined
-      }
-      const existingDeliverables = this.deliverables.listByProject(p.id)
-      const deliverableByName = new Map(existingDeliverables.map(d => [d.name, d]))
-      const deliverableIdByKey = new Map<string, string>()
-      let createdDeliverables = 0
-      for (const d of normalized.deliverables) {
-        const existing = deliverableByName.get(d.name)
-        if (existing) {
-          deliverableIdByKey.set(d.key, existing.id)
-          continue
-        }
-        const created = this.deliverables.create({
-          projectId: p.id,
-          name: d.name,
-          description: d.description,
-          ownerChannelId: d.channelId ? resolveChannel(d.channelId) : null,
-          required: d.required ? 1 : 0,
-          acceptanceCriteriaJson: JSON.stringify(d.acceptanceCriteria),
-          createdBy: 'project_leader',
-        })
-        deliverableIdByKey.set(d.key, created.id)
-        createdDeliverables += 1
-      }
-      // 契约图边：交付物 key → UUID（第二轮回填，支持任意声明顺序）。
-      for (const d of normalized.deliverables) {
-        const id = deliverableIdByKey.get(d.key)
-        if (!id) continue
-        const deps = d.dependsOn.map(k => deliverableIdByKey.get(k)).filter((x): x is string => Boolean(x))
-        this.deliverables.update(id, { dependsOnJson: JSON.stringify(deps) })
-      }
-      const existingItems = this.workItems.listByProject(p.id)
-      const itemByDedupe = new Map(existingItems.map(w => [w.dedupeKey, w]))
-      const workItemIdByKey = new Map<string, string>()
-      const warnings: string[] = []
-      let createdWorkItems = 0
-      for (const w of normalized.workItems) {
-        const dedupeKey = w.dedupeKey ?? `${w.deliverableKey}:${w.channelId}:${w.title}`
-        const existing = itemByDedupe.get(dedupeKey)
-        if (existing) {
-          workItemIdByKey.set(w.key, existing.id)
-          continue
-        }
-        const deliverableId = deliverableIdByKey.get(w.deliverableKey)
-        const channelId = resolveChannel(w.channelId)
-        if (!deliverableId || !channelId) {
-          warnings.push(`工作项「${w.title}」跳过：交付物或 Channel 未解析`)
-          continue
-        }
-        const created = this.workItems.create({
-          projectId: p.id,
-          deliverableId,
-          channelId,
-          title: w.title,
-          brief: w.brief,
-          dependsOnJson: '[]',
-          acceptanceJson: JSON.stringify(w.acceptanceCriteria),
-          resultKey: w.resultKey,
-          planVersion: version,
-          execBudgetMinutes: w.execBudgetMinutes,
-          contractJson: JSON.stringify(w.contract ?? {}),
-          traceId: `plan:${p.id}:${version}:${w.key}`,
-          dedupeKey,
-          createdBy: 'project_leader',
-        })
-        workItemIdByKey.set(w.key, created.id)
-        createdWorkItems += 1
-      }
-      for (const w of normalized.workItems) {
-        const id = workItemIdByKey.get(w.key)
-        if (!id) continue
-        const deps = w.dependsOn.map(k => workItemIdByKey.get(k)).filter((x): x is string => Boolean(x))
-        if (deps.length !== w.dependsOn.length) warnings.push(`工作项「${w.title}」依赖未全部解析`)
-        const contract = resolveContractForMaterialize(w.contract, workItemIdByKey)
-        this.workItems.update(id, { dependsOnJson: JSON.stringify(deps), contractJson: JSON.stringify(contract) })
-      }
-      this.events.append({
-        projectId: p.id,
-        type: 'plan.applied',
-        eventKey: `plan:${p.id}:${version}:applied`,
-        payloadJson: JSON.stringify({ version, createdDeliverables, createdWorkItems, warnings }),
-        traceId: `plan:${p.id}:${version}`,
+  private materializeApprovedPlan(p: ProjectRow, version: number, plan: Record<string, unknown>): void {
+    if (!Array.isArray(plan.deliverables)) return // 历史非 V1 plan payload 不触发物化
+    const normalized = normalizeProjectPlan(plan)
+    const channels = this.bindings.listByProject(p.id).filter(b => b.status === 'active')
+    const resolveChannel = (ref: string): string => {
+      const byId = channels.find(binding => binding.channelId === ref)
+      if (byId) return byId.channelId
+      const named = channels.flatMap((binding) => {
+        const channel = this.manager.getChannelForUser(binding.channelId, p.ownerUserId)
+        return channel?.name === ref ? [binding.channelId] : []
       })
+      if (named.length !== 1) throw new AppError(409, named.length ? 'PLAN_CHANNEL_AMBIGUOUS' : 'PLAN_CHANNEL_UNRESOLVED', `Channel ref ${ref} ${named.length ? '不唯一' : '未绑定到当前 Project'}`)
+      return named[0]!
     }
-    catch (err) {
-      this.events.append({
+    const resolvedChannels = new Map<string, string>()
+    for (const deliverable of normalized.deliverables) {
+      if (deliverable.channelId) resolvedChannels.set(deliverable.channelId, resolveChannel(deliverable.channelId))
+    }
+    for (const workItem of normalized.workItems) resolvedChannels.set(workItem.channelId, resolveChannel(workItem.channelId))
+
+    const existingDeliverables = this.deliverables.listByProject(p.id)
+    const existingWorkItems = this.workItems.listByProject(p.id)
+    const existingDedupe = new Map(existingWorkItems.map(workItem => [workItem.dedupeKey, workItem]))
+    const planDedupe = new Set<string>()
+    for (const workItem of normalized.workItems) {
+      const channelId = resolvedChannels.get(workItem.channelId)!
+      const dedupeKey = workItem.dedupeKey ?? `${workItem.deliverableKey}:${channelId}:${workItem.title}`
+      if (planDedupe.has(dedupeKey)) throw new AppError(400, 'PLAN_INVALID', `物化后的工作项 dedupeKey 重复: ${dedupeKey}`)
+      planDedupe.add(dedupeKey)
+      const existing = existingDedupe.get(dedupeKey)
+      if (existing && (existing.title !== workItem.title || existing.channelId !== channelId || existing.deliverableId !== existingDeliverables.find(d => d.name === normalized.deliverables.find(x => x.key === workItem.deliverableKey)?.name)?.id)) {
+        throw new AppError(409, 'PLAN_DEDUPE_CONFLICT', `dedupeKey ${dedupeKey} 已被不同的工作项占用`)
+      }
+      if (existing && existing.state !== 'DRAFT') throw new AppError(409, 'PLAN_DEDUPE_CONFLICT', `dedupeKey ${dedupeKey} 已对应非 DRAFT 工作项 ${existing.id}`)
+    }
+    const existingNames = new Map<string, ProjectDeliverableRow>()
+    for (const deliverable of existingDeliverables) {
+      if (existingNames.has(deliverable.name)) throw new AppError(409, 'PLAN_DELIVERABLE_AMBIGUOUS', `交付物名称「${deliverable.name}」已有多个匹配项`)
+      existingNames.set(deliverable.name, deliverable)
+    }
+    const deliverableIdByKey = new Map<string, string>()
+    let createdDeliverables = 0
+    for (const deliverable of normalized.deliverables) {
+      const existing = existingNames.get(deliverable.name)
+      if (existing) {
+        deliverableIdByKey.set(deliverable.key, existing.id)
+        continue
+      }
+      const created = this.deliverables.create({
         projectId: p.id,
-        type: 'plan.apply_failed',
-        eventKey: `plan:${p.id}:${version}:apply_failed`,
-        payloadJson: JSON.stringify({ version, error: err instanceof Error ? err.message : String(err) }),
-        traceId: `plan:${p.id}:${version}`,
+        name: deliverable.name,
+        description: deliverable.description,
+        ownerChannelId: deliverable.channelId ? resolvedChannels.get(deliverable.channelId)! : null,
+        required: deliverable.required ? 1 : 0,
+        acceptanceCriteriaJson: JSON.stringify(deliverable.acceptanceCriteria),
+        createdBy: 'project_leader',
       })
+      deliverableIdByKey.set(deliverable.key, created.id)
+      existingNames.set(deliverable.name, created)
+      createdDeliverables++
     }
+    for (const deliverable of normalized.deliverables) {
+      const deliverableId = deliverableIdByKey.get(deliverable.key)!
+      const dependencies = deliverable.dependsOn.map((key) => {
+        const dependencyId = deliverableIdByKey.get(key)
+        if (!dependencyId) throw new AppError(409, 'PLAN_MATERIALIZE_REFERENCE_MISSING', `交付物 ${deliverable.name} 的依赖 ${key} 未解析`)
+        return dependencyId
+      })
+      this.deliverables.update(deliverableId, { dependsOnJson: JSON.stringify(dependencies) })
+    }
+
+    const itemByDedupe = new Map(existingWorkItems.map(workItem => [workItem.dedupeKey, workItem]))
+    const workItemIdByKey = new Map<string, string>()
+    const warnings: string[] = []
+    let createdWorkItems = 0
+    for (const workItem of normalized.workItems) {
+      const channelId = resolvedChannels.get(workItem.channelId)!
+      const dedupeKey = workItem.dedupeKey ?? `${workItem.deliverableKey}:${channelId}:${workItem.title}`
+      const existing = itemByDedupe.get(dedupeKey)
+      if (existing) {
+        workItemIdByKey.set(workItem.key, existing.id)
+        continue
+      }
+      const deliverableId = deliverableIdByKey.get(workItem.deliverableKey)
+      if (!deliverableId) throw new AppError(409, 'PLAN_MATERIALIZE_REFERENCE_MISSING', `工作项 ${workItem.title} 的交付物未解析`)
+      const created = this.workItems.create({
+        projectId: p.id,
+        deliverableId,
+        channelId,
+        title: workItem.title,
+        brief: workItem.brief,
+        dependsOnJson: '[]',
+        acceptanceJson: JSON.stringify(workItem.acceptanceCriteria),
+        resultKey: workItem.resultKey,
+        planVersion: version,
+        execBudgetMinutes: workItem.execBudgetMinutes,
+        contractJson: JSON.stringify(workItem.contract ?? {}),
+        traceId: `plan:${p.id}:${version}:${workItem.key}`,
+        dedupeKey,
+        createdBy: 'project_leader',
+      })
+      workItemIdByKey.set(workItem.key, created.id)
+      itemByDedupe.set(dedupeKey, created)
+      createdWorkItems++
+    }
+    for (const workItem of normalized.workItems) {
+      const id = workItemIdByKey.get(workItem.key)
+      if (!id) throw new AppError(409, 'PLAN_MATERIALIZE_REFERENCE_MISSING', `工作项 ${workItem.title} 未物化`)
+      const dependencies = workItem.dependsOn.map((key) => {
+        const dependencyId = workItemIdByKey.get(key)
+        if (!dependencyId) throw new AppError(409, 'PLAN_MATERIALIZE_DEPENDENCY_MISSING', `工作项 ${workItem.title} 的依赖 ${key} 未物化`)
+        return dependencyId
+      })
+      const contract = resolveContractForMaterialize(workItem.contract, workItemIdByKey)
+      this.workItems.update(id, { dependsOnJson: JSON.stringify(dependencies), contractJson: JSON.stringify(contract) })
+    }
+    this.events.append({
+      projectId: p.id,
+      type: 'plan.applied',
+      eventKey: `plan:${p.id}:${version}:applied`,
+      payloadJson: JSON.stringify({ version, createdDeliverables, createdWorkItems, warnings }),
+      traceId: `plan:${p.id}:${version}`,
+    })
   }
 
   private appendAgentDecision(projectId: string, agentId: string, decisionType: string, args: Record<string, unknown>, traceId: string, eventType: string, eventKey: string, payload: Record<string, unknown>): void {

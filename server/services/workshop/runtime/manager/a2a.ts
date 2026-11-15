@@ -375,9 +375,10 @@ export abstract class ManagerA2A extends ManagerTasks {
   }> {
     this.requireMember(channelId, agentId)
     let others: ChannelRow[]
+    let ownScope: ReturnType<typeof this.channelSessionScopeOfAgent> = null
     try {
       if (this.channelModeForAgent(agentId) !== 'production_line_integrated') return []
-      const ownScope = this.channelSessionScopeOfAgent(channelId, agentId)
+      ownScope = this.channelSessionScopeOfAgent(channelId, agentId)
       if ((input.scope === 'line' || input.scope === 'product') && !ownScope) return []
       others = this.otherSameOwnerChannels(channelId).filter((c) => {
         if (this.channelModeOf(c.id) !== 'production_line_integrated') return false
@@ -396,8 +397,11 @@ export abstract class ManagerA2A extends ManagerTasks {
       if (!selfSession || !selfSession.lineId || (scopeKey && scopeKey !== selfSession.lineId)) return []
       scopeKey = selfSession.lineId
     }
-    else if (input.scope === 'product' && !scopeKey) {
-      return []
+    // A product selector is never authority: an integrated session can search
+    // only the product frozen in its server-verified binding snapshot.
+    else if (input.scope === 'product') {
+      if (!ownScope?.productId || (scopeKey && scopeKey !== ownScope.productId)) return []
+      scopeKey = ownScope.productId
     }
     const matchQuery = segmentCJK(q).split(/\s+/).filter(Boolean).join(' OR ')
     if (!matchQuery) return []

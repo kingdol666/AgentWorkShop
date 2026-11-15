@@ -11,7 +11,8 @@ import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { HOST_TOOLS, createSessionState, dispatchHostTool, hostToolsForAgent } from '../../agents/host-tool-bridge'
 import { instanceToAgentInfo, rowToChannelMail } from './helpers'
 import { listPluginTools, pluginOfTool } from '../../agents/plugin-tools'
-import { auditPluginToolCall, governPluginToolCall } from '../../agents/plugin-governance'
+import { channelModeForAgent } from '../../channel-mode'
+import { isProductionTool } from '../../agents/host-tool-bridge/catalog'
 import { channelToolGate } from '../../tools/policy'
 import { recordOps } from '../../ops/ops'
 import { rowToMessage } from '../mailbox'
@@ -125,17 +126,14 @@ export abstract class ManagerHostTools extends ManagerA2A {
         const gate = channelToolGate(row.channelId, input.tool)
         if (gate.blocked) return finish(input, { text: gate.message ?? `工具 ${input.tool} 不可用`, isError: true })
       }
-      // 插件工具:团队开关过滤 + handler 直调(ctx.omp 注册的自定义工具全 harness 同源)
-      // 内置同名工具优先(与 dispatch 同口径):插件覆盖不得跳过工业门控
+      // Plugin shortcuts still have visibility/role checks above, but execution
+      // goes through the same dispatch gates as native harness calls.
       const pluginTool = HOST_TOOLS.some(t => t.name === input.tool) ? undefined : listPluginTools().get(input.tool)
       if (pluginTool) {
         const channelOff = getChannelPluginsRepo().explicitFor(row.channelId)
         const owner = pluginOfTool(input.tool)
         if (channelOff && owner && channelOff.get(owner) === false) {
-          return {
-            text: `该团队未启用插件「${owner}」,${input.tool} 不可用。可在团队设置→插件中开启。`,
-            isError: true,
-          }
+          return finish(input, { text: `该团队未启用插件「${owner}」,${input.tool} 不可用。`, isError: true })
         }
         const identity = {
           agentId: row.id,
@@ -144,23 +142,23 @@ export abstract class ManagerHostTools extends ManagerA2A {
           name: row.name,
         }
         if (pluginTool.roles && !pluginTool.roles.includes(identity.role)) {
-          return {
-            text: `工具 ${input.tool} 仅对 ${pluginTool.roles.join('/')} 角色开放(当前 ${identity.role})。`,
-            isError: true,
-          }
+          return finish(input, { text: `工具 ${input.tool} 仅对 ${pluginTool.roles.join('/')} 角色开放(当前 ${identity.role})。`, isError: true })
         }
-        // 平台侧插件治理(WP4b/WP8):kb 入库 HITL + 声明式引用校验(与 dispatch 同源)
-        const governed = await governPluginToolCall(identity, input.tool, input.args ?? {}, pluginTool)
-        if (governed) return finish(input, governed)
-        try {
-          const result = await pluginTool.handler(input.args ?? {}, identity)
-          auditPluginToolCall(identity, input.tool, result)
-          return finish(input, result)
+        const mode = channelModeForAgent(row.id)
+        if (mode !== 'production_line_integrated' && isProductionTool(input.tool, owner)) {
+          return finish(input, { text: '通用频道不开放产线工业工具。', isError: true })
         }
-        catch (err) {
-          auditPluginToolCall(identity, input.tool, { text: err instanceof Error ? err.message : String(err), isError: true })
-          throw err
-        }
+        const runtime = this.ensureAgentRuntime(row.channelId, row.id)
+        if (!runtime?.workspace) return finish(input, { text: 'workspace 未就绪,插件工具拒绝执行。', isError: true })
+        const channelSessionScope = this.channelSessionScopeOfAgent(row.channelId, row.id)
+        const state = createSessionState()
+        state.sessionId = channelSessionScope?.sessionId ?? null
+        return finish(input, await dispatchHostTool({
+          identity,
+          state,
+          channelSessionScope,
+          getWorkspace: () => runtime.workspace,
+        }, { toolName: input.tool, arguments: input.args ?? {} }))
       }
       const runtime = this.ensureAgentRuntime(row.channelId, input.agentId)
       if (runtime) {

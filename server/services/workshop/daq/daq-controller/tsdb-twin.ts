@@ -7,7 +7,8 @@ import type { DaqSampleEnvelope } from '../bus/queue-port'
 import type { LruLike } from './types'
 import type { DaqNode } from '../daq-node'
 import { LruMap } from '@/shared/lru.mjs'
-import { TSDB_WRITE_RETRIES, log } from './helpers'
+import { TSDB_WRITE_RETRIES } from './helpers'
+import { markDaqRuntimeFailure } from '../infra'
 import { findDaqTemplate } from '../daq-templates'
 import { getDaqHostPorts } from '../host-ports'
 import { getTsdb } from '../storage'
@@ -42,7 +43,8 @@ export abstract class DaqControllerTsdbTwin extends DaqControllerSweepAlarms {
           catch (err) {
             if (attempt === TSDB_WRITE_RETRIES - 1) {
               this.tsdbDropped += batch.length
-              log.error('[daq] 时序库写入失败(已重试,丢弃计数):', err instanceof Error ? err.message : err)
+              // 置降级触发 30s 自动重连;日志在 infra 侧 30s 节流(断连时每批都失败)
+              markDaqRuntimeFailure(err, '样本写入')
             }
             else {
               await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
@@ -65,7 +67,7 @@ export abstract class DaqControllerTsdbTwin extends DaqControllerSweepAlarms {
           catch (err) {
             if (attempt === TSDB_WRITE_RETRIES - 1) {
               this.tsdbDropped += batch.length
-              log.error('[daq] 帧写入失败(已重试,丢弃计数):', err instanceof Error ? err.message : err)
+              markDaqRuntimeFailure(err, '帧写入')
             }
             else {
               await new Promise(r => setTimeout(r, 500 * (attempt + 1)))

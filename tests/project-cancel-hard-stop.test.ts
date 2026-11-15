@@ -66,6 +66,8 @@ function fixture() {
     },
     cancelTaskTreeInternal(taskId: string, by: string, reason: string) {
       cancelCalls.push({ taskId, by, reason })
+      const current = tasks.findById(taskId)
+      if (current && !['COMPLETED', 'FAILED', 'CANCELED'].includes(current.state)) tasks.update(taskId, { state: 'CANCELED', closeReason: reason })
       return [{ id: taskId, state: 'CANCELED' }]
     },
   } as unknown as AgentChannelManager
@@ -140,6 +142,28 @@ test('H0 派发后 CAS：submit 期间 terminate → 不落 DISPATCHED、任务�
   assert.equal(attempts.length, 1)
   assert.notEqual(attempts[0].closedAt, null)
   assert.ok(f.cancelCalls.length >= 1, 'cancelTaskTreeInternal 必须被调用')
+})
+
+test('H0 cancel during submit preserves CANCELED and compensates the late-created root', async () => {
+  const f = fixture()
+  const s = await activeProject(f)
+  let canceledInSubmit = false
+  f.setOnSubmit(() => {
+    if (canceledInSubmit) return
+    canceledInSubmit = true
+    f.svc.cancelWorkItem(s.p.id, s.w.id, s.owner, 'owner cancel during submit')
+  })
+  await assert.rejects(
+    () => f.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner),
+    (err: unknown) => (err as { code?: string }).code === 'PROJECT_STATE_CHANGED',
+  )
+  const workItem = f.svc.listWorkItems(s.p.id, s.owner).find(item => item.id === s.w.id)!
+  assert.equal(workItem.state, 'CANCELED', 'late submit compensation must not resurrect an owner-canceled item')
+  const attempt = f.db.prepare('SELECT state, closed_at AS closedAt, channel_task_id AS taskId, source_key AS sourceKey FROM project_work_item_attempts WHERE work_item_id = ?').get(s.w.id) as { state: string, closedAt: string | null, taskId: string | null, sourceKey: string }
+  assert.ok(attempt.closedAt, 'attempt must be closed')
+  assert.ok(attempt.taskId, 'root task must be associated or explicitly compensated')
+  assert.ok(f.cancelCalls.some(call => call.taskId === attempt.taskId), 'late-created root must be canceled')
+  assert.equal(f.tasks.findRootBySource(s.member.channelId, attempt.sourceKey)?.state, 'CANCELED')
 })
 
 test('H0 cancelWorkItem：关闭 attempt 的同时取消任务树', async () => {

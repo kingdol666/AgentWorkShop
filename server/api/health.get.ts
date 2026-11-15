@@ -8,6 +8,7 @@ import v8 from 'node:v8'
 import { useServerConfig } from '../utils/config'
 import { defineApiHandler } from '../utils/response'
 import { getWorkshopManager } from '../plugins/workshop'
+import { daqInfraStatus } from '../services/workshop/daq/infra'
 
 export default defineApiHandler(async () => {
   const cfg = useServerConfig()
@@ -20,6 +21,14 @@ export default defineApiHandler(async () => {
   catch {
     workshop = 'not_ready'
   }
+  // 数采后端健康(布尔面,不含地址/凭据):运行期写入失败会置 degraded 并触发自动重连,
+  // 运维探针必须能看到"进程活着但数采在丢样",而不是只看 200 就认为一切正常。
+  let daq: { degraded: boolean, mqttOnline: boolean, tsdbOnline: boolean } | null
+  try {
+    const s = daqInfraStatus()
+    daq = { degraded: s.degraded, mqttOnline: s.mqttOnline, tsdbOnline: s.tsdbOnline }
+  }
+  catch { daq = null }
   // P0-4 内存水位(heapUsed 相对 --max-old-space-size;exit 134 = 堆耗尽,与其同源)
   const mu = process.memoryUsage()
   const heapLimit = v8.getHeapStatistics().heap_size_limit
@@ -32,6 +41,7 @@ export default defineApiHandler(async () => {
     timestamp: new Date().toISOString(),
     workshop,
     ...summary,
+    daq,
     memory: {
       heapUsedMb: Math.round(mu.heapUsed / 1048576),
       heapLimitMb: Math.round(heapLimit / 1048576),

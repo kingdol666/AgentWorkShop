@@ -360,7 +360,39 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     }))
   }
 
-  /** 帧保留期清理(与样本同拍;daq.frameRetentionH,env DAQ_FRAME_RETENTION_H 兼容) */
+  async queryTaggedFrames(nodeId: string, opts: import('./tsdb-port').DaqFrameQueryOpts & { lineId: string, productId: string }): Promise<import('./tsdb-port').DaqFrameRecord[]> {
+    if (!this.db) await this.init()
+    const db = this.db as DatabaseSync
+    const limit = Math.max(1, Math.min(opts.limit ?? 100, 1000))
+    const rows = db.prepare(`
+      SELECT ts_ms, kind, meta, metrics, device_binding_id, line_id, product_id, recipe_id, run_id
+      FROM daq_frames
+      WHERE node_id = :id AND line_id = :line AND product_id = :product
+        AND (:kind IS NULL OR kind = :kind) AND ts_ms >= :from AND ts_ms <= :to
+      ORDER BY ts_ms DESC LIMIT :lim
+    `).all({
+      ':id': nodeId,
+      ':line': opts.lineId,
+      ':product': opts.productId,
+      ':kind': opts.kind ?? null,
+      ':from': opts.fromMs ?? 0,
+      ':to': opts.toMs ?? Date.now(),
+      ':lim': limit,
+    }) as Array<{ ts_ms: number, kind: string, meta: string, metrics: string, device_binding_id: string | null, line_id: string | null, product_id: string | null, recipe_id: string | null, run_id: string | null }>
+    return rows.map(r => ({
+      at: Number(r.ts_ms),
+      kind: String(r.kind) as 'vector' | 'image',
+      points: r.kind === 'vector' ? pointsFromMeta(asObject(r.meta)) : undefined,
+      metrics: asObject(r.metrics) as Record<string, number>,
+      meta: asObject(r.meta),
+      deviceBindingId: r.device_binding_id,
+      lineId: r.line_id,
+      productId: r.product_id,
+      recipeId: r.recipe_id,
+      runId: r.run_id,
+    }))
+  }
+
   private sweepFrameRetention(): void {
     if (!this.db) return
     const cutoff = Date.now() - daqRuntimeSettings().frameRetentionH * 3600_000

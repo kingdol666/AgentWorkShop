@@ -5,6 +5,8 @@
 import type { RecipeView } from '../../../../../shared/dcw-protocol'
 import { randomUUID } from 'node:crypto'
 import { agentBadgeLabel } from '../agent-badge'
+import { recipeDefinitionHash } from './recipe-snapshot'
+import type { ChannelSessionExecutionScope } from '../host-tool-bridge/types'
 import { getActiveLineRun } from '../../dcw/line-run'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
@@ -541,7 +543,7 @@ export async function toolRecipeCreate(agentId: string, args: {
   daq_windows?: Array<{ node_id?: string, min?: number | string, max?: number | string }>
   access?: { require_auth?: boolean, authorized_agent_ids?: string[] }
   reason?: string
-}): Promise<{ text: string, isError?: boolean }> {
+}, sessionScope?: ChannelSessionExecutionScope): Promise<{ text: string, isError?: boolean }> {
   const name = String(args.name ?? '').trim()
   const reason = String(args.reason ?? '').trim()
   if (!name) return { text: 'name 必填:新配方名称。', isError: true }
@@ -550,9 +552,15 @@ export async function toolRecipeCreate(agentId: string, args: {
   const sourceId = String(args.source_recipe_id ?? '').trim()
   let source = sourceId ? records.find(r => r.id === sourceId) : undefined
   if (sourceId && !source) return { text: `源配方 ${sourceId} 不存在。`, isError: true }
+  if (sessionScope && (!source || sessionRecipeError(sessionScope, source))) {
+    return { text: '集成 Session 只能基于其创建时冻结的配方快照创建新配方;请指定快照内 source_recipe_id,否则拒绝。', isError: true }
+  }
   const runId = String(args.from_run_id ?? '').trim()
   let run = runId ? getDcwRecipeRepo().runById(runId) : undefined
   if (runId && !run) return { text: `批次 ${runId} 不存在。`, isError: true }
+  if (sessionScope && run && (run.productId !== sessionScope.productId || run.lineId !== sessionScope.lineId || !sessionScope.recipes.some(recipe => recipe.id === run!.recipeId && (!run!.recipeVersion || run!.recipeVersion === recipe.version)))) {
+    return { text: 'from_run_id 不属于 Session 冻结的产品与配方快照,拒绝创建。', isError: true }
+  }
   if (!source && run) {
     const runRecipeId = run.recipeId
     source = records.find(r => r.id === runRecipeId)
@@ -560,6 +568,8 @@ export async function toolRecipeCreate(agentId: string, args: {
   const scope = agentOpsScope(agentId)
   const readable = scope ? readableLineIds(scope) : []
   let lineId = String(args.line_id ?? '').trim() || source?.lineId || (run as { lineId?: string } | undefined)?.lineId || ''
+  if (sessionScope && lineId && lineId !== sessionScope.lineId) return { text: '目标产线与 Session 固定产线不一致,拒绝新建配方。', isError: true }
+  if (sessionScope) lineId = sessionScope.lineId
   if (!lineId) {
     const active = getActiveLineRun(channelBoundLineId(agentId) ?? '')
     lineId = active?.lineId ?? readable[0] ?? ''
@@ -575,6 +585,8 @@ export async function toolRecipeCreate(agentId: string, args: {
   if (!lineId) return { text: '无法确定产线:请提供 line_id 或 source_recipe_id(from_run_id 也可推断)。', isError: true }
   if (!readable.includes(lineId)) return { text: `无权在产线 ${lineId} 新建配方(你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
   let productId = String(args.product_id ?? '').trim() || source?.productId || (run?.productId ?? '')
+  if (sessionScope && productId && productId !== sessionScope.productId) return { text: '目标产品与 Session 固定产品不一致,拒绝新建配方。', isError: true }
+  if (sessionScope) productId = sessionScope.productId
   if (!productId && lineId) {
     // 只给 line_id 时:该线仅挂一个产品则自动归属(与"只传 line_id 即可操作"的工具哲学一致;
     // 多产品歧义仍要求显式 product_id,fail-closed)
@@ -758,9 +770,27 @@ function resolveRecipeTarget(recipeIdRaw: unknown, lineIdRaw: unknown): { ok: tr
   return { ok: true, recipe }
 }
 
+/**
+ * Apply an immutable Session product/recipe boundary before any write, approval,
+ * or dispatch side effect. Non-session integrated channel calls retain the
+ * existing channel/Agent grant semantics.
+ */
+function sessionRecipeError(scope: ChannelSessionExecutionScope | undefined, recipe: RecipeView): { text: string, isError: true } | null {
+  if (!scope) return null
+  if (recipe.lineId !== scope.lineId || recipe.productId !== scope.productId) {
+    return { text: `配方 ${recipe.id} 不属于 Session 固定产品/产线,拒绝操作。`, isError: true }
+  }
+  const frozen = scope.recipes.find(item => item.id === recipe.id)
+  if (!frozen) return { text: `配方 ${recipe.id} 不在 Session 创建时的配方快照中,拒绝操作。`, isError: true }
+  if ((recipe.version ?? 1) !== frozen.version || recipeDefinitionHash(recipe) !== frozen.contentHash) {
+    return { text: `配方 ${recipe.id} 已与 Session 冻结快照不一致,请创建新 Session 后再操作。`, isError: true }
+  }
+  return null
+}
+
 /** 工具:recipe_update —— 把验证过的最佳参数保存进配方(生成新版本,带归因与原因)。
  *  权限模型 v2:需绑定该 recipe(kind='recipe')且通过二级认证与运行门(配方须在执行);
- *  绑定 manual 时本次保存挂 HITL 等人工批准(理由随审批卡展示)。
+ *  绑定 manual 时本次保存挂 HITL(理由随审批卡展示)。
  *  只改配方定义;要把参数推到运行中的产线用 recipe_apply(整批下发)。 */
 export async function toolRecipeUpdate(agentId: string, args: {
   recipe_id?: string
@@ -768,7 +798,7 @@ export async function toolRecipeUpdate(agentId: string, args: {
   params?: Array<{ node_id?: string, value?: number | string, min?: number | string, max?: number | string }>
   reason?: string
   task_id?: string
-}): Promise<{ text: string, isError?: boolean }> {
+}, sessionScope?: ChannelSessionExecutionScope): Promise<{ text: string, isError?: boolean }> {
   const reason = String(args.reason ?? '').trim()
   if (!reason) return { text: 'reason 必填:保存参数必须说明依据(如数采证据/判定结论),便于版本史追溯与人工审批判断。', isError: true }
   const list = (args.params ?? []).filter(p => p && String(p.node_id ?? '').trim() && Number.isFinite(Number(p.value)))
@@ -777,6 +807,8 @@ export async function toolRecipeUpdate(agentId: string, args: {
   if (!target.ok) return { text: target.text, isError: true }
   const recipe = target.recipe
   const recipeId = recipe.id
+  const sessionDenied = sessionRecipeError(sessionScope, recipe)
+  if (sessionDenied) return sessionDenied
   // 权限模型 v2 + 2026-10-28 双轨:版本操作只认 recipe 绑定(节点绑定不授予版本权)
   const gate = assertRecipeOperation(agentId, recipe, 'update', list.map(p => String(p.node_id).trim()))
   if (!gate.ok) return { text: gate.text, isError: true }
@@ -824,6 +856,8 @@ export async function toolRecipeUpdate(agentId: string, args: {
     if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
     const stale = await revalidateApprovedAction(agentId, recipe, 'update', 'recipe_update', { recipe_id: recipeId, params: list.map(p => ({ node_id: p.node_id })) }, gate.activeContext)
     if (stale) return stale
+    const latestSessionRecipe = sessionRecipeError(sessionScope, getDcwRecipeRepo().byId(recipeId) ?? recipe)
+    if (latestSessionRecipe) return latestSessionRecipe
     // B-P1-4:批准后复核配方定义 —— 审批窗口内的并发编辑不得被静默并入已批版本。
     const latestRecipe = getDcwRecipeRepo().byId(recipeId)
     const latestSnapshot = latestRecipe
@@ -910,7 +944,7 @@ export async function toolRecipeRollback(agentId: string, args: {
   dispatch?: boolean | string
   reason?: string
   emergency?: boolean | string
-}): Promise<{ text: string, isError: true } | { text: string, isError?: boolean }> {
+}, sessionScope?: ChannelSessionExecutionScope): Promise<{ text: string, isError: true } | { text: string, isError?: boolean }> {
   const recipeId = String(args.recipe_id ?? '').trim()
   const reason = String(args.reason ?? '').trim()
   const toLastGood = args.to_last_good === true || args.to_last_good === 'true'
@@ -922,6 +956,8 @@ export async function toolRecipeRollback(agentId: string, args: {
   if (!toLastGood && !Number.isFinite(version)) return { text: '需提供 version(历史版本号)或 to_last_good=true。', isError: true }
   const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  const sessionDenied = sessionRecipeError(sessionScope, recipe)
+  if (sessionDenied) return sessionDenied
   // 权限模型 v2:绑定 → 二级认证 → 运行门(未在执行的配方不可回退)
   const gate = assertRecipeOperation(agentId, recipe, 'rollback')
   if (!gate.ok) return { text: gate.text, isError: true }
@@ -953,8 +989,12 @@ export async function toolRecipeRollback(agentId: string, args: {
     if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
     const stale = await revalidateApprovedAction(agentId, recipe, 'rollback', 'recipe_rollback', { recipe_id: recipeId }, gate.activeContext)
     if (stale) return stale
+    const latestSessionRecipe = sessionRecipeError(sessionScope, getDcwRecipeRepo().byId(recipeId) ?? recipe)
+    if (latestSessionRecipe) return latestSessionRecipe
   }
   try {
+    const finalSessionRecipe = sessionRecipeError(sessionScope, getDcwRecipeRepo().byId(recipeId) ?? recipe)
+    if (finalSessionRecipe) return finalSessionRecipe
     if (dispatch) {
       if (gate.hitlRequired) {
         const staleAtDispatch = approvedContextError(agentId, recipe, 'rollback', gate.activeContext)
@@ -1225,7 +1265,7 @@ export async function toolRecipeTrial(agentId: string, args: {
   params?: Array<{ node_id?: string, value?: number | string }>
   hypothesis?: string
   emergency?: boolean | string
-}): Promise<{ text: string, isError?: boolean, approval_bypassed?: true }> {
+}, sessionScope?: ChannelSessionExecutionScope): Promise<{ text: string, isError?: boolean, approval_bypassed?: true }> {
   const hypothesis = String(args.hypothesis ?? '').trim()
   const emergency = args.emergency === true || args.emergency === 'true'
   if (!hypothesis) return { text: 'hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯与人工审批判断。', isError: true }
@@ -1238,6 +1278,8 @@ export async function toolRecipeTrial(agentId: string, args: {
   if (!target.ok) return { text: target.text, isError: true }
   const recipe = target.recipe
   const recipeId = recipe.id
+  const sessionDenied = sessionRecipeError(sessionScope, recipe)
+  if (sessionDenied) return sessionDenied
   const toolInvocationId = currentToolInvocation()?.invocationId ?? randomUUID()
   // 权限模型 v2 + 2026-10-28 双轨:recipe 绑定 ∨ 本次候选覆盖集 ⊆ dcw 节点绑定面
   const gate = assertRecipeOperation(agentId, recipe, 'trial', list.map(p => p.nodeId))
@@ -1317,6 +1359,8 @@ export async function toolRecipeTrial(agentId: string, args: {
       const staleAtDispatch = approvedContextError(agentId, recipe, 'trial', gate.activeContext, list.map(p => p.nodeId), approvalBypassed, expectedDefinition)
       if (staleAtDispatch) return { ...staleAtDispatch, ...(approvalBypassed ? { approval_bypassed: true as const } : {}) }
     }
+    const latestSessionRecipe = sessionRecipeError(sessionScope, getDcwRecipeRepo().byId(recipeId) ?? recipe)
+    if (latestSessionRecipe) return { ...latestSessionRecipe, ...(approvalBypassed ? { approval_bypassed: true as const } : {}) }
     // 2026-10-28 执行点复核(双轨授权,D13 同款):审批/节拍等待期间绑定可能被撤销,
     // 下发前最后一次同步重算覆盖集 —— 收回即失活,不把授权变更带进写入。
     const execGate = assertRecipeOperation(agentId, recipe, 'trial', list.map(p => p.nodeId))
@@ -1398,12 +1442,14 @@ export async function toolRecipeApply(agentId: string, args: {
   line_id?: string
   reason?: string
   emergency?: boolean | string
-}): Promise<{ text: string, isError?: boolean }> {
+}, sessionScope?: ChannelSessionExecutionScope): Promise<{ text: string, isError?: boolean }> {
   const emergency = args.emergency === true || args.emergency === 'true'
   const target = resolveRecipeTarget(args.recipe_id, args.line_id)
   if (!target.ok) return { text: target.text, isError: true }
   const recipe = target.recipe
   const recipeId = recipe.id
+  const sessionDenied = sessionRecipeError(sessionScope, recipe)
+  if (sessionDenied) return sessionDenied
   // 理由强制:下发必须让人(产线专家)看懂为什么这样调 —— 无描述的下发不得进入审批/执行
   const reason = String(args.reason ?? '').trim()
   if (!reason) return { text: 'reason 必填:整批下发必须说明依据(如数采证据/试验结论/GOAL 差距分析),产线专家要在审批卡上看懂你为什么这样调。', isError: true }
@@ -1448,12 +1494,16 @@ export async function toolRecipeApply(agentId: string, args: {
       if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
       const stale = await revalidateApprovedAction(agentId, recipe, 'dispatch', 'recipe_apply', { recipe_id: recipeId }, gate.activeContext)
       if (stale) return stale
+      const latestSessionRecipe = sessionRecipeError(sessionScope, getDcwRecipeRepo().byId(recipeId) ?? recipe)
+      if (latestSessionRecipe) return latestSessionRecipe
     }
     // 放在最后一次 await 之后,与 applyRecipe 的同步取值/建批之间不再让出执行权。
     const currentRecipe = getDcwRecipeRepo().byId(recipeId)
     if (!currentRecipe || JSON.stringify(currentRecipe) !== approvedDefinition) {
       return { text: '配方在审批期间已变更,与本次审批展示的快照不一致,本次未执行。请核查最新配方后重新提交 recipe_apply。', isError: true }
     }
+    const finalSessionRecipe = sessionRecipeError(sessionScope, currentRecipe)
+    if (finalSessionRecipe) return finalSessionRecipe
     if (gate.hitlRequired) {
       const staleAtDispatch = approvedContextError(agentId, recipe, 'dispatch', gate.activeContext)
       if (staleAtDispatch) return staleAtDispatch

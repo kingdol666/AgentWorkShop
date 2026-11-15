@@ -383,9 +383,32 @@ export class TimescaleAdapter implements TsdbPort {
       runId: r.run_id ?? null,
     }))
   }
+
+  async queryTaggedFrames(nodeId: string, opts: import('./tsdb-port').DaqFrameQueryOpts & { lineId: string, productId: string }): Promise<import('./tsdb-port').DaqFrameRecord[]> {
+    if (!this.pool) return []
+    const limit = Math.max(1, Math.min(opts.limit ?? 100, 1000))
+    const { rows } = await this.pool.query(
+      `SELECT ts, kind, points, meta, metrics, device_binding_id, line_id, product_id, recipe_id, run_id
+       FROM daq_frames WHERE node_id = $1 AND line_id = $2 AND product_id = $3
+         AND ($4::text IS NULL OR kind = $4) AND ts >= $5 AND ts <= $6
+       ORDER BY ts DESC LIMIT $7`,
+      [nodeId, opts.lineId, opts.productId, opts.kind ?? null, new Date(opts.fromMs ?? 0).toISOString(), new Date(opts.toMs ?? Date.now()).toISOString(), limit],
+    )
+    return rows.map(r => ({
+      at: tsToMs(r.ts),
+      kind: String(r.kind) as 'vector' | 'image',
+      points: String(r.kind) === 'vector' ? pointsFromMeta(r.meta) : undefined,
+      metrics: asObject(r.metrics) as Record<string, number>,
+      meta: asObject(r.meta),
+      deviceBindingId: r.device_binding_id ?? null,
+      lineId: r.line_id ?? null,
+      productId: r.product_id ?? null,
+      recipeId: r.recipe_id ?? null,
+      runId: r.run_id ?? null,
+    }))
+  }
 }
 
-/** 向量点列从 meta.points 还原(非数组/越界防御) */
 function pointsFromMeta(meta: unknown): number[] | undefined {
   const p = asObject(meta).points
   if (!Array.isArray(p) || p.length === 0 || p.length > 4096) return undefined

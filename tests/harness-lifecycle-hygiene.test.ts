@@ -39,6 +39,7 @@ function closeFixture(withStop: boolean) {
   }
   const sessionRepo = {
     findById: () => ({ status: 'active', memberMapJson: JSON.stringify({ 'base-1': 'clone-1' }) }),
+    beginClosing: () => true,
     close: () => {
       calls.push('close')
       return true

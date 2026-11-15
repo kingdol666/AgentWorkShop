@@ -149,6 +149,7 @@ test('C5:并发 close 只有一个执行级联(cancelTree 只调一次)', async 
     // 故意返回"过期快照"(恒 active):模拟两个并发请求都先读到 active 的窗口,
     // 此时入口的 status 检查救不了,只有 CAS(close 的条件 UPDATE)能挡住重复级联。
     findById: () => ({ status: 'active', memberMapJson: JSON.stringify({ 'base-a': 'clone-1' }) }),
+    beginClosing: () => true,
     close: () => {
       closeCalls += 1
       if (status === 'closed') return false
