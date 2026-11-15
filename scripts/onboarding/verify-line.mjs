@@ -165,7 +165,7 @@ const protectedAfter = await api('GET', `/api/workshop/dcw/journal?lineId=${PROT
 const protectedNew = (protectedAfter.data?.anchors ?? []).filter(a => !protectedBeforeKeys.has(anchorKey(a)))
 const linesAfter = await api('GET', '/api/workshop/dcw/lines', undefined, tok)
 const protectedExistsAfter = (linesAfter.data?.lines ?? []).some(l => l.id === PROTECTED_LINE)
-ok('V6 受保护线零扰动(受保护线 journal 无新增锚点)', protectedExists && protectedExistsAfter && protectedNew.length === 0,
+ok('V6 受保护线零扰动(受保护线 journal 无新增锚点)', protectedExists && protectedExistsAfter && protectedBeforeKeys.size > 0 && protectedNew.length === 0,
   `受保护线存在=${protectedExists}->${protectedExistsAfter} 本线锚点=${touched.length} 受保护线新增=${protectedNew.length} 基线=${protectedBeforeKeys.size}`)
 
 summary('接入验收')
