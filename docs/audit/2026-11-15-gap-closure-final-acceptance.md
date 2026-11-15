@@ -172,11 +172,17 @@
 
 ## 6. Mimosa（本轮）
 
-- 扫描任务：`scan-job-mwhxwc4g-1691b21b86d49cef`（deep，project=AgentWorkShop）。
-- scanId：`scan-2026-11-15T14-38-50.782Z-eb5719d9193f`；seal：`sha256:5d2893b5d106ff0e943d65032169510e048e6dffaeb0de6c2b3d58ab571c0fc3`。
-- 结果：**47 findings**，依赖扫描 354 包（offline advisory 0 命中）；**coverage `partial` / runStatus `inconclusive`**（扫描器覆盖缺口）。
-- 本轮 31 个改动文件 **0 命中**（findings 集中在 `data/workspaces` 下的历史训练脚本等存量路径）。
-- 结论：**不宣称安全通过**；Mimosa 覆盖完整化前只能作为“改动面未新增静态命中”的辅助证据。
+- 扫描 1：`scan-job-mwhxwc4g-1691b21b86d49cef` → scanId `scan-2026-11-15T14-38-50.782Z-eb5719d9193f`，
+  seal `sha256:5d2893b5d106ff0e943d65032169510e048e6dffaeb0de6c2b3d58ab571c0fc3`。
+- 扫描 2（复核）：`scan-job-mwhy44bm-bd82c0d63ab869c2` → scanId
+  `scan-2026-11-15T14-44-53.385Z-7695a275fa77`，seal
+  `sha256:38a4cf28784ae0ecbc0aaebc8e7f006a24cb0107a8a3f7a0db66048ed32936aa`。
+- 两轮均为 **47 findings**、354 包依赖扫描（offline advisory 0 命中）；扫描器
+  **coverage `partial` / runStatus `inconclusive`**（威胁模型/覆盖阶段不完整）。
+- 对提交 `1e6471f5..9d404f0c` 的 **31 个改动文件：0 命中**（findings 集中在
+  `data/workspaces` 下历史训练脚本等存量路径）。
+- 结论：**不宣称安全通过**；Mimosa 覆盖完整化前，只能作为“本轮改动面未新增静态命中”的
+  辅助证据。扫描器自身在提交/推送钩子报告 `scanner_enobufs`，同样不构成通过结论。
 
 ---
 
