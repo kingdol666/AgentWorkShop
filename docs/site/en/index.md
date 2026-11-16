@@ -77,7 +77,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.11.3 · unreleased</i></span>
+        <span>Version <i>v0.11.3 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -125,7 +125,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">Verification</span>
-      <p>This unreleased snapshot was verified on 2026-11-16: build/lint/typecheck passed; unit 1787/1787, MCP 14/14, plugins 22/22, docs 101/101, Skills 176/176. An isolated five-protocol simulator line provisioned 1 line / 5 DCW / 9 DAQ, passed V1–V6 25/25, and executed two HITL-approved steps (52→54→56 MPa) with readback. Simulator evidence only, not physical HIL; the seed task did not autonomously complete. <a href="/AgentWorkShop/en/guide/line-integration">Line integration guide</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md">Dated report</a></p>
+      <p>This v0.11.3 source snapshot was verified on 2026-11-16: build/lint/typecheck passed; unit 1787/1787, MCP 14/14, plugins 22/22, docs 101/101, Skills 176/176. An isolated five-protocol simulator line provisioned 1 line / 5 DCW / 9 DAQ, passed V1–V6 25/25, and executed two HITL-approved steps (52→54→56 MPa) with readback. Simulator evidence only, not physical HIL; the seed task did not autonomously complete. <a href="/AgentWorkShop/en/guide/line-integration">Line integration guide</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md">Dated report</a></p>
     </div>
   </section>
 
@@ -452,10 +452,10 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
       The platform's mechanisms are documented in a submission-ready manuscript:
-      <strong>"Grading Machine-Originated Plant Writes: Separately Inspectable Evidence for
-      Industrial Agent Teams"</strong> (IEEE Transactions on Industrial Informatics, anonymous
+      <strong>"Agent-Mediated Online Data Acquisition and Governed Setpoint Control in Industrial
+      Production Lines"</strong> (IEEE Transactions on Industrial Informatics, anonymous
       review draft, 10 pages, IEEEtran). Source and compiled PDF live in
-      <code>paper/tii/SUBMISSION-IEEE-TII/</code>. The paper's mechanism claims are backed by
+      <code>paper/tii/TII-SUBMISSION-PACKAGE-20261112/</code>. The paper's mechanism claims are backed by
       archives in this repository: <code>docs/benchmarks/</code> (October 2026 deployment-scale
       regression campaign — 14 pipeline executions, 1134 checks, zero failed, including graded
       write-acknowledgment and HITL evidence legs), <code>docs/experiments/</code> (cast-film

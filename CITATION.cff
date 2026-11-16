@@ -10,8 +10,8 @@ authors:
   - alias: AgentWorkShop Authors
     # TODO(submission): replace with the real author list (family-names,
     # given-names, affiliation, email) matching the manuscript author block.
-version: 0.7.39
-date-released: "2026-09-17"
+version: 0.11.3
+date-released: "2026-11-16"
 license: Apache-2.0
 repository-code: "https://github.com/kingdol666/AgentWorkShop"
 url: "https://github.com/kingdol666/AgentWorkShop"

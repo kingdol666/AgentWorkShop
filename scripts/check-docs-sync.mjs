@@ -255,11 +255,14 @@ section('[4b/6] 版本呈现面全链一致(config.yml / README / 站点 hero / 
     else bad(`config.yml app.version 为 ${m[1]},而 package.json 是 ${pkgVersion}`)
   }
 
-  for (const [file, re, unreleasedRe] of [
-    ['README.md', /Current source version: \*\*v([0-9]+\.[0-9]+\.[0-9]+) \(unreleased\)\*\*/, /Current source version: \*\*v[0-9]+\.[0-9]+\.[0-9]+ \(unreleased\)\*\*/i],
-    ['README-zh.md', /当前源码版本：\*\*v([0-9]+\.[0-9]+\.[0-9]+)（未发布）\*\*/, /当前源码版本：\*\*v[0-9]+\.[0-9]+\.[0-9]+（未发布）\*\*/],
-    ['docs/site/index.md', /版本 <i>v([0-9]+\.[0-9]+\.[0-9]+) · 未发布<\/i>/, /版本 <i>v[0-9]+\.[0-9]+\.[0-9]+ · 未发布<\/i>/],
-    ['docs/site/en/index.md', /Version <i>v([0-9]+\.[0-9]+\.[0-9]+) · unreleased<\/i>/, /Version <i>v[0-9]+\.[0-9]+\.[0-9]+ · unreleased<\/i>/i],
+  // 当前源码版本需与 package.json 一致,并显式标记状态:
+  //   - "未发布/unreleased":源码领先于最近一次发布
+  //   - "已发布/released <日期>":package.json 版本即已发布版本,此时 README 的 release 链接必须指向该版本
+  for (const [file, re, needsReleaseLink] of [
+    ['README.md', /Current source version: \*\*v([0-9]+\.[0-9]+\.[0-9]+) \((unreleased|released [0-9]{4}-[0-9]{2}-[0-9]{2})\)\*\*/, true],
+    ['README-zh.md', /当前源码版本：\*\*v([0-9]+\.[0-9]+\.[0-9]+)（(未发布|已发布 [0-9]{4}-[0-9]{2}-[0-9]{2})）\*\*/, true],
+    ['docs/site/index.md', /版本 <i>v([0-9]+\.[0-9]+\.[0-9]+) · (未发布|已发布)<\/i>/, false],
+    ['docs/site/en/index.md', /Version <i>v([0-9]+\.[0-9]+\.[0-9]+) · (unreleased|released)<\/i>/i, false],
   ]) {
     const text = read(file)
     if (text === null) {
@@ -267,10 +270,18 @@ section('[4b/6] 版本呈现面全链一致(config.yml / README / 站点 hero / 
       continue
     }
     const m = re.exec(text)
-    if (!m) bad(`${file} 缺少带“未发布/unreleased”标记的当前源码版本声明`)
-    else if (m[1] === pkgVersion) ok(`${file} 当前源码版本 = ${m[1]} (unreleased) = package.json`)
-    else bad(`${file} 当前源码版本为 ${m[1]},而 package.json 是 ${pkgVersion}`)
-    if (!unreleasedRe.test(text)) bad(`${file} 当前源码版本未明确标记未发布`)
+    if (!m) {
+      bad(`${file} 缺少当前源码版本声明(需标记“未发布/unreleased”或“已发布/released <日期>”)`)
+      continue
+    }
+    if (m[1] !== pkgVersion) {
+      bad(`${file} 当前源码版本为 ${m[1]},而 package.json 是 ${pkgVersion}`)
+      continue
+    }
+    const released = /released|已发布/i.test(m[2])
+    ok(`${file} 当前源码版本 = ${m[1]} (${released ? 'released' : 'unreleased'}) = package.json`)
+    if (released && needsReleaseLink && !text.includes(`releases/tag/v${m[1]}`))
+      bad(`${file} 声明已发布,但缺少指向 v${m[1]} 的 release 链接`)
   }
 
   for (const [file, labelRe] of [
