@@ -31,14 +31,15 @@
  * 输出(末行 JSON):{simBase, shadowDir, devices:[{id,protocol,port,signals}],
  *   driverSource:"sim-export", next:"对每设备 GET /api/nodes/:id/export 取 driverConfig 喂给 provision-line/onboard"}
  *
- * 纪律:本脚本只写模拟器(影子树),绝不写平台;平台侧接入走 onboard.mjs/provision-line.mjs。
+ * 注意:平台查询可能触发全局控制循环;模拟器进程及端点归属也必须证明。
  * 孪生协议归一:mes-rest/http/opcua 族节点映射到 modbus-tcp 孪生设备(语义/量程保留;
  *   协议真实性由 onboard 期的 export driverConfig 保证——模拟器 export 什么,平台就接什么)。
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { assertOnboardingOwnership, newAttestationNonce } from './lib.mjs'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const args = process.argv.slice(2)
@@ -49,10 +50,55 @@ const argOf = (k, d = '') => {
 const SIM_PORT = Number(argOf('--sim-port', '4034'))
 const SIM = `http://127.0.0.1:${SIM_PORT}`
 const SIM_DIR = resolve(argOf('--shadow', join(REPO, '..', `plc-node-simulator-twin-${SIM_PORT}`)))
+const ATTEST_BUNDLE = resolve(argOf('--bundle', join(SIM_DIR, 'attestation.json')))
 const AW_BASE = process.env.AW_BASE ?? 'http://127.0.0.1:3001'
 process.env.NO_PROXY = '127.0.0.1,localhost'
 process.env.HTTP_PROXY = ''
 process.env.HTTPS_PROXY = ''
+
+/* ── 自证归属(--spawn):本轮拉起才可证明 ──
+ * 生成一次性 nonce → 注入新拉起的模拟器进程 → /api/attestation 复核 → 写 bundle。
+ * 非 spawn 模式:复用既有实例,必须出示本轮归属证明(AW_ONBOARD_ATTESTATION),
+ * 且证明在 ensureSim 之后再次复核(防「检查后实例死了又换人」竞态)。 */
+const ATTEST_NONCE = newAttestationNonce()
+function writeAttestationBundle(endpoints) {
+  const brokerPort = 18830 + (SIM_PORT - 4010) * 1000
+  const bundle = {
+    version: 1,
+    nonce: ATTEST_NONCE,
+    simBase: SIM,
+    simPort: SIM_PORT,
+    brokerPort,
+    pid: ATTEST_PID,
+    shadowDir: SIM_DIR,
+    endpoints,
+    createdAt: new Date().toISOString(),
+  }
+  writeFileSync(ATTEST_BUNDLE, JSON.stringify(bundle, null, 2))
+  process.env.AW_ONBOARD_ATTESTATION = ATTEST_BUNDLE
+  return bundle
+}
+let ATTEST_PID = null
+async function selfAttest() {
+  process.env.AW_SIM_ATTEST_NONCE = ATTEST_NONCE
+  await ensureSim()
+  let att = null
+  for (let i = 0; i < 10 && !att; i++) {
+    try {
+      const r = await fetch(`${SIM}/api/attestation`, { signal: AbortSignal.timeout(4000) })
+      const j = await r.json().catch(() => null)
+      if (j?.code === 0 && j.data) att = j.data
+    }
+    catch { /* 模拟器未就绪,重试 */ }
+    if (!att) await sleep(1500)
+  }
+  if (!att || att.nonce !== ATTEST_NONCE) {
+    throw new Error('归属证明失败:端口上的进程无法出示本轮注入的随机 nonce;拒绝接入(未证明前不发起任何平台请求)')
+  }
+  ATTEST_PID = att.pid
+  writeAttestationBundle([{ kind: 'api', port: SIM_PORT }, { kind: 'mqtt-broker', port: 18830 + (SIM_PORT - 4010) * 1000 }])
+  console.log(`[sim-twin] 归属证明成立:sim=${SIM} pid=${att.pid} bundle=${ATTEST_BUNDLE}`)
+}
 
 let pass = 0
 const fails = []
@@ -226,7 +272,9 @@ async function materialize(devices, mqttPort) {
     const protocol = dev.family
     const config = { ...(dev.config ?? {}) }
     if (protocol === 'modbus-tcp' || protocol === 'modbus-rtu') {
-      config.host = '0.0.0.0'
+      // 接入链路平台侧只拨环回(归属证明的端点绑定也只接受 127.0.0.1);
+      // 影子实例的监听面本来就是 source transform 强制的 127.0.0.1。
+      config.host = '127.0.0.1'
       config.port = dev.port ?? (port += 2)
       config.unitId = dev.unitId ?? 1
       config.registerMaps = dev.signals.map((s, i) => ({ address: 40001 + i * 2, area: 'holding', signalId: s.id, dataType: 'float32', byteOrder: 'big' }))
@@ -309,7 +357,17 @@ async function livenessCheck(createdIds) {
 
 /* ── 主流程 ── */
 console.log(`[sim-twin] 模拟器 :${SIM_PORT} 影子树 ${SIM_DIR}`)
-await ensureSim()
+if (args.includes('--spawn')) {
+  // --spawn:本轮拉起 + nonce 注入 + 复核 + bundle 落盘(唯一所有权来源)
+  await selfAttest()
+}
+else {
+  // 复用模式:必须先出示本轮归属证明(任何拉起/平台请求都不允许发生在证明之前),
+  // ensureSim 之后再次复核 —— 防「检查后实例死了又被换人占用端口」竞态。
+  await assertOnboardingOwnership()
+  await ensureSim()
+  await assertOnboardingOwnership()
+}
 let created, liveness
 if (args.includes('--from-platform')) {
   const lineId = argOf('--line')
@@ -336,6 +394,31 @@ else {
   process.exit(1)
 }
 liveness = await livenessCheck(created.map(c => c.id))
+let attested = null
+{
+  // 设备已物化:按实际端点计划刷新归属证明(协议端口随设备新增;两种模式都要刷新,
+  // 否则后续 provision/verify 的端点绑定会拒绝新出现的协议端口)。
+  try {
+    const { simulatorEndpointPlan } = await import('../../bench/lib/sim.mjs')
+    const nodes = (await simApi('GET', '/api/nodes')).data
+    if (args.includes('--spawn')) {
+      attested = writeAttestationBundle(simulatorEndpointPlan(nodes, SIM_PORT))
+    }
+    else {
+      // 复用模式:保留既有 bundle 的 nonce/pid(已由 assertOnboardingOwnership 复核过),仅刷新端点计划
+      const existing = JSON.parse(readFileSync(process.env.AW_ONBOARD_ATTESTATION ?? ATTEST_BUNDLE, 'utf8'))
+      if (existing.version !== 1 || !existing.nonce) throw new Error('既有 bundle 形态无效,拒绝刷新')
+      existing.endpoints = simulatorEndpointPlan(nodes, SIM_PORT)
+      writeFileSync(process.env.AW_ONBOARD_ATTESTATION ?? ATTEST_BUNDLE, JSON.stringify(existing, null, 2))
+      attested = existing
+    }
+    console.log(`[sim-twin] 归属证明端点已刷新:${attested.endpoints.map(e => `${e.kind}:${e.port}`).join(', ')}`)
+    console.log(`[sim-twin] 后续脚本必须带:AW_ONBOARD_ATTESTATION=${process.env.AW_ONBOARD_ATTESTATION ?? ATTEST_BUNDLE}`)
+  }
+  catch (e) {
+    ok('归属证明端点刷新', false, e.message)
+  }
+}
 console.log('')
 console.log('════════════════════════════════════════')
 console.log(`  sim-twin:${pass} PASS / ${fails.length} FAIL`)
@@ -343,6 +426,7 @@ for (const f of fails) console.log(`  ✖ ${f}`)
 const summary = {
   simBase: SIM, shadowDir: SIM_DIR, devices: created, totalSignals: liveness.signals,
   driverSource: 'sim-export',
+  ...(attested ? { bundlePath: process.env.AW_ONBOARD_ATTESTATION ?? ATTEST_BUNDLE, endpoints: attested.endpoints } : {}),
   next: `对每设备 GET ${SIM}/api/nodes/<id>/export 取 items[].driverConfig,喂给 provision-line/onboard(driverConfig 替换为模拟器 export,量程/stepLimit 保留)`,
 }
 console.log(JSON.stringify(summary))

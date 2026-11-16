@@ -14,6 +14,14 @@ ACP v1) are both **persistent ACP sessions**, not part of the headless CLI famil
 are the same shape as `dsh`, with approvals over `session/request_permission` /
 `requestToolCallConfirmation`.
 
+Unreleased, unmerged source compatibility boundary (under review): the agent-token MCP bridge cannot establish trusted
+turn provenance, so hazardous tools and authorization/dispatch operations are filtered and
+rejected. Plugin tools must explicitly declare `riskClass: 'read'` to pass this layer; other
+governance checks still apply. When a native omp work or supervision turn is aborted, its
+subprocess is retired and a later turn needs a new process. After normal completion, reliable
+per-turn provenance for late frames on a reused process remains unresolved; this is not a
+claim that the problem is solved. See the [MCP reference](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/mcp.en.md).
+
 ## Per-channel engine & model selection
 
 - Each channel sets a **harness → provider → model (+effort)** triple from the engine's

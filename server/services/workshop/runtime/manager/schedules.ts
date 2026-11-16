@@ -10,6 +10,7 @@ import { AppError } from '../../../../utils/errors'
 import { ScheduleRuntime, validatePlanAndComputeFirstRun } from '../schedule-runtime'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { log } from './helpers'
+import { isLegacyRecoveryHeld } from '../task-engine/legacy-recovery'
 
 export abstract class ManagerSchedules extends ManagerHostTools {
   async restore(): Promise<void> {
@@ -48,7 +49,7 @@ export abstract class ManagerSchedules extends ManagerHostTools {
           err instanceof Error ? err.message : String(err))
       }
     }
-    // 断线重连:ASSIGNED/WORKING 的叶子任务(无子任务)若无 pending assign 投递
+    // 断线重连:ASSIGNED/WORKING 的叶子任务(无子任务)若无 pending/consuming assign 投递
     // (消息已被消费但任务未完成——进程内 run 抛错、或崩溃落在消费后),
     // 无人会重新驱动它(调度循环只 dispatch lead 名下任务;停滞检测要 stallMs×2 才 cancel)。
     // 重投 assign + 唤醒 assignee,由 processMessage 的终态检查保证幂等(执行从头重放)。
@@ -62,6 +63,7 @@ export abstract class ManagerSchedules extends ManagerHostTools {
       }
     }
     for (const task of nonTerminal) {
+      if (isLegacyRecoveryHeld(task) || this.getTaskEngine().isLegacyRecoveryBlocked(task.id)) continue
       if (task.state !== 'ASSIGNED' && task.state !== 'WORKING') continue
       if (parentIds.has(task.id)) continue
       if (this.deps.repos.messages.hasPendingAssign(task.id)) continue

@@ -1,10 +1,21 @@
-## v0.11.3 — Line-integration docs and Skill adaptation (source snapshot, unreleased; 2026-11-16)
+## Current Unmerged Source — Compatibility Boundaries (unreleased, under review)
+
+- The agent-token bridge lacks trusted turn provenance and filters and rejects hazardous and authorization/dispatch tools. Plugin tools must explicitly declare `riskClass: 'read'` to pass this layer; other governance gates remain in force.
+- `dispatch_task` rejects combined `grant_node_ids` / `grantNodeIds`. Explicitly call `team_grant_nodes` first when needed, then dispatch; inspect and revoke a grant if appropriate after a failed dispatch. The operations are not atomic. Delegation defaults to `manual`; `auto` requires explicit `confirm: true`.
+- An aborted native omp work or supervision turn retires its process; per-turn provenance of late frames after normal completion remains unresolved. No new physical HIL or security-pass claim is made.
+- Legacy active tasks without an execution lease enter `LEGACY_EXECUTION_RECOVERY_REQUIRED` hold and are not automatically replayed. Preserve evidence, inspect the actual device and escalate; do not merely clear the marker. No supported audited release procedure exists, so affected upgrades are not production-ready until disposition is implemented and verified.
+- Existing saved Channel scenario prompts, member configurations and custom prompts are not automatically rewritten when defaults change. Review and manually migrate obsolete combined-grant instructions while preserving customizations.
+- The DCW automatic-hold interlock and recovery restrictions are under review, not part of released 0.11.3. Onboarding provisioning and V2/V3 writes are blocked pending trusted simulator ownership attestation. Do not run onboarding verification until isolation and absence of unintended side effects are established.
+
+## v0.11.3 — Released version and historical line-integration snapshot (2026-11-16)
+
+- Released 0.11.3 guards `markConsumed` only with `state='consuming'`: pending/dead messages are not consumed, but a stale completion can consume one after a new claim returns it to consuming. This is not per-attempt ownership CAS.
 
 - Added the bilingual line-integration guide for Channel modes, product-bound Sessions, memory/experience scopes, DAQ/DCW tool order and raw/normalized vector contracts.
 - Updated the onboarding, protocol, PLC twin, document-to-Project and full-acceptance Skills; parity is checked between `skills/` and `.agents/skills/` copies.
-- Extended bilingual-page and new-page checks; README/VitePress now distinguish the v0.11.2 release evidence from current source.
-- This is a source/documentation adaptation entry, not a claim that v0.11.3 has been published to npm or GitHub. Current gates and simulator acceptance are in the dated report.
-- **2026-11-16 isolated simulator demo**: a fresh `AW_HOME` plus a five-protocol shadow simulator provisioned 1 line / 5 DCW / 9 DAQ, passed V1–V6 25/25, and executed two HITL-approved steps (52→54→56 MPa) with readback. Gates: unit 1787/1787, MCP 14/14, docs 101/101, Skills 176/176. Evidence: [`2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md). Simulator evidence only, not physical HIL; the seed task did not autonomously complete in this window.
+- Extended bilingual-page and new-page checks; at the time README/VitePress distinguished v0.11.2 release evidence from the source snapshot.
+- These are historical pre-release source/documentation adaptation results; v0.11.3 has since been released. Historical gates and simulator acceptance do not verify current unmerged changes.
+- **2026-11-16 isolated simulator demo**: a fresh `AW_HOME` plus a five-protocol shadow simulator provisioned 1 line / 5 DCW / 9 DAQ, passed V1–V6 25/25, and executed two HITL-approved steps (52→54→56 MPa) with readback. Gates: unit 1787/1787, MCP 14/14, docs 101/101, Skills 176/176. Evidence: [`2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md). V6 recorded no new protected-line journal anchor, not physical zero disturbance. Simulator evidence only, not physical HIL; the seed task did not autonomously complete in this window.
 
 ## v0.11.2 — Final acceptance closeout: recipe preflight × AML regression × strict input (2026-11-12)
 

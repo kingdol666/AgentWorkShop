@@ -11,6 +11,7 @@
 import { getToolApprovals } from '../tool-approvals'
 import { agentBadgeLabel } from '../agent-badge'
 import { currentToolInvocation } from '../governance-harness-audit'
+import { currentExecutionScope } from '../execution-scope'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { recordOps } from '../../ops/ops'
@@ -22,6 +23,8 @@ export interface LineStatusInput { line_id?: string }
 
 /** 懒加载 manager:静态 import plugins/workshop 会拖入 Nitro #imports,使本模块无法被单测/脚本直接加载 */
 async function workshopManager() {
+  const manager = globalThis.__workshopManager
+  if (manager) return manager
   const { getWorkshopManager } = await import('@/server/plugins/workshop')
   return getWorkshopManager()
 }
@@ -116,6 +119,7 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
   try {
     // 归因：line_start 的逐参数写入必须携带频道/任务锚点，否则干预台账 channel 为空，
     // C1 独立回读的任务终态补扫（按 channel 取 pending）永远看不到这批写入。
+    currentExecutionScope()?.assertActive()
     const invocation = currentToolInvocation()
     const run = await ctrl.lineStart(lineId, recipeId, {
       source: 'recipe',
@@ -123,10 +127,16 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
       actorName: agentBadgeLabel(agentId),
       channelId: channelId ?? '',
       ...(invocation?.taskId ? { taskId: invocation.taskId } : {}),
-    })
+    }, currentExecutionScope())
+    try {
+      currentExecutionScope()?.assertActive()
+    }
+    catch {
+      return { text: `开线批次 ${run.id} 执行后租约失效,设备可能已变化;请立即核实产线与设备状态。${run.results.map(r => `${r.nodeId ?? r.templateRef}:${r.message}`).join(';')}`, isError: true }
+    }
     const results = run.results ?? []
-    const failed = results.filter(r => !r.ok)
-    const unverified = results.filter(r => r.ok && r.verify?.verdict !== 'verified' && r.ack !== 'readback-verified')
+    const failed = results.filter(r => !r.ok && r.verify?.verdict !== 'unverified')
+    const unverified = results.filter(r => r.verify?.verdict === 'unverified' || (r.ok && r.verify?.verdict !== 'verified' && r.ack !== 'readback-verified'))
     const detailOf = (r: typeof results[number]): string => {
       const node = r.nodeId ? ctrl.byId(r.nodeId) : undefined
       return `${node?.name ?? r.templateRef ?? r.nodeId ?? '?'}: ${String(r.message).slice(0, 100)}`
@@ -207,7 +217,7 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
       const parts = [
         `产线「${lineName}」已开跑(批次 ${run.id.slice(0, 8)},配方「${recipe.name}」),但参数下发未全部证实${acks ? `(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed})` : ''}:`,
         ...(failed.length > 0 ? [`失败参数:`, ...failed.map(r => `  - ${detailOf(r)}`)] : []),
-        ...(unverified.length > 0 ? [`未证实参数(命令已受理,设备侧未确认):`, ...unverified.map(r => `  - ${detailOf(r)}`)] : []),
+        ...(unverified.length > 0 ? [`未证实参数(可能已下发,设备状态须核实):`, ...unverified.map(r => `  - ${detailOf(r)}`)] : []),
         '请先用 daq_query 复测实际工况;未生效参数需人工处置或 line_stop 后重试,禁止把本次开线当作全量生效。',
       ]
       return { text: parts.join('\n'), isError: true }
@@ -268,6 +278,7 @@ export async function toolLineStop(agentId: string, args: LineStopInput, channel
     }
   }
   try {
+    currentExecutionScope()?.assertActive()
     const run = ctrl.lineStop(lineId)
     try {
       recordOps({

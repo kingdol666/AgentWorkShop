@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { MemoryScope, ScopeContext } from '../server/services/workshop/runtime/memory/types'
 
 process.env.AGENTWORKSHOP_TEST = '1'
 process.env.AW_MODE = 'home'
@@ -127,6 +128,133 @@ test('candidate product experiences are excluded from automatic memory injection
     })
 
     assert.equal(block, null)
+  }
+  finally {
+    db.close()
+  }
+})
+
+for (const embedOutcome of ['resolve', 'reject'] as const) {
+  test(`aborted recall does not access a closed repository after embedding ${embedOutcome}s`, async () => {
+    const db = openWorkshopDb(':memory:')
+    const repo = createMemoryRepo(db)
+    const controller = new AbortController()
+    const embedding = Promise.withResolvers<Float32Array[]>()
+    const started = Promise.withResolvers<undefined>()
+    const callsAfterAbort: string[] = []
+    const observedRepo = new Proxy(repo, {
+      get(target, property, receiver) {
+        const value = Reflect.get(target, property, receiver)
+        if (typeof value !== 'function') return value
+        return (...args: unknown[]) => {
+          if (controller.signal.aborted) callsAfterAbort.push(String(property))
+          return Reflect.apply(value, target, args)
+        }
+      },
+    })
+    const memory = new AgentMemory(observedRepo, {
+      channelId: 'channel-a',
+      agentId: 'agent-1',
+      embedder: {
+        dims: () => 2,
+        embed: () => {
+          started.resolve(undefined)
+          return embedding.promise
+        },
+      },
+    })
+    const reason = new Error('supervisor stopped')
+    const recall = memory.recall('pressure', { signal: controller.signal })
+    const race = Promise.race([
+      recall,
+      new Promise<undefined>(resolve => controller.signal.addEventListener('abort', () => resolve(undefined), { once: true })),
+    ])
+    await started.promise
+    controller.abort(reason)
+    assert.equal(await race, undefined)
+    db.close()
+    if (embedOutcome === 'resolve') embedding.resolve([new Float32Array([1, 0])])
+    else embedding.reject(new Error('embedding failed'))
+
+    await new Promise<void>(resolve => setImmediate(resolve))
+    await assert.rejects(recall, error => error === reason)
+    assert.deepEqual(callsAfterAbort, [])
+  })
+}
+
+test('already aborted recall does not access the repository or invoke the embedder', async () => {
+  const db = openWorkshopDb(':memory:')
+  const repo = createMemoryRepo(db)
+  let embeds = 0
+  const memory = new AgentMemory(repo, {
+    channelId: 'channel-a', agentId: 'agent-1',
+    embedder: {
+      dims: () => 2,
+      embed: async () => {
+        embeds++
+        return []
+      },
+    },
+  })
+  const controller = new AbortController()
+  const reason = new Error('already stopped')
+  controller.abort(reason)
+  db.close()
+  await assert.rejects(memory.recall('pressure', { signal: controller.signal }), error => error === reason)
+  assert.equal(embeds, 0)
+})
+
+for (const boundary of ['collectHits', 'rank'] as const) {
+  test(`abort after ${boundary} prevents subsequent repository operations`, async () => {
+    const db = openWorkshopDb(':memory:')
+    const repo = createMemoryRepo(db)
+    const controller = new AbortController()
+    const reason = new Error(`aborted after ${boundary}`)
+    const callsAfterAbort: string[] = []
+    const observedRepo = new Proxy(repo, {
+      get(target, property, receiver) {
+        const value = Reflect.get(target, property, receiver)
+        if (typeof value !== 'function') return value
+        return (...args: unknown[]) => {
+          if (controller.signal.aborted) callsAfterAbort.push(String(property))
+          return Reflect.apply(value, target, args)
+        }
+      },
+    })
+    class BoundaryMemory extends AgentMemory {
+      protected override async collectHits(query: string, scope: MemoryScope, sessionId?: string | null, scopeContext?: ScopeContext, automatic = false, signal?: AbortSignal) {
+        const hits = await super.collectHits(query, scope, sessionId, scopeContext, automatic, signal)
+        if (boundary === 'collectHits') controller.abort(reason)
+        return hits
+      }
+
+      protected override async rank(query: string, scope: MemoryScope, opts?: { excludeCurated?: boolean, relatedTaskIds?: string[], sessionId?: string | null, scopeContext?: ScopeContext, automatic?: boolean, signal?: AbortSignal }) {
+        const scored = await super.rank(query, scope, opts)
+        if (boundary === 'rank') controller.abort(reason)
+        return scored
+      }
+    }
+    try {
+      const memory = new BoundaryMemory(observedRepo, { channelId: 'channel-a', agentId: 'agent-1' })
+      await assert.rejects(memory.recall('pressure', { signal: controller.signal }), error => error === reason)
+      assert.deepEqual(callsAfterAbort, [])
+    }
+    finally {
+      db.close()
+    }
+  })
+}
+
+test('embedding failure without abort still falls back to FTS and recent memories', async () => {
+  const db = openWorkshopDb(':memory:')
+  try {
+    const repo = createMemoryRepo(db)
+    const memory = new AgentMemory(repo, {
+      channelId: 'channel-a', agentId: 'agent-1',
+      embedder: { dims: () => 2, embed: async () => { throw new Error('embedding unavailable') } },
+    })
+    repo.upsert({ channelId: 'channel-a', agentId: 'agent-1', kind: 'semantic', title: 'Pressure target', titleFts: 'pressure target', content: 'Pressure target is seven bar', importance: 0.7, dedupKey: 'pressure' })
+    assert.match((await memory.recall('pressure', { budgetTokens: 1000 }))!, /Pressure target/)
   }
   finally {
     db.close()

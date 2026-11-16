@@ -150,6 +150,12 @@ export interface TaskEngine {
   applyEvent(taskId: string, event: AgentEvent, fence?: { generation?: number | null, leaseId?: string | null }): void
   /** §5.1 执行代次栅栏:事件是否属于任务当前 assignment(无栅栏/无 lease → 放行) */
   assertAssignmentFence(taskId: string, fence?: { generation?: number | null, leaseId?: string | null }): boolean
+  /** Block held legacy task trees and roots behind them. */
+  isLegacyRecoveryBlocked(taskId: string): boolean
+  hasLegacyRecoveryHold(channelId: string): boolean
+  /** 运维处置面:恢复保留清单(含树内消息计数)与显式释放(审计留痕,不自动重放) */
+  listLegacyRecoveryHolds(): Array<{ taskId: string, channelId: string, assigneeId: string, title: string, state: string, closeReason: string, createdAt: string, messages: { pending: number, consuming: number, dead: number } }>
+  disposeLegacyRecoveryHold(taskId: string, actor: { id: string, name?: string }, note?: string): { released: string[], requeued: number, unblockedPending: number }
   list(channelId: string): WorkspaceTask[]
   get(taskId: string): WorkspaceTask | undefined
   complete(taskId: string, artifacts?: A2AArtifact[]): WorkspaceTask

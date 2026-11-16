@@ -23,6 +23,9 @@ const { createEventIngress } = await import('../server/services/workshop/project
 const { createEffectsOutbox } = await import('../server/services/workshop/projects/effects')
 const { createProjectWatchdog } = await import('../server/services/workshop/projects/watchdog')
 const { initProjectKernel, getProjectKernel } = await import('../server/services/workshop/projects/kernel')
+const { LEGACY_RECOVERY_MARKER } = await import('../server/services/workshop/runtime/task-engine/legacy-recovery')
+const { projectHasLegacyRecoveryHold } = await import('../server/services/workshop/projects/legacy-recovery')
+const { startProjectReconciler } = await import('../server/services/workshop/projects/reconciler')
 type AgentChannelManager = import('../server/services/workshop/runtime/manager').AgentChannelManager
 
 type Fixture = ReturnType<typeof fixture>
@@ -397,6 +400,126 @@ test('kernel tick：fast 事件→reconcile、slow 事件→mailbox 投递、健
   finally {
     s.db.close()
   }
+})
+
+test('project recovery hold blocks timer, manual tick, callback, and outbox without starving other projects', async () => {
+  const s = await activeProject()
+  try {
+    const healthy = await s.svc.create({ name: 'Healthy', objective: 'unaffected', planApprovalRequired: 0 }, s.owner)
+    const healthyMember = await s.manager.createChannel({ name: 'Healthy member', ownerUserId: s.owner.id, leadAgent: { name: 'Lead', harness: 'mock' } })
+    s.svc.bindChannel(healthy.id, healthyMember.channelId, s.owner)
+    s.svc.createDeliverable(healthy.id, s.owner, { name: 'Healthy deliverable', ownerChannelId: healthyMember.channelId })
+    s.svc.activate(healthy.id, s.owner)
+    const root = s.tasks.create({ channelId: s.member.channelId, assigneeId: 'lead', title: 'project root', state: 'WORKING', projectId: s.p.id, executionLeaseId: 'valid', executionLeaseAgentId: 'lead' })
+    const child = s.tasks.create({ channelId: s.member.channelId, parentId: root.id, assigneeId: 'worker', title: 'legacy child', state: 'WORKING', closeReason: LEGACY_RECOVERY_MARKER })
+    assert.equal(projectHasLegacyRecoveryHold(s.db, s.p.id), true)
+    assert.equal(projectHasLegacyRecoveryHold(s.db, healthy.id), false)
+    assert.equal(s.svc.isProjectTaskRunnable(s.p.id, root.id), false)
+    assert.throws(() => s.svc.reconcileInternal(s.p.id), /operator investigation/)
+    await assert.rejects(s.svc.runRouteLoop(s.p.id), /operator investigation/)
+    await assert.rejects(s.svc.autoDispatchProject(s.p.id), /operator investigation/)
+    await assert.rejects(s.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner), /operator investigation/)
+
+    const pending = []
+    for (let i = 0; i < 25; i++) {
+      pending.push(s.kernel.effects.enqueue({ projectId: s.p.id, dedupeKey: `held:${i}`, kind: i % 2 ? 'mailbox' : 'task_callback' }).id)
+    }
+    const good = s.kernel.effects.enqueue({ projectId: healthy.id, dedupeKey: 'healthy', kind: 'mailbox' }).id
+    const sent: string[] = []
+    const kernel = initProjectKernel({
+      db: s.db,
+      service: s.svc,
+      kernelRepo: s.kernel,
+      sendMailbox: (id) => { sent.push(id) },
+      notifyOwner() {},
+    }, { watchdogEveryTicks: 1 })
+    const reconciler = startProjectReconciler(s.svc, { intervalMs: 3_600_000 })
+    try {
+      const tick = await kernel.tick()
+      assert.ok(tick.errors.some(e => e.projectId === s.p.id && /operator investigation/.test(e.error)))
+      assert.ok(tick.autoDispatch.some(e => e.projectId === healthy.id))
+      assert.deepEqual(sent, [healthy.id])
+      assert.equal(s.kernel.effects.findById(good)?.status, 'done')
+      for (const id of pending) {
+        const effect = s.kernel.effects.findById(id)!
+        assert.equal(effect.status, 'pending')
+        assert.equal(effect.attempts, 0)
+      }
+      await assert.rejects(kernel.processProject(s.p.id), /operator investigation/)
+      const rt = await reconciler.tick()
+      assert.ok(rt.errors.some(e => e.projectId === s.p.id))
+      assert.ok(!rt.errors.some(e => e.projectId === healthy.id))
+      s.svc.onTaskStateChange(root.id, 'WORKING')
+      await new Promise(resolve => setImmediate(resolve))
+      assert.equal(s.tasks.findById(child.id)?.state, 'WORKING')
+      assert.equal(s.tasks.findById(root.id)?.state, 'WORKING')
+      assert.equal(sent.length, 1)
+    }
+    finally {
+      reconciler.stop()
+      kernel.stop()
+    }
+  }
+  finally { s.db.close() }
+})
+
+test('manual reconcile fails closed before changing overdue held project work', async () => {
+  const s = await activeProject()
+  try {
+    await s.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner)
+    const attempt = s.db.prepare('SELECT channel_task_id AS taskId FROM project_work_item_attempts WHERE work_item_id = ?').get(s.w.id) as { taskId: string }
+    s.db.prepare('UPDATE tasks SET close_reason = ? WHERE id = ?').run(LEGACY_RECOVERY_MARKER, attempt.taskId)
+    s.db.prepare('UPDATE project_work_items SET deadline_at = ? WHERE id = ?').run('2020-01-01T00:00:00.000Z', s.w.id)
+    const itemBefore = s.db.prepare('SELECT * FROM project_work_items WHERE id = ?').get(s.w.id)
+    const attemptBefore = s.db.prepare('SELECT * FROM project_work_item_attempts WHERE work_item_id = ?').all(s.w.id)
+    const eventsBefore = s.db.prepare('SELECT * FROM project_events WHERE project_id = ? ORDER BY seq').all(s.p.id)
+    for (const reconcile of [() => s.svc.reconcile(s.p.id, s.owner), () => s.svc.reconcileInternal(s.p.id)]) {
+      assert.throws(reconcile, (error: unknown) => (error as { code?: string }).code === 'LEGACY_EXECUTION_RECOVERY_REQUIRED')
+    }
+    assert.deepEqual(s.db.prepare('SELECT * FROM project_work_items WHERE id = ?').get(s.w.id), itemBefore)
+    assert.deepEqual(s.db.prepare('SELECT * FROM project_work_item_attempts WHERE work_item_id = ?').all(s.w.id), attemptBefore)
+    assert.deepEqual(s.db.prepare('SELECT * FROM project_events WHERE project_id = ? ORDER BY seq').all(s.p.id), eventsBefore)
+    assert.throws(() => s.svc.reconcile(s.p.id, { id: 'unrelated', role: 'user' }), (error: unknown) => (error as { code?: string }).code === 'FORBIDDEN')
+
+    const other = await s.svc.create({ name: 'Other', objective: 'unaffected', planApprovalRequired: 0 }, s.owner)
+    assert.doesNotThrow(() => s.svc.reconcile(other.id, s.owner))
+  }
+  finally { s.db.close() }
+})
+
+test('project lineage detects a held task linked only through an attempt', async () => {
+  const s = await activeProject()
+  try {
+    await s.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner)
+    const attempt = s.db.prepare('SELECT channel_task_id AS taskId FROM project_work_item_attempts WHERE work_item_id = ?').get(s.w.id) as { taskId: string }
+    s.db.prepare('UPDATE tasks SET project_id = NULL, project_work_item_id = NULL, close_reason = ? WHERE id = ?').run(LEGACY_RECOVERY_MARKER, attempt.taskId)
+    assert.equal(projectHasLegacyRecoveryHold(s.db, s.p.id), true)
+    await assert.rejects(s.svc.runRouteLoop(s.p.id), /operator investigation/)
+  }
+  finally { s.db.close() }
+})
+
+test('hold lookup failure blocks project work and preserves outbox attempts', async () => {
+  const s = await activeProject()
+  try {
+    const id = s.kernel.effects.enqueue({ projectId: s.p.id, dedupeKey: 'held-on-error', kind: 'mailbox' }).id
+    let sent = 0
+    const kernel = initProjectKernel({
+      db: s.db,
+      service: s.svc,
+      kernelRepo: s.kernel,
+      sendMailbox() { sent++ },
+      notifyOwner() {},
+    })
+    s.db.exec('ALTER TABLE tasks RENAME TO tasks_unavailable')
+    assert.equal(s.svc.isProjectTaskRunnable(s.p.id, 'missing'), false)
+    const tick = await kernel.tick()
+    assert.ok(tick.errors.some(e => e.projectId === s.p.id))
+    assert.equal(sent, 0)
+    assert.equal(s.kernel.effects.findById(id)?.status, 'pending')
+    assert.equal(s.kernel.effects.findById(id)?.attempts, 0)
+  }
+  finally { s.db.close() }
 })
 
 test('内核读面：ledgerTail/kernelStatus 权限与聚合', async () => {

@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS messages (
   parts_json    TEXT NOT NULL,
   metadata_json TEXT NOT NULL DEFAULT '{}',   -- x-aw-target-agent / x-aw-task-kind
   client_message_id TEXT,                      -- session client idempotency key; NULL for legacy/non-session sends
-  state         TEXT NOT NULL DEFAULT 'pending',  -- pending|consuming|consumed
+  state         TEXT NOT NULL DEFAULT 'pending',  -- pending|consuming|consumed|dead
+  attempts      INTEGER NOT NULL DEFAULT 0,
+  claim_token   TEXT,
   created_at    TEXT NOT NULL,
   consumed_at   TEXT
 );

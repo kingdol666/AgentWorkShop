@@ -1269,6 +1269,8 @@ export default {
     k1k79ec9057: 'Setpoint',
     k1dexou6058: 'Process Range',
     k1b1nnaa059: 'Hold Interval',
+    holdBlocked: 'Automatic hold paused',
+    holdBlockedTip: 'Device state requires investigation. Automatic hold resumes only after a write with verified device readback.',
     k1i8rtqt060: 'Bound Device',
     k40aa6061: 'Actions',
     k3n93ed062: 'Paused',

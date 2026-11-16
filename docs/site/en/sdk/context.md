@@ -243,7 +243,10 @@ ctx.omp.registerTool({
 
 Registry changes hot-inject into every running omp agent session immediately (re-sending
 `set_host_tools`, no respawn); a tool sharing a name with a built-in host tool is ignored
-(built-ins win).
+(built-ins win). In unreleased, unmerged source under review, the agent-token MCP bridge lists and permits plugin tools only when they
+explicitly declare `riskClass: 'read'`; omitted, `write` and `admin` are denied because the
+token does not establish trusted turn provenance. Use `read` only for genuinely read-only
+tools; role, channel and other governance checks still apply.
 
 ## Common event-subscription mistakes
 

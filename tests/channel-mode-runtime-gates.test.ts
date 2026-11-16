@@ -14,6 +14,7 @@ const { hostToolsForAgent } = await import('../server/services/workshop/agents/h
 const { dispatchHostTool } = await import('../server/services/workshop/agents/host-tool-bridge/dispatch')
 const { registerPluginTool, unregisterPluginTools } = await import('../server/services/workshop/agents/plugin-tools')
 const { ManagerHostTools } = await import('../server/services/workshop/runtime/manager/host-tools')
+const { OBSERVE_BLOCKED_TOOL_NAMES } = await import('../server/services/workshop/agents/tool-classes')
 
 const g = globalThis as typeof globalThis & { __workshopManager?: unknown }
 const oldManager = g.__workshopManager
@@ -63,6 +64,7 @@ test('ManagerHostTools plugin shortcut applies the same generic-mode gate as nat
   registerPluginTool('serial-bridge', {
     name: 'serial_ports',
     description: 'enumerate serial ports',
+    riskClass: 'read',
     handler: async () => {
       serialCalled = true
       return { text: 'ports' }
@@ -71,6 +73,7 @@ test('ManagerHostTools plugin shortcut applies the same generic-mode gate as nat
   registerPluginTool('generic-test', {
     name: 'rsi_manager_generic_test',
     description: 'generic plugin tool',
+    riskClass: 'read',
     handler: async () => {
       genericCalled = true
       return { text: 'generic-ok' }
@@ -113,6 +116,114 @@ test('ManagerHostTools plugin shortcut applies the same generic-mode gate as nat
   finally {
     unregisterPluginTools('serial-bridge')
     unregisterPluginTools('generic-test')
+    g.__workshopManager = oldManager
+  }
+})
+
+test('external agent tokens cannot dispatch hazardous tools without turn provenance', async () => {
+  const manager = Object.create(ManagerHostTools.prototype) as Record<string, unknown>
+  const row = { id: 'provenance-lead', enabled: 1, channelId: 'provenance-channel', role: 'lead', name: 'lead' }
+  let validToken = true
+  let runtimeCalls = 0
+  let dispatchCalls = 0
+  let fallbackCalls = 0
+  manager.lastToolInvokeAt = new Map()
+  manager.deps = { repos: { channelAgents: { findById: () => row, isTokenValid: () => validToken } } }
+  manager.activeScopeOf = () => null
+  manager.ensureAgentRuntime = () => {
+    runtimeCalls++
+    return { dispatchHostTool: async () => {
+      dispatchCalls++
+      return { text: 'native-ok' }
+    } }
+  }
+  manager.invokeAgentWorkspaceTool = async () => {
+    fallbackCalls++
+    return { text: 'fallback-ok' }
+  }
+  manager.auditCollabInvocation = () => {}
+  const invoke = ManagerHostTools.prototype.invokeHostTool as (input: { agentId: string, token?: string, tool: string, args?: Record<string, unknown> }) => Promise<{ text: string, isError?: boolean }>
+  const authorizationTools = ['team_grant_nodes', 'team_revoke_nodes', 'dispatch_task', 'create_team_agent', 'update_team_agent', 'remove_team_agent']
+
+  registerPluginTool('collision-test', { name: 'line_start', description: 'shadow', parameters: {}, riskClass: 'read', handler: async () => {
+    throw new Error('shadow handler called')
+  } })
+  registerPluginTool('collision-test', { name: 'search_memory', description: 'shadow', parameters: {}, riskClass: 'write', handler: async () => {
+    throw new Error('shadow handler called')
+  } })
+  try {
+    for (const tool of [...OBSERVE_BLOCKED_TOOL_NAMES, ...authorizationTools]) {
+      const result = await invoke.call(manager, { agentId: row.id, token: 'token', tool })
+      assert.equal(result.isError, true, tool)
+      assert.match(result.text, /turn provenance/, tool)
+    }
+    for (const args of [
+      { grant_node_ids: ['dcw-1'], grant_mode: 'auto', grant_confirm: true },
+      { grantNodeIds: ['dcw-1'], grant_mode: 'auto', grant_confirm: true },
+      { grant_node_ids: null, grantNodeIds: ['dcw-1'] },
+    ]) {
+      const result = await invoke.call(manager, { agentId: row.id, token: 'token', tool: 'dispatch_task', args })
+      assert.equal(result.isError, true)
+      assert.match(result.text, /turn provenance/)
+    }
+    assert.equal(runtimeCalls, 0)
+    assert.equal(dispatchCalls, 0)
+    assert.equal(fallbackCalls, 0)
+    assert.equal((manager.lastToolInvokeAt as Map<string, number>).size, 0)
+
+    validToken = false
+    await assert.rejects(invoke.call(manager, { agentId: row.id, token: 'invalid', tool: 'line_start' }), /agent token/)
+    validToken = true
+    assert.equal((await invoke.call(manager, { agentId: row.id, token: 'token', tool: 'search_memory' })).text, 'native-ok')
+    for (const tool of [...OBSERVE_BLOCKED_TOOL_NAMES, ...authorizationTools]) {
+      assert.equal((await invoke.call(manager, { agentId: row.id, tool })).text, 'native-ok', tool)
+    }
+    assert.equal((await invoke.call(manager, { agentId: row.id, tool: 'dispatch_task', args: { grant_node_ids: ['dcw-1'], grant_mode: 'auto', grant_confirm: true } })).text, 'native-ok')
+  }
+  finally {
+    unregisterPluginTools('collision-test')
+  }
+})
+
+test('external agent token plugin calls require an explicit read risk class', async () => {
+  const manager = Object.create(ManagerHostTools.prototype) as Record<string, unknown>
+  const row = { id: 'risk-worker', enabled: 1, channelId: 'risk-channel', role: 'worker', name: 'worker' }
+  const called: string[] = []
+  for (const risk of ['read', 'write', 'admin', 'undeclared', 'invalid'] as const) {
+    registerPluginTool('risk-test', {
+      name: `risk_test_${risk}`,
+      description: 'risk test',
+      parameters: {},
+      ...(risk === 'undeclared' ? {} : { riskClass: risk as 'read' | 'write' | 'admin' }),
+      handler: async () => {
+        called.push(risk)
+        return { text: `${risk}-ok` }
+      },
+    })
+  }
+  manager.lastToolInvokeAt = new Map()
+  manager.deps = { repos: { channelAgents: { findById: () => row, isTokenValid: () => true } } }
+  manager.activeScopeOf = () => null
+  manager.ensureAgentRuntime = () => ({ workspace: {}, dispatchHostTool: async () => null })
+  manager.channelSessionScopeOfAgent = () => null
+  manager.auditCollabInvocation = () => {}
+  g.__workshopManager = { channelModeOf: () => 'generic', channelModeForAgent: () => 'generic', invocationScopeOf: () => null }
+  const invoke = ManagerHostTools.prototype.invokeHostTool as (input: { agentId: string, token?: string, tool: string }) => Promise<{ text: string, isError?: boolean }>
+  try {
+    for (const risk of ['write', 'admin', 'undeclared', 'invalid']) {
+      const result = await invoke.call(manager, { agentId: row.id, token: 'token', tool: `risk_test_${risk}` })
+      assert.equal(result.isError, true, risk)
+      assert.match(result.text, /turn provenance/, risk)
+    }
+    assert.deepEqual(called, [])
+    assert.equal((await invoke.call(manager, { agentId: row.id, token: 'token', tool: 'risk_test_read' })).text, 'read-ok')
+    for (const risk of ['write', 'admin', 'undeclared', 'invalid']) {
+      assert.equal((await invoke.call(manager, { agentId: row.id, tool: `risk_test_${risk}` })).text, `${risk}-ok`)
+    }
+    assert.deepEqual(called, ['read', 'write', 'admin', 'undeclared', 'invalid'])
+  }
+  finally {
+    unregisterPluginTools('risk-test')
     g.__workshopManager = oldManager
   }
 })

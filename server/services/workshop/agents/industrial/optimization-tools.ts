@@ -23,6 +23,7 @@ import { resolveRefFaces } from './tool-verify'
 import { assessIdentifiability } from '../../aml/identifiability'
 import { attachExplorationVerdict, explorationIdentifiabilityPreflight, identGateEnabled, identifiabilityLearningText, periodHintFromSeries, readTargetWindow } from './identifiability-tools'
 import { preDispatchCrossCheck } from '../../aml/twin/cross-check-service'
+import { currentExecutionScope } from '../execution-scope'
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
@@ -133,13 +134,23 @@ export async function toolOptimizationExplore(agentId: string, args: {
       hypothesis: args.hypothesis ?? `探索激励(${direction > 0 ? 'up' : 'down'} ${Number(step).toFixed(3)};goal=${goalText.slice(0, 120)})`,
     }, channelId)
     const writeOk = !write.isError
+    if (writeOk) {
+      try {
+        currentExecutionScope()?.assertActive()
+      }
+      catch {
+        return { text: `探索写入已进入驱动,任务租约失效,设备状态须核实;未继续采样或判读。\n${write.text}`, isError: true }
+      }
+    }
 
     let targetAfter: number | null = null
     let verdictText = ''
     if (writeOk) {
       await sleep(settleSec * 1000)
+      currentExecutionScope()?.assertActive()
       // 写后窗(=settle 窗):一次取数同时取均值与序列(与写前窗对称)
       const postWindow = await readTargetWindow(targetNodeId, writeAtMs, Date.now())
+      currentExecutionScope()?.assertActive()
       targetAfter = postWindow.mean
       // P1 判读:前后窗完整序列交给可辨识性引擎(不再以单点差分作因果依据),
       // 判定回填干预台账(intervention_events);序列不足时 verdictText 空 → 中性文案,不外推。
@@ -165,7 +176,7 @@ export async function toolOptimizationExplore(agentId: string, args: {
       targetAfter,
       direction: direction > 0 ? 'up' : 'down',
       hypothesis: String(args.hypothesis ?? ''),
-      writeStatus: writeOk ? 'ok' : 'rejected',
+      writeStatus: writeOk ? 'ok' : write.dispatch === 'not_dispatched' ? 'rejected' : 'failed',
       writeMessage: write.text.slice(0, 400),
     }
     try {
@@ -174,11 +185,13 @@ export async function toolOptimizationExplore(agentId: string, args: {
         .run(record.id, record.channelId, record.agentId, record.goalJson, record.controlNodeId, record.controlBefore, record.controlAfter, record.controlStep, record.targetNodeId, record.targetBefore, record.targetAfter, record.direction, record.hypothesis, record.writeStatus, record.writeMessage, new Date().toISOString())
     }
     catch (err) {
-      return { text: `探索步已执行但记录落库失败:${err instanceof Error ? err.message : String(err)}\n\n${write.text}`, isError: writeOk ? undefined : true }
+      return { text: `探索记录落库失败:${err instanceof Error ? err.message : String(err)}\n\n${write.text}`, isError: true }
     }
 
     if (!writeOk) {
-      return { text: `探索步被拒绝(未写入产线,已记录 rejected):\n${write.text}`, isError: true }
+      return write.dispatch === 'not_dispatched'
+        ? { text: `探索步被拒绝(未下发,已记录 rejected):\n${write.text}`, isError: true }
+        : { text: `探索步未获确认(已记录 failed,可能已下发;请核实设备状态):\n${write.text}`, isError: true }
     }
     const deltaTarget = targetAfter != null && targetBefore != null ? targetAfter - targetBefore : null
     const lines = [

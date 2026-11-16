@@ -12,31 +12,67 @@ import { classifyHarnessFailure, harnessBreakerActive, recordHarnessFailure, HAR
 import { fenceFromMetadata } from '../task-engine/lease'
 import type { ExecutionFence } from '../task-engine/lease'
 import { randomUUID } from 'node:crypto'
+import type { ExecutionScope } from '../../agents/execution-scope'
+
+function interruptedWithoutSettlement(signal: AbortSignal | null): boolean {
+  if (!signal?.aborted) return false
+  const reason = signal.reason
+  const text = reason instanceof Error ? reason.message : String(reason ?? '')
+  return /message watchdog|runtime stop|task abort/i.test(text)
+}
 
 export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
-  protected async processMessage(msg: A2AMessage): Promise<void> {
+  protected async processMessage(msg: A2AMessage, claimToken: string): Promise<void> {
     const taskId = this.taskIdOf(msg)
     const taskKind = msg.metadata?.['x-aw-task-kind']
+    if (this.deps.mailbox.deadLetterLegacyRecoveryClaim(msg.messageId, claimToken)) return
+    if (!this.deps.mailbox.ownsClaim(msg.messageId, claimToken)) return
+    if (this.deps.mailbox.isClaimBlocked?.(msg.messageId, claimToken)) {
+      this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
+      return
+    }
+    if (taskId && typeof taskKind === 'string' && taskKind !== 'cancel') {
+      try {
+        if (this.deps.taskEngine.isLegacyRecoveryBlocked?.(taskId)) {
+          this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
+          log.warn(`[AgentRuntime:${this.agentId}] 任务 ${taskId} 因历史恢复隔离暂不执行`)
+          return
+        }
+      }
+      catch (err) {
+        this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
+        log.error(`[AgentRuntime:${this.agentId}] 历史任务恢复检查失败,暂不执行:`, err)
+        return
+      }
+    }
     // §5.1 执行代次栅栏:任务消息携带 assignment generation + execution lease。
     // 运行中 reassign 之后,旧 worker 信箱里残留/被重投的 assign 与它会话中继续吐出的
     // 事件都带旧代次 —— 一律丢弃,绝不覆盖新执行结果。
     const fence = fenceFromMetadata(msg.metadata)
     // cancel 只是控制消息:它负责让已在运行的回合收口,本身不得再启动一次 worker turn。
     if (taskKind === 'cancel') {
-      this.deps.mailbox.markConsumed(msg.messageId)
+      this.deps.mailbox.markConsumed(msg.messageId, claimToken)
       return
     }
     // 过期任务投递检查:任务已终态(cancel/reassign 后残留的旧 assign/child-completed)→ 跳过执行,
     // 否则 worker/lead 会对着已终态任务的旧投递真的再跑一轮 harness。
-    if ((taskKind === 'assign' || taskKind === 'child-completed') && taskId) {
-      const task = this.deps.taskEngine.get(taskId)
-      if (!task || TERMINAL_TASK_STATES[task.state]) {
-        this.deps.mailbox.markConsumed(msg.messageId)
+    if (taskKind === 'assign') {
+      const task = taskId ? this.deps.taskEngine.get(taskId) : undefined
+      if (!taskId || msg.contextId !== this.channelId || !task || task.channelId !== this.channelId
+        || task.assigneeId !== this.agentId || TERMINAL_TASK_STATES[task.state]
+        || !Number.isSafeInteger(fence?.generation) || (fence?.generation ?? -1) < 0
+        || !fence?.leaseId || task.assignmentGeneration !== fence.generation
+        || task.executionLeaseId !== fence.leaseId || task.executionLeaseAgentId !== this.agentId
+        || task.executionLeaseRevokedAt) {
+        log.warn(`[AgentRuntime:${this.agentId}] 拒绝缺失或过期执行租约的任务投递:task=${taskId ?? '-'};请重新派发`)
+        this.deps.mailbox.markConsumed(msg.messageId, claimToken)
         return
       }
-      if (!this.assignmentFenceOk(taskId, fence)) {
-        log.warn(`[AgentRuntime:${this.agentId}] 丢弃过期任务投递(旧执行代次):task=${taskId.slice(0, 8)} kind=${taskKind}`)
-        this.deps.mailbox.markConsumed(msg.messageId)
+    }
+    else if (taskKind === 'child-completed' && taskId) {
+      const task = this.deps.taskEngine.get(taskId)
+      if (!task || TERMINAL_TASK_STATES[task.state] || !this.assignmentFenceOk(taskId, fence)) {
+        this.deps.mailbox.markConsumed(msg.messageId, claimToken)
         return
       }
     }
@@ -50,6 +86,9 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
     /** 失败原因(事件 error / 生成器抛错):写入任务 history,供事后诊断 */
     let runErrorMessage = ''
     let runErrorCode = ''
+    const controller = new AbortController()
+    this.abortController = controller
+    const runSignal = controller.signal
     try {
       // 任务消息联动:assign → WORKING(自动接取;状态事件由 TaskEngine transition hooks 广播)
       // 仅 SUBMITTED/ASSIGNED 自动接取:WAITING(已有子任务)的任务由 SchedulerLoop/子任务汇总推进,
@@ -75,8 +114,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
           }
         }
       }
-      // 每次 run 新建 AbortController;abort 后事件流终止
-      this.abortController = new AbortController()
+      if (interruptedWithoutSettlement(runSignal)) return
       // §2.4/§6.2:worker 回合与 Lead supervise 共用同一 harness 进程/会话 ——
       // 回合起点观测租约(复用计数 / 重建归因)。
       this.noteHarnessUse()
@@ -88,10 +126,25 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       // sessionId 透传:当前会话作用域记忆在 auto 档获得排序加分(session 行更相关)
       let memoryBlock: string | undefined
       try {
-        memoryBlock = (await this.deps.memory?.recall(partsToText(msg.parts), {
+        const recall = this.deps.memory?.recall(partsToText(msg.parts), {
           relatedTaskIds: this.relatedTaskIdsOf(taskId),
           sessionId,
-        })) ?? undefined
+          signal: runSignal,
+        })
+        if (recall) {
+          let onAbort!: () => void
+          const aborted = new Promise<undefined>((resolve) => {
+            onAbort = () => resolve(undefined)
+            if (runSignal.aborted) onAbort()
+            else runSignal.addEventListener('abort', onAbort, { once: true })
+          })
+          try {
+            memoryBlock = (await Promise.race([recall, aborted])) ?? undefined
+          }
+          finally {
+            runSignal.removeEventListener('abort', onAbort)
+          }
+        }
       }
       catch (err) {
         log.error(`[AgentRuntime:${this.agentId}] 记忆召回失败:`, err)
@@ -102,13 +155,52 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
         memoryBlock,
         runtimeSession ? { id: runtimeSession.id, block: runtimeSession.block } : undefined,
       )
+      if (interruptedWithoutSettlement(runSignal)) return
+      const activeRunSignal = runSignal
+      const generation = fence?.generation
+      const leaseId = fence?.leaseId
+      const executionScope: ExecutionScope | undefined = taskKind === 'assign' && taskId && generation != null && leaseId
+        ? {
+            taskId,
+            agentId: this.agentId,
+            channelId: msg.contextId,
+            assignmentGeneration: generation,
+            executionLeaseId: leaseId,
+            signal: activeRunSignal,
+            assertActive: () => {
+              if (activeRunSignal.aborted) throw new Error('task execution aborted')
+              if (this.deps.taskEngine.isLegacyRecoveryBlocked?.(taskId)) throw new Error('task blocked by legacy recovery hold')
+              const current = this.deps.taskEngine.get(taskId)
+              if (!current || current.channelId !== this.channelId || TERMINAL_TASK_STATES[current.state]
+                || current.assigneeId !== this.agentId
+                || current.assignmentGeneration !== generation
+                || current.executionLeaseId !== leaseId
+                || current.executionLeaseAgentId !== this.agentId
+                || current.executionLeaseRevokedAt) {
+                throw new Error('stale task execution lease')
+              }
+            },
+          }
+        : undefined
       const ctx: AgentRunContext = {
         agentId: this.agentId,
         channelId: msg.contextId,
         role: this.role,
         workspace: this.deps.workspace,
-        signal: this.abortController.signal,
+        signal: runSignal,
+        ...(executionScope ? { executionScope } : {}),
         ...(runtimeSession ? { session: { id: runtimeSession.id, block: runtimeSession.block } } : {}),
+      }
+      if (interruptedWithoutSettlement(runSignal)) return
+      if (this.deps.mailbox.isClaimBlocked?.(msg.messageId, claimToken)) return
+      if (executionScope) {
+        try {
+          executionScope.assertActive()
+        }
+        catch (err) {
+          log.warn(`[AgentRuntime:${this.agentId}] 回合启动前执行租约失效:`, err)
+          return
+        }
       }
       // 补入产出者 agentId(monitor 据此归属事件;不改原 msg,用浅拷贝)
       const enrichedSource = { ...msg, metadata: { ...msg.metadata, 'x-aw-producing-agent': this.agentId } }
@@ -123,6 +215,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       }
       try {
         for await (const event of this.impl.run(request, ctx)) {
+          if (interruptedWithoutSettlement(runSignal) || this.deps.mailbox.isClaimBlocked?.(msg.messageId, claimToken)) break
           // 消息看门狗的活动上报:任何 harness 事件(delta/工具/状态)都证明回合活着,
           // 重置无活动窗口 —— 长治理回合(慢模型逐回合 40s-4min)不应被固定死线误杀。
           this.bumpMessageActivity()
@@ -170,6 +263,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
         this.pendingHarnessFailure = 'RPC_BROKEN'
         log.error(`[AgentRuntime:${this.agentId}] 回合异常:`, err)
       }
+      if (this.deps.mailbox.isClaimBlocked?.(msg.messageId, claimToken)) return
       // 人类 requireReply 的平台兜底回执:实测部分引擎/模型不遵从 send_message_to_agent
       // (回合只产 artifact 文本),请求方将收不到任何应答。平台把回合聚合文本代投回
       // 时间线(in_reply_to 关联 + x-aw-relayed 标记),保证"要求回复"必有确定应答;
@@ -195,7 +289,8 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
         if (remainder) relayText = remainder
       }
       relayText = relayText.trim().slice(0, 4000)
-      if (msg.metadata?.['x-aw-require-reply'] === 'true'
+      if (!interruptedWithoutSettlement(runSignal)
+        && msg.metadata?.['x-aw-require-reply'] === 'true'
         && typeof msg.metadata?.['x-aw-from-label'] === 'string'
         && relayText) {
         const relayMeta = {
@@ -243,7 +338,8 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       //    最终文本作为交付物;否则这类引擎的所有任务都会「工作做完了却停滞被回收」。
       //  - 两者皆无(LLM 空转)→ FAILED 交给调度器 retry/reassign。
       // 仅 worker 的 assign 执行消息生效:lead 由 supervise 协调;WAITING 父任务不属此列。
-      if (taskId && this.role === 'worker' && taskKind === 'assign'
+      if (!interruptedWithoutSettlement(runSignal)
+        && taskId && this.role === 'worker' && taskKind === 'assign'
         && this.assignmentFenceOk(taskId, fence)) {
         const after = this.deps.taskEngine.get(taskId)
         if (after && after.assigneeId === this.agentId && after.state === 'WORKING') {
@@ -328,7 +424,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       }
 
       // 记忆沉淀:终态任务 harvest;无 taskId 的点对点消息记协作(异常不阻塞)
-      if (this.deps.memory) {
+      if (!interruptedWithoutSettlement(runSignal) && this.deps.memory) {
         try {
           const task = taskId ? this.deps.taskEngine.get(taskId) : undefined
           if (task && TERMINAL_TASK_STATES[task.state]) {
@@ -345,6 +441,9 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       }
     }
     finally {
+      // Revoke any in-flight host tool continuation before releasing its claim.
+      const interrupted = interruptedWithoutSettlement(runSignal)
+      if (!runSignal.aborted) controller.abort(new Error('turn settled'))
       this.abortController = null
       this.currentTaskId = null
       // C-P1-2:回合落定即通知 manager。回执成功时 manager 已在 platformReply 里按
@@ -369,6 +468,17 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       // 内容不丢,重试回合(通常已是全新子进程)再处理;每消息最多重投 2 次防毒消息死循环。
       // 任务已终态(取消/收口后 abort 让回合报错)则不再重投 —— 消息依任务终态
       // 由调度器 reassign/新 assign 驱动,重投只会空转(启动即被终态检查消费)。
+      if (interrupted && taskId && fence?.generation != null && fence.leaseId) {
+        try {
+          const { getToolApprovals } = await import('../../agents/tool-approvals')
+          getToolApprovals().cancelPendingForTask(taskId, '任务执行已中止,审批失效,指令未执行', {
+            agentId: this.agentId,
+            assignmentGeneration: fence.generation,
+            executionLeaseId: fence.leaseId,
+          })
+        }
+        catch { /* 审批面未装配时仍保留中止语义 */ }
+      }
       const taskNow = taskId ? this.deps.taskEngine.get(taskId) : undefined
       const taskDone = !!taskNow && TERMINAL_TASK_STATES[taskNow.state]
       // ── 缺陷2修复:harness 回合失败分类熔断(2026-10-30)──
@@ -377,7 +487,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       // 防"任务假活 + 无意义重试打供应商"。冷却窗(5min)后半开:放行探测回合,
       // 成功整串复位;再失败立即重新熔断。network 等可重试类别不参与熔断。
       let stopRetry = false
-      if (sawRunError) {
+      if (sawRunError && !interrupted) {
         const cls = classifyHarnessFailure(runErrorCode, runErrorMessage)
         const streak = recordHarnessFailure(this.harnessFailStreak, cls)
         this.harnessFailStreak = streak
@@ -400,8 +510,25 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       else {
         this.harnessFailStreak = null
       }
-      if (sawRunError && !taskDone && !stopRetry && (this.runErrorRetries.get(msg.messageId) ?? 0) < 2
-        && this.deps.mailbox.requeue(msg.messageId)) {
+      // A hold introduced during recall or execution must retain the exact claim without retry loss.
+      const recoveryBlocked = this.deps.mailbox.isClaimBlocked?.(msg.messageId, claimToken) ?? false
+      if (recoveryBlocked) {
+        this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
+      }
+      else if (interrupted) {
+        const reason = runSignal.reason instanceof Error ? runSignal.reason.message : String(runSignal.reason ?? '')
+        if (reason === 'message watchdog') {
+          if (this.deps.mailbox.requeue(msg.messageId, claimToken)) this.deps.mailbox.wake()
+        }
+        else if (reason === 'runtime stop' && !taskDone) {
+          this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
+        }
+        else {
+          this.deps.mailbox.markConsumed(msg.messageId, claimToken)
+        }
+      }
+      else if (sawRunError && !taskDone && !stopRetry && (this.runErrorRetries.get(msg.messageId) ?? 0) < 2
+        && this.deps.mailbox.requeue(msg.messageId, claimToken)) {
         const attempt = (this.runErrorRetries.get(msg.messageId) ?? 0) + 1
         this.runErrorRetries.set(msg.messageId, attempt)
         this.emitExternal({
@@ -420,7 +547,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       }
       else {
         this.runErrorRetries.delete(msg.messageId)
-        this.deps.mailbox.markConsumed(msg.messageId)
+        this.deps.mailbox.markConsumed(msg.messageId, claimToken)
       }
       // 回合落定:信箱空 → 后台压缩检查(post-settle 路径;impl 自守卫不阻塞)
       this.maybePostSettle()

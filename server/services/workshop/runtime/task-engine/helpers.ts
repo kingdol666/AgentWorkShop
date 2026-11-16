@@ -94,6 +94,11 @@ export function rowToTaskLite(row: TaskMetaRow): WorkspaceTask {
     sessionId: row.sessionId ?? undefined,
     traceId: row.traceId || undefined,
     supersededByTaskId: row.supersededByTaskId || undefined,
+    assignmentGeneration: row.assignmentGeneration ?? 0,
+    executionLeaseId: row.executionLeaseId || undefined,
+    executionLeaseAgentId: row.executionLeaseAgentId || undefined,
+    executionLeaseStartedAt: row.executionLeaseStartedAt || undefined,
+    executionLeaseRevokedAt: row.executionLeaseRevokedAt || undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }

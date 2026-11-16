@@ -44,6 +44,22 @@ export const OBSERVE_BLOCKED_TOOL_NAMES: ReadonlySet<string> = new Set([
   'line_stop',
 ])
 
+// These tools can change node grants or the channel's authorized membership.
+const TOKEN_PROVENANCE_AUTHORIZATION_TOOLS: ReadonlySet<string> = new Set([
+  'team_grant_nodes',
+  'team_revoke_nodes',
+  'dispatch_task',
+  'create_team_agent',
+  'update_team_agent',
+  'remove_team_agent',
+])
+
+/** Agent tokens identify an agent, not an authorized turn; built-ins take precedence over plugins. */
+export function allowedWithoutTurnProvenance(name: string, isBuiltin: boolean, plugin?: { riskClass?: unknown }): boolean {
+  if (OBSERVE_BLOCKED_TOOL_NAMES.has(name) || TOKEN_PROVENANCE_AUTHORIZATION_TOOLS.has(name)) return false
+  return isBuiltin || !plugin || plugin.riskClass === 'read'
+}
+
 /** MES 数据集工具(只读面:点位目录/历史取数/数据集读取与清单)。
  *  不落 HIGH_RISK、不写 PLC —— fetch 只写 CSV 数据集文件(护栏在 mes-controller 代码级:
  *  绑线授权/窗口≤7天/行数≤5000/频次限流);权限面与目录注入面可同源引用本集合。 */

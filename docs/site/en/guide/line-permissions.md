@@ -46,12 +46,17 @@ admin-only):
   recipe management** — view/create/update/rollback every recipe on that line, including
   ones created later (nodeId holds the line id; granting requires operate; first bind is
   manual). Direct-write tools stay rejected;
-- **Changing the control mode removes a gate — explicit confirmation required**: a
-  binding's `mode` decides whether every write needs human approval. `manual→auto` and
-  "delegate with auto" (`team_grant_nodes` / `dispatch_task.grant_node_ids`) must carry
-  `confirm: true`, otherwise the request is rejected with 400 and nothing changes; the
-  default is always `manual` (a lead's own auto is never inherited). Every switch/grant
-  writes a `binding.mode` audit entry;
+- **Changing the control mode requires explicit confirmation**: a binding's `mode` decides
+  whether each write needs human approval. `manual→auto` and an `auto` grant through
+  `team_grant_nodes` require `confirm: true` or are rejected without changes. Delegation
+  defaults to `manual`, never inheriting the lead's `auto`; each switch/grant is audited as
+  `binding.mode`;
+- **Grant and dispatch are separate (unreleased, unmerged source under review)**: when needed, the lead first explicitly grants nodes
+  already bound to them with `team_grant_nodes`, then calls `dispatch_task` without
+  `grant_node_ids`. A non-null `grant_node_ids` or `grantNodeIds` is rejected without
+  creating a task. The operations are not atomic: dispatch failure does not undo a prior
+  grant, so inspect and revoke it when appropriate. The agent-token bridge cannot invoke
+  either tool because it lacks trusted turn provenance;
 - The digital twin's entity baseline comes from the same REST endpoints, so unauthorized
   lines are equally invisible in the twin view.
 

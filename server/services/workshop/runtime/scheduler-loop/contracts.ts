@@ -20,7 +20,7 @@ import type { SupervisionSnapshot } from '../../agents/agent-interface'
 export abstract class SchedulerLoopContracts {
   protected abstract checkLoopCompletion(snapshot: SupervisionSnapshot): void
   protected abstract collectSnapshot(): SupervisionSnapshot
-  protected abstract decide(snapshot: SupervisionSnapshot): Promise<SchedulerDecision[]>
+  protected abstract decide(snapshot: SupervisionSnapshot, stillCurrent: () => boolean): Promise<SchedulerDecision[]>
   protected abstract execute(decision: SchedulerDecision): void
   protected abstract pickWorker(pool: SupervisionSnapshot['members'], now: number, exclude?: string): SupervisionSnapshot['members'][number] | undefined
   protected abstract refreshIdle(members: SupervisionSnapshot['members'], now: number): void

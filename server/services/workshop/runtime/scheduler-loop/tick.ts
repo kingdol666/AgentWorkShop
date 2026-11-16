@@ -5,6 +5,7 @@
 import { SchedulerLoopState } from './state'
 import type { SupervisionSnapshot } from '../../agents/agent-interface'
 import { IDLE_TICK_CAP_MS, LEAD_DECISION_RETRY_MS, log } from './helpers'
+import { isLegacyRecoveryHeld } from '../task-engine/legacy-recovery'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { findModeTask } from '../execution-mode'
 import { isOrdinaryRoot } from '../task-engine/policy'
@@ -16,6 +17,7 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
   /** 每个根被 HITL 顺延的次数(上限后恢复 ROOT_TIMEOUT,避免 hold 模式永久挂起) */
   protected hitlDeferrals = new Map<string, number>()
   protected async runRound(): Promise<void> {
+    const generation = this.lifecycleGeneration
     this.running = true
     try {
       // P1(2026-11-10 实测复现):过期收口此前在 tickRound 内(持 lead execLock)——
@@ -25,7 +27,8 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
       // 本轮有收口动作则跳过监督回合(收口本身会触发任务事件唤醒下一轮)。
       const snapshot = this.collectSnapshot()
       if (await this.enforceRootDeadlines(snapshot)) return
-      await this.lead.withExecLock(() => this.tickRound())
+      if (generation !== this.lifecycleGeneration) return
+      await this.lead.withExecLock(() => generation === this.lifecycleGeneration ? this.tickRound() : Promise.resolve())
     }
     catch (err) {
       log.error(`[SchedulerLoop:${this.lead.agentId}] 一轮调度失败:`, err)
@@ -60,8 +63,10 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
    * 返回 true = 本轮有收口/顺延动作(调用方据此跳过监督回合)。
    */
   protected async enforceRootDeadlines(snapshot: SupervisionSnapshot): Promise<boolean> {
-    const expiredRoots = snapshot.tasks.filter(task =>
-      isOrdinaryRoot(task)
+    const generation = this.lifecycleGeneration
+    let expiredRoots = snapshot.tasks.filter(task =>
+      !isLegacyRecoveryHeld(task) && !this.legacyBlocked(task.id)
+      && isOrdinaryRoot(task)
       && !TERMINAL_TASK_STATES[task.state]
       && task.deadlineAt
       && Date.parse(task.deadlineAt) <= Date.now()
@@ -88,6 +93,19 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
       }
       catch { return false }
     })()
+    if (generation !== this.lifecycleGeneration) return false
+    const engine = this.lead.taskEngine
+    if (typeof engine.listLite === 'function') {
+      const latest = engine.listLite(this.channelRuntime.channelId)
+      const byId = new Map(latest.map(task => [task.id, task]))
+      expiredRoots = expiredRoots.filter((root) => {
+        const current = byId.get(root.id)
+        return current && !this.legacyBlocked(root.id) && !isLegacyRecoveryHeld(current)
+          && current.state === root.state && current.deadlineAt === root.deadlineAt
+          && current.assignmentGeneration === root.assignmentGeneration && current.executionLeaseId === root.executionLeaseId
+      })
+    }
+    if (expiredRoots.length === 0) return false
     const MAX_HITL_DEFERRALS = 3
     const deferrable = hitlPending
       ? expiredRoots.filter(r => (this.hitlDeferrals.get(r.id) ?? 0) < MAX_HITL_DEFERRALS)
@@ -138,9 +156,39 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
     return true
   }
 
+  /** Capture the root lease once so in-place snapshot changes cannot authorize an old turn. */
+  protected roundIsCurrent(snapshot: SupervisionSnapshot): () => boolean {
+    const generation = this.lifecycleGeneration
+    const rootId = snapshot.activeRootId
+    const root = rootId ? snapshot.tasks.find(task => task.id === rootId) : undefined
+    const rootChannelId = root?.channelId
+    const rootAssigneeId = root?.assigneeId
+    const leaseAgentId = root?.executionLeaseAgentId
+    const assignmentGeneration = root?.assignmentGeneration
+    const executionLeaseId = root?.executionLeaseId
+    const validSnapshot = !rootId || Boolean(root && !isLegacyRecoveryHeld(root) && rootChannelId === this.channelRuntime.channelId
+      && rootAssigneeId === this.lead.agentId && !TERMINAL_TASK_STATES[root.state]
+      && leaseAgentId === this.lead.agentId && !root.executionLeaseRevokedAt
+      && Number.isSafeInteger(assignmentGeneration) && (assignmentGeneration ?? -1) >= 0 && executionLeaseId)
+    return () => {
+      if (generation !== this.lifecycleGeneration || this.lead.getState?.() === 'stopped' || !validSnapshot) return false
+      if (!rootId) return !this.lead.taskEngine.hasLegacyRecoveryHold?.(this.channelRuntime.channelId)
+      const engine = this.lead.taskEngine
+      if (this.legacyBlocked(rootId)) return false
+      const current = engine.get(rootId)
+      return Boolean(current && !isLegacyRecoveryHeld(current) && current.channelId === rootChannelId && current.assigneeId === rootAssigneeId
+        && !TERMINAL_TASK_STATES[current.state] && !current.executionLeaseRevokedAt
+        && current.executionLeaseAgentId === leaseAgentId
+        && current.assignmentGeneration === assignmentGeneration && current.executionLeaseId === executionLeaseId)
+    }
+  }
+
   protected async tickRound(): Promise<void> {
     this.tick += 1
     const snapshot = this.collectSnapshot()
+    if (snapshot.activeRootId && this.legacyBlocked(snapshot.activeRootId)) return
+    const stillCurrent = this.roundIsCurrent(snapshot)
+    if (!stillCurrent()) return
     // 状态 Map 生命周期修剪:终态/已删任务的条目随轮清理(长会话内存有界)。
     // progressSeen 全程只增不减;notified/lastProgress/loopCompletedTaskIds 统一按任务集收敛。
     const liveIds = new Set(snapshot.tasks.map(t => t.id))
@@ -173,8 +221,9 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
     // loop 模式:检测主任务完成 → 触发循环控制器
     this.checkLoopCompletion(snapshot)
 
-    const decisions = await this.decide(snapshot)
+    const decisions = await this.decide(snapshot, stillCurrent)
     for (const decision of decisions) {
+      if (!stillCurrent()) break
       try {
         this.execute(decision)
       }
@@ -190,7 +239,7 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
    */
   protected superviseFingerprint(snapshot: SupervisionSnapshot): string {
     const tasks = snapshot.tasks
-      .map(t => `${t.id}:${t.state}`)
+      .map(t => `${t.id}:${t.state}:${t.assigneeId}:${t.assignmentGeneration ?? ''}:${t.executionLeaseId ?? ''}:${t.executionLeaseAgentId ?? ''}:${t.executionLeaseRevokedAt ?? ''}:${isLegacyRecoveryHeld(t)}`)
       .sort()
       .join('|')
     const members = snapshot.members

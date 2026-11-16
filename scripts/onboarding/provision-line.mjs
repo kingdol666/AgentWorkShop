@@ -19,9 +19,10 @@
  * 结束时向 stdout 打印一行 JSON 摘要({lineId,dcw,daq,recipeId,reused})供后续脚本管道使用。
  * 用法:node scripts/onboarding/provision-line.mjs <config.json|->
  */
-import { api, login, ok, summary, readConfig, fingerprint, findByTag, assertNotProtected } from './lib.mjs'
+import { api, login, ok, summary, readConfig, fingerprint, findByTag, assertNotProtected, assertOnboardingOwnership } from './lib.mjs'
 
 const cfg = await readConfig()
+await assertOnboardingOwnership(cfg)
 const tok = await login()
 const tag = fingerprint('LINE', cfg.line.name)
 
@@ -33,11 +34,19 @@ if (!line) {
   const j = await api('POST', '/api/workshop/dcw/lines', {
     name: cfg.line.name,
     description: `${tag}${cfg.line.description ? ' ' + cfg.line.description : ''}`,
+    // 模拟产线标记(C9):接入配置显式声明时生效;V2/V3 写验收要求目标线 simulated=true
+    simulated: cfg.line.simulated === true,
   }, tok)
   ok('建产线', j.code === 0 && !!j.data?.line?.id, j.message ?? '')
   line = j.data?.line
 }
-else ok('产线已存在(指纹复用)', true, `${line.id} ${line.name}`)
+else {
+  ok('产线已存在(指纹复用)', true, `${line.id} ${line.name}`)
+  if (cfg.line.simulated === true && line.simulated !== true) {
+    const p = await api('PATCH', `/api/workshop/dcw/lines/${line.id}`, { simulated: true }, tok)
+    ok('产线 simulated 标记对齐', p.code === 0 && p.data?.line?.simulated === true, p.message ?? '')
+  }
+}
 assertNotProtected(line.id, '产线')
 const lineId = line.id
 
@@ -143,6 +152,7 @@ for (const n of cfg.nodes ?? []) {
         name: n.name, lineId, driver: n.driver, driverConfig,
         unit: n.unit ?? '', decimals: n.decimals ?? 1, min: n.min, max: n.max,
         stepLimit: n.stepLimit, holdIntervalMs: n.holdIntervalMs ?? 120000,
+        holdObserve: n.holdObserve ?? null,
         templateRef: n.templateRef, transform: n.transform,
         semantics: n.semantics,
       }

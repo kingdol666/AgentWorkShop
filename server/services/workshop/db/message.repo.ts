@@ -5,6 +5,7 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import type { MessageRow } from './database'
+import { LEGACY_RECOVERY_MARKER } from '../runtime/task-engine/legacy-recovery'
 
 const COLS
   = 'id, channel_id AS channelId, task_id AS taskId, session_id AS sessionId, actor_user_id AS actorUserId, client_message_id AS clientMessageId, from_agent_id AS fromAgentId, to_agent_id AS toAgentId, role, parts_json AS partsJson, metadata_json AS metadataJson, state, attempts, created_at AS createdAt, consumed_at AS consumedAt'
@@ -27,6 +28,33 @@ export interface MessageCreateInput {
 }
 
 export type MessageRepo = ReturnType<typeof createMessageRepo>
+export type MessageBlocked = (row: MessageRow) => boolean
+
+/** Preserve ordinary object metadata; ambiguous linked rows are not safe to execute. */
+export function isRecoveryBlockedMessage(row: MessageRow, isLegacyRecoveryBlocked: (taskId: string) => boolean): boolean {
+  let metadata: unknown
+  try {
+    metadata = JSON.parse(row.metadataJson)
+  }
+  catch { metadata = null }
+  const isObject = metadata !== null && typeof metadata === 'object' && !Array.isArray(metadata)
+  const fields = isObject ? metadata as Record<string, unknown> : null
+  if (fields && !Object.hasOwn(fields, 'x-aw-task-kind')) return false
+  const ids = [row.taskId, fields?.['x-aw-task-id'], fields?.['x-aw-child-task-id']]
+  try {
+    return ids.some(id => typeof id === 'string' && id.length > 0 && isLegacyRecoveryBlocked(id))
+  }
+  catch {
+    return true
+  }
+}
+
+function blockedSafely(isBlocked: MessageBlocked, row: MessageRow): boolean {
+  try {
+    return isBlocked(row)
+  }
+  catch { return true }
+}
 
 export function createMessageRepo(db: DatabaseSync) {
   const insert = db.prepare(
@@ -41,34 +69,71 @@ export function createMessageRepo(db: DatabaseSync) {
   const firstPending = db.prepare(
     `SELECT ${COLS} FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state = 'pending' ORDER BY createdAt ASC, rowid ASC LIMIT 1`,
   )
+  const pendingById = db.prepare(`SELECT ${COLS} FROM messages WHERE id = ? AND state = 'pending'`)
+  const consumingByClaim = db.prepare(`SELECT ${COLS} FROM messages WHERE id = ? AND state = 'consuming' AND claim_token = ?`)
   /**
    * 是否有**未消费完**的消息(pending + consuming)。
    * 卸载/重装闸门必须覆盖 consuming:claim 成功后到回合真正开始之间,
    * 运行时状态仍可能是 idle,只看 pending 会在这个窗口把消息连同运行时一起拆掉。
+   *
+   * 「永久僵尸」行除外:带任务联动(task_id 或元数据 x-aw-task-kind,或元数据非
+   * 对象且带 task_id)且**所有**被引用任务都已不存在的行,claim 谓词会永久过滤
+   * (isLegacyRecoveryBlocked 对不存在任务 fail-closed),永远不可投递 —— 旧计数
+   * 把它们当活跃工作,idle 卸载被永久阻塞(内存/omp 进程泄漏)。原始行保留在库中
+   * 作为证据,不自动处置;引用任务仍存在的行(held 树)与无联动可投递行照常计数。
    */
   const hasUnconsumed = db.prepare(
-    `SELECT 1 FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state IN ('pending', 'consuming') LIMIT 1`,
+    `SELECT 1 FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state IN ('pending', 'consuming')
+     AND NOT (
+       CASE WHEN json_valid(metadata_json) AND json_type(metadata_json) = 'object'
+         THEN json_type(metadata_json, '$."x-aw-task-kind"') IS NOT NULL
+         ELSE task_id IS NOT NULL END
+       AND NOT EXISTS (
+         SELECT 1 FROM tasks t
+         WHERE t.id = messages.task_id
+           OR t.id = CASE WHEN json_valid(messages.metadata_json) AND json_type(messages.metadata_json) = 'object'
+             THEN json_extract(messages.metadata_json, '$."x-aw-task-id"') END
+           OR t.id = CASE WHEN json_valid(messages.metadata_json) AND json_type(messages.metadata_json) = 'object'
+             THEN json_extract(messages.metadata_json, '$."x-aw-child-task-id"') END
+       )
+     ) LIMIT 1`,
   )
   const markConsumingStmt = db.prepare(
-    `UPDATE messages SET state = 'consuming' WHERE id = ? AND state = 'pending'`,
+    `UPDATE messages SET state = 'consuming', claim_token = ? WHERE id = ? AND state = 'pending'`,
+  )
+  const hasClaimStmt = db.prepare(
+    `SELECT 1 FROM messages WHERE id = ? AND state = 'consuming' AND claim_token = ?`,
+  )
+  const releaseClaimStmt = db.prepare(
+    `UPDATE messages SET state = 'pending', claim_token = NULL WHERE id = ? AND state = 'consuming' AND claim_token = ?`,
   )
   const markConsumedStmt = db.prepare(
-    // 只允许消费仍由本回合持有的 consuming 行。看门狗会把超时消息 requeue 成
-    // pending/dead;原回合若迟到完成,无守卫的 UPDATE 会把重投后的消息再次标成
-    // consumed(消息丢失/毒消息复活)。WHERE state='consuming' 与 requeue 同一互斥口径。
-    `UPDATE messages SET state = 'consumed', consumed_at = ? WHERE id = ? AND state = 'consuming'`,
+    `UPDATE messages SET state = 'consumed', consumed_at = ?, claim_token = NULL WHERE id = ? AND state = 'consuming' AND claim_token = ?`,
+  )
+  const deadLetterLegacyRecoveryClaimStmt = db.prepare(
+    `UPDATE messages SET state = 'dead', claim_token = NULL
+     WHERE id = ? AND state = 'consuming' AND claim_token = ?
+       AND CASE WHEN json_valid(metadata_json)
+         THEN json_type(metadata_json) <> 'object'
+           OR json_type(metadata_json, '$."x-aw-task-kind"') IS NOT NULL ELSE 1 END
+       AND EXISTS (
+         SELECT 1 FROM tasks t WHERE instr(COALESCE(t.close_reason, ''), ?) > 0
+           AND (messages.task_id = t.id OR CASE WHEN json_valid(messages.metadata_json)
+             THEN json_extract(messages.metadata_json, '$."x-aw-task-id"') = t.id
+               OR json_extract(messages.metadata_json, '$."x-aw-child-task-id"') = t.id ELSE 0 END)
+       )`,
   )
   const resetConsumingStmt = db.prepare(
-    // P3-4:崩溃恢复重投不复活 dead(重投上限是持久判定,重启不洗白)
-    `UPDATE messages SET state = 'pending' WHERE state = 'consuming' AND attempts < 3`,
+    // Recovery invalidates every old owner, including exhausted legacy claims.
+    `UPDATE messages SET state = CASE WHEN attempts < 3 THEN 'pending' ELSE 'dead' END, claim_token = NULL WHERE state = 'consuming'`,
   )
   const requeueStmt = db.prepare(
     // P3-4(2026-11-01):重投计数上限 —— attempts+1,达 3 次不再回 pending(→ dead)。
     // steer 对忙碌 Agent 的重投之前无上限:坏消息(解析必炸/超长)会在
     // "认领→steer 失败→回 pending"里无限循环,每 250ms 吃掉一个调度拍。
-    `UPDATE messages SET attempts = attempts + 1,
+    `UPDATE messages SET attempts = attempts + 1, claim_token = NULL,
        state = CASE WHEN attempts + 1 >= 3 THEN 'dead' ELSE 'pending' END
-     WHERE id = ? AND state = 'consuming'`,
+     WHERE id = ? AND state = 'consuming' AND claim_token = ?`,
   )
   const consumePendingByTaskStmt = db.prepare(
     `UPDATE messages SET state = 'consumed', consumed_at = ? WHERE task_id = ? AND state = 'pending'`,
@@ -85,7 +150,9 @@ export function createMessageRepo(db: DatabaseSync) {
   )
   const existsPendingAssignStmt = db.prepare(
     `SELECT 1 AS hit FROM messages
-     WHERE task_id = ? AND state = 'pending' AND metadata_json LIKE '%"x-aw-task-kind":"assign"%'
+     WHERE task_id = ? AND state IN ('pending', 'consuming') AND CASE WHEN json_valid(metadata_json)
+       THEN json_type(metadata_json, '$."x-aw-task-kind"') = 'text'
+         AND json_extract(metadata_json, '$."x-aw-task-kind"') = 'assign' ELSE 0 END
      LIMIT 1`,
   )
 
@@ -170,7 +237,17 @@ export function createMessageRepo(db: DatabaseSync) {
       return (selectByClientMessageId.get(channelId, sessionId, actorUserId, clientMessageId) as MessageRow | undefined) ?? undefined
     },
 
-    listPendingByChannelAgent(channelId: string, toAgentId: string, limit?: number): MessageRow[] {
+    listPendingByChannelAgent(channelId: string, toAgentId: string, limit?: number, isBlocked?: MessageBlocked): MessageRow[] {
+      if (isBlocked) {
+        if (limit != null && limit <= 0) return []
+        const eligible: MessageRow[] = []
+        for (const row of selectPending.iterate(channelId, toAgentId) as unknown as Iterable<MessageRow>) {
+          if (blockedSafely(isBlocked, row)) continue
+          eligible.push(row)
+          if (limit != null && eligible.length >= limit) break
+        }
+        return eligible
+      }
       if (limit != null) {
         return db.prepare(
           `SELECT ${COLS} FROM messages WHERE channel_id = ? AND to_agent_id = ? AND state = 'pending' ORDER BY createdAt ASC, rowid ASC LIMIT ?`,
@@ -180,7 +257,8 @@ export function createMessageRepo(db: DatabaseSync) {
     },
 
     /** 队头单条(dequeue 热路径:WHERE+ORDER 走 idx_messages_queue,LIMIT 1 免全量) */
-    firstPendingByChannelAgent(channelId: string, toAgentId: string): MessageRow | undefined {
+    firstPendingByChannelAgent(channelId: string, toAgentId: string, isBlocked?: MessageBlocked): MessageRow | undefined {
+      if (isBlocked) return this.listPendingByChannelAgent(channelId, toAgentId, 1, isBlocked)[0]
       return (firstPending.get(channelId, toAgentId) as MessageRow | undefined) ?? undefined
     },
 
@@ -189,18 +267,48 @@ export function createMessageRepo(db: DatabaseSync) {
       return Boolean(hasUnconsumed.get(channelId, toAgentId))
     },
 
-    /**
-     * 原子认领:pending → consuming(WHERE state='pending' 守卫)。
-     * 返回是否认领成功——多方竞争(steer 注入 / poll_messages 读即取 / 消费循环
-     * dequeue)下只有第一个认领者获得消息所有权,保证恰好一次投递。
-     */
-    claim(id: string): boolean {
-      return markConsumingStmt.run(id).changes > 0
+    /** Atomically acquire a fresh ownership token, or null when already claimed. */
+    claim(id: string, isBlocked?: MessageBlocked): string | null {
+      if (isBlocked) {
+        const row = pendingById.get(id) as MessageRow | undefined
+        if (!row || blockedSafely(isBlocked, row)) return null
+      }
+      const token = randomUUID()
+      if (markConsumingStmt.run(token, id).changes === 0) return null
+      if (isBlocked) {
+        const row = consumingByClaim.get(id, token) as MessageRow | undefined
+        if (row && !blockedSafely(isBlocked, row)) return token
+        releaseClaimStmt.run(id, token)
+        return null
+      }
+      return token
     },
 
-    /** consuming → consumed(记录消费时间) */
-    markConsumed(id: string): void {
-      markConsumedStmt.run(new Date().toISOString(), id)
+    /** Recheck an acquired claim before beginning processing. */
+    isClaimBlocked(id: string, token: string, isBlocked: MessageBlocked): boolean {
+      const row = consumingByClaim.get(id, token) as MessageRow | undefined
+      return !row || blockedSafely(isBlocked, row)
+    },
+
+    /** Check that a locally tracked token is still current. */
+    ownsClaim(id: string, token: string): boolean {
+      return typeof token === 'string' && token.length > 0 && Boolean(hasClaimStmt.get(id, token))
+    },
+
+    /** Return a claim without charging a failure attempt. */
+    releaseClaim(id: string, token: string): boolean {
+      return typeof token === 'string' && token.length > 0 && releaseClaimStmt.run(id, token).changes > 0
+    },
+
+    /** consuming → consumed, only for the current owner. */
+    markConsumed(id: string, token: string): boolean {
+      return typeof token === 'string' && token.length > 0 && markConsumedStmt.run(new Date().toISOString(), id, token).changes > 0
+    },
+
+    /** Quarantine only while both the exact claim and recovery hold are current. */
+    deadLetterLegacyRecoveryClaim(id: string, token: string): boolean {
+      return typeof token === 'string' && token.length > 0
+        && deadLetterLegacyRecoveryClaimStmt.run(id, token, LEGACY_RECOVERY_MARKER).changes > 0
     },
 
     /** 启动恢复:所有 consuming 重置回 pending(重新投递) */
@@ -209,8 +317,8 @@ export function createMessageRepo(db: DatabaseSync) {
     },
 
     /** 单条重投:consuming → pending(回合失败重试);返回是否实际重投 */
-    requeue(id: string): boolean {
-      return requeueStmt.run(id).changes > 0
+    requeue(id: string, token: string): boolean {
+      return typeof token === 'string' && token.length > 0 && requeueStmt.run(id, token).changes > 0
     },
 
     /** 按 channel 倒序列出最近消息 */
@@ -228,7 +336,7 @@ export function createMessageRepo(db: DatabaseSync) {
       consumePendingByTaskStmt.run(new Date().toISOString(), taskId)
     },
 
-    /** 某任务是否存在未消费的 assign 投递(restore 断线重连判定:无则需重投) */
+    /** Whether an assign is pending or already claimed for processing. */
     hasPendingAssign(taskId: string): boolean {
       return existsPendingAssignStmt.get(taskId) !== undefined
     },

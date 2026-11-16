@@ -30,6 +30,7 @@ import { GOVERNED_DISPATCH_HINT, RECOVERY_RETRY_HINT, RECOVERY_TRACE_HINT, RECOV
 import { amlActivityForLine } from './aml-activity'
 import { agentOpsScope, channelIdOfAgent, revalidateApprovedAction, sessionRecipeError } from './ops-tools'
 import { recipeEvidenceText } from '../../dcw/recipe-evidence'
+import { currentExecutionScope } from '../execution-scope'
 
 /** 候选包上限(防审批卡被刷屏;1~3 套) */
 const MAX_PACKAGES = 3
@@ -275,6 +276,7 @@ export async function toolRecipePropose(agentId: string, args: {
       title: `整包方案审批:${recipe.name}`,
       timeoutMs: securityRecipeDispatchTimeoutMs(),
       payload,
+      ...(currentExecutionScope() ? { executionScope: currentExecutionScope() } : {}),
     })
   }
   catch (err) {
@@ -300,6 +302,20 @@ export async function toolRecipePropose(agentId: string, args: {
   const stale = await revalidateApprovedAction(agentId, recipe, 'dispatch', 'recipe_propose', { recipe_id: recipeId }, gate.activeContext)
   if (stale) return stale
 
+  const latestRecipe = getDcwController().listRecipes().find(r => r.id === recipeId)
+  if (!latestRecipe || (latestRecipe.version ?? 1) !== payload.recipeVersion
+    || JSON.stringify(latestRecipe.params.map(p => ({ nodeId: p.nodeId, value: p.value }))) !== JSON.stringify(payload.recipeParams)) {
+    return { text: '配方在授权复核期间已变更,本次未执行。请重新提交 recipe_propose。', isError: true }
+  }
+  const latestSessionBoundary = sessionRecipeError(sessionScope, latestRecipe)
+  if (latestSessionBoundary) return latestSessionBoundary
+  try {
+    currentExecutionScope()?.assertActive()
+  }
+  catch (err) {
+    return { text: `执行租约失效,方案未下发:${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+
   // ---------- ⑦b 批准(choice 已由 decide 链 fail-closed 归一):选定包整批下发 ----------
   // 归一后的 decision.choice 必为合法下标(由 normalizeRecipeProposeDecision 保证;此处兜底防呆)
   const chosenIdx = decision.choice ?? 0
@@ -317,6 +333,7 @@ export async function toolRecipePropose(agentId: string, args: {
       agentDispatch: true,
       agentApprovalId: decision.id,
       emergency: args.emergency === true || args.emergency === 'true',
+      ...(currentExecutionScope() ? { executionScope: currentExecutionScope() } : {}),
       agentTrialMeta: {
         actor: agentId,
         actorName: agentBadgeLabel(agentId),
@@ -332,10 +349,16 @@ export async function toolRecipePropose(agentId: string, args: {
     return {
       text: [
         `方案「${chosen.name}」已获批准,但整批下发启动失败:${err instanceof Error ? err.message : String(err)}`,
-        `产线未做任何变更;请等待节拍窗放行后重新提交 recipe_propose 整批下发本方案参数 —— ${GOVERNED_DISPATCH_HINT}。`,
+        `产线状态可能已变化,请核查执行记录与设备实际状态后再决定是否重试 —— ${GOVERNED_DISPATCH_HINT}。`,
       ].join('\n'),
       isError: true,
     }
+  }
+  try {
+    currentExecutionScope()?.assertActive()
+  }
+  catch {
+    return { text: `方案批次 ${run.id} 执行后租约失效,设备可能已变化,请核实批次结果与设备状态。${run.results.map(r => `${r.nodeId ?? r.templateRef}:${r.message}`).join(';')}`, isError: true }
   }
   // ---------- ⑦c ACK 鉴定回执(2026-10-08):三段口径 + 未证实/失败一律 isError ----------
   // 「ok」只是命令受理;回执按 设备证实(verified)/未证实(unverified)/失败(failed) 三段计,
@@ -366,7 +389,7 @@ export async function toolRecipePropose(agentId: string, args: {
     const label = node?.name ?? r.templateRef ?? r.nodeId ?? '?'
     const spec = r.nodeId ? chosenByNode.get(r.nodeId) : undefined
     const change = spec ? `${spec.from ?? '?'}→${spec.to}` : `${r.value}(随批整发,本方案未改动)`
-    return `- ${label} ${change}${node?.unit ?? ''}${ackTagOf(r)}${r.ok ? '' : ` 被拒:${String(r.message).slice(0, 80)}`}`
+    return `- ${label} ${change}${node?.unit ?? ''}${ackTagOf(r)}${r.ok ? '' : r.verify?.verdict === 'unverified' ? ` 状态不确定:${String(r.message).slice(0, 80)}` : ` 被拒:${String(r.message).slice(0, 80)}`}`
   })
   const feedback = decision.comment ? `\n[人工反馈] ${decision.comment}` : ''
   // RSI WP-D1:回执附证据链(批次成效由 verdict 聚合,取代"自行回访"的提示词纪律)
@@ -375,7 +398,7 @@ export async function toolRecipePropose(agentId: string, args: {
     ? `runId:${run.id}(后续轮次按此回访效果并回写经验)\n\n${evidenceBlock}`
     : `runId:${run.id}(后续轮次按此回访效果并回写经验)`
   // 全失败:响亮失败(isError;统一回退指引,口径 mirror recipe_trial/recipe_rollback)
-  if (run.results.length > 0 && okN === 0) {
+  if (run.results.length > 0 && okN === 0 && acks.unverified === 0) {
     return {
       text: [
         `整包下发失败:方案「${chosen.name}」已获批准,但整批下发 0/${run.results.length} 参数成功(典型:节点写入保持窗/节流未放行)。${runIdNote}${feedback}`,

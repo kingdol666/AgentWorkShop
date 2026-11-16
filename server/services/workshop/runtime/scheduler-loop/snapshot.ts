@@ -14,19 +14,27 @@ export abstract class SchedulerLoopSnapshot extends SchedulerLoopTick {
    * supervise 未实现/抛错/空决策时不能自动把任务派给 worker，也不能把父任务标记完成。
    * 指纹无变化时跳过 LLM，但恢复性规则仍可运行。
    */
-  protected async decide(snapshot: SupervisionSnapshot): Promise<SchedulerDecision[]> {
+  protected async decide(snapshot: SupervisionSnapshot, stillCurrent: () => boolean): Promise<SchedulerDecision[]> {
+    let previousAttemptId: string | null | undefined
+    const aborted = (): boolean => {
+      const attempt = this.lead.getSupervisionStatus?.()
+      return Boolean(attempt?.attemptId && attempt.attemptId !== previousAttemptId && attempt.lastDecisionKind === 'aborted')
+    }
     try {
+      if (!stillCurrent()) return []
       if (!this.shouldSupervise(snapshot)) return this.ruleEngine(snapshot)
       this.lastSuperviseAt = Date.now()
       this.lastFingerprint = this.superviseFingerprint(snapshot)
+      previousAttemptId = this.lead.getSupervisionStatus?.().attemptId
       const decisions = await this.lead.supervise(snapshot)
-      if (decisions === null) return this.ruleEngine(snapshot)
+      if (!stillCurrent() || aborted() || decisions === null) return []
       if (decisions.length > 0) return decisions
       // 空决策表示 Lead 本轮决定不采取行动；只允许非破坏性/故障恢复规则补充，
       // 常规派单和父任务验收永不由兜底猜测。
       return this.ruleEngine(snapshot)
     }
     catch (err) {
+      if (!stillCurrent() || aborted()) return []
       log.error(`[SchedulerLoop:${this.lead.agentId}] lead supervise 抛错,仅运行故障恢复规则(不盲派/验收):`, err)
       return this.ruleEngine(snapshot)
     }

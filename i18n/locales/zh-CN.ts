@@ -1269,6 +1269,8 @@ export default {
     k1k79ec9057: '设定下发',
     k1dexou6058: '工艺量程',
     k1b1nnaa059: '保写周期',
+    holdBlocked: '自动保写已暂停',
+    holdBlockedTip: '设备状态需核实。只有后续写入获得设备回读证实,自动保写才会恢复。',
     k1i8rtqt060: '绑定设备',
     k40aa6061: '操作',
     k3n93ed062: '已暂停',

@@ -56,6 +56,40 @@ function fixture() {
   return { db, manager, messages, channel, session, clone }
 }
 
+test('manager mailbox poll, ack, and runtime wiring honor recovery admission', async () => {
+  const f = fixture()
+  try {
+    f.db.prepare(`INSERT INTO tasks (id, channel_id, assignee_id, title, state, root_queue_seq, close_reason, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'WORKING', 1, '[LEGACY_EXECUTION_RECOVERY_REQUIRED]', '2026-01-01', '2026-01-01')`)
+      .run('held-task', f.channel.id, f.clone.id, 'held-task')
+    const add = (id: string, metadata: Record<string, unknown>) => f.messages.create({
+      id, channelId: f.channel.id, taskId: 'held-task', toAgentId: f.clone.id, role: 'ROLE_USER', parts: [{ text: id }], metadata,
+    })
+    add('held-assignment', { 'x-aw-task-kind': 'assign' })
+    add('ordinary-chat', { 'x-aw-from-label': 'user' })
+    assert.deepEqual((await f.manager.pollMailbox(f.channel.id, f.clone.id, 1)).map(m => m.messageId), ['ordinary-chat'])
+    f.manager.ackMailbox(f.channel.id, f.clone.id, ['held-assignment', 'ordinary-chat'])
+    assert.deepEqual(Object.fromEntries(f.db.prepare('SELECT id, state FROM messages WHERE id IN (?, ?)').all('held-assignment', 'ordinary-chat')
+      .map(row => [row.id, row.state])), { 'held-assignment': 'pending', 'ordinary-chat': 'consumed' })
+
+    const manager = f.manager as unknown as { ensureAgentRuntime: (channelId: string, agentId: string) => { deps: { mailbox: import('../server/services/workshop/runtime/mailbox').Mailbox } } | undefined }
+    const runtime = manager.ensureAgentRuntime(f.channel.id, f.clone.id)
+    assert.ok(runtime)
+    const mailbox = runtime.deps.mailbox
+    add('runtime-chat', { 'x-aw-from-label': 'user' })
+    assert.deepEqual((await mailbox.peek(1)).map(m => m.messageId), ['runtime-chat'])
+    assert.equal(mailbox.claim('held-assignment'), null)
+    assert.equal(f.db.prepare('SELECT state FROM messages WHERE id = ?').get('held-assignment')?.state, 'pending')
+    const chatToken = mailbox.claim('runtime-chat')
+    assert.ok(chatToken)
+    assert.equal(mailbox.markConsumed('runtime-chat', chatToken), true)
+  }
+  finally {
+    await f.manager.shutdown()
+    f.db.close()
+  }
+})
+
 test('session endpoint forwards clientMessageId instead of dropping it', () => {
   const source = readFileSync('server/api/workshop/channels/[id]/sessions/[sid]/messages.post.ts', 'utf8')
   assert.match(source, /clientMessageId:\s*body\.clientMessageId/)

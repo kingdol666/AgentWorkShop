@@ -22,7 +22,7 @@
  *   tuning   → chtpl-generic-optimize-default + 全部绑定强制 manual(小步长微调)
  * 用法:node scripts/onboarding/forge-channel.mjs <config.json|->
  */
-import { api, login, ok, summary, readConfig, fingerprint, assertNotProtected } from './lib.mjs'
+import { api, login, ok, summary, readConfig, fingerprint, assertNotProtected, assertOnboardingOwnership } from './lib.mjs'
 
 const DEFAULT_TEMPLATE = {
   optimize: 'chtpl-generic-optimize-default',
@@ -32,6 +32,7 @@ const DEFAULT_TEMPLATE = {
 const DEFAULT_POLICY = { optimize: 'hitl_governed', diagnose: 'recommendation_only', tuning: 'hitl_governed' }
 
 const cfg = await readConfig()
+await assertOnboardingOwnership(cfg)
 const tok = await login()
 const scenario = cfg.scenario ?? 'optimize'
 assertNotProtected(cfg.lineId, '目标产线')

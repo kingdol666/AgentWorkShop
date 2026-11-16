@@ -42,6 +42,33 @@ import { PROJECT_GATED_WRITE_TOOL_NAMES, PROJECT_TOOL_NAMES } from '../../projec
 import { dispatchProjectTool } from '../../projects/tools'
 import { getProjectService } from '../../projects/service'
 import { projectExecutionGate } from '../../projects/execution-gate'
+import { currentExecutionScope, runWithExecutionScope, type ExecutionScope } from '../execution-scope'
+
+/** A peer turn has no task lease, so its writes must honor the channel hold. */
+export function peerWriteScope(scope: ExecutionScope, identity: HostToolBridgeContext['identity']): ExecutionScope {
+  const assertActive = () => {
+    scope.assertActive()
+    if (!identity.channelId || scope.channelId !== identity.channelId || scope.agentId !== identity.agentId) {
+      throw new Error('LEGACY_EXECUTION_RECOVERY_STATUS_UNAVAILABLE: agent turn identity does not match channel')
+    }
+    let held: unknown
+    try {
+      // getTaskEngine is protected in TypeScript, but is the manager's shared runtime engine.
+      const manager = globalThis.__workshopManager as unknown as { getTaskEngine?: () => { hasLegacyRecoveryHold?: (channelId: string) => boolean } } | undefined
+      const engine = manager?.getTaskEngine?.()
+      if (typeof engine?.hasLegacyRecoveryHold !== 'function') throw new Error('recovery status unavailable')
+      held = engine.hasLegacyRecoveryHold(identity.channelId)
+    }
+    catch {
+      throw new Error('LEGACY_EXECUTION_RECOVERY_STATUS_UNAVAILABLE: cannot verify channel recovery status')
+    }
+    if (held !== false) {
+      if (held === true) throw new Error('LEGACY_EXECUTION_RECOVERY_REQUIRED: channel requires operator investigation before agent writes')
+      throw new Error('LEGACY_EXECUTION_RECOVERY_STATUS_UNAVAILABLE: invalid channel recovery status')
+    }
+  }
+  return Object.freeze({ ...scope, assertActive })
+}
 
 /**
  * 分发一次 host tool 调用(全引擎唯一入口):
@@ -72,8 +99,21 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
   // 活性打点先于一切校验:被拒的工具调用同样证明 agent 在推进(不是死锁)
   noteToolActivity(ctx.identity.agentId)
   try {
-    return await withGovernanceHarnessToolAudit(ctx, req, activeRootTaskId, async () =>
-      truncateToolResult(await dispatchHostToolInner(ctx, req, activeRootTaskId), req.toolName))
+    return await withGovernanceHarnessToolAudit(ctx, req, activeRootTaskId, async () => {
+      const scope = currentExecutionScope()
+      if (scope && !scope.taskId && OBSERVE_BLOCKED_TOOL_NAMES.has(req.toolName)) {
+        const guarded = peerWriteScope(scope, ctx.identity)
+        try {
+          guarded.assertActive()
+        }
+        catch (error) {
+          return { text: error instanceof Error ? error.message : String(error), isError: true }
+        }
+        return runWithExecutionScope(guarded, async () =>
+          truncateToolResult(await dispatchHostToolInner(ctx, req, activeRootTaskId), req.toolName))
+      }
+      return truncateToolResult(await dispatchHostToolInner(ctx, req, activeRootTaskId), req.toolName)
+    })
   }
   catch (error) {
     if (!(error instanceof GovernanceHarnessAuditError)) throw error

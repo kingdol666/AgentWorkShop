@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS messages (
   client_message_id TEXT,                      -- session client idempotency key; NULL for legacy/non-session sends
   state         TEXT NOT NULL DEFAULT 'pending',  -- pending|consuming|consumed|dead(P3-4:重投达上限)
   attempts      INTEGER NOT NULL DEFAULT 0,       -- P3-4:steer 失败重投计数(requeue +1)
+  claim_token   TEXT,                             -- unique per consuming claim
   created_at    TEXT NOT NULL,
   consumed_at   TEXT
 );

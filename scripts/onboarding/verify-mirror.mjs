@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * scripts/onboarding/verify-mirror.mjs —— 镜像采集/导出正确性验收(只读)。
+ * scripts/onboarding/verify-mirror.mjs —— 镜像采集/导出正确性验收。
  *
  * 在模拟端点跑通后,用它回答“数据真的按文档值落库了吗?”:
  *   scalar: 窗口内有样本,且至少一个桶的 avg/min/max 命中期望值(容差内)
@@ -12,8 +12,12 @@
  *     --expect '{"value":25.3,"tolerance":0.2}' [--window-ms 120000] [--json]
  *
  * 鉴权:--token / AW_TOKEN;缺省用 AW_EMAIL/AW_PASS 登录(默认 admin@awshop.local/admin123)。
- * 只读:不写库、不改节点、不触发采集控制。
+ * 请求可能初始化全局采集控制器,不能据 HTTP 方法推断无副作用。
  */
+import { assertOnboardingOwnership } from './lib.mjs'
+
+await assertOnboardingOwnership()
+
 const args = process.argv.slice(2)
 const flag = n => args.includes(`--${n}`)
 const valueOf = (n) => {

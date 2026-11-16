@@ -12,6 +12,7 @@ import { getRecipeRollBackManager } from '../recipe-rollback-manager'
 import { getActiveLineRun } from '../line-run'
 import { hydrateWriteLocks } from './gate-persist'
 import { createLogger } from '../../logger'
+import type { ExecutionScope } from '../../agents/execution-scope'
 
 const log = createLogger('dcw.controller')
 
@@ -81,8 +82,8 @@ export abstract class DcwControllerState extends DcwControllerContracts {
     running: () => this.running,
     defaults: () => ({ holdIntervalMs: 0, readIntervalMs: DEFAULT_READ_INTERVAL_MS }),
     lineActive: (lineId: string) => Boolean(getActiveLineRun(lineId)),
-    executeWrite: async (node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null) =>
-      this.executeWrite(node, eng, tolerance, recipeRunId),
+    executeWrite: async (node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null, executionScope?: ExecutionScope, onDriverStart?: () => void) =>
+      this.executeWrite(node, eng, tolerance, recipeRunId, executionScope, onDriverStart),
     executeRead: async (node: DcwNode) => this.executeRead(node),
   }
 }

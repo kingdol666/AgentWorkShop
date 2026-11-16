@@ -26,8 +26,7 @@ curl -X POST $API/api/workshop/agent-tools/approvals/$ID/decide \
   -d '{"approved": true, "comment": "窗口内,批准"}'
 ```
 
-> 注意:Agent 侧的 `dcw_control` 调用在 manual 模式下会**挂起直到裁决**
-> (超时按 `security.hitl_timeout_ms`,默认 180000ms = 3 分钟,超时自动拒绝)——这是设计语义。
+> Agent 的 `dcw_control` 直调已禁用并拒绝，不会通过 manual 审批变成可用入口。其他适用的人工审批仍遵循各自的动作与策略门。
 
 ### 动作特例与策略门
 
@@ -38,7 +37,7 @@ curl -X POST $API/api/workshop/agent-tools/approvals/$ID/decide \
 
 ### 配方下发裁决门(整批动作)
 
-节点级 `dcw_control` 之外,`recipe_trial` / `recipe_apply` 的**整批下发动作**可受独立审批门影响；运行时设置 `security.recipeDispatchApproval` 默认关闭，开启后对所有频道的这两类动作生效。该开关不会替代 Channel/line/binding 模式门。
+`recipe_trial` / `recipe_apply` 的**整批下发动作**可受独立审批门影响；运行时设置 `security.recipeDispatchApproval` 默认关闭，开启后对所有频道的这两类动作生效。该开关不会替代 Channel/line/binding 模式门。
 
 该全局门开启时，审批卡会列出每个参数的「节点 当前值 → 候选值」与假设声明；批准后整批下发并把附言回传 Agent，拒绝/超时则不下发，拒绝指导原样回流。裁决记录 `approval.approve` / `approval.reject`，下发动作记录 `recipe.trial` / `recipe.apply`。`recipe_rollback` 不受该全局门控制，但仍服从适用的其他治理策略。
 

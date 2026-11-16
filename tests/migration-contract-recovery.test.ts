@@ -24,7 +24,7 @@ const { SCHEMA_SQL } = await import('../server/services/workshop/db/database/sch
 
 type Db = InstanceType<typeof DatabaseSync>
 
-const CONTRACT_VERSION = 2
+const CONTRACT_VERSION = 3
 
 /** 语句逐条执行(不用 exec:与生产写入走同一参数化入口)。 */
 function run(db: Db, sql: string, ...params: unknown[]): void {
@@ -33,7 +33,7 @@ function run(db: Db, sql: string, ...params: unknown[]): void {
 
 function legacyLedger(db: Db): void {
   run(db, 'DELETE FROM aw_migration_ledger WHERE version = ?', CONTRACT_VERSION)
-  run(db, 'INSERT INTO aw_migration_ledger(version, name, fingerprint, applied_at) VALUES (1, ?, ?, ?)',
+  run(db, 'INSERT OR IGNORE INTO aw_migration_ledger(version, name, fingerprint, applied_at) VALUES (2, ?, ?, ?)',
     'schema-contract', 'legacy-contract-hash', new Date().toISOString())
 }
 
@@ -46,7 +46,7 @@ test('a database created before the contract bump still boots and records the cu
   const current = ledgerRow(db, CONTRACT_VERSION)
   assert.equal(current?.fingerprint, fingerprintMigration(SCHEMA_SQL))
 
-  // 模拟升级前创建的库:只有 v1 记录,且 v1 哈希属于旧 SCHEMA_SQL
+  // Simulate a database whose latest recorded contract predates claim tokens.
   legacyLedger(db)
   assert.equal(ledgerRow(db, CONTRACT_VERSION), undefined)
   assert.doesNotThrow(() => initWorkshopDb(db))

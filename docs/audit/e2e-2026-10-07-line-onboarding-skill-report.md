@@ -41,7 +41,7 @@
 | `scripts/onboarding/test-connection.mjs` | 逐驱动连通性预检(五协议+mes-rest),任一红即退 1 |
 | `scripts/onboarding/provision-line.mjs` | 建线+DCW/DAQ 节点(量程/stepLimit/templateRef)+产品+配方,幂等复用,可选开跑;输出 JSON 摘要 |
 | `scripts/onboarding/forge-channel.mjs` | 模板实例化(按 scenario 选默认)→团队插件→Agent 绑定($RECIPE/$DAQ:name 引用)→线域授权→种子任务 |
-| `scripts/onboarding/verify-line.mjs` | V1 数采落库(五协议滑动窗)~V6 受保护线零扰动,六组断言 |
+| `scripts/onboarding/verify-line.mjs` | V1 数采落库(五协议滑动窗)~V6 受保护线 journal 无新增锚点(不证明物理零扰动),六组断言 |
 
 开发中依实况修正的契约(已固化进脚本,亦是平台接入知识):**节点必绑模板**(dcw/daq templateRef 必填,语义映射规则入 SKILL.md);**配方必归属产品**(脚本自动建默认产品);**采样由批次驱动**(逐产线运行门:未开跑的线零采样——供给脚本提供 startLine);**响应信封** `{data.test}`(test-driver);**V3 探针必须写前实时取值**(开批次后引擎驱动 SP,配置期探针会过期;只写命令点回退用 journal 锚点值)。
 
@@ -82,4 +82,4 @@ node scripts/onboarding/verify-line.mjs    verify.json    # 阶段5 六组验收
 
 ## 8. 门禁汇总
 
-skill 校验器 82/0 · eslint(onboarding) 0 错 · L1 44/44(收尾抽测) · E2E S2~S6 全绿(9/9,12/12,6/6,19/19,Agent 腿闭合) · 受保护演示线零扰动(V6=15:0)。
+skill 校验器 82/0 · eslint(onboarding) 0 错 · L1 44/44(收尾抽测) · E2E S2~S6 全绿(9/9,12/12,6/6,19/19,Agent 腿闭合) · 受保护演示线 journal 无新增锚点(V6=15:0)，不证明物理零扰动。

@@ -13,6 +13,7 @@ import type { ExecutionFence } from './lease'
 import { fenceMatches, issueLeaseFields } from './lease'
 import type { TaskPatch } from '../../db/task.repo'
 import type { TaskRow } from '../../db/database'
+import { assertNotLegacyRecoveryHeld, isLegacyRecoveryHeld } from './legacy-recovery'
 
 export abstract class TaskEngineLifecycle extends TaskEngineTransition {
   /** 完成任务:WORKING → COMPLETED(终态)+ 进度置 100(广播由上层 ChannelBus 监听 onTaskEvent 承担);
@@ -25,6 +26,8 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
    *  经 supersede 显式处置后方可收口。 */
   complete(taskId: string, artifacts?: A2AArtifact[]): WorkspaceTask {
     const task = this.requireTask(taskId)
+    assertNotLegacyRecoveryHeld(task)
+    this.assertLegacyRecoveryAdmission(taskId)
     if (task.state === 'COMPLETED') return task
     if (task.state === 'CANCELED' || task.state === 'FAILED') {
       throw new AppError(409, 'TASK_TERMINAL', `任务 ${taskId.slice(0, 8)} 已处于终态 ${task.state},不能再完成`)
@@ -109,6 +112,8 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
    */
   reassign(taskId: string, toAgentId: string, reason?: string): WorkspaceTask {
     const task = this.requireTask(taskId)
+    assertNotLegacyRecoveryHeld(task)
+    this.assertLegacyRecoveryAdmission(taskId)
     if (task.state === 'COMPLETED' || task.state === 'CANCELED') {
       throw new AppError(400, 'INVALID_STATE', `终态任务不可重新指派(${task.state})`)
     }
@@ -173,6 +178,8 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
    */
   reassignRunning(taskId: string, toAgentId: string, by: string, reason?: string): { task: WorkspaceTask, previousAssigneeId: string } {
     const task = this.requireTask(taskId)
+    assertNotLegacyRecoveryHeld(task)
+    this.assertLegacyRecoveryAdmission(taskId)
     if (task.state !== 'WORKING' && task.state !== 'WAITING') {
       throw new AppError(400, 'INVALID_STATE', `仅运行中任务可执行运行中重分配(当前 ${task.state})`)
     }
@@ -215,7 +222,7 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
    */
   assertAssignmentFence(taskId: string, fence?: ExecutionFence): boolean {
     const row = this.repos.tasks.findById(taskId)
-    if (!row) return false
+    if (!row || isLegacyRecoveryHeld(row) || this.isLegacyRecoveryBlocked(taskId)) return false
     return fenceMatches(rowToTask(row), fence)
   }
 
@@ -232,6 +239,7 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
   /** 取消任务:CANCELED(终态)+ 作废队列中的过期投递(assignee 不再消费)+ 投递 cancel 通知 */
   cancel(taskId: string, by: string, reason = 'LEAD_CANCEL'): WorkspaceTask {
     const task = this.requireTask(taskId)
+    assertNotLegacyRecoveryHeld(task)
     if (task.state === 'CANCELED') return task
     if (task.state === 'COMPLETED' || task.state === 'FAILED') {
       throw new AppError(409, 'TASK_TERMINAL', `任务 ${taskId.slice(0, 8)} 已处于终态 ${task.state},不能取消`)
@@ -259,6 +267,7 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
    */
   supersede(taskId: string, replacementTaskId: string, by: string, reason?: string): WorkspaceTask {
     const task = this.requireTask(taskId)
+    assertNotLegacyRecoveryHeld(task)
     if (!task.parentId) {
       throw new AppError(400, 'INVALID_STATE', '仅子任务分支可被替代(根任务请走取消/失败语义)')
     }
@@ -269,6 +278,7 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
       throw new AppError(400, 'INVALID_STATE', '任务不能被自身替代')
     }
     const replacement = this.requireTask(replacementTaskId)
+    assertNotLegacyRecoveryHeld(replacement)
     if ((replacement.parentId ?? null) !== (task.parentId ?? null)) {
       throw new AppError(400, 'INVALID_STATE', '替代任务必须与被替代任务同属一个父任务')
     }
@@ -290,6 +300,19 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
   /** 普通根任务超时:活动后代取消,根任务以 FAILED 保留明确超时语义。 */
   timeoutTree(taskId: string, by: string): WorkspaceTask[] {
     const root = this.requireTask(taskId)
+    if (this.isLegacyRecoveryBlocked(taskId)) return []
+    const descendants = this.repos.tasks.listByChannel(root.channelId)
+    const held = new Set(descendants.filter(isLegacyRecoveryHeld).map(row => row.id))
+    const parents = new Map(descendants.map(row => [row.id, row.parentId]))
+    for (const id of held) {
+      let current: string | null | undefined = id
+      const visited = new Set<string>()
+      while (current && !visited.has(current)) {
+        if (current === root.id) return []
+        visited.add(current)
+        current = parents.get(current)
+      }
+    }
     const children = this.cancelTreeChildren(root.id, root.channelId, by, 'ROOT_TIMEOUT')
     const latest = this.get(root.id)
     if (latest && latest.state !== 'COMPLETED' && latest.state !== 'FAILED' && latest.state !== 'CANCELED') {
@@ -324,6 +347,18 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
   /** 取消整棵任务树:后代优先,已终态结果保留。 */
   cancelTree(taskId: string, by: string, reason = 'LEAD_CANCEL'): WorkspaceTask[] {
     const root = this.requireTask(taskId)
+    assertNotLegacyRecoveryHeld(root)
+    const rows = this.repos.tasks.listByChannel(root.channelId)
+    const parents = new Map(rows.map(row => [row.id, row.parentId]))
+    for (const row of rows.filter(isLegacyRecoveryHeld)) {
+      let current: string | null | undefined = row.id
+      const visited = new Set<string>()
+      while (current && !visited.has(current)) {
+        if (current === root.id) assertNotLegacyRecoveryHeld(row)
+        visited.add(current)
+        current = parents.get(current)
+      }
+    }
     const canceled = this.cancelTreeChildren(root.id, root.channelId, by, reason)
     const current = this.get(root.id)
     if (current && current.state !== 'COMPLETED' && current.state !== 'FAILED' && current.state !== 'CANCELED') {
@@ -341,6 +376,7 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
     if (!parentId) return
     const parent = this.get(parentId)
     if (!parent || parent.state === 'COMPLETED' || parent.state === 'FAILED' || parent.state === 'CANCELED') return
+    if (isLegacyRecoveryHeld(parent)) return
     this.deliverTaskMessage({
       channelId: child.channelId,
       taskId: parent.id,
@@ -365,6 +401,7 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
   protected onChildResolved(parentId: string, channelId: string, by: string): void {
     const parent = this.get(parentId)
     if (!parent || parent.state !== 'WAITING') return
+    if (isLegacyRecoveryHeld(parent)) return
     const siblings = this.repos.tasks.listChildrenMeta(channelId, parentId)
     const incomplete = siblings.filter(t => t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED' && !t.supersededByTaskId)
     if (incomplete.length === 0) this.transition(parentId, 'WORKING', by)

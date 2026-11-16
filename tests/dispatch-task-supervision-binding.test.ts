@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { handleDispatchTask } from '../server/services/workshop/agents/host-tool-bridge/tools/tasks'
 import type { HostToolBridgeContext } from '../server/services/workshop/agents/host-tool-bridge/types'
+import { runWithExecutionScope, type ExecutionScope } from '../server/services/workshop/agents/execution-scope'
 
 const leadIdentity: HostToolBridgeContext['identity'] = {
   agentId: 'lead-1',
@@ -78,4 +79,86 @@ test('dispatch_task preserves standalone behavior when no supervision root is su
   const result = await handleDispatchTask({ assignee_id: 'worker-1', title: 'inspect' }, workspace, leadIdentity)
   assert.equal(result.isError, undefined)
   assert.equal(getDispatched()?.parentTaskId, undefined)
+})
+
+test('combined grant fails closed after an awaited supervision lookup', async () => {
+  const controller = new AbortController()
+  let started!: () => void
+  let resume!: () => void
+  const waiting = new Promise<void>((resolve) => {
+    started = resolve
+  })
+  const gate = new Promise<void>((resolve) => {
+    resume = resolve
+  })
+  let mutated = false
+  const workspace = {
+    getTask: async () => {
+      started()
+      await gate
+      return { id: 'root-1', state: 'WORKING', assigneeId: leadIdentity.agentId }
+    },
+    listAgents: async () => {
+      mutated = true
+      return []
+    },
+    dispatchTask: async () => {
+      mutated = true
+      return { id: 'child' }
+    },
+  } as never
+  const scope: ExecutionScope = {
+    taskId: 'root-1', agentId: leadIdentity.agentId, channelId: leadIdentity.channelId,
+    assignmentGeneration: 1, executionLeaseId: 'lease', signal: controller.signal,
+    assertActive: () => { if (controller.signal.aborted) throw new Error('stale scope') },
+  }
+  const pending = runWithExecutionScope(scope, () => handleDispatchTask({
+    assignee_id: 'worker-1', title: 'inspect', grant_node_ids: ['node'], grant_mode: 'auto', grant_confirm: true,
+  }, workspace, leadIdentity, 'root-1'))
+  await waiting
+  controller.abort()
+  resume()
+  const result = await pending
+  assert.equal(result.isError, true)
+  assert.equal(mutated, false)
+})
+
+test('dispatch_task rejects a lease invalidated during duplicate lookup', async () => {
+  const controller = new AbortController()
+  let generation = 1
+  let started!: () => void
+  let resume!: () => void
+  const waiting = new Promise<void>((resolve) => {
+    started = resolve
+  })
+  const gate = new Promise<void>((resolve) => {
+    resume = resolve
+  })
+  let dispatched = false
+  const workspace = {
+    listTasks: async () => {
+      started()
+      await gate
+      return []
+    },
+    dispatchTask: async () => {
+      dispatched = true
+      return { id: 'child' }
+    },
+  } as never
+  const scope: ExecutionScope = {
+    taskId: 'root-1', agentId: leadIdentity.agentId, channelId: leadIdentity.channelId,
+    assignmentGeneration: 1, executionLeaseId: 'lease', signal: controller.signal,
+    assertActive: () => {
+      if (generation !== 1) throw new Error('stale scope')
+    },
+  }
+  const pending = runWithExecutionScope(scope, () => handleDispatchTask({ assignee_id: 'worker-1', title: 'inspect' }, workspace, leadIdentity))
+  await waiting
+  generation = 2
+  resume()
+  const result = await pending
+  assert.equal(result.isError, true)
+  assert.match(result.text, /stale scope/)
+  assert.equal(dispatched, false)
 })

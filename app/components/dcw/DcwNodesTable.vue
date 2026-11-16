@@ -179,6 +179,18 @@ function clock(iso: string | null | undefined): string {
             </div>
           </div>
 
+          <div
+            v-if="n.holdBlocked"
+            class="nc-hold-warning"
+            role="status"
+          >
+            <span
+              class="i-tabler-alert-triangle"
+              aria-hidden="true"
+            />
+            <span><b>{{ $t('dcwDetail.holdBlocked') }}</b> · {{ $t('dcwDetail.holdBlockedTip') }}</span>
+          </div>
+
           <div class="nc-write">
             <label class="nc-write-label">{{ $t('dcwDetail.k1k79ec9057') }}</label>
             <input
@@ -420,6 +432,18 @@ function clock(iso: string | null | undefined): string {
 }
 
 .read-btn { margin-left: 4px; }
+
+.nc-hold-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  color: var(--tone-warning-dot);
+  background: var(--tone-warning-bg);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.nc-hold-warning > span:first-child { flex: 0 0 16px; margin-top: 2px; }
 
 .nc-write {
   display: flex;

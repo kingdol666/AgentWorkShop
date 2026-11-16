@@ -11,9 +11,10 @@
  * 全部 ok 才退出 0——任一失败即停(skill 规定:连通性未全绿不得进入供给阶段)。
  * 用法:node scripts/onboarding/test-connection.mjs <config.json|-> (默认读 stdin)
  */
-import { api, login, ok, summary, readConfig } from './lib.mjs'
+import { api, login, ok, summary, readConfig, assertOnboardingOwnership } from './lib.mjs'
 
 const cfg = await readConfig()
+await assertOnboardingOwnership(cfg)
 const tok = await login()
 // 兼容 onboard 统一配置:顶层 tests 或 connectivity.tests;空测试集必须显式失败,
 // 不得以 0 通过/0 失败“静默全绿”放行(2026-10-20 实测踩坑)

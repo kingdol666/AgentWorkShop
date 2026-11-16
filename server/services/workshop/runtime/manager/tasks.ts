@@ -19,6 +19,9 @@ import { parseJson } from '../../db/database'
 import { randomUUID } from 'node:crypto'
 import { workshopSettings } from '../../settings'
 import { assertDispatchAllowed } from '../task-engine/policy'
+import { fenceToMetadata } from '../task-engine/lease'
+import { assertNotLegacyRecoveryHeld } from '../task-engine/legacy-recovery'
+import { currentExecutionScope } from '../../agents/execution-scope'
 
 export abstract class ManagerTasks extends ManagerChannelTemplates {
   /**
@@ -46,6 +49,9 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     }
     if (channel.enabled !== 1) {
       throw new AppError(403, 'CHANNEL_DISABLED', `channel ${input.channelId} 已禁用`)
+    }
+    if (this.getTaskEngine().hasLegacyRecoveryHold(input.channelId)) {
+      throw new AppError(409, 'LEGACY_EXECUTION_RECOVERY_REQUIRED', '频道存在待核查的历史任务,暂不接收新任务')
     }
     this.ensureChannelActive(input.channelId)
     // 标题是展示字段不是身份：不同请求允许同标题并排入队；chat 重投由来源消息键幂等。
@@ -112,6 +118,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     const messageMetadata: Record<string, unknown> = {
       'x-aw-task-kind': 'assign',
       'x-aw-task-id': task.id,
+      ...fenceToMetadata(task),
     }
     if (input.fromLabel) messageMetadata['x-aw-from-label'] = input.fromLabel
     // 简报兜底:人类直派常只填 title/description(不带 parts)——assign 消息若只有空
@@ -161,6 +168,9 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       throw new AppError(400, 'NO_LEAD_AGENT', `channel ${input.channelId} 无 lead,请先创建 lead`)
     }
     if (channel.enabled !== 1) throw new AppError(403, 'CHANNEL_DISABLED', `channel ${input.channelId} 已禁用`)
+    if (this.getTaskEngine().hasLegacyRecoveryHold(input.channelId)) {
+      throw new AppError(409, 'LEGACY_EXECUTION_RECOVERY_REQUIRED', '频道存在待核查的历史任务,暂不接收新任务')
+    }
     this.ensureChannelActive(input.channelId)
     const assigneeId = input.assigneeId ?? channel.leadAgentId
     const assigneeRow = this.deps.repos.channelAgents.findByChannelAgent(input.channelId, assigneeId)
@@ -205,6 +215,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
           'x-aw-msg-priority': 'immediate',
           'x-aw-task-kind': 'assign',
           'x-aw-task-id': task.id,
+          ...fenceToMetadata(task),
           'x-aw-from-label': '项目派发',
           ...(input.sessionId ? { 'x-aw-session-id': input.sessionId } : {}),
         },
@@ -238,6 +249,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     }
     // 执行前强校验:worker 引擎未安装 → 报错回 lead(可改派),不产生必败子任务
     assertHarnessUsable(assignee.harness, parseJson<Record<string, unknown>>(assignee.configJson, {}))
+    currentExecutionScope()?.assertActive()
     let task: WorkspaceTask
     if (input.parentTaskId) {
       const parent = this.getTaskEngine().get(input.parentTaskId)
@@ -318,6 +330,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
         'x-aw-task-kind': 'assign',
         'x-aw-task-id': task.id,
         'x-aw-from-agent': callerAgentId,
+        ...fenceToMetadata(task),
       })
       message.taskId = task.id
       const delivered = this.route(channelId, message)
@@ -411,6 +424,10 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     input: { taskId: string, progress?: number, artifact?: A2AArtifact, message?: string },
   ): Promise<WorkspaceTask> {
     const task = this.requireTaskInScope(channelId, callerAgentId, input.taskId)
+    assertNotLegacyRecoveryHeld(task)
+    if (this.getTaskEngine().isLegacyRecoveryBlocked(task.id)) {
+      throw new AppError(409, 'LEGACY_EXECUTION_RECOVERY_REQUIRED', `Task ${task.id} requires operator investigation`)
+    }
     if (task.assigneeId !== callerAgentId) {
       throw new AppError(403, 'SCOPE_VIOLATION', '仅 assignee 可上报任务')
     }
@@ -429,6 +446,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
         { messageId: randomUUID(), contextId: task.channelId, role: 'ROLE_AGENT' as const, parts: [{ text: input.message }] },
       ].slice(-200)
     }
+    currentExecutionScope()?.assertActive()
     const updated = this.deps.repos.tasks.update(input.taskId, patch)
     const next = rowToTask(updated!)
     this.notifyTask(task.channelId, { taskId: task.id, progress: next.progress, agentId: callerAgentId })
@@ -450,6 +468,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     if (task.state === 'CANCELED' || task.state === 'FAILED') {
       throw new AppError(409, 'TASK_TERMINAL', `任务 ${input.taskId.slice(0, 8)} 已被平台${task.state === 'CANCELED' ? '取消' : '判定失败'},不能再标记完成;请继续处理队列下一项`)
     }
+    currentExecutionScope()?.assertActive()
     const completed = this.getTaskEngine().complete(input.taskId, input.artifacts)
     // goal 保底合成产物广播(goal 模式父任务且 lead 未自带总结时,taskEngine 追加了
     // 平台合成的 goal-summary;以 goal-summary 语义 + artifactId 差集识别,幂等不重复广播)
@@ -520,6 +539,17 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     const canceledTasks = this.getTaskEngine().cancelTree(input.taskId, callerAgentId, isLead ? 'LEAD_CANCEL' : 'USER_CANCEL')
     for (const canceled of canceledTasks) {
       this.runtimeOf(channelId, canceled.assigneeId)?.abortTask(canceled.id)
+      if (canceled.assignmentGeneration != null && canceled.executionLeaseId) {
+        try {
+          const { getToolApprovals } = await import('../../agents/tool-approvals')
+          getToolApprovals().cancelPendingForTask(canceled.id, '任务已取消,审批失效,指令未执行', {
+            agentId: canceled.assigneeId,
+            assignmentGeneration: canceled.assignmentGeneration,
+            executionLeaseId: canceled.executionLeaseId,
+          })
+        }
+        catch { /* 审批面未装配时仍保留任务取消语义 */ }
+      }
       this.wakeAgent(channelId, canceled.assigneeId)
     }
     return this.getTaskEngine().get(input.taskId)!
@@ -670,6 +700,17 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     if (current && (current.state === 'WORKING' || current.state === 'WAITING')) {
       const { task, previousAssigneeId } = this.getTaskEngine().reassignRunning(taskId, target.id, callerAgentId, 'LEAD_REASSIGN')
       this.runtimeOf(channelId, previousAssigneeId)?.abortTask?.(taskId)
+      if (current.assignmentGeneration != null && current.executionLeaseId) {
+        try {
+          const { getToolApprovals } = await import('../../agents/tool-approvals')
+          getToolApprovals().cancelPendingForTask(taskId, '任务已重派,旧审批失效,指令未执行', {
+            agentId: previousAssigneeId,
+            assignmentGeneration: current.assignmentGeneration,
+            executionLeaseId: current.executionLeaseId,
+          })
+        }
+        catch { /* 审批面未装配时仍保留重派语义 */ }
+      }
       this.wakeAgent(channelId, target.id)
       return task
     }

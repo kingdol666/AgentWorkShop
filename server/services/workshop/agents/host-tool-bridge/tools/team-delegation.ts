@@ -7,6 +7,7 @@
  */
 import { AppError } from '../../../../../utils/errors'
 import { applyDelegation, planDelegation, revokeDelegation, type DelegationMember } from '../../node-delegation'
+import { currentExecutionScope } from '../../execution-scope'
 import type { HostToolBridgeContext, HostToolResult } from '../types'
 
 /** workspace 成员视图(listAgents 与本工具面的最小接口;便于单测桩替换) */
@@ -46,6 +47,7 @@ export async function handleGrantNodes(identity: HostToolBridgeContext['identity
       // B-P1-3:mode=auto 摘除逐次人工审批,须显式风险确认(与 REST 同语义)
       confirm: args.confirm,
     })
+    currentExecutionScope()?.assertActive()
     const bindings = applyDelegation(plan, identity.agentId)
     return {
       text: `已把 ${bindings.length} 条节点授权授予 ${targetAgentId}:${summaryText(bindings)}\n来源:lead 绑定面内的节点;worker 现在可用 my_industrial_nodes 查看自己的授权。`,
@@ -61,11 +63,13 @@ export async function handleRevokeNodes(identity: HostToolBridgeContext['identit
   const targetAgentId = String(args.agent_id ?? args.assignee_id ?? '').trim()
   const nodeIds = parseNodeIds(args)
   try {
+    const members = await membersOf(ws)
+    currentExecutionScope()?.assertActive()
     const results = revokeDelegation({
       leaderAgentId: identity.agentId,
       targetAgentId,
       nodeIds,
-      members: await membersOf(ws),
+      members,
     })
     const okList = results.filter(r => r.revoked)
     const missList = results.filter(r => !r.revoked)
@@ -75,55 +79,5 @@ export async function handleRevokeNodes(identity: HostToolBridgeContext['identit
   }
   catch (err) {
     return { text: err instanceof AppError ? err.message : `收回授权失败: ${err instanceof Error ? err.message : String(err)}`, isError: true }
-  }
-}
-
-export interface DispatchGrantResult {
-  ok: boolean
-  text: string
-}
-
-/**
- * 派发时随任务授予节点(dispatch_task 的 grant_node_ids;lead 专属)。
- * fail-closed:任一节点不在 lead 绑定面 → 整单失败,任务不创建。
- */
-export async function grantNodesForDispatch(identity: HostToolBridgeContext['identity'], assigneeId: string, nodeIds: string[], mode: 'auto' | 'manual' | undefined, ws: MembersView, confirm?: unknown): Promise<DispatchGrantResult> {
-  try {
-    const plan = planDelegation({
-      leaderAgentId: identity.agentId,
-      channelId: identity.channelId,
-      targetAgentId: assigneeId,
-      nodeIds,
-      members: await membersOf(ws),
-      mode,
-      // B-P1-3:随任务授予同样不得绕过 auto 的显式确认(dispatch_task.grant_confirm)
-      confirm,
-    })
-    const bindings = applyDelegation(plan, identity.agentId)
-    return { ok: true, text: `随任务授予 ${bindings.length} 条节点授权 → ${assigneeId}${summaryText(bindings)}` }
-  }
-  catch (err) {
-    const msg = err instanceof AppError ? err.message : `随任务授予节点失败: ${err instanceof Error ? err.message : String(err)}`
-    return { ok: false, text: msg }
-  }
-}
-
-/**
- * 2026-10-30 新增:dispatch 失败回滚 —— 尽力撤销 grantNodesForDispatch 刚落库的授权。
- * 授权-任务绑定不变量:任务没创建,授权不得残留(尤其 grant_mode=auto 摘过人工审批的)。
- * 返回实际撤销条数;任何异常按 0 处理(调用方如实标注"请手工核销")。
- */
-export async function revokeNodesForDispatchRollback(identity: HostToolBridgeContext['identity'], assigneeId: string, nodeIds: string[], ws: MembersView): Promise<number> {
-  try {
-    const results = revokeDelegation({
-      leaderAgentId: identity.agentId,
-      targetAgentId: assigneeId,
-      nodeIds,
-      members: await membersOf(ws),
-    })
-    return results.filter(r => r.revoked).length
-  }
-  catch {
-    return 0
   }
 }

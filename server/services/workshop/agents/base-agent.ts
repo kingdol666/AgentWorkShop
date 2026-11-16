@@ -29,6 +29,7 @@ import type {
   SupervisionSnapshot,
 } from './agent-interface'
 import { createSessionState, dispatchHostTool, type HostToolBridgeContext, type HostToolSessionState } from './host-tool-bridge'
+import { runWithExecutionScope, type ExecutionScope } from './execution-scope'
 import { channelOverlayText } from '../experience/overlay'
 import { workshopSettings } from '../settings'
 import {
@@ -64,6 +65,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
   protected workspace: AgentRunContext['workspace'] | null = null
   protected readonly toolState: HostToolSessionState = createSessionState()
   protected readonly bridgeCtx: HostToolBridgeContext
+  private turnScope: { scope: ExecutionScope, controller: AbortController } | undefined
   /** 名册缓存:仅由 refreshIdentity() 装配(构造函数必经路径),故用明确赋值断言 */
   protected roster!: ReturnType<typeof createRosterCache>
 
@@ -126,7 +128,70 @@ export abstract class BaseAgentImpl implements AgentInterface {
   }
 
   dispatchHostTool(toolName: string, args: Record<string, unknown>, activeRootTaskId?: string): Promise<{ text: string, isError?: boolean }> {
-    return dispatchHostTool(this.bridgeCtx, { toolName, arguments: args }, activeRootTaskId)
+    const channelScope = this.bridgeCtx.channelSessionScope
+    const state = createSessionState()
+    state.sessionId = channelScope?.sessionId ?? null
+    const bridge: HostToolBridgeContext = {
+      identity: { ...this.bridgeCtx.identity },
+      state,
+      channelSessionScope: channelScope ? { ...channelScope, recipes: channelScope.recipes.map(recipe => ({ ...recipe })) } : null,
+      getWorkspace: this.bridgeCtx.getWorkspace,
+    }
+    return runWithExecutionScope(undefined, () =>
+      dispatchHostTool(bridge, { toolName, arguments: args }, activeRootTaskId))
+  }
+
+  protected get currentTurnScope(): ExecutionScope | undefined {
+    return this.turnScope?.scope
+  }
+
+  protected beginTurnScope(ctx: AgentRunContext): ExecutionScope {
+    if (this.turnScope) throw new Error('agent turn already active')
+    const trusted = ctx.executionScope
+    if (trusted && (trusted.agentId !== ctx.agentId || trusted.channelId !== ctx.channelId || trusted.signal !== ctx.signal)) {
+      throw new Error('invalid execution scope identity or signal')
+    }
+    const taskId = trusted?.taskId
+    const generation = trusted?.assignmentGeneration
+    const leaseId = trusted?.executionLeaseId
+    const hasLease = taskId !== undefined || generation !== undefined || leaseId !== undefined
+    if (hasLease && (!taskId || !Number.isSafeInteger(generation) || generation! < 0 || !leaseId)) {
+      throw new Error('incomplete task execution lease')
+    }
+    const validate = trusted?.assertActive
+    const controller = new AbortController()
+    const signal = AbortSignal.any([ctx.signal, controller.signal])
+    const scope: ExecutionScope = Object.freeze({
+      agentId: ctx.agentId,
+      channelId: ctx.channelId,
+      ...(hasLease ? { taskId, assignmentGeneration: generation, executionLeaseId: leaseId } : {}),
+      signal,
+      assertActive: () => {
+        if (signal.aborted || this.turnScope?.scope !== scope) throw new Error('agent turn is no longer active')
+        validate?.()
+      },
+    })
+    this.turnScope = { scope, controller }
+    return scope
+  }
+
+  protected endTurnScope(scope: ExecutionScope): void {
+    if (this.turnScope?.scope !== scope) return
+    const { controller } = this.turnScope
+    this.turnScope = undefined
+    controller.abort(new Error('agent turn ended'))
+  }
+
+  protected dispatchTurnHostTool(toolName: string, args: Record<string, unknown>, scope: ExecutionScope, activeRootTaskId?: string): Promise<{ text: string, isError?: boolean }> {
+    try {
+      scope.assertActive()
+      if (this.currentTurnScope !== scope) throw new Error('stale agent turn')
+    }
+    catch (error) {
+      return Promise.resolve({ text: error instanceof Error ? error.message : String(error), isError: true })
+    }
+    return runWithExecutionScope(scope, () =>
+      dispatchHostTool(this.bridgeCtx, { toolName, arguments: args }, activeRootTaskId))
   }
 
   setChannelSessionScope(scope: HostToolBridgeContext['channelSessionScope']): void {
@@ -157,8 +222,14 @@ export abstract class BaseAgentImpl implements AgentInterface {
 
   async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent> {
     if (!this.workspace) this.workspace = ctx.workspace
-    this.currentSessionBlock = request.session?.block ?? null
     const kind = request.message.metadata?.['x-aw-task-kind']
+    const taskId = request.taskId ?? request.message.metadata?.['x-aw-task-id']
+    if (kind === 'assign' && ctx.role === 'worker'
+      && (!ctx.executionScope || !taskId || ctx.executionScope.taskId !== taskId)) {
+      throw new Error('assigned task requires a matching execution lease')
+    }
+    const scope = this.beginTurnScope(ctx)
+    this.currentSessionBlock = request.session?.block ?? null
     const sourceChatMessageId = typeof request.message.metadata?.['x-aw-source-chat-message-id'] === 'string'
       ? String(request.message.metadata['x-aw-source-chat-message-id'])
       : null
@@ -170,12 +241,13 @@ export abstract class BaseAgentImpl implements AgentInterface {
     // session 作用域贯通:memory 工具(save/search)在回合内使用当前 session id
     this.toolState.sessionId = request.session?.id ?? null
     try {
+      scope.assertActive()
       if (kind === 'assign' && ctx.role === 'worker') {
-        yield* this.workerTurn(request, ctx)
+        yield* this.scopedTurn(this.workerTurn(request, ctx), scope)
         return
       }
       if (!kind && (request.fromAgentId || request.message.metadata?.['x-aw-from-label'])) {
-        yield* this.peerTurn(request, ctx)
+        yield* this.scopedTurn(this.peerTurn(request, ctx), scope)
         return
       }
     }
@@ -183,7 +255,21 @@ export abstract class BaseAgentImpl implements AgentInterface {
       this.toolState.sourceChatMessageId = null
       this.toolState.sourceChatDeliveryId = null
       this.toolState.sessionId = null
+      this.endTurnScope(scope)
       this.currentSessionBlock = null
+    }
+  }
+
+  private async* scopedTurn(turn: AsyncGenerator<AgentEvent, void, unknown>, scope: ExecutionScope): AsyncGenerator<AgentEvent, void, unknown> {
+    try {
+      for (;;) {
+        const next = await runWithExecutionScope(scope, () => turn.next())
+        if (next.done) break
+        yield next.value
+      }
+    }
+    finally {
+      await runWithExecutionScope(scope, () => turn.return())
     }
   }
 
@@ -202,6 +288,16 @@ export abstract class BaseAgentImpl implements AgentInterface {
 
   async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: SupervisionOptions): Promise<SupervisionDecision[]> {
     if (this.supervising) return []
+    const scope = this.beginTurnScope(ctx)
+    try {
+      return await runWithExecutionScope(scope, () => this.superviseInScope(snapshot, ctx, opts))
+    }
+    finally {
+      this.endTurnScope(scope)
+    }
+  }
+
+  private async superviseInScope(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: SupervisionOptions): Promise<SupervisionDecision[]> {
     if (!this.workspace) this.workspace = ctx.workspace
     // 懒加载型 harness(如 codex)必须先确保会话进程存在:worker/peer 回合各自 ensure,
     // supervise 是唯一不经 run() 的回合入口 —— 缺这一步,全新 lead 的每轮监督都会在

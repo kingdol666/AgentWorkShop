@@ -475,7 +475,9 @@ ctx.route('POST', '/threshold', (event) => {
 
 ## 十、工具与团队开关
 
-`ctx.omp.registerTool(def)` 注册的工具出现在全部 harness 的工具面上(omp 经 RPC `set_host_tools` 下发 / 其余引擎经 MCP 桥 `tools/list` / pi 经工具文件 / mock 经 REST invoke 直调),注册表变化会**热重发**给在跑的会话,无需重启或重 spawn 子进程。
+`ctx.omp.registerTool(def)` 注册的工具按角色、频道与调用路径过滤后提供给 harness。omp 经 RPC `set_host_tools` 注入；其他引擎可经 agent-token MCP 桥获取工具列表；mock 可经已授权用户的 REST invoke 调用。注册表变更会向在跑的会话重发工具定义。
+
+兼容性边界（未发布、未合并源码，待审查；不属于已发布 0.11.3）：agent token 只标识 agent，不能证明可信回合来源；桥接路径只允许显式声明 `riskClass: 'read'` 的插件工具，缺省、`write` 或 `admin` 均被过滤并拒绝调用。仅对真正只读的工具声明 `read`，不要为了绕过限制错误标注；角色、频道和其他治理检查仍然适用。原生 omp 工具调用和用户鉴权 REST 路径有各自的检查，不能假定它们与 agent-token 桥的工具面相同。
 
 ```js
 ctx.omp.registerTool({
@@ -508,7 +510,7 @@ ctx.omp.registerTool({
   - `mode='all'`(默认):全部合格工具启用,只记录被取消勾选的工具(deny-list);
   - `mode='selected'`:只启用勾选工具(allow-list),新工具默认不启用;
   - 硬规则(角色 / Channel profile / 写守卫 / 插件总开关)优先,Channel 开关不能把被硬规则排除的工具打开;`selected` 模式显式启用这类工具返回 `409 TOOL_NOT_ELIGIBLE`。
-- **注入面同源**:omp 的 `set_host_tools`、pi 的 `AW_PI_TOOLS_FILE`、其余 harness 的 MCP `tools/list` 全部经 `hostToolsForRole`;执行面在 `dispatchHostTool` / `invokeHostTool` 再复核一次,引擎缓存旧列表也无法直调被停用工具。
+- **注入与执行复核**:omp、pi 与 MCP 使用共享工具目录，但 agent-token MCP 列表另有来源与风险过滤；执行时 `dispatchHostTool` / `invokeHostTool` 仍会复核，缓存旧清单不能绕过停用或调用限制。
 - **前端**:Channel 设置弹窗的「工具」区可搜索、按来源/状态过滤、全选/全不选/恢复默认;硬规则阻止的工具置灰并显示原因。
 
 ### 安装本地插件

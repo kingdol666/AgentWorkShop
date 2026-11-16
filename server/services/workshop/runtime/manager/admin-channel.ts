@@ -17,7 +17,6 @@ import { assertChannelWorkspaceAllowed, assertSpawnConfigAllowed, type SpawnActo
 import { mkdirSync } from 'node:fs'
 import { parseJson } from '../../db/database'
 import { resolve } from 'node:path'
-import { runtimeKey } from './helpers'
 import { activeSessionOfMember, SESSION_MARKER } from '../../agents/session-clone'
 import { createChannelSessionRepo } from '../../db/channel-session.repo'
 
@@ -328,32 +327,45 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     return this.deps.repos.channels.list()
   }
 
-  async removeChannel(channelId: string): Promise<void> {
-    const cr = this.channels.get(channelId)
-    if (cr) {
-      await cr.stopSchedulersAndWait()
-      for (const agent of [...cr.getAgents()]) {
-        await agent.stop()
-        this.agentIndex.delete(runtimeKey(channelId, agent.agentId))
+  removeChannel(channelId: string): Promise<void> {
+    const pending = this.channelRemovals.get(channelId)
+    if (pending) return pending
+
+    // Hold a separate deletion fence across a shared unload and the synchronous cascades.
+    const stops = [...(this.channelAgentStops.get(channelId) ?? [])]
+    let unloading: Promise<boolean>
+    const removal = Promise.resolve().then(async () => {
+      const results = await Promise.allSettled([unloading, ...stops])
+      const failed = results.find(result => result.status === 'rejected')
+      if (failed?.status === 'rejected') throw failed.reason
+      // 记忆级联清理:成员私有行 + team 公共行(防残留行污染他 channel 的 FTS/team 检索域)
+      this.deps.repos.memories.deleteByChannel(channelId)
+      // 工具治理级联:插件开关 + Channel 工具策略/选择行(无外键,必须显式删除)
+      try {
+        getChannelPluginsRepo().removeForChannel(channelId)
+        getToolRegistryRepo().removeForChannel(channelId)
       }
+      catch { /* 工具治理表不可用不阻断删除(悬挂行读取时忽略) */ }
+      // 定时任务级联清理(FK CASCADE 兜底;显式删除保证旧库无 FK 时也收敛)
+      this.deps.repos.schedules?.removeByChannel(channelId)
+      // workspace 挂载级联,兼容未注入用户仓储的旧脚手架。
+      this.deps.repos.users?.unmountChannelEverywhere(channelId)
+      this.deps.repos.channels.remove(channelId)
+      // A late subscriber can create an empty runtime while the unload is settling.
       this.channels.delete(channelId)
       this.buses.delete(channelId)
-    }
-    // 记忆级联清理:成员私有行 + team 公共行(防残留行污染他 channel 的 FTS/team 检索域)
-    this.deps.repos.memories.deleteByChannel(channelId)
-    // 工具治理级联:插件开关 + Channel 工具策略/选择行(无外键,必须显式删除)
+      this.deferredChannelRecycles.delete(channelId)
+    }).finally(() => {
+      this.channelRemovals.delete(channelId)
+    })
+    this.channelRemovals.set(channelId, removal)
     try {
-      getChannelPluginsRepo().removeForChannel(channelId)
-      getToolRegistryRepo().removeForChannel(channelId)
+      unloading = this.unloadChannelAgents(channelId)
     }
-    catch { /* 工具治理表不可用不阻断删除(悬挂行读取时忽略) */ }
-    // 定时任务级联清理(FK CASCADE 兜底;显式删除保证旧库无 FK 时也收敛)
-    this.deps.repos.schedules?.removeByChannel(channelId)
-    // workspace 挂载级联:不清理会留下"幽灵频道"(左栏有条目、右栏永空)——
-    // 这是 listWorkspaces 读路径兜底要解决的问题,现在在删除侧一次性收敛
-    // (与上一行 schedules 同口径:`repos` 允许旧脚手架只注入部分仓储,缺省即跳过级联)
-    this.deps.repos.users?.unmountChannelEverywhere(channelId)
-    this.deps.repos.channels.remove(channelId)
+    catch (error) {
+      unloading = Promise.reject(error)
+    }
+    return removal
   }
 
   // ===== Agent 模板管理面(全局,可复用;v10 可见性隔离) =====

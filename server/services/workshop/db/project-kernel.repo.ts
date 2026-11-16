@@ -188,10 +188,10 @@ export function createProjectKernelRepo(db: DatabaseSync) {
       findById(id: string) {
         return db.prepare(`SELECT ${EFFECT_COLS} FROM project_effects WHERE id = ?`).get(id) as ProjectEffectRow | undefined
       },
-      due(nowIso: string, limit = 20): ProjectEffectRow[] {
+      due(nowIso: string, limit = 20, offset = 0): ProjectEffectRow[] {
         return db.prepare(
-          `SELECT ${EFFECT_COLS} FROM project_effects WHERE status = 'pending' AND (next_retry_at IS NULL OR next_retry_at <= ?) ORDER BY created_at ASC LIMIT ?`,
-        ).all(nowIso, limit) as unknown as ProjectEffectRow[]
+          `SELECT ${EFFECT_COLS} FROM project_effects WHERE status = 'pending' AND (next_retry_at IS NULL OR next_retry_at <= ?) ORDER BY created_at ASC, rowid ASC LIMIT ? OFFSET ?`,
+        ).all(nowIso, limit, offset) as unknown as ProjectEffectRow[]
       },
       claim(id: string): boolean {
         return db.prepare(`UPDATE project_effects SET status='running', attempts = attempts + 1, updated_at = ? WHERE id = ? AND status = 'pending'`)

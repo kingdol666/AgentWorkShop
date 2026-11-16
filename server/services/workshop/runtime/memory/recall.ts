@@ -34,7 +34,8 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
    * FTS 榜与向量榜各按名次贡献 1/(k+rank) 累加,再按榜内最高分归一化到 0-1——
    * 相比 v1 的 max 距离归一化,弱首命中/两榜分纲不一致时排序依然稳定。
    */
-  protected async collectHits(query: string, scope: MemoryScope, sessionId?: string | null, scopeContext?: ScopeContext, automatic = false): Promise<Map<string, { row: MemoryRow, relevance: number }>> {
+  protected async collectHits(query: string, scope: MemoryScope, sessionId?: string | null, scopeContext?: ScopeContext, automatic = false, signal?: AbortSignal): Promise<Map<string, { row: MemoryRow, relevance: number }>> {
+    signal?.throwIfAborted()
     const rrf = new Map<string, { row: MemoryRow, score: number }>()
     const addRank = (row: MemoryRow, rank: number): void => {
       if (!this.inScope(row, scope, sessionId, scopeContext, automatic)) return
@@ -55,6 +56,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     if (this.embedder) {
       try {
         const [qv] = await this.embedder.embed([query])
+        signal?.throwIfAborted()
         if (qv) {
           this.ensureVec()
           const ownDomains: string[]
@@ -80,6 +82,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
         }
       }
       catch { /* 向量不可用退化为 FTS */ }
+      signal?.throwIfAborted()
     }
     // 时近兜底仅对含私有域的 scope 生效(shared 域无"本人最近"语义);
     // 兜底行不参与 RRF,固定弱相关度(策展层行排除——brief 恒 L0 注入,不占引子)
@@ -107,9 +110,11 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
   protected async rank(
     query: string,
     scope: MemoryScope,
-    opts: { excludeCurated?: boolean, relatedTaskIds?: string[], sessionId?: string | null, scopeContext?: ScopeContext, automatic?: boolean } = {},
+    opts: { excludeCurated?: boolean, relatedTaskIds?: string[], sessionId?: string | null, scopeContext?: ScopeContext, automatic?: boolean, signal?: AbortSignal } = {},
   ): Promise<Array<{ row: MemoryRow, relevance: number, score: number }>> {
-    const hits = await this.collectHits(query, scope, opts.sessionId, opts.scopeContext, opts.automatic ?? false)
+    opts.signal?.throwIfAborted()
+    const hits = await this.collectHits(query, scope, opts.sessionId, opts.scopeContext, opts.automatic ?? false, opts.signal)
+    opts.signal?.throwIfAborted()
     const related = opts.relatedTaskIds && opts.relatedTaskIds.length > 0 ? new Set(opts.relatedTaskIds) : null
     const scopeCtx = this.resolveScopeContext(opts.scopeContext)
     return [...hits.values()]
@@ -139,6 +144,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
    * 预算内装配;使用提示计费(防提示挤占正文预算)。
    */
   async recall(query: string, recallOpts: RecallOptions = {}): Promise<string | null> {
+    recallOpts.signal?.throwIfAborted()
     const doTouch = recallOpts.touch !== false
     // 显式 budgetTokens(实例/调用级)= 整块记忆硬顶(L0 简报+L1 引子+提示全计入);
     // 未显式设置 = 双预算:L1 引子 ≤ memory.primer_tokens(300),整块 ≤ memory.inject_total(500)
@@ -147,7 +153,8 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     const totalBudget = explicit ?? memoryCfg().inject_total
     const scope = recallOpts.scope ?? 'auto'
     const sessionId = recallOpts.sessionId ?? this.opts.sessionId
-    const scored = await this.rank(query, scope, { excludeCurated: true, relatedTaskIds: recallOpts.relatedTaskIds, sessionId, scopeContext: recallOpts.scopeContext, automatic: true })
+    const scored = await this.rank(query, scope, { excludeCurated: true, relatedTaskIds: recallOpts.relatedTaskIds, sessionId, scopeContext: recallOpts.scopeContext, automatic: true, signal: recallOpts.signal })
+    recallOpts.signal?.throwIfAborted()
 
     const lines: string[] = []
     const touched: string[] = []

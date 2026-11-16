@@ -14,6 +14,8 @@ export interface EffectsOutboxOptions {
   maxAttempts?: number
   baseBackoffMs?: number
   maxBackoffMs?: number
+  /** Exclude effects before claim; held effects must retain their attempt budget. */
+  canRun?: (effect: ProjectEffectRow) => boolean
 }
 
 export interface DrainResult {
@@ -43,39 +45,55 @@ export function createEffectsOutbox(
      */
     async drain(limit = 20): Promise<DrainResult> {
       const nowIso = iso(nowMs())
-      const due = kernel.effects.due(nowIso, limit)
       const result: DrainResult = { done: 0, retried: 0, dead: 0, escalated: [] }
-      for (const effect of due) {
-        if (!kernel.effects.claim(effect.id)) continue
-        let handler: EffectHandler | undefined
-        try {
-          handler = handlers[effect.kind]
-          if (!handler) throw new Error(`unknown effect kind: ${effect.kind}`)
-          await handler(effect, JSON.parse(effect.payloadJson || '{}') as Record<string, unknown>)
-          kernel.effects.markDone(effect.id)
-          result.done += 1
-        }
-        catch (err) {
-          const message = err instanceof Error ? err.message : String(err)
-          const attempts = kernel.effects.findById(effect.id)?.attempts ?? 1
-          if (attempts >= maxAttempts) {
-            kernel.effects.markDead(effect.id, message)
-            result.dead += 1
-            // 升级：dead 效果生成 owner 通知（dedupe 按 effectId，不重入）。
-            const esc = kernel.effects.enqueue({
-              projectId: effect.projectId,
-              dedupeKey: `escalate:${effect.id}`,
-              kind: 'notify',
-              payload: { title: '项目副作用最终失败', effectId: effect.id, kind: effect.kind, error: message },
-              traceId: effect.traceId,
-            })
-            if (esc.inserted) result.escalated.push({ effectId: effect.id, dedupeKey: esc.id })
+      let offset = 0
+      let processed = 0
+      while (processed < limit) {
+        const due = kernel.effects.due(nowIso, limit, offset)
+        if (due.length === 0) break
+        for (const effect of due) {
+          let allowed: boolean
+          try {
+            allowed = options.canRun?.(effect) ?? true
           }
-          else {
-            kernel.effects.markRetry(effect.id, message, iso(nowMs() + backoffMs(attempts)))
-            result.retried += 1
+          catch { allowed = false }
+          if (!allowed) {
+            offset += 1
+            continue
           }
+          if (!kernel.effects.claim(effect.id)) continue
+          processed += 1
+          let handler: EffectHandler | undefined
+          try {
+            handler = handlers[effect.kind]
+            if (!handler) throw new Error(`unknown effect kind: ${effect.kind}`)
+            await handler(effect, JSON.parse(effect.payloadJson || '{}') as Record<string, unknown>)
+            kernel.effects.markDone(effect.id)
+            result.done += 1
+          }
+          catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            const attempts = kernel.effects.findById(effect.id)?.attempts ?? 1
+            if (attempts >= maxAttempts) {
+              kernel.effects.markDead(effect.id, message)
+              result.dead += 1
+              const esc = kernel.effects.enqueue({
+                projectId: effect.projectId,
+                dedupeKey: `escalate:${effect.id}`,
+                kind: 'notify',
+                payload: { title: '项目副作用最终失败', effectId: effect.id, kind: effect.kind, error: message },
+                traceId: effect.traceId,
+              })
+              if (esc.inserted) result.escalated.push({ effectId: effect.id, dedupeKey: esc.id })
+            }
+            else {
+              kernel.effects.markRetry(effect.id, message, iso(nowMs() + backoffMs(attempts)))
+              result.retried += 1
+            }
+          }
+          if (processed >= limit) break
         }
+        if (due.length < limit) break
       }
       return result
     },

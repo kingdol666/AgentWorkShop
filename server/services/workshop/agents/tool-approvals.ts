@@ -15,6 +15,7 @@ import { notifyLineOperators } from '../runtime/line-notify'
 import { getDcwController } from '../dcw/dcw-controller'
 import { recordRecipeOpAnchor } from '../dcw/recipe-op-anchor'
 import { assertRecipeOperation } from './industrial/recipe-gate'
+import { currentExecutionScope, type ExecutionScope } from './execution-scope'
 
 export interface ToolApproval {
   id: string
@@ -60,18 +61,78 @@ class ToolApprovalService {
     remindTimers: NodeJS.Timeout[]
     /** 审批单归属产线(线域定向通知用;可空 = 推导不出) */
     lineId?: string
+    /** Trusted task execution scope captured at approval creation. */
+    executionScope?: ExecutionScope
+    removeAbortListener?: () => void
   }>()
 
   private history: ToolApproval[] = []
+  private approvalListeners = new Map<string, Set<() => void>>()
+
+  /** Notify watchdogs synchronously, including approvals completed between polling ticks. */
+  subscribeApprovalChanges(agentId: string, listener: () => void): () => void {
+    let listeners = this.approvalListeners.get(agentId)
+    if (!listeners) this.approvalListeners.set(agentId, listeners = new Set())
+    listeners.add(listener)
+    return () => {
+      listeners.delete(listener)
+      if (listeners.size === 0 && this.approvalListeners.get(agentId) === listeners) this.approvalListeners.delete(agentId)
+    }
+  }
+
+  private notifyApprovalChange(agentId: string): void {
+    for (const listener of [...(this.approvalListeners.get(agentId) ?? [])]) {
+      try {
+        listener()
+      }
+      catch { /* Observers must not interfere with approval settlement. */ }
+    }
+  }
+
+  private addPending(id: string, entry: NonNullable<ReturnType<typeof this.pending.get>>): void {
+    this.pending.set(id, entry)
+    if (entry.executionScope) {
+      const signal = entry.executionScope.signal
+      const onAbort = () => this.cancelEntry(id, '任务执行已中止,审批失效,指令未执行')
+      signal.addEventListener('abort', onAbort, { once: true })
+      entry.removeAbortListener = () => signal.removeEventListener('abort', onAbort)
+    }
+    this.notifyApprovalChange(entry.approval.agentId)
+    if (entry.executionScope?.signal.aborted) this.cancelEntry(id, '任务执行已中止,审批失效,指令未执行')
+  }
+
+  private removePending(id: string): NonNullable<ReturnType<typeof this.pending.get>> | undefined {
+    const entry = this.pending.get(id)
+    if (!entry) return undefined
+    this.pending.delete(id)
+    clearTimeout(entry.timer)
+    entry.remindTimers.forEach(clearTimeout)
+    entry.removeAbortListener?.()
+    this.notifyApprovalChange(entry.approval.agentId)
+    return entry
+  }
+
+  private cancelEntry(id: string, reason: string): boolean {
+    const entry = this.removePending(id)
+    if (!entry) return false
+    entry.approval.status = 'denied'
+    entry.approval.comment = reason
+    entry.approval.decidedAt = new Date().toISOString()
+    this.remember(entry.approval)
+    getHitlRegistry().resolve('dcw-approval', id, 'cancelled')
+    entry.resolve({ approved: false, comment: reason, id })
+    return true
+  }
 
   /** 挂起一次执行审批(工具侧 await;批准/拒绝/超时三向落定)。
    *  opts.title 覆盖 HITL 待办标题(缺省 = 既有「XX 下发审批」,默认行为不变);
    *  opts.timeoutMs 覆盖本单超时窗(expiresAt 与 timer 两处同源取值;缺省 = 全局 hitl_timeout_ms);
    *  opts.payload 携带结构化审批载荷(随 pending/history 落库,前端渲染结构化审批卡)。
    *  不传 opts 的既有调用(param_control/manual-approval/recipe 门)行为不变。 */
-  request(agentId: string, nodeId: string, kind: 'dcw' | 'daq' | 'kb', detail: string, opts?: { title?: string, timeoutMs?: number, payload?: unknown }): Promise<ToolApprovalDecision> {
+  request(agentId: string, nodeId: string, kind: 'dcw' | 'daq' | 'kb', detail: string, opts?: { title?: string, timeoutMs?: number, payload?: unknown, executionScope?: ExecutionScope }): Promise<ToolApprovalDecision> {
     // hold 模式(手动生产语义):审批不自动拒、周期催办;显式传 timeoutMs 的调用方
     // (整包方案 30min)同样被 hold 覆盖 —— 真人在环时"等人"优先于"限时"。
+    const executionScope = opts?.executionScope ?? currentExecutionScope()
     const hold = securityHitlTimeoutMode() === 'hold'
     const timeoutMs = hold ? 0 : (opts?.timeoutMs ?? TIMEOUT_MS())
     const approval: ToolApproval = {
@@ -147,7 +208,7 @@ class ToolApprovalService {
         }
         const remindTimer = setInterval(remind, REMIND_EVERY_MS)
         remindTimer.unref?.()
-        this.pending.set(approval.id, { approval, resolve, remindTimers: [remindTimer], ...(lineId ? { lineId } : {}) })
+        this.addPending(approval.id, { approval, resolve, remindTimers: [remindTimer], ...(lineId ? { lineId } : {}), ...(executionScope ? { executionScope } : {}) })
         return
       }
       // 未读升级(2026-10-05 评审):此前超时=静默 approved:false —— 「人没看到→自动拒绝」。
@@ -187,7 +248,7 @@ class ToolApprovalService {
         // status=pending、无任何终态通告。现在以审批单自身状态为准:仍是 pending
         // 就必须在此落定 expired,无论 pending 表还认不认它。
         if (approval.status !== 'pending') return
-        this.pending.delete(approval.id)
+        this.removePending(approval.id)
         approval.status = 'expired'
         approval.decidedAt = new Date().toISOString()
         approval.comment = '审批超时未处理,默认拒绝,指令未执行'
@@ -215,12 +276,7 @@ class ToolApprovalService {
       // 在等待期间可能没有其它活跃句柄;unref 会让事件循环提前清空 → 超时不触发、
       // Promise 永久 pending(Node 报 "event loop has already resolved")。
       // 计时器在 decide/cancelPendingFor/超时路径均 clearTimeout,不会泄漏。
-      const prevEntry = this.pending.get(approval.id)
-      if (prevEntry) {
-        // 幂等重复 request:清掉旧提醒(原实现同样覆盖 timer)
-        prevEntry.remindTimers?.forEach(clearTimeout)
-      }
-      this.pending.set(approval.id, { approval, resolve, timer, remindTimers, ...(lineId ? { lineId } : {}) })
+      this.addPending(approval.id, { approval, resolve, timer, remindTimers, ...(lineId ? { lineId } : {}), ...(executionScope ? { executionScope } : {}) })
     })
   }
 
@@ -245,10 +301,18 @@ class ToolApprovalService {
   decide(id: string, approved: boolean, comment: string, decidedBy = '', decidedName = '', choice?: number): ToolApproval {
     const entry = this.pending.get(id)
     if (!entry) throw new Error(`审批不存在或已处理: ${id}`)
+    if (approved && entry.executionScope) {
+      try {
+        if (entry.executionScope.signal.aborted) throw new Error('task execution aborted')
+        entry.executionScope.assertActive()
+      }
+      catch {
+        this.cancelEntry(id, '任务执行已失效,审批按拒绝收敛,指令未执行')
+        throw new Error(`审批不存在或已处理: ${id} (任务执行已失效)`)
+      }
+    }
     const choiceNorm = Number.isInteger(choice) ? (choice as number) : null
-    clearTimeout(entry.timer)
-    entry.remindTimers.forEach(clearTimeout)
-    this.pending.delete(id)
+    this.removePending(id)
     entry.approval.status = approved ? 'approved' : 'denied'
     entry.approval.comment = String(comment ?? '').trim()
     entry.approval.choice = choiceNorm
@@ -296,14 +360,7 @@ class ToolApprovalService {
     let n = 0
     for (const [id, entry] of [...this.pending.entries()]) {
       if (entry.approval.agentId !== agentId || entry.approval.nodeId !== nodeId) continue
-      clearTimeout(entry.timer)
-      this.pending.delete(id)
-      entry.approval.status = 'denied'
-      entry.approval.comment = '绑定已解除,审批失效'
-      entry.approval.decidedAt = new Date().toISOString()
-      this.remember(entry.approval)
-      getHitlRegistry().resolve('dcw-approval', id, 'cancelled')
-      entry.resolve({ approved: false, comment: entry.approval.comment, id })
+      if (!this.cancelEntry(id, '绑定已解除,审批失效')) continue
       // 附言可能再也到不了 Agent(回合已死):平台通告补送,人机交互不因链路断裂丢话
       sendHitlNote({
         agentId,
@@ -372,17 +429,24 @@ class ToolApprovalService {
     const notes: string[] = []
     for (const [id, entry] of [...this.pending.entries()]) {
       if (entry.approval.agentId !== agentId) continue
-      clearTimeout(entry.timer)
-      this.pending.delete(id)
-      entry.approval.status = 'denied'
-      entry.approval.comment = reason
-      entry.approval.decidedAt = new Date().toISOString()
-      this.remember(entry.approval)
-      getHitlRegistry().resolve('dcw-approval', id, 'cancelled')
-      entry.resolve({ approved: false, comment: reason, id })
+      if (!this.cancelEntry(id, reason)) continue
       notes.push(`${entry.approval.kind.toUpperCase()} 审批 ${id}(${entry.approval.detail})已按拒绝收敛,指令未执行`)
     }
     return notes
+  }
+
+  /** Cancel approvals belonging to one task, preserving unrelated approvals for the same agent. */
+  cancelPendingForTask(taskId: string, reason: string, scope?: { agentId?: string, assignmentGeneration?: number, executionLeaseId?: string }): number {
+    let n = 0
+    for (const [id, entry] of [...this.pending.entries()]) {
+      const execution = entry.executionScope
+      if (execution?.taskId !== taskId
+        || (scope?.agentId !== undefined && execution.agentId !== scope.agentId)
+        || (scope?.assignmentGeneration !== undefined && execution.assignmentGeneration !== scope.assignmentGeneration)
+        || (scope?.executionLeaseId !== undefined && execution.executionLeaseId !== scope.executionLeaseId)) continue
+      if (this.cancelEntry(id, reason)) n++
+    }
+    return n
   }
 
   /** 同一 Agent 同一节点的挂起审批去重:已有 pending 时拒绝新挂起(防审批面板堆积) */

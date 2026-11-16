@@ -12,7 +12,7 @@ import { sendHitlNote } from '../platform-notice'
 export abstract class AgentRuntimeLifecycle extends AgentRuntimeState {
   /** 启动消费循环 */
   start(): void {
-    if (this.started) return
+    if (this.started || this.state === 'stopped') return
     this.started = true
     this.state = 'idle'
     this.loopPromise = this.consumeLoop()
@@ -47,7 +47,7 @@ export abstract class AgentRuntimeLifecycle extends AgentRuntimeState {
     catch (err) {
       log.error(`[AgentRuntime:${this.agentId}] 挂起审批收敛失败(继续停止):`, err)
     }
-    this.abortController?.abort()
+    this.abortCurrent('runtime stop')
     this.deps.mailbox.close()
     // 状态广播:前端经 WS agent.status 实时反映 stopped
     this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'stopped', ...this.queueContext() })
@@ -62,6 +62,11 @@ export abstract class AgentRuntimeLifecycle extends AgentRuntimeState {
       await this.loopPromise?.catch((err) => {
         log.error(`[AgentRuntime:${this.agentId}] 消费循环收尾失败:`, err)
       })
+      await this.execLock?.catch((err) => {
+        log.error(`[AgentRuntime:${this.agentId}] 执行锁收尾失败:`, err)
+      })
+      await Promise.allSettled([...(this.steerPromises ?? [])])
+      this.deps.mailbox.releaseOwnedClaims?.()
       await this.postSettlePromise?.catch((err) => {
         log.error(`[AgentRuntime:${this.agentId}] 回合收尾失败:`, err)
       })

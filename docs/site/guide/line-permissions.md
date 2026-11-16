@@ -26,7 +26,8 @@ AgentWorkShop 对工业数据（数采/数控）实施**产线级**访问控制�
 - 写控端点（设定值下发 / 连接测试 / 设备绑定 / 数采参数下发）按产线模式校验，越权返回人话 403（如「该产线为仅查看权限:只读数采可见,写控/操作需管理员授予『可操控』」）；
 - Agent ↔ 节点绑定：数采绑定需「仅查看」及以上，写控绑定需「可操控」；
 - Agent 写授权三轨：`kind='dcw'` 节点绑定 = **点位写授权**（对当前活动配方的 trial/apply 生效；绑了 dcw 即把下发收窄到这些点位，未绑任何 dcw 时持配方级授权默认全参数可发）；`kind='recipe'` 配方绑定 = **单配方操作权**（含版本写入/回退）；`kind='line-recipe'` 产线配方管理权 = 对该产线**全部配方**（含未来新建）可 查看/新建/修改/回退（nodeId 字段 = 产线 id，授予需「可操控」，首绑 manual）。直写工具仍恒拒；
-- **控制模式切换 = 摘闸门，必须显式确认**：绑定的 `mode` 决定每次写是否要人工批准。`manual→auto` 与"委派授予 auto"（`team_grant_nodes` / `dispatch_task.grant_node_ids`）都必须携带 `confirm: true`，否则 400 拒绝且不做任何变更；缺省一律 `manual`（不继承 lead 自身的 auto）。每次切换/授予都会写 `binding.mode` 审计；
+- **控制模式切换需显式确认**：绑定的 `mode` 决定每次写是否要人工批准。`manual→auto` 与 `team_grant_nodes` 授予 `auto` 都必须携带 `confirm: true`，否则拒绝且不做变更；委派默认 `manual`，不继承 lead 自身的 `auto`。每次切换/授予都会写 `binding.mode` 审计；
+- **授权与派发分开（未发布、未合并源码，待审查）**：需要时先由 lead 用 `team_grant_nodes` 单独授权自己已绑定的节点，再用不带 `grant_node_ids` 的 `dispatch_task` 派发。携带 `grant_node_ids` 或 `grantNodeIds` 会被拒绝，不创建任务；两步不是原子事务，派发失败不会自动撤销已完成的授权，应检查并按需撤销。agent-token 回程桥因缺少可信回合来源不能调用这两个工具；
 - 数字孪生的实体基线来自同一批 REST 接口，未授权产线在孪生界面同样不可见。
 
 ## 程序化访问（SDK / 插件）

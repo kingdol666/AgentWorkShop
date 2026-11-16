@@ -7,7 +7,7 @@
 import type { A2AMessage, Part } from '../types/a2a'
 import { parseJson } from '../db/database'
 import type { MessageRow } from '../db/database'
-import type { MessageRepo } from '../db/message.repo'
+import type { MessageBlocked, MessageRepo } from '../db/message.repo'
 import { AppError } from '../../../utils/errors'
 
 /** promise 门闩:resolve 后重建,供 dequeue 反复挂起 */
@@ -26,7 +26,10 @@ function newGate(): Gate {
 
 /** MessageRow → A2AMessage(parts/metadata 反序列化) */
 export function rowToMessage(row: MessageRow): A2AMessage {
-  const metadata = parseJson<Record<string, unknown>>(row.metadataJson, {})
+  const parsedMetadata = parseJson<unknown>(row.metadataJson, {})
+  const metadata: Record<string, unknown> = parsedMetadata !== null && typeof parsedMetadata === 'object' && !Array.isArray(parsedMetadata)
+    ? parsedMetadata as Record<string, unknown>
+    : {}
   // Session Context：session_id 是平台列，metadata 是消息契约；读取时补齐后者，
   // 保证从历史 mailbox 重放的旧行也能恢复到同一 session。
   if (row.sessionId && typeof metadata['x-aw-session-id'] !== 'string') {
@@ -47,6 +50,10 @@ export class Mailbox {
   readonly channelId: string
   private gate: Gate = newGate()
   private closed = false
+  /** Tokens, not message IDs, distinguish concurrent generations of a claim. */
+  private readonly claimedMessages = new Map<string, string>()
+  private readonly processingMessages = new Map<string, string>()
+  private readonly deliveryTokens = new WeakMap<A2AMessage, string>()
   /** 外部通知回调(如唤醒调度循环);由 AgentRuntime/Manager 注入 */
   private onWake: () => void
   /** 到信回调注册(poll_messages 长轮询即时唤醒;注册方自带注销句柄) */
@@ -57,6 +64,7 @@ export class Mailbox {
     channelId: string,
     agentId: string,
     wake: () => void,
+    private readonly isBlocked?: MessageBlocked,
   ) {
     this.channelId = channelId
     this.agentId = agentId
@@ -102,12 +110,6 @@ export class Mailbox {
       message.messageId = result.row.id
     }
     this.wake()
-    for (const cb of this.arrivalCbs) {
-      try {
-        cb()
-      }
-      catch { /* 回调异常不阻断投递 */ }
-    }
     this.onWake()
     return true
   }
@@ -127,12 +129,15 @@ export class Mailbox {
       // 先取门闩引用再查询:查询空档内 enqueue 的 releaseGate 才不会丢唤醒
       // (若查询后才取引用,新门闩替换旧门闩 → 挂在未触发的门闩上永久沉睡)
       const gate = this.gate
-      const row = this.messageRepo.firstPendingByChannelAgent(this.channelId, this.agentId)
+      const row = this.messageRepo.firstPendingByChannelAgent(this.channelId, this.agentId, this.isBlocked)
       if (row) {
         // 原子认领:认领失败 = 消息已被 steer 注入或 poll_messages 读即取
         // (唯一所有权),让路重查下一条——消费循环绝不重复处理他人消息
-        if (!this.messageRepo.claim(row.id)) continue
-        return rowToMessage(row)
+        const token = this.claim(row.id)
+        if (!token) continue
+        const message = rowToMessage(row)
+        this.deliveryTokens.set(message, token)
+        return message
       }
       // 门闩挂起 + 15s 兜底重查:任何唤醒丢失路径自愈(消息最多滞后 15s)
       await Promise.race([
@@ -142,29 +147,115 @@ export class Mailbox {
     }
   }
 
-  /** 原子认领(pending → consuming):多方竞争下唯一所有权;认领失败返回 false */
-  claim(messageId: string): boolean {
-    return this.messageRepo.claim(messageId)
+  /** Get the private token associated with this exact dequeued delivery. */
+  claimToken(message: A2AMessage): string | undefined {
+    return this.deliveryTokens.get(message)
+  }
+
+  /** Atomically claim a message; callers must retain the returned token. */
+  claim(messageId: string): string | null {
+    const token = this.messageRepo.claim(messageId, this.isBlocked)
+    if (token) this.claimedMessages.set(token, messageId)
+    return token
+  }
+
+  /** Release either an unstarted or a completed processing claim. */
+  releaseClaim(messageId: string, token: string): boolean {
+    if (!this.hasLocalClaim(messageId, token)) return false
+    const released = this.messageRepo.releaseClaim(messageId, token)
+    this.forgetClaim(messageId, token)
+    if (released) this.wake()
+    return released
+  }
+
+  /** Return all claims that have not entered processing, preserving retry budget. */
+  releaseOwnedClaims(): number {
+    let released = 0
+    for (const [token, messageId] of this.claimedMessages) {
+      if (this.messageRepo.releaseClaim(messageId, token)) released += 1
+    }
+    this.claimedMessages.clear()
+    if (released > 0) this.wake()
+    return released
+  }
+
+  /** Mark an exact current claim as processing. */
+  beginProcessing(messageId: string, token: string): boolean {
+    if (this.claimedMessages.get(token) !== messageId) return false
+    if (!this.messageRepo.ownsClaim(messageId, token)) {
+      this.claimedMessages.delete(token)
+      return false
+    }
+    if (this.isBlocked && this.messageRepo.isClaimBlocked(messageId, token, this.isBlocked)) {
+      this.releaseClaim(messageId, token)
+      return false
+    }
+    this.claimedMessages.delete(token)
+    this.processingMessages.set(token, messageId)
+    return true
+  }
+
+  private hasLocalClaim(messageId: string, token: string): boolean {
+    return typeof token === 'string' && token.length > 0
+      && (this.claimedMessages.get(token) === messageId || this.processingMessages.get(token) === messageId)
+  }
+
+  private forgetClaim(messageId: string, token: string): void {
+    if (this.claimedMessages.get(token) === messageId) this.claimedMessages.delete(token)
+    if (this.processingMessages.get(token) === messageId) this.processingMessages.delete(token)
   }
 
   /** 只读查看未消费消息(不改变状态) */
   async peek(limit: number): Promise<A2AMessage[]> {
-    return this.messageRepo.listPendingByChannelAgent(this.channelId, this.agentId, limit).map(rowToMessage)
+    return this.messageRepo.listPendingByChannelAgent(this.channelId, this.agentId, limit, this.isBlocked).map(rowToMessage)
   }
 
-  /** 标记已消费 */
-  markConsumed(messageId: string): void {
-    this.messageRepo.markConsumed(messageId)
+  /** Settle only the exact claim held by this mailbox. */
+  markConsumed(messageId: string, token: string): boolean {
+    if (!this.hasLocalClaim(messageId, token)) return false
+    const consumed = this.messageRepo.markConsumed(messageId, token)
+    this.forgetClaim(messageId, token)
+    return consumed
+  }
+
+  /** Quarantine a locally held recovery claim without disturbing a newer claim. */
+  deadLetterLegacyRecoveryClaim(messageId: string, token: string): boolean {
+    if (!this.hasLocalClaim(messageId, token)) return false
+    const dead = this.messageRepo.deadLetterLegacyRecoveryClaim(messageId, token)
+    if (dead || !this.messageRepo.ownsClaim(messageId, token)) this.forgetClaim(messageId, token)
+    return dead
+  }
+
+  /** Recheck the persisted row under this exact claim, failing closed on lost ownership. */
+  isClaimBlocked(messageId: string, token: string): boolean {
+    if (!this.hasLocalClaim(messageId, token)) return true
+    return this.isBlocked
+      ? this.messageRepo.isClaimBlocked(messageId, token, this.isBlocked)
+      : !this.messageRepo.ownsClaim(messageId, token)
+  }
+
+  /** Whether this exact claim is still owned by this mailbox. */
+  ownsClaim(messageId: string, token: string): boolean {
+    return this.hasLocalClaim(messageId, token) && this.messageRepo.ownsClaim(messageId, token)
   }
 
   /** 回合失败重投(consuming → pending);返回是否实际重投 */
-  requeue(messageId: string): boolean {
-    return this.messageRepo.requeue(messageId)
+  requeue(messageId: string, token: string): boolean {
+    if (!this.hasLocalClaim(messageId, token)) return false
+    const requeued = this.messageRepo.requeue(messageId, token)
+    this.forgetClaim(messageId, token)
+    return requeued
   }
 
-  /** 外部唤醒:解除 dequeue 挂起(供 manager 在 taskEngine 直接落库后唤醒) */
+  /** Recheck queue and long-poll waiters after delivery or eligibility changes. */
   wake(): void {
     this.releaseGate()
+    for (const cb of this.arrivalCbs) {
+      try {
+        cb()
+      }
+      catch { /* A waiter must not block other notifications. */ }
+    }
   }
 
   /** 关闭邮箱:解除 dequeue 挂起,后续 dequeue 返回 null(供 AgentRuntime.stop) */

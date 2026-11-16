@@ -7,11 +7,13 @@ import { OmpRpcAgentImpl } from '../server/services/workshop/agents/omp-agent'
 import type { AgentEvent, AgentRunContext, AgentRunRequest } from '../server/services/workshop/agents/agent-interface'
 import type { AgentSessionEvent, HostToolCallRequest, OmpRpcClient } from '../server/services/workshop/agents/adapters/omp-rpc-client'
 import { handleDispatchTask } from '../server/services/workshop/agents/host-tool-bridge/tools/tasks'
+import type { ExecutionScope } from '../server/services/workshop/agents/execution-scope'
 
 class TestOmpAgent extends OmpRpcAgentImpl {
   dispatchedRootTaskIds: Array<string | undefined> = []
   createdTasks: Array<Record<string, unknown>> = []
   private taskWorkspace: never = null as never
+  contextGateWait?: Promise<void>
 
   setClient(client: OmpRpcClient): void {
     this.client = client
@@ -34,22 +36,32 @@ class TestOmpAgent extends OmpRpcAgentImpl {
   }
 
   invokeHostTool(request: HostToolCallRequest, sourceClient: OmpRpcClient): Promise<{ text: string, isError?: boolean }> {
-    return this.handleHostTool(request, sourceClient)
+    const alias = this.hostToolAliases?.byName.get(request.toolName)
+    return this.handleHostTool(alias ? { ...request, toolName: alias } : request, sourceClient)
   }
 
-  runPeerTurn(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
-    return this.peerTurn(request, ctx)
+  async* runPeerTurn(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+    const scope = this.beginTurnScope(ctx)
+    try {
+      yield* this.peerTurn(request, ctx)
+    }
+    finally {
+      this.endTurnScope(scope)
+    }
   }
 
   protected override async ensureClient(_ctx: AgentRunContext): Promise<void> {}
 
-  protected override async contextGate(): Promise<void> {}
+  protected override async contextGate(): Promise<void> {
+    await this.contextGateWait
+  }
 
   protected override async contextPrefix(): Promise<string> {
     return ''
   }
 
-  override async dispatchHostTool(_toolName: string, _args: Record<string, unknown>, activeRootTaskId?: string): Promise<{ text: string, isError?: boolean }> {
+  override async dispatchTurnHostTool(_toolName: string, _args: Record<string, unknown>, scope: ExecutionScope, activeRootTaskId?: string): Promise<{ text: string, isError?: boolean }> {
+    scope.assertActive()
     this.dispatchedRootTaskIds.push(activeRootTaskId)
     if (_toolName === 'dispatch_task') {
       return handleDispatchTask(_args, this.taskWorkspace, {
@@ -90,6 +102,35 @@ function makeEventingClient(onPeerPrompt?: () => Promise<void>): OmpRpcClient {
   } as unknown as OmpRpcClient
 }
 
+test('supervision abort during setup never prompts or leaves a timer or subscription', async () => {
+  const controller = new AbortController()
+  const gate = Promise.withResolvers<undefined>()
+  const agent = new TestOmpAgent({ agentId: 'abort-lead', role: 'lead', channelId: 'ch', superviseHardTimeoutMs: 20 })
+  const commands: string[] = []
+  const listeners = new Set<unknown>()
+  const client = {
+    onEvent: (listener: unknown) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    send: async (command: { type: string }) => { commands.push(command.type) },
+    kill: () => {},
+  } as unknown as OmpRpcClient
+  agent.setClient(client)
+  agent.contextGateWait = gate.promise
+  const ctx = { agentId: 'abort-lead', channelId: 'ch', role: 'lead', workspace: {} as never, signal: controller.signal } as AgentRunContext
+  const snapshot = { tick: 1, now: Date.now(), tasks: [], activeRootId: null, queuedRootIds: [], members: [], pendingChildren: {} } as never
+  const pending = agent.supervise(snapshot, ctx, { signal: controller.signal })
+  assert.deepEqual(await agent.supervise(snapshot, ctx), [])
+  controller.abort()
+  gate.resolve(undefined)
+  assert.deepEqual(await pending, [])
+  await new Promise(resolve => setTimeout(resolve, 50))
+  assert.deepEqual(commands, [])
+  assert.equal(listeners.size, 0)
+  assert.equal(agent.hasSupervisionLease(), false)
+})
+
 test('OMP audit binds active root events and keeps the following peer turn taskless', async () => {
   const oldLog = process.env.AW_AGENTTEAM_EVENT_LOG
   const oldRunId = process.env.AW_AGENTTEAM_RUN_ID
@@ -118,7 +159,7 @@ test('OMP audit binds active root events and keeps the following peer turn taskl
     let peerDispatchResult: { text: string, isError?: boolean } | undefined
     let peerReadResult: { text: string, isError?: boolean } | undefined
     const dispatchRequest = { id: 'peer-rpc', toolCallId: 'peer-dispatch', toolName: 'dispatch_task', arguments: {} }
-    const readRequest = { id: 'peer-read-rpc', toolCallId: 'peer-read', toolName: 'line_context', arguments: {} }
+    const readRequest = { id: 'peer-read-rpc', toolCallId: 'peer-read', toolName: 'poll_messages', arguments: {} }
     const peerClient = makeEventingClient(async () => {
       const peerAgent = agentRef.current!
       peerDispatchResult = await peerAgent.invokeHostTool(dispatchRequest, peerClient)

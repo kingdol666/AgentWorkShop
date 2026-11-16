@@ -68,6 +68,15 @@ test('同值保活写不推进 60s 间隔基准(只推进 lastWriteAt)', () => {
   assert.equal(n.lastChangeAt, '2026-11-02T10:02:02.000+08:00')
 })
 
+test('in-flight snapshot restores with hold blocked', () => {
+  const node = make()
+  node.value = 40
+  const restored = DcwNode.fromRow({ ...node.toRow(), state: 'writing', holdBlocked: undefined })
+  assert.equal(restored.state, 'error')
+  assert.equal(restored.holdBlocked, true)
+  assert.equal(restored.value, 40)
+})
+
 test('持久化往返保留 lastChangeAt', () => {
   const n = make()
   n.applyWriteResult(50, true, 'ok', '2026-11-02T10:00:02.000+08:00')

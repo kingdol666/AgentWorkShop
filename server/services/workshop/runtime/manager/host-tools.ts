@@ -16,6 +16,8 @@ import { isProductionTool } from '../../agents/host-tool-bridge/catalog'
 import { channelToolGate } from '../../tools/policy'
 import { recordOps } from '../../ops/ops'
 import { rowToMessage } from '../mailbox'
+import { isRecoveryBlockedMessage } from '../../db/message.repo'
+import { allowedWithoutTurnProvenance } from '../../agents/tool-classes'
 
 /** WP4:token 路径需要留痕的协作面工具(可作数据二次外传的通道) */
 const COLLAB_AUDIT_TOOLS = new Set([
@@ -101,6 +103,13 @@ export abstract class ManagerHostTools extends ManagerA2A {
     // WP3:走 repo 单点校验(常量时间 + 轮换宽限窗),四路调用点同源
     if (input.token !== undefined && !this.deps.repos.channelAgents.isTokenValid(row, input.token)) {
       throw new AppError(401, 'UNAUTHORIZED', 'agent token 校验失败')
+    }
+    // An agent token identifies an agent, not the turn that authorized a call.
+    if (input.token !== undefined) {
+      const isBuiltin = HOST_TOOLS.some(t => t.name === input.tool)
+      if (!allowedWithoutTurnProvenance(input.tool, isBuiltin, isBuiltin ? undefined : listPluginTools().get(input.tool))) {
+        return { text: `工具「${input.tool}」拒绝执行: agent token 缺少可信回合来源 (turn provenance),无法授权此操作。`, isError: true }
+      }
     }
     // ── 人类权限作用域判定(§13.3)────────────────────────────────────────────
     // 该 Agent 若正在服务一次**群成员**发起的人类调用,则管理面/高危工具一律拒绝:
@@ -270,25 +279,29 @@ export abstract class ManagerHostTools extends ManagerA2A {
 
   async pollMailbox(channelId: string, callerAgentId: string, limit = 100): Promise<A2AMessage[]> {
     this.requireMember(channelId, callerAgentId)
+    const isBlocked = (row: import('../../db/database').MessageRow) =>
+      isRecoveryBlockedMessage(row, id => this.getTaskEngine().isLegacyRecoveryBlocked(id))
     return this.deps.repos.messages
-      .listPendingByChannelAgent(channelId, callerAgentId)
-      .slice(0, limit)
+      .listPendingByChannelAgent(channelId, callerAgentId, limit, isBlocked)
       .map(rowToMessage)
   }
 
   /** 确认消费自己 mailbox 的协作消息(读即取;id 须属于 caller 的 pending 集) */
   ackMailbox(channelId: string, callerAgentId: string, messageIds: string[]): void {
     this.requireMember(channelId, callerAgentId)
+    const isBlocked = (row: import('../../db/database').MessageRow) =>
+      isRecoveryBlockedMessage(row, id => this.getTaskEngine().isLegacyRecoveryBlocked(id))
     const pending = new Set(
       this.deps.repos.messages
-        .listPendingByChannelAgent(channelId, callerAgentId)
+        .listPendingByChannelAgent(channelId, callerAgentId, undefined, isBlocked)
         .map(r => r.id),
     )
     for (const id of messageIds) {
       // claim 守卫:与 steer 注入原子竞争(peek 与 ack 之间消息可能被认领),
       // 认领成功才标记消费——失败说明 steer 已注入运行中会话,不再重复投递
-      if (pending.has(id) && this.deps.repos.messages.claim(id)) {
-        this.deps.repos.messages.markConsumed(id)
+      if (pending.has(id)) {
+        const token = this.deps.repos.messages.claim(id, isBlocked)
+        if (token) this.deps.repos.messages.markConsumed(id, token)
       }
     }
   }

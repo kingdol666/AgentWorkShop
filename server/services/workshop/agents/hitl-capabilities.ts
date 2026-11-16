@@ -169,9 +169,9 @@ export const DECLARATIONS: Record<string, HitlDeclaration> = {
     providerKind: 'dcw-approval',
     facets: { approval: true, question: false, multiQuestion: false, structuredResponse: false, cancel: true },
     evidence: [
-      'server/services/workshop/agents/tool-approvals.ts:95 getHitlRegistry',
-      'server/services/workshop/agents/tool-approvals.ts:225 decide',
-      'server/services/workshop/agents/tool-approvals.ts:275 cancelPendingFor',
+      'server/services/workshop/agents/tool-approvals.ts:156 getHitlRegistry',
+      'server/services/workshop/agents/tool-approvals.ts:301 decide',
+      'server/services/workshop/agents/tool-approvals.ts:359 cancelPendingFor',
     ],
     unsupportedReason: '数控下发审批只有批准/拒绝二值,无提问通道(question=false)',
   },

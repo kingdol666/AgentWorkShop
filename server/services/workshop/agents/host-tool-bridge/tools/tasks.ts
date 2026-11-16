@@ -7,6 +7,7 @@ import type { AgentWorkspace } from '../../agent-interface'
 import type { WorkspaceTask } from '../../../types/task'
 import { TERMINAL_TASK_STATES } from '../../../types/task'
 import { extractTaskMode } from '../../../runtime/execution-mode'
+import { currentExecutionScope } from '../../execution-scope'
 import type { HostToolBridgeContext, HostToolResult, HostToolSessionState } from '../types'
 
 export async function handleSubmitTask(args: Record<string, unknown>, state: HostToolSessionState, ws: AgentWorkspace): Promise<HostToolResult> {
@@ -52,11 +53,15 @@ export async function handleDispatchTask(args: Record<string, unknown>, ws: Agen
     }
     parentTaskId = activeRootTaskId
   }
+  const rawGrant = args.grant_node_ids ?? args.grantNodeIds
+  if (rawGrant != null) {
+    return {
+      text: '未派发:随任务授权暂不可用,因为授权与任务派发无法原子提交。请先单独确认并授予节点权限,再不带 grant_node_ids 派发任务。',
+      isError: true,
+    }
+  }
   // 重复派发守卫(真实场景实测:lead 模型可能对同一目标重复派发,引发协调风暴):
   // 同父任务下已存在同标题非终态子任务 → 不再创建,直接指路既有任务。
-  // 2026-10-30 前移到授权之前:原顺序先落库 grant_node_ids 再判重,判重命中时授权
-  // (grant_mode=auto 还会摘除逐次人工审批)已生效却无任务上下文 —— 悬空授权面,
-  // 且 lead 每次重复派发尝试都会重放授权,把偶发幻觉放大成常态越权面。
   const dup = await ws.listTasks()
   const existing = dup.find(t =>
     t.parentId === parentTaskId
@@ -67,36 +72,14 @@ export async function handleDispatchTask(args: Record<string, unknown>, ws: Agen
       text: `未创建:同父任务下已存在同标题进行中子任务 ${existing.id}("${existing.title}",state=${existing.state},assignee=${existing.assigneeId})。请勿重复派发;若需跟进请对该任务 notify 或 reassign。`,
     }
   }
-  // 派发时随任务授予节点权限(lead 专属;grant_node_ids ⊆ lead 自身绑定面,fail-closed):
-  // 任一节点不满足则整单拒绝,任务不创建 —— 避免 worker 拿到任务却没有节点权限的半途态。
-  let grantNote = ''
-  let grantedNodeIds: string[] = []
-  const rawGrant = args.grant_node_ids ?? args.grantNodeIds
-  if (rawGrant != null && identity) {
-    const { grantNodesForDispatch } = await import('./team-delegation')
-    const grantNodeIds = (Array.isArray(rawGrant) ? rawGrant : String(rawGrant).split(',')).map(x => String(x ?? '').trim()).filter(Boolean)
-    if (!grantNodeIds.length) return { text: 'grant_node_ids 为空:要么不传,要么给出至少一个节点 id。', isError: true }
-    const grantMode = args.grant_mode === 'manual' || args.grant_mode === 'auto' ? (args.grant_mode as 'auto' | 'manual') : undefined
-    const grant = await grantNodesForDispatch(identity, assigneeId, grantNodeIds, grantMode, ws, args.grant_confirm)
-    if (!grant.ok) return { text: `未派发:${grant.text}\n请先用 team_grant_nodes 确认你持有这些节点,或修正 node id 后重试。`, isError: true }
-    grantedNodeIds = grantNodeIds
-    grantNote = `\n${grant.text}`
-  }
   try {
+    currentExecutionScope()?.assertActive()
     const task = await ws.dispatchTask({ assigneeId, title, description, parentTaskId, routeReason })
-    return { text: `子任务 ${task.id} 已创建并指派 → ${assigneeId}(父任务 ${parentTaskId ?? '无'},标题: ${title}${routeReason ? `,路由理由: ${routeReason}` : ''})${grantNote}` }
+    return { text: `子任务 ${task.id} 已创建并指派 → ${assigneeId}(父任务 ${parentTaskId ?? '无'},标题: ${title}${routeReason ? `,路由理由: ${routeReason}` : ''})` }
   }
   catch (err) {
-    // 2026-10-30 修复(授权-任务绑定不变量):manager 侧判重 409/父任务终态/harness
-    // 不可用/预算超限等拒绝发生在授权落库之后 —— 任务没创建,节点授权已生效。
-    // 失败即回滚本轮授权再如实回报,杜绝「派发失败留下无任务授权」。
-    if (grantedNodeIds.length && identity) {
-      const { revokeNodesForDispatchRollback } = await import('./team-delegation')
-      const revoked = await revokeNodesForDispatchRollback(identity, assigneeId, grantedNodeIds, ws)
-      grantNote = revoked > 0 ? `\n(派发失败,已回滚本轮 ${revoked} 条随单授权)` : '\n(派发失败;随单授权回滚未完成,请用 team_revoke_nodes 手工核销)'
-    }
     const msg = err instanceof Error ? err.message : String(err)
-    return { text: `未派发:${msg}${grantNote}`, isError: true }
+    return { text: `未派发:${msg}`, isError: true }
   }
 }
 

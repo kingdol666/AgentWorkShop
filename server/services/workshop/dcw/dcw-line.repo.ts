@@ -80,6 +80,8 @@ export class DcwLineRepo {
       if (!decision.ok) throw new AppError(400, 'MODE_CONFIRM_REQUIRED', decision.error ?? '切换控制模式需显式风险确认')
       if (!decision.noop) line.controlMode = patch.controlMode
     }
+    // simulated 修正:V2/V3 写验收要求目标线显式 simulated=true(接入供给可对齐)
+    if (patch.simulated !== undefined) line.simulated = patch.simulated === true
     save(this.list)
     return line
   }

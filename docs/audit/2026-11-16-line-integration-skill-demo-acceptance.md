@@ -89,7 +89,7 @@ daq       熔体压力 dn-2d350de0 · 制品克重 dn-ae0a3103 · 模温 dn-f51f
 - V4：配方 5 参数映射正确；
 - V5：绑线/4 成员/插件隔离；
 - V6：`受保护线存在=true->true 本线锚点=10 受保护线新增=0 基线=1`
-  （受保护线 `ln-d7e0a2a2` 的 1 条 mock journal 锚点保持不动）。
+  （受保护线 `ln-d7e0a2a2` 的 1 条 mock journal 锚点保持不动）。此历史结果仅说明所核对的 journal 无新增锚点，不证明设备物理零扰动，也不验证当前未合并源码。
 
 ### 2.5 受治理控制优化（`onboard.log` + `control-step2.json`）
 

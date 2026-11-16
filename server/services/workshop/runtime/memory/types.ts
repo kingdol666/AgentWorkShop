@@ -18,6 +18,8 @@ export interface AgentMemoryOptions {
 }
 
 export interface RecallOptions {
+  /** Stop recall before further repository operations when aborted. */
+  signal?: AbortSignal
   /** 默认 true;supervise 调用应传 false 防 access_count 通胀 */
   touch?: boolean
   /** 本次召回预算覆盖(默认 AW_MEMORY_BUDGET_TOKENS) */

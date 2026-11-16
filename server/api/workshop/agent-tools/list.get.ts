@@ -13,6 +13,14 @@ import { getQuery, getHeader, setHeader, setResponseStatus, defineEventHandler }
 import { resolveUser } from '@/server/api/workshop/caller'
 import { AppError } from '@/server/utils/errors'
 import { getWorkshopManager } from '@/server/plugins/workshop'
+import { HOST_TOOLS } from '@/server/services/workshop/agents/host-tool-bridge'
+import { listPluginTools } from '@/server/services/workshop/agents/plugin-tools'
+import { allowedWithoutTurnProvenance } from '@/server/services/workshop/agents/tool-classes'
+
+function allowedForAgentToken(name: string): boolean {
+  const isBuiltin = HOST_TOOLS.some(tool => tool.name === name)
+  return allowedWithoutTurnProvenance(name, isBuiltin, isBuiltin ? undefined : listPluginTools().get(name))
+}
 
 /** 稳定序列化(键排序;数组保序)+ 弱 ETag */
 function weakEtagOf(tools: unknown): string {
@@ -47,7 +55,8 @@ export default defineEventHandler(async (event) => {
         throw new AppError(403, 'SCOPE_VIOLATION', '该 Agent 所属 Channel 对你不可见,无权读取其工具面')
       }
     }
-    const tools = manager.hostToolDefsFor(agentId)
+    const definitions = manager.hostToolDefsFor(agentId)
+    const tools = agentToken ? definitions.filter(tool => allowedForAgentToken(tool.name)) : definitions
     const etag = weakEtagOf(tools)
     setHeader(event, 'ETag', etag)
     setHeader(event, 'Cache-Control', 'no-cache')

@@ -1,10 +1,21 @@
-## v0.11.3 — 产线集成文档与 Skill 适配（源码快照，未发布；2026-11-16）
+## 当前未合并源码 — 兼容性边界（未发布、待审查）
+
+- agent-token 回程桥缺少可信回合来源，过滤并拒绝危险工具及授权/派发工具；插件工具必须显式声明 `riskClass: 'read'` 才能通过该层，其他治理门仍生效。
+- `dispatch_task` 拒绝随任务的 `grant_node_ids` / `grantNodeIds`；先单独 `team_grant_nodes`，再派发，失败后检查并按需撤销授权，两步不具原子性。委派默认 `manual`，`auto` 须显式 `confirm: true`。
+- 原生 omp 的工作或监督回合中止时退役进程；正常完成后的迟到帧逐回合来源仍未解决。无新增物理 HIL 或安全通过声明。
+- 旧版无执行租约的活动任务进入 `LEGACY_EXECUTION_RECOVERY_REQUIRED` 挂起，不自动重放；须保全证据、核查实际设备并升级处置，不能仅清除标记。目前无受支持的可审计释放流程，受影响升级在处置流程实现并验证前不具备生产就绪条件。
+- 已保存的 Channel 场景提示词、成员配置及自定义 prompt 不会因默认提示词更新而自动改写；请检查并手动迁移旧的随任务授权指令，保留原有定制。
+- DCW 自动保写锁与恢复限制仍待审查，不属于已发布的 0.11.3；接入供给和 V2/V3 写入因缺少可信模拟器归属证明而被阻断。接入验证也不得运行，直至隔离及无意外副作用得到证明。
+
+## v0.11.3 — 已发布版本与历史产线集成快照（2026-11-16）
+
+- 已发布的 0.11.3 中 `markConsumed` 只按 `state='consuming'` 守卫：消息处于 pending/dead 时不会被消费，但重新认领为 consuming 后旧回合仍可能消费它，并非按执行次数隔离的 CAS。
 
 - 新增双语产线集成指南，覆盖 Channel 模式、product-bound Session、记忆/经验作用域、DAQ/DCW 工具顺序与向量 raw/normalized 契约。
 - 更新 onboarding、协议、PLC twin、文档到 Project、全系统验收 Skills；校验 `skills/` 与 `.agents/skills/` 双副本一致。
-- 扩充文档双语同构与新页面检查；README/VitePress 区分 v0.11.2 发布证据与当前源码状态。
-- 本条是源码与文档适配记录，不表示 v0.11.3 npm/GitHub release 已发布；本轮门禁与模拟验收结果另见日期化报告。
-- **2026-11-16 隔离模拟演示**：全新 `AW_HOME` + 五协议影子模拟器完成 1 线/5 DCW/9 DAQ 供给、V1–V6 25/25、两步 HITL 批准下发（52→54→56 MPa）与回读证实；门禁 unit 1787/1787、MCP 14/14、docs 101/101、Skills 176/176。证据见 [`2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md)。仅模拟器证据，不是物理 HIL；seed task 在本轮窗口内未自主收口。
+- 当时扩充文档双语同构与新页面检查；README/VitePress 区分当时的 v0.11.2 发布证据与源码状态。
+- 以下为发版前源码与文档适配的历史记录；v0.11.3 已发布，历史门禁和模拟验收不证明当前未合并改动已通过验证。
+- **2026-11-16 隔离模拟演示**：全新 `AW_HOME` + 五协议影子模拟器完成 1 线/5 DCW/9 DAQ 供给、V1–V6 25/25、两步 HITL 批准下发（52→54→56 MPa）与回读证实；门禁 unit 1787/1787、MCP 14/14、docs 101/101、Skills 176/176。证据见 [`2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md)。V6 记录受保护线 journal 无新增锚点，不证明物理零扰动。仅模拟器证据，不是物理 HIL；seed task 在本轮窗口内未自主收口。
 
 ## v0.11.2 — 最终验收收口：recipe_trial 预检 × AML 回归 × 严格输入（2026-11-12）
 

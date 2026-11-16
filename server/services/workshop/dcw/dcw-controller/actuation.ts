@@ -13,6 +13,10 @@ import { getDcwRecipeRepo } from '../dcw-recipe.repo'
 import { randomUUID } from 'node:crypto'
 import { resolveDcwDriver } from '../drivers'
 import { beginGovernanceDriverCall, endGovernanceDriverCall } from '../../agents/governance-harness-audit'
+import type { ExecutionScope } from '../../agents/execution-scope'
+import type { DcwWriteOutcome } from '../dcw-runtime'
+import { writeTolerance } from '../dcw-runtime'
+import { getTsdb } from '../../daq/storage'
 
 /** 驱动未显式上报 ack 时的旧口径归一(ok+回读→设备证实;ok 无回读→链路受理;失败→未证实) */
 function normalizeAck(outcome: { ok: boolean, readback: number | null, ack?: WriteAckLevel }): WriteAckLevel {
@@ -26,21 +30,34 @@ export abstract class DcwControllerActuation extends DcwControllerState {
    * 核心写执行:驱动写(工程量→原始值换算 + 回读校验在驱动内)
    * → ACK 记账(节点状态/写历史)→ WS 直推。真实/模拟驱动同一路径。
    */
-  protected async executeWrite(node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null): Promise<{ ok: boolean, message: string, raw: number | null, readback: number | null }> {
+  protected async executeWrite(node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null, executionScope?: ExecutionScope, onDriverStart?: () => void): Promise<DcwWriteOutcome> {
     const at = new Date().toISOString()
     // 数据语义标定钩子(encode):物理值 → PLC 设定值。
     // 回读值再经 decoder 换算回物理量做死区校验(容差按标定比例同步缩放)。
     const t = node.transform
     const plcValue = inverseTransform(eng, t)
     const plcTolerance = Math.max(tolerance, 1e-9) / (t?.kind === 'linear' && Math.abs(t.scale ?? 1) > 0 ? Math.abs(t.scale!) : 1)
+    executionScope?.assertActive()
+    const driver = resolveDcwDriver(node.driver)
     const driverAudit = beginGovernanceDriverCall({
       node_id: node.id, line_id: node.lineId ?? null, driver: node.driver,
       requested_value: eng, plc_value: plcValue, tolerance: plcTolerance,
       recipe_run_id: recipeRunId, driver_config: node.driverConfig,
     })
     let outcome: { ok: boolean, message: string, raw: number | null, readback: number | null, ack?: WriteAckLevel }
+    // Do not turn a revoked lease into an ordinary driver failure.
+    executionScope?.assertActive()
+    node.holdBlocked = true
+    // 保写锁持久化失败 = 驱动绝不下发(503 外抛,不得进 try 被 catch 吞成失败 outcome);
+    // 治理审计同步收口(driver_start↔end 配对),避免留下无 end 的悬挂 driver_call(审查 P2)。
+    if (!this.repo.flushNow()) {
+      endGovernanceDriverCall(driverAudit, { ok: false, message: '保写锁持久化失败,驱动未调用', raw: null, readback: null })
+      throw new AppError(503, ErrorCodes.CONFLICT, '无法持久化保写安全锁,拒绝驱动下发')
+    }
+    executionScope?.assertActive()
+    onDriverStart?.()
     try {
-      outcome = await resolveDcwDriver(node.driver).write({
+      outcome = await driver.write({
         eng: plcValue,
         tolerance: plcTolerance,
         domain: { min: node.min, max: node.max },
@@ -54,11 +71,37 @@ export abstract class DcwControllerActuation extends DcwControllerState {
       outcome = { ok: false, message: err instanceof Error ? err.message : String(err), raw: null, readback: null }
     }
     outcome.ack = normalizeAck(outcome)
+    let reported: DcwWriteOutcome = outcome
+    try {
+      executionScope?.assertActive()
+    }
+    catch {
+      reported = { ...outcome, ok: false, ack: 'unverified', message: `执行租约失效:写入已进入驱动,设备状态不确定,须核实。驱动返回:${outcome.message}`, driverOutcome: { ...outcome } }
+    }
     this.writesTotal++
     if (!outcome.ok) this.writesFailed++
     // set 后 hook:节点暴露值 = PLC 回读经 decoder 解码的**真实物理值**(而非指令值);
     // 回读缺失(驱动不支持)才回退指令值。节点对外呈现的始终是处理后的工艺参数。
     node.applyWriteResult(outcome.readback ?? eng, outcome.ok, outcome.message, at)
+    // A transport acknowledgement is not evidence that the physical value is safe to hold.
+    if (reported.ok && outcome.ok && outcome.ack === 'readback-verified' && outcome.readback != null && Number.isFinite(outcome.readback)
+      && Math.abs(outcome.readback - eng) <= writeTolerance(node)) {
+      node.holdBlocked = false
+    }
+    else if (reported.ok && outcome.ok && outcome.ack === 'transport-ack') {
+      // transport-ack = 链路受理,不是设备生效证据。声明了观测通道的节点以独立
+      // DAQ 跟随作为生效证据(与 V3 验收 ACK 口径同源)异步证实;证实通过才解除
+      // 保写锁。未声明的节点保写保持挂起并显式提示 —— 不再静默禁用心跳。
+      if (node.holdObserve?.daqId) {
+        this.beginHoldObserve(node, eng, Date.parse(at))
+      }
+      else {
+        node.lastError = `写入已受理(broker ACK);节点未配置观测证实(holdObserve.daqId),保写挂起待设备生效证据`
+      }
+    }
+    else if (!outcome.ok) {
+      node.lastError = `${outcome.message};保写已暂停,需重新下发并由设备回读证实`
+    }
     // 写值走防抖落盘:保写心跳按 holdIntervalMs 周期触发本方法,同步全量重写
     // dcws.json 会随节点数放大成周期性 fs 抖动;防抖窗内崩溃丢失的设定值可从 PLC 回读恢复
     this.repo.flushDebounced()
@@ -73,9 +116,9 @@ export abstract class DcwControllerActuation extends DcwControllerState {
       param: findDcwTemplate(node.templateKey)?.ch ?? node.templateKey,
       eng: attemptEng,
       raw: outcome.raw,
-      ok: outcome.ok,
-      ack: outcome.ack,
-      message: outcome.message,
+      ok: reported.ok,
+      ack: reported.ack,
+      message: reported.message,
       recipeRunId,
       at,
     }
@@ -86,20 +129,72 @@ export abstract class DcwControllerActuation extends DcwControllerState {
       lineId: node.lineId ?? null,
       value: attemptEng,
       raw: outcome.raw,
-      ok: outcome.ok,
-      ack: outcome.ack,
-      message: outcome.message,
+      ok: reported.ok,
+      ack: reported.ack,
+      message: reported.message,
       recipeRunId,
       at,
     })
     this.emitNodeChanged('updated', node)
     endGovernanceDriverCall(driverAudit, outcome)
-    return outcome
+    return reported
   }
 
   protected emitNodeChanged(op: AepDcwNodeChange['op'], node: DcwNode | null): void {
     const payload: AepDcwNodeChange = { op, node: node ? node.toView() : null }
     this.broadcast?.('dcw.node.changed', payload)
+  }
+
+  /**
+   * transport-ack 保写观测证实:写被 broker 受理后,轮询独立 DAQ 观测节点,
+   * 物理量在超时窗内**跟随到本次写目标**(±容差,点时间不早于写发起)即解除保写
+   * 锁;超时保持挂起并把原因写入 lastError。新写会用新目标取代在飞观测
+   * (代际号失效旧轮询),已回读证实的写同样使观测自然退出。
+   */
+  private readonly holdObserveSeq = new Map<string, number>()
+
+  private beginHoldObserve(node: DcwNode, target: number, atMs: number): void {
+    const observe = node.holdObserve
+    if (!observe?.daqId) return
+    const seq = (this.holdObserveSeq.get(node.id) ?? 0) + 1
+    this.holdObserveSeq.set(node.id, seq)
+    const timeoutMs = Math.max(250, observe.timeoutMs ?? 45_000)
+    const pollMs = Math.min(3_000, Math.max(250, Math.floor(timeoutMs / 10)))
+    const tolerance = Math.max(0, observe.tolerance ?? Math.max(0.5, Math.abs(target) * 0.02))
+    const deadline = Date.now() + timeoutMs
+    const poll = async (): Promise<void> => {
+      // 已被更新一次写取代(seq 变化)或保写锁已被回读证实解除:本次观测退出。
+      if (this.holdObserveSeq.get(node.id) !== seq || !node.holdBlocked) return
+      try {
+        const points = await getTsdb().query(observe.daqId, { fromMs: atMs - 1_000, toMs: Date.now(), limit: 50 })
+        const latest = points[points.length - 1]
+        const value = latest?.avg ?? latest?.value
+        if (latest && latest.at >= atMs && value != null && Number.isFinite(value) && Math.abs(value - target) <= tolerance) {
+          if (this.holdObserveSeq.get(node.id) !== seq || !node.holdBlocked) return
+          node.holdBlocked = false
+          if (node.lastError?.startsWith('观测证实超时') || node.lastError?.startsWith('写入已受理')) node.lastError = null
+          this.repo.flushDebounced()
+          this.emitNodeChanged('updated', node)
+          console.log(`[dcw] 保写观测证实:${node.name}(${node.id}) DAQ ${observe.daqId} 跟随到 ${value},保写恢复`)
+          return
+        }
+        if (Date.now() >= deadline) {
+          if (this.holdObserveSeq.get(node.id) !== seq) return
+          node.lastError = `观测证实超时:DAQ ${observe.daqId} ${timeoutMs}ms 内未跟随到 ${target}(±${tolerance});保写保持挂起`
+          this.repo.flushDebounced()
+          this.emitNodeChanged('updated', node)
+          return
+        }
+      }
+      catch { /* 单拍查询失败按未证实处理,下一拍重试;进程内观测状态不外抛 */ }
+      if (this.holdObserveSeq.get(node.id) === seq && node.holdBlocked && Date.now() < deadline) {
+        const timer = setTimeout(() => void poll(), pollMs)
+        // unref:观测不得阻止进程自然退出(测试/关机路径不被拖住)
+        timer.unref?.()
+      }
+    }
+    const first = setTimeout(() => void poll(), pollMs)
+    first.unref?.()
   }
 
   /**

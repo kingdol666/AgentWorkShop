@@ -6,6 +6,7 @@ import { DcwControllerControl } from './control'
 import type { DcwCreateInput, DcwPatchInput } from './types'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { DcwNode } from '../dcw-node'
+import type { DcwHoldObserve } from '../dcw-node'
 import { dcwKeyFromRef, normalizeDataTransform } from '../../../../../shared/dcw-protocol'
 import { stripMaskedSecrets } from '../../../../../shared/daq-protocol'
 import { findDcwTemplate } from '../dcw-templates'
@@ -22,6 +23,24 @@ function normalizeStepLimitInput(value: unknown): number | null | undefined {
   const n = Number(value)
   if (!Number.isFinite(n) || n <= 0) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `stepLimit 必须为正数或 null(当前: ${String(value)})`)
   return n
+}
+
+/** 观测证实声明归一:daqId 必填且为合法节点 id 形态;容差/超时收敛为安全区间。 */
+function normalizeHoldObserve(value: DcwHoldObserve | null | undefined): DcwHoldObserve | null {
+  if (value == null) return null
+  if (typeof value !== 'object' || Array.isArray(value) || typeof value.daqId !== 'string'
+    || !/^[A-Za-z0-9_-]+$/.test(value.daqId)) {
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'holdObserve.daqId 必填:观测证实需指向独立 DAQ 节点')
+  }
+  const tolerance = value.tolerance == null ? undefined : Number(value.tolerance)
+  if (tolerance !== undefined && (!Number.isFinite(tolerance) || tolerance <= 0)) {
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'holdObserve.tolerance 必须为正数')
+  }
+  const timeoutMs = value.timeoutMs == null ? undefined : Number(value.timeoutMs)
+  if (timeoutMs !== undefined && (!Number.isFinite(timeoutMs) || timeoutMs < 250 || timeoutMs > 600_000)) {
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'holdObserve.timeoutMs 需在 [250, 600000] 内')
+  }
+  return { daqId: value.daqId, tolerance: tolerance ?? undefined, timeoutMs: timeoutMs ?? undefined }
 }
 
 export abstract class DcwControllerCrud extends DcwControllerControl {
@@ -44,6 +63,7 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
       transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
       holdIntervalMs: input.holdIntervalMs ?? null,
+      holdObserve: normalizeHoldObserve(input.holdObserve),
       readIntervalMs: input.readIntervalMs ?? null,
       unit: input.unit,
       decimals: input.decimals,
@@ -146,6 +166,9 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
     if (patch.holdIntervalMs !== undefined) {
       node.holdIntervalMs = patch.holdIntervalMs == null ? null : Math.max(0, Math.min(3_600_000, Math.round(patch.holdIntervalMs)))
       rearm = true
+    }
+    if (patch.holdObserve !== undefined) {
+      node.holdObserve = normalizeHoldObserve(patch.holdObserve)
     }
     if (patch.readIntervalMs !== undefined) {
       node.readIntervalMs = patch.readIntervalMs == null ? null : Math.max(0, Math.min(3_600_000, Math.round(patch.readIntervalMs)))

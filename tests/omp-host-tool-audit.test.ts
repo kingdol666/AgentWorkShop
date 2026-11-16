@@ -6,7 +6,24 @@ class TestOmpRpcClient extends OmpRpcClient {
   runHostToolCall(req: { id: string, toolCallId: string, toolName: string, arguments: Record<string, unknown> }): Promise<void> {
     return this.handleHostToolCall({ type: 'host_tool_call', ...req })
   }
+
+  injectFrame(frame: Record<string, unknown>): void {
+    this.dispatchFrame(frame)
+  }
 }
+
+test('untagged ordinary frames cannot be correlated to a prompt by the adapter', () => {
+  const client = new TestOmpRpcClient()
+  const events: Array<Record<string, unknown>> = []
+  const unsubscribeOld = client.onEvent(() => {})
+  client.injectFrame({ type: 'session_settled' })
+  unsubscribeOld()
+  client.onEvent(event => events.push(event))
+  client.injectFrame({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'late old text' } })
+  client.injectFrame({ type: 'agent_end', messages: [], isTerminal: true })
+  assert.deepEqual(events.map(event => event.type), ['message_update', 'agent_end'])
+  assert.ok(events.every(event => !('promptId' in event)))
+})
 
 test('host tool calls emit history-compatible start/end events without changing handler behavior', async () => {
   const client = new TestOmpRpcClient()

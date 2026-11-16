@@ -78,9 +78,13 @@ aw mcp                 # 启动 stdio 服务(由 MCP 客户端作为子进程拉
 | 插件 | `aw_plugin_list`、`aw_plugin_toggle` |
 | 逃生舱 | `aw_request`(通用 REST,path 必须以 `/api/` 开头) |
 
-`aw_agent_tool_invoke` 可调用频道成员实例的全部宿主工具面
-(`optimization_explore` / `mpc_optimize` / `twin_*` / `dcw_control` / `param_control` / `daq_query` 等),
-是探索/寻优闭环的执行通道。
+`aw_agent_tool_invoke` 使用用户鉴权调用频道成员实例的宿主工具；工具是否可执行仍取决于用户权限、角色、Channel 策略及相应治理门，不能假定全部工具均可用。
+
+**agent-token 回程桥兼容性（未发布、未合并，待审查）**：`aw-mcp-bridge.mjs` 使用的 agent token 只能标识 agent，不能证明调用来自可信回合。因而其列表过滤且执行时拒绝观察模式阻断的危险工具，以及 `team_grant_nodes`、`team_revoke_nodes`、`dispatch_task`、`create_team_agent`、`update_team_agent`、`remove_team_agent`。插件工具仅在显式声明 `riskClass: 'read'` 时通过这一层；缺省、`write`、`admin` 被过滤和拒绝。`read` 不是绕过其他权限检查的许可，也不应标注给有副作用的工具。此限制不等同于用户 token 的工业 MCP 路径，但该路径仍受自身权限和治理约束。
+
+以下派发与 omp 限制同属未发布、未合并且待审查的源码，不代表已发布的 0.11.3：受支持的 lead 调度路径中，需要授权时先单独调用 `team_grant_nodes`，确认成功后再调用不带 `grant_node_ids`（或 `grantNodeIds`）的 `dispatch_task`；随任务携带非 `null` 的授权值会被拒绝。两步不是原子操作，派发失败后已授予的权限不会自动回滚，应检查并按需撤销。`team_grant_nodes` 默认 `manual`，显式授予 `auto` 需 `confirm: true`。
+
+原生 omp 的工作或监督回合中止后会退役对应进程；正常完成回合后，同一进程迟到帧的逐回合来源仍未解决。以上为当前源码行为，不构成物理 HIL 或安全通过的证明。
 
 ### host tools 目录与 Channel 工具治理
 

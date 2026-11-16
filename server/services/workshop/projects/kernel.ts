@@ -14,6 +14,7 @@ import { createEventIngress, type IngressProcessResult } from './event-ingress'
 import { createEffectsOutbox, type DrainResult } from './effects'
 import { createProjectWatchdog, type WatchdogFinding } from './watchdog'
 import type { ProjectService } from './service'
+import { assertProjectRecoveryClear } from './legacy-recovery'
 
 export interface ProjectKernelOptions {
   tickMs?: number
@@ -110,7 +111,10 @@ export function initProjectKernel(deps: ProjectKernelDeps, options: ProjectKerne
       const detail = String(payload.detail ?? payload.error ?? '')
       await deps.notifyOwner(effect.projectId, title, detail, effect.id)
     },
-  }, { nowMs })
+  }, { nowMs, canRun: (effect) => {
+    assertProjectRecoveryClear(db, effect.projectId)
+    return true
+  } })
 
   const activeProjects = () => {
     try {
@@ -129,6 +133,7 @@ export function initProjectKernel(deps: ProjectKernelDeps, options: ProjectKerne
     result.projects = projects.length
     for (const p of projects) {
       try {
+        assertProjectRecoveryClear(db, p.id)
         const r = ingress.process(p.id)
         result.ingress.push({ projectId: p.id, ...r })
         // PR20 route 回调主路径：无条件 reconcile（幂等且便宜）+ 立即派发下一批就绪项 ——
@@ -157,6 +162,7 @@ export function initProjectKernel(deps: ProjectKernelDeps, options: ProjectKerne
     if (tickCount % watchdogEveryTicks === 0) {
       for (const p of projects) {
         try {
+          assertProjectRecoveryClear(db, p.id)
           const findings = watchdog.scanProject(p.id, p.planVersion)
           result.watchdog.push({ projectId: p.id, findings })
           if (findings.length === 0) watchdog.heartbeat(p.id)
@@ -170,6 +176,7 @@ export function initProjectKernel(deps: ProjectKernelDeps, options: ProjectKerne
   }
 
   const processProject = async (projectId: string) => {
+    assertProjectRecoveryClear(db, projectId)
     const r = ingress.process(projectId)
     // PR20：无条件 route 闭环（对账 + 自动派发），与 tick 同口径（API 手动触发即可验收）。
     const route = await service.runRouteLoop(projectId)

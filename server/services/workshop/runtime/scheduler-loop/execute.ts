@@ -9,6 +9,7 @@ import type { SchedulerDecision } from './types'
 import { AppError } from '../../../../utils/errors'
 import { LoopController, extractTaskMode, isGoalSummaryArtifact } from '../execution-mode'
 import { log } from './helpers'
+import { isLegacyRecoveryHeld } from '../task-engine/legacy-recovery'
 import { randomUUID } from 'node:crypto'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { rootQueueEnabled, workshopSettings } from '../../settings'
@@ -20,6 +21,11 @@ const CANCEL_BLOCKED_NOTE_COOLDOWN_MS = 5 * 60_000
 export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
   /** 执行单条决策(身份=lead,经 TaskEngine 与 ChannelRuntime) */
   protected execute(decision: SchedulerDecision): void {
+    const taskId = 'taskId' in decision ? decision.taskId : decision.kind === 'dispatch' ? decision.parentTaskId : undefined
+    if (taskId) {
+      const task = this.lead.taskEngine.get(taskId)
+      if ((task && isLegacyRecoveryHeld(task)) || this.legacyBlocked(taskId)) return
+    }
     switch (decision.kind) {
       case 'wait': {
         // wait is an explicit, auditable Lead decision. It must not be treated as
@@ -303,6 +309,7 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
     // 重启前已完成的主任务再识别一次并 resubmit(多跑一轮);只认本进程生命
     // 周期内完成的任务,重启前的历史 loop 由用户/上游重新提交
     const current = snapshot.tasks.find((t) => {
+      if (isLegacyRecoveryHeld(t) || this.legacyBlocked(t.id)) return false
       if (t.assigneeId !== this.lead.agentId) return false
       if (t.state !== 'COMPLETED') return false
       if (this.loopCompletedTaskIds.has(t.id)) return false

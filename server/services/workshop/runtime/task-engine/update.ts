@@ -10,6 +10,7 @@ import { TERMINAL_TASK_STATES } from '../../types/task'
 import { randomUUID } from 'node:crypto'
 import { rowToTask } from './helpers'
 import { fenceToMetadata } from './lease'
+import { assertNotLegacyRecoveryHeld } from './legacy-recovery'
 
 export abstract class TaskEngineUpdate extends TaskEngineViews {
   /**
@@ -23,6 +24,8 @@ export abstract class TaskEngineUpdate extends TaskEngineViews {
     by: string,
   ): WorkspaceTask {
     const task = this.requireTask(taskId)
+    assertNotLegacyRecoveryHeld(task)
+    this.assertLegacyRecoveryAdmission(taskId)
     if (task.state !== 'SUBMITTED' && task.state !== 'ASSIGNED') {
       throw new AppError(400, 'INVALID_STATE', `仅待执行任务可修改(${task.state} 不可改)`)
     }
@@ -55,6 +58,7 @@ export abstract class TaskEngineUpdate extends TaskEngineViews {
    */
   refreshDeadline(taskId: string, deadlineAt: string): WorkspaceTask {
     const task = this.requireTask(taskId)
+    assertNotLegacyRecoveryHeld(task)
     const updated = this.repos.tasks.update(taskId, { deadlineAt })
     return updated ? rowToTask(updated) : task
   }
@@ -65,6 +69,8 @@ export abstract class TaskEngineUpdate extends TaskEngineViews {
    */
   redeliverAssign(taskId: string): WorkspaceTask {
     const task = this.requireTask(taskId)
+    assertNotLegacyRecoveryHeld(task)
+    this.assertLegacyRecoveryAdmission(taskId)
     if (TERMINAL_TASK_STATES[task.state]) {
       throw new AppError(400, 'INVALID_STATE', `终态任务不可重投(${task.state})`)
     }

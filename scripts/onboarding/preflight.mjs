@@ -8,7 +8,7 @@
  *   3) 如果要启动影子实例,哪些端口/home 已经被占用?
  *
  * 安全语义:
- *   - 只读:读锁文件、探 PID、探 TCP 端口;--probe 时才发一次 GET /api/health。
+ *   - 默认只读锁文件、探 PID 和 TCP 端口;--probe 在隔离无法证明时拒绝执行。
  *   - 绝不停止、重启、删除、改写任何进程/锁/数据。
  *   - 默认把“已运行实例”一律按生产对待(treatAsProduction=true);
  *     只有显式 --test-instance 才允许把它标记为可丢弃测试实例。
@@ -24,6 +24,7 @@ import { createConnection } from 'node:net'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { assertOnboardingOwnership } from './lib.mjs'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const args = process.argv.slice(2)
@@ -35,6 +36,7 @@ const valueOf = (name) => {
 const json = flag('json')
 const testInstance = flag('test-instance')
 const probe = flag('probe')
+if (probe) await assertOnboardingOwnership()
 const requireIdle = flag('require-idle')
 
 const homes = new Set()

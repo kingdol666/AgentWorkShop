@@ -18,7 +18,7 @@ user/recipe/agent ──write──▶ PLC register ──read──▶ DCW page
 |---|---|---|
 | Periodic | node `readIntervalMs` (default 5000ms; `0` = off) | normal operation: twin/DCW pages always show the PLC value |
 | Manual | "Read" button on the DCW page, or `POST /api/workshop/dcw/:id/read` | commissioning, on-demand checks |
-| Agent | `dcw_read(node_id)` | evidence before dispatch, verification after |
+| Agent observation | `line_context` / `my_industrial_nodes`, and `daq_query` where applicable | inspect authorized context and data |
 
 Reading is passive: it is not blocked by gateway pause or line gating ("reading the gauge"
 is always allowed), failures only set `lastReadError` (hover to see), and it never touches
@@ -31,8 +31,7 @@ the write state machine or writes anything to the PLC.
 - **Twin panel**: each device card gains an **ACT row** (green live reading) under the SET
   value, in the same control-room visual as DAQ channels.
 - **Consistency verdict**: the value read back is decoded into engineering units through the
-  transform symmetric to the write path; the agent's `dcw_read` reports the verdict directly
-  ("reading matches the setpoint / there is a deviation").
+  transform symmetric to the write path; compare authorized device readback with site evidence.
 
 The node wizard and the node editor expose "periodic read (ms)"; readings of the `mock`
 driver come from the simulated PLC (retentive, with the same semantics as a real register).
@@ -40,15 +39,11 @@ driver come from the simulated PLC (retentive, with the same semantics as a real
 ## Agent read/write as one
 
 ```text
-dcw_read(node_id)              # read the PLC's current value (no approval, passive observation)
-dcw_control(node_id, value)    # dispatch a setpoint (range ∩ recipe-window interlock; HITL in manual mode)
+line_context / my_industrial_nodes    # inspect authorized line and node context
+recipe_propose                       # submit a candidate for human approval
 ```
 
-Recommended flow: understand the node with `my_industrial_nodes` → gather evidence with
-`dcw_read` → dispatch in small steps with `dcw_control` → wait for the process response →
-re-read with `dcw_read` to check whether ACT converged to SET. Every successful dispatch
-still opens a control-loop optimization record, and `dcw_read` is one of the evidence tools
-used to decide `keep / rollback`.
+Agent calls to `dcw_control` are disabled and rejected; `dcw_read` is not an available agent tool. Use an authorized recipe path for changes and compare device readback, journal and DAQ response. Internal governed exploration writes are not an agent direct-write entry point.
 
 ## Write cadence and failure semantics
 
@@ -63,6 +58,16 @@ write-hold window, but **only successful dispatches count**:
   are migrated automatically.
 - Recipe trial / apply / rollback use their own path (not the 60s/step gate); their bound is
   the recipe window (see [Recipe versions](recipe-versions.md)).
+
+## Automatic Hold Interlock
+
+> The following describes unreleased, unmerged source under review, not released 0.11.3. Historical acceptance does not verify this behavior.
+
+Before each driver write, the node synchronously persists `holdBlocked=true`; if persistence fails, dispatch is refused. Failure, timeout, process interruption, or a transport-only ACK leaves automatic hold paused, including after restart, so the previous setpoint is not resent. The node card displays “Automatic hold paused”. This does not mean the physical device has stopped; inspect its actual state.
+
+Automatic hold resumes only after a subsequent authorized governed write returns a finite `readback-verified` device value within the normal tolerance. A verified result arriving after task revocation is evidence but does not clear the interlock. Ordinary reads, disabling or enabling the node, and transport ACKs cannot clear the interlock. MQTT/HTTP and other transport-only drivers, including recipe-level post-write verification, currently cannot clear it; there is no safe manual-clear interface. An authorized operator must investigate and establish a verified readback and recovery procedure; until then automatic hold remains paused. This changes previous hold behavior for write-only channels and must be validated against the device and process before deployment.
+
+This is a per-node response to uncertain writes. A channel task recovery hold does not automatically stop a line or suspend hold on other nodes.
 
 ## Driver support
 

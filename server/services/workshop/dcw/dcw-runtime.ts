@@ -9,6 +9,7 @@
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import type { DcwNode } from './dcw-node'
 import { assertWithinLimits } from './param-limits'
+import type { ExecutionScope } from '../agents/execution-scope'
 
 /** 回读死区容差:max(0.5×10^-小数位, 量程 0.5%) */
 export function writeTolerance(node: DcwNode): number {
@@ -22,6 +23,8 @@ export interface DcwWriteOutcome {
   readback: number | null
   /** 写 ACK 鉴定等级(2026-10-08):设备证实 / 仅链路受理 / 未证实(网关归一后必有) */
   ack?: 'readback-verified' | 'transport-ack' | 'unverified'
+  /** Actual driver response when the task lease expired while the write was in flight. */
+  driverOutcome?: { ok: boolean, message: string, raw: number | null, readback: number | null, ack?: 'readback-verified' | 'transport-ack' | 'unverified' }
   /** 调控闭环:本次写产生的参数锚(入册成功时) */
   anchorId?: string
   /** 调控闭环:Agent/回退路径开出的优化记录 id(manual/recipe 路径无) */
@@ -34,7 +37,7 @@ export interface DcwRuntimeHost {
   /** 产线活动判定(P0-1 保写产线门):绑定产线在跑(有活动批次窗口)才允许保写心跳 */
   lineActive(lineId: string): boolean
   /** 网关执行写命令(驱动写 + ACK 记账 + 写历史 + WS 广播) */
-  executeWrite(node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null): Promise<DcwWriteOutcome>
+  executeWrite(node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null, executionScope?: ExecutionScope, onDriverStart?: () => void): Promise<DcwWriteOutcome>
   /** 网关执行读数(驱动读 + 读状态记账 + WS 广播;返回物理值) */
   executeRead(node: DcwNode): Promise<{ ok: boolean, value: number | null, raw: number | null, message: string, at: string }>
 }
@@ -71,7 +74,8 @@ export class DcwNodeRuntime {
    * 用户/Recipe 设定值(核心写命令入口)。
    * 工艺安全量程硬校验(越界拒绝)+ 在飞互斥(同一通道同时只允许一个写事务)。
    */
-  async write(eng: number, recipeRunId: string | null = null, toleranceOverride?: number): Promise<DcwWriteOutcome> {
+  async write(eng: number, recipeRunId: string | null = null, toleranceOverride?: number, executionScope?: ExecutionScope, onDriverStart?: () => void): Promise<DcwWriteOutcome> {
+    executionScope?.assertActive()
     const node = this.node
     const invalid = node.validateEng(eng)
     if (invalid) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, invalid)
@@ -84,7 +88,7 @@ export class DcwNodeRuntime {
     node.lastAttemptAt = new Date().toISOString()
     try {
       // D8 基准消融:no-readback/ungated 臂由 write() 传入 MAX 容差 → 回读差异不再致败(假成功语义)
-      return await this.host.executeWrite(node, eng, toleranceOverride ?? writeTolerance(node), recipeRunId)
+      return await this.host.executeWrite(node, eng, toleranceOverride ?? writeTolerance(node), recipeRunId, executionScope, onDriverStart)
     }
     catch (err) {
       // 执行链抛错(异常不流向 outcome):状态机必须离开 writing,否则通道永久 409
@@ -107,7 +111,7 @@ export class DcwNodeRuntime {
     // writing 互斥,心跳可与用户下发并发落到同一通道:驱动层交错、后到者覆盖先到者,
     // 且 dcw-controller 的 prevValue 采样跨 await,会把过期值记进回滚账本导致回滚点错位。
     // 语义:写冲突时心跳**跳过本拍**(不排队、不补发),下一拍自然重试 —— 保写是幂等重下发。
-    if (!this.writing && node.enabled && node.value != null && node.state !== 'writing') {
+    if (!this.writing && node.enabled && !node.holdBlocked && node.value != null && node.state !== 'writing') {
       const hold = node.holdIntervalMs ?? this.host.defaults().holdIntervalMs
       // P0-1 保写产线门:绑定产线的节点仅在产线活动(有运行批次窗口)时保写,停线即挂起,
       // 开线后下一拍自然恢复(10-07 事故根因④:停线不挂起心跳,残留节点持续直写)。

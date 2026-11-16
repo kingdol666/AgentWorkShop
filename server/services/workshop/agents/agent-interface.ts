@@ -6,6 +6,7 @@
  */
 import type { A2AMessage, A2AArtifact, A2AError, ChannelMail, Part } from '../types/a2a'
 import type { WorkspaceTask, AgentTaskQueueView, AgentStatusView, AgentContextStats } from '../types/task'
+import type { ExecutionScope } from './execution-scope'
 
 /** Agent 元信息:Channel 内成员声明(hook harness 类型与配置) */
 export interface AgentInfo {
@@ -259,6 +260,8 @@ export interface AgentRunContext {
   role: 'lead' | 'worker'
   workspace: AgentWorkspace
   signal: AbortSignal
+  /** Trusted lease scope supplied by the runtime for an assigned task or root. */
+  executionScope?: ExecutionScope
   /** 平台记忆块(supervise 路径注入;run 路径用 AgentRunRequest.memory) */
   memory?: string
   /** Session Context：当前 supervision/run 的会话身份与上下文块（profile 标注装配档位） */
