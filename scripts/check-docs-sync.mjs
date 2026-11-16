@@ -62,12 +62,16 @@ const LANG_PAIRS = [
   ['docs/site/guide/getting-started.md', 'docs/site/en/guide/getting-started.md'],
   ['docs/site/guide/configuration.md', 'docs/site/en/guide/configuration.md'],
   ['docs/site/guide/daq-protocols.md', 'docs/site/en/guide/daq-protocols.md'],
+  ['docs/site/guide/line-integration.md', 'docs/site/en/guide/line-integration.md'],
   ['docs/site/guide/dcw-read-write.md', 'docs/site/en/guide/dcw-read-write.md'],
   ['docs/site/guide/hitl.md', 'docs/site/en/guide/hitl.md'],
   ['docs/site/guide/recipe-versions.md', 'docs/site/en/guide/recipe-versions.md'],
   ['docs/site/guide/multi-harness.md', 'docs/site/en/guide/multi-harness.md'],
   ['docs/site/guide/aml.md', 'docs/site/en/guide/aml.md'],
   ['docs/site/guide/line-permissions.md', 'docs/site/en/guide/line-permissions.md'],
+  ['docs/site/guide/channels-sessions.md', 'docs/site/en/guide/channels-sessions.md'],
+  ['docs/site/guide/projects.md', 'docs/site/en/guide/projects.md'],
+  ['docs/site/guide/rsi.md', 'docs/site/en/guide/rsi.md'],
   ['docs/site/guide/first-session.md', 'docs/site/en/guide/first-session.md'],
   ['docs/site/guide/license.md', 'docs/site/en/guide/license.md'],
 ]
@@ -172,7 +176,7 @@ for (const { re, why } of BANNED) {
 }
 
 section('[3b/6] 站点配置与新增页面存在性')
-for (const f of ['docs/site/guide/aml.md', 'docs/site/en/guide/aml.md']) {
+for (const f of ['docs/site/guide/aml.md', 'docs/site/en/guide/aml.md', 'docs/site/guide/line-integration.md', 'docs/site/en/guide/line-integration.md']) {
   if (existsSync(join(ROOT, f))) ok(`${f} 存在`)
   else bad(`${f} 缺失(导航已指向它)`)
 }
@@ -238,11 +242,7 @@ section('[4/6] 文档里宣称的版本号必须等于 package.json')
 }
 
 section('[4b/6] 版本呈现面全链一致(config.yml / README / 站点 hero / 界面显示面)')
-// [4/6] 只守 docs 六份指南;这里补齐其余「当前版本」呈现点:
-//   · config.yml 的 app.version 回退副本(权威值在 package.json,但历史曾停在 0.7.9 长期漂移)
-//   · README 双语的「当前版本」段(读者据此判断装的是不是最新版)
-//   · 文档站首页 hero 的版本角标(中英两份,site 独有、无同源对守护)
-//   · 前端界面 5 个版本显示面(全部绑定 site.version ← package.json,断链即界面失显)
+// 当前源码版本需与 package.json 一致且明确标记未发布；GitHub/npm release badge 仍指向已发布快照。
 {
   const pkgVersion = JSON.parse(read('package.json') ?? '{}').version
 
@@ -255,11 +255,11 @@ section('[4b/6] 版本呈现面全链一致(config.yml / README / 站点 hero / 
     else bad(`config.yml app.version 为 ${m[1]},而 package.json 是 ${pkgVersion}`)
   }
 
-  for (const [file, re] of [
-    ['README.md', /Current version: \*\*v([0-9]+\.[0-9]+\.[0-9]+)\*\*/],
-    ['README-zh.md', /当前版本：\*\*v([0-9]+\.[0-9]+\.[0-9]+)\*\*/],
-    ['docs/site/index.md', /版本 <i>v([0-9]+\.[0-9]+\.[0-9]+)<\/i>/],
-    ['docs/site/en/index.md', /Version <i>v([0-9]+\.[0-9]+\.[0-9]+)<\/i>/],
+  for (const [file, re, unreleasedRe] of [
+    ['README.md', /Current source version: \*\*v([0-9]+\.[0-9]+\.[0-9]+) \(unreleased\)\*\*/, /Current source version: \*\*v[0-9]+\.[0-9]+\.[0-9]+ \(unreleased\)\*\*/i],
+    ['README-zh.md', /当前源码版本：\*\*v([0-9]+\.[0-9]+\.[0-9]+)（未发布）\*\*/, /当前源码版本：\*\*v[0-9]+\.[0-9]+\.[0-9]+（未发布）\*\*/],
+    ['docs/site/index.md', /版本 <i>v([0-9]+\.[0-9]+\.[0-9]+) · 未发布<\/i>/, /版本 <i>v[0-9]+\.[0-9]+\.[0-9]+ · 未发布<\/i>/],
+    ['docs/site/en/index.md', /Version <i>v([0-9]+\.[0-9]+\.[0-9]+) · unreleased<\/i>/, /Version <i>v[0-9]+\.[0-9]+\.[0-9]+ · unreleased<\/i>/i],
   ]) {
     const text = read(file)
     if (text === null) {
@@ -267,9 +267,19 @@ section('[4b/6] 版本呈现面全链一致(config.yml / README / 站点 hero / 
       continue
     }
     const m = re.exec(text)
-    if (!m) bad(`${file} 匹配不到当前版本声明(措辞改了就同步改本守卫,不允许静默空过)`)
-    else if (m[1] === pkgVersion) ok(`${file} 版本声明 = ${m[1]} = package.json`)
-    else bad(`${file} 版本声明为 ${m[1]},而 package.json 是 ${pkgVersion} —— 发版时漏改`)
+    if (!m) bad(`${file} 缺少带“未发布/unreleased”标记的当前源码版本声明`)
+    else if (m[1] === pkgVersion) ok(`${file} 当前源码版本 = ${m[1]} (unreleased) = package.json`)
+    else bad(`${file} 当前源码版本为 ${m[1]},而 package.json 是 ${pkgVersion}`)
+    if (!unreleasedRe.test(text)) bad(`${file} 当前源码版本未明确标记未发布`)
+  }
+
+  for (const [file, labelRe] of [
+    ['README.md', /2026-11-08 to 2026-11-12 historical acceptance evidence \(each report identifies its build\/commit\):/],
+    ['README-zh.md', /#### 历史验收矩阵（2026-11-08 至 2026-11-12）/],
+  ]) {
+    const text = read(file) ?? ''
+    if (labelRe.test(text)) ok(`${file} 历史验收证据有日期标签`)
+    else bad(`${file} 历史验收矩阵缺少日期边界标签`)
   }
 
   const UI_SURFACES = [
@@ -287,7 +297,32 @@ section('[4b/6] 版本呈现面全链一致(config.yml / README / 站点 hero / 
   }
 }
 
-section('[5/6] VitePress 模板安全:正文裸尖括号不得被当成未闭合标签')
+section('[4c/6] 对外能力描述不得越过已实现的治理与验收边界')
+{
+  const claims = [
+    ['README.md', /every write\s+(?:always\s+)?(?:passes|requires)\s+(?:the\s+)?(?:same\s+)?HITL|all writes\s+(?:always\s+)?require HITL/i],
+    ['README-zh.md', /所有(?:下发|写入)都(?:必须|一律|全部)(?:经过|要求|走)\s*(?:HITL|人工审批)|每次写入(?:都)?(?:需要|必须)人工批准/],
+    ['docs/site/index.md', /所有(?:下发|写入)都(?:必须|一律|全部)(?:经过|要求|走)\s*(?:HITL|人工审批)|每次写入(?:都)?(?:需要|必须)人工批准/],
+    ['docs/site/en/index.md', /every write\s+(?:always\s+)?(?:passes|requires)\s+(?:the\s+)?(?:same\s+)?HITL|all writes\s+(?:always\s+)?require HITL/i],
+  ]
+  for (const [file, re] of claims) {
+    const text = read(file)
+    if (text === null) bad(`${file} 不存在`)
+    else if (re.test(text)) bad(`${file} 含有“所有写入一律 HITL”的过度概括`)
+    else ok(`${file} 未声称所有写入都一律要求 HITL`)
+  }
+}
+
+section('[4d/6] 双语产线首页对真实/模拟边界显式标注')
+for (const [file, re] of [
+  ['docs/site/index.md', /模拟器设备证据，不是物理 PLC\/HIL 验收/],
+  ['docs/site/en/index.md', /simulator evidence, not physical PLC\/HIL acceptance/i],
+]) {
+  const text = read(file)
+  if (text && re.test(text)) ok(`${file} 明确区分模拟证据与物理 HIL`)
+  else bad(`${file} 缺少模拟与物理 HIL 边界说明`)
+}
+
 // VitePress 把每个 .md 编译成 Vue SFC 模板。正文里写 <home>/plugins-state.json 这类
 // 占位符,Vue 会把它当成自定义元素并因缺少 </home> 直接**构建失败**
 // (实际发生过:plugins/guide.md 曾导致 `vitepress build` 报 Element is missing end tag)。

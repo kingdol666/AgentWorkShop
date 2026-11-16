@@ -28,35 +28,40 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.11.2</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · 148 host tools · 144 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>source v0.11.3 (unreleased)</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · 148 host tools · 144 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
-*A configuration-driven platform where **AI agent teams** and an **industrial digital twin** share one runtime — agents query real telemetry, issue supervisory setpoints through human-approved write control, and every event streams live to the 3D twin.*
+*A configuration-driven platform where **AI agent teams** and industrial systems share one runtime. Agents query telemetry and propose supervisory changes through governed paths; whether a write needs HITL depends on the effective line, Channel and binding modes. Simulation evidence is not physical HIL or production approval.*
 
 </div>
 
-[Quick start](#quick-start) · [What's new](#whats-new-in-0112) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [Current source](#current-source-v0-11-3-unreleased) · [0.11.2 release notes](#whats-new-in-0112-historical-release-snapshot) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
 ## What is this?
 
-A configuration-driven platform where **AI agent teams** and an **industrial production line** share one runtime — agents query real telemetry, issue supervisory setpoints through human-approved write control, and every event streams live to a 3D twin.
+A configuration-driven platform where **AI agent teams** and industrial systems share one runtime. Agents can query telemetry and propose supervisory changes through policy-governed paths; whether a write requires HITL depends on the effective line, Channel and binding modes. Simulation evidence is not physical HIL or production approval.
 
 - **Supervisory layer** (SCADA-adjacent, second-level soft real-time): DAQ, write control, line/recipe/batch, permissions and audit in one place;
 - **Agents are not chat decoration**: 14 executable engines, mixable per channel (omp / codex / opencode / claude / gemini / …), a 7-state task machine + root queue + HITL approvals, and a **Channel → Session → Agent** object model that keeps teams isolated;
 - **Delivery is a first-class concept**: **Project mode** turns a blueprint into a plan, a WBS with dependencies, L1 technical review, L2 owner acceptance and real deliverables — the project closes only when the deliverables pass;
-- **The loop is real**: read → analyze → propose → approve → write → verify readback → audited ledger, proven by live acceptance runs.
+- **The loop is implemented in governed stages**: read → analyze → propose → policy-controlled approval where required → write → readback/audit; the scope of each test and whether it used a simulator or physical equipment are stated with its evidence.
 
-## What's new in 0.11.2
+## Current source: v0.11.3 (unreleased)
+
+The source version is **0.11.3**, not yet published. This change set aligns the README, bilingual guides and operational Skills with the current Channel-mode, product-bound Session, memory-scope and line-tool contracts. For simulated onboarding, DAQ/frame selection, memory reuse, governed proposals and cutover limits, see the [line integration guide](https://kingdol666.github.io/AgentWorkShop/guide/line-integration). Simulation evidence is not physical HIL or production approval. On 2026-11-16 the isolated snapshot passed build, lint, typecheck, unit **1787/1787**, MCP **14/14**, plugin lifecycle **22/22**, SDK surface, twin provider **5/5**, docs **101/101** and Skills **176/176**; a fresh-home five-protocol simulator demo provisioned 1 line / 5 DCW / 9 DAQ, passed V1–V6 **25/25**, and exercised two HITL-approved recipe steps (**52→54→56 MPa**) with readback verification. See the [dated report](docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md). The Channel seed task did not autonomously complete in that window, and no physical-line claim is made. Historical results below remain tied to their dated evidence.
+
+## What's new in 0.11.2 (historical release snapshot)
 
 This patch release closes the final acceptance findings after merging PR #185 and PR #186.
 
 - **Recipe trial preflight**: deterministic out-of-range and recipe-window-invalid candidates are rejected before HITL, with no approval card, driver write, execution batch, or device mutation.
 - **Strict recipe input validation**: null, booleans, empty strings, NaN, Infinity, and nonnumeric strings fail closed as a whole batch; finite numbers and numeric strings remain supported.
 - **AML nearest-neighbor regression coverage**: offset timestamps, exact timestamp precedence, tolerance boundary, and beyond-tolerance missing behavior are now independently locked to the production helper.
-- **Final main acceptance**: latest main `6af25a8b`, unit 1516/1516, PLC 11/11, Agent 9/9, API 75/75, Project 14/14, RSI 32/32, multi-round RSI 10/10, and six production UI screenshots. Evidence: `docs/audit/evidence/2026-11-12-final-main-acceptance/`.
+- **Final main acceptance**: main at report time `6af25a8b`, unit 1516/1516, PLC 11/11, Agent 9/9, API 75/75, Project 14/14, RSI 32/32, multi-round RSI 10/10, and six production UI screenshots. Evidence: `docs/audit/evidence/2026-11-12-final-main-acceptance/`.
+
 - **Boundaries**: PLC coverage uses an isolated digital twin; deterministic mock harnesses cover orchestration; Mimosa full scan remained incomplete (`scanner_enobufs`), so this release makes no security-pass claim.
 - **UI observation**: the final screenshot matrix recorded one hydration-mismatch warning on `/dcw`; no page crashed and `overflowX=0`. This remains a P3 follow-up, not a silently reported zero-console-error claim.
 
@@ -159,7 +164,7 @@ Blueprint ─▶ Plan approval ─▶ WBS (dependsOn) ─▶ technical L1 ─▶
 - **Work item state machine**: `DRAFT → DISPATCHING → DISPATCHED → RUNNING → COMPLETED`, with `BLOCKED / REWORK / FAILED / CANCELED / SUPERSEDED`; state is a projection reconciled against attempts and root tasks;
 - **Deliverables**: `planned → active → submitted → approved / rejected / waived`; L1 technical review then L2 owner acceptance, evidence must reference a real task, artifact or analysis report;
 - **Continuation**: a completed project reopens when the owner sends a follow-up requirement to the same Project Leader; a new plan version is proposed instead of a new project;
-- **Industrial proof**: the CAL-3 four-stage scenario (read-only analysis → HITL write → training dataset → bounded autonomous optimization) passed **78/78** on a real line, including 300 s / 60 s write gates and device readback.
+- **CAL-3 historical line evidence**: the 2026-11-08 report records **78/78** for a four-stage scenario (read-only analysis → HITL write → dataset → bounded autonomous optimization), including 300 s / 60 s write gates and device readback. This is dated evidence from the line used for that report, not evidence for this simulated acceptance or other environments.
 
 → [Project mode guide](https://kingdol666.github.io/AgentWorkShop/guide/projects) · Evidence: [`docs/audit/evidence/2026-11-08-industrial-acceptance/REPORT.md`](docs/audit/evidence/2026-11-08-industrial-acceptance/REPORT.md)
 
@@ -184,11 +189,11 @@ The four boundaries are deliberate: a Project Leader can never raise a Channel's
 | **Channel sessions** | template → channel → session; clone base members with their own runtime, mailbox, execution lock and memory; close one and the others keep working | [Channel sessions](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) |
 | **Project delivery** | blueprint → plan approval → WBS with dependencies → technical L1 → owner L2 → deliverables; observe / supervised / auto; **project center** for entry, progress and the execution board | [Project mode](https://kingdol666.github.io/AgentWorkShop/guide/projects) |
 | **RSI experience evolution** | capture task/review evidence → fail-closed promotion gate → line-scoped sharing → paired-eval Harness Profile (`pin → shadow → active`) → readback-verified L1 gate + rollback | [RSI guide](https://kingdol666.github.io/AgentWorkShop/guide/rsi) |
-| **Industrial stack** | five field protocols (Modbus TCP/RTU · OPC UA · MQTT · HTTP) + serial plugin + MES REST (mirror & live); DAQ cadences, four-layer write limits, per-parameter ACK | [Protocol guide](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) |
-| **Agent × device binding** | three-track node authority (dcw point scoping / recipe / line-recipe management), semantic cards injected into prompts, direct writes always refused, every write passes interlocks + HITL | [HITL guide](https://kingdol666.github.io/AgentWorkShop/guide/hitl) |
-| **Model loop** | AML auto-ML (physics priors + residual ensemble + conformal UQ) → promotion gates → HITL adoption → production deployment → model-driven trials | [AML manual](./docs/aml.md) |
+| **Industrial stack** | Five field protocols (Modbus TCP/RTU · OPC UA · MQTT · HTTP) + serial plugin + MES REST (mirror & live); DAQ cadences, four-layer write limits and per-parameter acknowledgements | [Protocol guide](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) |
+| **Agent × device binding** | Three-track node authority (dcw point scoping / recipe / line-recipe management), semantic cards injected into prompts, direct writes refused; HITL is required when the effective line, Channel or binding policy requires approval | [HITL guide](https://kingdol666.github.io/AgentWorkShop/guide/hitl) · [Line integration](https://kingdol666.github.io/AgentWorkShop/guide/line-integration) |
+| **Model loop** | AML auto-ML (physics priors + residual ensemble + conformal UQ) → promotion gates → policy-governed adoption where required → model deployment subject to release gates → model-driven trials | [AML manual](./docs/aml.md) |
 | **Optimizer** | process model → OSQP solve → recipe_trial → promote only on improvement → unified rollback (PLC batch restore) | [Recipe versions](https://kingdol666.github.io/AgentWorkShop/guide/recipe-versions) |
-| **Governance & observability** | line-scoped tri-state permissions, structured audit & error ledger, /operations timeline, system monitor, 60 s / 300 s write gates | [Line permissions](https://kingdol666.github.io/AgentWorkShop/guide/line-permissions) |
+| **Governance & observability** | line-scoped tri-state permissions, structured audit & error ledger, /operations timeline and system monitor; configured 60 s / 300 s write gates | [Line permissions](https://kingdol666.github.io/AgentWorkShop/guide/line-permissions) |
 | **Plugin ecosystem** | hot-reloadable plugins: custom drivers/processors/node templates/agent tools/HTTP routes/browser panels/Twin Providers, `aw plugin` CLI + MCP `list_changed` | [Plugins & extension](#plugins--extension) |
 
 ## Architecture
@@ -261,13 +266,15 @@ messages · memories (FTS5) · projects · deliverables · events")]
 **The agent × machine bridge** (the part worth reading source for):
 
 ```
-agent ──binding──▶ node (daq: auto / dcw: manual)
+agent ──binding──▶ node (DAQ read / governed write)
   │                    │
   │  my_industrial_nodes  ◀── semantic card: meaning · unit · safe range · recipe window
-  │  daq_query             ◀── time-series history, statistics + physics semantics
-  │  dcw_control           ──▶ interlock (safe range ∩ recipe window)
-  │                           ──▶ HITL approval (manual mode, 180s timeout)
-  │                           ──▶ PLC write → readback verify → ACK + write ledger
+  │  daq_query             ◀── scalar history, statistics + semantics
+  │  daq_frames            ◀── vector/image frames
+  │  recipe_propose        ──▶ structured candidate + proposal approval card
+  │  recipe_trial/apply    ──▶ effective policy gates (including optional dispatch approval)
+  │  line_start/stop       ──▶ HITL approval
+  │                           ──▶ device write → readback → ACK + write journal
   ◀── result text with numeric values the agent can cite
 ```
 
@@ -285,12 +292,14 @@ Prefer not to install globally: `npx agentworkshop start`. From source: `git clo
 
 **Your first “agent × line” session (about 2 minutes):**
 
-1. **Sign in** — register in the sidebar (or `POST /api/users/register`).
-2. **Build a line** — “Line Operations” → create a line, add a DAQ node (e.g. `daq-temp-tc`) and a write node (e.g. `dcw-temp-sp`), create product + recipe, press **start**.
-3. **Create a team** — “Agent Workbench” → pick lead + workers, mix harnesses if you like, **deploy** into a channel.
-4. **Bind nodes** — agent detail panel → bind DAQ (*auto*) and write nodes (*manual* = needs your approval).
-5. **Submit a goal** — “Analyze the last 5 minutes of melt temperature; if it deviates more than 1 °C from 182 °C, correct the setpoint (wait for my approval).”
-6. **Approve** — the agent reads real history and proposes a write → approve in the HITL panel → watch the setpoint move, and the goal closes with a numeric report.
+> Start with an isolated simulator: use a fresh `AW_HOME`, independent platform/simulator ports and a `simulated=true` test line. The walkthrough provisions and starts the line, and its proposed recipe change can write to that simulator; do not connect it to a shared simulator or real production device. See the [line integration guide](https://kingdol666.github.io/AgentWorkShop/guide/line-integration) before proceeding.
+
+1. **Sign in** — register on the isolated test instance; its first account becomes admin.
+2. **Build a simulated line** — use a reviewed blueprint and the simulator onboarding flow, then create the DAQ/DCW nodes, product and recipe on the isolated test line.
+3. **Create a team and Session** — deploy an Agent team into an integrated Channel and bind the Session to its trusted product snapshot.
+4. **Bind nodes** — grant only the required DAQ and recipe/write scopes; do not assume `auto` or `manual` in one binding alone determines the effective approval behavior.
+5. **Submit a goal** — ask for a bounded analysis and, only if justified, a governed recipe proposal.
+6. **Check the result** — resolve HITL only when effective policy requires it; verify simulator readback, follow-up DAQ data and the journal. A pass is simulator evidence, not physical HIL or production acceptance.
 
 Want the delivery experience instead of a single channel? Open **Projects → New project → continue development**, or instantiate a blueprint:
 
@@ -307,7 +316,7 @@ One runtime, one source of truth: **`config.yml`** (defaults) < **`runtime-setti
 
 **Auth**: email + password issues a bearer token (multiple tokens, revocable); `POST /api/users/register` → `authorization: Bearer <token>` on `/api/workshop/**`.
 
-**Line tri-state permissions** (admin-managed at `/permissions`): none (default — the backend returns no data) / view-only / operate (read + write). Agent write authority tracks: `dcw` point bindings (write scope + dispatch narrowing), `recipe` (single-recipe operations), `line-recipe` (all recipes on a line). Direct writes are always refused; every write passes four-layer limits, run gates, HITL and per-parameter ACK.
+**Line tri-state permissions** (admin-managed at `/permissions`): none (default — backend returns no data) / view-only / operate (read + write). Agent write authority tracks: `dcw` point bindings (write scope + dispatch narrowing), `recipe` (single-recipe operations), `line-recipe` (all recipes on a line). Direct writes are refused; all writes retain range, recipe, step, run and ACK gates. `manual` uses HITL according to policy; `auto` does not bypass interlocks or audit.
 
 **Exec modes**: `goal` (lead decomposes → judges → re-dispatches until satisfied) / `loop` (fixed-interval replay) / `pipeline` (ordered stages).
 
@@ -339,13 +348,13 @@ Plugins are a first-class extension surface: a directory + `index.mjs` gives you
 | Start | Build | Operate |
 |---|---|---|
 | [Getting started](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) · [First session](https://kingdol666.github.io/AgentWorkShop/guide/first-session) | [Plugin API](./docs/plugins.md) · [SDK](./docs/sdk.md) · [CLI](./docs/cli.md) | [Configuration](https://kingdol666.github.io/AgentWorkShop/guide/configuration) · [HITL](https://kingdol666.github.io/AgentWorkShop/guide/hitl) · [Permissions](https://kingdol666.github.io/AgentWorkShop/guide/line-permissions) |
-| [Harness UI](https://kingdol666.github.io/AgentWorkShop/guide/harness-ui) · [Channel sessions](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) · [Project mode](https://kingdol666.github.io/AgentWorkShop/guide/projects) | [DAQ protocols](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) · [DCW read/write](https://kingdol666.github.io/AgentWorkShop/guide/dcw-read-write) · [Recipes](https://kingdol666.github.io/AgentWorkShop/guide/recipe-versions) | [AML](./docs/aml.md) · [Ontology](https://kingdol666.github.io/AgentWorkShop/guide/ontology) · [EDA studio](https://kingdol666.github.io/AgentWorkShop/guide/eda) |
+| [Harness UI](https://kingdol666.github.io/AgentWorkShop/guide/harness-ui) · [Channel sessions](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) · [Project mode](https://kingdol666.github.io/AgentWorkShop/guide/projects) | [DAQ protocols](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) · [DCW read/write](https://kingdol666.github.io/AgentWorkShop/guide/dcw-read-write) · [Recipes](https://kingdol666.github.io/AgentWorkShop/guide/recipe-versions) · [Line integration](https://kingdol666.github.io/AgentWorkShop/guide/line-integration) | [AML](./docs/aml.md) · [Ontology](https://kingdol666.github.io/AgentWorkShop/guide/ontology) · [EDA studio](https://kingdol666.github.io/AgentWorkShop/guide/eda) |
 
 ## Verification
 
-Every claim above has a re-runnable suite behind it. Acceptance follows the **aw-system-acceptance five-layer flow** (static gates → unit & contract → live core loops → regression → plugin/tool surface).
+Acceptance follows the **aw-system-acceptance six-layer flow**: T0 static gates → T1 unit & contract → T2 live core loops → T3 regression → T4 plugin/tool surface → T5 release-artifact smoke.
 
-**2026-11 acceptance round (main build):**
+**2026-11-08 to 2026-11-12 historical acceptance evidence (each report identifies its build/commit):**
 
 | Suite | Result | Evidence |
 |---|---|---|
@@ -399,7 +408,7 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current version: **v0.11.2** — [Release v0.11.2](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.2) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current source version: **v0.11.3 (unreleased)** — [Latest published release v0.11.2](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.2) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

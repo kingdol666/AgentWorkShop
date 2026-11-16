@@ -16,8 +16,7 @@ description: AgentWorkShop PLC 模拟器孪生生成 skill。当需要根据平�
   除 `aw_status` 外所有工具调用被拒——先引导用户开启,不要绕过。
 - AgentWorkShop 实例运行中(`AW_BASE` 缺省 `http://127.0.0.1:3001`);凭据 env
   `AW_TOKEN`(优先)或 `AW_EMAIL`/`AW_PASS`;未鉴权先 `aw_login`。
-- 模拟器:脚本自动拉起影子树(缺省 `../plc-node-simulator-twin-<port>`,绝不指向共享
-  dev 模拟器 4010 或他人影子树);模拟器 REST 一律带 `/api` 前缀。
+- 模拟器:脚本可启动独立影子树；**当前 `sim-twin.mjs --restart` 会按 `SIM_PORT` 找端口属主并直接终止其进程树，尚未校验 PID 属于本次 shadow。除非先人工核对进程命令行/工作目录确认为 disposable shadow，否则禁止传 `--restart`；禁止按端口盲杀**。缺省影子目录 `../plc-node-simulator-twin-<port>`,不得指向共享模拟器 4010 或他人影子树;模拟器 REST 一律带 `/api` 前缀。
 
 ### 0. 连接检查
 
@@ -60,10 +59,8 @@ description: AgentWorkShop PLC 模拟器孪生生成 skill。当需要根据平�
 随时间波动)。失败处置:
 
 - 响应 `<!doctype` HTML = 路径缺 `/api` 前缀或路由未就绪(脚本已内置重试);
-- 某设备创建 200 但活性自检报**冻结** = 模拟器 tick 静默死亡怪癖,POST 修不了——
-  **整树重启模拟器**(kill 4034 端口属主 + 重跑脚本)即恢复;
-- MQTT 设备连不上 = broker 端口错:影子偏移惯例 `18830+(sim-port-4010)×1000`,
-  以 ensureSimulator 的 brokerGuard 输出为准。
+- 某设备创建 200 但活性自检报**冻结** = 模拟器 tick 不推进;POST 修不了。先停止写入并保全证据，禁止按端口盲杀或运行尚未校验 PID 所有权的 `--restart`。确认进程命令行与工作目录属于本次 disposable shadow 后，才可在该影子环境受控停止并从独立目录重启；无法确认时停止并交维护窗口处理。
+- MQTT 设备连不上 = broker 端口错:影子偏移惯例 `18830+(sim-port-4010)×1000`;broker 与导出配置中的所有 listener 端口都必须在 TCP 有效范围 `1..65535` 内。`sim-port=4060` 会让 broker 端口算到 `68830` 并溢出；先选独立且所有映射端口都合法的端口，再以 ensureSimulator 的 brokerGuard 输出为准。
 
 ### 3. 孪生验证(工具面抽查)
 
@@ -83,6 +80,7 @@ driverConfig 指向孪生端口(**治理配置限界/stepLimit/绑定零改动**
 
 - [ ] 孪生设备全部创建且 tick 活性自检通过(无冻结)
 - [ ] 协议矩阵按需覆盖:Modbus TCP/RTU、OPC UA、MQTT、HTTP;HTTP 的 vector/image 端点能落 `daq_frames`
+- [ ] 明确 raw vector 点数与平台 normalized 点数；当前示例 raw=48、模板 sink=64，若需逐点对齐则显式设为同一合同值
 - [ ] SV 写入回读一致;跟随 PV 因果方向正确(有 dynamics 时按预期增益)
 - [ ] export driverConfig 已取回并喂给 provision/onboard(平台侧 V1-V6 全绿)
 - [ ] 影子树隔离确认(未触碰 4010 共享模拟器与他人影子树)
@@ -94,3 +92,8 @@ driverConfig 指向孪生端口(**治理配置限界/stepLimit/绑定零改动**
 - 孪生动力学是**教学级灰箱**(一阶滞后+线性增益):用于流程预演/治理演练/数据分析链验证,
   不宣称物理保真;工艺因果数值以文档与真实产线数据为准。
 - 割接真实设备的完整纪律见 aw-line-onboarding「阶段 7:割接真实设备」。
+
+
+## 真实边界
+
+模拟孪生是协议栈和治理预演，不是物理 HIL。切换到真实端点前必须停线、保存绑定/治理快照、开新批次或同步配方基线；不要在旧批次上直接换端点继续写。

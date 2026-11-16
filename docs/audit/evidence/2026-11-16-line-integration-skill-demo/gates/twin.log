@@ -1,0 +1,16 @@
+Already up to date
+Done in 332ms using pnpm v11.9.0
+$ tsx --test tests/aml-twin-provider-registry.test.ts
+✔ registers providers, computes stable hashes, and is idempotent (8.9695ms)
+✔ resolves a lease and drains old generation without invalidating in-flight work (0.7412ms)
+✔ retire waits for references and health marks failed providers unavailable (0.5264ms)
+✔ legacy injection provider can be registered without changing physics-runtime (0.2505ms)
+✔ global twin bridge replays pending operations and forwards live operations (0.6539ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 254.6311

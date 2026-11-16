@@ -19,9 +19,9 @@ footer:
     <p class="hw-kicker">AGENTWORKSHOP · INDUSTRIAL AGENT RUNTIME</p>
     <h1 class="hw-title">Agent teams<span class="x">×</span>the line<span class="x">×</span>the twin</h1>
     <p class="hw-sub">
-      A configuration-driven industrial agent runtime: agent teams read real telemetry and write
-      setpoints through human approval — every event streaming live into a 3D twin.
-      Protocol-real, assertion-reproducible.
+      A configuration-driven industrial agent runtime: teams read telemetry and issue setpoints through
+      governed controls (manual mode requires human approval). Events can stream to a 3D twin.
+      Real protocol stacks, reproducible assertions; simulation evidence is distinct from physical HIL.
     </p>
     <div class="hw-trio">
       <div>
@@ -34,7 +34,7 @@ footer:
       </div>
       <div>
         <span class="k">WHY<i>凭什么值</i></span>
-        <span class="v">Real read/write on 6 protocols (incl. serial plugin) · interlock→approval→readback, audited · 14 engines, one contract</span>
+        <span class="v">6 driver classes (incl. serial plugin) · interlocks → policy-based approval → audited readback · 14 engines, one contract</span>
       </div>
     </div>
     <div class="hw-cta">
@@ -64,21 +64,20 @@ footer:
         <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
         <div class="hw-stat"><span class="v">144</span><span class="k">runtime settings</span></div>
-        <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">acceptance assertions</span></div>
+        <div class="hw-stat"><span class="v">1100+*</span><span class="k">historical acceptance assertions</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">task states</span></div>
       </div>
       <p class="hw-stat-note">
-        * Two acceptance waves (2026-09-24, production build with a real PLC simulator / real field protocols /
-        real browser / crash-and-restart; isolated <code>AW_HOME</code>): the ~1100+ assertion baseline matrix passed
-        in its final round; the follow-up feature wave is reported item by item, including environment- or
-        credential-limited failures (not an all-pass claim). Reports at
+        * The 2026-09-24 historical acceptance (source was v0.9.x) used an isolated AW_HOME, production build, PLC simulator and real protocol
+        stacks. Its ~1100+ baseline assertions passed in the final round; follow-up features are reported item by item,
+        including environment/credential-limited cases. **This is simulator evidence, not physical PLC/HIL acceptance.** Reports:
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> and
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>.
         The rest are countable facts: 6 driver classes (5 built-in + the serial-bridge plugin) / 4 entry points (WS · MCP · A2A · REST) /
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.11.2</i></span>
+        <span>Version <i>v0.11.3 · unreleased</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -95,38 +94,38 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">RELEASE · v0.11.2</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.11.3 (UNRELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      0.11.2 is a patch release that closes the final acceptance findings: recipe trial preflight,
-      strict runtime input validation, and independent AML nearest-neighbor regression coverage.
-      Final isolated acceptance: unit 1516/1516, PLC 11/11, Agent 9/9, REST/WS/MCP 75/75,
-      Project 14/14, RSI 32/32, multi-round RSI 10/10. Mimosa full scan remained incomplete.
+      This is the current source snapshot, not a published release. The current change set aligns
+      the README, bilingual guides and operational Skills with Channel modes, product-bound
+      Sessions, memory scopes and line-tool contracts. See the line integration guide; its
+      simulated acceptance does not establish physical HIL or production readiness.
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">PRJ</span>
-        <h3>Project center: a front door for delivery</h3>
-        <p>Reachable from the sidebar, workspace, command palette and route metadata; stats, search, filters and per-project progress in the list, plus a five-column execution board, three deliverable gates and a unified timeline in the detail.</p>
-        <p><a href="/AgentWorkShop/en/guide/projects">Project mode guide →</a></p>
-      </div>
-      <div class="hw-f">
-        <span class="tag">RSI</span>
-        <h3>Experience evolution: earned, not asserted</h3>
-        <p>Task/review evidence → fail-closed promotion gate → line-scoped sharing → paired-eval Harness Profile (pin → shadow → active) → readback-verified L1 gate → rollback; zero device writes in the learning ring.</p>
-        <p><a href="/AgentWorkShop/en/guide/rsi">RSI guide →</a></p>
-      </div>
-      <div class="hw-f">
-        <span class="tag">LLM</span>
-        <h3>Real-model proof</h3>
-        <p>omp / ustc-deepseek-flash: two sessions in one channel received distinct real replies with zero leakage; a Project work item was delivered in 619 s, then reconciled, L1-reviewed and L2-accepted.</p>
+        <span class="tag">SCOPE</span>
+        <h3>Channel mode and product binding</h3>
+        <p>Integrated line tools require a trusted product-bound Session snapshot; choosing a line in a selector does not grant access.</p>
         <p><a href="/AgentWorkShop/en/guide/channels-sessions">Channel sessions →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">DATA</span>
+        <h3>Choose the data surface deliberately</h3>
+        <p>Resolve line context and memory first, then use scalar DAQ queries or frame reads according to the signal contract. Record raw and normalized vector lengths.</p>
+        <p><a href="/AgentWorkShop/en/guide/line-integration">Line integration guide →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">WRITE</span>
+        <h3>Governed proposals and readback</h3>
+        <p>Recipe changes use the proposal path; effective line, Channel and binding policy determines whether HITL is required. Reconcile acknowledgements with readback and the journal.</p>
+        <p><a href="/AgentWorkShop/en/guide/hitl">HITL guide →</a></p>
       </div>
     </div>
     <div class="hw-note">
-      <span class="t">Acceptance</span>
-      <p>RSI 32/32 · Project center 39/39 · omp real model 13/13 · CAL-3 78/78 · multi-harness 24/24 · channel multi-session 20/20 · Project 58/58 · UI 12/12 (main build, real Chrome).</p>
+      <span class="t">Verification</span>
+      <p>This unreleased snapshot was verified on 2026-11-16: build/lint/typecheck passed; unit 1787/1787, MCP 14/14, plugins 22/22, docs 101/101, Skills 176/176. An isolated five-protocol simulator line provisioned 1 line / 5 DCW / 9 DAQ, passed V1–V6 25/25, and executed two HITL-approved steps (52→54→56 MPa) with readback. Simulator evidence only, not physical HIL; the seed task did not autonomously complete. <a href="/AgentWorkShop/en/guide/line-integration">Line integration guide</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md">Dated report</a></p>
     </div>
   </section>
 
@@ -330,13 +329,13 @@ footer:
       </div>
       <div class="hw-p">
         <span class="no">05</span>
-        <h3>Protocol-real verification</h3>
-        <p>E2E suites run on a real Modbus/OPC UA/MQTT/HTTP stack: real PLC writes, real readbacks, real approvals — not mock self-certification. The 2026-09-24 production-build baseline matrix passed ~1100+ real assertions (closed loop 98/0 · protocol matrix 46/0; the v0.7.20 baseline was 156 assertions); the follow-up feature wave is reported item by item, including environment-limited failures.</p>
+        <h3>Protocol-stack simulation</h3>
+        <p>E2E uses Modbus/OPC UA/MQTT/HTTP stacks with a PLC simulator to verify writes, readbacks and approvals; this is not physical PLC/HIL evidence. The 2026-09-24 historical wave passed ~1100+ baseline assertions; follow-up items remain individually reported.</p>
       </div>
       <div class="hw-p">
         <span class="no">06</span>
         <h3>Human in the loop</h3>
-        <p>Agents propose, humans approve, the system executes, everything is audited. Manual-mode writes pend for review; approving performs a real, readback-verified PLC write.</p>
+        <p>Agents propose, humans decide where policy requires, and every action is audited. Manual-mode writes wait for review; auto mode retains interlocks and audit and is never a physical-safety substitute.</p>
       </div>
     </div>
   </section>

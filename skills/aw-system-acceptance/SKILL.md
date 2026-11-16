@@ -7,7 +7,7 @@ description: AgentWorkShop 全系统验收测试 skill。当用户要求全功�
 
 > 双位置说明:校验基准副本在仓库 `skills/aw-system-acceptance/`(scripts/test-aw-skills.mjs 校验对象),ZCode 发现副本在 `.agents/skills/aw-system-acceptance/`;改动须两处同步。历史全功能手册见 `docs/full-test-plan.md`(其脚本清单偏旧,以本 skill 与 scripts/ 实存为准)。
 
-六层各 0 FAIL 才能宣告「系统无回归」;任一层红了,修复后**从该层起全量重跑**,不做选择性补测。断言基线为 2026-11-02 全绿真值(基线上浮正常,下降必须逐条解释)。
+六层各 0 FAIL 才能宣告「系统无回归」;任一层红了,修复后**从该层起全量重跑**,不做选择性补测。每轮以实际执行输出、commit 和 evidence 目录为唯一真值；历史基线只作日期化参考，不能复制成当前结果。
 
 ### 0. 环境与实例纪律(先于一切套件)
 
@@ -16,7 +16,7 @@ description: AgentWorkShop 全系统验收测试 skill。当用户要求全功�
 - 单测必须 `npm run test:unit`(自带 `--tsconfig .nuxt/tsconfig.server.json --test-force-exit`);裸 tsx --test 会因路径解析挂掉。
 - 注塑闭环前置:平台进程 env `AW_TRIAL_INTERVAL_MS=0`(试验节拍门),设完必须**重启进程**才生效。
 - 基准模式:`AW_BENCH_MODE=1` **必须**配 `AW_BENCH_ACK=1`,否则自动忽略(安全设计);生产验收**不要**开。
-- UI 走查(Puppeteer):等页事件用 domcontentloaded——SSE 长连接下 networkidle 永不触发;dev 实例久跑 OOM 重启带 `NODE_OPTIONS=--max-old-space-size=6144`;被强杀残留 `.runtime/aw.lock` 先删。
+- UI 走查(Puppeteer):等页事件用 domcontentloaded——SSE 长连接下 networkidle 永不触发;dev 实例久跑 OOM 重启带 `NODE_OPTIONS=--max-old-space-size=6144`;若测试实例异常退出，优先使用 disposable isolated instance 或维护窗口恢复；不要把删除锁/杀进程树作为生产通用建议。
 - 端口纪律:3001=aw start、3300=演示、4010=共享模拟器(影子树绝不指向它);对 127.0.0.1 的调用带 `NO_PROXY='127.0.0.1,localhost'`。
 
 ### 1. 静态门禁层(T0)
@@ -27,7 +27,7 @@ npm run lint && npm run typecheck && npm run docs:check && npm run i18n:check &&
 
 任一红即止。docs:check 同时校验:文档版本号 = package.json、宿主工具数、设置项数(含 live/restart 拆分)、站点副本与源文档逐字一致。改动设置描述符(`shared/config/schema.json`)后**必须**同步 README/CLI/站点计数,否则 docs:check 必红。
 
-### 2. 单元与契约层(T1,基线 990/992)
+### 2. 单元与契约层(T1,以本轮实际输出为准)
 
 ```bash
 npm run test:unit        # tests/*.test.ts 全量(含本体/优化器/结果库/科学探索面)
@@ -98,7 +98,7 @@ node scripts/e2e-crash-cycle.mjs               # 崩溃→重启→断点恢复
 ### 5. 插件装载与工具注册面(T4)
 
 1. `aw_plugin_list`(或 GET /api/workshop/plugins):全部 enabled 且 `failures=[]`。
-2. 工具注册表 GET /api/workshop/tools:builtin **108**(v0.9.4 含 mes_bridge)+ plugin 全部 available(`available=false` 多因陈旧 dev 进程反向同步污染共享库——杀树重启即恢复)。
+2. 工具注册表 GET /api/workshop/tools:分别记录 builtin 与 plugin/total 数量；不得使用固定的历史 108 作为当前断言。若 `available=false`，先在隔离实例核对工具注册/插件状态与本轮构建；若需重启，只重建本次 disposable isolated instance 或交维护窗口，不要杀共享实例进程树。
 3. 工具面抽真:`aw_agent_tool_invoke` 实调 `diag_results`/`diag_status`/`aw_dcw_snapshot`/`aw_task_list`;科学探索面抽 `daq_identifiability`(只读预检)与 `intervention_history`(台账回读)回包形状。
 
 ### 6. 发布产物冒烟(T5)
@@ -124,7 +124,7 @@ npm pack --dry-run     # 清单含 .output/.AgentWorkShop/prompts 等;核对 fil
 - [ ] T0-T5 六层各 0 FAIL,本轮证据目录已生成
 - [ ] T2 九套件全绿;外部依赖缺项如实标注(不静默跳过)
 - [ ] 三段式(看到/控制/学得好)各有本轮命令输出,失败即证据负例全绿
-- [ ] 插件 failures=[] 且工具注册表 builtin 108 全 available
+- [ ] 插件 failures=[]；工具注册表 builtin/plugin/total 数量与本轮输出、commit、证据目录一致
 - [ ] 发布产物冒烟通过(`/` 200、鉴权 401、密钥屏障生效、pack 清单正确)
 - [ ] UI 走查截图存档(本体六 tab/优化器五 tab/结果库三屏/AML 探索面)
 - [ ] 结论一句话:套件矩阵 × 外部依赖状态 × 未覆盖面声明

@@ -1,0 +1,26 @@
+{
+ "id": "f8583d6a-4a37-4507-aaf4-b085857a7702",
+ "name": "精密注塑克重闭环演示频道-20261116",
+ "channelMode": "production_line_integrated",
+ "lineId": "ln-bf6e8242",
+ "scenarioPromptChars": 1744,
+ "memberCount": 4,
+ "members": [
+  {
+   "role": "lead",
+   "id": "1fdc5e4d-e261-48db-a425-37558e435118"
+  },
+  {
+   "role": "worker",
+   "id": "4fb1428d-c2f8-4d5d-98c4-972c3dd7ffaf"
+  },
+  {
+   "role": "worker",
+   "id": "8b766dba-f6a6-4517-943f-53278f3c31ce"
+  },
+  {
+   "role": "worker",
+   "id": "13d17496-20c1-47d8-8e82-cadaee87dcac"
+  }
+ ]
+}

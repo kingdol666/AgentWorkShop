@@ -18,6 +18,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const SKILLS_DIR = join(REPO, 'skills')
+const DISCOVERY_SKILLS_DIR = join(REPO, '.agents', 'skills')
+const REQUIRED_MIRRORS = ['aw-line-onboarding', 'aw-plc-sim-twin', 'aw-protocol-onboarding', 'aw-doc-to-project', 'aw-system-acceptance']
 
 let pass = 0
 const fails = []
@@ -45,12 +47,20 @@ if (!existsSync(SKILLS_DIR)) {
 }
 const dirs = readdirSync(SKILLS_DIR).filter(d => statSync(join(SKILLS_DIR, d)).isDirectory())
 ok('skill 数量 ≥ 3', dirs.length >= 3, `实际 ${dirs.length}`)
+for (const dir of REQUIRED_MIRRORS) {
+  ok(`要求存在的镜像 Skill ${dir}`, dirs.includes(dir) && existsSync(join(DISCOVERY_SKILLS_DIR, dir, 'SKILL.md')))
+}
 
 // ── 工具面对照表(从 MCP server 导入真实注册表)──
 const { buildToolDefs } = await import(pathToFileURL(join(REPO, 'mcp', 'aw-mcp-server.mjs')).href)
 const toolNames = new Set(buildToolDefs().map(t => t.name))
 
 for (const dir of dirs) {
+  const canonicalFile = join(SKILLS_DIR, dir, 'SKILL.md')
+  const discoveryFile = join(DISCOVERY_SKILLS_DIR, dir, 'SKILL.md')
+  if (existsSync(discoveryFile)) {
+    ok(`skills/${dir}: 与 .agents/skills/${dir} 同步`, readFileSync(canonicalFile, 'utf8') === readFileSync(discoveryFile, 'utf8'))
+  }
   const label = `skills/${dir}`
   const file = join(SKILLS_DIR, dir, 'SKILL.md')
   ok(`${label}: SKILL.md 存在`, existsSync(file))

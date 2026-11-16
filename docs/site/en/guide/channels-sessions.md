@@ -15,6 +15,20 @@
 A Session does not replace a Channel: the channel remains the source of team identity and authority; a session is
 only an execution surface.
 
+## Integrated Sessions and product scope
+
+A `production_line_integrated` Channel differs from a generic collaboration Channel: it needs an explicit line binding before industrial context, line-scoped DAQ reads or governed recipe tools are available. Creating a Session never widens those grants.
+
+An integrated Session should include the product it is allowed to study:
+
+```json
+{"productId":"pd-...","title":"Batch analysis A","memoryPolicy":"session"}
+```
+
+The server freezes and verifies the line/product/recipe/node/agent binding snapshot, including its revision and hash. A mutable Channel selector cannot move that Session to another product or recipe. A generic Session does not gain industrial authority merely because it has a `productId`.
+
+Memory is layered: `session` is the current execution context, `shared` is Channel team memory, and validated `line`/`product` experience is exposed only through a trusted integrated scope. Automatic injection is a bounded clue layer; use `search_memory` for complete evidence. If a task must not persist even a conclusion to the Channel, explicitly forbid `save_memory`.
+
 ## Creating a session
 
 ```bash

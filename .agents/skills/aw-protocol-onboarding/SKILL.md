@@ -19,7 +19,16 @@ description: AgentWorkShop 协议与异构数据接入 skill。当用户给出�
 
 > **虚拟/真实数据隔离**:虚拟验证用独立测试线(或 `simulated=true` 线);`daq_samples`/`daq_frames` 没有 environment 列,隔离靠 line/run。不要把虚拟样本混进真实生产线的分析窗;复用同一条线时,记录割接时间点/批次并在分析时按窗口排除。
 
-### 0. 连接与生产判定
+### 脚本副作用表（先满足 fresh isolated home 才能执行）
+
+| 脚本 | 已知副作用 | 边界 |
+| --- | --- | --- |
+| `provision-line.mjs` | 创建/更新线、节点、产品和配方；存在 DAQ 节点时启动全局 DAQ controller；`startLine:true` 可启动批次 | 仅 `AW_MODE=home` + 全新 `AW_HOME` + 独立端口 + `simulated=true` 线 |
+| `forge-channel.mjs` | 创建/更新 Channel；同步插件开关；创建绑定和 operate grant；创建 seedTask | 仅 fresh isolated home/test line；检查所有绑定和授权结果 |
+| `verify-line.mjs` | V2 越界写尝试、V3 合法写入；V6 要求 protected journal 非空基线 | 只在隔离模拟线；真实物理生产线禁止跑 V2/V3 |
+| `onboard.mjs --smoke` | 编排以上步骤，可能自动裁决新建 HITL 并写入设备 | 仅隔离模拟测试环境；不得用于共享/生产实例或物理产线 |
+
+
 
 `aw_status` 确认 `AW_BASE`、鉴权与 `mcpEnabled=true`;未鉴权先 `aw_login`。MCP 开关在「系统设置 → MCP 集成」或平台进程 env `AW_MCP_ENABLED=true`;未开启时除 `aw_status` 外全部工具被拒,先引导用户开启,不要绕过。
 
@@ -126,7 +135,7 @@ description: AgentWorkShop 协议与异构数据接入 skill。当用户给出�
 
 ### 7. 虚拟 → 真实割接
 
-只在模拟端点全绿后执行,六步逐步放行:
+只在模拟端点全绿后执行；**先停线并开新批次/同步 recipe baseline**，再进行六步逐步放行:
 
 | 步 | 动作 | 通过判据 |
 | --- | --- | --- |
@@ -134,7 +143,7 @@ description: AgentWorkShop 协议与异构数据接入 skill。当用户给出�
 | 2 | 只读浸泡 ≥30min(只接 PV) | 量程/噪声/漂移符合文档;恒值/跳变先查接线与量纲 |
 | 3 | 单点最小步写入首验 | 「写控 \| 设备 \| 镜像回读」三方一致 |
 | 4 | 其余节点 PATCH `driverConfig`(配方/绑定/限界不动) | 只改端点,不重建节点 |
-| 5 | `scripts/onboarding/verify-line.mjs` V1-V6 重跑(V2/V3 会真实写入,需批准) | 全绿 |
+| 5 | 在真实端点重跑只读连通/采集检查；物理首验另按维护窗口人工授权执行(V2/V3 写断言仅模拟线) | 真实只读面全绿并完成经批准的物理首验 |
 | 6 | 交付割接清单(端点/凭据变更 + 首验三方记录) | 投用仍由产线负责人 judge & taste |
 
 割接时 `secretRef` 在视图里是 `******`;PATCH 必须显式给真值,或不要动该字段。不要在割接窗口新建/删除节点或频道。
@@ -159,3 +168,10 @@ description: AgentWorkShop 协议与异构数据接入 skill。当用户给出�
 - [ ] 插件(如有)已热加载且 `aw_plugin_list` 无 failures;未重启生产进程
 - [ ] 割接六步有记录;真实端点只改 `driverConfig`,节点/配方/限界未重建
 - [ ] 收尾只清理本次创建的 id;交接记录含节点 id/窗口/期望值/证据路径
+
+
+## 当前主干的额外边界
+
+- `production_line_integrated` Channel 才能使用产线作用域的工业上下文；generic Channel 不因 lineId 选择器获得权限。
+- product-bound Session 会冻结 line/product/recipe/node snapshot；product 经验必须有可信 Session 和 validated 证据，未取证不得宣称复用。
+- **向量点数必须双记**:原始端点(raw)与平台 sink normalized 可能不同；交接记录 `rawPoints`、normalized 点数、模板/resample 配置、标签和帧长，不能把 raw=48 与模板64说成数据错误或逐点等价。

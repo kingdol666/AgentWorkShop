@@ -1,0 +1,32 @@
+[
+ {
+  "id": "caf7330d-efe2-46ab-b654-99dbc8da8923",
+  "title": "克重闭环首轮巡检",
+  "state": "WAITING",
+  "assigneeId": "1fdc5e4d-e261-48db-a425-37558e435118",
+  "history": 140,
+  "artifacts": 0,
+  "createdAt": "2026-11-16T13:14:09.268+08:00",
+  "updatedAt": "2026-11-16T13:27:12.424+08:00"
+ },
+ {
+  "id": "4d516568-ff38-416e-8d85-6be193dd02c4",
+  "title": "数据分析:克重/熔体压力/模温/飞边 5 分钟窗口判读",
+  "state": "WORKING",
+  "assigneeId": "4fb1428d-c2f8-4d5d-98c4-972c3dd7ffaf",
+  "history": 200,
+  "artifacts": 0,
+  "createdAt": "2026-11-16T13:19:14.720+08:00",
+  "updatedAt": "2026-11-16T13:24:43.901+08:00"
+ },
+ {
+  "id": "62e7bda1-ade4-44e4-be97-d2e262c531da",
+  "title": "知识调优:注塑克重第一步调参建议(知识+数据,不写入)",
+  "state": "WORKING",
+  "assigneeId": "8b766dba-f6a6-4517-943f-53278f3c31ce",
+  "history": 133,
+  "artifacts": 0,
+  "createdAt": "2026-11-16T13:19:14.768+08:00",
+  "updatedAt": "2026-11-16T13:26:29.014+08:00"
+ }
+]

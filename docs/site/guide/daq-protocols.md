@@ -141,7 +141,7 @@ export default {
 2. 产线写控权限(operate 权限);
 3. Agent 互斥与回退冷却(调控闭环护栏);
 4. 安全量程 ∩ 活动配方工艺窗口联锁;
-5. (manual 绑定模式)HITL 人工审批;
+5. (配方提案始终创建人工审批卡；开停线始终 HITL；其他写入由有效产线/Channel/绑定策略及适用的 recipe-dispatch 设置决定)审批门；
 6. PLC 写入 → 回读校验(超容差判失败)→ 签名写历史。
 
 > MQTT 写控:broker 的 QoS1 puback 只代表**链路受理**(transport-ack)。设备若在状态主题

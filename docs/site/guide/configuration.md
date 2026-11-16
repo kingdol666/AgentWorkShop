@@ -108,13 +108,12 @@ config 连接参数拼装兜底」语义。
 
 频道级执行模式是产线作业的档位选择器,存于 `aml_channel_profiles.execution_mode`
 (加列式迁移,存量行 NULL 按 auto 生效——频道层不额外收紧,升级零行为变化)。
-它与产线 `controlMode` 总闸、绑定级 `mode` 取**最严生效**:任一层 manual 即挂审批,
-observe 直接摘除写面。
+它与产线 `controlMode` 总闸、绑定级 `mode` 共同决定审批：Channel 为 `manual` 会强制要求受治理写入/动作进入 HITL；产线总闸或适用的绑定模式要求审批时也要审批。`recipe_propose` 始终创建人工审批卡，`line_start` / `line_stop` 始终要求 HITL；`security.recipeDispatchApproval` 只额外门控 recipe trial/apply。
 
 | 模式 | 语义 | 安全边界 |
 | --- | --- | --- |
 | `observe` | 只读分析档:写族/治理写/整包方案/启停线工具从注入面摘除 | 注入面白名单 + 分发层按名拒写(REST/MCP 直调同样被拒);MES 只读族保留 |
-| `manual` | 频道层强制 HITL:所有下发挂起等人工批准 | reason 必填,审批卡展示 Agent 依据,批准附言回流 |
+| `manual` | Channel 层强制受治理写入/动作进入 HITL；`recipe_propose` 与开停线动作另有恒定审批门 | reason 必填，审批卡展示 Agent 依据，批准附言回流 |
 | `auto`(默认) | 频道层中性:审批由产线总闸与绑定模式决定 | 四层限界∩单步上限∩运行门∩60s 联锁∩越窗自动回退;治理写必须附带 `hypothesis` 并入审计 |
 
 切换 REST(owner-only):

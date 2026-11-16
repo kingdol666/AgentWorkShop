@@ -13,7 +13,7 @@ description: AgentWorkShop 产线接入与作业频道锻造 skill。当用户�
 ## 对产线负责的两条铁律(高于一切步骤)
 
 1. **不确定必问,禁止猜测**:凡是缺字段/两可的决策,停下来问用户 —— 必问清单: ①点位的量程/单位/单步上限缺失(直接影响四层限界与工艺安全); ②SP(可写)/PV(只读)判定不明(写错方向=对真实设备误动作); ③MES 认证方式与凭据归属(bearer/header/none;token 放哪个 secretRef); ④场景目标不清晰(找区间?诊断?微调?达标判据是什么); ⑤配方下发治理档位(首绑一律 manual;用户明确要求才切 auto)。
-2. **测试自动裁决,投用用户裁决**:接入验收/冒烟期由助手自动创建并裁决 HITL(测试语义); **投入使用必须由产线负责人在界面上 judge & taste 后放行** —— skill/脚本只到"可投用", 不得代用户宣告投产,交接时必须输出绑定矩阵/HITL 策略/安全限复核清单。
+1. **测试线自动裁决，投用由负责人裁决**:V2/V3 和 `--smoke` 的测试写入及自动 HITL 裁决只允许对本次隔离 simulated/test line 执行，不能用于物理生产线；即使在测试线上通过也只证明模拟链路。真实设备的任何写入必须经过授权维护窗口和人工审批；**投入使用仍须由产线负责人在界面上 judge & taste 后放行**。交接输出绑定矩阵/HITL 策略/安全限复核清单，并区分模拟、physical HIL 与生产结论。
 
 ## 生产实例纪律(2026-10-31 增补,高于执行方式)
 
@@ -21,6 +21,17 @@ description: AgentWorkShop 产线接入与作业频道锻造 skill。当用户�
 - 配置作业直接在已运行实例上做:专用测试线 + `PROTO-` 前缀 + 本次 id 清单;不改不删既有资源。
 - 协议搬运/插件兜底/模拟→真实割接见 `aw-protocol-onboarding`;插件接口与热加载见 `aw-plugin-dev`;**多频道组 Project 协同(项目编组/依赖链/验收链)与全生命周期 ask 门见 `aw-doc-to-project`**(单频道交付后要组项目跑协同作业时,由它编排)。
 - 需要重启才生效的 builtin 插件/核心改动,移交维护窗口;project/user 插件用热加载。
+
+## 脚本副作用表（执行前必须确认）
+
+| 脚本/选项 | 可能副作用 | 使用边界 |
+| --- | --- | --- |
+| `provision-line.mjs` | 创建/PATCH 线、DAQ、DCW、产品、配方；可能启动 DAQ 总控 | 仅 fresh isolated home 或明确批准的专用测试线 |
+| `onboard.mjs` | 组合供给、锻造、V1–V6；`startLine` 默认可启动产线 | 仅 simulated/test line；生产必须显式停在阶段门 |
+| `verify-line.mjs` | V2 越界尝试、V3 合法 DCW 写入；V6 要求受保护 journal 非空基线 | 只在全新隔离 simulated/test line；物理产线不得做 V2/V3 写测试 |
+| `onboard.mjs --smoke` | 可能自动裁决测试 HITL 并执行一小步写入 | 只在隔离模拟测试线，禁止共享/生产实例与物理产线 |
+
+脚本不会替代 `preflight`；出现既有运行实例时先按生产对待，不得用删锁或杀进程“修复”。
 
 ## 一键接入(onboard.mjs,首选执行方式)
 
@@ -83,9 +94,9 @@ node scripts/onboarding/onboard.mjs <统一配置.json> [--skip-connectivity] [-
 
 ### 4. 场景化频道锻造(按需求选最佳适配)
 
-批量(推荐):`node scripts/onboarding/forge-channel.mjs <config.json>`——模板实例化→团队级插件开关→Agent 绑定(权限模型 v2)→线域授权→种子任务一条龙。
+批量(推荐):`node scripts/onboarding/forge-channel.mjs <config.json>`——模板实例化→团队级插件开关→Agent 绑定(权限模型 v2)→线域授权→种子任务一条龙。seedTask 是异步根任务，不保证新建后立即开始；派发后轮询任务状态并等明确终态，不把 `SUBMITTED`/`WAITING_FOR_RESULT` 当完成。若冷启动未推进或超时，先报告任务仍未执行；可以在目标 Channel 直接发送作业消息作为 fallback，并用该消息对应的 task id/结果单独取证。
 手工逐点(等价工具面):`aw_channel_template_list` 选模板 → `aw_channel_template_instantiate`(带 bindLineId 与 controlPolicy)→ `aw_agent_tool_bind`(agentId 必须是频道成员实例 id,
-可用 `aw_request` GET channels/:id/agents 取)→ `aw_task_create` 派种子任务。
+可用 `aw_request` GET channels/:id/agents 取)→ `aw_task_create` 派种子任务。该路径同样须观察 seed task 到终态；不要因派发 API 成功就宣称 Agent 已执行。
 
 场景决策矩阵(`scenario` 字段;默认模板可用 templateId 覆盖):
 
@@ -100,7 +111,7 @@ bindings 写法:`{"agentRole":"worker:2","kind":"recipe","nodeId":"$RECIPE","mod
 
 ### 5. 验收(未全绿不得宣告完成)
 
-`node scripts/onboarding/verify-line.mjs <config.json>` 六组断言:V1 数采落库(每 daq 节点 2 分钟窗内有真实样本,等价抽查 `aw_daq_samples`)→V2 越界写必须被拒(量程联锁)→ V3 合法写回环(回读一致,单点可用 `aw_dcw_write`)→V4 配方在册且参数映射正确 → V5 频道绑线/成员/插件生效 → V6 受保护演示线零扰动(journal 锚点核对)。任一红即退出码 1,修复后重跑。**V2/V3 会真实写入**:只在本次测试线或用户批准的割接窗执行,不要在既有生产线上直接跑。
+`node scripts/onboarding/verify-line.mjs <config.json>` 六组断言:V1 数采落库(每 daq 节点 2 分钟窗内有真实样本,等价抽查 `aw_daq_samples`)→V2 越界写必须被拒(量程联锁)→ V3 合法写回环(回读一致,单点可用 `aw_dcw_write`)→V4 配方在册且参数映射正确 → V5 频道绑线/成员/插件生效 → V6 受保护演示线零扰动(journal 锚点核对)。V6 必须先确认 `ln-d7e0a2a2` 存在，且切换前 journal 有**非空基线**；检查器要求 `protectedBeforeKeys.size > 0`，不能把空集视为通过。任一红即退出码 1,修复后重跑。**V2/V3 会真实写入；`--smoke` 也可能自动裁决测试 HITL 并写入**:只允许对全新隔离 simulated/test line 执行，禁止对共享/生产实例或物理生产线运行；物理割接需另行授权且不得用 V2 越界写测试。
 
 命令通道本身无读能力的协议(MQTT commandTopic 等)在 V3 配置 `"ackMode":"transport-ack"` + `"observeDaqId":"<同物理量的 DAQ 节点>"`:验收器断言 broker 受理(ACK 口径不冒充设备证实),再用独立 DAQ 样本观测物理量跟随到目标值。未声明这两个字段时仍按回读一致判定,不会把 transport-ack 静默当通过。
 
@@ -109,8 +120,7 @@ bindings 写法:`{"agentRole":"worker:2","kind":"recipe","nodeId":"$RECIPE","mod
 **新功能面补充验收(2026-10-24 增补)**——V1-V6 之外,频道投用前按场景补三面:
 
 - **工具注册面**:GET /api/workshop/tools 确认频道将调用的工具(diag_* 诊断族等)available=true;
-  false 会被 channelToolGate 拒(「当前未注册」)——多为陈旧 dev 进程反向同步污染注册表,
-  杀进程树重启即恢复(仅限明确可丢弃的测试实例;生产实例禁止,移交维护窗口),不是插件缺陷。
+  false 会被 channelToolGate 拒(「当前未注册」)。先在隔离实例核对构建与插件/工具注册；如需重启，只重建本次 disposable isolated instance，或移交维护窗口，不得杀共享/生产实例进程树。
 - **IDD 结果库面**(diagnose/optimize 场景):插件设置 results_enabled 开启后,
   `aw_agent_tool_invoke` 实调 diag_results(支持 q/intent/category/tag/scene/harness/
   min_score/sort/limit/offset/brief 十一参过滤)与 diag_result_get(id 取详情,brief 缺省
@@ -127,7 +137,7 @@ bindings 写法:`{"agentRole":"worker:2","kind":"recipe","nodeId":"$RECIPE","mod
 - driverConfig 只来自文档/设备 export/用户确认;缺失字段问用户,不猜。
 - secretRef 零明文:凭据进环境变量 `AW_MES_<REF>_TOKEN`,不进配置文件与对话。
 - 受保护资源(`ln-d7e0a2a2` 及非本次创建的 id)只读;lib.mjs 在脚本层硬拦。
-- Agent 写路径权限模型 v2:不绑配方就没有写能力;首绑 manual 逐动作审批是**刻意设计**, 除非用户明确要求否则不切 auto。
+- Agent 写路径权限模型 v2:不绑配方就没有写能力;首绑 `manual` 强制逐动作审批；Channel `manual` 会进一步强制 HITL。`recipe_propose` 始终创建审批卡，`line_start/line_stop` 始终需要 HITL；其他 recipe trial/apply 由有效产线/Channel/绑定模式和可选 `security.recipeDispatchApproval` 共同决定。只有用户确认后才允许将写控/recipe 绑定切到 `auto`，并须复核联锁、步长、运行门、频控与审计仍生效。
 - 配方级下发间隔频控:recipe 可配 `opIntervalMs`(缺省 60s;0=禁用),Agent 下发族 (trial/apply/propose/rollback-dispatch)两次**已批准**下发间隔不得小于该值,计时锚=审批时刻 (未批准不计时);窗内被拒时可用 `emergency=true` 豁免频控(审批照挂且卡片标注【应急】)。
 - 模拟器整包替换型预设不得在共存验收中使用。
 
@@ -135,19 +145,10 @@ bindings 写法:`{"agentRole":"worker:2","kind":"recipe","nodeId":"$RECIPE","mod
 
 ### 7. 割接真实设备(虚拟预演 → 落地;2026-10-13 定稿)
 
-标准路径 = **模拟孪生预演跑通 → 割接真实端点**(最安全):治理面(四层限界/HITL/分级/审计)与数据管线在模拟器与真机间完全同构,割接只换 driverConfig 端点,语义节点/限界/绑定/配方零改动。
+标准路径 = **模拟孪生预演跑通 → 停线 → 替换端点 → 开新批次/同步 recipe baseline → 割接真实端点**(最安全):治理面(四层限界/HITL/分级/审计)与数据管线在模拟器与真机间完全同构,割接只换 driverConfig 端点,语义节点/限界/绑定/配方零改动。
 
 > 虚拟/真实数据隔离:`daq_samples`/`daq_frames` 没有 environment 列,隔离靠 line/run。虚拟验证首选独立测试线;若复用同一条线,必须记录割接时间窗/批次,分析时排除虚拟样本。
-六步逐步放行,禁止跳步:
-
-| 步 | 动作 | 通过判据 |
-| --- | --- | --- |
-| 1 | 真实 driverConfig 重跑阶段 2 连通预检 | 全绿 |
-| 2 | 只读浸泡 ≥30min(只接 PV) | 量程/噪声/漂移符合文档口径;恒值/跳变先查接线量纲 |
-| 3 | 单点最小步写入首验 | 「写控\|设备\|镜像回读」三方一致(寄存器映射/字节序/量纲错误只在真机暴露) |
-| 4 | 其余节点 PATCH driverConfig(配方/绑定/限界不动) | 注意 secretRef 打码坑:显式给真值或不动该字段 |
-| 5 | verify-line V1-V6 重跑 | 全绿才算割接完成 |
-| 6 | 割接清单交付(端点/凭据变更+首验三方记录) | 投用仍由产线负责人 judge & taste(铁律 2) |
+- **真实物理割接不跑 V2/V3 或 `--smoke`**:这些检查会尝试越界写或执行合法写，只用于隔离模拟/测试线；物理割接单独走授权维护窗口的只读浸泡与人工批准的最小步首验，并做设备/平台/镜像三方核对。
 
 割接/验收实战坑(2026-10-13 三轮实测定稿):
 
@@ -156,7 +157,7 @@ bindings 写法:`{"agentRole":"worker:2","kind":"recipe","nodeId":"$RECIPE","mod
 - **HITL 验收用「在飞并行」**:发起 invoke 不 await → 轮询 `/api/workshop/hitl/pending` → respond → 再 await 回执;顺序 await 超时自断后批准会落到僵尸卡(fail-closed 不下发,平台正确、验收白跑)。
 - **审批卡 nodeId 形态按动作而异**(recipe-propose: vs recipe:)——登记既有卡集合只认新增,勿用排除法。
 - **频道成员对象主键可能是 `id` 而非 `agentId`**(随模板版本),取值做双回退。
-- **模拟器孪生 tick 偶发静默死亡**(SP 写了 PV 不动):双读自检;冻结则整树重启模拟器(POST 修不了)——aw-plc-sim-twin 已内建自检。
+- **模拟器孪生 tick 偶发不推进**(SP 写了 PV 不动):先停止写入并做双读/健康检查；不得按端口盲杀。只有确认 PID 的命令行与工作目录属于本次 disposable shadow 后才可受控停止/重启该影子，否则交维护窗口处理；详见 aw-plc-sim-twin。
 - **kb_agent 入参是 `prompt` 不是 `query`**;检索验收以 kb_agent(harness API)为准,rag-bridge search 对新入库经验有索引延迟。
 
 MES 区间取数契约(多字段+时间段+间隔 API 的 historyMap 接入,2026-10-07 实测定稿):
@@ -202,10 +203,10 @@ MES 双模式接入(2026-10-07 实测定稿;同一 MES API 按用户意愿二选
 - [ ] 产线/节点/配方 id 落袋并记录进交付说明(附 provision 摘要 JSON)
 - [ ] 上下限与 stepLimit 显式配置(四层限界可生效)
 - [ ] V1~V6 全绿(verify-line 输出 0 失败)
-- [ ] 频道场景与用户需求匹配(optimize/diagnose/tuning),种子任务已派发
+- [ ] 频道场景与用户需求匹配(optimize/diagnose/tuning),种子任务已观察到明确终态;若冷启动停滞，已用 Channel 消息 fallback 并记录其独立结果
 - [ ] 受保护演示线零扰动(journal/audit 核对)
 - [ ] 交付说明含:复用/新建清单、插件开关、绑定矩阵、HITL 策略、回退路径
-- [ ] (真实接入)割接六步全过:真实预检全绿 → 只读浸泡 ≥30min → 首验三方对照 → driverConfig 替换 → verify-line 重跑全绿 → 割接清单交付
+- [ ] (真实接入)连通预检/只读浸泡通过 → 维护窗口人工批准最小步首验并完成三方对照 → driverConfig 替换 → 记录真实现场复验与投用裁决；**不运行 V2/V3 或自动 HITL 冒烟**
 - [ ] (虚拟预演)模拟孪生经 aw-plc-sim-twin 生成且 tick 活性自检通过
 - [ ] (2026-10-24 增补)频道工具注册面全 available;诊断场景结果库工具实调通过(或如实标注未启用)
 - [ ] (2026-10-24 增补)目标线有本体时邻接子图工具回包结构化(nodes/edges/hop/orientation)

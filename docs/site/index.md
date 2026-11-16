@@ -18,8 +18,8 @@ footer:
     <p class="hw-kicker">AGENTWORKSHOP · 工业 AGENT 运行时</p>
     <h1 class="hw-title">Agent 团队<span class="x">×</span>产线<span class="x">×</span>数字孪生</h1>
     <p class="hw-sub">
-      一个配置驱动的工业 Agent 运行时:Agent 团队读取真实遥测、经人工审批写入设定值,
-      每个事件实时流进 3D 孪生。协议是真的,断言是可复跑的。
+      一个配置驱动的工业 Agent 运行时：Agent 团队读取遥测，按治理策略下发设定值（manual 模式需人工审批），
+      事件可实时流入 3D 孪生。真实协议栈，可复跑断言；模拟证据与物理 HIL 明确区分。
     </p>
     <div class="hw-trio">
       <div>
@@ -32,7 +32,7 @@ footer:
       </div>
       <div>
         <span class="k">凭什么值<i>WHY</i></span>
-        <span class="v">6 协议真机读写(含串口插件) · 联锁→审批→回读留痕 · 14 引擎一个契约</span>
+        <span class="v">6 类驱动（含串口插件）· 联锁→按策略审批→回读留痕 · 14 引擎一个契约</span>
       </div>
     </div>
     <div class="hw-cta">
@@ -62,20 +62,18 @@ footer:
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
         <div class="hw-stat"><span class="v">144</span><span class="k">运行时设置项</span></div>
-        <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">验收断言</span></div>
+        <div class="hw-stat"><span class="v">1100+*</span><span class="k">历史验收断言</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
       </div>
       <p class="hw-stat-note">
-        * 两轮验收波次(2026-09-24,生产构建 + 真实 PLC 模拟产线/协议/浏览器/崩溃重启,隔离
-        <code>AW_HOME</code>):基础矩阵约 1100+ 条断言最终轮全过;补充功能波按报告逐项记录
-        (其中环境/凭据受限项已归因,并非全部通过)。报告见
+        * 2026-09-24 历史验收波次（当时源码 v0.9.x）使用隔离 AW_HOME 的生产构建、PLC 模拟器与真实协议栈；~1100+ 基础矩阵断言最终轮通过，补充功能波按报告逐项记录（包含环境/凭据受限项）。**该轮是模拟器设备证据，不是物理 PLC/HIL 验收。**报告见
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> 与
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>。
         其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.11.2</i></span>
+        <span>版本 <i>v0.11.3 · 未发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -92,37 +90,37 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">WHAT'S NEW · v0.11.2</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.11.3 (UNRELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      0.11.2 是一次补丁收口：recipe_trial 挂卡前预检、严格输入校验与 AML 最近邻独立回归全部完成。
-      最终隔离验收：unit 1516/1516、PLC 11/11、Agent 9/9、REST/WS/MCP 75/75、
-      Project 14/14、RSI 32/32、多轮 RSI 10/10。Mimosa 完整扫描仍未完成。
+      当前为未发布的源码快照，不是新版本发布公告。本次改动对齐 README、双语指南与运维 Skill，
+      覆盖 Channel 模式、产品绑定 Session、记忆作用域与产线工具契约。请先阅读产线集成指南；
+      其中的模拟验收不构成物理 HIL 或生产就绪证明。
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">PRJ</span>
-        <h3>项目中心：交付层的门面</h3>
-        <p>侧栏 / 工作台 / 命令面板 / 路由元数据四处可达；列表统计、搜索、筛选与每项目进度，详情五列执行看板 + 交付物三级门 + 决策事件统一时间线，频道名替换裸 UUID。</p>
-        <p><a href="/AgentWorkShop/guide/projects">Project 模式指南 →</a></p>
-      </div>
-      <div class="hw-f">
-        <span class="tag">RSI</span>
-        <h3>经验演化：挣来的经验</h3>
-        <p>任务/评审证据沉淀 → fail-closed 晋升门 → 同产线经验共享 → 配对评测 Profile（pin → shadow → active）→ 回读验证阻断 L1 → 回滚；学习环零设备写。</p>
-        <p><a href="/AgentWorkShop/guide/rsi">RSI 指南 →</a></p>
-      </div>
-      <div class="hw-f">
-        <span class="tag">LLM</span>
-        <h3>真实模型实证</h3>
-        <p>omp / ustc-deepseek-flash：同 Channel 双会话真实回执零串扰；Project 工作项派发到任务实例，619 秒完成 artifact，对账→L1→L2→completed。</p>
+        <span class="tag">SCOPE</span>
+        <h3>Channel 模式与产品绑定</h3>
+        <p>集成产线工具要求可信的产品绑定 Session 快照；仅在选择器中选择产线不会授予访问权限。</p>
         <p><a href="/AgentWorkShop/guide/channels-sessions">Channel 多会话 →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">DATA</span>
+        <h3>按信号契约选择取数面</h3>
+        <p>先确认产线上下文并检索记忆，再按信号类型选择标量 DAQ 或帧读取；记录 raw 与 normalized 向量点数。</p>
+        <p><a href="/AgentWorkShop/guide/line-integration">产线集成指南 →</a></p>
+      </div>
+      <div class="hw-f">
+        <span class="tag">WRITE</span>
+        <h3>受治理提案与回读</h3>
+        <p>配方变更走提案路径；有效产线、Channel 与绑定策略共同决定是否需要 HITL。对账确认、设备回读与 journal。</p>
+        <p><a href="/AgentWorkShop/guide/hitl">HITL 指南 →</a></p>
       </div>
     </div>
     <div class="hw-note">
-      <span class="t">验收</span>
-      <p>RSI 32/32 · 项目中心 39/39 · omp 真实模型 13/13 · CAL-3 78/78 · 多 Harness 24/24 · Channel 多会话 20/20 · Project 58/58 · UI 12/12（main 构建，真实 Chrome）。</p>
+      <span class="t">验证</span>
+      <p>本未发布源码快照已实测：build/lint/typecheck 通过，unit 1787/1787、MCP 14/14、插件 22/22、docs 101/101、Skills 176/176；隔离五协议模拟线完成 1 线/5 DCW/9 DAQ、V1–V6 25/25，并执行 52→54→56 MPa 两步 HITL 批准下发与回读。仅模拟证据，不构成物理 HIL；seed task 未自主收口。<a href="/AgentWorkShop/guide/line-integration">产线集成指南</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md">日期化报告</a></p>
     </div>
   </section>
 
@@ -322,13 +320,13 @@ footer:
       </div>
       <div class="hw-p">
         <span class="no">05</span>
-        <h3>协议真实验证</h3>
-        <p>E2E 跑在真实 Modbus/OPC UA/MQTT/HTTP 栈上:真写 PLC、真回读、真审批——不是 mock 自证。2026-09-24 生产构建全覆盖验收约 1100+ 条真实断言全过(闭环 98/0 · 协议矩阵 46/0;v0.7.20 历史基线 156 项)。</p>
+        <h3>协议栈模拟验收</h3>
+        <p>E2E 使用 Modbus/OPC UA/MQTT/HTTP 协议栈与 PLC 模拟器验证写入、回读和审批；这些不是物理 PLC/HIL 结果。2026-09-24 历史波次约 1100+ 基础矩阵断言通过，补充项按报告逐项记录。</p>
       </div>
       <div class="hw-p">
         <span class="no">06</span>
         <h3>人在环路</h3>
-        <p>Agent 提议,人批准,系统执行,全程留痕。manual 绑定的下发挂起待审,批准即真实写入,裁决人入审计日志。</p>
+        <p>Agent 提议，按策略由人裁决，系统执行并留痕。manual 模式写入等待审批；auto 仍保留联锁与审计，不能替代物理安全验收。</p>
       </div>
     </div>
   </section>

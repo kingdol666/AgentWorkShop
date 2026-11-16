@@ -1,0 +1,62 @@
+[
+ {
+  "name": "保压压力SP",
+  "nodeId": "dw-4976345a",
+  "value": 54,
+  "readback": {
+   "ok": true,
+   "value": 54,
+   "raw": 54,
+   "message": "读回 raw 54 → eng 54",
+   "at": "2026-11-16T13:20:42.158+08:00"
+  }
+ },
+ {
+  "name": "保压时间SP",
+  "nodeId": "dw-8ad75824",
+  "value": 3.5,
+  "readback": {
+   "ok": true,
+   "value": 3.5,
+   "raw": 3.5,
+   "message": "读回 raw 3.5 → eng 3.5",
+   "at": "2026-11-16T13:20:42.190+08:00"
+  }
+ },
+ {
+  "name": "料温SP",
+  "nodeId": "dw-8a3e07fa",
+  "value": 208,
+  "readback": {
+   "ok": true,
+   "value": 208,
+   "raw": 208,
+   "message": "读回 raw 208 → eng 208",
+   "at": "2026-11-16T13:20:42.221+08:00"
+  }
+ },
+ {
+  "name": "冷却流量SP",
+  "nodeId": "dw-94ebed0e",
+  "value": 15,
+  "readback": {
+   "ok": true,
+   "value": 15,
+   "raw": 15,
+   "message": "读回 raw 15 → eng 15",
+   "at": "2026-11-16T13:20:42.237+08:00"
+  }
+ },
+ {
+  "name": "保压压力SP（复检）",
+  "nodeId": "dw-1893b6a0",
+  "value": null,
+  "readback": {
+   "ok": false,
+   "value": null,
+   "raw": null,
+   "message": "驱动 http 不支持读取(仅观测型通道)",
+   "at": "2026-11-16T13:20:42.253+08:00"
+  }
+ }
+]

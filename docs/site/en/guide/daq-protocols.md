@@ -160,7 +160,7 @@ All dispatch (manual REST / recipe batch / agent tools) converges on a single en
 2. line operate permission;
 3. agent mutual-exclusion and rollback-cooldown guards;
 4. safe range ∩ active recipe window interlock;
-5. (manual binding mode) HITL approval;
+5. HITL: `recipe_propose` always requires human approval; other writes depend on effective line/Channel/binding policy and any applicable recipe-dispatch setting. `line_start` / `line_stop` always require HITL;
 6. PLC write → readback verification (beyond tolerance = failure) → signed write history.
 
 > MQTT write control: a QoS1 puback only means **the broker accepted the message**

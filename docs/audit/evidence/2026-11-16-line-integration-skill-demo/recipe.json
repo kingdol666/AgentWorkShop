@@ -1,0 +1,10 @@
+{
+ "error": true,
+ "url": "http://127.0.0.1:3998/api/workshop/dcw/recipes/rc-d83ee180",
+ "statusCode": 404,
+ "statusMessage": "Page not found: /api/workshop/dcw/recipes/rc-d83ee180",
+ "message": "Page not found: /api/workshop/dcw/recipes/rc-d83ee180",
+ "data": {
+  "path": "/api/workshop/dcw/recipes/rc-d83ee180"
+ }
+}
