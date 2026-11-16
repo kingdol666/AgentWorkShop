@@ -1,0 +1,16 @@
+# 本地产物不得随 npm 包发布
+**/.mimosa/**
+**/.nuxt/**
+**/.cache/**
+**/.turbo/**
+**/.eslintcache
+**/*.log
+**/*.pid
+**/.bench-stamp
+**/node_modules/**
+
+# 验收/论文/本地运行资产不进入 npm 包
+plc-node-simulator/
+paper/
+docs/audit/
+.DS_Store
