@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -8,6 +9,10 @@ import { OmpRpcAgentImpl } from '../server/services/workshop/agents/omp-agent'
 import { OmpRpcClient } from '../server/services/workshop/agents/adapters/omp-rpc-client'
 import type { AgentEvent, AgentRunContext } from '../server/services/workshop/agents/agent-interface'
 import type { ExecutionScope } from '../server/services/workshop/agents/execution-scope'
+
+// Live omp binary required: skip on environments without it (CI/fresh machines).
+// 保持默认收集,但在 omp 不可用时跳过 —— 与 opt-in 集成测试同纪律。
+const ompAvailable = spawnSync('omp', ['--version'], { timeout: 15_000 }).status === 0
 
 class LiveAgent extends OmpRpcAgentImpl {
   dispatched: string[] = []
@@ -39,7 +44,8 @@ class LiveAgent extends OmpRpcAgentImpl {
   }
 }
 
-test('product OMP agent rotates aliases across persistent live turns', { timeout: 60_000 }, async () => {
+test('product OMP agent rotates aliases across persistent live turns', { timeout: 60_000 }, async (t) => {
+  if (!ompAvailable) t.skip('omp binary unavailable (CI/fresh machine); live alias rotation requires it')
   const root = await mkdtemp(join(tmpdir(), 'aw-omp-product-alias-'))
   const agentDir = join(root, 'agent')
   const work = join(root, 'work')
