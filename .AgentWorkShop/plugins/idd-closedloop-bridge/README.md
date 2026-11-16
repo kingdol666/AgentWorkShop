@@ -1,5 +1,11 @@
 # idd-closedloop-bridge —— IDD 闭环分析桥
 
+> ⚠ **版本边界(2026-11-16)**:当前 `industrial-deep-diagnostic` 已整体退役
+> `/api/sentinel` 与 `/api/optimizer`(`app/backend/src/index.mjs:326` 注释)。因此本插件的
+> 9 个工具对当前 IDD 会返回 404;`GET /api/plugins/idd-closedloop-bridge/health` 会如实报告
+> `routesReady=false`。闭环寻优请使用 IDD 仓库的 `industrial-optimizer-loop` skill CLI
+> (`optimizer.py init/design/ingest/converge`),本插件仅保留给仍提供旧路由的 IDD 分支。
+
 把 [industrial-deep-diagnostic](https://github.com/kingdol666) (IDD) 服务包装为 AgentWorkShop 的 OMP 工具 ×9:
 哨兵(建档/秒筛/批筛/状态)、调优经验库(登记/检索/反馈)、目标闭环寻优(campaign/round/state)。
 

@@ -51,7 +51,7 @@
 
 ## 当前源码 v0.11.3（未发布）
 
-当前源码版本为 **0.11.3**，尚未发布。本次改动将 README、双语指南与运维 Skill 对齐到现有 Channel 模式、产品绑定 Session、记忆作用域和产线工具契约。模拟 onboarding、DAQ/帧选择、记忆复用、受治理提案和割接边界见[产线集成指南](https://kingdol666.github.io/AgentWorkShop/guide/line-integration)。模拟证据不等于物理 HIL 或生产投用批准。2026-11-16 隔离源码快照已通过 build、lint、typecheck、unit **1787/1787**、MCP **14/14**、插件生命周期 **22/22**、SDK 出口、Twin Provider **5/5**、docs **101/101** 与 Skills **176/176**；全新 home 的五协议模拟演示完成 1 线 / 5 DCW / 9 DAQ 供给、V1–V6 **25/25**，并执行两步 HITL 批准的配方下发（**52→54→56 MPa**）且回读证实。见[日期化报告](docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md)。该窗口内 Channel 种子任务未自主完成，本报告不构成物理产线结论。下方历史结果仍以各自日期化证据为准。
+当前源码版本为 **0.11.3**，尚未发布。本次改动将 README、双语指南与运维 Skill 对齐到现有 Channel 模式、产品绑定 Session、记忆作用域和产线工具契约。模拟 onboarding、DAQ/帧选择、记忆复用、受治理提案和割接边界见[产线集成指南](https://kingdol666.github.io/AgentWorkShop/guide/line-integration)。模拟证据不等于物理 HIL 或生产投用批准。2026-11-16 隔离源码快照已通过 build、lint、typecheck、unit **1790/1790**、MCP **14/14**、插件生命周期 **22/22**、SDK 出口、Twin Provider **5/5**、docs **101/101** 与 Skills **176/176**；全新 home 的五协议模拟演示完成 1 线 / 5 DCW / 9 DAQ 供给、V1–V6 **25/25**，并执行 HITL 批准的配方下发且回读证实。同一窗口还执行了 IDD `industrial-optimizer-loop` 优化 skill（R001 31.712→32.557 g；R002 GP-EI 预测 32.423 g / 实测 32.286 g）、omp + `ustc/deepseek-flash` Channel 作业（HITL 62.5→64 MPa、回读 64、复测 32.416 g）以及 RAG 检索/入库。见[产线演示报告](docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md)与[全系统测评](docs/audit/2026-11-16-full-system-idd-rag-rsi-acceptance.md)。物理 HIL 未验证、RAG 内部 agent 路径超时、Mimosa 仍 inconclusive；本报告不构成物理产线结论，也不宣称安全通过。下方历史结果仍以各自日期化证据为准。
 
 ## 0.11.2 历史发布快照（不是当前主干验收）
 

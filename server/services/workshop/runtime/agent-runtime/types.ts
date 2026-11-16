@@ -194,7 +194,7 @@ export interface AgentRuntimeLike {
   getStatus(): AgentStatusView
   /** 本 agent 的任务队列视图(待执行 FIFO / 执行中 / 已完成) */
   getQueueView(): AgentTaskQueueView
-  abortCurrent(): void
+  abortCurrent(reason?: string): void
   /** 仅中止仍在执行指定任务的当前 run;不影响其它任务或 supervise 回合 */
   abortTask?(taskId: string): boolean
   wakeMailbox(): void

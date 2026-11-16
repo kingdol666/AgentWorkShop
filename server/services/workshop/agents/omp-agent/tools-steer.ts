@@ -7,7 +7,7 @@ import type { AgentEvent, AgentRunContext, AgentRunRequest, SupervisionDecision,
 import type { HostToolCallRequest, OmpRpcClient } from '../adapters/omp-rpc-client'
 import { extractJsonArray, parseSteerBanner, peerPrompt, supervisePrompt, systemManual, workerPrompt } from '../prompt-builder'
 import { log } from './helpers'
-import { abortToCancelDecision } from './supervision-decision'
+import { abortToCancelDecision, normalizeSupervisionAbortReason } from './supervision-decision'
 import { recordSupervisionToolHistory } from './supervision-history'
 import { ompAgentTeamAuditFailure, recordOmpAgentTeamToolEvent } from './agentteam-audit'
 import { workshopSettings } from '../../settings'
@@ -270,7 +270,8 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
           // provider)是常态,取消任务属越权收口(2026-11-10 P1)。
           const why = (opts.signal as AbortSignal & { reason?: unknown })?.reason
           const reasonText = why instanceof Error ? why.message : String(why ?? '')
-          abortTurn(reasonText.includes('hard timeout') ? reasonText : 'external cancel')
+          // runtime stop 是生命周期停机,不得归一成 external cancel(否则取消在办任务)。
+          abortTurn(normalizeSupervisionAbortReason(reasonText))
         }
         opts.signal.addEventListener('abort', onAbort, { once: true })
         signalUnsub = () => opts.signal?.removeEventListener('abort', onAbort)

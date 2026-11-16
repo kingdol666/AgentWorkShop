@@ -297,12 +297,16 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
     return this.deps.taskEngine.queueViewOf(this.channelId, this.agentId)
   }
 
-  /** 中止当前 run(任务取消/Agent 移除时);空闲时无操作 */
-  abortCurrent(): void {
-    log.warn(`[AgentRuntime:${this.agentId}] abortCurrent 调用(state=${this.state})`)
-    this.abortController?.abort()
+  /** 中止当前 run(任务取消/Agent 移除时);空闲时无操作。
+   *  reason 会作为 AbortSignal.reason 传给 harness:调度器生命周期停机必须传
+   *  'runtime stop',否则 omp 会把无因 abort 归一成 'external cancel' 并把在办根任务
+   *  取消(配置重装/管理停机不应产生 cancel 决策)。 */
+  abortCurrent(reason?: string): void {
+    log.warn(`[AgentRuntime:${this.agentId}] abortCurrent 调用(state=${this.state}${reason ? `,reason=${reason}` : ''})`)
+    const why = reason ? new Error(reason) : undefined
+    this.abortController?.abort(why)
     // supervise 回合同样可打断(调度器 cancel 路径 → LLM 回合真中止)
-    this.superviseController?.abort()
+    this.superviseController?.abort(why)
   }
 
   /** 仅中止仍在执行指定任务的当前 run;不影响其它任务或 supervise 回合 */

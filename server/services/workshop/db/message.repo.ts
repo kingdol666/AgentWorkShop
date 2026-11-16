@@ -53,7 +53,10 @@ export function createMessageRepo(db: DatabaseSync) {
     `UPDATE messages SET state = 'consuming' WHERE id = ? AND state = 'pending'`,
   )
   const markConsumedStmt = db.prepare(
-    `UPDATE messages SET state = 'consumed', consumed_at = ? WHERE id = ?`,
+    // 只允许消费仍由本回合持有的 consuming 行。看门狗会把超时消息 requeue 成
+    // pending/dead;原回合若迟到完成,无守卫的 UPDATE 会把重投后的消息再次标成
+    // consumed(消息丢失/毒消息复活)。WHERE state='consuming' 与 requeue 同一互斥口径。
+    `UPDATE messages SET state = 'consumed', consumed_at = ? WHERE id = ? AND state = 'consuming'`,
   )
   const resetConsumingStmt = db.prepare(
     // P3-4:崩溃恢复重投不复活 dead(重投上限是持久判定,重启不洗白)

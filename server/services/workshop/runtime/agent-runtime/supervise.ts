@@ -12,6 +12,14 @@ import { superviseWatchdogOnly, workshopSettings } from '../../settings'
 export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
   async supervise(snapshot: SupervisionSnapshot): Promise<SupervisionDecision[] | null> {
     if (!this.impl.supervise) return null
+    // 监督回合本身是「在途工作」:过去只在 processMessage 里置 busy,lead 长监督
+    // 期间对外恒 idle,Channel 配置重装会据此把它当空闲卸载并 abort 根任务。
+    // 进入监督即置 busy,落定后恢复 idle;若期间已被 stop 则保持 stopped。
+    const restoreIdleOnSettle = this.state === 'idle'
+    if (restoreIdleOnSettle) {
+      this.state = 'busy'
+      this.refreshStatus()
+    }
     // §6.2/§2.4:监督回合与 worker 回合共用同一 harness 进程/会话 —— 先观测租约,
     // 身份变化(重建)在此时归因,复用则 reuseCount+1。
     this.noteHarnessUse()
@@ -141,6 +149,11 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
       // attempt 落定即结束 —— 回到 IDLE 才能让 §6.1 的「无 active supervise attempt」
       // 卸载闸门重新成立(审计信息保留在 completedAt/lastDecisionKind/watchdogCount)。
       this.supervisionAttempt = { ...this.supervisionAttempt, state: 'IDLE' }
+      // 监督落定后归还 busy;若期间已被 stop(stopped)或已有任务回合接管(currentTaskId),
+      // 不覆盖它们的状态。
+      if (restoreIdleOnSettle && this.state === 'busy' && this.currentTaskId == null) {
+        this.state = 'idle'
+      }
       this.refreshStatus()
       // 调度回合落定:lead 的 supervise 是上下文膨胀大户,同样走 post-settle 压缩检查
       this.maybePostSettle()
