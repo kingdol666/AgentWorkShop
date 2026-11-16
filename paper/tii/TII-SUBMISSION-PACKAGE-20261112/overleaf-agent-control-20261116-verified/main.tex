@@ -1,0 +1,101 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
+% Compile: latexmk -pdf main.tex
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algpseudocode}
+% Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
+% the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
+% the latexmk -pdf (pdfLaTeX) path is unaffected.
+\usepackage{iftex}
+\ifxetex
+  \DeclareFontFamily{TU}{ptm}{}
+  \DeclareFontShape{TU}{ptm}{m}{n}{<->ptmr8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{n}{<->ptmb8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{it}{<->ptmri8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{it}{<->ptmbi8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sl}{<->ptmro8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sc}{<->ptmr8t}{}
+\fi
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{stfloats}
+\usepackage{placeins}
+\usepackage{url}
+% Allow line breaks at any character inside URLs/DOIs so long reference links
+% do not leave ragged gaps at column edges (IEEE reference layout).
+\usepackage{xurl}
+\usepackage{etoolbox}
+\urlstyle{same}
+% Cross-references and citations. The cite package renders IEEE-style citation
+% groups ([14]--[16], [20], [21]) with hyperref support.
+\usepackage{cite}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\hypersetup{bookmarksnumbered=true,
+  pdftitle={Agent-Mediated Online Data Acquisition and Governed Setpoint Control in Industrial Production Lines},
+  pdfauthor={},
+  pdfsubject={IEEE Transactions on Industrial Informatics},
+  pdfkeywords={industrial agents, online data acquisition, agent-mediated control, governed setpoint control, industrial communication}}
+
+% Float placement only; IEEEtran margins and body type remain unchanged.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{7}
+\setcounter{dbltopnumber}{1}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.03}
+\renewcommand{\floatpagefraction}{0.72}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.72}
+
+% Tight but conventional float separation; body type and margins are unchanged.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{7pt plus 2pt minus 3pt}
+\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
+
+\newcommand{\system}{the platform}
+
+\begin{document}
+\bstctlcite{IEEEbstctl}
+
+\title{Agent-Mediated Online Data Acquisition and Governed Setpoint Control in Industrial Production Lines}
+
+\author{}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Agent-Mediated Setpoint Control}
+
+\maketitle
+
+\begin{abstract}
+Industrial agents can acquire production data, relate process state to an objective, and propose setpoint adjustments, but the resulting control intent must remain tied to the correct context, signal direction, authority, and operating limits. This paper presents a configuration-driven runtime for agent-mediated online data acquisition and governed setpoint control, with a direct-call path for verification. A scene binds line, product, recipe, and run context to acquisition/control mappings and registered protocol drivers. The agent receives configured observations and submits a typed intent; a shared dispatcher applies authorization, conditional approval, route-specific revalidation, and write guards before dispatch. Command outcomes, device readbacks, and later process observations remain separate evidence. In simulated probes of 55 write-capable endpoints across four scenes and five protocols, all 220 admissible requests were accepted and all 219 collected out-of-range requests were rejected. A bounded scripted policy had lower retained-window integrated absolute error than no-write in all nine selected scene--seed blocks. Three language-model-driven injection episodes were canceled below target. The work establishes an application-level agent-to-operation integration model; it does not establish a complete correlated agent-to-device trace, general control efficacy, autonomous convergence, or physical-plant safety.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Industrial agents, online data acquisition, agent-mediated control, governed setpoint writing, industrial communication, simulation-based evaluation.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/system}
+\input{sections/closedloop}
+\input{sections/modules}
+\input{sections/evaluation}
+\input{sections/discussion}
+
+\section*{Declarations}
+The authors declare no competing interests. This anonymous study used simulated scenes, mock-driver fixtures, and a PLC-based simulated twin; no human participants, personal data, or physical-plant data were involved. Author contributions and funding are withheld during anonymous review and will be provided in the final version. Generative AI was used for limited language editing and source organization; the authors reviewed the manuscript and remain responsible for its technical content, results, and claims. The evidence is supplied in the anonymous supplementary package and supporting-evidence archive; no physical-plant data were collected.
+
+\bibliographystyle{IEEEtran}
+% \IEEEtriggeratref{10} removed 2026-11-13: with the longer data-availability
+% statement the forced break spilled the remaining references onto an 11th
+% page; natural flow ends on page 10.
+\bibliography{resources/refs}
+
+\end{document}
+
