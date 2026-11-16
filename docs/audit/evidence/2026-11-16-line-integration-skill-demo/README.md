@@ -25,6 +25,7 @@
 | `task-summary.json` | 种子任务与 lead 子任务状态（WAITING / WORKING） |
 | `bindings.json` / `recipe.json` | 绑定矩阵与配方定义快照 |
 | `gates/*.log` | 本轮 build/lint/typecheck/docs/readme/skills/unit/MCP/plugin/SDK/twin/VitePress 门禁输出 |
+| `vendored-rerun/` | 模拟器改为仓库内目录 + pnpm workspace 后的完整复跑：平台 :3999、模拟器 :4054、supply 20/20、forge 15/15、V1–V6 25/25、smoke 7/7（52→54，`rr-87a89bae`） |
 
 边界：模拟器证据，不是物理 HIL；克重未在两步内进入目标窗；seed task 未自主收口；
 Mimosa 未完成完整扫描，不宣称安全通过；本轮未发布 npm/GitHub Release。

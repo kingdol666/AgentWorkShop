@@ -16,6 +16,7 @@ description: AgentWorkShop PLC 模拟器孪生生成 skill。当需要根据平�
   除 `aw_status` 外所有工具调用被拒——先引导用户开启,不要绕过。
 - AgentWorkShop 实例运行中(`AW_BASE` 缺省 `http://127.0.0.1:3001`);凭据 env
   `AW_TOKEN`(优先)或 `AW_EMAIL`/`AW_PASS`;未鉴权先 `aw_login`。
+- 模拟器源码随主仓库位于 `plc-node-simulator/`;根 `pnpm install` 安装其 workspace 依赖(含 `tsx`),无需单独 clone。该目录采用 PolyForm Noncommercial 1.0.0,独立于平台许可。
 - 模拟器:脚本可启动独立影子树；**当前 `sim-twin.mjs --restart` 会按 `SIM_PORT` 找端口属主并直接终止其进程树，尚未校验 PID 属于本次 shadow。除非先人工核对进程命令行/工作目录确认为 disposable shadow，否则禁止传 `--restart`；禁止按端口盲杀**。缺省影子目录 `../plc-node-simulator-twin-<port>`,不得指向共享模拟器 4010 或他人影子树;模拟器 REST 一律带 `/api` 前缀。
 
 ### 0. 连接检查

@@ -1,0 +1,27 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "status": "ok",
+  "app": "AgentWorkShop",
+  "version": "0.11.3",
+  "mode": "dev",
+  "uptimeMs": 506733,
+  "timestamp": "2026-11-16T14:00:03.754+08:00",
+  "workshop": "ready",
+  "wiredAgents": 3,
+  "activeChannels": 1,
+  "daq": {
+   "degraded": false,
+   "mqttOnline": true,
+   "tsdbOnline": true
+  },
+  "memory": {
+   "heapUsedMb": 141,
+   "heapLimitMb": 4288,
+   "rssMb": 254,
+   "externalMb": 18,
+   "heapRatio": 0.0328
+  }
+ }
+}

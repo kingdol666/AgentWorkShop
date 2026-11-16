@@ -290,6 +290,8 @@ aw start                           # → http://localhost:3001，一切初始化
 
 不想全局安装：`npx agentworkshop start`。源码运行：`git clone … && pnpm install && pnpm dev`（→ 3000）；生产：`pnpm build && pnpm start`。更新：`aw update`。
 
+> **内置 PLC 模拟器（源码检出）**：五协议虚拟设备位于 `plc-node-simulator/`，随主仓库一起克隆，无需单独拉取。根 `pnpm install` 会安装其 workspace 依赖（含 `tsx`），onboarding 脚本以独立影子实例启动它。npm 发布包不包含该目录。其许可独立，见下方说明。
+
 > 真实 Agent harness 需要对应 CLI 在 PATH 中（`omp` / `codex` / `opencode` / … 任选子集，同 Channel 可混用；`mock` 与 `claude` 进程内运行无需 CLI）。可选数采基础设施（MQTT broker + TimescaleDB）在 Docker 可达时自动拉起。
 
 **第一次「Agent × 产线」会话（约 2 分钟）：**
@@ -405,6 +407,8 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 ## 许可证
 
 [Apache 2.0](./LICENSE)（宽松许可，允许商用与生产部署）。
+
+**内置模拟器例外**：`plc-node-simulator/` 采用 PolyForm Noncommercial License 1.0.0（见 [`plc-node-simulator/LICENSE`](./plc-node-simulator/LICENSE)），**不适用**上述 Apache-2.0 许可，且必须保留其 Required Notice。商业用途须先取得其版权人的商业授权。
 
 ---
 

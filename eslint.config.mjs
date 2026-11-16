@@ -26,7 +26,8 @@ export default withNuxt(
     // .aw-home-ui/.rsi-demo-home/.runtime = 验收会话的隔离 home/运行时状态(含 venv 产物);
     // scripts/_live-*.mjs = 会话级 live 驱动(与 _dbg-* 同性质:短平快、不入主链路)。
     // 这些目录里的 JS 是 vendored/归档/运行产物,不属于待检源码。
-    ignores: ['.omc/**', '.zcode/**', '.crush/**', '.agent-teams/**', '.aw-ui-home/**', '.aw-home-ui/**', '.rsi-demo-home/**', '.runtime/**', 'paper/**', 'scripts/_dbg-*.mjs', 'scripts/_dbg-*.ts', 'scripts/_live-*.mjs', '.AgentWorkShop/**', 'aml/**', 'aml.pre-clean*/**', '.e2e-tmp/**', '.e2e-home*/**', 'docs/audit/**', 'bench/results/**', 'docs/dev/onboarding-e2e-20261028/**'],
+    // plc-node-simulator/** = 随仓库内置的独立模拟器子项目(自有 tsconfig/构建),不属于平台源码。
+    ignores: ['.omc/**', '.zcode/**', '.crush/**', '.agent-teams/**', '.aw-ui-home/**', '.aw-home-ui/**', '.rsi-demo-home/**', '.runtime/**', 'paper/**', 'scripts/_dbg-*.mjs', 'scripts/_dbg-*.ts', 'scripts/_live-*.mjs', '.AgentWorkShop/**', 'aml/**', 'aml.pre-clean*/**', '.e2e-tmp/**', '.e2e-home*/**', 'docs/audit/**', 'bench/results/**', 'docs/dev/onboarding-e2e-20261028/**', 'plc-node-simulator/**'],
   },
   // 审计取证脚本(scripts/_audit/**):为 docs/audit/*.md 的结论提供可复现证据,
   // 写成密集单行是刻意选择(单文件自包含、便于对照报告逐条运行),不是产品代码。
