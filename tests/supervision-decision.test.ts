@@ -12,7 +12,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { abortToCancelDecision, isHardAbortReason } from '../server/services/workshop/agents/omp-agent/supervision-decision'
+import { abortToCancelDecision, isHardAbortReason, normalizeSupervisionAbortReason } from '../server/services/workshop/agents/omp-agent/supervision-decision'
 
 test('external cancel + 在办任务 → cancel 决策(带原因与任务 id)', () => {
   const d = abortToCancelDecision({ reason: 'external cancel', activeTaskId: 'task-1' })
@@ -45,4 +45,14 @@ test('isHardAbortReason 只认显式外部取消(硬超时已从收口语义移�
   assert.equal(isHardAbortReason('hard timeout(1000ms)'), false)
   assert.equal(isHardAbortReason('hard'), false)
   assert.equal(isHardAbortReason(''), false)
+})
+
+test('abort 原因归一:runtime stop 不得被改写成 external cancel', () => {
+  assert.equal(normalizeSupervisionAbortReason('runtime stop'), 'runtime stop')
+  assert.equal(normalizeSupervisionAbortReason('runtime_stop'), 'runtime stop')
+  assert.equal(normalizeSupervisionAbortReason('hard timeout(900000ms)'), 'hard timeout(900000ms)')
+  assert.equal(normalizeSupervisionAbortReason('external cancel'), 'external cancel')
+  assert.equal(normalizeSupervisionAbortReason(''), 'external cancel')
+  // runtime stop 归一后仍不产生 cancel 决策
+  assert.equal(abortToCancelDecision({ reason: normalizeSupervisionAbortReason('runtime stop'), activeTaskId: 'task-4' }), null)
 })

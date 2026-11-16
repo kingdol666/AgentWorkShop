@@ -23,8 +23,9 @@ export default defineApiHandler(async (event) => {
   const body = await readBody<{ driver?: DaqDriverKind, driverConfig?: Record<string, string | number | boolean> }>(event) ?? {}
   if (!body.driver) return { ok: false, message: '缺少 driver' }
   const cfg: Record<string, string | number | boolean> = { ...(body.driverConfig ?? {}) }
-  delete cfg.allowPrivateHost
-  if (process.env.AW_TEST_DRIVER_ALLOW_PRIVATE === '1') cfg.allowPrivateHost = 'true'
+  // 显式 false(而不是 delete):HTTP 驱动的 legacyAllowPrivateWhenUnset 在字段缺失时
+  // 会沿用历史放行行为,删除字段等于绕过 2026-10-28 的服务端白名单。只有运维开关能放行。
+  cfg.allowPrivateHost = process.env.AW_TEST_DRIVER_ALLOW_PRIVATE === '1' ? 'true' : 'false'
   const result = await getDaqController().testDriver(requireDriverKind(body.driver), cfg)
   return { test: result }
 })

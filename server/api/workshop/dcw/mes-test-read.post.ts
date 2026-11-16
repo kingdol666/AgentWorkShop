@@ -15,8 +15,8 @@ export default defineApiHandler(async (event) => {
     domain?: { min?: number, max?: number }
   }>(event) ?? {}
   const driverConfig = { ...(body.driverConfig ?? {}) }
-  delete driverConfig.allowPrivateHost
-  if (process.env.AW_TEST_DRIVER_ALLOW_PRIVATE === '1') driverConfig.allowPrivateHost = 'true'
+  // 显式写 false:字段缺失会让 HTTP/MES 驱动的兼容分支跳过私网校验。
+  driverConfig.allowPrivateHost = process.env.AW_TEST_DRIVER_ALLOW_PRIVATE === '1' ? 'true' : 'false'
   const domain = { min: Number(body.domain?.min ?? 0), max: Number(body.domain?.max ?? 100) }
   const t0 = Date.now()
   const r = await mesRestDcwDriver.read!({ domain, driverConfig })

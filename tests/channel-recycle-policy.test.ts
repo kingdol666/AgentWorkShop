@@ -26,6 +26,10 @@ test('有挂起 HITL 审批时延迟重装', () => {
   assert.equal(channelRecycleDecision({ states: ['idle'], hasPendingMessages: false, hasPendingApprovals: true }), 'defer')
 })
 
+test('状态暂报 idle 但有在飞监督/未终态任务 → 仍延迟重装', () => {
+  assert.equal(channelRecycleDecision({ states: ['idle'], hasActiveWork: true, hasPendingMessages: false, hasPendingApprovals: false }), 'defer')
+})
+
 test('全 idle 且无待处理工作 → 立即重装', () => {
   assert.equal(channelRecycleDecision({ states: ['idle', 'idle'], hasPendingMessages: false, hasPendingApprovals: false }), 'now')
 })

@@ -136,7 +136,8 @@ export abstract class SchedulerLoopState extends SchedulerLoopContracts {
     // A supervision round may be awaiting a persistent harness indefinitely.
     // Shutdown is an explicit hard-stop boundary, so abort only the Lead runtime
     // supervision/run before awaiting the tracked round; normal watchdog never does this.
-    this.lead.abortCurrent()
+    // 必须带 'runtime stop':无因 abort 会被 omp 归一成 external cancel 并取消在办根任务。
+    this.lead.abortCurrent('runtime stop')
     const active = this.activeRound
     if (active) await active.catch(() => {})
   }

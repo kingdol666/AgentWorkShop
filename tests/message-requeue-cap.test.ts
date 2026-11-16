@@ -47,3 +47,15 @@ test('P3-4: 健康消息两次重投内保持 pending 可继续消费', () => {
   assert.equal(again.length, 1, '未达上限 → 回队列')
   assert.equal(again[0]!.attempts, 1)
 })
+
+test('P0:requeue 后迟到的 markConsumed 不得吞掉重投消息', () => {
+  const { db, repo } = freshRepo()
+  const m = repo.create({ channelId: 'ch-fix', toAgentId: 'ag-1', role: 'ROLE_USER', parts: [{ text: 'late' }] })
+  assert.equal(repo.claim(m.id), true)
+  assert.equal(repo.requeue(m.id), true)
+  // 旧实现无条件 UPDATE ... WHERE id=?, 会把 pending 行改成 consumed(消息丢失)。
+  repo.markConsumed(m.id)
+  const row = db.prepare('SELECT state FROM messages WHERE id = ?').get(m.id) as { state: string }
+  assert.equal(row.state, 'pending', '迟到消费必须 no-op,消息保留在重投队列')
+  assert.equal(repo.listPendingByChannelAgent('ch-fix', 'ag-1').length, 1)
+})

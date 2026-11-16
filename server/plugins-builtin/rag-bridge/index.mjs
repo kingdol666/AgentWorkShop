@@ -55,19 +55,25 @@ export default {
     if (ctx.kv.get('kb.web_url') == null) ctx.kv.set('kb.web_url', DEFAULT_WEB)
     ctx.kv.set('kb.name', KB_NAME)
 
-    // base_url 守卫:仅 http/https 且 host 必须是 127.0.0.1/localhost(不合法则禁用出站)。
+    // base_url/web_url 守卫:仅 http/https 且 host 必须是 127.0.0.1/localhost。
+    // web_url 也会带 Bearer token 出站(文档写盘/目录),不能只校验 base_url。
     // 每次配置变更都重算 —— 否则改错地址后旧判定会一直沿用,「独立配置即时生效」不成立。
+    const assertLocalHttpUrl = (raw, label) => {
+      const u = new URL(raw)
+      if ((u.protocol !== 'http:' && u.protocol !== 'https:') || !['127.0.0.1', 'localhost'].includes(u.hostname)) {
+        throw new Error(`${label} 必须是 http(s)://127.0.0.1|localhost,实际 ${raw}`)
+      }
+      return u
+    }
     const applyOutboundGuard = () => {
       try {
-        const u = new URL(base())
-        if ((u.protocol !== 'http:' && u.protocol !== 'https:') || !['127.0.0.1', 'localhost'].includes(u.hostname)) {
-          throw new Error(`base_url 必须是 http(s)://127.0.0.1|localhost,实际 ${base()}`)
-        }
+        assertLocalHttpUrl(base(), 'base_url')
+        assertLocalHttpUrl(web(), 'web_url')
         state.outbound = true
       }
       catch (err) {
         state.outbound = false
-        ctx.logger.error(`出站调用已禁用:${err?.message ?? err}(修正 rag-bridge 的「后端地址」后即恢复)`)
+        ctx.logger.error(`出站调用已禁用:${err?.message ?? err}(修正 rag-bridge 的「后端地址/Web 地址」后即恢复)`)
       }
     }
     applyOutboundGuard()

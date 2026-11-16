@@ -128,6 +128,9 @@ export default {
         const base = baseOf(ctx)
         if (!base) return text('IDD base_url 未配置。')
         const r = await jget(ctx, base + IDD_ROUTES.sentinelStatus(taskId), 10000)
+        if (!r.ok) {
+          return text(`sentinel_status 失败:上游 HTTP ${r.status}${r.status === 404 ? '(当前 IDD 版本未提供 /api/sentinel/* 闭环路由)' : ''}。请检查 IDD 版本或改用对应分析 skill。`)
+        }
         const d = r.body?.data ?? r.body ?? {}
         const alerts = d.alerts ?? []
         const failed = String(d.status ?? '').toLowerCase() === 'failed'
@@ -351,9 +354,37 @@ export default {
         const base = baseOf(ctx)
         if (!base) return text('IDD base_url 未配置。')
         const r = await jget(ctx, base + IDD_ROUTES.optimizerState + `?campaign_id=${encodeURIComponent(String(args.campaign_id))}`, 15000)
+        if (!r.ok) {
+          return text(`optimizer_state 失败:上游 HTTP ${r.status}${r.status === 404 ? '(当前 IDD 版本未提供 /api/optimizer/* 闭环路由)' : ''}。若 IDD 已退役旧闭环接口,请改用 industrial-optimizer-loop CLI 路径。`)
+        }
         const d = r.body?.data ?? r.body ?? {}
         return text(`campaign ${args.campaign_id}: phase=${d.phase} rounds=${d.round_count} trials=${d.trial_count}\nincumbent=${JSON.stringify(d.incumbent ?? {})}\nnext=${d.next_action?.recommendation ?? '-'}\nbudget=${JSON.stringify(d.budget ?? {})}`)
       },
+    })
+
+    // 健康探针:区分「IDD 可达」与「闭环路由仍存在」。当前 industrial-deep-diagnostic
+    // 已退役 /api/sentinel 与 /api/optimizer,本插件的 9 个工具会 404;运维必须一眼看到,
+    // 不能把插件装载成功当成闭环集成可用。
+    ctx.route?.('GET', '/health', async () => {
+      const base = baseOf(ctx)
+      if (!base) return { plugin: 'idd-closedloop-bridge', configured: false, routesReady: false, hint: 'IDD base_url 未配置' }
+      try {
+        const r = await jget(ctx, base + IDD_ROUTES.optimizerState + '?campaign_id=__health_probe__', 5000)
+        const routesReady = r.status !== 404
+        return {
+          plugin: 'idd-closedloop-bridge',
+          configured: true,
+          base,
+          upstream: r.status,
+          routesReady,
+          hint: routesReady
+            ? '闭环路由存在;sentinel/optimizer 工具可用'
+            : 'IDD 可达但已退役 /api/sentinel 与 /api/optimizer 路由;本插件工具不可用,请改用 industrial-optimizer-loop CLI',
+        }
+      }
+      catch (err) {
+        return { plugin: 'idd-closedloop-bridge', configured: true, base, routesReady: false, hint: `IDD 不可达:${err?.message ?? err}` }
+      }
     })
   },
 }

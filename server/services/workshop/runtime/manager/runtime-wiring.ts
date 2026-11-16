@@ -442,13 +442,30 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
   }
 
   /**
+   * 运行时状态之外的「在途工作」证据:在飞监督尝试 + 未终态任务。
+   * lead 长监督期间旧实现状态恒 idle,只看 getState() 会在监督中卸载并 abort 根任务。
+   */
+  protected hasActiveChannelWork(channelId: string, agents: readonly { agentId: string }[]): boolean {
+    try {
+      if (agents.some(a => this.runtimeOf(channelId, a.agentId)?.hasActiveSupervisionAttempt?.())) return true
+      const ids = new Set(agents.map(a => a.agentId))
+      return this.getTaskEngine().list(channelId)
+        .some(t => !!t.assigneeId && ids.has(t.assigneeId) && !TERMINAL_TASK_STATES[t.state as TaskState])
+    }
+    catch {
+      // 读失败按「有在途工作」处理:宁可延迟重装,不可拆在途回合。
+      return true
+    }
+  }
+
+  /**
    * Channel 级配置变更后的安全重装(workspace/scenarioPrompt/llm/twin-profile/绑线)。
    *
    * 旧行为:变更即 `unloadChannelAgents` —— 回合进行中会被直接拆掉,待消费消息留到
    * 停滞看门狗(10min)才重投;未装配的频道还会被顺手冷启动一个 harness。
    * 新语义:
    *  - 未装配 → 直接返回(懒装配,下次任务按新配置 wire);
-   *  - 全 idle 且无待消费消息/挂起审批 → 立即卸载;仅当确有运行时被卸载才重新激活;
+   *  - 全 idle 且无在途工作/待消费消息/挂起审批 → 立即卸载;仅当确有运行时被卸载才重新激活;
    *  - 忙/有 pending → 入队,idle sweeper 在空闲后统一重装。
    */
   protected async recycleChannelAgents(channelId: string, reason: string): Promise<void> {
@@ -459,10 +476,13 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     }
     const agents = [...cr.getAgents()]
     const ids = agents.map(a => a.agentId)
+    // 先 await 审批面,再读状态/在途工作:避免 await 期间 supervise 启动的 TOCTOU。
+    const hasPendingApprovals = await this.hasPendingApprovals(ids)
     const decision = channelRecycleDecision({
       states: agents.map(a => String(a.getState?.() ?? 'unknown')),
+      hasActiveWork: this.hasActiveChannelWork(channelId, agents),
       hasPendingMessages: this.hasPendingInbox(channelId, ids),
-      hasPendingApprovals: await this.hasPendingApprovals(ids),
+      hasPendingApprovals,
     })
     if (decision === 'skip') {
       this.deferredChannelRecycles.delete(channelId)
@@ -488,10 +508,12 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       }
       const agents = [...cr.getAgents()]
       const ids = agents.map(a => a.agentId)
+      const hasPendingApprovals = await this.hasPendingApprovals(ids)
       const decision = channelRecycleDecision({
         states: agents.map(a => String(a.getState?.() ?? 'unknown')),
+        hasActiveWork: this.hasActiveChannelWork(channelId, agents),
         hasPendingMessages: this.hasPendingInbox(channelId, ids),
-        hasPendingApprovals: await this.hasPendingApprovals(ids),
+        hasPendingApprovals,
       })
       if (decision !== 'now') continue
       this.deferredChannelRecycles.delete(channelId)
