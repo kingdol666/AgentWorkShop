@@ -1,3 +1,10 @@
+## v0.11.3 — 产线集成文档与 Skill 适配（源码快照，未发布；2026-11-16）
+
+- 新增双语产线集成指南，覆盖 Channel 模式、product-bound Session、记忆/经验作用域、DAQ/DCW 工具顺序与向量 raw/normalized 契约。
+- 更新 onboarding、协议、PLC twin、文档到 Project、全系统验收 Skills；校验 `skills/` 与 `.agents/skills/` 双副本一致。
+- 扩充文档双语同构与新页面检查；README/VitePress 区分 v0.11.2 发布证据与当前源码状态。
+- 本条是源码与文档适配记录，不表示 v0.11.3 npm/GitHub release 已发布；本轮门禁与模拟验收结果另见日期化报告。
+
 ## v0.11.2 — 最终验收收口：recipe_trial 预检 × AML 回归 × 严格输入（2026-11-12）
 
 - recipe_trial 在 HITL 前复用统一限界谓词，超量程与活动配方窗口越界候选不再消耗人工审批或产线窗口。

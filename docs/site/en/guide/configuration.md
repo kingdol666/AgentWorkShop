@@ -122,14 +122,12 @@ in the browser are readable by the CLI: every writer converges on one point.
 The channel-level execution mode is the tier selector for line work, stored in
 `aml_channel_profiles.execution_mode` (additive-column migration; existing rows read as
 `auto` — the neutral tier adds no extra constraint, so upgrades change no behavior).
-It composes with the line `controlMode` master switch and per-binding `mode` under
-**strictest-wins** semantics: any layer manual ⇒ approval required; observe strips the
-write surface outright.
+It composes with the line `controlMode` master switch and per-binding `mode`: Channel `manual` forces HITL for governed writes/actions, and approval is also required when the line master switch or applicable binding mode requires it. `recipe_propose` always creates a human approval card; `line_start` / `line_stop` always require HITL. `security.recipeDispatchApproval` adds a gate only for recipe trial/apply.
 
 | Mode | Semantics | Safety envelope |
 | --- | --- | --- |
 | `observe` | Read-only analysis: write-family / governed-write / proposal / line start-stop tools removed from injection | allowlist injection + dispatch choke point rejects direct calls by name; MES read family kept |
-| `manual` | Channel-level HITL clamp: every dispatch waits for human approval | reason required; approval card shows the agent's rationale; approver comment flows back |
+| `manual` | Channel-level clamp: governed writes/actions require HITL; `recipe_propose` and line start/stop also have unconditional approval gates | reason required; approval card shows the agent's rationale; approver comment flows back |
 | `auto` (default) | Neutral tier: approval decided by line switch and binding modes | four-layer limits ∩ step caps ∩ run gate ∩ 60s interval ∩ out-of-window auto-rollback; governed writes must carry a `hypothesis` and are audited |
 
 Switch REST (owner-only):

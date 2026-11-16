@@ -13,6 +13,20 @@
 
 `Session` 不替代 `Channel`：频道仍是团队身份与授权的来源；会话只是执行面。
 
+## 集成 Session 与产品作用域
+
+`production_line_integrated` 频道与通用协作频道不同：必须先有明确产线绑定，才能使用工业上下文、产线级 DAQ 只读面和受治理配方工具。创建 Session 不会扩大这些授权。
+
+集成 Session 应显式传入允许研究的产品：
+
+```json
+{"productId":"pd-...","title":"批次分析 A","memoryPolicy":"session"}
+```
+
+服务端会冻结并校验 line/product/recipe/node/agent 绑定快照及其 revision/hash；之后频道的可变选择器不能把该 Session 移到其他产品或配方。generic Session 即使带 `productId` 也不会获得工业授权。
+
+记忆分层：`session` 是当前执行上下文，`shared` 是频道团队记忆，经过验证的 `line`/`product` 经验只在可信 integrated scope 暴露。自动注入是有限线索；完整证据用 `search_memory`。如果任务连结论也不允许写入频道，必须明确禁止 `save_memory`。
+
 ## 创建会话
 
 ```bash

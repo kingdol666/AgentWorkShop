@@ -1,29 +1,20 @@
 # Your first "agent × line" session (~2 minutes)
 
-1. **Sign in** — open `http://localhost:3001`, register/sign in from the sidebar.
-   Zero-seed design: no accounts ship with the system — **the first registered account
-   automatically becomes admin** (the sign-in gate shows a "create admin" form;
-   `GET /api/users/setup-status` reports initialization state).
-2. **Build a line** — "Line Operations" → new line → add a **DCW node** (template `temp-sp`)
-   and a **DAQ node** (template `temp-tc`) → create a **product** (on the line) → create a
-   **recipe** (parameter bound to the DCW node, e.g. target 120) → press **Start**.
-   Live values start flowing; every sample is tagged `line/product/recipe/run`.
-3. **Build a team** — "Agent Workspace" → create an agent → create a team → add the agent.
-4. **Bind nodes** — open the agent's detail panel → bind the DAQ node (*auto* = execute
-   automatically) and the DCW node (*manual* = every write needs your approval).
-5. **Submit a goal** — "Analyze the last 5 minutes of temperature; if it deviates from
-   182°C by more than 1°C, correct the setpoint (awaiting my approval)."
-6. **Approve** — the agent reads real history, computes a mean, raises a write request →
-   approve in the HITL panel → the setpoint changes, readback verifies, the goal closes
-   with a numeric report.
+> For a first run, use an isolated simulator only: a fresh `AW_HOME`, independent platform/simulator ports and a `simulated=true` test line. Provisioning, starting a line, proposing a recipe and approving it change test data; do not use a shared simulator, unapproved real equipment or a production line. Follow the [line integration guide](/en/guide/line-integration) for setup.
 
-## What actually happened
+1. **Sign in** — register on the test instance. The first account in a fresh isolated home becomes admin; do not create test accounts on shared or production instances.
+2. **Prepare a simulated line** — build an independent simulator twin from a reviewed blueprint and connect it to a `simulated=true` test line as described in the [line integration guide](/en/guide/line-integration). Do not put real endpoints in the example configuration.
+3. **Create a team and Session** — create an Agent/Channel; create integrated Sessions with a trusted product binding. A `generic` Channel does not gain line access from a `lineId` alone.
+4. **Bind nodes** — bind DAQ and any required write-control/recipe nodes. Read-only bindings are for acquisition; Channel, line-master and binding modes jointly determine whether a write requires HITL.
+5. **Submit a goal** — on the simulated test line, request analysis of the last five minutes of temperature; if a change is warranted, submit a recipe candidate rather than a direct device write.
+6. **Check the result** — handle HITL only when policy requires it and only after confirming the target is this isolated simulator. Reconcile DCW readback, subsequent DAQ samples and the journal. A simulated pass is not physical HIL or production acceptance.
 
-```
-goal ──▶ lead decomposes ──▶ worker reads real TSDB history (semantic cards: meaning/unit/range/recipe window)
-     ──▶ computes a proposed setpoint ──▶ dcw_control tool ──▶ interlock (safe range ∩ recipe window)
-     ──▶ HITL approval (180s default-timeout rejection) ──▶ PLC write ──▶ readback verification
-     ──▶ ACK + signed write history ──▶ goal satisfaction passes
+## What actually happens
+
+```text
+goal → integrated Channel / product-bound Session → line_context and memory search
+     → scalar DAQ or frame read → recipe_propose → HITL when effective policy requires it
+     → simulator readback / DAQ response / journal reconciliation
 ```
 
 ## Verify from the CLI

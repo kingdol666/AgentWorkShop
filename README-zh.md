@@ -28,35 +28,40 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.11.2</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.11.3（未发布）</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
-*一个配置驱动的平台：**AI Agent 团队**与**工业数字孪生**共享同一运行时——Agent 查询真实遥测、经人工审批的写控回路下发监督设定值，每个事件实时推送到 3D 孪生。*
+*一个配置驱动的平台：**AI Agent 团队**与工业系统共享同一运行时。Agent 查询遥测数据，并通过受治理路径提出监督参数变更；写入是否需要 HITL 由有效的产线、Channel 与绑定模式共同决定。模拟证据不等于物理 HIL 或生产投用批准。*
 
 </div>
 
-[快速开始](#快速开始) · [新增功能](#0112-修复了什么) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-11-3-未发布) · [0.11.2 发布说明](#0112-修复了什么) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
 ## 这是什么？
 
-一个配置驱动的平台：**AI Agent 团队**与**工业产线**共享同一运行时——Agent 查询真实遥测、经人工审批的写控回路下发监督设定值，每个事件实时推送到 3D 孪生。
+一个配置驱动的平台：**AI Agent 团队**与工业系统共享同一运行时。Agent 可以查询遥测数据，并通过受治理路径提出监督参数变更；写入是否需要 HITL 由有效的产线、Channel 与绑定模式共同决定。模拟证据不等于物理 HIL 或生产投用批准。
 
 - **监督层定位**（SCADA 同位，秒级软实时）：数采、写控、产线/配方/批次、权限、审计一体；
 - **Agent 不是聊天装饰**：14 个执行引擎可混编（omp / codex / opencode / claude / gemini / …），7 态任务机 + 根任务队列 + HITL 审批，并用 **Channel → Session → Agent** 三层对象模型保证团队隔离；
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
-- **闭环是真的**：读数 → 分析 → 提案 → 审批 → 写穿 → 回读证实 → 台账留痕，全链有实机验收。
+- **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 0.11.2 修复了什么
+## 当前源码 v0.11.3（未发布）
+
+当前源码版本为 **0.11.3**，尚未发布。本次改动将 README、双语指南与运维 Skill 对齐到现有 Channel 模式、产品绑定 Session、记忆作用域和产线工具契约。模拟 onboarding、DAQ/帧选择、记忆复用、受治理提案和割接边界见[产线集成指南](https://kingdol666.github.io/AgentWorkShop/guide/line-integration)。模拟证据不等于物理 HIL 或生产投用批准。本源码快照的结果只会在相应检查实际运行后补入；下方历史结果仍以各自日期化证据为准。
+
+## 0.11.2 历史发布快照（不是当前主干验收）
 
 这是在 PR #185、PR #186 合并后收口最终验收发现的补丁版本。
 
 - **recipe_trial 挂卡前预检**：确定性超量程与配方窗口越界候选在 HITL 前拒绝，不创建审批卡、不调用驱动、不建执行批次、设备值不变。
 - **严格 recipe 输入校验**：null、布尔值、空字符串、NaN、Infinity 与非数字字符串整批 fail-closed；有限数字与数字字符串保持兼容。
 - **AML 最近邻独立回归**：偏移时间戳、精确时间戳优先、容差边界与超容差缺失均锁定生产 helper。
-- **最终 main 验收**：最新 main `6af25a8b`，unit 1516/1516、PLC 11/11、Agent 9/9、API 75/75、Project 14/14、RSI 32/32、多轮 RSI 10/10，另有 6 页生产式 UI 截图。证据：`docs/audit/evidence/2026-11-12-final-main-acceptance/`。
+- **最终 main 验收**：报告时 main `6af25a8b`，unit 1516/1516、PLC 11/11、Agent 9/9、API 75/75、Project 14/14、RSI 32/32、多轮 RSI 10/10，另有 6 页生产式 UI 截图。证据：`docs/audit/evidence/2026-11-12-final-main-acceptance/`。
+
 - **边界**：PLC 为隔离数字孪生，编排为确定性 mock harness；Mimosa 完整扫描仍因 `scanner_enobufs` 未完成，本版本不宣称安全通过。
 - **UI 观察项**：最终截图矩阵 `/dcw` 记录 1 条 hydration mismatch warning；无页面崩溃，overflowX=0。该项列为 P3 后续观察，不伪装为零控制台告警。
 
@@ -161,7 +166,7 @@ Project 把**带 Project Leader 的办公室频道**与一个或多个**成员�
 - **工作项状态机**：`DRAFT → DISPATCHING → DISPATCHED → RUNNING → COMPLETED`，另有 `BLOCKED / REWORK / FAILED / CANCELED / SUPERSEDED`；状态是对 attempts 与根任务的投影对账；
 - **交付物**：`planned → active → submitted → approved / rejected / waived`；先 L1 技术复核，再 L2 Owner 验收，证据必须引用真实 task / artifact / analysis report；
 - **持续开发**：completed 项目收到 Owner 的补充需求后自动重开，Leader 先读现状态，再提增量计划（plan vN+1），不需要新建项目；
-- **产线实证**：CAL-3 四期场景（只读分析 → HITL 写入 → 训练数据集 → 有界自主优化）在真实产线上 **78/78** 通过，含 300s / 60s 节拍闸与设备回读。
+- **CAL-3 历史产线证据**：2026-11-08 的四期场景（只读分析 → HITL 写入 → 数据集 → 有界自主优化）报告记录 **78/78**，含 300s / 60s 节拍闸与设备回读；此条是报告时对应真实产线的历史证据，不代表本次模拟验收或当前其他环境。
 
 → [Project 模式指南](https://kingdol666.github.io/AgentWorkShop/guide/projects) · 证据：[`docs/audit/evidence/2026-11-08-industrial-acceptance/REPORT.md`](docs/audit/evidence/2026-11-08-industrial-acceptance/REPORT.md)
 
@@ -187,10 +192,10 @@ Project 把**带 Project Leader 的办公室频道**与一个或多个**成员�
 | **Project 交付** | 蓝图 → 计划审批 → 带依赖 WBS → 技术 L1 → Owner L2 → 交付物；observe / supervised / auto；**项目中心**提供入口、进度与执行看板 | [Project 模式](https://kingdol666.github.io/AgentWorkShop/guide/projects) |
 | **RSI 经验演化** | 任务/评审证据沉淀 → fail-closed 晋升门 → 同产线经验共享 → 配对评测 Harness Profile（pin → shadow → active）→ 回读验证的 L1 门 + 回滚 | [RSI 指南](https://kingdol666.github.io/AgentWorkShop/guide/rsi) |
 | **工业栈** | 五族现场协议（Modbus TCP/RTU · OPC UA · MQTT · HTTP）+ 串口插件 + MES REST（镜像/直连双路径）；数采三节拍、写控四层限界、逐参数 ACK | [协议指南](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) |
-| **Agent × 设备绑定** | 节点级授权三轨（dcw 点位收窄 / recipe 单配方 / line-recipe 产线管理权），语义卡注入提示词，直写恒拒、全部写入过联锁+HITL | [HITL 指南](https://kingdol666.github.io/AgentWorkShop/guide/hitl) |
+| **Agent × 设备绑定** | 节点级授权三轨（dcw 点位收窄 / recipe 单配方 / line-recipe 产线管理权），语义卡注入提示词，直写恒拒；是否要求 HITL 取决于有效产线、Channel 与绑定策略 | [HITL 指南](https://kingdol666.github.io/AgentWorkShop/guide/hitl) · [产线集成](https://kingdol666.github.io/AgentWorkShop/guide/line-integration) |
 | **模型闭环** | AML 自动建模（物理先验+残差+conformal UQ）→ 晋级门禁 → HITL 采纳 → production 投用 → 模型驱动试验 | [AML 手册](./docs/aml.md) |
 | **优化器** | 过程模型 → OSQP 求解 → recipe_trial 试验 → 进步才固化 → 统一回退（PLC 整批恢复） | [配方版本](https://kingdol666.github.io/AgentWorkShop/guide/recipe-versions) |
-| **治理与可观测** | 产线三态权限、结构化审计与错误台账、/operations 操作流水、系统监控指标、60s / 300s 写节拍闸 | [产线权限](https://kingdol666.github.io/AgentWorkShop/guide/line-permissions) |
+| **治理与可观测** | 产线三态权限、结构化审计与错误台账、/operations 操作流水与系统监控；60s / 300s 写节拍闸按配置生效 | [产线权限](https://kingdol666.github.io/AgentWorkShop/guide/line-permissions) |
 | **插件生态** | 热重载插件：自定义驱动/处理器/节点模板/Agent 工具/HTTP 路由/浏览器面板/Twin Provider，`aw plugin` CLI + MCP `list_changed` | [插件与扩展](#插件与扩展) |
 
 ## 设计架构
@@ -263,13 +268,15 @@ messages · memories (FTS5) · projects · deliverables · events")]
 **Agent × 机器之桥**（值得读源码的部分）：
 
 ```
-agent ──绑定──▶ 节点 (daq: auto / dcw: manual)
+agent ──绑定──▶ 节点（DAQ 取数 / 受治理写入）
   │                    │
   │  my_industrial_nodes  ◀── 语义卡：物理含义 · 单位 · 安全量程 · 配方窗口
-  │  daq_query             ◀── 时序库历史，统计 + 物理语义
-  │  dcw_control           ──▶ 联锁（安全量程 ∩ 配方窗口）
-  │                           ──▶ HITL 审批（manual 模式，180s 超时）
-  │                           ──▶ PLC 写入 → 回读校验 → ACK + 写历史
+  │  daq_query             ◀── 标量历史、统计 + 语义
+  │  daq_frames            ◀── 向量/图像帧
+  │  recipe_propose        ──▶ 结构化候选 + 提案审批卡
+  │  recipe_trial/apply    ──▶ 有效策略闸门（含可选下发审批）
+  │  line_start/stop       ──▶ HITL 审批
+  │                           ──▶ 设备写入 → 回读 → ACK + 写 journal
   ◀── Agent 可引用数值的结果文本
 ```
 
@@ -287,12 +294,14 @@ aw start                           # → http://localhost:3001，一切初始化
 
 **第一次「Agent × 产线」会话（约 2 分钟）：**
 
-1. **登录** —— 侧边栏注册（或 `POST /api/users/register`）。
-2. **搭产线** —— 「产线运营」→ 建产线，加数采节点（如 `daq-temp-tc`）与数控节点（如 `dcw-temp-sp`），建产品 + 配方，点**开跑**。
-3. **建团队** —— 「Agent 工作台」→ 选 lead + workers（可混用引擎）后**部署**进 Channel。
-4. **绑定节点** —— Agent 详情面板 → 绑数采（*auto*）与数控（*manual* = 需您的批准）。
-5. **提交目标** —— 「分析最近 5 分钟熔体温度；若与 182 °C 偏差超过 1 °C，修正设定值（等我的批准）。」
-6. **审批** —— Agent 读真实历史、发起写请求 → HITL 面板批准 → 设定值变化，目标收口并给出数值报告。
+> 首次请从隔离模拟器开始：使用全新的 `AW_HOME`、独立平台/模拟器端口和 `simulated=true` 测试线。本流程会供给并启动测试线，配方提案也可能向该模拟器写入；不要连接共享模拟器或真实生产设备。操作前阅读[产线集成指南](https://kingdol666.github.io/AgentWorkShop/guide/line-integration)。
+
+1. **登录** —— 在隔离测试实例注册；该实例首个账号成为 admin。
+2. **搭建模拟线** —— 根据审签蓝图运行模拟器 onboarding，再在隔离测试线上创建 DAQ/DCW 节点、产品和配方。
+3. **创建团队与 Session** —— 将 Agent 团队部署到 integrated Channel，并让 Session 绑定可信产品快照。
+4. **绑定节点** —— 只授予必要的 DAQ 与配方/写入范围；不能只凭某一个绑定的 `auto` 或 `manual` 推断最终审批行为。
+5. **提交目标** —— 请求有界分析；只有证据支持变更时才提出受治理配方候选。
+6. **核对结果** —— 仅当有效策略要求时处理 HITL；验证模拟设备回读、后续 DAQ 数据和 journal。通过只代表模拟器证据，不代表物理 HIL 或生产验收。
 
 想直接体验交付流程？打开 **Projects → 新建项目 → 继续开发**，或实例化一个蓝图：
 
@@ -309,7 +318,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **认证**：邮箱+密码签发 bearer token（多 token、可单独吊销）；`POST /api/users/register` → `authorization: Bearer <token>` 调 `/api/workshop/**`。
 
-**产线三态权限**（管理员在 `/permissions` 维护）：无权（默认，后端不返回数据）/ 仅查看（只读）/ 可操控（读+写）。Agent 写授权三轨：`dcw` 点位绑定=写授权兼下发收窄；`recipe`=单配方操作权；`line-recipe`=产线全部配方管理权。直写恒拒，全部写入仍经四层限界/运行门/HITL/逐参数 ACK。
+**产线三态权限**（管理员在 `/permissions` 维护）：无权（默认，后端不返回数据）/ 仅查看（只读）/ 可操控（读+写）。Agent 写授权三轨：`dcw` 点位绑定=写授权兼下发收窄；`recipe`=单配方操作权；`line-recipe`=产线全部配方管理权。直写恒拒；所有写入经过量程、配方、步长、运行门与 ACK；`manual` 按策略等待 HITL，`auto` 不等同于绕过联锁/审计。
 
 **执行模式**：`goal`（lead 分解→判定→补发至满意）/ `loop`（固定间隔重放）/ `pipeline`（有序阶段）。
 
@@ -341,13 +350,15 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 | 上手 | 开发 | 运维 |
 |---|---|---|
 | [快速开始](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) · [第一次会话](https://kingdol666.github.io/AgentWorkShop/guide/first-session) | [插件 API](./docs/plugins.md) · [SDK](./docs/sdk.md) · [CLI](./docs/cli.md) | [配置系统](https://kingdol666.github.io/AgentWorkShop/guide/configuration) · [HITL](https://kingdol666.github.io/AgentWorkShop/guide/hitl) · [产线权限](https://kingdol666.github.io/AgentWorkShop/guide/line-permissions) |
-| [Harness UI](https://kingdol666.github.io/AgentWorkShop/guide/harness-ui) · [Channel 多会话](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) · [Project 模式](https://kingdol666.github.io/AgentWorkShop/guide/projects) | [六协议数采](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) · [数控读写](https://kingdol666.github.io/AgentWorkShop/guide/dcw-read-write) · [配方版本](https://kingdol666.github.io/AgentWorkShop/guide/recipe-versions) | [AML](./docs/aml.md) · [本体](https://kingdol666.github.io/AgentWorkShop/guide/ontology) · [EDA 工坊](https://kingdol666.github.io/AgentWorkShop/guide/eda) |
+| [Harness UI](https://kingdol666.github.io/AgentWorkShop/guide/harness-ui) · [Channel 多会话](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) · [Project 模式](https://kingdol666.github.io/AgentWorkShop/guide/projects) | [DAQ 协议](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) · [DCW 读写](https://kingdol666.github.io/AgentWorkShop/guide/dcw-read-write) · [配方版本](https://kingdol666.github.io/AgentWorkShop/guide/recipe-versions) · [产线集成](https://kingdol666.github.io/AgentWorkShop/guide/line-integration) | [AML](./docs/aml.md) · [本体](https://kingdol666.github.io/AgentWorkShop/guide/ontology) · [EDA 工坊](https://kingdol666.github.io/AgentWorkShop/guide/eda) |
 
 ## 验证与验收
 
-每一层论断背后都有可复跑的套件。验收按 **aw-system-acceptance 五层流程**（静态门禁 → 单元契约 → 实机核心闭环 → 回归面 → 插件工具面）执行。
+验收按 **aw-system-acceptance 六层流程**执行：T0 静态门禁 → T1 单元与契约 → T2 实机核心闭环 → T3 回归面 → T4 插件/工具面 → T5 发布产物冒烟。
 
-**2026-11 验收轮（main 构建）：**
+**历史验收证据（2026-11-08 至 2026-11-12；各报告注明对应构建与 commit）：**
+
+#### 历史验收矩阵（2026-11-08 至 2026-11-12）
 
 | 套件 | 结果 | 证据 |
 |---|---|---|
@@ -401,7 +412,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前版本：**v0.11.2** —— [v0.11.2 版本发布](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.2) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.11.3（未发布）** —— [最新已发布版本 v0.11.2](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.2) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />
