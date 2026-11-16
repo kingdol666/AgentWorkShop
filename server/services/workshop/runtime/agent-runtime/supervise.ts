@@ -7,9 +7,49 @@ import type { AgentRunContext, SupervisionDecision, SupervisionSnapshot } from '
 import { randomUUID } from 'node:crypto'
 import type { WorkspaceTask } from '../../types/task'
 import { log } from './helpers'
+import { MESSAGE_WATCHDOG_TICK_MS, shouldFireMessageWatchdog } from './message-watchdog'
 import { superviseWatchdogOnly, workshopSettings } from '../../settings'
 
 export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
+  /** 当前消息看门狗的活动上报句柄(processMessage 事件循环逐事件调用;回合外为 null) */
+  protected messageWatchdogBump: (() => void) | null = null
+
+  /** 事件驱动的活动上报:任何 harness 事件(delta/工具调用/状态)都视为"回合活着" */
+  protected bumpMessageActivity(): void {
+    this.messageWatchdogBump?.()
+  }
+
+  /** 看门狗单次巡检(async:审批面动态导入;判定语义在 ./message-watchdog.ts 纯函数) */
+  private async messageWatchdogTick(
+    msg: { messageId: string },
+    w: { stallMs: number, getLast: () => number, bump: () => void, isFired: () => boolean, markFired: () => void, stop: () => void },
+  ): Promise<void> {
+    if (w.isFired()) return
+    let hasPendingApprovals = false
+    try {
+      // 动态导入取审批面(避免 tool-approvals → platform-notice → manager 静态环);
+      // 审批面未装配(单测/降级)按"无合法等待"处理。
+      const { getToolApprovals } = await import('../../agents/tool-approvals')
+      hasPendingApprovals = getToolApprovals().listPending(this.agentId).length > 0
+    }
+    catch { /* 按无等待处理 */ }
+    if (!shouldFireMessageWatchdog({ state: this.state, lastActivityAt: w.getLast(), now: Date.now(), stallMs: w.stallMs, hasPendingApprovals })) return
+    if (hasPendingApprovals) {
+      // 有人在裁:等待窗口顺延,绝不把人工裁决当停滞杀回合
+      w.bump()
+      return
+    }
+    w.markFired()
+    w.stop()
+    log.warn(`[AgentRuntime:${this.agentId}] 消息 ${msg.messageId.slice(0, 8)} 超过无活动阈值(${w.stallMs}ms)未结束且无挂起审批 → abort 当前回合并重投(state=${this.state})`)
+    // 带结构化 reason:omp 侧 normalizeSupervisionAbortReason 把 watchdog 视为非硬中止,
+    // 不合成 cancel 决策 —— 不会连坐取消频道内其它 active 任务(2026-11-16 复现回归)。
+    this.abortCurrent('message watchdog')
+    // 重投(条件更新:仅 consuming 可重投);原回合若最终完成,其 markConsumed
+    // 与本 requeue 以 WHERE state='consuming' 互斥,不产生双重消费。
+    if (this.deps.mailbox.requeue(msg.messageId)) this.deps.mailbox.wake()
+  }
+
   async supervise(snapshot: SupervisionSnapshot): Promise<SupervisionDecision[] | null> {
     if (!this.impl.supervise) return null
     // 监督回合本身是「在途工作」:过去只在 processMessage 里置 busy,lead 长监督
@@ -192,9 +232,11 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
     while (this.state !== 'stopped') {
       const msg = await this.deps.mailbox.dequeue()
       if (this.getState() === 'stopped' || msg === null) break
-      // 单条 run 抛错不阻塞下一条
+      // 单条 run 抛错不阻塞下一条。
+      // 看门狗必须在拿到 execLock **之后**才起表(2026-11-16 复现):否则前一条消息的
+      // 长回合会吃掉本消息的整个排队窗口,fire 时杀的是别人的回合、重投的是还没开跑的消息。
       try {
-        await this.withMessageWatchdog(msg, () => this.withExecLock(() => this.processMessage(msg)))
+        await this.withExecLock(() => this.withMessageWatchdog(msg, () => this.processMessage(msg)))
       }
       catch (err) {
         log.error(`[AgentRuntime:${this.agentId}] run 失败:`, err)
@@ -203,25 +245,45 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
   }
 
   /**
-   * 消息级活性看门狗(P1 修复,2026-11-10 实测复现):被 claim 的消息若超过停滞阈值
-   * 仍未结束回合 → abort 当前 run/监督回合 + 消息重投(attempts+1,≥3→dead,与 P3-4 同语义)。
+   * 消息级活性看门狗(P1 修复,2026-11-10;2026-11-16 重设计为「活动窗口」):
+   * 被 claim 的消息若超过**无活动阈值**仍未结束回合 → abort 当前 run/监督回合 +
+   * 消息重投(attempts+1,≥3→dead,与 P3-4 同语义)。
    *
-   * 为什么需要:workerTurn 有停滞看门狗,但 peer/监督回合没有;ensureClient 的 await
-   * 也不在超时保护内 —— 任一处挂死都会**永久持有 execLock**:状态恒 idle、消息恒
-   * consuming、无任何日志(实测:群聊消息对空闲 lead 卡死 3+ 分钟且不可自愈)。
+   * 旧实现是固定 600s 从 claim 起算:实测把 16 分钟的健康治理回合(含 4 分钟 HITL
+   * 人工等待)连续 abort+重投 3 次直到 dead,同一 message_id 被整段重放三轮,还把
+   * 频道内其它 active 任务连坐取消。新语义(判定在 ./message-watchdog.ts,纯函数):
+   *  - 回合内任何 harness 事件都重置活动时间(message.ts 事件循环逐事件上报);
+   *  - 本 agent 有挂起 HITL 审批 → 不算停滞("有人在裁"是合法等待);
+   *  - fire 时 abort 必须带 'message watchdog' reason —— omp 侧据此不合成 cancel
+   *    决策(硬中止只有 external cancel),不会连坐取消别的任务。
    * race 败者不清理状态:原回合若最终完成,按其自身路径 markConsumed
-   * (repo requeue 的 WHERE state='consuming' 守卫使双重消费收敛为 no-op)。
+   * (repo requeue/markConsumed 的 WHERE state='consuming' 守卫使双重消费收敛为 no-op)。
    */
   protected withMessageWatchdog(msg: { messageId: string }, fn: () => Promise<void>): Promise<void> {
     const stallMs = Math.max(60_000, Number(workshopSettings().harness_stall_timeout_ms) || 600_000)
-    const timer = setTimeout(() => {
-      log.warn(`[AgentRuntime:${this.agentId}] 消息 ${msg.messageId.slice(0, 8)} 超过停滞阈值(${stallMs}ms)未结束 → abort 当前回合并重投(state=${this.state})`)
-      this.abortCurrent()
-      // 重投(条件更新:仅 consuming 可重投);原回合若最终完成,其 markConsumed
-      // 与本 requeue 以 WHERE state='consuming' 互斥,不产生双重消费。
-      if (this.deps.mailbox.requeue(msg.messageId)) this.deps.mailbox.wake()
-    }, stallMs)
+    let lastActivityAt = Date.now()
+    let fired = false
+    this.messageWatchdogBump = () => {
+      lastActivityAt = Date.now()
+    }
+    const timer = setInterval(() => {
+      void this.messageWatchdogTick(msg, {
+        stallMs,
+        getLast: () => lastActivityAt,
+        bump: () => {
+          lastActivityAt = Date.now()
+        },
+        isFired: () => fired,
+        markFired: () => {
+          fired = true
+        },
+        stop: () => clearInterval(timer),
+      })
+    }, MESSAGE_WATCHDOG_TICK_MS)
     timer.unref?.()
-    return fn().finally(() => clearTimeout(timer))
+    return fn().finally(() => {
+      clearInterval(timer)
+      this.messageWatchdogBump = null
+    })
   }
 }

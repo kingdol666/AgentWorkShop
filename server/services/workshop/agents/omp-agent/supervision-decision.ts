@@ -37,13 +37,15 @@ export function isHardAbortReason(reason: string): boolean {
  *
  * 历史缺陷:onAbort 把所有非 hard timeout 的原因都重写成 'external cancel',
  * 于是调度器生命周期停机(runtime stop)也合成 cancel 决策,把在办根任务取消。
- * 这里只保留三类语义:hard timeout / runtime stop / external cancel。
+ * 这里保留四类语义:hard timeout / runtime stop / message watchdog / external cancel。
+ * watchdog(消息级无活动 abort)不是治理取消 —— 不收口在办任务。
  */
 export function normalizeSupervisionAbortReason(reason: string): string {
   const r = String(reason ?? '').trim()
   if (!r) return 'external cancel'
   if (r.includes('hard timeout')) return r
   if (r === 'runtime stop' || r === 'runtime_stop') return 'runtime stop'
+  if (r === 'message watchdog' || r === 'watchdog') return 'watchdog'
   return 'external cancel'
 }
 

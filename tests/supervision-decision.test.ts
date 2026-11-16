@@ -56,3 +56,13 @@ test('abort 原因归一:runtime stop 不得被改写成 external cancel', () =>
   // runtime stop 归一后仍不产生 cancel 决策
   assert.equal(abortToCancelDecision({ reason: normalizeSupervisionAbortReason('runtime stop'), activeTaskId: 'task-4' }), null)
 })
+
+test('abort 原因归一:message watchdog 归一为 watchdog 且不收口在办任务', () => {
+  // 2026-11-16 复现回归:消息看门狗 abort 曾被归一成 external cancel,
+  // 连坐取消了频道内其它 active 任务(种子任务在主任务看门狗 fire 同秒被取消)。
+  assert.equal(normalizeSupervisionAbortReason('message watchdog'), 'watchdog')
+  assert.equal(normalizeSupervisionAbortReason('watchdog'), 'watchdog')
+  assert.equal(isHardAbortReason('watchdog'), false)
+  assert.equal(normalizeSupervisionAbortReason('watchdog') === 'external cancel', false)
+  assert.equal(abortToCancelDecision({ reason: normalizeSupervisionAbortReason('message watchdog'), activeTaskId: 'task-5' }), null)
+})

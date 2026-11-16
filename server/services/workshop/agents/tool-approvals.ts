@@ -182,13 +182,33 @@ class ToolApprovalService {
       const remindTimers = [remindAt(0.5), remindAt(0.85)]
       const timer = setTimeout(() => {
         remindTimers.forEach(clearTimeout)
-        if (!this.pending.has(approval.id)) return
+        // 到期权威收口(2026-11-16 复现回归):过去先查 pending 表,表项被其它路径
+        // (熔断收口/取消/重装)提前摘除时这里直接 return,审批单永久悬挂在
+        // status=pending、无任何终态通告。现在以审批单自身状态为准:仍是 pending
+        // 就必须在此落定 expired,无论 pending 表还认不认它。
+        if (approval.status !== 'pending') return
         this.pending.delete(approval.id)
         approval.status = 'expired'
         approval.decidedAt = new Date().toISOString()
         approval.comment = '审批超时未处理,默认拒绝,指令未执行'
         this.remember(approval)
         getHitlRegistry().resolve('dcw-approval', approval.id, 'expired')
+        // 超时终态必须可观测:此前只发 50%/85% 预警,真正的"已自动拒绝"不落任何
+        // 通告 —— 频道/线域对结果失明(实测:卡被摘除后 1 小时才在对账里看到 failed)。
+        const expiredSummary = `审批 ${approval.id}(${opts?.title ?? approval.nodeId})超过时限未裁决,已按默认拒绝收口,指令未执行。`
+        try {
+          sendHitlNote({ agentId: approval.agentId, title: '⛔ 审批已超时自动拒绝', summary: expiredSummary })
+        }
+        catch { /* 通知失败不影响审批主流程 */ }
+        if (lineId) {
+          notifyLineOperators(lineId, {
+            eventId: `hitl_expired:dcw-approval:${approval.id}`,
+            title: '⛔ 审批已超时自动拒绝',
+            body: expiredSummary,
+            hitlKind: 'dcw-approval',
+            hitlId: approval.id,
+          })
+        }
         resolve({ approved: false, comment: approval.comment, id: approval.id })
       }, timeoutMs)
       // 不 unref:审批 Promise 的完成依赖此计时器。调用方(Agent 回合/插件/测试)
