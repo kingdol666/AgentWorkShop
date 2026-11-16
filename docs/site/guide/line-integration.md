@@ -16,7 +16,7 @@
 - 文档到 blueprint 仍需要助手或工程师提炼、澄清和审签；平台不会把任意 PDF、P&ID 或扫描件自动变成可投用配置。
 - 推荐先用 `aw-plc-sim-twin` 做虚拟预演，再用 `aw-line-onboarding` 接入平台。
 - 模拟协议栈能证明配置、驱动、治理和数据管线的行为；它不能证明真实 PLC 的电气安全、急停、寄存器量纲或工艺物理保真。
-- 当前主干的专项证据见 [`docs/audit/2026-11-16-line-integration-memory-tools-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-memory-tools-acceptance.md)。
+- 当前主干的专项证据见 [`docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md)（模拟器验收，不是物理 HIL）。
 
 ## Channel 模式与 Session
 

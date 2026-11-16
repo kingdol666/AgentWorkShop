@@ -16,7 +16,7 @@ work-condition document → human-reviewed blueprint → PLC simulator twin → 
 - Document-to-blueprint remains an assistant- or engineer-reviewed extraction and clarification step. The platform does not turn an arbitrary PDF, P&ID or scan into a production-ready configuration automatically.
 - Use `aw-plc-sim-twin` for virtual commissioning, then use `aw-line-onboarding` for platform provisioning.
 - A simulated protocol stack proves driver, configuration, governance and data-pipeline behavior. It does not prove PLC electrical safety, emergency-stop behavior, register units, or physical process fidelity.
-- The current-main evidence is [`docs/audit/2026-11-16-line-integration-memory-tools-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-memory-tools-acceptance.md).
+- The current-main evidence is [`docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md) (simulator acceptance, not physical HIL).
 
 ## Channel modes and Sessions
 

@@ -4,6 +4,7 @@
 - 更新 onboarding、协议、PLC twin、文档到 Project、全系统验收 Skills；校验 `skills/` 与 `.agents/skills/` 双副本一致。
 - 扩充文档双语同构与新页面检查；README/VitePress 区分 v0.11.2 发布证据与当前源码状态。
 - 本条是源码与文档适配记录，不表示 v0.11.3 npm/GitHub release 已发布；本轮门禁与模拟验收结果另见日期化报告。
+- **2026-11-16 隔离模拟演示**：全新 `AW_HOME` + 五协议影子模拟器完成 1 线/5 DCW/9 DAQ 供给、V1–V6 25/25、两步 HITL 批准下发（52→54→56 MPa）与回读证实；门禁 unit 1787/1787、MCP 14/14、docs 101/101、Skills 176/176。证据见 [`2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md)。仅模拟器证据，不是物理 HIL；seed task 在本轮窗口内未自主收口。
 
 ## v0.11.2 — 最终验收收口：recipe_trial 预检 × AML 回归 × 严格输入（2026-11-12）
 

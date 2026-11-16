@@ -4,6 +4,7 @@
 - Updated the onboarding, protocol, PLC twin, document-to-Project and full-acceptance Skills; parity is checked between `skills/` and `.agents/skills/` copies.
 - Extended bilingual-page and new-page checks; README/VitePress now distinguish the v0.11.2 release evidence from current source.
 - This is a source/documentation adaptation entry, not a claim that v0.11.3 has been published to npm or GitHub. Current gates and simulator acceptance are in the dated report.
+- **2026-11-16 isolated simulator demo**: a fresh `AW_HOME` plus a five-protocol shadow simulator provisioned 1 line / 5 DCW / 9 DAQ, passed V1–V6 25/25, and executed two HITL-approved steps (52→54→56 MPa) with readback. Gates: unit 1787/1787, MCP 14/14, docs 101/101, Skills 176/176. Evidence: [`2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md). Simulator evidence only, not physical HIL; the seed task did not autonomously complete in this window.
 
 ## v0.11.2 — Final acceptance closeout: recipe preflight × AML regression × strict input (2026-11-12)
 

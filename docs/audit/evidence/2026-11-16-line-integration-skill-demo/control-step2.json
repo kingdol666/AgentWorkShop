@@ -1,0 +1,75 @@
+{
+ "workerId": "1fdc5e4d-e261-48db-a425-37558e435118",
+ "nodeId": "dw-4976345a",
+ "start": 54,
+ "beforeWeight": {
+  "mean": 31.617866666666675,
+  "rows": 10
+ },
+ "target": 56,
+ "attempt": 2,
+ "text": "方案「OPT-闭环步B(2)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-d3ff4)。runId:rr-d3ff442a(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-d3ff442a（2026-11-16 13:26）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · 保压压力SP 54→56 回读=56 ACK=readback-verified 判定=unassessed",
+ "card": "ap-2e799660",
+ "dispatched": true,
+ "readback": {
+  "ok": true,
+  "value": 56,
+  "raw": 56,
+  "message": "读回 raw 56 → eng 56",
+  "at": "2026-11-16T13:27:10.755+08:00"
+ },
+ "afterWeight": {
+  "mean": 31.71450793650794,
+  "rows": 7
+ },
+ "lastAnchors": [
+  {
+   "lineId": "ln-bf6e8242",
+   "nodeId": "dw-4976345a",
+   "prevValue": 54,
+   "newValue": 56,
+   "source": "agent",
+   "actor": "1fdc5e4d-e261-48db-a425-37558e435118",
+   "approvalId": "ap-2e799660",
+   "recipeRunId": "rr-d3ff442a",
+   "id": "anc-ed20dbad",
+   "at": "2026-11-16T13:26:55.739+08:00",
+   "recordId": "opt-a9469e1d"
+  },
+  {
+   "lineId": "ln-bf6e8242",
+   "nodeId": "dw-4976345a",
+   "prevValue": 52,
+   "newValue": 54,
+   "source": "agent",
+   "actor": "1fdc5e4d-e261-48db-a425-37558e435118",
+   "approvalId": "ap-ee9dd36a",
+   "recipeRunId": "rr-deeb989e",
+   "id": "anc-92485d42",
+   "at": "2026-11-16T13:20:29.320+08:00",
+   "recordId": "opt-18eafdbd"
+  },
+  {
+   "lineId": "ln-bf6e8242",
+   "nodeId": "dw-1893b6a0",
+   "prevValue": 35,
+   "newValue": 37,
+   "source": "manual",
+   "actor": "dcaf99b6-2f2f-4bdd-a04d-2b72f7872f7a",
+   "recipeRunId": null,
+   "id": "anc-8619d02c",
+   "at": "2026-11-16T13:15:14.985+08:00"
+  },
+  {
+   "lineId": "ln-bf6e8242",
+   "nodeId": "dw-94ebed0e",
+   "prevValue": 14,
+   "newValue": 15,
+   "source": "manual",
+   "actor": "dcaf99b6-2f2f-4bdd-a04d-2b72f7872f7a",
+   "recipeRunId": null,
+   "id": "anc-cc54070b",
+   "at": "2026-11-16T13:15:14.910+08:00"
+  }
+ ]
+}

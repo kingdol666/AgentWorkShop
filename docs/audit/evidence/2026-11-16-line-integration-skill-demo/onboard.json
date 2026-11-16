@@ -1,0 +1,409 @@
+{
+ "line": {
+  "name": "精密注塑克重闭环演示线-20261116",
+  "description": "工况文档 WC-INJ-2026-1115 演示接入(全新隔离模拟夹具 20261116)"
+ },
+ "product": {
+  "name": "PP 家电面板"
+ },
+ "nodes": [
+  {
+   "kind": "dcw",
+   "name": "保压压力SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 37544,
+    "unitId": 1,
+    "register": 40001,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "templateRef": "dcw-pressure-sp",
+   "unit": "MPa",
+   "decimals": 1,
+   "min": 45,
+   "max": 85,
+   "semantics": "保压压力设定(MPa):主控制量;升压提高克重但过大易飞边。单步≤2MPa,写入间隔≥60s。",
+   "stepLimit": 2,
+   "holdIntervalMs": 60000
+  },
+  {
+   "kind": "dcw",
+   "name": "保压时间SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 37544,
+    "unitId": 1,
+    "register": 40003,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "templateRef": "dcw-speed-sp",
+   "unit": "s",
+   "decimals": 1,
+   "min": 2,
+   "max": 8,
+   "semantics": "保压时间设定(s):延长保压提高克重,过长增加节拍。单步≤0.5s。",
+   "stepLimit": 0.5,
+   "holdIntervalMs": 60000
+  },
+  {
+   "kind": "dcw",
+   "name": "料温SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 37544,
+    "unitId": 1,
+    "register": 40005,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "templateRef": "dcw-temp-sp",
+   "unit": "℃",
+   "decimals": 0,
+   "min": 180,
+   "max": 240,
+   "semantics": "料温设定(℃):影响熔体黏度与克重;热惯性大,调整后需等待。单步≤3℃。",
+   "stepLimit": 3,
+   "holdIntervalMs": 60000
+  },
+  {
+   "kind": "daq",
+   "name": "熔体压力PV",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 37544,
+    "unitId": 1,
+    "register": 40007,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "templateRef": "daq-pressure-tx",
+   "unit": "MPa",
+   "decimals": 2,
+   "min": 0,
+   "max": 100,
+   "semantics": "熔体压力实测(MPa):随保压压力变化,用于验证因果跟随。",
+   "intervalMs": 1000
+  },
+  {
+   "kind": "daq",
+   "name": "制品克重PV",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 37544,
+    "unitId": 1,
+    "register": 40009,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "templateRef": "daq-temp-tc",
+   "unit": "g",
+   "decimals": 2,
+   "min": 25,
+   "max": 40,
+   "semantics": "制品克重实测(g):闭环目标 32.50±0.35g。",
+   "intervalMs": 1000,
+   "warnLow": 31.5,
+   "warnHigh": 33.5
+  },
+  {
+   "kind": "dcw",
+   "name": "冷却流量SP",
+   "driver": "modbus-rtu",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 37546,
+    "unitId": 2,
+    "register": 40001,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "templateRef": "dcw-speed-sp",
+   "unit": "L/min",
+   "decimals": 1,
+   "min": 10,
+   "max": 30,
+   "semantics": "冷却流量设定(L/min):提高流量降低模温,影响尺寸与节拍。单步≤1L/min。",
+   "stepLimit": 1,
+   "holdIntervalMs": 60000
+  },
+  {
+   "kind": "daq",
+   "name": "模具温度PV",
+   "driver": "modbus-rtu",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 37546,
+    "unitId": 2,
+    "register": 40003,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "templateRef": "daq-temp-tc",
+   "unit": "℃",
+   "decimals": 1,
+   "min": 30,
+   "max": 80,
+   "semantics": "模具温度实测(℃):冷却流量越高温度越低,目标 50–60℃。",
+   "intervalMs": 1000,
+   "warnLow": 50,
+   "warnHigh": 60
+  },
+  {
+   "kind": "daq",
+   "name": "缺陷率PV",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 60830,
+    "topic": "aw/twin/vision-gate/defectRatePV",
+    "jsonPath": "data.defectRatePV"
+   },
+   "templateRef": "daq-temp-tc",
+   "unit": "%",
+   "decimals": 3,
+   "min": 0,
+   "max": 5,
+   "semantics": "表面缺陷率实测(%):保压越高缺陷率越低,上限 0.5%。",
+   "intervalMs": 1000,
+   "warnLow": 0,
+   "warnHigh": 0.5
+  },
+  {
+   "kind": "daq",
+   "name": "视觉置信度PV",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 60830,
+    "topic": "aw/twin/vision-gate/visionConfidencePV",
+    "jsonPath": "data.visionConfidencePV"
+   },
+   "templateRef": "daq-temp-tc",
+   "unit": "%",
+   "decimals": 1,
+   "min": 0,
+   "max": 100,
+   "semantics": "视觉置信度实测(%):检测质量旁证。",
+   "intervalMs": 1000
+  },
+  {
+   "kind": "daq",
+   "name": "平均壁厚PV",
+   "driver": "opcua",
+   "driverConfig": {
+    "endpoint": "opc.tcp://127.0.0.1:37548",
+    "nodeId": "ns=2;s=surface-scan.thicknessAvgPV"
+   },
+   "templateRef": "daq-temp-tc",
+   "unit": "mm",
+   "decimals": 4,
+   "min": 0.4,
+   "max": 0.65,
+   "semantics": "平均壁厚实测(mm):保压压力轻微影响,0.4–0.65mm。",
+   "intervalMs": 1000,
+   "warnLow": 0.47,
+   "warnHigh": 0.57
+  },
+  {
+   "kind": "dcw",
+   "name": "保压压力SP（复检）",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4052/sim-http/quality-gate/api/packPressureSP",
+    "jsonPath": "value"
+   },
+   "templateRef": "dcw-pressure-sp",
+   "unit": "MPa",
+   "decimals": 1,
+   "min": 20,
+   "max": 60,
+   "semantics": "复检保压压力设定(MPa):质量门复检用,单步≤2MPa。",
+   "stepLimit": 2,
+   "holdIntervalMs": 60000
+  },
+  {
+   "kind": "daq",
+   "name": "飞边PV",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4052/sim-http/quality-gate/api/flashPV",
+    "jsonPath": "value"
+   },
+   "templateRef": "daq-temp-tc",
+   "unit": "%",
+   "decimals": 3,
+   "min": 0,
+   "max": 2,
+   "semantics": "飞边实测(%):保压过高会增大飞边,上限 0.4%。",
+   "intervalMs": 1000,
+   "warnLow": 0,
+   "warnHigh": 0.4
+  },
+  {
+   "kind": "daq",
+   "name": "节拍PV",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4052/sim-http/quality-gate/api/cycleTimePV",
+    "jsonPath": "value"
+   },
+   "templateRef": "daq-temp-tc",
+   "unit": "s",
+   "decimals": 1,
+   "min": 10,
+   "max": 30,
+   "semantics": "节拍实测(s):保压越高节拍略增。",
+   "intervalMs": 1000
+  },
+  {
+   "kind": "daq",
+   "name": "厚度轮廓PV",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4052/sim-http/quality-gate/api/thicknessProfilePV",
+    "jsonPath": "points"
+   },
+   "templateRef": "daq-thickness-scan",
+   "unit": "mm",
+   "decimals": 4,
+   "min": 0.4,
+   "max": 0.65,
+   "semantics": "厚度轮廓实测(48 点 vector,mm):横向厚度分布,用于验证帧管线。",
+   "intervalMs": 1000
+  }
+ ],
+ "recipe": {
+  "name": "注塑克重基线配方",
+  "params": [
+   {
+    "node": "保压压力SP",
+    "value": 50,
+    "min": 45,
+    "max": 85,
+    "stepLimit": 2
+   },
+   {
+    "node": "保压时间SP",
+    "value": 3,
+    "min": 2,
+    "max": 8,
+    "stepLimit": 0.5
+   },
+   {
+    "node": "料温SP",
+    "value": 205,
+    "min": 180,
+    "max": 240,
+    "stepLimit": 3
+   },
+   {
+    "node": "冷却流量SP",
+    "value": 14,
+    "min": 10,
+    "max": 30,
+    "stepLimit": 1
+   },
+   {
+    "node": "保压压力SP（复检）",
+    "value": 35,
+    "min": 20,
+    "max": 60,
+    "stepLimit": 2
+   }
+  ]
+ },
+ "startLine": true,
+ "channel": {
+  "scenario": "optimize",
+  "name": "精密注塑克重闭环演示频道-20261116",
+  "plugins": {},
+  "bindings": [
+   {
+    "agentRole": "lead",
+    "kind": "recipe",
+    "nodeId": "$RECIPE",
+    "mode": "manual"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:制品克重PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:熔体压力PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:模具温度PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:飞边PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:1",
+    "kind": "dcw",
+    "nodeId": "$DCW:保压压力SP",
+    "mode": "manual"
+   },
+   {
+    "agentRole": "worker:1",
+    "kind": "dcw",
+    "nodeId": "$DCW:保压时间SP",
+    "mode": "manual"
+   },
+   {
+    "agentRole": "worker:1",
+    "kind": "dcw",
+    "nodeId": "$DCW:料温SP",
+    "mode": "manual"
+   },
+   {
+    "agentRole": "worker:1",
+    "kind": "dcw",
+    "nodeId": "$DCW:冷却流量SP",
+    "mode": "manual"
+   }
+  ],
+  "seedTask": {
+   "title": "克重闭环首轮巡检",
+   "description": "读取最近 5 分钟制品克重、熔体压力、模温、飞边;判断克重是否在 32.50±0.35g;给出第一步调参建议(不写入)。",
+   "budget_minutes": 30
+  },
+  "scene": {
+   "lineName": "精密注塑克重闭环验证线-20261115",
+   "objective": "克重 32.50±0.35g,飞边≤0.4%,缺陷率≤0.5%,模温50–60℃"
+  },
+  "promptVariables": {
+   "targetWeight": "32.50",
+   "tolerance": "±0.35",
+   "safety": "所有写入必须 HITL;单步≤2MPa/≤0.5s/≤1L/min/≤3℃"
+  }
+ },
+ "smoke": {
+  "param": "保压压力SP",
+  "delta": 2
+ }
+}

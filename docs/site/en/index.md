@@ -125,7 +125,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">Verification</span>
-      <p>Validation results for this unreleased source snapshot will be recorded only after the corresponding commands and isolated simulated-line checks have run. Historical release evidence remains in the changelog.</p>
+      <p>This unreleased snapshot was verified on 2026-11-16: build/lint/typecheck passed; unit 1787/1787, MCP 14/14, plugins 22/22, docs 101/101, Skills 176/176. An isolated five-protocol simulator line provisioned 1 line / 5 DCW / 9 DAQ, passed V1–V6 25/25, and executed two HITL-approved steps (52→54→56 MPa) with readback. Simulator evidence only, not physical HIL; the seed task did not autonomously complete. <a href="/AgentWorkShop/en/guide/line-integration">Line integration guide</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md">Dated report</a></p>
     </div>
   </section>
 

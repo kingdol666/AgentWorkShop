@@ -120,7 +120,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">验证</span>
-      <p>本未发布源码快照的验证结果，将在相应命令和隔离模拟产线检查实际运行后记录。历史发布证据保留在更新日志中。</p>
+      <p>本未发布源码快照已实测：build/lint/typecheck 通过，unit 1787/1787、MCP 14/14、插件 22/22、docs 101/101、Skills 176/176；隔离五协议模拟线完成 1 线/5 DCW/9 DAQ、V1–V6 25/25，并执行 52→54→56 MPa 两步 HITL 批准下发与回读。仅模拟证据，不构成物理 HIL；seed task 未自主收口。<a href="/AgentWorkShop/guide/line-integration">产线集成指南</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md">日期化报告</a></p>
     </div>
   </section>
 
