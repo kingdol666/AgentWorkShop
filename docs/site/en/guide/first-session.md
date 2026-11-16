@@ -1,6 +1,8 @@
 # Your first "agent × line" session (~2 minutes)
 
-> For a first run, use an isolated simulator only: a fresh `AW_HOME`, independent platform/simulator ports and a `simulated=true` test line. Provisioning, starting a line, proposing a recipe and approving it change test data; do not use a shared simulator, unapproved real equipment or a production line. Follow the [line integration guide](/en/guide/line-integration) for setup.
+> In current unmerged source, onboarding provisioning is blocked. Do not run onboarding verification until isolation and absence of unintended side effects are established; `dcw: []` does not guarantee freedom from side effects. The workflow below is illustrative, not currently executable. See the [line integration guide](/en/guide/line-integration).
+>
+> For a first run, use an isolated simulator only: a fresh `AW_HOME`, independent platform/simulator ports and a `simulated=true` test line. Provisioning, starting a line, proposing a recipe and approving it change test data; do not use a shared simulator, unapproved real equipment or a production line.
 
 1. **Sign in** — register on the test instance. The first account in a fresh isolated home becomes admin; do not create test accounts on shared or production instances.
 2. **Prepare a simulated line** — build an independent simulator twin from a reviewed blueprint and connect it to a `simulated=true` test line as described in the [line integration guide](/en/guide/line-integration). Do not put real endpoints in the example configuration.

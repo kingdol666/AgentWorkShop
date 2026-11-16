@@ -12,6 +12,8 @@ import { recordSupervisionToolHistory } from './supervision-history'
 import { ompAgentTeamAuditFailure, recordOmpAgentTeamToolEvent } from './agentteam-audit'
 import { workshopSettings } from '../../settings'
 import { TERMINAL_TASK_STATES } from '../../types/task'
+import { getToolApprovals } from '../tool-approvals'
+import type { ExecutionScope } from '../execution-scope'
 
 export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle {
   protected activeSupervisionToolLease: {
@@ -19,10 +21,12 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
     rootId: string | null
     rootActive: boolean
     signal?: AbortSignal
+    scope?: ExecutionScope
   } | null = null
 
   protected retireSupervisionClient(client: OmpRpcClient): void {
     if (this.client === client) this.client = null
+    if (this.hostToolAliases?.client === client) this.hostToolAliases = null
     if (this.activeSupervisionToolLease?.client === client) this.activeSupervisionToolLease = null
     this.hostToolsRegistered = false
     client.kill()
@@ -45,15 +49,20 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
 
   /** 引擎无关工具面:REST/MCP 桥直调与 omp 内部 host_tool_call 共用同一实现 */
   protected async handleHostTool(req: HostToolCallRequest, sourceClient: OmpRpcClient): Promise<{ text: string, isError?: boolean }> {
+    const scope = this.currentTurnScope
+    if (!scope) return { text: 'Harness 回合已结束，拒绝迟到的工具调用。', isError: true }
     if (sourceClient !== this.client) {
       return { text: '监督回合已取消，拒绝过期 Harness 工具调用。', isError: true }
     }
     if (!this.turnActive) {
       return { text: 'Harness 回合已结束，拒绝迟到的工具调用。', isError: true }
     }
+    const aliases = this.hostToolAliases
+    const toolName = aliases?.client === sourceClient && aliases.scope === scope ? aliases.byAlias.get(req.toolName) : undefined
+    if (!toolName) return { text: '过期或未知的 Harness 工具调用。', isError: true }
     const lease = this.activeSupervisionToolLease
     if (lease?.client === sourceClient && lease.rootId) {
-      if (!lease.rootActive || lease.signal?.aborted) {
+      if ((lease.scope && lease.scope !== scope) || !lease.rootActive || lease.signal?.aborted) {
         this.retireSupervisionClient(sourceClient)
         return { text: '监督根任务已取消或结束，拒绝后续工具调用。', isError: true }
       }
@@ -70,7 +79,7 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
     if (auditFailure) {
       return { text: `AgentTeam 工具事件采集失败，已阻止后续工具分发: ${auditFailure}`, isError: true }
     }
-    if (req.toolName === 'dispatch_task' && this.agentRole !== 'lead') {
+    if (toolName === 'dispatch_task' && this.agentRole !== 'lead') {
       return { text: '拒绝:dispatch_task 仅对 lead 开放。', isError: true }
     }
     const activeRootTaskId = this.agentRole === 'lead'
@@ -79,10 +88,29 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
       && !lease.signal?.aborted
       ? lease.rootId ?? undefined
       : undefined
-    if (this.agentRole === 'lead' && req.toolName === 'dispatch_task' && !activeRootTaskId) {
+    if (this.agentRole === 'lead' && toolName === 'dispatch_task' && !activeRootTaskId) {
       return { text: '拒绝:dispatch_task 需要已验证的活动根任务；请在监督回合内派发。', isError: true }
     }
-    return this.dispatchHostTool(req.toolName, req.arguments ?? {}, activeRootTaskId)
+    if (scope !== this.currentTurnScope || scope.signal.aborted || this.hostToolAliases !== aliases || aliases?.byAlias.get(req.toolName) !== toolName) {
+      return { text: 'Harness 回合已结束，拒绝迟到的工具调用。', isError: true }
+    }
+    return this.dispatchTurnHostTool(toolName, req.arguments ?? {}, scope, activeRootTaskId)
+  }
+
+  protected canonicalToolEvent(event: import('../adapters/omp-rpc-client').AgentSessionEvent): import('../adapters/omp-rpc-client').AgentSessionEvent | null {
+    if (!event.toolName) return event
+    const canonical = this.hostToolAliases?.byAlias.get(event.toolName)
+    if (canonical) return { ...event, toolName: canonical }
+    // Stale host frames are rejected and must not enter a new turn's audit.
+    if (/^aw_[0-9a-f]{32}_[0-9a-f]{16}_/.test(event.toolName)) return null
+    return event
+  }
+
+  protected promptWithToolAliases(prompt: string, scope: ExecutionScope): string {
+    const aliases = this.hostToolAliases
+    if (!aliases || aliases.scope !== scope) throw new Error('OMP turn tool scope unavailable')
+    const mapping = [...aliases.byName].map(([canonical, alias]) => `${canonical} -> ${alias}`).join('\n')
+    return `${prompt}\n\n[Host tool names for this turn]\nUse the current registered name on the right when calling a tool; names on the left in the instructions are canonical names. Do not reuse tool names from earlier turns. If the tool list changes, use the currently available tool name whose description identifies its canonical name.\n${mapping}\n[/Host tool names]`
   }
 
   // ===== prompt 组合 =====
@@ -146,14 +174,35 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
    */
 
   override async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: SupervisionOptions): Promise<SupervisionDecision[]> {
-    if (!this.supervising) await this.retireEndedSupervisionClient(snapshot.activeRootId ?? null)
+    if (this.supervising || ctx.signal.aborted || opts?.signal?.aborted) return []
+    this.supervising = true
+    let scope: ExecutionScope | undefined
+    try {
+      scope = this.beginTurnScope(ctx)
+      return await this.superviseTurn(snapshot, ctx, scope, opts)
+    }
+    finally {
+      if (scope) {
+        this.clearTurnTools(scope)
+        this.endTurnScope(scope)
+      }
+      this.supervising = false
+    }
+  }
+
+  private async superviseTurn(snapshot: SupervisionSnapshot, ctx: AgentRunContext, scope: ExecutionScope, opts?: SupervisionOptions): Promise<SupervisionDecision[]> {
+    const turnSignal = opts?.signal ? AbortSignal.any([scope.signal, opts.signal]) : scope.signal
+    if (turnSignal.aborted) return []
+    await this.retireEndedSupervisionClient(snapshot.activeRootId ?? null)
+    if (turnSignal.aborted) return []
     await this.ensureClient(ctx)
+    if (turnSignal.aborted) return []
     if (!this.client) return []
-    if (this.supervising) return [] // 上一轮 supervise 未收口:跳过本拍(节流即正确)
     const client = this.client
 
     // 上下文门控(≥70% 先压缩再调度;回合间隙发起,失败放行)
     await this.contextGate('supervise')
+    if (turnSignal.aborted) return []
 
     const prompt = supervisePrompt({
       snapshot,
@@ -163,6 +212,9 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
       manual: this.systemManual(),
       memory: ctx.memory,
     })
+    if (turnSignal.aborted) return []
+    await this.prepareTurnTools(client, scope)
+    if (turnSignal.aborted) return []
     // watchdog 只做观察和同 session 提示；hard timeout 仅作为最终回合安全边界。
     const policy = this.getSupervisionPolicy()
     const hardTimeoutMs = policy.hardTimeoutMs
@@ -181,14 +233,14 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
         client,
         rootId,
         rootActive: Boolean(rootTask && !TERMINAL_TASK_STATES[rootTask.state]),
-        signal: opts?.signal,
+        signal: turnSignal,
+        scope,
       }
       let taskHistoryWrites = Promise.resolve()
 
       const finish = (decisions: SupervisionDecision[]) => {
         if (resolved) return
         resolved = true
-        this.supervising = false
         this.turnActive = false
         this.streaming = false
         unsub()
@@ -202,11 +254,8 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
         // 只有显式取消、Runtime stop 或 hard timeout 才 abort；watchdog 本身不 abort。
         log.warn(`[OmpRpcAgent:${this.selfAgentId}] supervise ${reason} → abort 当前调度回合`)
         void client.send({ type: 'abort' }).catch(() => {})
-        if (rootId) {
-          // 旧 stdio 上的迟到 host_tool_call 无法再归属新一轮监督;立即退役客户端,
-          // 后续 ensureClient 会重建,handleHostTool 依据客户端身份拒绝旧帧。
-          this.retireSupervisionClient(client)
-        }
+        // A late frame on an aborted stdio session cannot be attributed to a new turn.
+        this.retireSupervisionClient(client)
         // P4(2026-11-03):回合被中止时不得让在办任务滞留 WORKING —— 空决策会让
         // 任务停在"租约已撤但状态未收口"(FL-7 实测:只能人工取消)。映射规则抽到
         // supervision-decision.ts(纯函数,单测覆盖):仅硬中止(external cancel /
@@ -215,7 +264,9 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
         finish(decision ? [decision] : [])
       }
 
-      const unsub = client.onEvent((event) => {
+      const unsub = client.onEvent((rawEvent) => {
+        const event = this.canonicalToolEvent(rawEvent)
+        if (!event) return
         if (event.type === 'tool_execution_start' || event.type === 'tool_execution_end') {
           recordOmpAgentTeamToolEvent(event, {
             agentId: this.selfAgentId,
@@ -258,29 +309,27 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
 
       // 外部取消(调度器 cancel 路径)传导:abort 当前 LLM 回合并立即收口
       let signalUnsub: (() => void) | undefined
-      if (opts?.signal) {
-        if (opts.signal.aborted) {
-          unsub()
-          resolve([])
+      {
+        if (turnSignal.aborted) {
+          finish([])
           return
         }
         const onAbort = (): void => {
           // 区分外部取消与硬超时:supervise.ts 用 controller.abort(reason) 传因。
           // 硬超时不该被当成"外部取消"去合成 cancel 决策 —— 慢回合(大上下文/慢
           // provider)是常态,取消任务属越权收口(2026-11-10 P1)。
-          const why = (opts.signal as AbortSignal & { reason?: unknown })?.reason
+          const why = turnSignal.reason
           const reasonText = why instanceof Error ? why.message : String(why ?? '')
           // runtime stop 是生命周期停机,不得归一成 external cancel(否则取消在办任务)。
           abortTurn(normalizeSupervisionAbortReason(reasonText))
         }
-        opts.signal.addEventListener('abort', onAbort, { once: true })
-        signalUnsub = () => opts.signal?.removeEventListener('abort', onAbort)
+        turnSignal.addEventListener('abort', onAbort, { once: true })
+        signalUnsub = () => turnSignal.removeEventListener('abort', onAbort)
       }
 
-      this.supervising = true
       this.turnActive = true
       this.streaming = false
-      client.send({ type: 'prompt', message: prompt }).catch(() => finish([]))
+      client.send({ type: 'prompt', message: this.promptWithToolAliases(prompt, scope) }).catch(() => finish([]))
     })
   }
 
@@ -420,6 +469,14 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
     }
     // 上下文门控(≥70% 时在回合间隙先压缩再发 prompt;等待有界,失败放行)
     await this.contextGate('pre-prompt')
+    const scope = this.currentTurnScope
+    if (!scope) throw new Error('OMP turn scope unavailable')
+    if (signal.aborted) return
+    await this.prepareTurnTools(client, scope)
+    if (signal.aborted || scope.signal.aborted) {
+      this.clearTurnTools(scope)
+      return
+    }
     const queue: AgentEvent[] = []
     let resolveWait: (() => void) | null = null
     let isDone = false
@@ -487,7 +544,14 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
     // WP8：停滞看门狗阈值入运行语义设置（缺省 600s；per-agent promptTimeoutMs 仍可覆盖）
     const idleTimeoutMs = this.config.promptTimeoutMs ?? (Number(workshopSettings().harness_stall_timeout_ms) || 600_000)
     let lastActivity = Date.now()
+    const approvals = getToolApprovals()
+    const approvalPending = (): boolean => approvals.listPending(this.selfAgentId).length > 0
     let stallTimer: ReturnType<typeof setTimeout> | null = null
+    const unsubApprovals = approvals.subscribeApprovalChanges(this.selfAgentId, () => {
+      lastActivity = Date.now()
+      resolveWait?.()
+      resolveWait = null
+    })
 
     // LLM 流式增量缓冲:50ms 批量合并为一帧 delta(防高频 text_delta 洪泛 WS)
     let deltaBuf = ''
@@ -512,7 +576,11 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
 
     // 订阅 omp 事件流
     const unsub = client.onEvent((event) => {
-      for (const mapped of this.mapOmpEvent(event, taskId)) {
+      if (event.type === 'message_end' && event.message?.role === 'user'
+        && JSON.stringify(event.message.content).includes('[Host tool names for this turn]')) return
+      const canonical = this.canonicalToolEvent(event)
+      if (!canonical) return
+      for (const mapped of this.mapOmpEvent(canonical, taskId)) {
         enqueue(mapped)
       }
     })
@@ -521,6 +589,7 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
     const onAbort = (): void => {
       log.warn(`[OmpRpcAgent:${this.selfAgentId}] run 被 abort(signal)→ 中止 omp 回合,taskId=${taskId ?? '-'}`)
       client.send({ type: 'abort' }).catch(() => {})
+      this.retireSupervisionClient(client)
       if (!isDone) {
         enqueue({ kind: 'done', final: taskId ? { taskId } : undefined })
       }
@@ -534,19 +603,25 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
 
     // 发送 prompt
     try {
-      await client.send({ type: 'prompt', message: prompt })
+      if (!signal.aborted) await client.send({ type: 'prompt', message: this.promptWithToolAliases(prompt, scope) })
     }
     catch (err) {
+      this.clearTurnTools(scope)
+      unsubState()
       unsub()
+      unsubApprovals()
+      if (deltaTimer) clearTimeout(deltaTimer)
       signal.removeEventListener('abort', onAbort)
+      this.turnActive = false
+      this.streaming = false
+      this.toolState.currentTaskId = null
       // 僵死进程回收:prompt send 失败 = stdio 断裂或 60s 命令确认超时 —— 进程
       // "活着但不干活"(alive-but-wedged)。若仅报错不清理,消息重试(≤2 次)会
       // 复用同一僵死 stdio 每次空转 60s;必须杀掉并置空,下回合 ensureClient
       // 全新重生(host tools/模型/终端 tap 随重建)。
       log.warn(`[OmpRpcAgent:${this.selfAgentId}] prompt 失败 → 回收可疑僵死进程 pid=${client.pid}`)
       this.harnessRestartReason = 'PROMPT_FAIL'
-      this.killProcess()
-      this.client = null
+      this.retireSupervisionClient(client)
       this.hostToolsRegistered = false
       yield {
         kind: 'error',
@@ -562,8 +637,9 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
     try {
       while (!isDone || queue.length > 0) {
         if (queue.length === 0 && !isDone) {
+          const pendingApproval = approvalPending()
           const remaining = idleTimeoutMs - (Date.now() - lastActivity)
-          if (remaining <= 0) {
+          if (remaining <= 0 && !pendingApproval) {
             client.send({ type: 'abort' }).catch(() => {})
             // 子进程大概率已僵死:击杀并清引用,下回合 ensureClient 全新重生
             this.harnessRestartReason = 'TURN_STALLED'
@@ -581,10 +657,12 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
           }
           await new Promise<void>((r) => {
             resolveWait = r
-            stallTimer = setTimeout(() => {
-              resolveWait = null
-              r()
-            }, remaining + 100)
+            if (!pendingApproval) {
+              stallTimer = setTimeout(() => {
+                resolveWait = null
+                r()
+              }, remaining + 100)
+            }
           })
           if (stallTimer) {
             clearTimeout(stallTimer)
@@ -598,6 +676,9 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
     }
     finally {
       if (stallTimer) clearTimeout(stallTimer)
+      if (deltaTimer) clearTimeout(deltaTimer)
+      unsubApprovals()
+      this.clearTurnTools(scope)
       // 事件监听必须全部解除:本 client 跨回合长期复用,残留的 mapOmpEvent
       // 闭包会在后续每一帧继续执行并把事件 push 进孤儿队列(内存/CPU 随
       // 回合数线性劣化,直接违背进程常驻的稳定性目标)

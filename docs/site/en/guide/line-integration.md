@@ -1,6 +1,6 @@
 # Line integration: from blueprint to governed work
 
-> This page describes the current mainline line-integration path. It can prove protocol-stack behavior, data acquisition, experience reuse and governed single-step writes in an isolated simulator; it is **not physical HIL or production approval**.
+> This page describes the line-integration path and historical isolated-simulator results, not physical HIL or production approval. Current unmerged source remains under review; historical results do not verify it. See the onboarding restrictions below.
 
 ## Scope
 
@@ -17,7 +17,7 @@ work-condition document → human-reviewed blueprint → PLC simulator twin → 
 - The simulator source is bundled at `plc-node-simulator/`; root `pnpm install` installs its workspace dependencies (including `tsx`), so no separate clone is needed. It is licensed under PolyForm Noncommercial 1.0.0, separately from the platform's Apache-2.0.
 - Use `aw-plc-sim-twin` for virtual commissioning, then use `aw-line-onboarding` for platform provisioning.
 - A simulated protocol stack proves driver, configuration, governance and data-pipeline behavior. It does not prove PLC electrical safety, emergency-stop behavior, register units, or physical process fidelity.
-- The current-main evidence is [`docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md) (simulator acceptance, not physical HIL).
+- Historical source-snapshot evidence is [`docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md) (simulator acceptance, not physical HIL).
 
 ## Channel modes and Sessions
 
@@ -39,6 +39,14 @@ Content-Type: application/json
 ```
 
 The server freezes and verifies the line/product/recipe/node/agent binding snapshot plus its revision/hash. A mutable Channel selector cannot move that Session to another line, product or recipe. A `generic` Session does not gain industrial authority just because a `productId` is supplied.
+
+## Legacy execution recovery hold
+
+> The following describes unreleased, unmerged source under review, not released 0.11.3 or behavior verified by historical acceptance.
+
+During upgrade recovery, legacy active tasks without an execution lease are marked `[LEGACY_EXECUTION_RECOVERY_REQUIRED]` while their state and evidence are preserved. Matching pending or consuming task messages are marked dead, not automatically replayed. On `409 LEGACY_EXECUTION_RECOVERY_REQUIRED`, treat the affected task tree as held; do not retry execution or clear the restriction by merely removing the marker or editing the database.
+
+Preserve task, message, approval and write-log evidence. Have qualified site personnel inspect the actual device state, readback and process impact, and escalate to the teams responsible for operations and safety disposition. There is currently no supported, audited hold-release or disposition procedure. An upgrade affected by this condition is not production-ready until such a procedure is implemented and verified. Task state and historical records alone do not establish the actual device state.
 
 ## Data and tool order
 
@@ -85,14 +93,16 @@ If points must align one-to-one with a real device, set the template and `driver
 
 ## Simulation and cutover
 
-An isolated simulation acceptance uses `AW_MODE=home`, a fresh `AW_HOME`, independent platform and simulator ports, an independent simulator shadow, and a `simulated=true` test line. V2/V3 include an out-of-range attempt and a valid write; `onboard.mjs --smoke` may auto-decide test HITL, so use it only on the isolated test line.
+**Current unmerged source restriction (under review)**: `onboard.mjs` and `provision-line.mjs` unconditionally refuse provisioning; `verify-line.mjs` rejects V2/V3 for nonempty DCW targets pending trusted attestation that the driver implementation and endpoint belong to this isolated simulator. A `simulated=true` label, driver name or loopback address is not ownership proof. Verification's `GET /api/workshop/dcw` can start global automatic hold writes, so even `dcw: []` has no established guarantee of freedom from side effects. **Do not run any onboarding verification** until isolation and absence of unintended side effects are established; do not bypass the guards. Historical V1–V6 results are not a claim that they can currently be repeated.
+
+An isolated simulation acceptance previously required `AW_MODE=home`, a fresh `AW_HOME`, independent platform and simulator ports, an independent simulator shadow, and a `simulated=true` test line. These conditions alone do not remove the above restrictions. V2/V3 include an out-of-range attempt and a valid write; `onboard.mjs --smoke` may auto-decide test HITL.
 
 A real cutover is not “patch the endpoint and keep writing”:
 
 ```text
 stop line → save governance/binding snapshot → replace driverConfig endpoint/register
           → start a new batch (or synchronize the recipe baseline) → read-only/minimal-step checks
-          → V1/V3 and three-way readback → switch back and open another batch when required
+          → separately authorized site verification and three-way readback → switch back and open another batch when required
 ```
 
 Changing endpoints while the old batch is active can leave step and recipe baselines tied to the old device; refusing the next write is the correct protection. Physical rollout still needs an authorized maintenance window, read-only soak, device/platform/mirror comparison, emergency-stop and physical-safety acceptance.
@@ -107,6 +117,6 @@ Only executed assertions may be called passing. External IDD/RAG timeouts, Mimos
 
 - [`aw-plc-sim-twin`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-plc-sim-twin): create five-protocol simulator twins and exports.
 - [`aw-protocol-onboarding`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-protocol-onboarding): protocol/data-shape matching and mirror ingestion.
-- [`aw-line-onboarding`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-line-onboarding): provisioning, Channel forging and V1–V6.
+- [`aw-line-onboarding`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-line-onboarding): provisioning, Channel forging and V1–V6; its steps are subject to the current restrictions above.
 - [`aw-doc-to-project`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-doc-to-project): human-reviewed blueprints, Channel grouping and Project acceptance.
 - [`aw-system-acceptance`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-system-acceptance): full gates and boundary decisions.

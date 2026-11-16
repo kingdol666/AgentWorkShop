@@ -3,6 +3,10 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { getAgentNodeBindingRepo } from '../server/services/workshop/agents/node-bindings.repo'
 import { applyDelegation, planDelegation, revokeDelegation } from '../server/services/workshop/agents/node-delegation'
+import { runWithExecutionScope, type ExecutionScope } from '../server/services/workshop/agents/execution-scope'
+import { handleGrantNodes, handleRevokeNodes } from '../server/services/workshop/agents/host-tool-bridge/tools/team-delegation'
+import { handleDispatchTask } from '../server/services/workshop/agents/host-tool-bridge/tools/tasks'
+import type { AgentWorkspace } from '../server/services/workshop/agents/agent-interface'
 
 const tag = randomUUID().slice(0, 8)
 const leadId = `nbtest-lead-${tag}`
@@ -90,5 +94,121 @@ test('revoke takes back granted nodes; refuses nodes neither granted nor held by
   assert.equal(results.find(r => r.nodeId === 'node-x')?.revoked, false)
   assert.equal(repo.find(workerId, 'node-a', 'dcw'), undefined)
   assert.ok(repo.find(workerId, 'node-x', 'daq'))
+  cleanup()
+})
+
+test('active scoped and unscoped delegation paths remain usable', async () => {
+  const repo = getAgentNodeBindingRepo()
+  const identity = { agentId: leadId, channelId: 'c1', role: 'lead' as const, name: 'lead' }
+  const scope: ExecutionScope = {
+    agentId: leadId, channelId: 'c1', signal: new AbortController().signal, assertActive: () => {},
+  }
+  const ws = { listAgents: async () => members }
+  try {
+    for (const executionScope of [scope, undefined]) {
+      cleanup()
+      repo.bind(leadId, 'node-active', 'dcw', 'manual')
+      await runWithExecutionScope(executionScope, async () => {
+        const args = { agent_id: workerId, node_ids: ['node-active'] }
+        assert.equal((await handleGrantNodes(identity, args, ws)).isError, undefined)
+        assert.ok(repo.find(workerId, 'node-active', 'dcw'))
+        assert.equal((await handleRevokeNodes(identity, args, ws)).isError, undefined)
+        assert.equal(repo.find(workerId, 'node-active', 'dcw'), undefined)
+      })
+    }
+  }
+  finally {
+    cleanup()
+  }
+})
+
+test('combined dispatch and node grant fails closed without changing existing bindings', async () => {
+  const repo = getAgentNodeBindingRepo()
+  const identity = { agentId: leadId, channelId: 'c1', role: 'lead' as const, name: 'lead' }
+  let dispatched = false
+  const ws = {
+    listTasks: async () => [],
+    listAgents: async () => members,
+    dispatchTask: async () => {
+      dispatched = true
+      return { id: 'child' }
+    },
+  } as unknown as AgentWorkspace
+  cleanup()
+  repo.bind(leadId, 'node-dispatch', 'dcw', 'manual')
+  const existing = repo.bind(workerId, 'node-existing', 'dcw', 'manual')
+  const before = structuredClone(existing)
+  try {
+    for (const scope of [undefined, {
+      taskId: 'root', agentId: leadId, channelId: 'c1', assignmentGeneration: 1,
+      executionLeaseId: 'lease', signal: new AbortController().signal, assertActive: () => {},
+    } satisfies ExecutionScope]) {
+      for (const key of ['grant_node_ids', 'grantNodeIds']) {
+        const result = await runWithExecutionScope(scope, () => handleDispatchTask({
+          assignee_id: workerId, title: 'inspect', [key]: ['node-dispatch', 'node-existing'], grant_mode: 'auto', grant_confirm: true,
+        }, ws, identity))
+        assert.equal(result.isError, true)
+        assert.match(result.text, /原子/)
+        assert.equal(dispatched, false)
+        assert.equal(repo.find(workerId, 'node-dispatch', 'dcw'), undefined)
+        assert.deepEqual(repo.find(workerId, 'node-existing', 'dcw'), before)
+      }
+    }
+  }
+  finally {
+    cleanup()
+  }
+})
+
+test('delegation mutations reject scopes invalidated while listing members', async () => {
+  const repo = getAgentNodeBindingRepo()
+  const identity = { agentId: leadId, channelId: 'c1', role: 'lead' as const, name: 'lead' }
+  for (const operation of ['grant', 'revoke'] as const) {
+    cleanup()
+    repo.bind(leadId, 'node-race', 'dcw', 'manual')
+    if (operation === 'revoke') {
+      applyDelegation(planDelegation({ leaderAgentId: leadId, channelId: 'c1', targetAgentId: workerId, nodeIds: ['node-race'], members }), leadId)
+    }
+    const controller = new AbortController()
+    let generation = 1
+    let resume!: () => void
+    let started!: () => void
+    const waiting = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve
+    })
+    const scope: ExecutionScope = {
+      taskId: 'root', agentId: leadId, channelId: 'c1', assignmentGeneration: 1,
+      executionLeaseId: 'lease', signal: controller.signal,
+      assertActive: () => {
+        if (controller.signal.aborted || generation !== 1) throw new Error('stale scope')
+      },
+    }
+    const ws = {
+      listAgents: async () => {
+        started()
+        await gate
+        return members
+      },
+    }
+    const args = { agent_id: workerId, node_ids: ['node-race'], mode: 'auto', confirm: true }
+    const pending = runWithExecutionScope(scope, () => {
+      switch (operation) {
+        case 'grant': return handleGrantNodes(identity, args, ws)
+        case 'revoke': return handleRevokeNodes(identity, args, ws)
+      }
+    })
+    await waiting
+    if (operation === 'grant') controller.abort()
+    else generation = 2
+    resume()
+    const result = await pending
+    assert.equal(result.isError, true)
+    const binding = repo.find(workerId, 'node-race', 'dcw')
+    if (operation === 'grant') assert.equal(binding, undefined)
+    else assert.equal(binding?.mode, 'manual')
+  }
   cleanup()
 })

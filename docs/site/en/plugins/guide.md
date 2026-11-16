@@ -486,7 +486,9 @@ ctx.route('POST', '/threshold', (event) => {
 
 ## 10. Tools and team switches
 
-Tools registered with `ctx.omp.registerTool(def)` appear on every harness tool surface (omp receives them over RPC `set_host_tools`, other engines through the MCP bridge `tools/list`, pi through a tool file, mock through a direct REST invoke). A registry change is **re-pushed** to running sessions — no restart, no sub-process respawn.
+Tools registered with `ctx.omp.registerTool(def)` are exposed to harnesses subject to role, channel and invocation-path filters. Omp receives definitions over RPC `set_host_tools`; other engines can obtain a list through the agent-token MCP bridge; mock can use an authorized user REST invoke. Registry changes are re-pushed to running sessions.
+
+Compatibility boundary (unreleased, unmerged source under review; not released 0.11.3): an agent token identifies the agent, not a trusted turn. The bridge filters and rejects plugin tools unless they explicitly declare `riskClass: 'read'`; omitted, `write` and `admin` classifications are denied. Declare `read` only for genuinely read-only tools, not to bypass the restriction. Role, channel and other governance checks still apply. Native omp calls and user-authenticated REST calls have their own checks and do not necessarily expose the same tool surface as the agent-token bridge.
 
 ```js
 ctx.omp.registerTool({
@@ -519,7 +521,7 @@ Plugin tools no longer live only in a process-local registry: startup, registrat
   - `mode='all'` (default): every eligible tool is enabled; only unchecked tools are stored (deny-list);
   - `mode='selected'`: only checked tools are enabled (allow-list); new tools stay disabled until selected;
   - hard rules (role / channel profile / write guard / plugin master switch) win; a channel cannot open a tool excluded by a hard rule, and explicitly selecting one in `selected` mode returns `409 TOOL_NOT_ELIGIBLE`.
-- **Same injection source**: omp `set_host_tools`, pi `AW_PI_TOOLS_FILE` and the MCP `tools/list` used by other harnesses all go through `hostToolsForRole`; the execution layer re-checks in `dispatchHostTool` / `invokeHostTool`, so a disabled tool cannot be called even if an engine cached an old list.
+- **Injection and execution checks**: omp, pi and MCP use the shared tool catalog, but the agent-token MCP list applies additional provenance and risk filters. `dispatchHostTool` / `invokeHostTool` re-check execution, so a cached list cannot bypass a disabled tool or invocation restriction.
 - **UI**: the Channel settings dialog has a Tools section with search, source/state filters, select all/none/reset, and reason badges for hard-rule blocks.
 
 ### Install a local plugin

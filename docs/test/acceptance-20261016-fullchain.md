@@ -32,7 +32,7 @@
 2. **阶段 2 连通性预检**：从模拟器 `GET /api/nodes/:id/export` 逐点拉取 driverConfig（禁止手抄），`test-connection.mjs` 逐驱动实测 —— **11/11 绿**（modbus-tcp 1-14ms / rtu 0-1ms / opcua 1-72ms / mqtt 订阅收值 1.9-4s / http 2-15ms）。
 3. **阶段 3 产线供给**：`provision-line.mjs` 幂等建线+节点+产品+配方 —— **15/15 绿**（跨线写点冲突预检 0；DCW/DAQ 节点强制 templateRef；温度/压力用内置模板，制品重量/成型周期新建 2 个自定义语义模板走 `POST /api/workshop/daq/templates`）。摘要：`{lineId:ln-dd4d6163, recipeId:rc-fb3371f8}`。
 4. **阶段 4 频道锻造**：`forge-channel.mjs` 场景=optimize —— **11/11 绿**（模板实例化→双插件开关→9 条 v2 绑定→种子任务派发）。
-5. **阶段 5 接入验收**：`verify-line.mjs` V1-V6 —— 首轮 13/8（V1 全红 + V3-MQTT 命令点无探针）。根因=**未开产线不采样是平台设计**；`POST /dcw/lines/:id/start`（run rr-93e6ee43，SP 写穿 240 回读一致）后重跑 —— **21/21 全绿**（V1 七节点样本落库、V2 越界全拒、V3 合法写回环、V4 配方在册、V5 频道+双插件、V6 受保护线零扰动）。
+5. **阶段 5 接入验收**：`verify-line.mjs` V1-V6 —— 首轮 13/8（V1 全红 + V3-MQTT 命令点无探针）。根因=**未开产线不采样是平台设计**；`POST /dcw/lines/:id/start`（run rr-93e6ee43，SP 写穿 240 回读一致）后重跑 —— **21/21 全绿**（V1 七节点样本落库、V2 越界全拒、V3 合法写回环、V4 配方在册、V5 频道+双插件、V6 受保护线 journal 无新增锚点，不证明物理零扰动）。
 6. **主 E2E**（脚本 `final-e2e-20261016.mjs`，三轮迭代 + 两轮补证 `final-e2e-fixup/fixup2`）：S0 健康→S1 分析台账→S2 IDD 诊断→S3 知识闭环→S4 配方 HITL→S5 负路径→S6 审计。
 
 ## 三、测试结果

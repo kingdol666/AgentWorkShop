@@ -1,0 +1,138 @@
+{
+  "anchors": [
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-aed0ca16",
+      "prevValue": 62,
+      "newValue": 63,
+      "source": "agent",
+      "actor": "88165f86-5838-43ef-b430-fa138f5bb9e2",
+      "approvalId": "ap-eac80792",
+      "recipeRunId": "rr-086cd32a",
+      "id": "anc-dbe63519",
+      "at": "2026-11-16T01:18:45.325+08:00",
+      "recordId": "opt-fb5f2438"
+    },
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-202ae9c6",
+      "prevValue": 43,
+      "newValue": 45,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-24b94e91",
+      "at": "2026-11-16T00:55:54.012+08:00"
+    },
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-60d51e51",
+      "prevValue": 18,
+      "newValue": 19,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-111d17f7",
+      "at": "2026-11-16T00:55:53.935+08:00"
+    },
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-56867d2f",
+      "prevValue": 217,
+      "newValue": 220,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-91d2ae24",
+      "at": "2026-11-16T00:55:53.887+08:00"
+    },
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-66f4b8c6",
+      "prevValue": 5,
+      "newValue": 5.5,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-b7c508e8",
+      "at": "2026-11-16T00:55:53.794+08:00"
+    },
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-aed0ca16",
+      "prevValue": 60,
+      "newValue": 62,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-f11151a7",
+      "at": "2026-11-16T00:55:53.701+08:00"
+    },
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-202ae9c6",
+      "prevValue": 41,
+      "newValue": 43,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-7748daa5",
+      "at": "2026-11-16T00:45:14.344+08:00"
+    },
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-60d51e51",
+      "prevValue": 17,
+      "newValue": 18,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-7e2621b5",
+      "at": "2026-11-16T00:45:14.283+08:00"
+    },
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-56867d2f",
+      "prevValue": 214,
+      "newValue": 217,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-801abf89",
+      "at": "2026-11-16T00:45:14.250+08:00"
+    },
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-66f4b8c6",
+      "prevValue": 4.5,
+      "newValue": 5,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-6380d45c",
+      "at": "2026-11-16T00:45:14.157+08:00"
+    },
+    {
+      "lineId": "ln-0eb8f9fa",
+      "nodeId": "dw-aed0ca16",
+      "prevValue": 58,
+      "newValue": 60,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-b65e27fa",
+      "at": "2026-11-16T00:45:14.065+08:00"
+    },
+    {
+      "lineId": "ln-d7e0a2a2",
+      "nodeId": "dw-2a97d525",
+      "prevValue": null,
+      "newValue": 42,
+      "source": "manual",
+      "actor": "61837060-10c9-4b3c-9306-b78a362c34a6",
+      "recipeRunId": null,
+      "id": "anc-5946458d",
+      "at": "2026-11-16T00:45:07.521+08:00"
+    }
+  ]
+}

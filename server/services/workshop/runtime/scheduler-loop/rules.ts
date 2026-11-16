@@ -19,6 +19,7 @@ export abstract class SchedulerLoopRules extends SchedulerLoopSnapshot {
 
     // 任务按 createdAt ASC 迭代(list 顺序)= 外部提交 FIFO:先提交先分解先分发。
     for (const task of tasks) {
+      if (this.legacyBlocked(task.id)) continue
       // FAILED 且 retryCount<3:优先换人重试;仅剩原 assignee 空闲(如单 worker channel)
       // → 由原 assignee 重试(reassign 到自己,走 FAILED→ASSIGNED 恢复);无人可用 → 保留 FAILED
       // 留给父任务收口规则(直接 cancel FAILED 会撞终态 409——实测曾是每 tick 空转的死代码)。
@@ -56,6 +57,7 @@ export abstract class SchedulerLoopRules extends SchedulerLoopSnapshot {
     // 有 COMPLETED 子任务(部分成果可收)或仍有非终态子任务时不在此收口 ——
     // 交给 lead 的监督回合判定(接受部分成果/补发/改派)。
     for (const task of tasks) {
+      if (this.legacyBlocked(task.id)) continue
       if (task.state !== 'WAITING') continue
       const children = tasks.filter(t => t.parentId === task.id)
       if (children.length === 0 || children.some(c => !TERMINAL_TASK_STATES[c.state])) continue
@@ -76,6 +78,7 @@ export abstract class SchedulerLoopRules extends SchedulerLoopSnapshot {
     // 规则引擎对 busy 不强制取消 —— 只留可见信号,不做破坏性动作。
     const assigneeState = new Map(this.channelRuntime.getAgents().map(a => [a.agentId, a.getState()]))
     for (const task of tasks) {
+      if (this.legacyBlocked(task.id)) continue
       if (task.state !== 'WORKING') continue
       // 工具调用即活性:最近 stallMs 内有工具invoke的任务视为健康推进,刷新基线并跳过看门狗。
       // 真实 LLM worker 的长工具链(真实 PLC 写+等待回读)不更新 progress 数字,且回合间隙

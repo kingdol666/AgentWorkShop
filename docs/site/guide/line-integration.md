@@ -1,6 +1,6 @@
 # 产线集成：从蓝图到受治理作业
 
-> 本页描述当前主干的产线集成路径。它可以在隔离模拟环境中跑通协议栈、数据获取、经验复用和受治理单步下发；它**不等同于物理 HIL 或生产线投用批准**。
+> 本页描述产线集成路径及历史隔离模拟结果，不等同于物理 HIL 或生产线投用批准。当前未合并源码仍在审查，历史结果不能证明其已通过验证；接入供给与验证的当前限制见下文。
 
 ## 适用边界
 
@@ -17,7 +17,7 @@
 - 模拟器源码随主仓库位于 `plc-node-simulator/`；根 `pnpm install` 会安装其 workspace 依赖（含 `tsx`），无需单独克隆。其许可为 PolyForm Noncommercial 1.0.0，独立于平台 Apache-2.0。
 - 推荐先用 `aw-plc-sim-twin` 做虚拟预演，再用 `aw-line-onboarding` 接入平台。
 - 模拟协议栈能证明配置、驱动、治理和数据管线的行为；它不能证明真实 PLC 的电气安全、急停、寄存器量纲或工艺物理保真。
-- 当前主干的专项证据见 [`docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md)（模拟器验收，不是物理 HIL）。
+- 历史源码快照的专项证据见 [`docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md`](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md)（模拟器验收，不是物理 HIL）。
 
 ## Channel 模式与 Session
 
@@ -39,6 +39,14 @@ Content-Type: application/json
 ```
 
 服务端会冻结并验证 line/product/recipe/node/agent binding 快照以及 revision/hash。之后 Channel 的可变选择器不能把该 Session 引到另一条线、另一产品或另一配方。`generic` Session 不会因为传入 `productId` 获得产线工具权限。
+
+## 旧版执行恢复挂起
+
+> 以下为未发布、未合并且待审查的当前源码行为，不属于已发布 0.11.3，也未由历史验收验证。
+
+升级恢复时，缺少执行租约的旧版活动任务会标记 `[LEGACY_EXECUTION_RECOVERY_REQUIRED]` 并保留任务状态和证据；相关待处理或消费中的任务消息会被置为 dead，不会自动重放。遇到 `409 LEGACY_EXECUTION_RECOVERY_REQUIRED` 时，将受影响的任务树视为挂起，勿重试执行，也不要仅删除标记或直接修改数据库来解除限制。
+
+先保全任务、消息、审批与写入日志等证据，由有资质的现场人员核对实际设备状态、回读和工艺影响，并升级给负责运行和安全处置的团队。目前没有受支持、可审计的挂起释放或处置流程；在该流程实现并验证前，受此问题影响的升级不具备生产就绪条件。不要把任务状态或历史记录当作设备实际状态的证明。
 
 ## 数据与工具顺序
 
@@ -85,14 +93,16 @@ Content-Type: application/json
 
 ## 模拟验收与真实割接
 
-隔离模拟验收至少使用：`AW_MODE=home`、全新 `AW_HOME`、独立平台端口、独立 simulator shadow、`simulated=true` 测试线。V2/V3 会产生越界尝试和合法写入，`onboard.mjs --smoke` 可能自动裁决测试 HITL，因此只能对隔离测试线执行。
+**当前未合并源码的阻断状态（待审查）**：`onboard.mjs` 和 `provision-line.mjs` 无条件拒绝供给；`verify-line.mjs` 对非空 DCW 目标拒绝 V2/V3，直到能够可信证明驱动实现和端点属于本次隔离模拟器。`simulated=true`、驱动名或回环地址均不是归属证明。验证中的 `GET /api/workshop/dcw` 可能启动全局保写，即使 `dcw: []` 也未建立无副作用保障；在隔离及无意外副作用得到证明前，**不要运行任何接入验证**，不要绕过守卫。历史 V1–V6 结果不是当前可复跑承诺。
+
+隔离模拟验收原要求 `AW_MODE=home`、全新 `AW_HOME`、独立平台端口、独立 simulator shadow、`simulated=true` 测试线；这些条件本身不足以解除上述阻断。V2/V3 包含越界尝试和合法写入，`onboard.mjs --smoke` 可能自动裁决测试 HITL。
 
 真实割接不是直接 PATCH 后继续写：
 
 ```text
 停线 → 保存治理/绑定快照 → 替换 driverConfig endpoint/register
      → 开启新批次（或同步新的 recipe baseline）→ 只读/最小步复验
-     → 通过 V1/V3 与三方回读 → 需要时切回原端点并重新开批次
+     → 经另行授权的现场验证与三方回读 → 需要时切回原端点并重新开批次
 ```
 
 旧批次仍活动时换端点，步长和配方基线可能来自旧设备；这是拒绝继续写入的正确保护。真实上线还需要授权维护窗口、只读浸泡、设备/平台/镜像三方对照、急停和物理安全验收。
@@ -114,6 +124,6 @@ Content-Type: application/json
 
 - [`aw-plc-sim-twin`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-plc-sim-twin)：生成五协议模拟孪生与 export。
 - [`aw-protocol-onboarding`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-protocol-onboarding)：协议/异构数据能力匹配和镜像采集。
-- [`aw-line-onboarding`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-line-onboarding)：供给、Channel 锻造和 V1–V6。
+- [`aw-line-onboarding`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-line-onboarding)：供给、Channel 锻造和 V1–V6；其步骤受本页当前阻断约束。
 - [`aw-doc-to-project`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-doc-to-project)：人审蓝图、Channel 编组和 Project 验收。
 - [`aw-system-acceptance`](https://github.com/kingdol666/AgentWorkShop/tree/main/skills/aw-system-acceptance)：全系统门禁与边界裁决。

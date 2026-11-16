@@ -7,6 +7,7 @@ import type { AgentWorkspace } from '../../agent-interface'
 import type { A2AArtifact } from '../../../types/a2a'
 import type { GoalCompletionVerifier } from '../../../verify/goal-completion'
 import type { HostToolResult, HostToolSessionState } from '../types'
+import { currentExecutionScope } from '../../execution-scope'
 
 export async function handleReportProgress(
   args: Record<string, unknown>,
@@ -34,6 +35,7 @@ export async function handleReportProgress(
       isError: true,
     }
   }
+  currentExecutionScope()?.assertActive()
   await ws.reportTask({ taskId, progress, message })
   return { text: `进度已上报: ${progress}%${message ? ` (${message})` : ''}` }
 }
@@ -120,6 +122,7 @@ export async function handleCompleteTask(
       parts: [{ text: deliverable ?? summary }],
     })
   }
+  currentExecutionScope()?.assertActive()
   await ws.completeTask(taskId, artifacts)
   state.currentTaskId = null
   // 完成即衔接:报告队列余量与下一项(状态同步 + 驱动继续处理)
@@ -150,6 +153,7 @@ export async function handleSupersedeTask(
   if (!taskId || !replacementTaskId) {
     return { text: '参数缺失:需要 task_id(失败/取消的分支任务)与 replacement_task_id(覆盖其工作的替代任务)', isError: true }
   }
+  currentExecutionScope()?.assertActive()
   const superseded = await ws.supersedeTask(taskId, replacementTaskId, reason)
   return {
     text: `分支「${superseded.title}」(${superseded.state})已标记为被 ${replacementTaskId.slice(0, 8)} 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并 complete_task。`,

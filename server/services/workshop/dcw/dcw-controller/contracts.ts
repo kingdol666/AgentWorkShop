@@ -9,8 +9,10 @@
  *   executeWrite  → 由 actuation.ts 实现
  */
 import type { DcwNode } from '../dcw-node'
+import type { ExecutionScope } from '../../agents/execution-scope'
+import type { DcwWriteOutcome } from '../dcw-runtime'
 
 export abstract class DcwControllerContracts {
   protected abstract executeRead(node: DcwNode): Promise<{ ok: boolean, value: number | null, raw: number | null, message: string, at: string }>
-  protected abstract executeWrite(node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null): Promise<{ ok: boolean, message: string, raw: number | null, readback: number | null }>
+  protected abstract executeWrite(node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null, executionScope?: ExecutionScope, onDriverStart?: () => void): Promise<DcwWriteOutcome>
 }

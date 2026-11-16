@@ -68,6 +68,10 @@ export interface DcwNodeView {
   enabled: boolean
   /** 保写周期 ms(心跳重下发;null = 仅手动下发) */
   holdIntervalMs: number | null
+  /** Automatic hold is blocked pending a write confirmed by physical readback. */
+  holdBlocked?: boolean
+  /** transport-ack 写的保写观测证实声明(缺省 = 链路受理不构成保写解除证据) */
+  holdObserve?: { daqId: string, tolerance?: number, timeoutMs?: number } | null
   /** 数据语义标定钩子(encode:物理值 → PLC 设定值) */
   transform?: DataTransform
   /** 节点级工艺语义备注(覆盖模板 semantics;注入 Agent 上下文) */

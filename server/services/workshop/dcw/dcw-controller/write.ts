@@ -14,6 +14,7 @@ import { setWriteLockUntil } from './gate-persist'
 import { recordOps } from '../../ops/ops'
 import { getActiveLineRun } from '../line-run'
 import { benchModeEnabled } from '../../bench-mode'
+import type { ExecutionScope } from '../../agents/execution-scope'
 
 // ================================================================
 // 只读预检谓词(产线 Co-Pilot P2:recipe_propose 整包方案的预审批校验)
@@ -58,7 +59,8 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
    *  (节点全局量程之外的第二道约束 —— 换配方即换工艺窗口)。
    *  meta(F7):账本与优化记录的身份信息 —— 手动/配方/Agent/回退四路共用本入口,
    *  缺省按 manual/user 记账;调控闭环护栏(Agent 互斥/回退冷却)在 beforeWrite。 */
-  async write(id: string, eng: number, recipeRunId: string | null = null, meta?: DcwWriteMeta) {
+  async write(id: string, eng: number, recipeRunId: string | null = null, meta?: DcwWriteMeta, executionScope?: ExecutionScope, onDriverStart?: () => void) {
+    executionScope?.assertActive()
     this.ensureLoop()
     const rt = this.runtimes.get(id)
     if (!rt) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
@@ -176,10 +178,11 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
     const benchNoReadback = benchModeEnabled() && (meta?.benchArm === 'no-readback' || meta?.benchArm === 'ungated')
     const benchToleranceOverride = benchNoReadback ? Number.MAX_VALUE : undefined
     const prevValue = typeof node.value === 'number' ? node.value : null
-    const outcome = await rt.write(eng, recipeRunId, benchToleranceOverride)
-    // 调控闭环入册:仅成功写记锚/开记录(失败写不动账本 —— PLC 值未变更);
-    // 窗口聚合异步回填(F2)
-    if (outcome.ok !== false) {
+    const outcome = await rt.write(eng, recipeRunId, benchToleranceOverride, executionScope, onDriverStart)
+    // Keep the cancelled task receipt separate from the eventual driver response.
+    // An accepted driver write still needs the ordinary safety lock and ledgers.
+    const driverOutcome = outcome.driverOutcome ?? outcome
+    if (driverOutcome.ok !== false) {
       // 写成功 → 锁定写入保持窗(agent/manual 路径;recipe/rollback 豁免)
       if (lockable) {
         this.writeLocks.set(id, Date.now() + lockMs)
@@ -203,7 +206,7 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
       }
       // 运维日志 + 插件钩子:所有下发路径(manual/recipe/agent/rollback)单点入册(write-audit)
       try {
-        recordDcwWriteOps({ id, node, eng, prevValue, outcome, src: srcForLock as DcwWriteMeta['source'], meta, recipeRunId })
+        recordDcwWriteOps({ id, node, eng, prevValue, outcome: driverOutcome, src: srcForLock as DcwWriteMeta['source'], meta, recipeRunId })
       }
       catch (err) {
         // 仍不改变写结果语义,但必须留痕:静默吞掉会让"设备已变、台账无行"无从排查

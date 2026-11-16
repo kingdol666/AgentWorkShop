@@ -24,10 +24,15 @@ export interface MessageWatchdogSnapshot {
   hasPendingApprovals: boolean
 }
 
+/** Pending approval is a legal pause, not a fireable idle state. */
+export function hasLegalMessageWatchdogPause(s: Pick<MessageWatchdogSnapshot, 'hasPendingApprovals'>): boolean {
+  return s.hasPendingApprovals
+}
+
 export function shouldFireMessageWatchdog(s: MessageWatchdogSnapshot): boolean {
   if (s.state === 'stopped') return false
+  if (hasLegalMessageWatchdogPause(s)) return false
   if (s.now - s.lastActivityAt < s.stallMs) return false
-  if (s.hasPendingApprovals) return false
   return true
 }
 

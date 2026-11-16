@@ -29,7 +29,7 @@
 | 2 连接预检 | test-connection.mjs | **6/6**:opcua/modbus-tcp/modbus-rtu/http×2/mes-rest 全绿(现值:保压 45bar、二区 246℃、锁模力 1596kN、飞边 0.011%、周期 21s、MES tem 55) |
 | 3 产线供给 | provision-line.mjs | **10/10**:线 ln-215f72e9 + 3 DCW(保压压力SP/机筒二区温度SP/MES热流道温度设定)+ 3 DAQ(锁模力PV/飞边率/成型周期)+ 产品 pd-58836d7f + 配方 rc-d749500f + 开跑 rr-22470436 |
 | 4 频道锻造 | forge-channel.mjs | **7/7**:频道 63e150fb 四人剧组(生产主管/数据分析师/知识调优工程师/工艺工程师)+ idd/rag 插件 + 4 绑定(worker:2 配方 manual、worker:0 三路 daq auto)+ 种子任务(budget 90min) |
-| 5 接入验收 | verify-line.mjs | **15/15**:V1 三路数采落库;V2 三节点越界拒(含 MES 路径 284>260 被节点量程层拦截);V3 合法写回环三协议;V4 配方在册;V5 绑线/成员/插件;V6 受保护演示线零扰动(6 锚点全落新线) |
+| 5 接入验收 | verify-line.mjs | **15/15**:V1 三路数采落库;V2 三节点越界拒(含 MES 路径 284>260 被节点量程层拦截);V3 合法写回环三协议;V4 配方在册;V5 绑线/成员/插件;V6 受保护演示线 journal 无新增锚点(6 锚点全落新线；不证明物理零扰动) |
 
 **协议差异在驱动层收敛的实证**(印证用户模型):五个节点在 Agent 侧全是同一套 recipe 参数;保压 SP 走 OPC UA NodeId、机筒温度走 modbus 保持寄存器 40023、MES 热流道走 `POST /api/v1/params/multi/set {tem}` + `/multi/current` 回读——`executeWrite → resolveDcwDriver(node.driver).write()` 多态分发,Agent 只传参数值。
 

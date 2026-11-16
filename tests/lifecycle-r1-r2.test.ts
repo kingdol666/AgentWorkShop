@@ -63,6 +63,39 @@ test('R-1: stop waits for the consume loop before disposing the harness', async 
   assert.equal(disposed, true, 'stop 返回前必须完成 harness dispose')
 })
 
+test('runtime stop waits for runtime-owned steer settlement before dispose', async () => {
+  let settleSteer!: () => void
+  const steer = new Promise<void>((resolve) => {
+    settleSteer = resolve
+  })
+  let disposed = false
+  let mailboxClosed = false
+  const rt = makeMinimalRuntime({
+    async dispose() {
+      disposed = true
+    },
+  }) as unknown as AgentRuntimeLifecycle & Record<string, unknown>
+  rt.steerPromises = new Set([steer])
+  rt.execLock = Promise.resolve()
+  rt.abortController = new AbortController()
+  rt.superviseController = new AbortController()
+  rt.deps = {
+    mailbox: { close: () => { mailboxClosed = true } },
+    bus: { notifyAgent: () => {} },
+  } as never
+  const superviseController = rt.superviseController as AbortController
+  const stopping = rt.stop()
+  assert.equal(rt.getState(), 'stopped')
+  assert.equal(rt.abortController.signal.aborted, true)
+  assert.equal(superviseController.signal.aborted, true)
+  assert.equal(mailboxClosed, true)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(disposed, false, 'pending steer must settle before runtime disposal')
+  settleSteer()
+  await stopping
+  assert.equal(disposed, true)
+})
+
 test('R-1: stop waits for slow dispose so DB cannot close early', async () => {
   let disposeStarted = 0
   let disposeFinished = 0

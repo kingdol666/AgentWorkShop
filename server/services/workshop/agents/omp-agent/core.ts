@@ -7,6 +7,7 @@
 import { BaseAgentImpl } from '../base-agent'
 import type { AgentEvent, AgentInfo, AgentRunContext } from '../agent-interface'
 import type { AgentSessionEvent, OmpRpcClient } from '../adapters/omp-rpc-client'
+import type { ExecutionScope } from '../execution-scope'
 import type { BaseAgentConfigView } from '../base-agent'
 import type { OmpAgentConfig } from './types'
 import { createRosterCache } from '../prompt-builder'
@@ -94,6 +95,8 @@ export abstract class OmpRpcAgentImplCore extends BaseAgentImpl {
   protected client: OmpRpcClient | null = null
   protected agentInfo: AgentInfo | null = null
   protected hostToolsRegistered = false
+  protected hostToolAliases: { client: OmpRpcClient, scope: ExecutionScope, nonce: string, revision: number, byAlias: Map<string, string>, byName: Map<string, string> } | null = null
+  protected hostToolRegistration: Promise<void> = Promise.resolve()
   /**
    * 会话回合状态(steer 可靠注入的依据):
    * omp 的 steer 仅在回合 streaming 中生效——prompt 已入列但尚未开始输出时,

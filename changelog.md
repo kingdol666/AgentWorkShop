@@ -1,12 +1,21 @@
+## Current unmerged source / 当前未合并源码 — compatibility boundaries（unreleased, under review / 未发布、待审查）
+
+- The agent-token bridge lacks trusted turn provenance: hazardous and authorization/dispatch tools are filtered and denied; plugin tools must explicitly declare `riskClass: 'read'` to pass that layer, with other governance checks still applicable. agent-token 回程桥缺少可信回合来源，危险和授权/派发工具被过滤并拒绝；插件须显式声明只读风险类别才能通过该层。
+- `dispatch_task` rejects combined `grant_node_ids` / `grantNodeIds`. Where needed, explicitly grant with `team_grant_nodes` before dispatch; these are not atomic and a failed dispatch does not undo the grant. `manual` is the delegation default; `auto` requires `confirm: true`. 派发不再随任务授权，应先单独授权再派发；失败后检查并按需撤销授权。
+- Aborted native omp work or supervision turns retire their process. Late-frame provenance after normal completion remains unresolved; no new physical HIL or security-pass claim. 原生 omp 工作或监督回合中止时退役进程；正常完成后的迟到帧来源问题仍未解决，不作新增物理 HIL 或安全通过声明。
+- Legacy active tasks without an execution lease enter `LEGACY_EXECUTION_RECOVERY_REQUIRED` hold without automatic replay. Preserve evidence, inspect actual devices and escalate; do not merely clear the marker. No supported audited release procedure exists, so affected upgrades are not production-ready until disposition is implemented and verified. 旧版无执行租约的活动任务挂起、不自动重放；保全证据、核查设备并升级处置，不得仅清除标记，目前无受支持的可审计释放流程。
+- Saved Channel scenario prompts, member configurations and custom prompts are not automatically rewritten. Review and manually migrate obsolete combined-grant instructions while preserving customization. 存量场景提示词、成员配置及自定义 prompt 不会自动改写，请检查并手动迁移旧指令。
+- The DCW automatic-hold interlock and recovery restrictions are under review, not part of released 0.11.3. Onboarding provisioning and V2/V3 writes are blocked pending trusted simulator ownership attestation; do not run onboarding verification until isolation and absence of unintended side effects are established. DCW 自动保写锁和恢复限制仍待审查，不属于已发布的 0.11.3；供给和 V2/V3 写入因缺少可信模拟器归属证明而被阻断，隔离和无意外副作用尚未得到证明前不要运行接入验证。
+
 ## v0.11.3 — runtime/security hardening, packaged release（2026-11-16）
 
 - Channel config recycle no longer cancels an in-flight root task: supervise marks the lead busy, recycle defers on active work, and the scheduler aborts with an explicit runtime-stop reason.
-- Late message completion can no longer consume a requeued message (`markConsumed` is guarded by `state='consuming'`).
+- `markConsumed` uses a state-only `state='consuming'` guard: it cannot consume while the message is pending or dead, but a stale completion can still consume it after a new claim returns it to `consuming`. This is not per-attempt ownership CAS. `markConsumed` 仅按状态守卫；消息重新认领为 `consuming` 后旧回合仍可能将其消费，并非按执行次数隔离的 CAS.
 - DAQ/DCW/MES test-driver routes close the legacy-unset SSRF hole; rag-bridge `web_url` uses the same localhost allowlist as `base_url`.
 - `idd-closedloop-bridge` reports `routesReady=false` instead of a false ok when the current IDD has retired the closed-loop HTTP routes.
 - `npm pack` excludes local Mimosa/Nuxt state, logs and pid files.
 - Verification: lint, typecheck, unit 1790/1790, build, docs 101/101, README, Skills 176/176, MCP 14/14, plugin lifecycle 22/22, SDK, twin 5/5; simulated five-protocol line + IDD optimizer skill + RAG + omp/`deepseek-flash` Channel V1–V6 25/25, HITL 62.5→64 MPa readback 64, retest 32.416 g.
-- Boundaries: simulator evidence only, not physical HIL; RAG internal `kb_agent` timed out; Mimosa remains inconclusive and is not a security-pass claim.
+- Boundaries: simulator evidence only, not physical HIL; V6 records no new protected-line journal anchor, not physical zero disturbance. RAG internal `kb_agent` timed out; Mimosa remains inconclusive and is not a security-pass claim.
 
 ## Next — PR-9 RSI Beta management surface (2026-11-14)
 

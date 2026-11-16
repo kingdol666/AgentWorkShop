@@ -12,12 +12,15 @@ import { TERMINAL_TASK_STATES } from '../../types/task'
 import { deriveProgressMap } from './derived-progress'
 import type { ExecutionFence } from './lease'
 import { fenceMatches } from './lease'
+import { assertNotLegacyRecoveryHeld, isLegacyRecoveryHeld } from './legacy-recovery'
 
 export abstract class TaskEngineTransition extends TaskEngineCreate {
   /** 状态机校验迁移;非法迁移抛 AppError('INVALID_TRANSITION', 400);成功后广播任务事件 */
   transition(taskId: string, state: TaskState, by: string): WorkspaceTask {
     const row = this.repos.tasks.findById(taskId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
+    assertNotLegacyRecoveryHeld(row)
+    if (state === 'WORKING' || state === 'ASSIGNED') this.assertLegacyRecoveryAdmission(taskId)
     const current = row.state as TaskState
     // D3 幂等迁移：重复派发/重复汇总会再次请求 WORKING → WORKING（TRANSITIONS 不含自迁移）。
     // 作为 no-op 返回当前任务：不广播、不刷新租约；终态自迁移（如重复 COMPLETED）
@@ -62,6 +65,7 @@ export abstract class TaskEngineTransition extends TaskEngineCreate {
   /** 应用 Agent 事件:artifact(分块 append/进度折算)、status(追加 history)、error(FAILED)、done(无) */
   applyEvent(taskId: string, event: AgentEvent, fence?: ExecutionFence): void {
     const task = this.requireTask(taskId)
+    if (isLegacyRecoveryHeld(task) || this.isLegacyRecoveryBlocked(taskId)) return
     // §5.1 执行代次栅栏:携带 generation/lease 的事件必须与任务当前 assignment 一致,
     // 否则是「旧 worker 的迟到事件」——在运行中 reassign 之后绝不允许它写入新执行的结果。
     if (!fenceMatches(task, fence)) {

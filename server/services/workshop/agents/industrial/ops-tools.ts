@@ -24,6 +24,7 @@ import { assertRecipeCreate, assertRecipeOperation, recipeApprovalPayload, type 
 import { RECOVERY_RETRY_HINT, RECOVERY_TRACE_HINT, RECOVERY_VERIFY_HINT } from './fallback-hints'
 import { approvalOnlyTrialReceipt, sameApprovalOnlyTrialReceipt, type ApprovalOnlyTrialReceipt } from './bench-approval-only'
 import { currentToolInvocation } from '../governance-harness-audit'
+import { currentExecutionScope } from '../execution-scope'
 import { executionModeOfAgent } from '../execution-mode'
 import { getAmlRuntime } from '../../aml/runtime'
 import { markRecipeProposalsAccepted } from '../../db/improvement.repo'
@@ -682,6 +683,7 @@ export async function toolRecipeCreate(agentId: string, args: {
     if (!again.ok) return { text: `人工已批准,但审批期间授权已失效,本次未创建:${again.text}`, isError: true }
   }
   try {
+    currentExecutionScope()?.assertActive()
     const created = getDcwController().createRecipe({
       name,
       productId,
@@ -908,6 +910,7 @@ export async function toolRecipeUpdate(agentId: string, args: {
   const extra = list.filter(p => !recipe.params.some(x => x.nodeId === String(p.node_id).trim()))
   for (const p of extra) merged.push({ nodeId: String(p.node_id).trim(), value: Number(p.value) })
   try {
+    currentExecutionScope()?.assertActive()
     const updated = getDcwController().updateRecipe(recipeId, { params: merged }, {
       by: 'agent',
       actorName: agentBadgeLabel(agentId),
@@ -993,6 +996,7 @@ export async function toolRecipeRollback(agentId: string, args: {
     if (latestSessionRecipe) return latestSessionRecipe
   }
   try {
+    currentExecutionScope()?.assertActive()
     const finalSessionRecipe = sessionRecipeError(sessionScope, getDcwRecipeRepo().byId(recipeId) ?? recipe)
     if (finalSessionRecipe) return finalSessionRecipe
     if (dispatch) {
@@ -1009,8 +1013,15 @@ export async function toolRecipeRollback(agentId: string, args: {
         description: reason,
         agentDispatch: true,
         agentApprovalId: gateApprovalId,
+        executionScope: currentExecutionScope(),
         emergency,
       })
+      try {
+        currentExecutionScope()?.assertActive()
+      }
+      catch {
+        return { text: `回退定义已处理,批次 ${run.id} 执行后租约失效,设备可能已变化,请核实配方和设备状态。${run.results.map(r => `${r.nodeId ?? r.templateRef}:${r.message}`).join(';')}`, isError: true }
+      }
       const okN = run.results.filter(r => r.ok).length
       const acks = run.ackSummary ?? { verified: okN, unverified: 0, failed: run.results.length - okN, total: run.results.length }
       const defNote = definitionNoop
@@ -1018,7 +1029,7 @@ export async function toolRecipeRollback(agentId: string, args: {
         : `已生成 v${updated.version ?? 1}`
       // 整批重下发全部失败(典型:节点写入保持窗/节流未放行)→ 响亮失败:定义已回退但产线仍运行
       // 旧参数,Agent 必须知道并稍后重发(再调本工具会再生成一个回退版本,或按 RECOVERY_RETRY_HINT 整批重试)。
-      if (run.results.length > 0 && okN === 0) {
+      if (run.results.length > 0 && okN === 0 && acks.unverified === 0) {
         return {
           text: `回退部分失败:配方「${updated.name}」${defNote},但整批重下发 0/${run.results.length} 参数成功(节点写入保持窗/节流未放行)。产线仍在运行旧参数 —— ${RECOVERY_RETRY_HINT}(回退目标 v${updated.version ?? 1});原因:${reason}。`,
           isError: true,
@@ -1102,6 +1113,7 @@ async function hitlDispatchGate(agentId: string, recipeId: string, detail: strin
     title,
     ...(opts?.payload !== undefined ? { payload: opts.payload } : {}),
     ...(timeoutMs ? { timeoutMs } : {}),
+    ...(currentExecutionScope() ? { executionScope: currentExecutionScope() } : {}),
   })
   return { approved: decision.approved, comment: decision.comment, id: decision.id }
 }
@@ -1198,7 +1210,7 @@ export async function revalidateApprovedAction(
   // Grant lookup is asynchronous. Re-read the active tuple after that await so
   // queued line/run changes cannot pass between the initial comparison and the
   // caller's dispatch continuation.
-  const changedAfterGrantCheck = approvedContextError(agentId, recipe, op, expectedContext, targetNodeIds, approvalBypassed)
+  const changedAfterGrantCheck = approvedContextError(agentId, recipe, op, expectedContext, targetNodeIds, approvalBypassed, expectedDefinition)
   if (changedAfterGrantCheck) return changedAfterGrantCheck
   return null
 }
@@ -1384,6 +1396,7 @@ export async function toolRecipeTrial(agentId: string, args: {
     const invocation = currentToolInvocation()
     const run = await getDcwController().applyRecipe(recipeId, {
       overrides: list, trial: true, agentDispatch: true, agentApprovalId: gateApprovalId, emergency,
+      ...(currentExecutionScope() ? { executionScope: currentExecutionScope() } : {}),
       agentTrialMeta: {
         actor: agentId, actorName: agentBadgeLabel(agentId), hypothesis,
         channelId: invocation?.channelId || channelIdOfAgent(agentId),
@@ -1405,6 +1418,12 @@ export async function toolRecipeTrial(agentId: string, args: {
       })
     }
     catch { /* 审计失败不影响试验结果 */ }
+    try {
+      currentExecutionScope()?.assertActive()
+    }
+    catch {
+      return { text: `试验批次 ${run.id} 执行后租约失效,设备可能已变化,请核实批次结果与设备状态。${run.results.map(r => `${r.nodeId ?? r.templateRef}:${r.message}`).join(';')}`, isError: true, ...(approvalBypassed ? { approval_bypassed: true as const } : {}) }
+    }
     const ackTagOf = (r: typeof run.results[number]): string => {
       if (!r.ok) return ''
       return r.verify?.verdict === 'verified' || r.ack === 'readback-verified' ? ' [证实✓]' : ' [未证实⚠]'
@@ -1412,7 +1431,7 @@ export async function toolRecipeTrial(agentId: string, args: {
     const changed = run.results.map((r) => {
       const node = r.nodeId ? getDcwController().byId(r.nodeId) : undefined
       const reason = r.ok ? '' : `(${String(r.message).slice(0, 60)})`
-      return `${node?.name ?? r.templateRef}→${r.value}${node?.unit ?? ''}${ackTagOf(r)}${r.ok ? '' : ` 被拒${reason}`}`
+      return `${node?.name ?? r.templateRef}→${r.value}${node?.unit ?? ''}${ackTagOf(r)}${r.ok ? '' : r.verify?.verdict === 'unverified' ? ` 状态不确定${reason}` : ` 被拒${reason}`}`
     }).join(';')
     // 未证实/失败一律 isError(ACK 鉴定铁律:不许把"仅链路受理"报成试验成功)
     if (acks.failed > 0 || acks.unverified > 0) {
@@ -1520,6 +1539,7 @@ export async function toolRecipeApply(agentId: string, args: {
       agentDispatch: true,
       agentApprovalId: gateApprovalId,
       emergency,
+      ...(currentExecutionScope() ? { executionScope: currentExecutionScope() } : {}),
       agentTrialMeta: {
         actor: agentId,
         actorName: agentBadgeLabel(agentId),
@@ -1532,19 +1552,19 @@ export async function toolRecipeApply(agentId: string, args: {
     const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
     // 逐参数标注:被跳过/失败的参数(节点停用/已删除/限界拒绝)必须透出给 Agent,
     // 否则回包只见 N/N 成功数,无法定位哪些参数未生效(与 recipe_trial 的逐参数渲染同口径)。
-    const skipped = run.results.filter(r => !r.ok)
+    const skipped = run.results.filter(r => !r.ok && r.verify?.verdict !== 'unverified')
       .map((r) => {
         const node = r.nodeId ? getDcwController().byId(r.nodeId) : undefined
         return `${node?.name ?? r.templateRef ?? r.nodeId ?? '?'}: ${String(r.message).slice(0, 80)}`
       })
     // 未证实参数(ok 但仅链路受理)单独点名 —— 这正是"参数真实正确下发"要堵的盲区
-    const unverified = run.results.filter(r => r.ok && r.verify?.verdict !== 'verified' && r.ack !== 'readback-verified')
+    const unverified = run.results.filter(r => r.verify?.verdict === 'unverified' || (r.ok && r.verify?.verdict !== 'verified' && r.ack !== 'readback-verified'))
       .map((r) => {
         const node = r.nodeId ? getDcwController().byId(r.nodeId) : undefined
         return `${node?.name ?? r.templateRef ?? r.nodeId ?? '?'}: ${String(r.message).slice(0, 100)}`
       })
     const skippedNote = skipped.length > 0 ? `\n未生效参数(${skipped.length}):\n  - ${skipped.join('\n  - ')}` : ''
-    const unverifiedNote = unverified.length > 0 ? `\n未证实参数(${unverified.length};命令已受理但设备侧未确认):\n  - ${unverified.join('\n  - ')}` : ''
+    const unverifiedNote = unverified.length > 0 ? `\n未证实参数(${unverified.length};可能已下发,设备状态须核实):\n  - ${unverified.join('\n  - ')}` : ''
     try {
       const { recordOps } = await import('../../ops/ops')
       recordOps({
@@ -1556,6 +1576,12 @@ export async function toolRecipeApply(agentId: string, args: {
       })
     }
     catch { /* 审计失败不影响下发结果 */ }
+    try {
+      currentExecutionScope()?.assertActive()
+    }
+    catch {
+      return { text: `配方批次 ${run.id} 执行后租约失效,设备可能已变化,请核实批次结果与设备状态。${run.results.map(r => `${r.nodeId ?? r.templateRef}:${r.message}`).join(';')}`, isError: true }
+    }
     if (acks.failed > 0 || acks.unverified > 0) {
       return {
         text: [

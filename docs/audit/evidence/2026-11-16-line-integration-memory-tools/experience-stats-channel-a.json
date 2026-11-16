@@ -1,0 +1,25 @@
+{
+  "lineId": "ln-0eb8f9fa",
+  "total": 1,
+  "byStatus": {
+    "candidate": 1
+  },
+  "byScope": {
+    "line": 1
+  },
+  "byOutcome": {
+    "negative": 1
+  },
+  "recent": [
+    {
+      "id": "6fc413f7-563c-4c87-a9c2-1dd1ed11140c",
+      "title": "未完成：克重闭环首轮巡检",
+      "outcome": "negative",
+      "status": "candidate",
+      "scopeKind": "line",
+      "scopeKey": "ln-0eb8f9fa",
+      "taskId": "f0b24783-e168-4403-91d5-ad95fe3a6801",
+      "createdAt": "2026-11-15T22:56:43.509+08:00"
+    }
+  ]
+}

@@ -51,7 +51,7 @@ POST /api/workshop/dcw/recipes/:id/revert
       无进步/劣化 → recipe_rollback { dispatch: true } 统一回退(定义回退 + PLC 整批恢复)
 ```
 
-- 优化闭环内禁用 `dcw_control`/`param_control` 逐参数直调(防单参数震荡;AML 探索模式的小步激励除外);
+- Agent 的 `dcw_control`/`param_control` 直调均被禁用并拒绝，不仅限于优化闭环；经门控的内部探索写入不是直调例外;
 - trial 不受 60s/单步卡控(配方路径设计),防震荡由「整批 + 节拍 + 判读门控」承担;
 - trial/apply/回退全程审计入册(`recipe.trial` / `recipe.apply` / `dcw.write.rejected`),版本史可追溯;
 - 开启 `security.recipeDispatchApproval` 后,trial/apply 的整批下发先经**人工裁决门**
@@ -73,7 +73,7 @@ Agent: line_context(确认归属与当前值)
   → recipe_trial(多参数候选整批试验,不写版本)→ daq_query 复测
   → 有进步:recipe_update 固化为 vN(同 id)→ recipe_apply 正式下发
   → 劣化:recipe_rollback(dispatch=true)统一回退(定义回退 + PLC 整批恢复)
-单节点应急微调(配方链路之外):dcw_control → dcw_judge → dcw_rollback
+需要恢复时通过受授权的配方回退路径处理，并核对设备实际状态
 ```
 
 **取证据默认只取当前批次**:`daq_query` 会自动解析节点所属产线的活动批次,按该批次的

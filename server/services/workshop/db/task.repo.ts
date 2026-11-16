@@ -5,6 +5,7 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import type { TaskRow } from './database'
+import { projectHasLegacyRecoveryHold } from '../projects/legacy-recovery'
 
 const COLS
   = 'id, channel_id AS channelId, parent_id AS parentId, root_queue_seq AS rootQueueSeq, assignee_id AS assigneeId, creator_id AS creatorId, title, description, state, progress, retry_count AS retryCount, artifacts_json AS artifactsJson, history_json AS historyJson, route_reason AS routeReason, source_chat_message_id AS sourceChatMessageId, source_chat_delivery_id AS sourceChatDeliveryId, close_reason AS closeReason, deadline_at AS deadlineAt, source, project_id AS projectId, project_work_item_id AS projectWorkItemId, project_attempt_no AS projectAttemptNo, session_id AS sessionId, trace_id AS traceId, superseded_by_task_id AS supersededByTaskId, assignment_generation AS assignmentGeneration, execution_lease_id AS executionLeaseId, execution_lease_agent_id AS executionLeaseAgentId, execution_lease_started_at AS executionLeaseStartedAt, execution_lease_revoked_at AS executionLeaseRevokedAt, created_at AS createdAt, updated_at AS updatedAt'
@@ -114,6 +115,55 @@ export function createTaskRepo(db: DatabaseSync) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectById = db.prepare(`SELECT ${COLS} FROM tasks WHERE id = ?`)
+  const recoveryProjectIds = db.prepare(`WITH RECURSIVE related(id, channel_id, parent_id, project_id, project_work_item_id, source_chat_message_id) AS (
+    SELECT id, channel_id, parent_id, project_id, project_work_item_id, source_chat_message_id FROM tasks WHERE id = ?
+    UNION SELECT t.id, t.channel_id, t.parent_id, t.project_id, t.project_work_item_id, t.source_chat_message_id
+      FROM tasks t JOIN related r ON t.channel_id = r.channel_id AND (t.parent_id = r.id OR t.id = r.parent_id)
+  ) SELECT project_id AS projectId FROM related WHERE project_id IS NOT NULL
+    UNION SELECT w.project_id FROM project_work_items w JOIN related r ON w.id = r.project_work_item_id
+    UNION SELECT a.project_id FROM project_work_item_attempts a JOIN related r
+      ON a.channel_task_id = r.id OR a.source_key = r.source_chat_message_id`)
+  // ── legacy 恢复保留的审计处置(同一连接树:上溯父/下溯子,同 channel)──
+  const holdRowsStmt = db.prepare(`SELECT ${COLS} FROM tasks WHERE instr(COALESCE(close_reason, ''), ?) > 0 ORDER BY channel_id ASC, created_at ASC`)
+  const recoveryTreeStmt = db.prepare(`WITH RECURSIVE tree(id, channel_id, parent_id, close_reason) AS (
+    SELECT id, channel_id, parent_id, close_reason FROM tasks WHERE id = ?
+    UNION SELECT t.id, t.channel_id, t.parent_id, t.close_reason
+      FROM tasks t JOIN tree h ON t.channel_id = h.channel_id AND (t.parent_id = h.id OR t.id = h.parent_id)
+  ) SELECT id AS id, close_reason AS closeReason FROM tree`)
+  const holdClearStmt = db.prepare(`WITH RECURSIVE tree(id, channel_id, parent_id) AS (
+    SELECT id, channel_id, parent_id FROM tasks WHERE id = ?
+    UNION SELECT t.id, t.channel_id, t.parent_id
+      FROM tasks t JOIN tree h ON t.channel_id = h.channel_id AND (t.parent_id = h.id OR t.id = h.parent_id)
+  ) UPDATE tasks SET close_reason = CASE
+    WHEN TRIM(REPLACE(COALESCE(close_reason, ''), ?, '')) = '' THEN NULL
+    ELSE TRIM(REPLACE(COALESCE(close_reason, ''), ?, '')) END
+    WHERE id IN (SELECT id FROM tree) AND instr(COALESCE(close_reason, ''), ?) > 0`)
+  const holdMsgCountsStmt = db.prepare(`WITH RECURSIVE tree(id, channel_id, parent_id) AS (
+    SELECT id, channel_id, parent_id FROM tasks WHERE id = ?
+    UNION SELECT t.id, t.channel_id, t.parent_id FROM tasks t JOIN tree h
+      ON t.channel_id = h.channel_id AND (t.parent_id = h.id OR t.id = h.parent_id)
+  ) SELECT
+      SUM(CASE WHEN m.state = 'pending' THEN 1 ELSE 0 END) AS pending,
+      SUM(CASE WHEN m.state = 'consuming' THEN 1 ELSE 0 END) AS consuming,
+      SUM(CASE WHEN m.state = 'dead' THEN 1 ELSE 0 END) AS dead
+    FROM messages m
+    WHERE m.state IN ('pending', 'consuming', 'dead')
+      AND (m.task_id IN (SELECT id FROM tree)
+        OR CASE WHEN json_valid(m.metadata_json) THEN
+          json_extract(m.metadata_json, '$."x-aw-task-id"') IN (SELECT id FROM tree)
+          OR json_extract(m.metadata_json, '$."x-aw-child-task-id"') IN (SELECT id FROM tree)
+        ELSE 0 END)`)
+  const holdRequeueStmt = db.prepare(`WITH RECURSIVE tree(id, channel_id, parent_id) AS (
+    SELECT id, channel_id, parent_id FROM tasks WHERE id = ?
+    UNION SELECT t.id, t.channel_id, t.parent_id FROM tasks t JOIN tree h
+      ON t.channel_id = h.channel_id AND (t.parent_id = h.id OR t.id = h.parent_id)
+  ) UPDATE messages SET state = CASE WHEN attempts < 3 THEN 'pending' ELSE 'dead' END, claim_token = NULL
+    WHERE state = 'consuming'
+      AND (task_id IN (SELECT id FROM tree)
+        OR CASE WHEN json_valid(metadata_json) THEN
+          json_extract(metadata_json, '$."x-aw-task-id"') IN (SELECT id FROM tree)
+          OR json_extract(metadata_json, '$."x-aw-child-task-id"') IN (SELECT id FROM tree)
+        ELSE 0 END)`)
   const selectByChannel = db.prepare(`SELECT ${COLS} FROM tasks WHERE channel_id = ? ORDER BY COALESCE(root_queue_seq, 2147483647) ASC, created_at ASC, rowid ASC`)
   const selectRoots = db.prepare(`SELECT ${COLS} FROM tasks WHERE channel_id = ? AND parent_id IS NULL AND root_queue_seq IS NOT NULL ORDER BY COALESCE(root_queue_seq, 2147483647) ASC, created_at ASC, rowid ASC`)
   const selectRootBySource = db.prepare(`SELECT ${COLS} FROM tasks WHERE channel_id = ? AND parent_id IS NULL AND source_chat_message_id = ? LIMIT 1`)
@@ -248,6 +298,12 @@ export function createTaskRepo(db: DatabaseSync) {
     findById(id: string): TaskRow | undefined {
       return selectById.get(id) as unknown as TaskRow | undefined
     },
+    recoveryProjectIds(id: string): string[] {
+      return (recoveryProjectIds.all(id) as Array<{ projectId: string }>).map(row => row.projectId)
+    },
+    projectRecoveryBlocked(id: string): boolean {
+      return this.recoveryProjectIds(id).some(projectId => projectHasLegacyRecoveryHold(db, projectId))
+    },
     findRootBySource(channelId: string, sourceChatMessageId: string): TaskRow | undefined {
       return selectRootBySource.get(channelId, sourceChatMessageId) as unknown as TaskRow | undefined
     },
@@ -272,6 +328,51 @@ export function createTaskRepo(db: DatabaseSync) {
     },
     listByChannelMeta(channelId: string): TaskMetaRow[] {
       return selectByChannelMeta.all(channelId) as unknown as TaskMetaRow[]
+    },
+
+    /** 当前处于 legacy 恢复保留的任务行(marker 由 runtime 层常量传入,db 层不反向依赖)。 */
+    listRecoveryHolds(marker: string): TaskRow[] {
+      return holdRowsStmt.all(marker) as unknown as TaskRow[]
+    },
+
+    /** 保留树的成员(上溯父/下溯子,同 channel)及其 hold 状态。 */
+    recoveryTreeOf(taskId: string): Array<{ id: string, closeReason: string | null }> {
+      return recoveryTreeStmt.all(taskId) as unknown as Array<{ id: string, closeReason: string | null }>
+    },
+
+    /** 树内消息分状态计数(pending/consuming/dead;含元数据引用联动)。 */
+    recoveryHoldMessageCounts(taskId: string): { pending: number, consuming: number, dead: number } {
+      const row = holdMsgCountsStmt.get(taskId) as { pending: number | null, consuming: number | null, dead: number | null }
+      return { pending: row.pending ?? 0, consuming: row.consuming ?? 0, dead: row.dead ?? 0 }
+    },
+
+    /**
+     * 处置:清除本连接树上全部 hold 标记(保留其余 close_reason 内容),并把树内
+     * 在飞 consuming 消息按重投预算复位(pending/dead)。任务状态不改动 —— 重新
+     * 执行必须走显式 retry/reopen,绝不自动重放。任务不在保留中返回 null。
+     */
+    disposeLegacyRecoveryHold(taskId: string, marker: string): { released: string[], requeued: number, unblockedPending: number } | null {
+      const task = selectById.get(taskId) as unknown as TaskRow | undefined
+      if (!task) return null
+      const tree = recoveryTreeStmt.all(taskId) as unknown as Array<{ id: string, closeReason: string | null }>
+      if (!tree.some(row => (row.closeReason ?? '').includes(marker))) return null
+      const before = this.recoveryHoldMessageCounts(taskId)
+      db.exec('SAVEPOINT legacy_hold_disposition')
+      try {
+        holdClearStmt.run(taskId, marker, marker, marker)
+        holdRequeueStmt.run(taskId)
+        db.exec('RELEASE legacy_hold_disposition')
+      }
+      catch (error) {
+        db.exec('ROLLBACK TO legacy_hold_disposition; RELEASE legacy_hold_disposition')
+        throw error
+      }
+      const after = this.recoveryHoldMessageCounts(taskId)
+      return {
+        released: tree.filter(row => (row.closeReason ?? '').includes(marker)).map(row => row.id),
+        requeued: Math.max(0, before.consuming - after.consuming),
+        unblockedPending: before.pending,
+      }
     },
     listByChannelAssigneeMeta(channelId: string, assigneeId: string): TaskMetaRow[] {
       return selectByChannelAssigneeMeta.all(channelId, assigneeId) as unknown as TaskMetaRow[]

@@ -11,6 +11,8 @@ import { getDcwLineRepo } from '../dcw-line.repo'
 import { getDcwProductRepo } from '../dcw-product.repo'
 import { getDcwRecipeRepo } from '../dcw-recipe.repo'
 import { getRecipeRollBackManager } from '../recipe-rollback-manager'
+import type { ExecutionScope } from '../../agents/execution-scope'
+import { summarizeAck } from './write-verify'
 
 export abstract class DcwControllerLines extends DcwControllerRecipes {
   listLines(): LineView[] {
@@ -75,7 +77,8 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
    * 产线开跑:选定产品+配方 → 下发配方参数 → 创建批次并激活**该产线**窗口。
    * 门控:配方必归属本产线的产品且含工艺参数 —— 未设定配方不可开跑数据采集。
    */
-  async lineStart(lineId: string, recipeId: string, writeMeta?: DcwWriteMeta) {
+  async lineStart(lineId: string, recipeId: string, writeMeta?: DcwWriteMeta, executionScope?: ExecutionScope) {
+    executionScope?.assertActive()
     this.ensureLoop()
     if (!this.running) {
       throw new AppError(409, ErrorCodes.CONFLICT, '控制网关已暂停(暂停全部控制):开跑需下发配方参数,请先「恢复全部控制」')
@@ -117,9 +120,17 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
     // 配方版本/工况谱系:开跑即开段(C8);落段失败不阻断开跑主链
     try {
       const { openContextSegment } = await import('../../process-model/context')
+      executionScope?.assertActive()
       openContextSegment(run)
     }
     catch { /* 谱系不可用只降级 */ }
+    try {
+      executionScope?.assertActive()
+    }
+    catch (err) {
+      repo.closeRun(run.id)
+      throw err
+    }
     setActiveLineRun({
       lineId,
       runId: run.id,
@@ -131,7 +142,28 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
       startedAt: run.startedAt,
       taggedSamples: 0,
     })
-    await this.writeRecipeParams(recipe, run, { requireActiveRun: true, ...(writeMeta ? { writeMeta } : {}) })
+    await this.writeRecipeParams(recipe, run, { requireActiveRun: true, ...(writeMeta ? { writeMeta } : {}), executionScope })
+    try {
+      executionScope?.assertActive()
+    }
+    catch {
+      const last = run.results[run.results.length - 1]
+      if (last?.ok) {
+        last.ok = false
+        last.ack = 'unverified'
+        last.verify = { verdict: 'unverified', attempts: 0 }
+        last.message = `${last.message};执行租约失效,批次完成状态不确定,须核实设备`
+        run.ackSummary = summarizeAck(run.results)
+        repo.updateRun(run)
+      }
+      if (getActiveLineRun(lineId)?.runId === run.id) {
+        // Do not stop a replacement run created while the driver was in flight.
+        this.lineStop(lineId)
+      }
+      else if (!run.endedAt) {
+        repo.closeRun(run.id)
+      }
+    }
     this.broadcast?.('dcw.controller', this.controllerState())
     return run
   }

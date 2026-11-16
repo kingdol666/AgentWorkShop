@@ -10,6 +10,7 @@ import { rowToTask } from './helpers'
 import { assertDispatchAllowed, rootLineage } from './policy'
 import { issueLeaseFields } from './lease'
 import { rootQueueEnabled } from '../../settings'
+import { assertNotLegacyRecoveryHeld } from './legacy-recovery'
 
 export abstract class TaskEngineCreate extends TaskEngineUpdate {
   /** 创建任务(落库);若 parentId 存在且父任务 WORKING 则父转 WAITING */
@@ -34,6 +35,13 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
     sessionId?: string | null
     traceId?: string
   }): WorkspaceTask {
+    if (input.parentId) {
+      assertNotLegacyRecoveryHeld(this.requireTask(input.parentId))
+      this.assertLegacyRecoveryAdmission(input.parentId)
+    }
+    else if (this.hasLegacyRecoveryHold(input.channelId)) {
+      throw new AppError(409, 'LEGACY_EXECUTION_RECOVERY_REQUIRED', `Channel ${input.channelId} requires operator investigation before creating a root task`)
+    }
     const row = this.repos.tasks.create({
       channelId: input.channelId,
       parentId: input.parentId ?? null,
@@ -88,6 +96,9 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
     sessionId?: string | null
     traceId?: string
   }): { task: WorkspaceTask, created: boolean } {
+    if (this.hasLegacyRecoveryHold(input.channelId)) {
+      throw new AppError(409, 'LEGACY_EXECUTION_RECOVERY_REQUIRED', `Channel ${input.channelId} requires operator investigation before creating a root task`)
+    }
     const result = this.repos.tasks.createOrGetRoot({
       channelId: input.channelId,
       creatorId: input.creatorId,
@@ -118,6 +129,11 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
     parent: WorkspaceTask,
     input: { assigneeId: string, title: string, description?: string, parts?: Part[], routeReason?: string },
   ): WorkspaceTask {
+    // TaskEngine is the common dispatch boundary for recovery holds.
+    assertNotLegacyRecoveryHeld(this.requireTask(parent.id))
+    if (this.isLegacyRecoveryBlocked(parent.id)) {
+      throw new AppError(409, 'LEGACY_EXECUTION_RECOVERY_REQUIRED', `Task ${parent.id} is blocked by an earlier recovery hold`)
+    }
     // TaskEngine 是所有派发入口的最终预算闸门；Manager/host tool 的提示不能替代它。
     assertDispatchAllowed(this.repos.tasks, parent)
     // 2026-10-30 修复(引擎直调路径的状态前置):manager.dispatchTask 有「终态先拒 +

@@ -232,7 +232,7 @@ ctx.omp.registerTool({
 ```
 
 注册表变更即时热注入全部在跑 omp agent 会话(重发 `set_host_tools`,不重 spawn);
-与内置 host tool 同名会被忽略(内置优先)。
+与内置 host tool 同名会被忽略(内置优先)。未发布、未合并且待审查的源码中，agent-token MCP 桥仅列出并允许显式声明 `riskClass: 'read'` 的插件工具；缺省、`write` 和 `admin` 会被拒绝，因为 token 不提供可信回合来源。只对真正只读的工具使用 `read`，其他角色、频道与治理检查仍生效。
 
 ## 事件订阅的常见错误
 

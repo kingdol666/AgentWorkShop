@@ -32,12 +32,22 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
   protected pollWaiters = 0
   /** run 与 supervise 互斥锁(promise 链) */
   protected execLock: Promise<void> = Promise.resolve()
-  protected abortController: AbortController | null = null
+  private activeAbortController: AbortController | null = null
+  protected turnGeneration = 0
+  protected get abortController(): AbortController | null { return this.activeAbortController }
+
+  protected set abortController(controller: AbortController | null) {
+    if (controller) this.turnGeneration += 1
+    this.activeAbortController = controller
+  }
+
   protected loopPromise: Promise<void> | null = null
   /** stop() 的单次收尾 promise；manager shutdown 必须等它完成后才可关闭 DB。 */
   protected stopPromise: Promise<void> | null = null
   /** 回合收尾后的异步 harness 清理，必须纳入 stop 的等待屏障。 */
   protected postSettlePromise: Promise<void> | null = null
+  /** Steer callbacks may settle messages after the consume loop has exited. */
+  protected readonly steerPromises = new Set<Promise<void>>()
   protected started = false
   protected supervisionAttempt: SupervisionAttemptView = {
     attemptId: null, state: 'IDLE', startedAt: null, watchdogAt: null, activeRootId: null, watchdogCount: 0,
@@ -316,7 +326,7 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
       && this.hasActiveSupervisionAttempt()
     if (!abortingRun && !abortingSupervision) return false
     log.warn(`[AgentRuntime:${this.agentId}] abortTask 调用(task=${taskId},state=${this.state})`)
-    if (abortingRun) this.abortController?.abort()
+    if (abortingRun) this.abortController?.abort(new Error('task abort'))
     if (abortingSupervision) {
       this.supervisionAttempt = { ...this.supervisionAttempt, state: 'ABORT_REQUESTED' }
       this.superviseController?.abort()
@@ -359,8 +369,13 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
     //    关联到本消息(in_reply_to 断链,回执丢失实测)。改走信箱 peer 回合 ——
     //    稍晚但归属正确、回执必有应答。
     if (message.metadata?.['x-aw-require-reply'] === 'true') return
+    // Bind the acknowledgement to the turn that was active at injection time.
+    const turnSignal = this.abortController?.signal ?? this.superviseController?.signal
+    if (!turnSignal || turnSignal.aborted) return
+    const turnLock = this.execLock
     // ④ 其余(人类紧急直发):原有 steer 注入路径
-    if (!this.deps.mailbox.claim(message.messageId)) return
+    const claimToken = this.deps.mailbox.claim(message.messageId)
+    if (!claimToken) return
     const text = message.parts
       .map((p) => {
         if ('text' in p) return p.text
@@ -378,27 +393,68 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
         `require_reply=仅当你还需要对方进一步响应时才设 true。`,
       )
     }
-    this.impl.steer(lines.join('\n'))
-      .then((mode) => {
-        if (mode === 'steer') {
-          // 确认注入流式会话 → 消费落定(at-least-once:进程崩溃由 resetConsuming 兜底)
-          this.deps.mailbox.markConsumed(message.messageId)
+    let steering: Promise<'steer' | 'deferred'>
+    try {
+      steering = this.impl.steer(lines.join('\n'))
+    }
+    catch (err) {
+      log.error(`[AgentRuntime:${this.agentId}] steer 失败(释放认领回 pending 待循环处理):`, err)
+      this.releaseSteerClaim(message.messageId, claimToken)
+      return
+    }
+    const settling = steering
+      .then(async (mode) => {
+        if (mode === 'steer' && !turnSignal.aborted && this.getState() !== 'stopped') {
+          // 异步 steer 在途期间任务联动可能已进入 legacy recovery hold/FIFO 屏障:
+          // 结算前必须按当前认领 token 复检持久行资格。消费被阻塞的行会静默吞掉
+          // 恢复屏障应拥有的投递 —— 改为隔离成 dead(保留原始证据、不重放)。
+          if (this.deps.mailbox.isClaimBlocked(message.messageId, claimToken)) {
+            if (!this.deps.mailbox.deadLetterLegacyRecoveryClaim(message.messageId, claimToken)) {
+              this.deps.mailbox.releaseClaim(message.messageId, claimToken)
+            }
+            return
+          }
+          // Only acknowledge injection while its original turn is still live.
+          this.deps.mailbox.markConsumed(message.messageId, claimToken)
+        }
+        else if (turnSignal.aborted || this.getState() === 'stopped') {
+          // Do not replay until the interrupted turn has actually left its lock.
+          await turnLock
+          // 被恢复 hold 阻塞的联动消息不得回 pending 等重放(hold 解除后会双投):
+          // 同样隔离为恢复证据;未阻塞的行保持原有"不扣次数释放回 pending"语义。
+          if (this.deps.mailbox.isClaimBlocked(message.messageId, claimToken)
+            && this.deps.mailbox.deadLetterLegacyRecoveryClaim(message.messageId, claimToken)) {
+            return
+          }
+          this.deps.mailbox.releaseClaim(message.messageId, claimToken)
         }
         else {
           // deferred:释放认领回 pending,poll_messages(250ms 兜底重查)或
           // 本回合结束后的消费循环(FIFO)接管,消息必达不丢失
-          this.releaseSteerClaim(message.messageId)
+          this.releaseSteerClaim(message.messageId, claimToken)
         }
       })
-      .catch((err) => {
+      .catch(async (err) => {
         log.error(`[AgentRuntime:${this.agentId}] steer 失败(释放认领回 pending 待循环处理):`, err)
-        this.releaseSteerClaim(message.messageId)
+        if (turnSignal.aborted || this.getState() === 'stopped') {
+          await turnLock
+          this.deps.mailbox.releaseClaim(message.messageId, claimToken)
+        }
+        else this.releaseSteerClaim(message.messageId, claimToken)
       })
+    this.steerPromises.add(settling)
+    void settling.then(
+      () => { this.steerPromises.delete(settling) },
+      (err) => {
+        this.steerPromises.delete(settling)
+        log.error(`[AgentRuntime:${this.agentId}] steer 消息收尾失败:`, err)
+      },
+    )
   }
 
   /** 释放 steer 认领:consuming → pending + 唤醒 dequeue 门闩与到信等待方 */
-  protected releaseSteerClaim(messageId: string): void {
-    if (this.deps.mailbox.requeue(messageId)) {
+  protected releaseSteerClaim(messageId: string, claimToken: string): void {
+    if (this.deps.mailbox.requeue(messageId, claimToken)) {
       this.deps.mailbox.wake()
     }
   }

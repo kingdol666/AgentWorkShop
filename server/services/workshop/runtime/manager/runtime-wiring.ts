@@ -11,6 +11,7 @@ import { AgentMemory } from '../memory'
 import { AgentRuntime } from '../agent-runtime'
 import type { ChannelRuntime } from '../channel-runtime'
 import { Mailbox } from '../mailbox'
+import { isRecoveryBlockedMessage } from '../../db/message.repo'
 import { SchedulerLoop } from '../scheduler-loop'
 import { buildMessage, instanceToAgentInfo, log, parseChannelLlm, rowToChannelMail, runtimeKey } from './helpers'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
@@ -25,6 +26,8 @@ import { shouldRescueBusyStuck } from './rescue-policy'
 import { channelRecycleDecision } from './recycle-policy'
 import { SessionContextService, formatBriefText } from '../../sessions/context'
 import { channelModeForAgent } from '../../channel-mode'
+import { fenceToMetadata } from '../task-engine/lease'
+import { isLegacyRecoveryHeld } from '../task-engine/legacy-recovery'
 
 /**
  * 有原生会话持久化的引擎 → session 注入用 brief 档（只注身份+关键事实，历史归引擎）。
@@ -40,6 +43,9 @@ function memberMapContains(memberMapJson: string, memberId: string): boolean {
 
 export abstract class ManagerRuntimeWiring extends ManagerBus {
   private sessionContextService: SessionContextService | null = null
+  private readonly channelUnloads = new Map<string, Promise<boolean>>()
+  protected readonly channelRemovals = new Map<string, Promise<void>>()
+  protected readonly channelAgentStops = new Map<string, Set<Promise<void>>>()
 
   /** Session Context 单例（按需建；repo 持有 db，不额外连接） */
   protected getSessionContextService(): SessionContextService {
@@ -57,7 +63,8 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const agent = instanceToAgentInfo(m)
     const cr = this.ensureChannelRuntime(m.channelId)
     const bus = this.buses.get(m.channelId)!
-    const mailbox = new Mailbox(this.deps.repos.messages, m.channelId, agent.id, () => cr.wakeScheduler())
+    const mailbox = new Mailbox(this.deps.repos.messages, m.channelId, agent.id, () => cr.wakeScheduler(),
+      row => isRecoveryBlockedMessage(row, id => this.getTaskEngine().isLegacyRecoveryBlocked(id)))
     const sessionRow = activeSessionOfMember(createChannelSessionRepo(this.deps.db).listByChannel(m.channelId), agent.id)
     const trustedSession = sessionRow ? trustedSessionBindingIdentity(sessionRow) : null
     const channelSessionScope: ChannelSessionExecutionScope | null = trustedSession
@@ -78,7 +85,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       const boundLineId = integrated ? (sessionRow ? channelSessionScope?.lineId ?? '' : this.deps.repos.channels.findById(m.channelId)?.lineId ?? '') : ''
       const line = boundLineId ? getDcwLineRepo().byId(boundLineId) : undefined
       if (line) {
-        const brief = `\n\n## 绑定产线(只读上下文)\n本频道已绑定产线「${line.name}」(${line.id})${line.description ? ` — ${line.description}` : ''}。全员可用 line_context 查看该产线实时全景(运行状态/活动批次/当前配方与参数窗口),ops_log / recipe_log / recipe_versions 查运维日志与配方历史(频道绑定 = 只读授权);参数下发等写操作仍需节点授权(lead 可用 team_grant_nodes/grant_node_ids 授予)。`
+        const brief = `\n\n## 绑定产线(只读上下文)\n本频道已绑定产线「${line.name}」(${line.id})${line.description ? ` — ${line.description}` : ''}。全员可用 line_context 查看该产线实时全景(运行状态/活动批次/当前配方与参数窗口),ops_log / recipe_log / recipe_versions 查运维日志与配方历史(频道绑定 = 只读授权);参数下发等写操作仍需节点授权(lead 可单独用 team_grant_nodes 授予自己已绑定的节点,再不带 grant_node_ids 派发)。`
         configWithCtx.scenarioPrompt = (scenarioPrompt ? `${scenarioPrompt}\n` : '') + brief
       }
       else if (scenarioPrompt) {
@@ -203,7 +210,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
   protected ensureAgentRuntime(channelId: string, agentId: string): AgentRuntime | undefined {
     const key = runtimeKey(channelId, agentId)
     // 停机窗口墓碑:既不返回半关闭的旧运行时,也不重建新运行时(否则消息进闭箱)
-    if (this.stoppingAgents.has(key) || this.channels.get(channelId)?.schedulerStoppingInProgress) return undefined
+    if (this.shutdownStarted || this.channelRemovals.has(channelId) || this.channelUnloads.has(channelId) || this.stoppingAgents.has(key) || this.channels.get(channelId)?.schedulerStoppingInProgress) return undefined
     const existing = this.agentIndex.get(key)
     if (existing) {
       // 活性守卫(2026-11-10 P1):已停止的实例不能直接复用 —— 旧实现无条件返回它,
@@ -219,7 +226,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // WP2 守卫 A：频道已停用（任务实例终态回收/频道关闭）→ 拒绝按需重装配，
     // 防「已停用频道被直接寻址复活」。
     const ch = this.deps.repos.channels.findById(channelId)
-    if (ch && ch.enabled !== 1) return undefined
+    if (!ch || ch.enabled !== 1) return undefined
     // WP2 守卫 B：会话克隆（名字带 ·session· 标记）只在所属会话仍 active 时可装配；
     // 已关闭会话的克隆不可被任何寻址路径重新拉起（历史行仍保留审计）。
     if (String(m.name ?? '').includes('·session·')) {
@@ -245,6 +252,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
 
   /** 激活 channel:装配 lead 运行时 + 装配并启动 SchedulerLoop(幂等) */
   ensureChannelActive(channelId: string, options?: SchedulerLoopOptions): void {
+    if (this.shutdownStarted || this.channelRemovals.has(channelId) || this.channelUnloads.has(channelId)) return
     const channel = this.deps.repos.channels.findById(channelId)
     if (!channel || channel.enabled !== 1 || !channel.leadAgentId) return
     const cr = this.ensureChannelRuntime(channelId)
@@ -337,36 +345,48 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
   }
 
   /** 停止并卸载某实例运行时(强制;删除实例/channel 时用) */
-  protected async stopAndDetach(channelId: string, agentId: string): Promise<void> {
+  protected stopAndDetach(channelId: string, agentId: string): Promise<void> {
+    const removal = this.channelRemovals.get(channelId)
+    if (removal) return removal
     const key = runtimeKey(channelId, agentId)
     const runtime = this.agentIndex.get(key)
-    if (!runtime) return
+    if (!runtime) return Promise.resolve()
     // C-P1-1(2026-10-28 审查):所有"摘除"动作在第一个 await 之前同步完成。
     // 旧实现把 agentIndex.delete 放在 await stop() 之后,停机窗口内:
     //   route → ensureAgentRuntime 命中旧索引 → enqueue 进正在关闭的信箱 → 假送达 + 永久丢失;
     //   即便先 detach,loader 也能按 agentIndex 缓存把旧运行时装回去。
     // 现在的顺序 = 立墓碑 → 摘索引 → 摘频道成员 → 清人类调用作用域 → 后台停机。
+    const cr = this.channels.get(channelId)
     this.stoppingAgents.add(key)
     this.agentIndex.delete(key)
-    const cr = this.channels.get(channelId)
     cr?.detachAgent(agentId)
     this.clearInvocationScope(agentId)
-    let releaseSchedulerStarts: (() => void) | null = null
-    try {
-      if (runtime.role === 'lead' && cr) {
-        releaseSchedulerStarts = await cr.stopSchedulersAndWait()
+    const stops = this.channelAgentStops.get(channelId) ?? new Set<Promise<void>>()
+    this.channelAgentStops.set(channelId, stops)
+    const stop = Promise.resolve().then(async () => {
+      let releaseSchedulerStarts: (() => void) | null = null
+      try {
+        if (runtime.role === 'lead' && cr) {
+          releaseSchedulerStarts = await cr.stopSchedulersAndWait()
+        }
+        await runtime.stop()
       }
-      await runtime.stop()
+      finally {
+        releaseSchedulerStarts?.()
+        this.stoppingAgents.delete(key)
+      }
+      if (cr && this.channels.get(channelId) === cr && !this.channelUnloads.has(channelId) && !this.channelRemovals.has(channelId) && cr.getAgents().length === 0 && !cr.scheduler) {
+        this.channels.delete(channelId)
+        this.buses.delete(channelId)
+      }
+    })
+    stops.add(stop)
+    const forgetStop = () => {
+      stops.delete(stop)
+      if (stops.size === 0) this.channelAgentStops.delete(channelId)
     }
-    finally {
-      releaseSchedulerStarts?.()
-      // 停机完成即允许惰性复活(新消息触发 wireMember 重建)
-      this.stoppingAgents.delete(key)
-    }
-    if (cr && cr.getAgents().length === 0 && !cr.scheduler) {
-      this.channels.delete(channelId)
-      this.buses.delete(channelId)
-    }
+    void stop.then(forgetStop, forgetStop)
+    return stop
   }
 
   /** 卸载实例运行时(空闲后释放内存,杀 omp 子进程);busy/有 pending/lead 有活跃任务 → 跳过 */
@@ -535,30 +555,56 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
    * 卸载 Channel 的全部成员运行时并停掉调度器。
    * 返回 false = 没有已装配的 ChannelRuntime(未装配/已卸载),调用方据此决定是否重装。
    */
-  protected async unloadChannelAgents(channelId: string): Promise<boolean> {
+  protected unloadChannelAgents(channelId: string): Promise<boolean> {
+    const pending = this.channelUnloads.get(channelId)
+    if (pending) return pending
     const cr = this.channels.get(channelId)
-    if (!cr) return false
-    let releaseSchedulerStarts: (() => void) | null = null
-    let unloaded = false
-    try {
-      releaseSchedulerStarts = await cr.stopSchedulersAndWait()
-      const agents = [...cr.getAgents()]
-      for (const agent of agents) {
-        await agent.stop()
-        cr.detachAgent(agent.agentId)
+    if (!cr) return Promise.resolve(false)
+
+    // Detach every routing entry before the first await; the channel tombstone also
+    // prevents a previously unwired member from being created during teardown.
+    const agents = [...cr.getAgents()]
+    const keys = agents.map(agent => runtimeKey(channelId, agent.agentId))
+    const ownedKeys = keys.filter(key => !this.stoppingAgents.has(key))
+    for (const key of ownedKeys) this.stoppingAgents.add(key)
+    for (const agent of agents) {
+      cr.detachAgent(agent.agentId)
+      if (this.agentIndex.get(runtimeKey(channelId, agent.agentId)) === agent) {
         this.agentIndex.delete(runtimeKey(channelId, agent.agentId))
       }
-      if (cr.getAgents().length === 0) {
-        this.channels.delete(channelId)
-        this.buses.delete(channelId)
+      this.clearInvocationScope(agent.agentId)
+    }
+
+    const unload = Promise.resolve().then(async () => {
+      let releaseSchedulerStarts: (() => void) | null = null
+      let unloaded = false
+      try {
+        releaseSchedulerStarts = await cr.stopSchedulersAndWait()
+        const results = await Promise.allSettled(agents.map(agent => agent.stop()))
+        const failed = results.find(result => result.status === 'rejected')
+        if (failed?.status === 'rejected') throw failed.reason
+        if (this.channels.get(channelId) === cr && cr.getAgents().length === 0) {
+          this.channels.delete(channelId)
+          this.buses.delete(channelId)
+        }
+        unloaded = true
+        return true
       }
-      unloaded = true
-    }
-    finally {
-      // Reopening is safe only after every old runtime has been detached.
-      if (unloaded && this.channels.get(channelId) === cr) releaseSchedulerStarts?.()
-    }
-    return unloaded
+      finally {
+        if (!unloaded && this.channels.get(channelId) === cr) {
+          // Preserve ownership for a later retry if a teardown fails.
+          for (const agent of agents) {
+            cr.addAgent(agent)
+            this.agentIndex.set(runtimeKey(channelId, agent.agentId), agent as AgentRuntime)
+          }
+        }
+        if (unloaded) releaseSchedulerStarts?.()
+        for (const key of ownedKeys) this.stoppingAgents.delete(key)
+        this.channelUnloads.delete(channelId)
+      }
+    })
+    this.channelUnloads.set(channelId, unload)
+    return unload
   }
 
   startIdleSweeper(options?: { intervalMs?: number, graceMs?: number }): () => void {
@@ -652,6 +698,14 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       // 必须先滤掉终态根(FAILED 旧根占着 seq=1 会挡住重开的 seq=2 根,实测)。
       const head = roots.find(r => !TERMINAL_TASK_STATES[r.state as TaskState])
       if (!head || head.assigneeId !== channel.leadAgentId) continue
+      if (isLegacyRecoveryHeld(head)) continue
+      try {
+        if (this.getTaskEngine().isLegacyRecoveryBlocked(head.id)) continue
+      }
+      catch (err) {
+        log.warn(`[AgentChannelManager] D1 兜底无法校验历史恢复隔离,跳过 ${head.id}:`, err)
+        continue
+      }
       const openChildren = this.getTaskEngine().list(channel.id)
         .filter(t => t.parentId === head.id && !TERMINAL_TASK_STATES[t.state as TaskState])
       const leadRtPre = this.runtimeOf(channel.id, channel.leadAgentId)
@@ -693,6 +747,10 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
           // SUBMITTED root 场景永远是空操作(2026-11-10 实测确认)。
           await this.stopAndDetach(channel.id, channel.leadAgentId)
         }
+        if (this.getTaskEngine().isLegacyRecoveryBlocked(head.id)) {
+          this.rescueSeen.delete(head.id)
+          continue
+        }
         this.ensureChannelActive(channel.id)
         // 入场即刷新执行预算(deadline 语义=执行预算,预算从入场起算):滞留根的旧预算
         // 早已耗尽,不刷新则 tick 的过期收口会在 WORKING 后立即处决它。
@@ -706,6 +764,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
         catch { /* 极简引擎替身缺方法:跳过,入场后由既有预算语义接管 */ }
       }
       catch (err) {
+        this.rescueSeen.delete(head.id)
         log.warn(`[AgentChannelManager] D1 兜底复活失败(下轮重试): ${err instanceof Error ? err.message : String(err)}`)
         continue
       }
@@ -733,6 +792,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
           'x-aw-task-kind': 'assign',
           'x-aw-task-id': head.id,
           'x-aw-from-label': '调度兜底',
+          ...fenceToMetadata({ assignmentGeneration: freshHead.assignmentGeneration, executionLeaseId: freshHead.executionLeaseId ?? undefined }),
         },
       )
       rescueMessage.taskId = head.id

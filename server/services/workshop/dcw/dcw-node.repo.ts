@@ -92,16 +92,18 @@ class DcwNodeRepo {
     this.flushTimer.unref?.()
   }
 
-  flushNow(): void {
+  flushNow(): boolean {
     if (this.flushTimer) {
       clearTimeout(this.flushTimer)
       this.flushTimer = null
     }
     try {
       saveJsonFileAtomic(DB_PATH, this.list.map(n => n.toRow()))
+      return true
     }
     catch (err) {
       log.error('[dcw] 快照落盘失败:', err)
+      return false
     }
   }
 }

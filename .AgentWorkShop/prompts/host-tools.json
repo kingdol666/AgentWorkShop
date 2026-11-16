@@ -148,7 +148,7 @@
   {
     "name": "dispatch_task",
     "label": "Dispatch Task",
-    "description": "(Lead only) Create one bounded child under an existing parent and assign it to a worker. The platform enforces finite root budgets (total child attempts, active children, canceled children, and ordinary depth); changing the title does not reset them. Freeze the child ID/title/contract after dispatch. Prefer update_task, send_message_to_agent, or reassign_task over cancel-and-recreate. Always include parent_task_id, route_reason, and a self-contained objective/deliverable/acceptance/boundary brief.",
+    "description": "(Lead only) Create one bounded child under an existing parent and assign it to a worker. If the worker needs node permissions, explicitly grant them first with team_grant_nodes; dispatch_task does not grant nodes and rejects grant_node_ids. Grants and dispatch are separate operations, not an atomic transaction. The platform enforces finite root budgets (total child attempts, active children, canceled children, and ordinary depth); changing the title does not reset them. Freeze the child ID/title/contract after dispatch. Prefer update_task, send_message_to_agent, or reassign_task over cancel-and-recreate. Always include parent_task_id, route_reason, and a self-contained objective/deliverable/acceptance/boundary brief.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -177,7 +177,7 @@
           "items": {
             "type": "string"
           },
-          "description": "可选(Lead only):随本任务把节点授权授予 assignee —— 数组元素为节点 id,每个节点必须是 lead 自己已绑定的节点(daq/dcw 均可);任一节点不在 lead 绑定面则整单失败、任务不创建。用于派发时一并下发 DAQ/DCW 权限,worker 无需再等手动绑定。"
+          "description": "Unsupported: supplying grant_node_ids rejects dispatch. Grant nodes separately with team_grant_nodes first, then dispatch without this field."
         },
         "grant_mode": {
           "type": "string",
@@ -185,7 +185,7 @@
             "auto",
             "manual"
           ],
-          "description": "可选:随任务授予的绑定模式;缺省随 lead 自己的绑定模式(manual=每次写入需用户批准)"
+          "description": "Unsupported for dispatch: this field does not grant nodes or set a binding mode. Use team_grant_nodes separately; its default is manual and auto requires confirm: true."
         }
       },
       "required": [
@@ -2916,7 +2916,7 @@
   {
     "name": "team_grant_nodes",
     "label": "Grant Nodes",
-    "description": "(Lead only) Grant industrial node permissions (DAQ read / DCW control) to a worker in this channel. HARD RULE: every node must already be bound to YOU (the lead) — you cannot grant permissions beyond your own bindings. Grants are all-or-nothing: if any node is not in your binding surface, the whole request is rejected and nothing is granted. Use this before dispatching (so the worker can act immediately) or mid-execution when scope expands. The worker sees granted nodes via my_industrial_nodes. To grant together with a task, prefer dispatch_task(grant_node_ids=[...]). 可委派对象:数采节点(观察)与配方(recipe;被授予者获得该配方的参数写入/下发能力,受运行门与 HITL 约束)。每个对象必须已绑定你自己(绑定即前提,权限不可超越授予者)。",
+    "description": "(Lead only) Grant industrial node permissions to a worker in this channel. Every node must already be bound to you (the lead); grants are all-or-nothing. Explicitly grant before dispatch when needed, or separately during execution when scope expands. Dispatch and grant are not atomic: dispatch_task rejects grant_node_ids and does not grant permissions. The worker can check grants with my_industrial_nodes. 可委派对象:数采节点(观察)与配方(recipe;参数写入/下发仍受运行门与 HITL 约束)。每个对象必须已绑定授予者;需要时先单独授予再派发,两步不是原子操作。",
     "parameters": {
       "type": "object",
       "properties": {

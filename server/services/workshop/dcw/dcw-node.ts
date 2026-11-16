@@ -11,6 +11,21 @@ import { maskDriverConfigSecrets } from '../../../../shared/daq-protocol'
 import { dcwKeyFromRef, type DcwDriverKind, type DcwNodeState, type DcwNodeView, type DataTransform } from '../../../../shared/dcw-protocol'
 import { findDcwTemplate } from './dcw-templates'
 
+/**
+ * transport-ack 节点的保写观测证实声明(与 V3 验收 ACK 口径同源):
+ * 写被 broker 受理后,以独立 DAQ 观测节点跟随到目标值作为「设备侧生效」证据,
+ * 证实通过才解除保写安全锁(holdBlocked)。无此声明的 transport-ack 节点保写
+ * 保持挂起并显式提示 —— 链路受理本身不是设备生效证据。
+ */
+export interface DcwHoldObserve {
+  /** 独立观测 DAQ 节点 id(物理量跟随证据源) */
+  daqId: string
+  /** 观测跟随容差(工程量;缺省 max(0.5, |目标|×2%),与 V3 观测口径一致) */
+  tolerance?: number
+  /** 观测证实超时 ms(缺省 45000;超时保写保持挂起并提示) */
+  timeoutMs?: number
+}
+
 interface DcwNodeOptions {
   id: string
   templateRef: string
@@ -19,6 +34,8 @@ interface DcwNodeOptions {
   enabled?: boolean
   /** 保写周期 ms(心跳重下发;null = 仅手动下发) */
   holdIntervalMs?: number | null
+  /** transport-ack 写的观测证实声明(缺省 null = 链路受理不构成保写解除证据) */
+  holdObserve?: DcwHoldObserve | null
   unit?: string
   decimals?: number
   min?: number
@@ -51,6 +68,16 @@ function normalizeStepLimit(value: number | null): number | null {
   return n
 }
 
+/** 快照恢复守卫:形态不合法的 holdObserve 一律按 null(未声明)处理,fail-safe。 */
+function isDcwHoldObserve(value: unknown): value is DcwHoldObserve {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const o = value as Record<string, unknown>
+  if (typeof o.daqId !== 'string' || !/^[A-Za-z0-9_-]+$/.test(o.daqId)) return false
+  if (o.tolerance !== undefined && (!Number.isFinite(Number(o.tolerance)) || Number(o.tolerance) <= 0)) return false
+  if (o.timeoutMs !== undefined && (!Number.isFinite(Number(o.timeoutMs)) || Number(o.timeoutMs) < 250 || Number(o.timeoutMs) > 600_000)) return false
+  return true
+}
+
 export class DcwNode {
   readonly id: string
   templateRef: string
@@ -58,6 +85,8 @@ export class DcwNode {
   driver: DcwDriverKind
   enabled: boolean
   holdIntervalMs: number | null
+  /** transport-ack 保写观测证实声明(null = 链路受理不构成保写解除证据) */
+  holdObserve: DcwHoldObserve | null
   unit: string
   decimals: number
   min: number
@@ -71,6 +100,8 @@ export class DcwNode {
   posZ?: number
   /** 当前设定值(工程量;null = 从未下发) */
   value: number | null = null
+  /** Hold is blocked until a later write is confirmed by physical readback. */
+  holdBlocked = false
   /** PLC 当前读数(工程量物理值;null = 从未读到或驱动不支持读) */
   readValue: number | null = null
   lastReadAt: string | null = null
@@ -108,6 +139,7 @@ export class DcwNode {
     this.driver = o.driver ?? 'mock'
     this.enabled = o.enabled ?? true
     this.holdIntervalMs = o.holdIntervalMs ?? null
+    this.holdObserve = o.holdObserve ?? null
     this.unit = o.unit ?? tpl?.unit ?? ''
     this.decimals = o.decimals ?? tpl?.decimals ?? 2
     this.min = o.min ?? tpl?.min ?? 0
@@ -186,6 +218,8 @@ export class DcwNode {
       driver: this.driver,
       enabled: this.enabled,
       holdIntervalMs: this.holdIntervalMs,
+      holdObserve: this.holdObserve,
+      holdBlocked: this.holdBlocked,
       readIntervalMs: this.readIntervalMs,
       writeLockSeconds: this.writeLockSeconds,
       stepLimit: this.stepLimit,
@@ -223,6 +257,7 @@ export class DcwNode {
       driver: (row.driver as DcwDriverKind) ?? undefined,
       enabled: row.enabled === undefined ? undefined : Boolean(row.enabled),
       holdIntervalMs: row.holdIntervalMs == null ? null : Number(row.holdIntervalMs),
+      holdObserve: isDcwHoldObserve(row.holdObserve) ? row.holdObserve : null,
       unit: row.unit != null ? String(row.unit) : undefined,
       decimals: row.decimals != null ? Number(row.decimals) : undefined,
       min: row.min != null ? Number(row.min) : undefined,
@@ -240,6 +275,7 @@ export class DcwNode {
       posZ: row.posZ == null ? undefined : Number(row.posZ),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
     })
+    node.holdBlocked = row.holdBlocked === true
     if (row.value != null && !Number.isNaN(Number(row.value))) node.value = Number(row.value)
     if (row.readValue != null && !Number.isNaN(Number(row.readValue))) node.readValue = Number(row.readValue)
     if (row.lastReadAt != null) node.lastReadAt = String(row.lastReadAt)
@@ -256,6 +292,7 @@ export class DcwNode {
       // 硬杀重启,原样恢复会让该节点所有写永久 409(startAll 只复位 offline)。
       // 归一为 error:写路径放行,同时显式提示"上次写入结果未知,需核销"。
       if (restored === 'writing') {
+        node.holdBlocked = true
         node.state = 'error'
         node.lastError = node.lastError || '进程中断于写入,状态已复位为 error(上次写入结果未知,请回读核销)'
       }
@@ -275,6 +312,8 @@ export class DcwNode {
       driver: this.driver,
       enabled: this.enabled,
       holdIntervalMs: this.holdIntervalMs,
+      holdBlocked: this.holdBlocked,
+      holdObserve: this.holdObserve,
       unit: this.unit,
       decimals: this.decimals,
       min: this.min,

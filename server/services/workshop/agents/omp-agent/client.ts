@@ -7,7 +7,6 @@ import type { AgentRunContext } from '../agent-interface'
 import { OmpRpcClient } from '../adapters/omp-rpc-client'
 import { attachTerminalTap, markTerminalSessionExit } from '../harness-terminal'
 import { bindHarnessProcess, markHarnessProcessExit, registerHarnessProcess } from '../harness-process'
-import { hostToolsForAgent } from '../host-tool-bridge'
 
 export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping {
   protected async ensureClient(ctx: AgentRunContext): Promise<void> {
@@ -92,9 +91,8 @@ export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping 
         }
       }
 
-      // 注册 host tools(按角色差异化:lead 全量,worker 剔除调度/团队管理专属工具)
+      // Tool definitions are registered with turn-specific aliases before each prompt.
       client.onHostToolCall(req => this.handleHostTool(req, client))
-      await client.send({ type: 'set_host_tools', tools: hostToolsForAgent(this.selfAgentId, this.agentRole, this.channelId) })
 
       // 上下文治理探测(feature-detect 一次;失败退化被动 usage 跟踪)+ 原生压缩兜底保持开启
       // 会话身份(sessionId)也由 probeContext 取回:必须 **await** —— fire-and-forget 会与
@@ -107,7 +105,7 @@ export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping 
       void client.send({ type: 'set_auto_compaction', enabled: true }).catch(() => {})
 
       this.client = client
-      this.hostToolsRegistered = true
+      this.hostToolsRegistered = false
     }
   }
 

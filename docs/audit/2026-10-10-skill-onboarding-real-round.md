@@ -16,7 +16,7 @@
 | 2 连通性预检 | test-connection.mjs(逐驱动 test-driver) | ✅ **8/8**(modbus 读 690℃/opcua 140m/min/rtu 400℃/mqtt 露点-42.4/http 134HV) |
 | 3 产线供给 | provision-line.mjs(指纹幂等;量程/stepLimit/holdIntervalMs 显式) | ✅ **24/24**(线 ln-c67805a6,9 DCW+11 DAQ,产品/配方 rc-ef67af4e,批次 rr-d4ef706d 开跑) |
 | 4 频道锻造 | forge-channel.mjs(scenario=optimize,chtpl-generic-optimize-default,hitl_governed,插件 idd+rag,绑定矩阵=工艺工程师 recipe manual + 分析师 daq auto) | ✅ **15/15**(频道 38a29212,种子任务 6ec4e996 派发) |
-| 5 验收 | verify-line.mjs V1-V6 | ✅ **31/31**(11 节点数采落库/7 写控越界必拒+合法写回环/配方 7 参数映射/频道绑定/受保护线零扰动) |
+| 5 验收 | verify-line.mjs V1-V6 | ✅ **31/31**(11 节点数采落库/7 写控越界必拒+合法写回环/配方 7 参数映射/频道绑定/受保护线 journal 无新增锚点，不证明物理零扰动) |
 | 投用 | 真实作业腿 real-task.mjs(Agent 工具桥) | ✅ **9/9**(见 §三) |
 
 **合计 87 断言全绿。**

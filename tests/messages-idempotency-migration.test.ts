@@ -33,6 +33,10 @@ test('存量库缺幂等列时启动不崩：补列→重建索引→旧行保�
       `INSERT INTO messages (id, channel_id, role, parts_json, metadata_json, state, attempts, created_at)
        VALUES ('legacy-msg-1', 'ch-legacy', 'ROLE_USER', '[]', '{}', 'pending', 0, ?)`,
     ).run(new Date().toISOString())
+    db.prepare(
+      `INSERT INTO messages (id, channel_id, role, parts_json, metadata_json, state, attempts, created_at)
+       VALUES ('legacy-inflight', 'ch-legacy', 'ROLE_USER', '[]', '{}', 'consuming', 0, ?)`,
+    ).run(new Date().toISOString())
     db.close()
   }
   {
@@ -40,6 +44,8 @@ test('存量库缺幂等列时启动不崩：补列→重建索引→旧行保�
     db.exec('DROP INDEX IF EXISTS idx_messages_client_idempotency')
     db.exec('ALTER TABLE messages DROP COLUMN actor_user_id')
     db.exec('ALTER TABLE messages DROP COLUMN client_message_id')
+    db.exec('ALTER TABLE messages DROP COLUMN claim_token')
+    db.exec('DELETE FROM aw_migration_ledger WHERE version = 3')
     db.close()
   }
   // 2) openWorkshopDb 触发完整迁移 —— 修复前在这里抛 no such column: client_message_id
@@ -48,6 +54,7 @@ test('存量库缺幂等列时启动不崩：补列→重建索引→旧行保�
     const cols = (db.prepare('PRAGMA table_info(messages)').all() as Array<{ name: string }>).map(c => c.name)
     assert.ok(cols.includes('actor_user_id'), 'actor_user_id 必须由迁移补齐')
     assert.ok(cols.includes('client_message_id'), 'client_message_id 必须由迁移补齐')
+    assert.ok(cols.includes('claim_token'), 'claim_token must be added to legacy databases')
     const indexes = (db.prepare('PRAGMA index_list(messages)').all() as Array<{ name: string }>).map(i => i.name)
     assert.ok(indexes.includes('idx_messages_client_idempotency'), '唯一索引必须由 ensureSessionIndexes 重建')
     const legacy = db.prepare(`SELECT id, state FROM messages WHERE id = 'legacy-msg-1'`).get() as { id: string, state: string } | undefined
@@ -55,6 +62,13 @@ test('存量库缺幂等列时启动不崩：补列→重建索引→旧行保�
     assert.equal(legacy.state, 'pending')
     // 3) 幂等入口在迁移后的库上可用：插入→冲突回读同一行
     const repo = createMessageRepo(db)
+    assert.equal(repo.releaseClaim('legacy-inflight', 'not-an-owner'), false)
+    repo.resetConsuming()
+    const recovered = db.prepare(`SELECT state, claim_token AS token FROM messages WHERE id = 'legacy-inflight'`).get()
+    assert.deepEqual({ ...recovered }, { state: 'pending', token: null })
+    const token = repo.claim('legacy-inflight')!
+    assert.ok(token)
+    assert.equal(repo.markConsumed('legacy-inflight', token), true)
     const base = {
       channelId: 'ch-legacy',
       sessionId: 'sess-1',

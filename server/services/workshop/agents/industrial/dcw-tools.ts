@@ -17,6 +17,7 @@ import { nodeSemanticCards, recipeOperationFace } from '../industrial-context'
 import { requestManualApproval } from './manual-approval'
 import { guardTwinWrite } from '../../aml/twin/write-guard'
 import { executionModeOfChannel, observeWriteRejectedText } from '../execution-mode'
+import { currentExecutionScope } from '../execution-scope'
 
 export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: string }> {
   const repo = getAgentNodeBindingRepo()
@@ -116,14 +117,18 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
  * 仍允许**平台内部治理工具**复用:optimization_explore(工艺优化 Channel 的闭环探索,
  * profile 门控)的写入委托它执行 —— Agent 可调用面依然收敛在配方面,此处非 Agent 入口。
  */
-export async function dcwControlGovernedInternal(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
-  return dcwControlGovernedLegacy(agentId, args, channelId)
+export async function dcwControlGovernedInternal(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean, dispatch: 'not_dispatched' | 'indeterminate' | 'accepted' }> {
+  let driverStarted = false
+  const result = await dcwControlGovernedLegacy(agentId, args, channelId, () => {
+    driverStarted = true
+  })
+  return { ...result, dispatch: result.isError ? (driverStarted ? 'indeterminate' : 'not_dispatched') : 'accepted' }
 }
 
 /** v2 前的直写实现(治理链完整:四层限界/HITL/60s 联锁/journal/open 记录)。
  *  非任何 Agent 工具入口 —— 仅由 dcwControlGovernedInternal 承载平台内部治理写
  *  (optimization_explore 闭环探索的写入委托),Agent 可调用面依然收敛在配方面。 */
-async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
+async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string, onDriverStart?: () => void): Promise<{ text: string, isError?: boolean }> {
   const twinGuard = guardTwinWrite(agentId, channelId)
   if (!twinGuard.allowed) return { text: `${twinGuard.code}: ${twinGuard.message}`, isError: true }
   // 频道执行模式(2026-10-28 三模式计划 M2/M3):observe 兜底拒写(分发守卫之外的第二道
@@ -240,13 +245,16 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
     }
   }
 
+  let driverStarted = false
+  const executionScope = currentExecutionScope()
   try {
+    executionScope?.assertActive()
     const meta = {
       source: 'agent' as const,
       actor: agentId,
       // 人话操作者:「Channel名/成员名」——/logs 来源=Agent 与用户/系统操作可区分追溯
       actorName: agentBadgeLabel(agentId),
-      taskId: args.task_id ? String(args.task_id) : undefined,
+      taskId: executionScope?.taskId,
       hypothesis: args.hypothesis ? String(args.hypothesis) : '',
       approvalId: approvalId || undefined,
       // v34 干预台账归因:写入发生时所在 Channel(台账 path/channel 维度)
@@ -254,7 +262,11 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
       // 台账口径(三模式):该次写入发生时的频道生效执行模式(事后审计"这条写入当时是什么模式")
       executionMode: execMode,
     }
-    const outcome = await getDcwController().write(nodeId, value, null, meta)
+    const outcome = await getDcwController().write(nodeId, value, null, meta, executionScope, () => {
+      driverStarted = true
+      onDriverStart?.()
+    })
+    executionScope?.assertActive()
     const run = node.lineId ? getActiveLineRun(node.lineId) : null
     const winTxt = run
       ? `当前活动配方「${run.recipeName}」`
@@ -293,6 +305,16 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
   }
   catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
+    let inactive = false
+    try {
+      executionScope?.assertActive()
+    }
+    catch {
+      inactive = true
+    }
+    if (driverStarted) {
+      return { text: `${inactive ? '执行租约失效' : '写入过程异常'}:写入已进入驱动,设备状态不确定,请立即核实后再决定是否重试。${msg}`, isError: true }
+    }
     const retryHint = /忙|busy/i.test(msg) ? '链路忙属瞬时状态,可稍后重试' : '设定值必须落在安全量程与活动配方工艺窗口内'
     return { text: `下发被拒绝:${msg}(节点 ${node.name},物理量 ${tpl?.ch ?? node.templateKey};${retryHint})`, isError: true }
   }

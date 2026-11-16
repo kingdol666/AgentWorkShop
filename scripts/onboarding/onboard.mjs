@@ -23,6 +23,7 @@ import { execFileSync } from 'node:child_process'
 import { writeFileSync, readFileSync, mkdtempSync, openSync, closeSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { assertOnboardingOwnership } from './lib.mjs'
 
 const args = process.argv.slice(2)
 const configPath = args.find(a => !a.startsWith('--'))
@@ -33,6 +34,7 @@ if (!configPath) {
   process.exit(1)
 }
 const cfg = JSON.parse(readFileSync(configPath, 'utf8'))
+await assertOnboardingOwnership(cfg)
 
 let pass = 0, fail = 0
 let smokeRunId = null

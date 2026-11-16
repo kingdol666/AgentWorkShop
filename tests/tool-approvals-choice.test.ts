@@ -14,6 +14,8 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { getEventListeners } from 'node:events'
+import type { ExecutionScope } from '../server/services/workshop/agents/execution-scope'
 
 process.env.AGENTWORKSHOP_TEST = '1'
 process.env.AW_MODE = 'home'
@@ -207,4 +209,120 @@ test('cancelPendingForBinding:节点直绑只取消该节点审批,不误伤其�
   // 收尾:人工拒绝剩余单,避免计时器悬挂
   approvals.decide(pending[0]!.id, false, '测试收尾')
   assert.equal((await p2).approved, false)
+})
+
+function makeScope(taskId: string, agentId: string, generation: number, controller = new AbortController()): ExecutionScope {
+  return {
+    taskId, agentId, channelId: 'channel', assignmentGeneration: generation,
+    executionLeaseId: `lease-${generation}`, signal: controller.signal, assertActive: () => {},
+  }
+}
+
+test('approval changes are synchronous, per-agent, and unsubscribe cleanly', async () => {
+  const approvals = getToolApprovals()
+  const seen: number[] = []
+  const unsubscribe = approvals.subscribeApprovalChanges('ag-watch', () => seen.push(approvals.listPending('ag-watch').length))
+  const other = approvals.request('ag-other', 'node', 'dcw', 'other', { timeoutMs: 60_000 })
+  const request = approvals.request('ag-watch', 'node', 'dcw', 'quick', { timeoutMs: 60_000 })
+  approvals.decide(approvals.listPending('ag-watch')[0]!.id, true, '')
+  assert.deepEqual(seen, [1, 0])
+  assert.equal((await request).approved, true)
+  unsubscribe()
+  approvals.decide(approvals.listPending('ag-other')[0]!.id, false, '')
+  await other
+  assert.deepEqual(seen, [1, 0])
+})
+
+test('scope abort immediately settles only its approval and removes abort listeners', async () => {
+  const approvals = getToolApprovals()
+  const controller = new AbortController()
+  const scope = makeScope('task-abort', 'ag-abort', 1, controller)
+  const request = approvals.request('ag-abort', 'node', 'dcw', 'scoped', { executionScope: scope, timeoutMs: 60_000 })
+  const unrelated = approvals.request('ag-abort', 'other', 'dcw', 'unrelated', { timeoutMs: 60_000 })
+  const id = approvals.listPending('ag-abort').find(a => a.nodeId === 'node')!.id
+  assert.equal(getEventListeners(controller.signal, 'abort').length, 1)
+  controller.abort()
+  assert.equal(approvals.listPending('ag-abort').length, 1)
+  assert.equal(getEventListeners(controller.signal, 'abort').length, 0)
+  assert.equal((await request).approved, false)
+  assert.equal(approvals.historyList().find(a => a.id === id)?.status, 'denied')
+  assert.throws(() => approvals.decide(id, true, ''), /审批不存在或已处理/)
+  approvals.decide(approvals.listPending('ag-abort')[0]!.id, false, '')
+  await unrelated
+})
+
+test('already aborted scopes are immediately denied and stale decisions settle fail closed', async () => {
+  const approvals = getToolApprovals()
+  const controller = new AbortController()
+  controller.abort()
+  const preAborted = approvals.request('ag-stale', 'aborted', 'dcw', 'aborted', { executionScope: makeScope('task', 'ag-stale', 1, controller), timeoutMs: 60_000 })
+  assert.equal(approvals.listPending('ag-stale').length, 0)
+  assert.equal((await preAborted).approved, false)
+  assert.equal(getEventListeners(controller.signal, 'abort').length, 0)
+
+  const scope = makeScope('task', 'ag-stale', 2)
+  scope.assertActive = () => {
+    throw new Error('stale lease')
+  }
+  const request = approvals.request('ag-stale', 'stale', 'dcw', 'stale', { executionScope: scope, timeoutMs: 60_000 })
+  const id = approvals.listPending('ag-stale')[0]!.id
+  assert.throws(() => approvals.decide(id, true, ''), /审批不存在或已处理/)
+  assert.equal((await request).approved, false)
+  assert.equal(approvals.listPending('ag-stale').length, 0)
+  assert.equal(approvals.historyList().find(a => a.id === id)?.status, 'denied')
+  assert.equal(getEventListeners(scope.signal, 'abort').length, 0)
+})
+
+test('task cancellation honors the exact old execution fence', async () => {
+  const approvals = getToolApprovals()
+  const oldScope = makeScope('same-task', 'ag-fenced', 1)
+  const newScope = makeScope('same-task', 'ag-fenced', 2)
+  const oldRequest = approvals.request('ag-fenced', 'old', 'dcw', 'old', { executionScope: oldScope, timeoutMs: 60_000 })
+  const newRequest = approvals.request('ag-fenced', 'new', 'dcw', 'new', { executionScope: newScope, timeoutMs: 60_000 })
+  const fence = { agentId: oldScope.agentId, assignmentGeneration: oldScope.assignmentGeneration, executionLeaseId: oldScope.executionLeaseId }
+  assert.equal(approvals.cancelPendingForTask('same-task', 'reassigned', fence), 1)
+  assert.equal(approvals.cancelPendingForTask('same-task', 'reassigned', fence), 0)
+  assert.equal((await oldRequest).approved, false)
+  assert.equal(approvals.listPending('ag-fenced')[0]!.nodeId, 'new')
+  approvals.decide(approvals.listPending('ag-fenced')[0]!.id, true, '')
+  assert.equal((await newRequest).approved, true)
+  assert.equal(getEventListeners(newScope.signal, 'abort').length, 0)
+})
+
+test('timeout and all cancellation paths remove scope abort listeners', async () => {
+  const approvals = getToolApprovals()
+  for (const mode of ['timeout', 'binding', 'agent'] as const) {
+    const scope = makeScope(`task-${mode}`, `ag-${mode}`, 1)
+    const request = approvals.request(scope.agentId, 'node', 'dcw', mode, { executionScope: scope, timeoutMs: mode === 'timeout' ? 20 : 60_000 })
+    const entry = (approvals as unknown as { pending: Map<string, { timer?: NodeJS.Timeout, remindTimers: NodeJS.Timeout[] }> }).pending.get(approvals.listPending(scope.agentId)[0]!.id)!
+    const timers = [entry.timer, ...entry.remindTimers].filter((timer): timer is NodeJS.Timeout => !!timer)
+    if (mode === 'binding') approvals.cancelPendingFor(scope.agentId, 'node')
+    if (mode === 'agent') approvals.cancelAllForAgent(scope.agentId, 'stopped')
+    assert.equal((await request).approved, false)
+    assert.equal(getEventListeners(scope.signal, 'abort').length, 0)
+    for (const timer of timers) assert.equal((timer as unknown as { _destroyed: boolean })._destroyed, true)
+  }
+})
+
+test('hold-mode scope abort clears the reminder interval immediately', async () => {
+  const globalConfig = globalThis as typeof globalThis & { __systemConfig?: unknown }
+  const previous = globalConfig.__systemConfig
+  globalConfig.__systemConfig = { ready: true, snapshot: () => ({ effective: { 'security.hitl_timeout_mode': 'hold' } }) }
+  try {
+    const approvals = getToolApprovals()
+    const controller = new AbortController()
+    const scope = makeScope('task-hold', 'ag-hold', 1, controller)
+    const request = approvals.request('ag-hold', 'node', 'dcw', 'hold', { executionScope: scope })
+    const id = approvals.listPending('ag-hold')[0]!.id
+    const entry = (approvals as unknown as { pending: Map<string, { timer?: NodeJS.Timeout, remindTimers: NodeJS.Timeout[] }> }).pending.get(id)!
+    assert.equal(entry.timer, undefined)
+    assert.equal(entry.remindTimers.length, 1)
+    controller.abort()
+    assert.equal((await request).approved, false)
+    assert.equal((entry.remindTimers[0] as unknown as { _destroyed: boolean })._destroyed, true)
+    assert.equal(getEventListeners(controller.signal, 'abort').length, 0)
+  }
+  finally {
+    globalConfig.__systemConfig = previous
+  }
 })

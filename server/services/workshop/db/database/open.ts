@@ -17,6 +17,7 @@ import { migrateImprovementActions } from './migrations-improvement-actions'
 import { migrateBlindVerifications } from './migrations-blind-verification'
 import { ensureMigrationLedger, assertMigrationFingerprint, fingerprintMigration, recordMigration } from './migration-ledger'
 import { seedDefaultWorkshopData } from './seed'
+import { holdLegacyActiveTasks } from '../../runtime/task-engine/legacy-recovery'
 
 export const require = createRequire(import.meta.url)
 export function openWorkshopDb(path: string): DatabaseSync {
@@ -42,9 +43,9 @@ export function openWorkshopDb(path: string): DatabaseSync {
  * 版本号是存量库不被新契约哈希拒绝启动的前提:老库只记录了旧版本号,
  * assertMigrationFingerprint 查不到新版本行即放行并补录;同版本内的 SQL
  * 漂移(手改/回滚 schema)仍会被哈希比对抓住。
- * 历史:v1 初始契约;v2 2026-11-15 channels.channel_mode。
+ * 历史:v1 初始契约;v2 2026-11-15 channels.channel_mode;v3 messages.claim_token。
  */
-const SCHEMA_CONTRACT_VERSION = 2
+const SCHEMA_CONTRACT_VERSION = 3
 
 /** 对已打开的库执行初始化:WAL + 外键约束 + 建表 + 增量迁移 */
 export function initWorkshopDb(db: DatabaseSync): void {
@@ -140,6 +141,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateChannelExecutionModeColumn(db)
   // P3-4(2026-11-01):steer 失败重投上限 —— messages.attempts 列(重投 +1,≥3 → dead)
   migrateAddColumn(db, 'messages', 'attempts', 'INTEGER NOT NULL DEFAULT 0')
+  migrateAddColumn(db, 'messages', 'claim_token', 'TEXT')
+  holdLegacyActiveTasks(db)
   // v32(ONT):Profile 冻结本体引用摘要(缺省 [] = 无本体约束域;只前滚,不回填)
   migrateAddColumn(db, 'optimizer_profiles', 'ontology_refs_json', 'TEXT NOT NULL DEFAULT \'[]\'')
   seedDefaultWorkshopData(db)

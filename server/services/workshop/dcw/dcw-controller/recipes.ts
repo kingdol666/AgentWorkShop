@@ -15,6 +15,7 @@ import { writeTolerance } from '../dcw-runtime'
 import { notifyLineOperators } from '../../runtime/line-notify'
 import { assertWithinLimits } from '../param-limits'
 import { getActiveLineRun } from '../line-run'
+import type { ExecutionScope } from '../../agents/execution-scope'
 
 /**
  * 试验节拍 env 解析(显式 0 = 关闭;空/非法 = 默认 5 分钟)。
@@ -113,9 +114,19 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
    * 2026-10-08 ACK 鉴定:每参数写后经 verifyRecipeWrite 补验(链路受理→独立回读
    * 证实),结果行携带 ack/verify —— 「ok」不再被当成「设备已生效」。
    */
-  protected async writeRecipeParams(recipe: RecipeView, run: RecipeRunView, opts: { enforceRecipeWindow?: boolean, writeMeta?: DcwWriteMeta, requireActiveRun?: boolean } = {}): Promise<void> {
+  protected async writeRecipeParams(recipe: RecipeView, run: RecipeRunView, opts: { enforceRecipeWindow?: boolean, writeMeta?: DcwWriteMeta, requireActiveRun?: boolean, executionScope?: ExecutionScope } = {}): Promise<void> {
     const results: RecipeRunView['results'] = []
-    for (const param of recipe.params) {
+    for (const [index, param] of recipe.params.entries()) {
+      try {
+        opts.executionScope?.assertActive()
+      }
+      catch (err) {
+        results.push({ templateRef: param.templateRef ?? param.nodeId, nodeId: param.nodeId, ok: false, message: `已中止:执行租约失效,剩余参数未下发(${err instanceof Error ? err.message : String(err)})`, value: param.value })
+        for (const rest of recipe.params.slice(index + 1)) {
+          results.push({ templateRef: rest.templateRef ?? rest.nodeId, nodeId: rest.nodeId, ok: false, message: '已跳过:执行租约失效,未下发', value: rest.value })
+        }
+        break
+      }
       const active = opts.requireActiveRun === true ? getActiveLineRun(recipe.lineId) : null
       if (opts.requireActiveRun === true && (!active || active.runId !== run.id)) {
         results.push({ templateRef: param.templateRef ?? param.nodeId, nodeId: param.nodeId, ok: false, message: '已中止:产线批次已停止或被替换,剩余参数未下发', value: param.value })
@@ -154,10 +165,16 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
           continue
         }
       }
+      let driverStarted = false
       try {
-        const outcome = await this.write(node.id, param.value, run.id, opts.writeMeta ?? { source: 'recipe', actor: 'recipe' })
+        opts.executionScope?.assertActive()
+        const outcome = await this.write(node.id, param.value, run.id, opts.writeMeta ?? { source: 'recipe', actor: 'recipe' }, opts.executionScope, () => {
+          driverStarted = true
+        })
+        opts.executionScope?.assertActive()
         // ACK 鉴定:命令 ok 但仅链路受理(mqtt/http-no-echo/mock)→ 独立回读补验
         const v: WriteVerifyOutcome = await verifyRecipeWrite(this, node, param.value, outcome, { tolerance: writeTolerance(node) })
+        opts.executionScope?.assertActive()
         const ackTag = v.verdict === 'verified' ? '' : v.verdict === 'failed' ? '' : ` · ${v.message}`
         results.push({
           templateRef: node.templateRef,
@@ -170,7 +187,25 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
         })
       }
       catch (err) {
-        results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: err instanceof Error ? err.message : String(err), value: param.value })
+        let inactive = false
+        try {
+          opts.executionScope?.assertActive()
+        }
+        catch {
+          inactive = true
+        }
+        if (inactive && driverStarted) {
+          results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: '执行租约失效:写入已进入驱动,设备状态不确定,须核实;后续参数未下发', value: param.value, ack: 'unverified', verify: { verdict: 'unverified', attempts: 0 } })
+        }
+        else {
+          results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: inactive ? '执行租约失效:参数未下发' : err instanceof Error ? err.message : String(err), value: param.value })
+        }
+        if (inactive) {
+          for (const rest of recipe.params.slice(index + 1)) {
+            results.push({ templateRef: rest.templateRef ?? rest.nodeId, nodeId: rest.nodeId, ok: false, message: '已跳过:执行租约失效,未下发', value: rest.value })
+          }
+          break
+        }
       }
     }
     run.results = results
@@ -218,9 +253,12 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     agentApprovalId?: string
     /** Agent 下发身份（trial 与正式 apply 共用）：写账归因/互斥/回退冷却方向性依赖它。 */
     agentTrialMeta?: Omit<DcwWriteMeta, 'source' | 'approvalId'>
+    /** Trusted task fence for agent-controlled writes. */
+    executionScope?: ExecutionScope
     /** 应急豁免:仅跳过 recipe 级频控(审批/四层限界/试验节拍照常) */
     emergency?: boolean
   } = {}) {
+    opts.executionScope?.assertActive()
     this.ensureLoop()
     const repo = getDcwRecipeRepo()
     const recipe = repo.byId(recipeId)
@@ -261,10 +299,12 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       agentDispatch?: boolean
       agentApprovalId?: string
       agentTrialMeta?: Omit<DcwWriteMeta, 'source' | 'approvalId'>
+      executionScope?: ExecutionScope
       emergency?: boolean
     },
     overrides: Array<{ nodeId: string, value: number }>,
   ): Promise<RecipeRunView> {
+    opts.executionScope?.assertActive()
     const repo = getDcwRecipeRepo()
     const recipeId = recipe.id
     // 声明式覆盖集:有 overrides 只写声明的节点(未声明参数保持现状,绝不顺带整批);
@@ -282,19 +322,36 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     const agentMeta: DcwWriteMeta | undefined = opts.agentDispatch && opts.agentTrialMeta
       ? { ...opts.agentTrialMeta, source: 'agent', ...(opts.agentApprovalId ? { approvalId: opts.agentApprovalId } : {}) }
       : undefined
-    await this.writeRecipeParams({ ...recipe, params: effective }, run, { enforceRecipeWindow: overrides.length > 0, writeMeta: agentMeta })
+    await this.writeRecipeParams({ ...recipe, params: effective }, run, { enforceRecipeWindow: overrides.length > 0, writeMeta: agentMeta, ...(opts.executionScope ? { executionScope: opts.executionScope } : {}) })
+    let completedUnderLease = true
+    try {
+      opts.executionScope?.assertActive()
+    }
+    catch {
+      completedUnderLease = false
+    }
+    const initialAcks = run.ackSummary ?? summarizeAck(run.results)
+    if (opts.executionScope && (!completedUnderLease || initialAcks.failed > 0 || initialAcks.unverified > 0)) {
+      // An incomplete batch must not replace the active recipe context.
+      completedUnderLease = false
+    }
     // 运行中应用新配方版本 → 谱系拆段(A13):旧段在 now 闭合,新段记录新版本/内容 hash。
     try {
+      if (!completedUnderLease) throw new Error('recipe batch incomplete')
+      opts.executionScope?.assertActive()
       const { getActiveLineRun, setActiveLineRun } = await import('../line-run')
+      opts.executionScope?.assertActive()
       const active = getActiveLineRun(recipe.lineId)
       if (active) {
         const switchedAt = Date.now()
         const { closeContextSegment, openContextSegment } = await import('../../process-model/context')
-        closeContextSegment(active.runId, switchedAt)
+        opts.executionScope?.assertActive()
         // 活动窗口的配方身份同步切换:DAQ 入库打标、配方数采窗口都从活动窗口取值,
         // 只拆段不换身份会让切换后的样本仍带旧 recipeId(段与数据标签互相矛盾)。
         const { getDcwProductRepo } = await import('../dcw-product.repo')
+        opts.executionScope?.assertActive()
         const product = getDcwProductRepo().byId(recipe.productId)
+        closeContextSegment(active.runId, switchedAt)
         setActiveLineRun({
           ...active,
           recipeId: recipe.id,
@@ -310,6 +367,20 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       }
     }
     catch { /* 谱系不可用只降级,不阻断下发 */ }
+    try {
+      opts.executionScope?.assertActive()
+    }
+    catch {
+      const last = run.results[run.results.length - 1]
+      if (last?.ok) {
+        last.ok = false
+        last.ack = 'unverified'
+        last.verify = { verdict: 'unverified', attempts: 0 }
+        last.message = `${last.message};执行租约失效,批次完成状态不确定,须核实设备`
+        run.ackSummary = summarizeAck(run.results)
+        repo.updateRun(run)
+      }
+    }
     // ACK 鉴定判定落账(单一咽喉点:REST 手动/Agent 工具/回退/系统路径全覆盖):
     // failed≥1 → error;仅 unverified(链路受理未证实)→ warn;全部设备证实 → info。
     // error/warn 同时向该线 operate 授权用户定向告警(生产化:假成功必须有人看到)。
@@ -377,8 +448,10 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     description?: string
     agentDispatch?: boolean
     agentApprovalId?: string
+    executionScope?: ExecutionScope
     emergency?: boolean
   }): Promise<{ recipe: RecipeView, run: RecipeRunView, definitionNoop?: boolean }> {
+    opts.executionScope?.assertActive()
     const versionBefore = getDcwRecipeRepo().byId(recipeId)?.version ?? 1
     const updated = this.revertRecipe(recipeId, {
       version: opts.toLastGood ? undefined : opts.version,
@@ -394,6 +467,7 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     const run = await this.applyRecipe(recipeId, {
       agentDispatch: opts.agentDispatch,
       agentApprovalId: opts.agentApprovalId,
+      executionScope: opts.executionScope,
       emergency: opts.emergency,
     })
     return { recipe: updated, run, definitionNoop }

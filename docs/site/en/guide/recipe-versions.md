@@ -56,9 +56,8 @@ multi-parameter candidates (knowledge + data evidence)
       regression            → recipe_rollback { dispatch: true } unified rollback (definition revert + PLC batch restore)
 ```
 
-- `dcw_control` / `param_control` single-parameter dispatch is disabled inside the
-  optimization loop (prevents single-knob oscillation; AML exploration small-step excitation
-  is the exception);
+- Agent direct calls to `dcw_control` / `param_control` are disabled and rejected, not just
+  inside the optimization loop; gated internal exploration writes are not a direct-call exception;
 - trials skip the 60s / single-step interlocks by design (recipe path) — anti-oscillation
   comes from "batch + cadence + judge gating";
 - trials / applies / rejections are fully audited (`recipe.trial` / `recipe.apply` /
@@ -86,7 +85,7 @@ Agent: line_context (confirm ownership and current values)
   → recipe_trial (multi-param batch trial, no version written) → daq_query (re-measure)
   → progress: recipe_update (adopt as vN, same id) → recipe_apply (formal dispatch)
   → regression: recipe_rollback (dispatch=true) unified rollback (definition revert + PLC batch restore)
-single-node emergency nudge (outside the recipe chain): dcw_control → dcw_judge → dcw_rollback
+when recovery is needed: use the authorized recipe rollback path and check actual device state
 ```
 
 **Evidence is batch-scoped by default**: `daq_query` resolves the node's active run and

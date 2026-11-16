@@ -7,6 +7,9 @@ import { hostToolsForAgent } from '../host-tool-bridge'
 import { killHarnessProcess, markHarnessProcessExit } from '../harness-process'
 import { liveAgents } from './helpers'
 import { markTerminalSessionExit } from '../harness-terminal'
+import { createHash, randomBytes } from 'node:crypto'
+import type { OmpRpcClient } from '../adapters/omp-rpc-client'
+import type { ExecutionScope } from '../execution-scope'
 
 export abstract class OmpRpcAgentImplLifecycle extends OmpRpcAgentImplContextGovernance {
   async dispose(): Promise<void> {
@@ -20,14 +23,77 @@ export abstract class OmpRpcAgentImplLifecycle extends OmpRpcAgentImplContextGov
         markTerminalSessionExit(pid, null)
       }
     }
+    this.hostToolAliases = null
     this.hostToolsRegistered = false
   }
 
-  /** 工具注册表变更 → 热重发 set_host_tools(在跑会话立即获得插件新工具,无需重spawn) */
+  /** Register aliases in a single ordered queue, including plugin hot reloads. */
+  protected registerTurnTools(client: OmpRpcClient, scope: ExecutionScope, rotate: boolean): Promise<void> {
+    if (rotate) {
+      this.hostToolAliases = { client, scope, nonce: randomBytes(16).toString('hex'), revision: 0, byAlias: new Map(), byName: new Map() }
+    }
+    const turn = this.hostToolAliases
+    if (!turn || turn.client !== client || turn.scope !== scope) return Promise.reject(new Error('OMP turn tool scope unavailable'))
+    const revision = ++turn.revision
+    if (!rotate) {
+      turn.nonce = randomBytes(16).toString('hex')
+      turn.byAlias.clear()
+      turn.byName.clear()
+    }
+    const nonce = turn.nonce
+    const update = this.hostToolRegistration.catch(() => {}).then(async () => {
+      if (this.hostToolAliases !== turn || this.client !== client || scope.signal.aborted) throw new Error('OMP turn tool scope expired')
+      const tools = hostToolsForAgent(this.selfAgentId, this.agentRole, this.channelId)
+      const nextByAlias = new Map<string, string>()
+      const nextByName = new Map<string, string>()
+      const aliased = tools.map((tool) => {
+        const digest = createHash('sha256').update(tool.name).digest('hex').slice(0, 16)
+        const prefix = tool.name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 11) || 'tool'
+        const alias = `aw_${nonce}_${digest}_${prefix}`
+        if (nextByAlias.has(alias)) throw new Error(`OMP host tool alias collision: ${tool.name}`)
+        nextByAlias.set(alias, tool.name)
+        nextByName.set(tool.name, alias)
+        return { ...tool, name: alias, description: `Canonical tool: ${tool.name}. ${tool.description}` }
+      })
+      // Revoke the old snapshot while registration is in flight; a failed or
+      // ambiguous update must never leave any alias dispatchable.
+      turn.byAlias.clear()
+      await client.send({ type: 'set_host_tools', tools: aliased })
+      if (this.hostToolAliases !== turn || this.client !== client || scope.signal.aborted) throw new Error('OMP turn tool scope expired')
+      if (turn.revision !== revision) return
+      turn.byAlias = nextByAlias
+      turn.byName = nextByName
+      this.hostToolsRegistered = true
+    })
+    this.hostToolRegistration = update
+    return update
+  }
+
+  protected async prepareTurnTools(client: OmpRpcClient, scope: ExecutionScope): Promise<void> {
+    await this.registerTurnTools(client, scope, true)
+    let pending: Promise<void>
+    do {
+      pending = this.hostToolRegistration
+      await pending
+    } while (pending !== this.hostToolRegistration)
+    if (this.hostToolAliases?.client !== client || this.hostToolAliases.scope !== scope || this.client !== client || scope.signal.aborted) {
+      throw new Error('OMP turn tool scope expired')
+    }
+  }
+
+  protected clearTurnTools(scope: ExecutionScope): void {
+    if (this.hostToolAliases?.scope === scope) this.hostToolAliases = null
+  }
+
+  /** 工具注册表变更 → 回收旧别名并热更新。 */
   refreshPluginTools(): void {
-    const client = this.client
-    if (!client || !client.alive) return
-    void client.send({ type: 'set_host_tools', tools: hostToolsForAgent(this.selfAgentId, this.agentRole, this.channelId) }).catch(() => {})
+    const turn = this.hostToolAliases
+    if (!turn || turn.client !== this.client || !turn.client.alive || turn.scope.signal.aborted) return
+    void this.registerTurnTools(turn.client, turn.scope, false).catch((err) => {
+      // A failed refresh leaves no potentially revoked alias dispatchable.
+      if (this.hostToolAliases === turn) turn.byAlias.clear()
+      console.warn('[omp] host tool refresh failed:', err instanceof Error ? err.message : err)
+    })
   }
 
   /** harness 会话身份(§2.4;get_state 探测到才有;未探测到返回 null) */

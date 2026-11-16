@@ -40,6 +40,7 @@ import { canonicalJson } from '../../../../shared/context/hash'
 import { parseJson } from '../db/database'
 import { workshopSettings } from '../settings'
 import { resolveDispatchLimits } from './dispatch-limits'
+import { assertProjectRecoveryClear, projectHasLegacyRecoveryHold } from './legacy-recovery'
 import { AppError } from '../../../utils/errors'
 import { argsDigest } from './digest'
 import { PROJECT_GATED_WRITE_TOOL_NAMES } from './tool-surface'
@@ -583,6 +584,10 @@ export class ProjectService {
    * 组合根把它注入 TaskEngine；取消/终止后即使任务已被唤醒也无法开工。
    */
   isProjectTaskRunnable(projectId: string, taskId: string): boolean {
+    try {
+      if (projectHasLegacyRecoveryHold(this.db, projectId)) return false
+    }
+    catch { return false }
     const p = this.projects.findById(projectId)
     if (!p || p.status !== 'active') return false
     const task = this.tasks.findById(taskId)
@@ -919,6 +924,7 @@ export class ProjectService {
     p: ProjectRow,
     opts: { auto: boolean },
   ): Promise<ProjectWorkItemRow> {
+    assertProjectRecoveryClear(this.db, id)
     if (p.status !== 'active') throw new AppError(409, 'PROJECT_NOT_ACTIVE', `Project 状态 ${p.status} 不能派发`)
     // 审查修复（计划门）：要求批准计划的项目，plan 未批前不得派发任何工作项。
     if (p.planApprovalRequired === 1 && p.planVersion === 0) {
@@ -1001,6 +1007,7 @@ export class ProjectService {
       if (!instanceChannel || instanceChannel.enabled !== 1 || !instanceChannel.leadAgentId) {
         throw new AppError(409, 'TASK_INSTANCE_UNAVAILABLE', `任务实例 Channel 不可用: ${instanceChannelId}`)
       }
+      assertProjectRecoveryClear(this.db, id)
       const taskSession = this.sessions.listByWorkItem(wi.id).find(s => s.status === 'active')
       const attemptNo = this.attempts.listByWorkItem(wi.id).reduce((max, a) => Math.max(max, a.attemptNo), 0) + 1
       const sourceKey = `pw:${wi.id}:${attemptNo}`
@@ -1111,6 +1118,7 @@ export class ProjectService {
     catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       const code = (err as { code?: string }).code ?? ''
+      if (code === 'LEGACY_EXECUTION_RECOVERY_REQUIRED') throw err
       const errno = (err as { errno?: number }).errno
       // H0 派发后栅栏已把本次 attempt/工作项收敛到终态或 DRAFT，不能再走通用
       // close/回落逻辑覆盖（否则 CANCELED 会被改回 DRAFT/BLOCKED）。
@@ -1624,6 +1632,7 @@ export class ProjectService {
    * 项目完成仍走 owner 审批门 —— 自动派发永不自动完成项目。
    */
   private async doAutoDispatch(id: string): Promise<AutoDispatchResult> {
+    assertProjectRecoveryClear(this.db, id)
     const out: AutoDispatchResult = { dispatched: [], failed: 0, skippedByGate: false }
     const p = this.projects.findById(id)
     // mode=observe：只读观察，自动派发一律关闭；owner 仍可逐项手动派发。
@@ -1657,6 +1666,7 @@ export class ProjectService {
     }
     const systemActor = { id: 'system', role: 'system' } as const
     for (const wi of ready) {
+      assertProjectRecoveryClear(this.db, id)
       if (projectSlots <= 0 || tickSlots <= 0) break
       const dispatchKey = wi.instanceChannelId ?? wi.channelId
       if ((channelInFlight.get(dispatchKey) ?? 0) >= limits.perChannel) continue
@@ -1716,6 +1726,7 @@ export class ProjectService {
     reconcile: { workItems: ProjectWorkItemRow[], expiredApprovals: number }
     autoDispatch: Awaited<ReturnType<ProjectService['autoDispatchProject']>>
   }> {
+    assertProjectRecoveryClear(this.db, id)
     const currentProject = this.projects.findById(id)
     if (!currentProject) throw new AppError(404, 'NOT_FOUND', `Project 不存在: ${id}`)
     if (currentProject.status === 'canceled') {
@@ -1725,6 +1736,7 @@ export class ProjectService {
     // 任务实例回收：终态工作项的专属 Channel/会话停用（幂等；放在派发前，
     // 让下一批任务使用干净实例，也避免终态实例继续占用调度槽位）
     await this.releaseTerminalTaskInstances(id)
+    assertProjectRecoveryClear(this.db, id)
     const afterRelease = this.projects.findById(id)
     if (!afterRelease || afterRelease.status === 'canceled') {
       return { reconcile, autoDispatch: { dispatched: [], failed: 0, skippedByGate: true } }
@@ -1732,6 +1744,7 @@ export class ProjectService {
     // Router v3 验收闭环：成果 submitted 后主动向 Leader/独立评审 Channel 发 L1 请求，
     // 而不是等人工在演示脚本里逐个 @。消息幂等（correlation=review:<resultId>）。
     await this.ensureTechnicalReviewRequests(id)
+    assertProjectRecoveryClear(this.db, id)
     const afterReview = this.projects.findById(id)
     if (!afterReview || afterReview.status === 'canceled') {
       return { reconcile, autoDispatch: { dispatched: [], failed: 0, skippedByGate: true } }
@@ -1757,6 +1770,7 @@ export class ProjectService {
     const bindings = this.bindings.listByProject(projectId).filter(b => b.status === 'active')
     const items = this.workItems.listByProject(projectId)
     for (const result of submitted) {
+      assertProjectRecoveryClear(this.db, projectId)
       if (this.hasPassingTechnicalReview(result.id, result.version)) continue
       // 相关键带 version+updatedAt：同一成果重新提交会生成新的 L1 请求；
       // 只认平台发出的 system:review，防止成员伪造 request_review 抑制真实请求。
@@ -1858,6 +1872,7 @@ export class ProjectService {
   }
 
   private reconcileWith(id: string, actor: ProjectActor): { workItems: ProjectWorkItemRow[], expiredApprovals: number } {
+    assertProjectRecoveryClear(this.db, id)
     const project = this.projects.findById(id)
     if (!project) throw new AppError(404, 'NOT_FOUND', `Project 不存在: ${id}`)
     // canceled 是不可变终态：晚到的 root 回调/定时对账只能读，不能重新生成 draft、推进工作项或写审计。

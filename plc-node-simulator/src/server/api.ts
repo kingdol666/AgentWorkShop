@@ -25,6 +25,8 @@ import type { DeviceNode, PlantModelConfig, SimConfig, SignalDef } from '../shar
 const ok = (data: unknown = null) => ({ code: 0, message: 'ok', data })
 const fail = (status: number, code: string, message: string) => createError({ statusCode: status, data: { code, message } })
 
+const SIM_STARTED_AT = new Date().toISOString()
+
 // ---------- 命名场景(隔离管理):data/scenarios/<name>.json = { name, savedAt, config } ----------
 
 const SCENARIO_DIR = path.join(DATA_DIR, 'scenarios')
@@ -111,6 +113,16 @@ export async function haltNode(node: NonNullable<ReturnType<typeof findNode>>): 
 
 export function createApi() {
   const router = createRouter()
+
+  // 归属证明(nonce 绑定):隔离接入/onboarding 用。nonce 只由本轮拉起方通过环境变量
+  // 注入 —— 端口上的其他进程(抢占者/旧实例)无法出示同一 nonce,loopback 服务器
+  // 本身不监听外网。未注入 nonce 时返回 null(= 未证明,接入脚本必须拒绝)。
+  router.get('/attestation', defineEventHandler(() => ok({
+    nonce: process.env.AW_SIM_ATTEST_NONCE || null,
+    pid: process.pid,
+    simPort: Number(process.env.SIM_PORT ?? 4010),
+    startedAt: SIM_STARTED_AT,
+  })))
 
   router.get('/nodes', defineEventHandler(() => ok(getConfig().nodes.map(nodeView))))
 

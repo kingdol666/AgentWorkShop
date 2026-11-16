@@ -29,8 +29,7 @@ curl -X POST $API/api/workshop/agent-tools/approvals/$ID/decide \
   -d '{"approved": true, "comment": "within window, approved"}'
 ```
 
-> Note: in manual mode the agent-side `dcw_control` call **blocks until decided**
-> (timeout `security.hitl_timeout_ms`, default 180000 ms = 3 minutes, then auto-reject) — by design.
+> Agent direct calls to `dcw_control` are disabled and rejected; manual approval does not make it an available entry point. Other applicable approvals follow their action-specific policy gates.
 
 ### Action exceptions and policy gates
 
@@ -41,7 +40,7 @@ curl -X POST $API/api/workshop/agent-tools/approvals/$ID/decide \
 
 ### Recipe-dispatch gate (batch actions)
 
-Beyond per-node `dcw_control`, `recipe_trial` / `recipe_apply` batch dispatch can also be gated by the runtime setting `security.recipeDispatchApproval`, which is off by default. When enabled it applies to these actions across Channels and does not replace Channel/line/binding mode gates.
+`recipe_trial` / `recipe_apply` batch dispatch can be gated by the runtime setting `security.recipeDispatchApproval`, which is off by default. When enabled it applies to these actions across Channels and does not replace Channel/line/binding mode gates.
 
 When this global gate is enabled, the approval card lists each parameter's "node current → candidate" value and the hypothesis. Approval dispatches the batch and returns the comment to the Agent; rejection/timeout does not dispatch, and rejection guidance is returned verbatim. Decisions are recorded as `approval.approve` / `approval.reject`, and dispatch as `recipe.trial` / `recipe.apply`. `recipe_rollback` is outside this global gate but remains subject to other applicable governance policies.
 

@@ -9,6 +9,8 @@ import type { WorkspaceTask } from '../../types/task'
 import { log } from './helpers'
 import { MESSAGE_WATCHDOG_TICK_MS, shouldFireMessageWatchdog } from './message-watchdog'
 import { superviseWatchdogOnly, workshopSettings } from '../../settings'
+import { TERMINAL_TASK_STATES } from '../../types/task'
+import type { ExecutionScope } from '../../agents/execution-scope'
 
 export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
   /** 当前消息看门狗的活动上报句柄(processMessage 事件循环逐事件调用;回合外为 null) */
@@ -33,25 +35,52 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
       hasPendingApprovals = getToolApprovals().listPending(this.agentId).length > 0
     }
     catch { /* 按无等待处理 */ }
-    if (!shouldFireMessageWatchdog({ state: this.state, lastActivityAt: w.getLast(), now: Date.now(), stallMs: w.stallMs, hasPendingApprovals })) return
+    if (w.isFired()) return
+    const now = Date.now()
     if (hasPendingApprovals) {
-      // 有人在裁:等待窗口顺延,绝不把人工裁决当停滞杀回合
+      // 有人在裁:暂停无活动窗口。审批解除后由下一次巡检从当前时刻重新起算,
+      // 避免长时间等人后刚拿到结果就被旧时间戳立即误杀。
       w.bump()
       return
     }
+    if (!shouldFireMessageWatchdog({ state: this.state, lastActivityAt: w.getLast(), now, stallMs: w.stallMs, hasPendingApprovals })) return
     w.markFired()
     w.stop()
     log.warn(`[AgentRuntime:${this.agentId}] 消息 ${msg.messageId.slice(0, 8)} 超过无活动阈值(${w.stallMs}ms)未结束且无挂起审批 → abort 当前回合并重投(state=${this.state})`)
     // 带结构化 reason:omp 侧 normalizeSupervisionAbortReason 把 watchdog 视为非硬中止,
     // 不合成 cancel 决策 —— 不会连坐取消频道内其它 active 任务(2026-11-16 复现回归)。
+    // 重投由旧回合 finally 完成，确保它停止处理后新回合才可认领该消息。
     this.abortCurrent('message watchdog')
-    // 重投(条件更新:仅 consuming 可重投);原回合若最终完成,其 markConsumed
-    // 与本 requeue 以 WHERE state='consuming' 互斥,不产生双重消费。
-    if (this.deps.mailbox.requeue(msg.messageId)) this.deps.mailbox.wake()
   }
 
   async supervise(snapshot: SupervisionSnapshot): Promise<SupervisionDecision[] | null> {
-    if (!this.impl.supervise) return null
+    if (!this.impl.supervise || this.getState() === 'stopped') return null
+    const rootId = snapshot.activeRootId ?? null
+    const root = rootId ? snapshot.tasks.find(task => task.id === rootId) : undefined
+    const rootGeneration = root?.assignmentGeneration
+    const rootLeaseId = root?.executionLeaseId
+    const rootSnapshotValid = Boolean(root && root.channelId === this.channelId && root.assigneeId === this.agentId
+      && !TERMINAL_TASK_STATES[root.state] && !root.executionLeaseRevokedAt
+      && root.executionLeaseAgentId === this.agentId
+      && Number.isSafeInteger(rootGeneration) && (rootGeneration ?? -1) >= 0 && rootLeaseId)
+    const controller = new AbortController()
+    this.superviseController = controller
+    const attemptId = randomUUID()
+    const startedAt = new Date().toISOString()
+    this.supervisionAttempt = {
+      attemptId,
+      channelId: this.channelId,
+      leadAgentId: this.agentId,
+      state: 'RUNNING',
+      startedAt,
+      watchdogAt: null,
+      completedAt: null,
+      snapshotRevision: snapshot.tick,
+      activeRootId: snapshot.activeRootId ?? null,
+      watchdogCount: 0,
+      lastSignalAt: null,
+      lastDecisionKind: null,
+    }
     // 监督回合本身是「在途工作」:过去只在 processMessage 里置 busy,lead 长监督
     // 期间对外恒 idle,Channel 配置重装会据此把它当空闲卸载并 abort 根任务。
     // 进入监督即置 busy,落定后恢复 idle;若期间已被 stop 则保持 stopped。
@@ -70,32 +99,35 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
         ...snapshot.tasks.filter(t => t.state === 'SUBMITTED' || t.state === 'FAILED' || t.state === 'WAITING').map(t => t.title),
         ...snapshot.members.map(m => m.name),
       ].join(' ')
-      memoryBlock = (await this.deps.memory?.recall(query, { touch: false })) ?? undefined
+      const recall = this.deps.memory?.recall(query, { touch: false, signal: controller.signal })
+      if (recall) {
+        let onAbort!: () => void
+        const aborted = new Promise<undefined>((resolve) => {
+          onAbort = () => resolve(undefined)
+          if (controller.signal.aborted) onAbort()
+          else controller.signal.addEventListener('abort', onAbort, { once: true })
+        })
+        try {
+          memoryBlock = (await Promise.race([recall, aborted])) ?? undefined
+        }
+        finally {
+          controller.signal.removeEventListener('abort', onAbort)
+        }
+      }
     }
     catch (err) {
       log.error(`[AgentRuntime:${this.agentId}] supervise 记忆召回失败:`, err)
     }
-    const controller = new AbortController()
-    this.superviseController = controller
+    if (controller.signal.aborted || this.getState() === 'stopped') {
+      if (this.superviseController === controller) this.superviseController = null
+      this.supervisionAttempt = { ...this.supervisionAttempt, state: 'IDLE', completedAt: new Date().toISOString(), lastDecisionKind: 'aborted' }
+      if (restoreIdleOnSettle && this.state === 'busy' && this.currentTaskId == null) this.state = 'idle'
+      this.refreshStatus()
+      return null
+    }
     const policy = this.impl.getSupervisionPolicy?.() ?? {
       watchdogMs: Number(workshopSettings().supervise_watchdog_ms) || 90_000,
       hardTimeoutMs: Number(workshopSettings().supervise_hard_timeout_ms) || 900_000,
-    }
-    const attemptId = randomUUID()
-    const startedAt = new Date().toISOString()
-    this.supervisionAttempt = {
-      attemptId,
-      channelId: this.channelId,
-      leadAgentId: this.agentId,
-      state: 'RUNNING',
-      startedAt,
-      watchdogAt: null,
-      completedAt: null,
-      snapshotRevision: snapshot.tick,
-      activeRootId: snapshot.activeRootId ?? null,
-      watchdogCount: 0,
-      lastSignalAt: null,
-      lastDecisionKind: null,
     }
     // §11 supervise_watchdog_only=false 时回退旧行为:watchdog 即中止回合。
     // 默认(true)下 watchdog 只记录信号 + 提示同一会话,绝不 abort/kill/重建 Harness。
@@ -151,6 +183,30 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
       void this.impl.steer?.('[系统监督 watchdog] 当前调度回合已超过观察阈值。请基于真实 worker 进度判断 wait、guide、reassign、cancel 或 complete；不要创建重复任务。')
         .catch(() => {})
     }
+    const validRoot = (): boolean => {
+      if (!rootId || !rootSnapshotValid) return false
+      if (this.deps.taskEngine.isLegacyRecoveryBlocked?.(rootId)) return false
+      const current = this.deps.taskEngine.get(rootId)
+      return Boolean(current && current.channelId === this.channelId && current.assigneeId === this.agentId
+        && !TERMINAL_TASK_STATES[current.state] && !current.executionLeaseRevokedAt
+        && current.executionLeaseAgentId === this.agentId
+        && current.assignmentGeneration === rootGeneration
+        && current.executionLeaseId === rootLeaseId)
+    }
+    const executionScope: ExecutionScope | undefined = rootId && rootGeneration != null && rootLeaseId && validRoot()
+      ? {
+          taskId: rootId,
+          agentId: this.agentId,
+          channelId: this.channelId,
+          assignmentGeneration: rootGeneration,
+          executionLeaseId: rootLeaseId,
+          signal: controller.signal,
+          assertActive: () => {
+            if (controller.signal.aborted || !validRoot()) throw new Error('supervision task execution lease is stale')
+          },
+        }
+      : undefined
+    if (rootId && !executionScope) controller.abort(new Error('task abort'))
     const ctx: AgentRunContext = {
       agentId: this.agentId,
       channelId: this.channelId,
@@ -158,10 +214,14 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
       workspace: this.deps.workspace,
       signal: controller.signal,
       memory: memoryBlock,
+      ...(executionScope ? { executionScope } : {}),
     }
     let decisions: SupervisionDecision[] | null = null
     try {
+      if (controller.signal.aborted) return null
       decisions = await this.impl.supervise(snapshot, ctx, { signal: controller.signal, onWatchdog: at => markWatchdog(at) })
+      if (!controller.signal.aborted && executionScope && !validRoot()) controller.abort(new Error('task abort'))
+      if (controller.signal.aborted) return null
       return decisions
     }
     catch (err) {
@@ -173,11 +233,15 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
       if (watchdogTimer) clearTimeout(watchdogTimer)
       if (hardTimer) clearTimeout(hardTimer)
       if (this.superviseController === controller) this.superviseController = null
-      const settled = controller.signal.aborted ? 'ABORTED' : 'DECISION_APPLIED'
+      const aborted = controller.signal.aborted
+      const settled = aborted ? 'ABORTED' : 'DECISION_APPLIED'
+      if (!aborted) controller.abort(new Error('supervision settled'))
       // §2.3:落定审计 —— 完成时刻 + 最后决策类型(§8「Lead 最后决策」的数据源)
-      const lastDecisionKind = decisions && decisions.length > 0
-        ? decisions.map(d => d.kind).join(',')
-        : (watchdogFired ? 'none_after_watchdog' : 'none')
+      const lastDecisionKind = aborted
+        ? 'aborted'
+        : decisions && decisions.length > 0
+          ? decisions.map(d => d.kind).join(',')
+          : (watchdogFired ? 'none_after_watchdog' : 'none')
       this.supervisionAttempt = {
         ...this.supervisionAttempt,
         state: settled,
@@ -231,15 +295,47 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
   protected async consumeLoop(): Promise<void> {
     while (this.state !== 'stopped') {
       const msg = await this.deps.mailbox.dequeue()
-      if (this.getState() === 'stopped' || msg === null) break
+      if (msg === null) break
+      const claimToken = this.deps.mailbox.claimToken(msg)
+      if (!claimToken) {
+        log.error(`[AgentRuntime:${this.agentId}] 消息认领缺少 token,拒绝执行: ${msg.messageId}`)
+        continue
+      }
+      if (this.getState() === 'stopped') {
+        this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
+        break
+      }
       // 单条 run 抛错不阻塞下一条。
       // 看门狗必须在拿到 execLock **之后**才起表(2026-11-16 复现):否则前一条消息的
       // 长回合会吃掉本消息的整个排队窗口,fire 时杀的是别人的回合、重投的是还没开跑的消息。
+      let turnGeneration = this.turnGeneration
       try {
-        await this.withExecLock(() => this.withMessageWatchdog(msg, () => this.processMessage(msg)))
+        await this.withExecLock(() => {
+          turnGeneration = this.turnGeneration
+          if (this.getState() === 'stopped') {
+            this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
+            return Promise.resolve()
+          }
+          return this.withMessageWatchdog(msg, claimToken, () => {
+            if (!this.deps.mailbox.beginProcessing(msg.messageId, claimToken)) return Promise.resolve()
+            return this.processMessage(msg, claimToken)
+          })
+        })
       }
       catch (err) {
         log.error(`[AgentRuntime:${this.agentId}] run 失败:`, err)
+        if (this.turnGeneration === turnGeneration) {
+          // Stop before releasing to prevent an immediate, unbounded preflight retry loop.
+          void this.stop()
+          this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
+          break
+        }
+        else if (this.deps.mailbox.ownsClaim(msg.messageId, claimToken)) {
+          // Execution may have produced side effects: retain the claim and halt replay.
+          log.error(`[AgentRuntime:${this.agentId}] 回合收尾失败,保留认领并停止消费以避免重复执行`)
+          void this.stop()
+          break
+        }
       }
     }
   }
@@ -259,12 +355,26 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
    * race 败者不清理状态:原回合若最终完成,按其自身路径 markConsumed
    * (repo requeue/markConsumed 的 WHERE state='consuming' 守卫使双重消费收敛为 no-op)。
    */
-  protected withMessageWatchdog(msg: { messageId: string }, fn: () => Promise<void>): Promise<void> {
+  protected async withMessageWatchdog(msg: { messageId: string }, claimToken: string, fn: () => Promise<void>): Promise<void> {
     const stallMs = Math.max(60_000, Number(workshopSettings().harness_stall_timeout_ms) || 600_000)
     let lastActivityAt = Date.now()
     let fired = false
+    let unsubscribe = () => {}
     this.messageWatchdogBump = () => {
       lastActivityAt = Date.now()
+    }
+    try {
+      const { getToolApprovals } = await import('../../agents/tool-approvals')
+      unsubscribe = getToolApprovals().subscribeApprovalChanges(this.agentId, () => {
+        lastActivityAt = Date.now()
+      })
+    }
+    catch { /* 审批面未装配时继续使用活动事件 */ }
+    if (this.getState() === 'stopped') {
+      unsubscribe()
+      this.messageWatchdogBump = null
+      this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
+      return
     }
     const timer = setInterval(() => {
       void this.messageWatchdogTick(msg, {
@@ -281,9 +391,14 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
       })
     }, MESSAGE_WATCHDOG_TICK_MS)
     timer.unref?.()
-    return fn().finally(() => {
+    try {
+      await fn()
+    }
+    finally {
+      fired = true
       clearInterval(timer)
+      unsubscribe()
       this.messageWatchdogBump = null
-    })
+    }
   }
 }

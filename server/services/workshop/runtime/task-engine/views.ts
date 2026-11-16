@@ -8,6 +8,9 @@ import type { AgentTaskQueueView, RootQueueView, TaskState, WorkspaceTask } from
 import type { MessageRepo } from '../../db/message.repo'
 import type { TaskRepo } from '../../db/task.repo'
 import { rowToTask, rowToTaskLite } from './helpers'
+import { isChannelRecoveryBlocked, isLegacyRecoveryHeld, LEGACY_RECOVERY_MARKER } from './legacy-recovery'
+import { AppError } from '../../../../utils/errors'
+import { audit } from '../../ops/ops'
 
 export abstract class TaskEngineViews extends TaskEngineContracts {
   /**
@@ -51,6 +54,64 @@ export abstract class TaskEngineViews extends TaskEngineContracts {
       completedRoots: queue.completedRoots.length,
       activeRootCount: queue.activeRoot ? 1 : 0,
       queuedRootCount: queue.queuedRoots.length,
+    }
+  }
+
+  /** A hold is durable until an explicit operator disposition; terminal nodes count too. */
+  hasLegacyRecoveryHold(channelId: string): boolean {
+    return this.repos.tasks.listByChannelMeta(channelId).some(isLegacyRecoveryHeld)
+  }
+
+  /** Held trees and roots behind a held root cannot enter execution. */
+  isLegacyRecoveryBlocked(taskId: string): boolean {
+    const task = this.repos.tasks.findById(taskId)
+    if (!task) return true
+    const rows = this.repos.tasks.listByChannelMeta(task.channelId)
+    if (isChannelRecoveryBlocked(taskId, rows)) return true
+    return this.repos.tasks.projectRecoveryBlocked?.(taskId) ?? false
+  }
+
+  /** 运维面:当前全部恢复保留任务(含树内消息计数,供处置前调查)。 */
+  listLegacyRecoveryHolds(): Array<{ taskId: string, channelId: string, assigneeId: string, title: string, state: string, closeReason: string, createdAt: string, messages: { pending: number, consuming: number, dead: number } }> {
+    return this.repos.tasks.listRecoveryHolds(LEGACY_RECOVERY_MARKER).map((row) => {
+      const counts = this.repos.tasks.recoveryHoldMessageCounts(row.id)
+      return {
+        taskId: row.id, channelId: row.channelId, assigneeId: row.assigneeId,
+        title: row.title, state: row.state, closeReason: row.closeReason ?? '',
+        createdAt: row.createdAt, messages: counts,
+      }
+    })
+  }
+
+  /**
+   * 运维面:显式处置(释放)恢复保留。只清 marker + 复位在飞消息投递预算,
+   * 不自动重放任何执行 —— 重新执行必须由操作员走显式 retry/reopen。
+   * 全程写审计;失败静默的 audit() 不影响处置主路径。
+   */
+  disposeLegacyRecoveryHold(taskId: string, actor: { id: string, name?: string }, note?: string): { released: string[], requeued: number, unblockedPending: number } {
+    const result = this.repos.tasks.disposeLegacyRecoveryHold(taskId, LEGACY_RECOVERY_MARKER)
+    if (!result) {
+      const task = this.repos.tasks.findById(taskId)
+      if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
+      throw new AppError(409, 'NOT_HELD', `任务 ${taskId} 不在 legacy 恢复保留中`)
+    }
+    audit({
+      actor: actor.id,
+      actorName: actor.name ?? '',
+      actorKind: 'user',
+      action: 'task.recovery_disposition',
+      targetKind: 'task',
+      targetId: taskId,
+      detail: { released: result.released, requeued: result.requeued, unblockedPending: result.unblockedPending, note: note ?? '' },
+      summary: `释放 legacy 恢复保留:${result.released.length} 个任务,复位 ${result.requeued} 条在飞消息(待投 ${result.unblockedPending})`,
+      level: 'warn',
+    })
+    return result
+  }
+
+  protected assertLegacyRecoveryAdmission(taskId: string): void {
+    if (this.isLegacyRecoveryBlocked(taskId)) {
+      throw new AppError(409, 'LEGACY_EXECUTION_RECOVERY_REQUIRED', `Task ${taskId} requires operator investigation; execution was not replayed`)
     }
   }
 

@@ -13,6 +13,8 @@
 都是**常驻 ACP 会话**,不是无头 CLI 家族 —— 它们与 `dsh` 同型,审批走
 `session/request_permission` / `requestToolCallConfirmation`。
 
+当前未发布、未合并且待审查源码的兼容性边界：agent-token MCP 回程桥无法证明可信回合来源，危险工具及授权/派发等操作会被过滤并拒绝；插件工具须显式声明 `riskClass: 'read'` 才可通过这一层，其他治理检查仍适用。原生 omp 的工作或监督回合中止时会退役对应子进程，后续需要新进程。正常完成回合后，同一长活进程的迟到帧仍缺少可靠的逐回合来源，不能声称此问题已解决。详见 [MCP 参考](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/mcp.md)。
+
 ## 每频道选择引擎与模型
 
 - 频道级设定 **harness → provider → model(+effort)** 三元组,从引擎官方目录实时选择

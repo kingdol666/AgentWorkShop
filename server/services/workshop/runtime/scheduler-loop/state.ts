@@ -22,6 +22,8 @@ export abstract class SchedulerLoopState extends SchedulerLoopContracts {
   protected lastFingerprint = ''
   protected timer: NodeJS.Timeout | null = null
   protected started = false
+  /** Invalidates work from a previous scheduler lifecycle, including after restart. */
+  protected lifecycleGeneration = 0
   protected running = false
   protected activeRound: Promise<void> | null = null
   protected pendingWake = false
@@ -58,6 +60,11 @@ export abstract class SchedulerLoopState extends SchedulerLoopContracts {
     this.supervisionMail = options.supervisionMail ?? null
     this.toolActivityOf = options.toolActivityOf ?? null
     this.onLeadDecision = options.onLeadDecision
+  }
+
+  /** Use the task engine's shared FIFO hold policy, including terminal held roots. */
+  protected legacyBlocked(taskId: string): boolean {
+    return this.lead.taskEngine.isLegacyRecoveryBlocked?.(taskId) ?? false
   }
 
   /** Lead 决策留痕(异常绝不阻断调度) */
@@ -121,6 +128,11 @@ export abstract class SchedulerLoopState extends SchedulerLoopContracts {
 
   stop(): void {
     this.started = false
+    this.lifecycleGeneration++
+    this.lastSuperviseAt = 0
+    this.lastFingerprint = ''
+    this.lastRoundFingerprint = ''
+    this.idleStreak = 0
     this.clearTimer()
     this.pendingWake = false
     if (this.loopController) {

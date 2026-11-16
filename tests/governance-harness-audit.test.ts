@@ -108,7 +108,7 @@ test('correlates repeated actual mock-driver calls without deduplicating attempt
     min: 0, max: 100, decimals: 1, unit: 'bar',
   })
   const host = {
-    repo: { flushDebounced() {} }, writesTotal: 0, writesFailed: 0,
+    repo: { flushNow: () => true, flushDebounced() {} }, writesTotal: 0, writesFailed: 0,
     broadcast: null, emitNodeChanged() {},
   }
   const executeWrite = (DcwControllerActuation.prototype as unknown as {

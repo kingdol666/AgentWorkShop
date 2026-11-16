@@ -18,6 +18,7 @@ const { requestManualApproval } = await import('../server/services/workshop/agen
 const { toolOptimizationExplore } = await import('../server/services/workshop/agents/industrial/optimization-tools')
 const { DcwNode } = await import('../server/services/workshop/dcw/dcw-node')
 const { getDcwController } = await import('../server/services/workshop/dcw/dcw-controller')
+const { runWithExecutionScope } = await import('../server/services/workshop/agents/execution-scope')
 const { getDaqController } = await import('../server/services/workshop/daq/daq-controller')
 const { createAlarmEventRepo, createApprovalHistoryRepo, createApprovalRequestRepo, createAuditRepo } = await import('../server/services/workshop/db/ops.repo')
 const { bindOpsRepos } = await import('../server/services/workshop/ops/ops')
@@ -131,6 +132,66 @@ for (const decision of ['denied', 'expired', 'approved'] as const) {
     assert.equal(row.target_before, 100)
     assert.equal(row.target_after, approved ? 102 : null)
     assert.match(result.text, approved ? /探索步完成/ : /探索步被拒绝/)
+    if (!approved) assert.doesNotMatch(result.text, /可能已下发|未获确认/)
     assert.equal(approvals.historyList().find(a => a.agentId === agentId)?.status, decision)
+  })
+}
+
+for (const failure of ['cancelled', 'driver-failure', 'post-dispatch-exception'] as const) {
+  test(`optimization exploration: ${failure} reports an indeterminate write after driver entry`, async (t) => {
+    const agentId = `ag-explore-${failure}`
+    const node = new DcwNode({ id: `dw-explore-${failure}`, templateRef: 'dcw-temp-sp', driver: 'mock', min: 0, max: 100, unit: 'C', decimals: 1 })
+    node.value = 50
+    const repo = getAgentNodeBindingRepo()
+    repo.bind(agentId, node.id, 'dcw', 'manual')
+    repo.bind(agentId, `dq-${failure}`, 'daq', 'auto')
+    const controller = getDcwController()
+    t.mock.method(controller, 'byId', id => id === node.id ? node : undefined)
+    const abort = new AbortController()
+    const scope = {
+      agentId, channelId: '', taskId: `task-${failure}`, assignmentGeneration: 1, executionLeaseId: 'lease-test', signal: abort.signal,
+      assertActive() {
+        if (abort.signal.aborted) throw new Error('execution lease revoked')
+      },
+    }
+    let release!: () => void
+    let notifyStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      notifyStarted = resolve
+    })
+    const released = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const write = t.mock.method(controller, 'write', async (_id, value, _runId, _meta, _scope, onDriverStart) => {
+      onDriverStart?.()
+      notifyStarted()
+      await released
+      if (failure === 'post-dispatch-exception') throw new Error('late bookkeeping failure')
+      if (failure === 'driver-failure') return { ok: false, raw: value, ack: 'unverified' as const, readback: null, message: 'readback failed' }
+      node.applyWriteResult(value, true, 'late driver ACK', new Date().toISOString())
+      return { ok: true, raw: value, ack: 'readback-verified' as const, readback: value, message: 'late driver ACK' }
+    })
+    const samples = t.mock.method(getDaqController(), 'samples', async () => [{ value: 100 }])
+    const approvals = getToolApprovals()
+    const request = approvals.request.bind(approvals)
+    t.mock.method(approvals, 'request', (id, nodeId, kind, detail) => {
+      const result = request(id, nodeId, kind, detail, { timeoutMs: 20 })
+      const pending = approvals.listPending(id).find(a => a.nodeId === nodeId)!
+      approvals.decide(pending.id, true, '允许测试')
+      return result
+    })
+    const pending = runWithExecutionScope(scope, () => toolOptimizationExplore(agentId, { control_node_id: node.id, target_node_id: `dq-${failure}`, direction: 'up', step: 1, settle_seconds: 10 }))
+    await started
+    if (failure === 'cancelled') abort.abort()
+    release()
+    const result = await pending
+    const row = db.prepare('SELECT * FROM optimization_explorations WHERE agent_id = ?').get(agentId)!
+    assert.equal(result.isError, true)
+    assert.match(result.text, /探索步未获确认.*可能已下发/)
+    assert.doesNotMatch(result.text, /探索步被拒绝|未下发/)
+    assert.equal(row.write_status, 'failed')
+    assert.equal(write.mock.callCount(), 1)
+    assert.equal(samples.mock.callCount(), 1)
+    assert.equal(row.target_after, null)
   })
 }

@@ -4,6 +4,7 @@ import { handleCompleteTask, handleReportProgress } from '../server/services/wor
 import type { HostToolSessionState } from '../server/services/workshop/agents/host-tool-bridge/types'
 import type { AgentWorkspace } from '../server/services/workshop/agents/agent-interface'
 import type { WorkspaceTask } from '../server/services/workshop/types/task'
+import { runWithExecutionScope, type ExecutionScope } from '../server/services/workshop/agents/execution-scope'
 
 /**
  * 2026-10-30 回归:lead 监督回合不经过 workerTurn,session.currentTaskId 恒空;
@@ -99,4 +100,96 @@ test('report_progress: 无任何上下文仍 fail-closed', async () => {
   const result = await handleReportProgress({ progress: 10 }, state, workspace, undefined)
   assert.equal(result.isError, true)
   assert.match(result.text, /无当前任务上下文/)
+})
+
+test('active scoped progress and completion retain normal behavior', async () => {
+  const { workspace, completed, reported } = makeWorkspace()
+  let checks = 0
+  const scope: ExecutionScope = {
+    agentId: 'lead-1', channelId: 'channel-1', signal: new AbortController().signal,
+    assertActive: () => { checks++ },
+  }
+  const session = { ...state, currentTaskId: 'root-1' }
+  await runWithExecutionScope(scope, async () => {
+    assert.equal((await handleReportProgress({ progress: 25 }, session, workspace)).isError, undefined)
+    assert.equal((await handleCompleteTask({ summary: 'done' }, session, workspace)).isError, undefined)
+  })
+  assert.equal(checks, 2)
+  assert.equal(reported.length, 1)
+  assert.equal(completed.length, 1)
+  assert.equal(session.currentTaskId, null)
+})
+
+test('task mutations revalidate a reassigned lease after awaited lookups', async () => {
+  for (const operation of ['progress', 'complete'] as const) {
+    const { workspace, completed, reported } = makeWorkspace()
+    const controller = new AbortController()
+    let generation = 1
+    let resume!: () => void
+    let started!: () => void
+    const waiting = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve
+    })
+    const scope: ExecutionScope = {
+      taskId: 'root-1', agentId: 'lead-1', channelId: 'channel-1',
+      assignmentGeneration: 1, executionLeaseId: 'lease-1', signal: controller.signal,
+      assertActive: () => {
+        if (controller.signal.aborted || generation !== 1) throw new Error('stale task execution lease')
+      },
+    }
+    const delayed = {
+      ...workspace,
+      getTask: async (taskId: string) => {
+        const task = await workspace.getTask(taskId)
+        started()
+        await gate
+        return task
+      },
+    } as AgentWorkspace
+    const session = { ...state, currentTaskId: 'root-1' }
+    const pending = runWithExecutionScope(scope, () => operation === 'progress'
+      ? handleReportProgress({ progress: 50 }, session, delayed)
+      : handleCompleteTask({ summary: 'done' }, session, delayed))
+    await waiting
+    generation = 2
+    resume()
+    await assert.rejects(pending, /stale task execution lease/)
+    assert.equal(completed.length, 0)
+    assert.equal(reported.length, 0)
+    assert.equal(session.currentTaskId, 'root-1')
+  }
+})
+
+test('task completion revalidates an aborted turn after the child lookup', async () => {
+  const { workspace, completed } = makeWorkspace()
+  const controller = new AbortController()
+  let resume!: () => void
+  let started!: () => void
+  const waiting = new Promise<void>((resolve) => {
+    started = resolve
+  })
+  const gate = new Promise<void>((resolve) => {
+    resume = resolve
+  })
+  const scope: ExecutionScope = {
+    agentId: 'lead-1', channelId: 'channel-1', signal: controller.signal,
+    assertActive: () => { if (controller.signal.aborted) throw new Error('turn aborted') },
+  }
+  const delayed = {
+    ...workspace,
+    listTasks: async () => {
+      started()
+      await gate
+      return []
+    },
+  } as AgentWorkspace
+  const pending = runWithExecutionScope(scope, () => handleCompleteTask({ summary: 'done' }, { ...state }, delayed, 'root-1'))
+  await waiting
+  controller.abort()
+  resume()
+  await assert.rejects(pending, /turn aborted/)
+  assert.equal(completed.length, 0)
 })

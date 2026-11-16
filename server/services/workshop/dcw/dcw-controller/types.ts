@@ -2,6 +2,7 @@
  * DcwController 的依赖类型与对外 DTO(原 server/services/workshop/dcw/dcw-controller.ts 顶部模块级类型声明)。纯类型。
  */
 import type { DataTransform, DcwDriverKind } from '../../../../../shared/dcw-protocol'
+import type { DcwHoldObserve } from '../dcw-node'
 
 export type BroadcastFn = (type: string, payload: unknown) => void
 
@@ -13,6 +14,8 @@ export interface DcwCreateInput {
   /** 数据语义标定钩子(encode:物理值 → PLC 设定值) */
   transform?: DataTransform
   holdIntervalMs?: number | null
+  /** transport-ack 写的保写观测证实声明(缺省 = 链路受理不构成保写解除证据) */
+  holdObserve?: DcwHoldObserve | null
   /** 周期读间隔 ms(null = 网关默认;0 = 仅手动读取) */
   readIntervalMs?: number | null
   unit?: string
@@ -41,6 +44,8 @@ export interface DcwPatchInput {
   /** 数据语义标定钩子(encode) */
   transform?: DataTransform
   holdIntervalMs?: number | null
+  /** transport-ack 写的保写观测证实声明(null = 显式清除,回到回读证实口径) */
+  holdObserve?: DcwHoldObserve | null
   /** 周期读间隔 ms(null = 网关默认;0 = 仅手动读取) */
   readIntervalMs?: number | null
   unit?: string
