@@ -1,0 +1,56 @@
+[
+ {
+  "name": "熔体压力PV",
+  "driver": "modbus-tcp",
+  "points": 8,
+  "last": 53.596666666666664
+ },
+ {
+  "name": "制品克重PV",
+  "driver": "modbus-tcp",
+  "points": 8,
+  "last": 31.61
+ },
+ {
+  "name": "模具温度PV",
+  "driver": "modbus-rtu",
+  "points": 8,
+  "last": 57.525
+ },
+ {
+  "name": "缺陷率PV",
+  "driver": "mqtt",
+  "points": 8,
+  "last": 0.405
+ },
+ {
+  "name": "视觉置信度PV",
+  "driver": "mqtt",
+  "points": 8,
+  "last": 96.175
+ },
+ {
+  "name": "平均壁厚PV",
+  "driver": "opcua",
+  "points": 8,
+  "last": 0.5204
+ },
+ {
+  "name": "飞边PV",
+  "driver": "http",
+  "points": 8,
+  "last": 0.20074999999999998
+ },
+ {
+  "name": "节拍PV",
+  "driver": "http",
+  "points": 8,
+  "last": 21.7
+ },
+ {
+  "name": "厚度轮廓PV",
+  "driver": "http",
+  "points": 0,
+  "last": null
+ }
+]

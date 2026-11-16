@@ -1,0 +1,32 @@
+[
+ {
+  "name": "保压压力SP",
+  "nodeId": "dw-86a23ab1",
+  "value": 54,
+  "message": "读回 raw 54 → eng 54"
+ },
+ {
+  "name": "保压时间SP",
+  "nodeId": "dw-b5d1f100",
+  "value": 3.5,
+  "message": "读回 raw 3.5 → eng 3.5"
+ },
+ {
+  "name": "料温SP",
+  "nodeId": "dw-fd43ac20",
+  "value": 208,
+  "message": "读回 raw 208 → eng 208"
+ },
+ {
+  "name": "冷却流量SP",
+  "nodeId": "dw-8b6275f7",
+  "value": 15,
+  "message": "读回 raw 15 → eng 15"
+ },
+ {
+  "name": "保压压力SP（复检）",
+  "nodeId": "dw-8c924a7e",
+  "value": null,
+  "message": "驱动 http 不支持读取(仅观测型通道)"
+ }
+]

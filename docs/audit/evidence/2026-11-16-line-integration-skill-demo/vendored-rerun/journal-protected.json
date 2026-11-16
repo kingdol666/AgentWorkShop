@@ -1,0 +1,19 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "anchors": [
+   {
+    "lineId": "ln-d7e0a2a2",
+    "nodeId": "dw-b16199f7",
+    "prevValue": null,
+    "newValue": 42,
+    "source": "manual",
+    "actor": "e51eb120-1292-4787-963d-2849880ece12",
+    "recipeRunId": null,
+    "id": "anc-0727a096",
+    "at": "2026-11-16T13:51:48.506+08:00"
+   }
+  ]
+ }
+}

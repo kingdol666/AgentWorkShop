@@ -1,3 +1,7 @@
+packages:
+  # 内置 PLC 模拟器（五协议虚拟设备）；随主仓库克隆，根 pnpm install 一并安装其依赖。
+  - plc-node-simulator
+
 allowBuilds:
   '@serialport/bindings-cpp': false
   core-js: true

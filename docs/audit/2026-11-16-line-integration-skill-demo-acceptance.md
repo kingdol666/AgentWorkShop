@@ -197,3 +197,28 @@ AW_BASE=http://127.0.0.1:3998 AW_TOKEN=<token> \
 
 > 结论只适用于本次模拟协议栈与本次 commit；真实产线须另走停线、维护窗口、
 > 只读浸泡、人工批准最小步首验与三方回读，不得把本报告当作物理 HIL 或投用批准。
+
+---
+
+## 7. 内置模拟器随仓库复跑（2026-11-16）
+
+模拟器已从 git submodule 改为主仓库内的普通目录 `plc-node-simulator/`，并加入
+pnpm workspace：普通 clone 即包含源码，根 `pnpm install` 会安装其依赖。其许可为
+PolyForm Noncommercial 1.0.0，独立于平台 Apache-2.0（见 `plc-node-simulator/LICENSE`）。
+
+为验证迁移后 skill 仍可执行，另起一套全新隔离环境复跑：
+
+- 平台 `:3999`、模拟器 `:4054`、全新 `AW_HOME`，源码来自仓库内 `plc-node-simulator/`；
+- sim-twin **7/7**；供给 **20/20**；频道锻造 **15/15**；V1–V6 **25/25**；
+- onboard + smoke **7/7**：52→54 MPa，HITL 批准、设备证实，`rr-87a89bae`；
+- DAQ 五协议均有样本；DCW 回读 54 / 3.5 / 208 / 15；向量帧 normalized **64** 点；
+- Channel `ee0f06d8…` 为 `production_line_integrated`；seed task 仍 `WAITING`，
+  lead 子任务 `WORKING`（冷启动未自主收口）。
+
+迁移同时修复了影子启动器的一个 pnpm 兼容问题：影子 `node_modules` 不再整目录
+junction（相对链接会在影子路径下断链），改为逐项指向真实路径的绝对 junction，
+并用仓库根解析出的 tsx loader 绝对 URL 以单进程方式启动（监听 PID = 启动 PID，
+满足影子归属校验）。证据见
+`docs/audit/evidence/2026-11-16-line-integration-skill-demo/vendored-rerun/`。
+
+边界与 §4 相同：全部为模拟器证据，不是物理 HIL；本轮未发布 npm/GitHub Release。

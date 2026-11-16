@@ -8,16 +8,14 @@
  * 轮询 /api/nodes 就绪 → 应用预设 → 设备/信号/工艺模型操作。
  */
 import { spawn, execSync, execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { sleep } from './util.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 export const REPO = resolve(HERE, '..', '..')
-// 模拟器位置：唯一权威 = 仓库内子模块 plc-node-simulator/。
-// 2026-09-21 起废除「同级检出 ../plc-node-simulator」旧布局回退：两份源码并存时
-// 影子实例可能装载到过期引擎/蓝图（表现为引擎读数与节点值系统性错位），一律以子模块为准。
+// 模拟器位置：唯一权威 = 仓库内 plc-node-simulator/（随主仓库克隆的普通目录）。
 // SIM_DIR 环境变量保留为显式覆盖口（CI/多实例场景）。
 export const SIM_DIR = process.env.SIM_DIR ?? join(REPO, 'plc-node-simulator')
 export const SIM_BASE = process.env.SIM_BASE ?? 'http://127.0.0.1:4010'
@@ -133,7 +131,7 @@ function simSrcStamp(dir) {
 function ensureShadowSim() {
   if (!SIM_SHADOW) return SIM_DIR
   const stampFile = join(SIM_SHADOW, '.bench-stamp')
-  const stamp = String(simSrcStamp(SIM_DIR)) + ':' + SIM_PORT + ':loopback-v1'
+  const stamp = String(simSrcStamp(SIM_DIR)) + ':' + SIM_PORT + ':loopback-v2'
   const fresh = existsSync(stampFile)
     && existsSync(join(SIM_SHADOW, 'node_modules'))
     && readFileSync(stampFile, 'utf8') === stamp
@@ -166,8 +164,23 @@ function ensureShadowSim() {
       }
     }
     remap(join(SIM_SHADOW, 'src'))
-    try { symlinkSync(join(SIM_DIR, 'node_modules'), join(SIM_SHADOW, 'node_modules'), 'junction') }
-    catch { /* 已存在或平台不支持:首次拷贝失败会在 spawn 后就绪探测处显式失败 */ }
+    // pnpm 的 node_modules 用相对符号链接指向仓库根的 .pnpm；整目录 junction 到影子后，
+    // 相对目标会按影子路径解析而断链（tsx/h3/mqtt 全部找不到）。改为在影子 node_modules
+    // 内逐项建立指向**真实路径**的绝对 junction，依赖内部再按源目录解析。
+    const dstNm = join(SIM_SHADOW, 'node_modules')
+    try { rmSync(dstNm, { recursive: true, force: true }) } catch { /* 旧布局清理失败则不阻塞 */ }
+    mkdirSync(dstNm, { recursive: true })
+    const srcNm = join(SIM_DIR, 'node_modules')
+    if (existsSync(srcNm)) {
+      for (const entry of readdirSync(srcNm)) {
+        if (entry === '.bin') continue
+        try {
+          const source = join(srcNm, entry)
+          if (!statSync(source).isDirectory()) continue
+          symlinkSync(realpathSync(source), join(dstNm, entry), 'junction')
+        } catch { /* 单个依赖链接失败会在启动/就绪探测处显式失败 */ }
+      }
+    }
     writeFileSync(stampFile, stamp)
   }
   return SIM_SHADOW
@@ -262,14 +275,21 @@ export async function ensureSimulator({ timeoutMs = 90_000, log = console.log } 
   // DAQ 0 采样 / 真值 0」(2026-09-20 R2-R5 全部假象的共同根因)。直跑 tsx 常驻。
   // 影子实例的内置 MQTT broker 跟随端口偏移(与协议端口同一 offset),避免多实例抢占 18830。
   // (brokerPort 已在函数头部经 brokerGuard 校验归属)
-  const tsxPackage = join(cwd, 'node_modules', 'tsx', 'package.json')
+  const tsxLoader = [
+    join(cwd, 'node_modules', 'tsx', 'dist', 'loader.mjs'),
+    join(REPO, 'node_modules', 'tsx', 'dist', 'loader.mjs'),
+    join(SIM_DIR, 'node_modules', 'tsx', 'dist', 'loader.mjs'),
+  ].map(p => { try { return realpathSync(p) } catch { return '' } }).find(Boolean)
   const simEntry = join(cwd, 'src', 'server', 'index.ts')
-  if (!existsSync(tsxPackage) || !existsSync(simEntry)) {
-    return { started: false, dir: cwd, reason: `tsx 启动依赖缺失: ${tsxPackage} 或 ${simEntry}` }
+  if (!tsxLoader || !existsSync(simEntry)) {
+    return { started: false, dir: cwd, reason: `tsx 启动依赖缺失: ${tsxLoader || '(未找到 tsx loader)'} 或 ${simEntry}` }
   }
   // Load tsx in-process with absolute paths. This avoids the Windows npx/cmd
-  // wrapper and makes the listener PID/source path auditable.
-  const child = spawn(process.execPath, ['--import', 'tsx', simEntry], {
+  // wrapper and makes the listener PID/source path auditable. The loader is
+  // resolved from the real workspace root, so pnpm's relative symlinks are not
+  // re-resolved through the private shadow path. Do not use the tsx CLI here:
+  // it spawns a child process, which breaks the listener-PID ownership check.
+  const child = spawn(process.execPath, ['--import', pathToFileURL(tsxLoader).href, simEntry], {
     cwd,
     shell: false,
     env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost', SIM_PORT: String(SIM_PORT), SIM_HOST: SIM_SHADOW ? '127.0.0.1' : process.env.SIM_HOST ?? '127.0.0.1', MQTT_BROKER_PORT: String(brokerPort) },

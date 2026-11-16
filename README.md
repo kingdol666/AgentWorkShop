@@ -288,6 +288,8 @@ aw start                           # → http://localhost:3001, everything initi
 
 Prefer not to install globally: `npx agentworkshop start`. From source: `git clone … && pnpm install && pnpm dev` (→ 3000); production: `pnpm build && pnpm start`. Update: `aw update`.
 
+> **Bundled PLC simulator (source checkouts):** the five-protocol virtual device lives at `plc-node-simulator/` and is part of this repository, so a normal clone includes it. Root `pnpm install` installs its workspace dependencies (including `tsx`); the onboarding scripts start it as an isolated shadow. It is not included in the npm tarball. See its separate license below.
+
 > A real agent harness needs its CLI on PATH (`omp` / `codex` / `opencode` / … pick a subset, channels can mix; `mock` and `claude` run in-process, no CLI needed). Optional DAQ infrastructure (MQTT broker + TimescaleDB) auto-starts when Docker is reachable.
 
 **Your first “agent × line” session (about 2 minutes):**
@@ -401,6 +403,8 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 ## License
 
 [Apache 2.0](./LICENSE) (permissive; commercial and production use allowed).
+
+**Bundled simulator exception:** `plc-node-simulator/` is licensed separately under the PolyForm Noncommercial License 1.0.0 (see [`plc-node-simulator/LICENSE`](./plc-node-simulator/LICENSE)); it is not covered by the Apache-2.0 license above, and its required notice must be preserved. Obtain a commercial license from its copyright holder before commercial use.
 
 ---
 

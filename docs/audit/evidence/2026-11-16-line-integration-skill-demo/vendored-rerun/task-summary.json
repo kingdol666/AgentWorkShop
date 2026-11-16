@@ -1,0 +1,20 @@
+[
+ {
+  "id": "46c9bfcd-d7aa-4bdf-987f-138de33fd407",
+  "title": "克重闭环首轮巡检",
+  "state": "WAITING",
+  "history": 50
+ },
+ {
+  "id": "d74f6956-b08b-4f4f-b1b1-a6c34cc0f81c",
+  "title": "最近5分钟四指标取证与克重合规判读",
+  "state": "WORKING",
+  "history": 50
+ },
+ {
+  "id": "12ea4bdf-6e38-48d9-a48f-e2922fdeca4d",
+  "title": "注塑克重调参知识检索与首步建议",
+  "state": "WORKING",
+  "history": 63
+ }
+]
