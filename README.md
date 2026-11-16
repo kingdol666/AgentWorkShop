@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.2)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.3)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>source v0.11.3 (unreleased)</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · 148 host tools · 144 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>source v0.11.3 (released 2026-11-16)</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · 148 host tools · 144 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[Quick start](#quick-start) · [Current source](#current-source-v0-11-3-unreleased) · [0.11.2 release notes](#whats-new-in-0112-historical-release-snapshot) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [Current source](#current-source-v0-11-3) · [0.11.2 release notes](#whats-new-in-0112-historical-release-snapshot) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,7 +49,7 @@ A configuration-driven platform where **AI agent teams** and industrial systems 
 - **Delivery is a first-class concept**: **Project mode** turns a blueprint into a plan, a WBS with dependencies, L1 technical review, L2 owner acceptance and real deliverables — the project closes only when the deliverables pass;
 - **The loop is implemented in governed stages**: read → analyze → propose → policy-controlled approval where required → write → readback/audit; the scope of each test and whether it used a simulator or physical equipment are stated with its evidence.
 
-## Current source: v0.11.3 (unreleased)
+## Current source: v0.11.3
 
 The source version is **0.11.3**, published on 2026-11-16 (npm + GitHub Release). Post-release hardening round 2 (`900ad228`, PR #228) fixed the four defects reproduced in the round-2 evaluation: the message watchdog is now an activity window (HITL waits no longer kill healthy long turns; the 16-minute governed turn that was aborted and replayed 3× in round 1 completed once with zero watchdog aborts), HITL expiry settles authoritatively with denial notices, rag-bridge kb_agent errors are classified (401 → rotate token instead of a misleading "check the web"), and verify-line V6 treats a missing fresh-home fixture as a documented SKIP. Gates: lint, typecheck, unit **1799/1799**, build, docs **101/101**, Skills **176/176**, MCP **14/14**, plugin **22/22**, SDK, twin 5/5. Fresh-home five-protocol round: onboarding 25/25 + smoke 7/7 on first pass; omp + `ustc/deepseek-flash` Channel governed step (HITL → run `readback-verified` 1/1, journal anchor); IDD `industrial-optimizer-loop` R001 31.7875→32.5611 g (incumbent, D=0.825) + R002 GP-EI within CI, gate 13/13; RAG index → retrieval rank 1. See the [round-2 report](docs/audit/2026-11-16-round2-fixes-full-acceptance.md). Physical HIL unverified; RAG internal agent still flaky (external); Mimosa inconclusive; the USTC key hit its 3h budget twice (external quota).
 
@@ -390,7 +390,7 @@ In progress / planned: **binding lifecycle** (auto-release on project completion
 
 ## Research paper
 
-The governance mechanisms are written up as **“Grading Machine-Originated Plant Writes: Separately Inspectable Evidence for Industrial Agent Teams”** (IEEE TII submission under review). Sources and review records: [`paper/tii/SUBMISSION-IEEE-TII/`](./paper/tii/SUBMISSION-IEEE-TII/); every mechanism claim is backed by in-repo evidence ([`docs/benchmarks/`](./docs/benchmarks) · [`docs/experiments/`](./docs/experiments) · [`docs/audit/`](./docs/audit)).
+The governance mechanisms are written up as **“Agent-Mediated Online Data Acquisition and Governed Setpoint Control in Industrial Production Lines”** (IEEE TII submission under review). Sources and compiled draft: [`paper/tii/TII-SUBMISSION-PACKAGE-20261112/`](./paper/tii/TII-SUBMISSION-PACKAGE-20261112/); every mechanism claim is backed by in-repo evidence ([`docs/benchmarks/`](./docs/benchmarks) · [`docs/experiments/`](./docs/experiments) · [`docs/audit/`](./docs/audit)).
 
 ## Contributing
 
@@ -412,7 +412,7 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current source version: **v0.11.3 (unreleased)** — [Latest published release v0.11.2](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.2) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current source version: **v0.11.3 (released 2026-11-16)** — [Latest release v0.11.3](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.3) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

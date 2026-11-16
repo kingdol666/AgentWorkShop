@@ -73,7 +73,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.11.3 · 未发布</i></span>
+        <span>版本 <i>v0.11.3 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -94,7 +94,7 @@ footer:
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为未发布的源码快照，不是新版本发布公告。本次改动对齐 README、双语指南与运维 Skill，
+      当前为 v0.11.3 源码快照（已发布）。本次改动对齐 README、双语指南与运维 Skill，
       覆盖 Channel 模式、产品绑定 Session、记忆作用域与产线工具契约。请先阅读产线集成指南；
       其中的模拟验收不构成物理 HIL 或生产就绪证明。
     </p>
@@ -120,7 +120,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">验证</span>
-      <p>本未发布源码快照已实测：build/lint/typecheck 通过，unit 1787/1787、MCP 14/14、插件 22/22、docs 101/101、Skills 176/176；隔离五协议模拟线完成 1 线/5 DCW/9 DAQ、V1–V6 25/25，并执行 52→54→56 MPa 两步 HITL 批准下发与回读。仅模拟证据，不构成物理 HIL；seed task 未自主收口。<a href="/AgentWorkShop/guide/line-integration">产线集成指南</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md">日期化报告</a></p>
+      <p>本 v0.11.3 源码快照已实测：build/lint/typecheck 通过，unit 1787/1787、MCP 14/14、插件 22/22、docs 101/101、Skills 176/176；隔离五协议模拟线完成 1 线/5 DCW/9 DAQ、V1–V6 25/25，并执行 52→54→56 MPa 两步 HITL 批准下发与回读。仅模拟证据，不构成物理 HIL；seed task 未自主收口。<a href="/AgentWorkShop/guide/line-integration">产线集成指南</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md">日期化报告</a></p>
     </div>
   </section>
 
@@ -443,10 +443,10 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      平台机制已写成投稿级论文:<strong>《Grading Machine-Originated Plant Writes: Separately
-      Inspectable Evidence for Industrial Agent Teams》</strong>(IEEE Transactions on Industrial
+      平台机制已写成投稿级论文:<strong>《Agent-Mediated Online Data Acquisition and Governed
+      Setpoint Control in Industrial Production Lines》</strong>(IEEE Transactions on Industrial
       Informatics 匿名评审稿,IEEEtran 双栏 10 页),源文件与编译稿在仓库
-      <code>paper/tii/SUBMISSION-IEEE-TII/</code>。论文的机制主张由仓库内归档证据支撑:
+      <code>paper/tii/TII-SUBMISSION-PACKAGE-20261112/</code>。论文的机制主张由仓库内归档证据支撑:
       <code>docs/benchmarks/</code>(2026-10 部署级回归战役:14 次流水线执行、1134 项检查零失败,
       含分级写确认与 HITL 证据腿)、<code>docs/experiments/</code>(铸膜闭环报告)与
       <code>docs/audit/</code>(验收报告)。<code>AW_BENCH_MODE=1</code> 可按

@@ -1,3 +1,13 @@
+## v0.11.3 — runtime/security hardening, packaged release（2026-11-16）
+
+- Channel config recycle no longer cancels an in-flight root task: supervise marks the lead busy, recycle defers on active work, and the scheduler aborts with an explicit runtime-stop reason.
+- Late message completion can no longer consume a requeued message (`markConsumed` is guarded by `state='consuming'`).
+- DAQ/DCW/MES test-driver routes close the legacy-unset SSRF hole; rag-bridge `web_url` uses the same localhost allowlist as `base_url`.
+- `idd-closedloop-bridge` reports `routesReady=false` instead of a false ok when the current IDD has retired the closed-loop HTTP routes.
+- `npm pack` excludes local Mimosa/Nuxt state, logs and pid files.
+- Verification: lint, typecheck, unit 1790/1790, build, docs 101/101, README, Skills 176/176, MCP 14/14, plugin lifecycle 22/22, SDK, twin 5/5; simulated five-protocol line + IDD optimizer skill + RAG + omp/`deepseek-flash` Channel V1–V6 25/25, HITL 62.5→64 MPa readback 64, retest 32.416 g.
+- Boundaries: simulator evidence only, not physical HIL; RAG internal `kb_agent` timed out; Mimosa remains inconclusive and is not a security-pass claim.
+
 ## Next — PR-9 RSI Beta management surface (2026-11-14)
 
 - Added a read-only RSI Beta management panel to the plugin page with server-reported status, strict flags/scope, adapter health, Context/Research/Evidence provenance, and limitations.
@@ -5,6 +15,8 @@
 - No approve, promote, actuate, control-write, or profile activation controls were added; existing UI/runtime behavior remains unchanged when Beta is absent or disabled.
 - Release notes and operational boundaries: `docs/rsi-beta-management.md`.
 
+
+## v0.11.2 — final acceptance closeout（2026-11-12）
 
 - `recipe_trial` now rejects deterministic out-of-range and active recipe-window-invalid candidates before HITL, with no approval card, driver write, execution batch, or device mutation.
 - Runtime input validation is fail-closed for null, booleans, empty strings, NaN, Infinity and nonnumeric strings; finite numbers and numeric strings remain supported.
@@ -16,6 +28,14 @@
 完整发布产物与逐版本说明见 GitHub Releases:<https://github.com/kingdol666/AgentWorkShop/releases>
 
 以下为核心版本节点——每个节点对应一轮可验收的能力跃迁,验收证据收录于 `docs/audit/`。
+
+## v0.11.1 — 加固收口：取消硬停 × RSI 证据完整性 × Session 幂等 × 升级安全（2026-11-11）
+
+- **Project 取消/终止硬停（#176）**：canceled 终态全写面 fail-closed（成员/审批/提案/绑定/成果/回调/对账）；runtime 缺失取消能力时 terminate 以 503 回滚；孤立任务实例频道事务内取消 + durable 回收。
+- **RSI 证据完整性（#180）**：bench pValue 服务端按 perSeed 配对符号检验重算（客户端自报不再落台账）；经验 merge/promote validated 必须锚定本频道真实 COMPLETED 任务；pin 只渲染本频道 validated 且 scope 匹配的行；生命周期 expected-state CAS。
+- **Session 幂等与停机屏障（#181）**：会话消息持久 clientMessageId（channel+session+actor+key 原子 INSERT→冲突回读；异载荷 409）；DAQ 帧 lineId 贯穿 ingest→REST→WS→前端；runtime stop 等待消费循环/dispose。
+- **升级安全（#182）**：修复存量库升级启动崩溃（messages 幂等索引改在补列后创建）+ 回归测试。
+- 验收：unit 1508/1508 · 生产式隔离验收 9 套件 0 FAIL。
 
 ## v0.11.0 — 项目中心 × RSI 经验演化 × 真实模型实证（2026-11-09）
 

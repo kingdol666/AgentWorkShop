@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.2)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.3)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.11.3（未发布）</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.11.3（2026-11-16 发布）</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · 148 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-11-3-未发布) · [0.11.2 发布说明](#0112-修复了什么) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-11-3) · [0.11.2 发布说明](#0112-修复了什么) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,7 +49,7 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 当前源码 v0.11.3（未发布）
+## 当前源码 v0.11.3
 
 当前源码版本为 **0.11.3**，已于 2026-11-16 发布（npm + GitHub Release）。发布后第二轮加固（`900ad228`，PR #228）修复了第二轮测评复现的四个缺陷：消息看门狗改为活动窗口（HITL 等待不再误杀健康长回合——上一轮被 abort+重放 3 次的 16 分钟治理回合本轮一次投递、0 次 abort）、HITL 到期权威收口并发终态通告、rag-bridge kb_agent 失败分类（401→轮换 token，不再误导"检查 web"）、verify-line V6 对未预置夹具的 fresh home 记 SKIP。门禁：lint、typecheck、unit **1799/1799**、build、docs **101/101**、Skills **176/176**、MCP **14/14**、插件 **22/22**、SDK、twin 5/5。全新五协议实测：onboard 首跑 25/25 + 冒烟 7/7；omp + `ustc/deepseek-flash` 频道治理步（HITL → run `readback-verified` 1/1、journal 锚点）；IDD `industrial-optimizer-loop` R001 31.7875→32.5611 g（incumbent，D=0.825）+ R002 GP-EI 落 CI 内、gate 13/13；RAG 入库后检索排名第 1。见[第二轮测评报告](docs/audit/2026-11-16-round2-fixes-full-acceptance.md)。物理 HIL 未验证；RAG 内部 agent 仍不稳定（外部）；Mimosa inconclusive；USTC key 两次触及 3h 预算（外部配额）。
 
@@ -394,7 +394,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 ## 研究论文
 
-治理机制已写成投稿级论文——**《Grading Machine-Originated Plant Writes: Separately Inspectable Evidence for Industrial Agent Teams》**（IEEE TII 匿名评审稿）。源文件与评审记录见 [`paper/tii/SUBMISSION-IEEE-TII/`](./paper/tii/SUBMISSION-IEEE-TII/)；每条机制主张由仓库证据支撑（[`docs/benchmarks/`](./docs/benchmarks) · [`docs/experiments/`](./docs/experiments) · [`docs/audit/`](./docs/audit)）。
+治理机制已写成投稿级论文——**《Agent-Mediated Online Data Acquisition and Governed Setpoint Control in Industrial Production Lines》**（IEEE TII 匿名评审稿）。源文件与编译稿见 [`paper/tii/TII-SUBMISSION-PACKAGE-20261112/`](./paper/tii/TII-SUBMISSION-PACKAGE-20261112/)；每条机制主张由仓库证据支撑（[`docs/benchmarks/`](./docs/benchmarks) · [`docs/experiments/`](./docs/experiments) · [`docs/audit/`](./docs/audit)）。
 
 ## 参与贡献
 
@@ -416,7 +416,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.11.3（未发布）** —— [最新已发布版本 v0.11.2](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.2) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.11.3（已发布 2026-11-16）** —— [最新版本 v0.11.3](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.11.3) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />
