@@ -31,6 +31,7 @@ export default {
     { key: 'base_url', type: 'string', default: DEFAULT_BASE, group: 'default', labelKey: 'plugin.rag-bridge.settings.base_url', label: 'rag-knowledge 后端地址', description: 'FastAPI 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
     { key: 'web_url', type: 'string', default: DEFAULT_WEB, group: 'default', labelKey: 'plugin.rag-bridge.settings.web_url', label: 'rag-knowledge Web 地址', description: 'Nuxt Web(文档写盘/目录);保存即热生效' },
     { key: 'token', type: 'string', default: '', group: 'auth', labelKey: 'plugin.rag-bridge.settings.token', label: 'rag-knowledge API Token', description: '服务端开启鉴权时的 MCP/API Token(Authorization: Bearer);空=匿名;保存即热生效' },
+    { key: 'agent_harness', type: 'string', default: '', group: 'default', labelKey: 'plugin.rag-bridge.settings.agent_harness', label: '知识库 Agent 引擎', description: '可选:rag-knowledge chat 的 harness(如 omp/claude);空=使用 RAG 服务默认。仅选择知识库内部 Agent 引擎,不改变平台固定的权限档。' },
   ],
   async setup(ctx) {
     // ---- 运行态 ----
@@ -41,6 +42,9 @@ export default {
     // 鉴权 token(系统配置优先,kv 兜底):rag-knowledge 开启 server.auth 时所有 /api/*
     // 要求 Bearer;backend 与 web 都认 Authorization: Bearer / X-KB-Token 两种头
     const kbToken = () => String(ctx.config?.get?.('plugins.rag-bridge.token') || ctx.kv.get('kb.token') || '').trim()
+    // 可选:知识库内部 Agent 引擎(空=RAG 服务默认 claude)。只影响 RAG 侧执行器,
+    // 权限档仍由下方服务端固定为 default;便于与平台 omp 执行模型对齐/排障。
+    const agentHarness = () => String(ctx.config?.get?.('plugins.rag-bridge.agent_harness') || ctx.kv.get('kb.agent_harness') || '').trim()
     const authHeaders = () => {
       const t = kbToken()
       return t ? { 'authorization': `Bearer ${t}`, 'x-kb-token': t } : {}
@@ -51,19 +55,25 @@ export default {
     if (ctx.kv.get('kb.web_url') == null) ctx.kv.set('kb.web_url', DEFAULT_WEB)
     ctx.kv.set('kb.name', KB_NAME)
 
-    // base_url 守卫:仅 http/https 且 host 必须是 127.0.0.1/localhost(不合法则禁用出站)。
+    // base_url/web_url 守卫:仅 http/https 且 host 必须是 127.0.0.1/localhost。
+    // web_url 也会带 Bearer token 出站(文档写盘/目录),不能只校验 base_url。
     // 每次配置变更都重算 —— 否则改错地址后旧判定会一直沿用,「独立配置即时生效」不成立。
+    const assertLocalHttpUrl = (raw, label) => {
+      const u = new URL(raw)
+      if ((u.protocol !== 'http:' && u.protocol !== 'https:') || !['127.0.0.1', 'localhost'].includes(u.hostname)) {
+        throw new Error(`${label} 必须是 http(s)://127.0.0.1|localhost,实际 ${raw}`)
+      }
+      return u
+    }
     const applyOutboundGuard = () => {
       try {
-        const u = new URL(base())
-        if ((u.protocol !== 'http:' && u.protocol !== 'https:') || !['127.0.0.1', 'localhost'].includes(u.hostname)) {
-          throw new Error(`base_url 必须是 http(s)://127.0.0.1|localhost,实际 ${base()}`)
-        }
+        assertLocalHttpUrl(base(), 'base_url')
+        assertLocalHttpUrl(web(), 'web_url')
         state.outbound = true
       }
       catch (err) {
         state.outbound = false
-        ctx.logger.error(`出站调用已禁用:${err?.message ?? err}(修正 rag-bridge 的「后端地址」后即恢复)`)
+        ctx.logger.error(`出站调用已禁用:${err?.message ?? err}(修正 rag-bridge 的「后端地址/Web 地址」后即恢复)`)
       }
     }
     applyOutboundGuard()
@@ -122,6 +132,24 @@ export default {
     }
 
     const outboundOff = () => ({ ok: false, error: '出站调用已禁用:kv["kb.base_url"] 非法(仅允许 http/https 且 host 为 127.0.0.1/localhost)' })
+
+    // kb_agent 失败分类文案(2026-11-16 实测回归):过去一切失败都套同一句
+    // "请确认 rag-knowledge web 已启动" —— 401(token 过期)时把人引去查一个活着的
+    // web,完全误导。按 status/错误形态分四类给出可执行的下一步。
+    const describeKbFailure = (r) => {
+      const st = Number(r?.status ?? 0)
+      const raw = String(r?.error ?? '')
+      if (st === 401 || st === 403) {
+        return `rag-knowledge Token 被拒绝(HTTP ${st}):token 可能已过期或权限不足 —— 请在设置页「rag-knowledge 鉴权」轮换 plugins.rag-bridge.token 后重试(web/backend 本身不受影响)。`
+      }
+      if (/abort|timeout|timed?\s*out/i.test(raw)) {
+        return `等待窗内知识库 Agent 未返回终态(${raw})——知识库内部执行慢或连接被对端挂断。建议改用 mode:'async' 提交,再用 kb_agent_status(task_id, wait_seconds=120) 轮询结果。`
+      }
+      if (/fetch failed|ECONN|socket|network/i.test(raw)) {
+        return `到 rag-knowledge web(${web()})的请求失败(${raw})。请确认 web/backend 存活;若两者健康(可用 /api/plugins/rag-bridge/health 核对),多为知识库内部 agent 回合挂断 —— 同样建议改用 async + kb_agent_status。`
+      }
+      return raw || '未知错误'
+    }
 
     // ================= 异步任务生命周期(提交 → 跟踪 → 进度/结果 → 回执) =================
     // rag-knowledge web 的任务登记表是进程内 Map(TTL 2h / 200 条),进程重启即丢失;
@@ -302,19 +330,20 @@ export default {
         if (!prompt) return { text: 'prompt 必填(把要做的任务完整描述给知识库 Agent)。', isError: true }
         // 等待语义:wait=true 显式挂起到终态(成功/失败都给完整结果);wait=false/缺省=提交即返。
         // 挂起期间 Agent 的回合被本工具调用占住——结构上保证"任务未完不能标记完成"。
-        const waitFlag = args.wait === true
         const legacyAsync = args.wait === undefined && String(args.mode ?? '').trim().toLowerCase() === 'async'
         const mode = (args.wait === false || legacyAsync) ? 'async' : 'sync'
         const waitSec = Math.min(Math.max(Math.round(Number(args.wait_seconds ?? 600) || 600), 10), 1800)
         // 权限档由服务端固定(不再接受调用方透传):历史参数 permission/harness 一律忽略。
         // 缺省 'default' 标准审批档;此前缺省传递 bypassPermissions 允许 Agent 自行提权。
-        const body = { prompt, timeout_ms: mode === 'sync' ? waitSec * 1000 : 540000, mode, permission: 'default' }
+        // RAG web 侧硬上限 600s(MAX_TIMEOUT_MS);异步入库给足上限,避免 540s 提前截断。
+        const harness = agentHarness()
+        const body = { prompt, timeout_ms: mode === 'sync' ? waitSec * 1000 : 600000, mode, permission: 'default', ...(harness ? { harness } : {}) }
 
         if (mode === 'async') {
           // 异步:立即返回 task_id,知识库后台完成;结果稍后用 kb_agent_status 查询
           const sub = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: 30000, retries: 0 })
           if (!sub.ok) {
-            return { text: '知识库异步任务提交失败:' + String(sub.error ?? '').slice(0, 200) + '。请确认 rag-knowledge web(' + web() + ') 已启动后重试。', isError: true }
+            return { text: '知识库异步任务提交失败:' + describeKbFailure(sub), isError: true }
           }
           const taskId = String(sub.body?.task_id ?? '')
           if (!taskId) return { text: '知识库异步任务提交异常:响应缺少 task_id。', isError: true }
@@ -333,7 +362,7 @@ export default {
         // 同步请求禁止网络重试:POST 可能已在知识库侧启动回合,重试会重复入库/重复生成
         const r = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: waitSec * 1000 + 30000, retries: 0 })
         if (!r.ok) {
-          return { text: '知识库 Agent 调用失败(本次调用即终态,失败结果已如实返回):' + String(r.error ?? '').slice(0, 300) + '。请确认 rag-knowledge web(' + web() + ') 已启动后重试。', isError: true }
+          return { text: '知识库 Agent 调用失败(本次调用即终态,失败结果已如实返回):' + describeKbFailure(r), isError: true }
         }
         const reply = String(r.body?.reply ?? '').trim()
         return { text: '✅ 知识库任务完成(等待到终态)。\n\n' + (reply || '(知识库 Agent 返回空回复)') }

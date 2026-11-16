@@ -3,7 +3,8 @@
     "settings": {
       "base_url": "rag-knowledge 后端地址",
       "web_url": "rag-knowledge Web 地址",
-      "token": "rag-knowledge API Token"
+      "token": "rag-knowledge API Token",
+      "agent_harness": "知识库 Agent 引擎"
     },
     "panel": {
       "title": "工业知识库(rag-knowledge)",
@@ -44,7 +45,8 @@
     "settings": {
       "base_url": "rag-knowledge backend URL",
       "web_url": "rag-knowledge Web URL",
-      "token": "rag-knowledge API token"
+      "token": "rag-knowledge API token",
+      "agent_harness": "Knowledge-base agent engine"
     },
     "panel": {
       "title": "Industrial knowledge base (rag-knowledge)",

@@ -133,6 +133,24 @@ export default {
 
     const outboundOff = () => ({ ok: false, error: '出站调用已禁用:kv["kb.base_url"] 非法(仅允许 http/https 且 host 为 127.0.0.1/localhost)' })
 
+    // kb_agent 失败分类文案(2026-11-16 实测回归):过去一切失败都套同一句
+    // "请确认 rag-knowledge web 已启动" —— 401(token 过期)时把人引去查一个活着的
+    // web,完全误导。按 status/错误形态分四类给出可执行的下一步。
+    const describeKbFailure = (r) => {
+      const st = Number(r?.status ?? 0)
+      const raw = String(r?.error ?? '')
+      if (st === 401 || st === 403) {
+        return `rag-knowledge Token 被拒绝(HTTP ${st}):token 可能已过期或权限不足 —— 请在设置页「rag-knowledge 鉴权」轮换 plugins.rag-bridge.token 后重试(web/backend 本身不受影响)。`
+      }
+      if (/abort|timeout|timed?\s*out/i.test(raw)) {
+        return `等待窗内知识库 Agent 未返回终态(${raw})——知识库内部执行慢或连接被对端挂断。建议改用 mode:'async' 提交,再用 kb_agent_status(task_id, wait_seconds=120) 轮询结果。`
+      }
+      if (/fetch failed|ECONN|socket|network/i.test(raw)) {
+        return `到 rag-knowledge web(${web()})的请求失败(${raw})。请确认 web/backend 存活;若两者健康(可用 /api/plugins/rag-bridge/health 核对),多为知识库内部 agent 回合挂断 —— 同样建议改用 async + kb_agent_status。`
+      }
+      return raw || '未知错误'
+    }
+
     // ================= 异步任务生命周期(提交 → 跟踪 → 进度/结果 → 回执) =================
     // rag-knowledge web 的任务登记表是进程内 Map(TTL 2h / 200 条),进程重启即丢失;
     // 这里把 task_id 与发起者归因落到插件 kv,15s 轮询终态并主动投递平台通告 ——
@@ -325,7 +343,7 @@ export default {
           // 异步:立即返回 task_id,知识库后台完成;结果稍后用 kb_agent_status 查询
           const sub = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: 30000, retries: 0 })
           if (!sub.ok) {
-            return { text: '知识库异步任务提交失败:' + String(sub.error ?? '').slice(0, 200) + '。请确认 rag-knowledge web(' + web() + ') 已启动后重试。', isError: true }
+            return { text: '知识库异步任务提交失败:' + describeKbFailure(sub), isError: true }
           }
           const taskId = String(sub.body?.task_id ?? '')
           if (!taskId) return { text: '知识库异步任务提交异常:响应缺少 task_id。', isError: true }
@@ -344,7 +362,7 @@ export default {
         // 同步请求禁止网络重试:POST 可能已在知识库侧启动回合,重试会重复入库/重复生成
         const r = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: waitSec * 1000 + 30000, retries: 0 })
         if (!r.ok) {
-          return { text: '知识库 Agent 调用失败(本次调用即终态,失败结果已如实返回):' + String(r.error ?? '').slice(0, 300) + '。请确认 rag-knowledge web(' + web() + ') 已启动后重试。', isError: true }
+          return { text: '知识库 Agent 调用失败(本次调用即终态,失败结果已如实返回):' + describeKbFailure(r), isError: true }
         }
         const reply = String(r.body?.reply ?? '').trim()
         return { text: '✅ 知识库任务完成(等待到终态)。\n\n' + (reply || '(知识库 Agent 返回空回复)') }

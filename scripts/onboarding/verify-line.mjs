@@ -157,7 +157,11 @@ if (Array.isArray(cfg.plugins)) {
     unexpected.length ? `意外启用:${unexpected.join(',')}` : `仅配置项启用(enabled=${enabled.size}, expected=${cfg.plugins.length})`)
 }
 
-// V6 演示线零扰动:本验收写入必须落在新线;受保护线 journal 新增锚点必须为 0
+// V6 演示线零扰动:本验收写入必须落在新线;受保护线 journal 新增锚点必须为 0。
+// fresh home 未预置夹具(线+DCW+锚点)时零扰动断言不可证伪 —— 记 SKIP 并给出预置
+// 指引,不再算 FAIL(2026-11-16 实测:全新环境首跑必吃一次假失败);夹具不完整
+// (线在但基线为空)仍算 FAIL,防止"看起来有保护线其实没锚点"的假防护。
+let v6Skips = 0
 const journal = await api('GET', '/api/workshop/dcw/journal?limit=500', undefined, tok)
 const mine = new Set([...(cfg.dcw ?? []).map(n => n.id)])
 const touched = (journal.data?.anchors ?? []).filter(a => mine.has(a.nodeId))
@@ -165,7 +169,18 @@ const protectedAfter = await api('GET', `/api/workshop/dcw/journal?lineId=${PROT
 const protectedNew = (protectedAfter.data?.anchors ?? []).filter(a => !protectedBeforeKeys.has(anchorKey(a)))
 const linesAfter = await api('GET', '/api/workshop/dcw/lines', undefined, tok)
 const protectedExistsAfter = (linesAfter.data?.lines ?? []).some(l => l.id === PROTECTED_LINE)
-ok('V6 受保护线零扰动(受保护线 journal 无新增锚点)', protectedExists && protectedExistsAfter && protectedBeforeKeys.size > 0 && protectedNew.length === 0,
-  `受保护线存在=${protectedExists}->${protectedExistsAfter} 本线锚点=${touched.length} 受保护线新增=${protectedNew.length} 基线=${protectedBeforeKeys.size}`)
+if (!protectedExists || !protectedExistsAfter) {
+  v6Skips++
+  console.log(`⚠ V6 受保护线零扰动 — SKIP: fresh home 未预置受保护线夹具(ln-d7e0a2a2),零扰动断言不可证伪。正式验收请先预置:建线 ln-d7e0a2a2 + mock DCW + 写入一次产生锚点(见 docs/audit/evidence/2026-11-15-doc-to-simulated-plc/seed-protected-line.md)`)
+}
+else if (protectedBeforeKeys.size === 0) {
+  ok('V6 受保护线零扰动(受保护线 journal 无新增锚点)', false,
+    `受保护线存在=${protectedExists}->${protectedExistsAfter} 但 journal 基线为空(夹具不完整,断言不可证伪)——请补历史锚点后重跑`)
+}
+else {
+  ok('V6 受保护线零扰动(受保护线 journal 无新增锚点)', protectedNew.length === 0,
+    `受保护线存在=${protectedExists}->${protectedExistsAfter} 本线锚点=${touched.length} 受保护线新增=${protectedNew.length} 基线=${protectedBeforeKeys.size}`)
+}
+if (v6Skips > 0) console.log(`(V6 SKIP=${v6Skips}:fresh home 未预置夹具,该项不计入通过/失败)`)
 
 summary('接入验收')

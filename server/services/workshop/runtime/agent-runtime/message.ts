@@ -123,6 +123,9 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       }
       try {
         for await (const event of this.impl.run(request, ctx)) {
+          // 消息看门狗的活动上报:任何 harness 事件(delta/工具/状态)都证明回合活着,
+          // 重置无活动窗口 —— 长治理回合(慢模型逐回合 40s-4min)不应被固定死线误杀。
+          this.bumpMessageActivity()
           this.deps.bus.emit(event, enrichedSource)
           // LLM 流式增量:只走事件流(AEP agent.delta),不进任务引擎/交付兜底管道;
           // 但要单独留底 —— 纯文本回合(模型以最终输出作答,不调工具)的回执全靠它
