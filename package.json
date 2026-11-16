@@ -59,7 +59,13 @@
     "docs/tui.md",
     "docs/full-test-plan.md",
     "docs/multi-harness-architecture.md",
-    "tui"
+    "tui",
+    "!**/.mimosa/**",
+    "!**/.nuxt/**",
+    "!**/.cache/**",
+    "!**/.turbo/**",
+    "!**/*.log",
+    "!**/*.pid"
   ],
   "packageManager": "pnpm@11.9.0",
   "engines": {
