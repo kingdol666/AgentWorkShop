@@ -46,16 +46,27 @@ export abstract class DcwControllerActuation extends DcwControllerState {
     })
     let outcome: { ok: boolean, message: string, raw: number | null, readback: number | null, ack?: WriteAckLevel }
     // Do not turn a revoked lease into an ordinary driver failure.
-    executionScope?.assertActive()
-    node.holdBlocked = true
-    // 保写锁持久化失败 = 驱动绝不下发(503 外抛,不得进 try 被 catch 吞成失败 outcome);
-    // 治理审计同步收口(driver_start↔end 配对),避免留下无 end 的悬挂 driver_call(审查 P2)。
-    if (!this.repo.flushNow()) {
-      endGovernanceDriverCall(driverAudit, { ok: false, message: '保写锁持久化失败,驱动未调用', raw: null, readback: null })
-      throw new AppError(503, ErrorCodes.CONFLICT, '无法持久化保写安全锁,拒绝驱动下发')
+    // 预检段(租约断言/保写锁持久化/onDriverStart)任何一步抛出 = 驱动绝不下发:
+    // 治理审计同步收口(driver_start↔end 配对,bugbot P2:503/断言抛错路径此前会
+    // 留下无 end 的悬挂 driver_call),503 外抛不得被写 try 吞成失败 outcome。
+    try {
+      executionScope?.assertActive()
+      node.holdBlocked = true
+      if (!this.repo.flushNow()) {
+        throw new AppError(503, ErrorCodes.CONFLICT, '无法持久化保写安全锁,拒绝驱动下发')
+      }
+      executionScope?.assertActive()
+      onDriverStart?.()
     }
-    executionScope?.assertActive()
-    onDriverStart?.()
+    catch (preFlightError) {
+      endGovernanceDriverCall(driverAudit, {
+        ok: false,
+        message: `保写预检失败,驱动未调用:${preFlightError instanceof Error ? preFlightError.message : String(preFlightError)}`,
+        raw: null,
+        readback: null,
+      })
+      throw preFlightError
+    }
     try {
       outcome = await driver.write({
         eng: plcValue,
@@ -162,12 +173,17 @@ export abstract class DcwControllerActuation extends DcwControllerState {
     const pollMs = Math.min(3_000, Math.max(250, Math.floor(timeoutMs / 10)))
     const tolerance = Math.max(0, observe.tolerance ?? Math.max(0.5, Math.abs(target) * 0.02))
     const deadline = Date.now() + timeoutMs
+    // 滑动窗:从上次已见点之后续读(bugbot P1:固定 fromMs + ASC LIMIT 50 会把
+    // latest 钉死在第 50 个最旧点,高采频下永远读不到跟随点 → 健康写被误判超时,
+    // 保写心跳被静默挂死)。拍间隔内新增样本数远小于 50,滑动后 latest 即真实最新点。
+    let fromMs = atMs - 1_000
     const poll = async (): Promise<void> => {
       // 已被更新一次写取代(seq 变化)或保写锁已被回读证实解除:本次观测退出。
       if (this.holdObserveSeq.get(node.id) !== seq || !node.holdBlocked) return
       try {
-        const points = await getTsdb().query(observe.daqId, { fromMs: atMs - 1_000, toMs: Date.now(), limit: 50 })
+        const points = await getTsdb().query(observe.daqId, { fromMs, toMs: Date.now(), limit: 50 })
         const latest = points[points.length - 1]
+        if (latest?.at != null && latest.at > fromMs) fromMs = latest.at
         const value = latest?.avg ?? latest?.value
         if (latest && latest.at >= atMs && value != null && Number.isFinite(value) && Math.abs(value - target) <= tolerance) {
           if (this.holdObserveSeq.get(node.id) !== seq || !node.holdBlocked) return

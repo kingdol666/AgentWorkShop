@@ -89,29 +89,29 @@ export function newAttestationNonce() {
   return randomBytes(32).toString('hex')
 }
 
-/** 从 driverConfig 抽取端点声明(host/port/url/endpoint/brokerUrl 与任意 URL 形态值)。 */
+/** 从 driverConfig 抽取端点声明(显式端口键 + 已知 URL 键;bugbot P2:/port$/i 曾误咬
+ * `transport` 类键、任意 scheme:// 值曾误判为端点 → 合法配置被硬拒)。 */
+const PORT_KEYS = new Set(['port', 'brokerPort', 'simPort'])
 function extractEndpointClaims(driverConfig, label, offenders) {
   const cfg = driverConfig && typeof driverConfig === 'object' && !Array.isArray(driverConfig) ? driverConfig : null
   if (!cfg) return { hasClaim: false, hasAttestedPort: false }
   let hasClaim = false
   let hasAttestedPort = false
   for (const [key, value] of Object.entries(cfg)) {
-    const isUrlKey = ENDPOINT_URL_KEYS.has(key)
-    const isUrlish = typeof value === 'string' && /^[a-z][a-z0-9+.-]*:\/\//i.test(value)
     if (key === 'host' || key === 'brokerHost') {
       if (typeof value !== 'string' || !LOOPBACK_HOSTS.has(value)) {
         offenders.push(`${label}: ${key}=${String(value)} 非环回地址`)
       }
       hasClaim = true
     }
-    else if (key === 'port' || /port$/i.test(key)) {
+    else if (PORT_KEYS.has(key)) {
       const port = Number(value)
       if (!Number.isInteger(port) || port <= 0) offenders.push(`${label}: ${key}=${String(value)} 不是有效端口`)
       else if (!isAttestedPort(port)) offenders.push(`${label}: ${key}=${port} 不在归属证明的端口集内`)
       else hasAttestedPort = true
       hasClaim = true
     }
-    else if (isUrlKey || isUrlish) {
+    else if (ENDPOINT_URL_KEYS.has(key)) {
       try {
         const u = new URL(String(value))
         if (!LOOPBACK_HOSTS.has(u.hostname)) offenders.push(`${label}: ${key}=${String(value)} 非环回地址`)

@@ -106,4 +106,7 @@ test('端口不在证明集内 / 非环回 host → 拒绝', async (t) => {
   // 任何拒绝都会使端口集失效(fail-closed):重建证明后再测非环回 host
   await assertOnboardingOwnership()
   assert.throws(() => assertDriverEndpointsAttested({ host: '192.168.1.50', port: 4502 }, '节点 n2'), /非环回地址/)
+  // bugbot P2:非端点键(如 transport:'tcp'、备注 URL)不得被误判为端点声明 → 硬拒合法配置
+  await assertOnboardingOwnership()
+  assertDriverEndpointsAttested({ host: '127.0.0.1', port: 4502, transport: 'tcp', remark: 'see https://example.com/spec' }, '节点 n3')
 })

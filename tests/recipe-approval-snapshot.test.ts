@@ -801,6 +801,30 @@ test('a newer transport-ack write supersedes the in-flight observation and verif
   assert.equal(node.value, 50)
 })
 
+test('holdObserve survives a dense sample window: sliding poll reads the newest point, not the 50th-oldest', async (t) => {
+  const f = fixture('fence-hold-observe-slide')
+  t.after(f.cleanup)
+  const { getTsdb } = await import('../server/services/workshop/daq/storage')
+  const node = f.nodes[0]!.node
+  node.holdObserve = { daqId: 'dn-observe-slide', tolerance: 1, timeoutMs: 2500 }
+  t.mock.method(mockDcwDriver, 'write', async input => ({ ok: true, message: 'transport accepted', raw: input.eng, readback: null, ack: 'transport-ack' as const }))
+  await getDcwController().write(node.id, 45, 'run-observe-slide', { source: 'recipe', actor: 'test' })
+  // 密集采样:写后 1.5s 内落 60 点(25ms 节拍),前 54 点未跟随、末 6 点跟随 ——
+  // 旧实现固定 fromMs + ASC LIMIT 50 会把 latest 钉在第 50 个最旧点(未跟随)→ 误判超时。
+  const atMs = Date.parse(node.lastAttemptAt ?? new Date().toISOString())
+  const rows = Array.from({ length: 60 }, (_, i) => ({
+    nodeId: 'dn-observe-slide',
+    tsMs: atMs + 20 + i * 25,
+    value: i < 54 ? 0 : 45,
+    state: 'ok',
+  }))
+  await getTsdb().writeSamples(rows)
+  const deadline = Date.now() + 5000
+  while (node.holdBlocked && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50))
+  assert.equal(node.holdBlocked, false, 'sliding poll must reach the newest following sample despite a >50-sample window')
+  assert.equal(node.lastError, null)
+})
+
 test('write refuses driver invocation when the hold interlock cannot be persisted', async (t) => {
   const f = fixture('fence-hold-persist-fail')
   t.after(f.cleanup)
