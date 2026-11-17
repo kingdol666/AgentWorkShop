@@ -1,0 +1,8 @@
+# 安全钩子/评审状态（本机运行产物，不入库）
+.mimosa/
+
+# Office 打开文件时的所有者锁（~$xxx.docx）
+~$*
+
+# LaTeX 构建输出（可由 overleaf-source 重建）
+build/
