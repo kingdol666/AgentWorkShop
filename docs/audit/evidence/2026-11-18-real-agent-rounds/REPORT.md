@@ -96,10 +96,28 @@
 
 ## 6. 证据清单
 
-- 截图:01-dashboard / 03-channel / 05-line-final / 06-journal / 10-projects(本目录)
+- 截图:01-dashboard / 03-channel / 05-line-final / 06-journal / 10-projects / 11-project-detail(本目录)
 - 运行实例:AHOME=D:/tmp/aw-demo-1117/home(:3010,演示后保留供核查)
 - 任务 id:cd74519e(lead 真实回合)/ 8a3b3cd3(dsh)/ f1262c1a(omp 执行器)/
   497c68e9·f89815bb(非产线)/ a3b7e79c(项目工作项)
 - Project:a7e01018-d074-4c33-8a9f-09f97c7cbec3(decisions seq1-5 全链)
 - HITL:dsh-be365c81(dsh-permission 真实审批回环)
 - 上轮(2026-11-17 夜)闭环:SP 156→138、复测 3/3、PR #232
+
+## 7. 续轮收口(2026-11-18 03:00 前后追加)
+
+- **仓库完整性验收**:main 与 origin 同步;全量 unit **2019 pass / 0 fail / 1 skip**;
+  目标文件 eslint 0;PR #232 已合(quick-gate SUCCESS)。
+- **kb 链路终态**:SSRF 已破(env 修复生效,调用可达 rag 后端 :8770);后端开启鉴权而
+  本 fresh home 无 rag 凭据(token 属用户基础设施依赖,不回显不复用)→ 知识入库如实
+  记为「凭据依赖待用户配置」。
+- **聚焦探索补测(ddec0aae)**:模型端点探针可通(短 prompt),但执行器真实回合持续
+  静默 → 按预算收口取消。结论不变:完整 agent 驱动 explore→HITL→写 链受上游
+  deepseek-flash 负载稳定性制约;平台侧(harness/RPC/工具面/治理门/任务生命周期)
+  已分别独立取证有效。
+- **落地页完善**:新增「真实执行轮」章节(四条真实回合线+根因破案+PR 链接)、轮播扩至
+  7 帧(含项目中心/项目详情实拍)、工程发现卡片更新;修复两处真问题:
+  ①曲线卡标注被数据线穿过(visual-judge fail → 重排);②滚动显现动画在内嵌渲染
+  环境不推进 transition 帧导致内容不可见 → 移除入场隐藏,内容恒显。
+- **ultragoal 台账**:7/8 封口(G001–G007 complete);G008 工作完成但最终 checkpoint
+  需原生 /goal hook 状态(本 harness 无该机制),如实记录。
