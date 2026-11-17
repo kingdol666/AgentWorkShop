@@ -3,9 +3,20 @@
 - agent-token 回程桥缺少可信回合来源，过滤并拒绝危险工具及授权/派发工具；插件工具必须显式声明 `riskClass: 'read'` 才能通过该层，其他治理门仍生效。
 - `dispatch_task` 拒绝随任务的 `grant_node_ids` / `grantNodeIds`；先单独 `team_grant_nodes`，再派发，失败后检查并按需撤销授权，两步不具原子性。委派默认 `manual`，`auto` 须显式 `confirm: true`。
 - 原生 omp 的工作或监督回合中止时退役进程；正常完成后的迟到帧逐回合来源仍未解决。无新增物理 HIL 或安全通过声明。
-- 旧版无执行租约的活动任务进入 `LEGACY_EXECUTION_RECOVERY_REQUIRED` 挂起，不自动重放；须保全证据、核查实际设备并升级处置，不能仅清除标记。目前无受支持的可审计释放流程，受影响升级在处置流程实现并验证前不具备生产就绪条件。
 - 已保存的 Channel 场景提示词、成员配置及自定义 prompt 不会因默认提示词更新而自动改写；请检查并手动迁移旧的随任务授权指令，保留原有定制。
-- DCW 自动保写锁与恢复限制仍待审查，不属于已发布的 0.11.3；接入供给和 V2/V3 写入因缺少可信模拟器归属证明而被阻断。接入验证也不得运行，直至隔离及无意外副作用得到证明。
+- 结构化配方审批卡的 `choice` 为方案集 0 基下标；越界或缺失一律按拒绝收敛（fail-closed）。
+- 仿真器进程重启会清空预设设备；平台写入前需重新物化蓝图设备（配方与台账独立保留）。
+
+## v0.12.0 — round-3 agent safety boundaries（2026-11-17）
+
+- Claim 令牌全生命周期：持久化每认领 UUID token,认领/释放/重投/消费/隔离全部按精确 token CAS（`messages.claim_token`,schema 契约 v3）;steer 结算前复检资格,恢复保留联动改为隔离不重放。
+- 旧任务恢复保留新增管理员处置面：`GET /api/workshop/tasks/recovery-holds` 与 `POST /api/workshop/tasks/:id/recovery-disposition`（审计留痕;释放连接树标记、按重投预算复位在飞消息、绝不自动重放、任务状态不动）。
+- DCW transport-ack 写验证（`holdObserve`）：broker 受理的写须等独立 DAQ 观测跟随目标才解除保写锁；超时或未声明显式写 `lastError`,不再静默停心跳；观测轮询滑动读窗并按写代际取代。
+- 模拟器归属证明端到端：模拟器暴露 `/api/attestation` 回显拉起方注入的 nonce；`sim-attest.mjs` 拉起即失败关闭；全部接入入口在任何平台请求前核验 nonce+环回+pid+端点绑定；verify-line V2/V3 写验收对已证明模拟器解封。
+- 孤儿任务引用不再永久阻塞空闲卸载（引用任务全部不存在才豁免）,原始行留作证据。
+- bugbot 加固：holdObserve 观测滑动窗、治理审计 driver_start↔end 全配对、接入端点扫描器只认显式端口/URL 键。
+- 验证：lint/typecheck/build;unit 2015/2017;多轮实机验收（FA 端到端、RSD 闭环、论文算子 optimization_explore、双场景派遣/记忆）;Mimosa deep 有 seal（43 findings 已定性,不宣称安全通过）。
+- 边界：仅仿真证据非物理 HIL;omp 上游在并发负载下不稳定（PROCESS_EXIT 重建循环+15 分钟硬超时收口,平台侧防线零丢失零误执行）;RAG 内部 kb_agent 写路径仍不可靠（直连 API 已证）;Mimosa inconclusive 不构成安全通过。
 
 ## v0.11.3 — 已发布版本与历史产线集成快照（2026-11-16）
 

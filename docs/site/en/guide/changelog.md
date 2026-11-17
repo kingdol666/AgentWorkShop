@@ -3,9 +3,20 @@
 - The agent-token bridge lacks trusted turn provenance and filters and rejects hazardous and authorization/dispatch tools. Plugin tools must explicitly declare `riskClass: 'read'` to pass this layer; other governance gates remain in force.
 - `dispatch_task` rejects combined `grant_node_ids` / `grantNodeIds`. Explicitly call `team_grant_nodes` first when needed, then dispatch; inspect and revoke a grant if appropriate after a failed dispatch. The operations are not atomic. Delegation defaults to `manual`; `auto` requires explicit `confirm: true`.
 - An aborted native omp work or supervision turn retires its process; per-turn provenance of late frames after normal completion remains unresolved. No new physical HIL or security-pass claim is made.
-- Legacy active tasks without an execution lease enter `LEGACY_EXECUTION_RECOVERY_REQUIRED` hold and are not automatically replayed. Preserve evidence, inspect the actual device and escalate; do not merely clear the marker. No supported audited release procedure exists, so affected upgrades are not production-ready until disposition is implemented and verified.
 - Existing saved Channel scenario prompts, member configurations and custom prompts are not automatically rewritten when defaults change. Review and manually migrate obsolete combined-grant instructions while preserving customizations.
-- The DCW automatic-hold interlock and recovery restrictions are under review, not part of released 0.11.3. Onboarding provisioning and V2/V3 writes are blocked pending trusted simulator ownership attestation. Do not run onboarding verification until isolation and absence of unintended side effects are established.
+- Structured recipe-propose approval cards take a 0-based `choice` index into the package list; a missing or out-of-range `choice` on an approval is fail-closed denied.
+- A simulator process restart clears preset devices; re-materialize blueprint devices before platform writes (recipes and journals persist independently).
+
+## v0.12.0 — round-3 agent safety boundaries (2026-11-17)
+
+- Claim-token lifecycle: durable per-claim UUID tokens with exact-token CAS for claim/release/requeue/consume/quarantine (`messages.claim_token`, schema contract v3); steer settlement rechecks claim eligibility before consume and quarantines recovery-held linkage instead of replaying it.
+- Legacy recovery holds gain an audited operator disposition: admin-only `GET /api/workshop/tasks/recovery-holds` and `POST /api/workshop/tasks/:id/recovery-disposition` (audit-logged; releases the connection-tree marker, requeues in-flight messages by retry budget, never auto-replays, task state untouched).
+- DCW transport-ack write verification (`holdObserve`): a transport-acknowledged write releases the hold interlock only after an independent DAQ observation follows the target; timeout or missing declaration surfaces an explicit `lastError` instead of silently disabling the heartbeat forever. Observation polls slide their read window and supersede per write generation.
+- Simulator ownership attestation end to end: the vendored simulator exposes `/api/attestation` echoing a spawner-injected nonce; `sim-attest.mjs` spawns fail-closed fresh instances; every onboarding entry point verifies nonce + loopback + pid + endpoint binding before any platform API request; verify-line V2/V3 writes are unblocked against attested simulators with live driverConfig binding.
+- Orphan task references no longer block idle unload permanently (only when every referenced task is gone); raw rows are retained as evidence.
+- Bugbot hardening: holdObserve observation slides its read window; governance audit pairs driver_start/driver_end on every pre-flight failure; the onboarding endpoint scanner matches explicit port/URL keys only.
+- Verification: lint, typecheck, build; unit 2015/2017; multiple live acceptances (FA end-to-end, RSD closed loop, paper-operator optimization_explore, dual-scenario dispatch/memory). Mimosa deep scan completed with seal (43 findings triaged; no security-pass claim).
+- Boundaries: simulator evidence only, not physical HIL; omp upstream instability under concurrent harness load (PROCESS_EXIT rebuild loops capped by the 15-minute supervise hard timeout; platform defenses hold — no message loss, no double execution); the RAG internal `kb_agent` write path remains unreliable (direct API proven); Mimosa inconclusive is not a security pass.
 
 ## v0.11.3 — Released version and historical line-integration snapshot (2026-11-16)
 
