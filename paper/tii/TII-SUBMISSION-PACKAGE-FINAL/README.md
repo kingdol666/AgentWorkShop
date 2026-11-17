@@ -10,10 +10,19 @@
 | `TII-SUBMISSION-PACKAGE-FINAL-preview.pdf` | 上述单栏 Word 的 PDF 预览 | 18 |
 | `TII-SUBMISSION-PACKAGE-FINAL-ieee-two-column.docx` | 备选：按 IEEE TII 双栏模板排版的 Word 版 | 11 |
 | `TII-SUBMISSION-PACKAGE-FINAL-ieee-two-column-preview.pdf` | 双栏 Word 的 PDF 预览 | 11 |
-| `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | LaTeX（pdfLaTeX）编译成稿 | 10 |
+| `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | LaTeX（pdfLaTeX）编译成稿（投稿用主文件） | 10 |
 | `TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | Overleaf 导入包（`main.tex` 在根目录，resources/ 含 4 个矢量 PDF + 2 个 300 dpi PNG + refs.bib） | — |
 
 > `*.zip` 与 `build/` 按仓库既有规则不入库；需要时由 `overleaf-source/` 重新打包或编译。
+
+## 补充材料（正文引用为 Supplementary File S7）
+
+| 文件 | 说明 |
+|---|---|
+| `supplementary/Supplementary-File-S7-20261117.pdf` | S7 叙述性补充材料（9 页，匿名版），首页标题与正文一致 |
+| `supplementary/Supporting-Evidence-S7-20261112.zip` | 配套证据档案（约 20 MB，记录级数据、清单、脱敏日志与缺失证据清单） |
+
+> 两者的关系：S7 PDF 是“叙述部分”，zip 是“证据部分”，投稿时按期刊系统要求分别作为 supplementary files 上传。
 
 ## 源与素材
 
@@ -26,5 +35,12 @@
 - LaTeX：Letter，10 页；图 2/3 为作者提供的 300 dpi PNG，图 5 已调整图例间距。
 - 单栏 Word：Letter、1 英寸页边距，6 图 4 表 3 公式 24 文献齐全，图件与源文件逐字节一致。
 - 双栏 Word：IEEE TII 版式（双栏 3.5 in、小号大写罗马数字标题、8 pt 题注、页眉页码），11 页。
+
+## 投稿前仍需作者确认
+
+1. **作者信息**：当前为完全匿名版（`\author{}`、Word 中 “Anonymous Author(s)”、声明亦写明匿名）。请按 TII 现行审稿制度补作者/单位/通讯作者与 ORCID。
+2. **页数**：正文 10 页（IEEE 双栏）；请对照投稿系统所示页数上限（含超页费）确认。
+3. **图 2**：现有 PNG 保留了 drawio 源里的两处残留（左侧虚线框被重复曲线描成波浪、Scene Configuration 下方橙色短杆），且为 RGBA（PDF 中生成软掩码）。仓库另一侧保留了清理版，可按需替换。
+4. **声明**：利益冲突、AI 使用声明、基金与贡献信息需作者核实；数据可用性语句引用的补充材料见上表。
 
 _最后更新：2026-11-17_
