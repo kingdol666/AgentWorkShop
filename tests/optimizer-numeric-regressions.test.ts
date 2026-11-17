@@ -5,9 +5,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import type { DatasetView } from '../server/services/workshop/process-model/trainers/dataset-reader'
-import { trainLinearArx } from '../server/services/workshop/process-model/trainers/linear-arx'
-import { trainStaticResponse } from '../server/services/workshop/process-model/trainers/static-response'
-import { constraintReport, simulateLinear } from '../server/services/workshop/optimization/problem-builder'
 import type { ProblemIR, SolverRequestFrame } from '../server/services/workshop/optimization/contracts'
 import type { ProcessModelSpec } from '../server/services/workshop/process-model/contracts'
 
@@ -15,6 +12,12 @@ process.env.AGENTWORKSHOP_TEST = '1'
 process.env.AW_MODE = 'home'
 process.env.AW_HOME = mkdtempSync(join(tmpdir(), 'aw-optimizer-numeric-'))
 
+// 值导入必须在 AW_HOME 隔离之后:problem-builder 的 dcw 链会在模块初始化时解析
+// 配置并写入 3s TTL 缓存,静态导入会把 repo 模式的 runtime-settings overrides
+// 带进门禁阈值,导致 G3 断言读到放行值(见 optimizer-numeric-regressions G3 用例)。
+const { trainLinearArx } = await import('../server/services/workshop/process-model/trainers/linear-arx')
+const { trainStaticResponse } = await import('../server/services/workshop/process-model/trainers/static-response')
+const { constraintReport, simulateLinear } = await import('../server/services/workshop/optimization/problem-builder')
 const { evaluateGates } = await import('../server/services/workshop/aml/gates')
 const { acquireEnvReadLease, envLeaseStatus, withEnvExclusiveLock } = await import('../server/services/workshop/aml/env-lease')
 const { SolverWorkerPool } = await import('../server/services/workshop/optimization/worker-client')
