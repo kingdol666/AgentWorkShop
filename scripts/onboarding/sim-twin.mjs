@@ -186,16 +186,22 @@ const lagHook = (spName, tau, noise, fallback) =>
   `const cur = Number.isFinite(state.v)?state.v:${fallback};`
   + `const tgt = Number.isFinite(vars['${spName}']) ? vars['${spName}'] : ${fallback};`
   + `const k = Math.min(1, dt/1000/${tau}); state.v = cur + (tgt-cur)*k + (rand()-0.5)*${noise}; return state.v`
-const causalHook = (d, fallback, nominals = {}) => {
+const causalHook = (d, fallback, nominals = {}, nameById = {}) => {
   // 偏差语义:base=标称点输出,每项增益作用于 (SP 当前值 − SP 标称值) —— 与文档「工艺耦合」公式同构
+  // follows[].sp 契约=SP 信号名(蓝图文档示例);历史输入可能给信号 id —— 这里按 name→id 双解析,
+  // 返回未解析键列表(调用方上报),不再静默退化成 tgt=base 的死动力学(2026-11-18 实机教训)。
+  const unresolved = []
   const terms = (d.follows ?? []).map((f) => {
-    const nom = Number.isFinite(f.at) ? f.at : (nominals[f.sp] ?? 0)
-    return `${f.gain}*((Number.isFinite(vars['${f.sp}'])?vars['${f.sp}']:0) - ${nom})`
+    const spName = nameById[f.sp] ?? (nominals[f.sp] !== undefined ? f.sp : null)
+    if (!spName) unresolved.push(f.sp)
+    const nom = Number.isFinite(f.at) ? f.at : (nominals[spName] ?? 0)
+    return `${f.gain}*((Number.isFinite(vars['${spName}'])?vars['${spName}']:0) - ${nom})`
   })
   const base = d.base ?? fallback
-  return `const tgt = ${base}${terms.length ? ' + ' + terms.join(' + ') : ''};`
+  const code = `const tgt = ${base}${terms.length ? ' + ' + terms.join(' + ') : ''};`
     + `const cur = Number.isFinite(state.v)?state.v:${fallback};`
     + `const k = Math.min(1, dt/1000/${d.tau ?? 8}); state.v = cur + (tgt-cur)*k + (rand()-0.5)*${d.noise ?? 1}; return state.v`
+  return { code, unresolved }
 }
 const wanderHook = (mid, span) =>
   `state.v = (Number.isFinite(state.v)?state.v:${mid}) + (rand()-0.5)*${span}; `
@@ -315,17 +321,23 @@ async function materialize(devices, mqttPort) {
       throw new Error(`不支持的蓝图协议:${protocol}(支持 modbus-tcp/modbus-rtu/mqtt/opcua/http)`)
     }
     const nominals = Object.fromEntries(dev.signals.filter(s => s.kind === 'sp').map(s => [s.name, Number(s.initial ?? (s.min + s.max) / 2)]))
-    const signals = dev.signals.map(s => ({
-      id: s.id, name: s.name, description: `孪生:${s.name}`, unit: s.unit, min: s.min, max: s.max, decimals: s.decimals,
-      format: s.format ?? 'scalar',
-      strategy: s.strategy
-        ?? (s.kind === 'sp'
-          ? { kind: 'manual', value: s.initial ?? (s.min + s.max) / 2 }
-          : { kind: 'hook', code: s.code
-            ?? (s.dynamics && (s.dynamics.follows?.length || s.dynamics.base != null)
-              ? causalHook(s.dynamics, (s.min + s.max) / 2, nominals)
-              : wanderHook((s.min + s.max) / 2, Math.max((s.max - s.min) / 200, 0.2))) }),
-    }))
+    const nameById = Object.fromEntries(dev.signals.map(s => [s.id, s.name]))
+    const unresolvedAll = []
+    const signals = dev.signals.map((s) => {
+      let strategy
+      if (s.strategy) strategy = s.strategy
+      else if (s.kind === 'sp') strategy = { kind: 'manual', value: s.initial ?? (s.min + s.max) / 2 }
+      else if (s.dynamics && (s.dynamics.follows?.length || s.dynamics.base != null)) {
+        const { code, unresolved } = causalHook(s.dynamics, (s.min + s.max) / 2, nominals, nameById)
+        unresolvedAll.push(...unresolved.map(k => `${s.id}→${k}`))
+        strategy = { kind: 'hook', code: s.code ?? code }
+      }
+      else strategy = { kind: 'hook', code: s.code ?? wanderHook((s.min + s.max) / 2, Math.max((s.max - s.min) / 200, 0.2)) }
+      return { id: s.id, name: s.name, description: `孪生:${s.name}`, unit: s.unit, min: s.min, max: s.max, decimals: s.decimals, format: s.format ?? 'scalar', strategy }
+    })
+    if (unresolvedAll.length) {
+      ok('follows[].sp 可解析性(按名或按 id)', false, `未解析:${unresolvedAll.join(', ')} —— 生成的 hook 将退化为常量目标,请改用 SP 信号名`)
+    }
     const r = await simApi('POST', '/api/nodes', { id, name: `${id}(孪生)`, description: `aw-plc-sim-twin 生成:${dev.signals.length} 信号`, protocol, enabled: true, tickMs: 1000, signals, config })
     ok(`设备 ${id}(${protocol},${signals.length} 信号)`, r?.code === 0, r?.message ?? '')
     created.push({ id, protocol, port: config.port ?? null, signals: signals.length, sourceNodes: dev.nodes?.map(n => n.id) ?? null })

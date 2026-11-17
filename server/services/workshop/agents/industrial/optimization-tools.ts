@@ -68,7 +68,18 @@ export async function toolOptimizationExplore(agentId: string, args: {
     const tuneMin = binding?.tuning?.min ?? node.min
     const tuneMax = binding?.tuning?.max ?? node.max
     const direction = args.direction === 'down' ? -1 : 1
-    const controlBefore = Number(node.value ?? 0)
+    // u0 退化角修复(2026-11-17 fresh 环境 100% 复现):供给清值后 node.value=null,
+    // 旧逻辑 Number(node.value ?? 0)=0 → 提议值钳到量程下缘 → 步限 fail-closed。
+    // 改为「先读后探」:优先最近回读值,再实时只读回读锚定;都不可得才拒绝并给行动指引。
+    let controlBefore = node.value != null ? Number(node.value) : Number.NaN
+    if (!Number.isFinite(controlBefore) && node.readValue != null) controlBefore = Number(node.readValue)
+    if (!Number.isFinite(controlBefore)) {
+      const probe = await getDcwController().readNow(controlNodeId).catch(() => null)
+      controlBefore = probe?.ok && probe.value != null ? Number(probe.value) : Number.NaN
+    }
+    if (!Number.isFinite(controlBefore)) {
+      return { text: `控制节点 ${controlNodeId} 无可用锚定值(value 与回读均为空,实时回读失败);请先由用户写入一次基线值(如 owner 直写)或检查驱动连通后重试探索。`, isError: true }
+    }
     const proposed = controlBefore + direction * step
     const target = Math.min(tuneMax, Math.max(tuneMin, proposed))
     const clamped = Math.abs(target - proposed) > 1e-9
