@@ -1,10 +1,7 @@
-Overleaf draft source package: agent-mediated online data acquisition and governed setpoint control
+Overleaf source package: updated user-provided Figure 2, with previously supplied Figure 3 and Figure 5, 2026-11-17
 
-1. Upload this ZIP as a new Overleaf project.
-2. Set `main.tex` as the main document.
-3. Select pdfLaTeX as the compiler and BibTeX as the bibliography tool.
-4. The package contains all manuscript `.tex` files, the active BibTeX database, and all six figure files (four vector PDFs and two 300-dpi PNGs for Figs. 2 and 3).
-5. The manuscript distinguishes the intended agent workflow (online acquisition, objective-conditioned analysis, typed control-intent submission, governed dispatch, and returned evidence) from the direct API and scripted evidence actually used in the reported evaluation.
-6. Do not upload generated `.aux`, `.bbl`, `.blg`, `.log`, `.out`, `.synctex.gz`, rendered page previews, or local session files.
-7. Supplementary File S7 and the supporting-evidence archive are distributed separately and are referenced by the manuscript's Data Availability statement.
-8. Author identities, affiliations, contribution details, and funding information are intentionally withheld for anonymous initial review and must be restored or updated according to the journal's submission policy before final publication.
+1. Upload the ZIP as a new Overleaf project; main.tex is at the archive root.
+2. Select main.tex and pdfLaTeX. Bibliography uses BibTeX.
+3. Figures 2 and 3 use the supplied PNG images; Figure 5 uses the supplied PDF.
+4. Supplementary File S7 and the supporting-evidence archive are provided separately.
+5. Authors should verify declarations and current journal submission requirements.

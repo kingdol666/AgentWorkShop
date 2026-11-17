@@ -34,7 +34,7 @@
 \usepackage{cite}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \hypersetup{bookmarksnumbered=true,
-  pdftitle={Agent-Mediated Online Data Acquisition and Governed Setpoint Control in Industrial Production Lines},
+  pdftitle={A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations},
   pdfauthor={},
   pdfsubject={IEEE Transactions on Industrial Informatics},
   pdfkeywords={industrial agents, online data acquisition, agent-mediated control, governed setpoint control, industrial communication}}
@@ -63,7 +63,7 @@
 \begin{document}
 \bstctlcite{IEEEbstctl}
 
-\title{Agent-Mediated Online Data Acquisition and Governed Setpoint Control in Industrial Production Lines}
+\title{A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations}
 
 \author{}
 \markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Agent-Mediated Setpoint Control}
@@ -71,7 +71,7 @@
 \maketitle
 
 \begin{abstract}
-Industrial agents can acquire production data, relate process state to an objective, and propose setpoint adjustments, but the resulting control intent must remain tied to the correct context, signal direction, authority, and operating limits. This paper presents a configuration-driven runtime for agent-mediated online data acquisition and governed setpoint control, with a direct-call path for verification. A scene binds line, product, recipe, and run context to acquisition/control mappings and registered protocol drivers. The agent receives configured observations and submits a typed intent; a shared dispatcher applies authorization, conditional approval, route-specific revalidation, and write guards before dispatch. Command outcomes, device readbacks, and later process observations remain separate evidence. In simulated probes of 55 write-capable endpoints across four scenes and five protocols, all 220 admissible requests were accepted and all 219 collected out-of-range requests were rejected. A bounded scripted policy had lower retained-window integrated absolute error than no-write in all nine selected scene--seed blocks. Three language-model-driven injection episodes were canceled below target. The work establishes an application-level agent-to-operation integration model; it does not establish a complete correlated agent-to-device trace, general control efficacy, autonomous convergence, or physical-plant safety.
+Industrial agents that acquire process data and propose setpoint changes require a runtime that relates equipment operations to production context and controls access to them. This article presents a configuration-driven runtime for agent-mediated data acquisition and governed setpoint control. A production scene binds line, product, recipe, and run context to distinct acquisition and control mappings and registered protocol drivers. Agent harnesses provide acquisition and control-intent tools, while task-mediated and direct calls enter a shared dispatcher. The runtime applies applicable authorization and configured write limits, with route-specific revalidation following approval when required; command outcomes, optional readbacks, and later process observations remain distinct. In direct-interface probes of 55 write-capable endpoints across four simulated scenes and five protocols, all 220 admissible requests received the expected acceptance response and all 219 collected out-of-range requests received the expected rejection. In an exploratory simulator comparison, a bounded scripted policy had lower retained-window integrated absolute error than a no-write condition in all nine selected scene--seed blocks; the batch-selection rule remains unresolved. Three language-model-driven injection episodes were canceled below target. These results characterize selected application-level behaviors, while a complete correlated agent-to-device trace and physical-plant performance remain unverified.
 \end{abstract}
 
 \begin{IEEEkeywords}
