@@ -4,7 +4,7 @@ The runtime exposes named services through two entry paths. Task-mediated calls 
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig2.pdf}
+\includegraphics[width=\textwidth]{resources/fig2.png}
 \caption{Task-mediated and direct tool calls share a dispatcher; a registered agent can acquire observations and submit a control intent, while direct calls provide a verification path. Direct calls need no task. Approved intents undergo route-specific revalidation (omitted here; see Fig.~\ref{fig:hitl}). The no-approval path remains subject to applicable authorization and write guards. Requests rejected by pre-dispatch checks stop before driver dispatch. Feedback and signals are schematic, not measured traces. Approvals, command outcomes, optional readbacks, and later data-acquisition (DAQ) observations are distinct records. In-flight exclusion rejects overlapping writes per node and process; equipment interlocks remain necessary.}
 \label{fig:arch}
 \end{figure*}
