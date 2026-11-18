@@ -1,6 +1,6 @@
 # TII-SUBMISSION-PACKAGE-FINAL
 
-提交用最终包（2026-11-17）。内容与命名如下，按用途取用即可。
+提交用最终包（2026-11-18 修订：Discussion/Conclusion 增补系统功能总结、闭环控制未实现的显式表述、以及"智能体编排式自主闭环优化 + 过程经验记忆复用"两条未来工作）。内容与命名如下，按用途取用即可。
 
 ## 交付件
 
@@ -8,8 +8,8 @@
 |---|---|---|
 | `TII-SUBMISSION-PACKAGE-FINAL.docx` | **主交付件**：单栏 Word 版（LaTeX→DOCX 直转，非期刊双栏模板） | 18 |
 | `TII-SUBMISSION-PACKAGE-FINAL-preview.pdf` | 上述单栏 Word 的 PDF 预览 | 18 |
-| `TII-SUBMISSION-PACKAGE-FINAL-ieee-two-column.docx` | 备选：按 IEEE TII 双栏模板排版的 Word 版 | 11 |
-| `TII-SUBMISSION-PACKAGE-FINAL-ieee-two-column-preview.pdf` | 双栏 Word 的 PDF 预览 | 11 |
+| `TII-SUBMISSION-PACKAGE-FINAL-ieee-two-column.docx` | 备选：按 IEEE TII 双栏模板排版的 Word 版 | 12 |
+| `TII-SUBMISSION-PACKAGE-FINAL-ieee-two-column-preview.pdf` | 双栏 Word 的 PDF 预览 | 12 |
 | `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | LaTeX（pdfLaTeX）编译成稿（投稿用主文件） | 10 |
 | `TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | Overleaf 导入包（`main.tex` 在根目录，resources/ 含 4 个矢量 PDF + 2 个 300 dpi PNG + refs.bib） | — |
 
