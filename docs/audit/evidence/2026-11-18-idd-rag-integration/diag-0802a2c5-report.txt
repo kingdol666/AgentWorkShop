@@ -1,0 +1,11 @@
+result_id=0802a2c5
+标题=ln-58f3a3eb_diag_0802a2c5 意图=quick-screen 评分=- 结论=alert · 82 alerts
+摘要=快筛状态 alert，82 条告警，SPC 判异 82，多变量离群 0，告警最多参数 dn-03084b36。 数据 1798 行，时段 2026-11-18T08:32:10.000+08:00 ~ 2026-11-18T11:02:10.000+08:00。
+关键数字={"status":"alert","n_alerts":82,"spc_n_triggered":82,"multivariate_n_outliers":0,"event_count":7,"top_parameter":"dn-03084b36"}
+数字溯源=summary_json.sources(每个数字钉到 工件路径#字段)
+工件 7 项:01_ontology/ontology.json, 01_ontology/ontology_brief.json, 01_ontology/ontology_coverage.json, sentinel/alert.json, sentinel/watch_report.md, sentinel/quick_screen_report.html, report.md
+HTML 报告 1 份(在线查看需带 ?token=<诊断API Token>):http://127.0.0.1:3210/api/files/workspace/asset/202611180303319_ln-58f3a3eb_diag/sentinel/quick_screen_report.html
+报告=http://127.0.0.1:3210/api/files/workspace/report/202611180303319_ln-58f3a3eb_diag
+run=0802a2c5 completed(可续聊)
+
+补充描述/标签 → diag_result_annotate(result_id, description, tags)。
