@@ -22,6 +22,8 @@ const QUESTION_TEMPLATES = {
     `${line} 产线${win}数据调参经验挖掘:总结可复用的调整经验(参数方向、幅度、生效条件与反例),按结构化经验条目输出,供知识库沉淀`,
   'optimizer-campaign': ({ line, win }) =>
     `${line} 产线${win}数据优化战役:基于数据确定优化目标与约束,执行寻优迭代并汇报每轮目标值变化,最终给出推荐工况与预期收益`,
+  'improvement-advisory': ({ line, win }) =>
+    `${line} 产线${win}数据改善建议:按 A/B/C 分级给出可执行建议(每条含 95% 置信区间、验证方法与回滚方案);数据不足时如实给出 not_actionable 与所需数据清单,不要编造结论`,
 }
 
 /** 意图元数据(label 给审批卡/回执用;skill 仅供诊断对账,执行由 IDD 自主) */
@@ -32,6 +34,7 @@ export const ANALYSIS_INTENTS = {
   'doe-analysis': { label: 'DOE 试验分析', skill: 'industrial-doe-analyzer' },
   'experience-mining': { label: '调参经验挖掘', skill: 'industrial-tuning-memory' },
   'optimizer-campaign': { label: '优化战役', skill: 'industrial-optimizer-loop' },
+  'improvement-advisory': { label: '改善建议', skill: 'industrial-improvement-advisor' },
 }
 
 /** 归一化:空/未知 → null(空=缺省 deep-diagnosis 由 IDD 兜底;未知由调用方报错) */
