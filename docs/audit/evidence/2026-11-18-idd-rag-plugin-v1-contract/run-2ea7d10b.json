@@ -1,0 +1,280 @@
+{
+ "runId": "2ea7d10b",
+ "at": "2026-11-18T08:11:37.565Z",
+ "steps": [
+  {
+   "label": "wait#1",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#2",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 12,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#3",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#4",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#5",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#6",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#7",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#8",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#9",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#10",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#11",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 17,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#12",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#13",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#14",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#15",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 6,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#16",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#17",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#18",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#19",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#20",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#21",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 19,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#22",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#23",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#24",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#25",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#26",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#27",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#28",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#29",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#30",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#31",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 17,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#32",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#33",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#34",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#35",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#36",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#37",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#38",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=running\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议"
+  },
+  {
+   "label": "wait#39",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=2ea7d10b\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=stability-report(产线稳定报告)\n状态=stopped\n来源=agent\n窗口=2026-11-18T15:11:30.977+08:00 ~ 2026-11-18T16:11:30.977+08:00\n问题=CNC-850 B线近60分钟运行稳定性报告:评分/等级、各参数稳态表现、问题清单与运行建议\n错误=-"
+  }
+ ],
+ "finalStatus": "stopped"
+}

@@ -1,0 +1,1 @@
+{"plugin":"diag-bridge","base":"http://127.0.0.1:3210","contract":"auto","harness":"omp","auth":"bearer","token":{"configured":true,"accepted":true},"remote":{"status":"ok","activeRuns":1,"auth":"ok"},"runs":{"total":3,"byStatus":{"stopped":2,"running":1}},"toolCounters":{"diag_run":{"ok":3,"err":2},"diag_status":{"ok":81,"err":0},"diag_stop":{"ok":1,"err":1}}}
