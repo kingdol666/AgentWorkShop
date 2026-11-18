@@ -1,6 +1,6 @@
 # TII-SUBMISSION-PACKAGE-FINAL
 
-提交用最终包（2026-11-18 润色版：全文语言润色——摘要恢复证据限定、拆分号长链、统一术语；Discussion/Conclusion 含系统功能总结、闭环控制未实现的显式表述、以及"智能体编排式自主闭环优化 + 过程经验记忆复用"两条未来工作）。内容与命名如下，按用途取用即可。
+提交用最终包（2026-11-18 投稿版：摘要重构 197 词；全文语言润色；Discussion/Conclusion 含系统功能总结、闭环控制未实现的显式表述、以及"智能体编排式自主闭环优化 + 过程经验记忆复用"两条未来工作）。内容与命名如下，按用途取用即可。
 
 ## 交付件
 
@@ -27,6 +27,7 @@
 ## 源与素材
 
 - `overleaf-source/`：LaTeX 源（`main.tex` + `sections/` 8 个 .tex + `resources/` + `refs.bib`），Overleaf 可直接编译（pdfLaTeX + BibTeX）。
+- `submission/`：投稿材料——`COVER-LETTER.md`（编辑可见，含作者信息段占位）、`TITLE-PAGE.md`（作者/ORCID/CRediT/基金/COI 模板，填入 Author Portal）、`SUBMISSION-CHECKLIST.md`（IEEE Author Portal 逐项清单与双盲自查）。
 - `related-ieee-papers-20261117/`：相关 IEEE 文献索引（`README.md` 列题目/DOI/与本文关系）；6 篇公开版 PDF 仅本地留存，不入库（第三方版权，见该目录 `.gitignore`）。
 - `review-20261117/`：评审用的窗口敏感性脚本与结果 CSV。
 
