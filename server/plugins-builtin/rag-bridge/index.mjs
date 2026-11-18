@@ -133,6 +133,15 @@ export default {
       return out
     }
 
+    /** 写类操作审计(WS-4 S2:谁在何时写了哪个库的哪篇文档,由平台 ops 面留痕) */
+    async function auditWrite(entry) {
+      try {
+        const rec = await ctx.services.get('ops.record')
+        if (typeof rec === 'function') rec(entry)
+      }
+      catch { /* 审计不可用不阻断写入(与 diag 侧同纪律) */ }
+    }
+
     /**
      * 单次 JSON 请求;429/网络错误按 1s*重试次数退避,最多重试 2 次;
      * retry429Ms>0 时对 429 额外等待一次(限流退避,文档 §4.5)后重试。
@@ -710,6 +719,13 @@ export default {
           }
           const finalPath = docPath || '(列表暂未确认,可稍后用 kb_doc_search 检索)'
           bump('kb_doc_create', true)
+          await auditWrite({
+            actor: agent?.agentId ?? 'user', actorName: agent?.name ?? '', actorKind: agent ? 'agent' : 'user',
+            action: 'plugin.kb_doc.create', kind: 'write', scope: 'system',
+            targetKind: 'document', targetId: finalPath,
+            summary: `知识库文档创建 ${targetName}:${fileName}(${String(content).length} 字符)`,
+            detail: { kb: targetName, kbId: targetKb, docPath: finalPath, channelId: agent?.channelId ?? '', role: agent?.role ?? '' },
+          })
           return {
             text: [
               `status=created doc_path=${finalPath} kb=${targetName} chars=${String(content).length} index=${indexState} tags=${tagsState}${splitNote ? ' split=yes' : ''}`,

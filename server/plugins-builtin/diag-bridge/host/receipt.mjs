@@ -33,9 +33,7 @@ export function buildNotice(meta, id) {
         meta.summary ? `总结=${String(meta.summary).slice(0, 400)}` : '',
         reportPath ? `report_md_path=${reportPath}` : '',
         reportUrl ? `report_url=${reportUrl}` : '',
-        reportPath
-          ? `入库知识库:调用 rag-bridge 的 kb_agent(mode=async)读取该报告文件全文入库(标签:分析,${label}),完成后用 kb_agent_status 查询入库结果。`
-          : `报告路径未就绪,可用 diag_status(run_id=${id}) 查询详情。`,
+        `入库知识库:调用 diag_deposit(run_id=${id})(一键入 aw-docs 文档库并检索自查);需要结构化经验沉淀时再用 kb_agent(action=ingest,目标 aw-industrial)。`,
       ].filter(Boolean).join(';'),
     }
   }

@@ -6,6 +6,7 @@ import { AUTO_COOLDOWN_MS, DEFAULT_BASE, MIN } from './constants.mjs'
 import { absoluteUrl, authHeadersOf, authHint, autoEnabledOf, autoRulesOf, baseOf, diagTokenOf, harnessOf, jget, jpatch, jpost, kvRuns, mapResultsError, parseAutoRules, probeResults, resultsAllowAnnotateOf, resultsAllowWorkerOf, resultsDefaultLimitOf, resultsEnabledOf, resultsMdMaxOf, runKey } from './helpers.mjs'
 import { awaitingMaxMinutesOf, contractModeOf, mapV1Error, normalizeResult, v1Chat, v1Result, v1Stop, v1Task } from './external-v1.mjs'
 import { isTerminal } from './receipt.mjs'
+import { depositRunToRag } from './deposit.mjs'
 import { snapshotCore } from './snapshot.mjs'
 import { startDiagnosis } from './diagnosis.mjs'
 import { uploadExportDataset } from './exports.mjs'
@@ -24,7 +25,14 @@ function registerDiagnosticTool(ctx, tool) {
       catch {
         return { text: '无法确认频道模式，拒绝产线诊断工具。', isError: true }
       }
-      return handler(args, agent)
+      const out = await handler(args, agent)
+      // WS-4 S3:工具调用计数(health 可见;失败分类由 isError 记 err)
+      try {
+        const key = `usage.${tool.name}.${out?.isError ? 'err' : 'ok'}`
+        ctx.kv.set(key, Number(ctx.kv.get(key) ?? 0) + 1)
+      }
+      catch { /* 计数失败不影响调用 */ }
+      return out
     },
   })
 }
@@ -285,7 +293,7 @@ export default {
                 catch { /* 未接线时忽略 */ }
                 const rep = norm.reportPath ?? '-'
                 return {
-                  text: `✅ 同步诊断完成 task_id=${r.runId}(${via},${contractTag})\n评分=${norm.score ?? '-'} 结论=${norm.verdict ?? '-'}\nreport_md_path=${rep}${norm.reportUrl ? `\nreport_url=${norm.reportUrl}` : ''}\n总结:${String(norm.summary ?? '').slice(0, 800)}\n结果已存分析结果台账(diag_results / diag_result_get 可随时复查)。${notes}\n\n入库知识库:调用 rag-bridge 的 kb_agent(wait=true,wait_seconds=600,prompt=「请把这份深度诊断报告入库到 aw-industrial 知识库:读取文件 ${rep} 的全文内容并入库,完成后报告 doc_path 与分块数。标签:诊断、深度诊断。」),完成后 kb_agent_status(task_id) 查询。`,
+                  text: `✅ 同步诊断完成 task_id=${r.runId}(${via},${contractTag})\n评分=${norm.score ?? '-'} 结论=${norm.verdict ?? '-'}\nreport_md_path=${rep}${norm.reportUrl ? `\nreport_url=${norm.reportUrl}` : ''}\n总结:${String(norm.summary ?? '').slice(0, 800)}\n结果已存分析结果台账(diag_results / diag_result_get 可随时复查)。${notes}\n\n入库知识库:调用 diag_deposit(run_id=${r.runId})(一键入 aw-docs 文档库并检索自查);若要沉淀结构化经验,再用 kb_agent(action=ingest, 目标 aw-industrial)。`,
                 }
               }
               if (['failed', 'stopped', 'interrupted', 'expired'].includes(status)) {
@@ -387,9 +395,9 @@ export default {
             parts.push(`report_md_path=${norm.reportPath ?? meta?.reportPath ?? '-'}`)
             if (norm.reportUrl || meta?.reportUrl) parts.push(`report_url=${norm.reportUrl ?? meta?.reportUrl}`)
             parts.push('')
-            parts.push('✅ 分析完成,报告已就绪。入库知识库请调用 rag-bridge 的 kb_agent 工具:')
-            parts.push(`  mode=async, prompt=「请把这份分析报告入库到 aw-industrial 知识库:读取文件 ${norm.reportPath ?? meta?.reportPath ?? '-'} 的全文内容并入库(写盘+索引),完成后报告 doc_path 与分块数。标签:分析、${intentLabel(meta?.intent ?? 'deep-diagnosis')}。」`)
-            parts.push('提交后频道无需等待,空闲时用 kb_agent_status(task_id) 查询入库结果。')
+            parts.push('✅ 分析完成,报告已就绪。入库 RAG 文档库(缺省 aw-docs)请调用 diag_deposit 工具:')
+            parts.push(`  diag_deposit(run_id=${id}) → 返回 doc_path 与检索自查命中;同 run 重试幂等。`)
+            parts.push('需要结构化经验沉淀时再用 kb_agent(action=ingest,模式 async,目标 aw-industrial)。')
           }
           if (status === 'awaiting_input') {
             const sinceMs = Number(meta?.awaitingSince ?? 0)
@@ -528,6 +536,61 @@ export default {
         }
         catch (err) {
           return { text: `diag_stop 异常:${err?.message ?? err}`, isError: true }
+        }
+      },
+    })
+
+    // ── 工具 ×1:诊断报告入库(WS-3;C1 闭环) ────────────────────────────────
+    registerDiagnosticTool(ctx, {
+      name: 'diag_deposit',
+      label: '诊断报告入库',
+      description: '把一条已完成的诊断报告一键入库 RAG 文档库(缺省 aw-docs)并做检索自查:返回 doc_path 与命中数。run_id 来自 diag_run/diag_status。写类:同 run 重试幂等(同名不重复建);报告为空可读失败、不落半截文档。经验沉淀仍用 kb_agent。',
+      parameters: {
+        type: 'object',
+        properties: {
+          run_id: { type: 'string', description: '已完成的诊断 run_id' },
+          kb: { type: 'string', description: '目标知识库名(缺省取 rag-bridge docs_kb=aw-docs)' },
+          title: { type: 'string', description: '文档标题(缺省 <line>_<intent>_<runId>;同名视为已入库)' },
+        },
+        required: ['run_id'],
+      },
+      roles: ['lead', 'worker'],
+      riskClass: 'write',
+      noRefs: true,
+      handler: async (args, agent) => {
+        try {
+          const id = String(args.run_id ?? '').trim()
+          if (!id) return { text: 'run_id 必填(已完成诊断的 run_id)。', isError: true }
+          const guard = await runMetaOrDeny(id, agent)
+          if (guard.denied) return guard.denied
+          const meta = guard.meta
+          const r = await depositRunToRag(ctx, {
+            runId: id,
+            meta,
+            kb: args.kb ? String(args.kb) : '',
+            title: args.title ? String(args.title) : '',
+          })
+          if (!r.ok) return { text: `诊断报告入库失败:${r.error}`, isError: true }
+          await recordLineAudit({
+            actor: agent?.agentId ?? 'unknown', actorName: agent?.name ?? '', actorKind: 'agent',
+            action: 'diag.report.deposit', kind: 'write', scope: 'system',
+            targetKind: 'run', targetId: id,
+            summary: `诊断报告入库 ${r.kbName}:${r.docPath}(${r.reportChars} 字符,检索命中=${r.verified})`,
+            detail: { runId: id, docPath: r.docPath, kbId: r.kbId, channelId: agent?.channelId ?? '', role: agent?.role ?? '' },
+          })
+          return {
+            text: [
+              `status=ok doc_path=${r.docPath} kb=${r.kbName} run_id=${id} chars=${r.reportChars} index=${r.indexState} tags=${r.tagsState} search=${r.verified ? 'hit' : 'miss'} hits=${r.hits} mode=${r.searchMode}`,
+              `✅ 报告已入库 ${r.kbName}(评分=${r.score ?? '-'} 结论=${r.verdict ?? '-'})。`,
+              r.verified
+                ? `检索自查通过:${r.searchMode} 命中 doc_path(共 ${r.hits} 条候选)。`
+                : `检索自查未命中(索引可见性窗口);可稍后用 rag-bridge 的 kb_doc_search(query=标题) 复核,文档已落盘:${r.docPath}`,
+              '下一步:kb_doc_read(doc_path) 核对正文;需要结构化经验沉淀时用 kb_agent(action=ingest 入 aw-industrial)。',
+            ].join('\n'),
+          }
+        }
+        catch (err) {
+          return { text: `diag_deposit 异常:${err?.message ?? err}`, isError: true }
         }
       },
     })
@@ -729,6 +792,14 @@ export default {
       const runs = kvRuns(ctx)
       const byStatus = {}
       for (const { meta } of runs) byStatus[meta?.status ?? 'unknown'] = (byStatus[meta?.status ?? 'unknown'] ?? 0) + 1
+      // WS-4 S3:工具调用计数(ok/err 分账;与 rag-bridge health 同口径)
+      const toolCounters = {}
+      for (const [k, v] of Object.entries(ctx.kv.all())) {
+        const m = /^usage\.(.+)\.(ok|err)$/.exec(k)
+        if (!m) continue
+        toolCounters[m[1]] ??= { ok: 0, err: 0 }
+        toolCounters[m[1]][m[2]] = Number(v) || 0
+      }
       const base = baseOf(ctx)
       let remote
       let tokenState = { configured: Boolean(diagTokenOf(ctx)), accepted: null }
@@ -785,6 +856,7 @@ export default {
         token: tokenState,
         remote,
         runs: { total: runs.length, byStatus },
+        toolCounters,
       }
     })
 
@@ -1036,6 +1108,6 @@ export default {
       }
     })
 
-    ctx.logger.info('diag-bridge 就绪(v2.4):工具 diag_run/diag_status/diag_chat/diag_stop/diag_results/diag_result_get/diag_result_annotate + 路由 health/runs/snapshot/report/results;external v1 定轨;轮询 15s 已启动')
+    ctx.logger.info('diag-bridge 就绪(v2.4):工具 diag_run/diag_status/diag_chat/diag_stop/diag_deposit/diag_results/diag_result_get/diag_result_annotate + 路由 health/runs/snapshot/report/results;external v1 定轨;轮询 15s 已启动')
   },
 }
