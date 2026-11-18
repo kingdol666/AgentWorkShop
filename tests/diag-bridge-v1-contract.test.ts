@@ -327,6 +327,7 @@ test('diag_run(v1):capabilities 预检 + 负载透传 + 契约/双 id 落 KV', a
   assert.equal(meta.taskId, 'TASK-N')
   assert.equal(meta.runId, 'run-new')
   assert.equal(meta.agentId, 'ag-1')
+  assert.equal(meta.lineScope, 'ln-1', '显式产线必须落授权作用域')
 })
 
 test('diag_run(v1):未知意图 → 提交前可读拒绝(不 POST /analyze)', async () => {

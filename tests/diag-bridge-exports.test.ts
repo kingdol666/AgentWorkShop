@@ -230,6 +230,9 @@ test('diag_run export_id+sync:轮询到完成,认领回执,文本含报告路径
   assert.ok(runEntry, 'kv 中登记了 run')
   assert.equal((runEntry![1] as Record<string, unknown>).agentId, 'ag-1')
   assert.equal((runEntry![1] as Record<string, unknown>).channelId, 'ch-1')
+  // export 模式未显式传 line:产线锁/归因用 manifest.lines[0].lineId;授权作用域为空(离线数据集)
+  assert.equal((runEntry![1] as Record<string, unknown>).line, 'line-a')
+  assert.equal((runEntry![1] as Record<string, unknown>).lineScope, '')
 })
 
 test('sweep:完成时 deliver 回执带 agentId/channelId 与 kb_agent 指引(Channel 接收链)', async () => {

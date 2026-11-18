@@ -10,7 +10,7 @@ import { defaultQuestionFor, resolveBridgeIntent } from './intents.mjs'
 import { getCapabilities, mapV1Error, preflightCapabilities, resolveContract, v1Request } from './external-v1.mjs'
 
 export async function startDiagnosis(ctx, {
-  line, fromMs, toMs, question, scene, source, dataPath, dataPaths,
+  line, lineScope, fromMs, toMs, question, scene, source, dataPath, dataPaths,
   harness, agentId, channelId, analysisIntent, model, permissionMode,
   ontologyMode, ontologyScene, ontologySource, preprocessingMode, reportLanguage,
 }) {
@@ -125,6 +125,9 @@ export async function startDiagnosis(ctx, {
 
     ctx.kv.set(runKey(runId), {
       line, fromMs, toMs, question: q, scene: sceneName,
+      // 授权作用域(区别于 line 锁键):显式传入的产线才参与可读面校验;
+      // 纯离线数据集为 ''(不按产线拒,读取面已由数据集归属/导出约束)。
+      lineScope: String(lineScope ?? line ?? ''),
       intent: intent || 'deep-diagnosis',
       status: initialStatus, createdAt: Date.now(), source,
       csvPath: snap.csvPath,
