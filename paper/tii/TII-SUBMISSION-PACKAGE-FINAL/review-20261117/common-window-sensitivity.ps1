@@ -1,5 +1,5 @@
 param(
- [string]$EvidenceZip = (Join-Path $PSScriptRoot '..\supplementary\Supporting-Evidence-S7-20261112.zip'),
+ [string]$EvidenceZip = 'D:\codes\ABO\AgentWorkShop\paper\tii\TII-SUBMISSION-PACKAGE-20261112\supplementary\Supporting-Evidence-S7-20261112.zip',
  [string]$OutputCsv = (Join-Path $PSScriptRoot 'common-window-results.csv')
 )
 $ErrorActionPreference = 'Stop'
