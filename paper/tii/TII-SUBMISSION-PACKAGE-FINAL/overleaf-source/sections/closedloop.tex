@@ -21,10 +21,10 @@ In Eq.~(\ref{eq:optimization-candidate}), configured tuning bounds take preceden
 
 The operation resolves the DAQ target and checks visibility before the intent enters the governed path. Later implementation gates include identifiability and model--ontology checks; these were added after the reported experiments. If the checks pass, the operation attempts a pre-write DAQ read, whose mean may be unavailable.
 
-A valid candidate enters the governed single-node write path in Algorithm~1. A pre-dispatch denial stops the request before a driver call. A driver-stage error may occur after dispatch begins, so status alone cannot establish whether the device changed; state must be read and reconciled before retrying.
+A valid candidate enters the governed single-node write path in Algorithm~1. A pre-dispatch denial stops the request before any driver call. A driver-stage error, by contrast, may occur after dispatch has begun, so status alone cannot establish whether the device changed; state must be read and reconciled before retrying.
 
 After a successful write, the operation waits 10--300~s (45~s by default) and attempts a post-write DAQ read before returning the exploration result to the agent. Later windows are $[t_0-\tau,t_0]$ and $[t_0,t_1]$; approval may include pre-dispatch samples, so the mean is not causal. The earlier implementation reads trailing 45-s windows.
 
-The exploration record stores the target, step, available DAQ means, and write status/message; the shared path separately records command outcome and available readback. The operation returns an exploration summary to the agent. On a later turn, the agent can inspect returned evidence, choose another step, or stop; iteration requires a subsequent agent decision.
+The exploration record stores the target, the step, the available DAQ means, and the write status and message; the shared path separately records the command outcome and any available readback. The operation then returns an exploration summary to the agent. On a later turn, the agent can inspect the returned evidence, choose another step, or stop---iteration always requires a subsequent agent decision.
 
 

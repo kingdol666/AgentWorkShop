@@ -12,8 +12,7 @@ request, the approval service receives the node, proposed value, current
 effective interval, and rationale. The same governed boundary receives an agent's typed intent after its acquisition and analysis step. As in Algorithm~1, a decline or timeout
 stops the request, while approval triggers revalidation of the original
 direct node binding or the recipe binding and parameter membership. This path
-does not use the recipe-operation context snapshot described below.
-Revalidation does not make the checks and external device write atomic.
+does not use the recipe-operation context snapshot described below, and revalidation does not make the checks and the external device write atomic.
 
 Recipe operations use a separate approval path. For \texttt{recipe\_trial}
 and \texttt{recipe\_apply}, the approval is bound to the recipe operation and
@@ -28,10 +27,8 @@ recipe trials also use a per-line cadence of 300\,s by default.
 
 A \texttt{recipe\_trial} submits a bounded batch from the agent's control intent through the configured
 driver and returns a result for each parameter to the calling route. Parameters are attempted
-individually, so a batch can be partially applied; results and device state
-must be reconciled before the agent or caller retries. A trial does not save or apply a recipe
-version. Before updating, applying, or rolling back the recipe, the caller can
-retrieve later DAQ observations separately.
+individually, so a batch can be partially applied; results and device state must be reconciled before any retry. A trial does not save or apply a recipe
+version, and before updating, applying, or rolling back the recipe, the caller can retrieve later DAQ observations separately.
 
 Receipts record the command outcome returned to the agent or caller; observations record what followed in
 the process. Command results are graded as readback-verified,

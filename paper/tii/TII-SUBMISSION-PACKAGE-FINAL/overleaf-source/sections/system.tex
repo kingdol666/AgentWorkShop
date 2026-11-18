@@ -1,6 +1,6 @@
 \section{System Design}
 \label{sec:design}
-The runtime exposes named services through two entry paths. Task-mediated calls use the collaboration runtime and a registered agent harness; the harness gives the agent scoped tools for online acquisition, analysis, and control-intent submission. Direct REST or stdio-MCP calls provide verification and integration paths. Both enter the shared dispatcher, while scene configuration supplies context, acquisition bindings, objectives, and write limits.
+The runtime exposes its named services through two entry paths. Task-mediated calls run through the collaboration runtime and a registered agent harness, which hands the agent scoped tools for online acquisition, analysis, and control-intent submission. Direct REST or stdio-MCP calls serve verification and integration. Both paths meet at the shared dispatcher, and scene configuration supplies the context, acquisition bindings, objectives, and write limits.
 
 \begin{figure*}[!t]
 \centering
@@ -11,9 +11,9 @@ The runtime exposes named services through two entry paths. Task-mediated calls 
 
 \subsection{Design Rationale and Requirements}
 \label{sec:principles}
-The runtime must preserve process meaning across heterogeneous drivers, provide a stable contract for registered harness adapters, and check authority and process limits before each control write. It distinguishes acquired process data from command acceptance and later observations. Scene configuration, registered adapters, shared dispatch, route handlers, and service-owned records enforce these boundaries.
+The runtime must preserve process meaning across heterogeneous drivers, hold a stable contract for registered harness adapters, and check authority and process limits before every control write. Acquired process data, command acceptance, and later observations are kept distinct throughout. Scene configuration, registered adapters, shared dispatch, route handlers, and service-owned records enforce these boundaries.
 
-The context builder assembles production context and eligible observations for an agent turn. The agent uses them to form a proposal, but context and observations do not grant write authority; the handler resolves live state when the control operation is invoked.
+For each agent turn, the context builder assembles the production context and eligible observations. The agent uses them to shape a proposal, but neither context nor observations grant write authority; the handler resolves live state when the operation is invoked.
 
 \subsection{Layered Architecture}
 \label{sec:layers}
@@ -90,15 +90,14 @@ shared dispatch condition as
 \label{eq:dispatch-contract}
 \end{equation}
 In Eq.~(\ref{eq:dispatch-contract}), $S$, $P$, $G$, and $B$ denote invocation scope, current channel policy,
-applicable industrial grant, and the agent's binding to referenced resources,
-respectively. $\mathcal{C}(u)\subseteq\{S,P,G,B\}$ is the set of predicates
-declared for operation $u$; it always contains $S$ and $P$. The grant predicate
-$G$ is included when the resolved channel, target line, and owner/grant policy
-require it; explicit exemptions omit it. The binding predicate $B$ is included
-when the operation declares resource references. An operation that declares
-no references omits $B$. Each included check must pass before handler
-selection. The policy predicate includes channel tool selection, profile, and duty-separation checks where
-configured.
+the applicable industrial grant, and the agent's binding to referenced resources,
+respectively. The declared set $\mathcal{C}(u)\subseteq\{S,P,G,B\}$ always contains
+$S$ and $P$. The grant predicate $G$ joins the set when the resolved channel, target line, and owner/grant policy
+require it; explicit exemptions omit it. The binding predicate $B$ joins when
+the operation declares resource references, so an operation that declares
+no references omits $B$. Every included check must pass before handler
+selection. Where configured, the policy predicate also covers channel tool
+selection, profile, and duty-separation checks.
 
 Once these predicates pass, the selected route applies its operational
 guards and requests any required approval. For example, an exploration request checks
@@ -110,8 +109,8 @@ single-node and recipe-operation paths.
 For a direct REST agent-tool call, the service establishes $a$ and $c$ before applying
 these checks. An agent token must match the requested agent identifier; an
 authenticated user must be the channel owner or an administrator. The manager
-loads the channel-agent record and rechecks scope and policy, followed by any
+then loads the channel-agent record, rechecks scope and policy, and applies any
 applicable grant and binding checks. Handlers resolve live production state
-using request identifiers and the owning services.
+from request identifiers and the owning services.
 
 
