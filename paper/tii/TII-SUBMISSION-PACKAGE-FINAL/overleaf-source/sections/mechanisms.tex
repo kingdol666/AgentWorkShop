@@ -21,8 +21,8 @@ active line--product--recipe--run context. After approval, the handler checks
 authority and context again and verifies the recipe definition and
 candidate scope before dispatch. A changed context, revoked binding, or
 changed recipe definition prevents that proposal from proceeding. Recipe
-trial approvals use a 30-minute window by default; single-node approval waits
-expire after 180\,s by default. Outside benchmark mode, agent and manual
+trial approvals default to a 30-minute window; single-node approval waits
+expire after 180\,s. Outside benchmark mode, agent and manual
 writes are subject to a minimum 60-s interval following a setpoint change;
 recipe trials also use a per-line cadence of 300\,s by default.
 
@@ -46,6 +46,4 @@ timestamped process observations for the agent's next analysis turn, while
 recipe history, approvals, and task records remain with their owning services.
 Identifiers and timestamps can link these records when available, but a later
 observation alone does not prove that the command caused the measured change.
-Section~\ref{sec:eval} evaluates selected parts of this evidence chain under the
-stated test conditions.
 
