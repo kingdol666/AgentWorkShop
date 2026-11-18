@@ -67,8 +67,15 @@ async function fetchReportText(ctx, { base, contract, meta, runId, normalized })
     try {
       const ws = (await jget(ctx, `${base}/api/files/workspace`, 8000)).data ?? []
       const names = Array.isArray(ws) ? ws : []
+      // 目录命名不统一:<ts>_<scene> / <ts>_<scene>_<runId>;scene 与目录可能 -/_ 混用。
+      // 归一化仅保留 [a-z0-9],再按 runId → scene → reportPath 目录名 逐级匹配。
+      const norm = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+      const reportDir = String(normalized?.reportPath ?? '').replace(/\\/g, '/').split('/').slice(-2, -1)[0] ?? ''
+      const sceneNorm = norm(meta?.scene)
+      const dirNorm = norm(reportDir)
       const hit = names.find(e => String(e?.name ?? '').includes(runId))
-        ?? names.find(e => meta?.scene && String(e?.name ?? '').toLowerCase().includes(String(meta.scene).toLowerCase()))
+        ?? (sceneNorm ? names.find(e => norm(e?.name).includes(sceneNorm)) : null)
+        ?? (dirNorm ? names.find(e => norm(e?.name).includes(dirNorm)) : null)
       if (hit?.name) {
         const rep = (await jget(ctx, `${base}/api/files/workspace/report/${encodeURIComponent(hit.name)}`, 15000)).data
         return String(rep?.content ?? '')
