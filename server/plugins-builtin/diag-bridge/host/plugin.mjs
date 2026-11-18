@@ -3,7 +3,9 @@
  * (由 server/plugins-builtin/diag-bridge/index.mjs 按职责拆出;内容逐行原文搬运)
  */
 import { AUTO_COOLDOWN_MS, DEFAULT_BASE, MIN } from './constants.mjs'
-import { absoluteUrl, authHeadersOf, authHint, autoEnabledOf, autoRulesOf, baseOf, diagTokenOf, harnessOf, jget, jpatch, kvRuns, mapResultsError, parseAutoRules, probeResults, resultsAllowAnnotateOf, resultsAllowWorkerOf, resultsDefaultLimitOf, resultsEnabledOf, resultsMdMaxOf, runKey } from './helpers.mjs'
+import { absoluteUrl, authHeadersOf, authHint, autoEnabledOf, autoRulesOf, baseOf, diagTokenOf, harnessOf, jget, jpatch, jpost, kvRuns, mapResultsError, parseAutoRules, probeResults, resultsAllowAnnotateOf, resultsAllowWorkerOf, resultsDefaultLimitOf, resultsEnabledOf, resultsMdMaxOf, runKey } from './helpers.mjs'
+import { awaitingMaxMinutesOf, contractModeOf, mapV1Error, normalizeResult, v1Chat, v1Result, v1Stop, v1Task } from './external-v1.mjs'
+import { isTerminal } from './receipt.mjs'
 import { snapshotCore } from './snapshot.mjs'
 import { startDiagnosis } from './diagnosis.mjs'
 import { uploadExportDataset } from './exports.mjs'
@@ -29,8 +31,8 @@ function registerDiagnosticTool(ctx, tool) {
 
 export default {
   name: 'diag-bridge',
-  version: '2.3.0',
-  description: '深度诊断桥接 v2.2:异步任务式深度诊断(提交即返 task_id)+ daq-export 数据集多文件分析(diag_run export_id= 全量时序+manifest)+ 同步等待模式(mode=sync)+ 完成自动回执 Channel(修复发起者身份丢失)+ 报告在线查看。完成后经 rag-bridge kb_agent 入库知识库。',
+  version: '2.4.0',
+  description: '深度诊断桥接 v2.4:external v1 主契约(capabilities 定轨/legacy 回退)+ 全 7 意图透传 + 异步任务式分析 + daq-export 数据集多文件分析 + 同步等待/异步回执 + diag_chat 续聊 / diag_stop 停止 + 结果库检索。报告完成后可 diag_deposit 一键入库知识库。',
   auth: 'user',
   client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
   // 插件配置分组(声明式):连接 / 执行 / 自动化 三个独立分区
@@ -45,6 +47,8 @@ export default {
     { key: 'base_url', type: 'string', default: DEFAULT_BASE, group: 'default', labelKey: 'plugin.diag-bridge.settings.base_url', label: '诊断服务地址', description: 'industrial-deep-diagnostic 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
     { key: 'token', type: 'string', default: '', group: 'default', labelKey: 'plugin.diag-bridge.settings.token', label: '诊断 API Token', description: '诊断服务开启鉴权时(v4 起默认强制)的 API Token(Authorization: Bearer);空=匿名;保存即热生效' },
     { key: 'harness', type: 'string', default: '', group: 'run', labelKey: 'plugin.diag-bridge.settings.harness', label: '诊断引擎', description: 'diag_run 用的引擎 id(omp/claude/mock 等;空=取 kv/omp);无 Anthropic key 的机器请用 omp' },
+    { key: 'contract', type: 'string', default: 'auto', group: 'default', labelKey: 'plugin.diag-bridge.settings.contract', label: 'IDD 契约', description: 'auto=提交前探测 /capabilities 定轨(推荐);v1=强制 external v1;legacy=强制旧 /api/diagnosis 路径(回归保障)' },
+    { key: 'awaiting_max_minutes', type: 'number', default: 30, min: 1, max: 1440, group: 'run', labelKey: 'plugin.diag-bridge.settings.awaiting_max_minutes', label: '等待人工介入上限(分钟)', description: 'run 处于 awaiting_input 时保持产线单飞锁;超过该时长转 expired 并发送提示性回执' },
     { key: 'max_turns', type: 'number', default: 0, min: 0, max: 2000, group: 'run', labelKey: 'plugin.diag-bridge.settings.max_turns', label: '诊断最大轮数', description: 'diagnosis/start 的 maxTurns(0=取 kv/内置默认 220)' },
     { key: 'max_minutes', type: 'number', default: 0, min: 0, max: 720, group: 'run', labelKey: 'plugin.diag-bridge.settings.max_minutes', label: '诊断超时(分钟)', description: 'diagnosis/start 的 timeoutMinutes(0=取 kv/内置默认 40)' },
     { key: 'auto_enabled', type: 'boolean', default: false, group: 'auto', labelKey: 'plugin.diag-bridge.settings.auto_enabled', label: '自动诊断', description: 'daq:sample 越限命中规则时自动发起深度诊断(每产线冷却 30 分钟)' },
@@ -119,7 +123,7 @@ export default {
     registerDiagnosticTool(ctx, {
       name: 'diag_run',
       label: '发起分析',
-      description: '发起 IDD 后台分析任务(提交即返 task_id,无需等待;完成后平台自动回执本频道,空闲时也可 diag_status 查询)。analysis_intent 选择分析模式,每种意图由 IDD 侧对应 skill 协议执行(harness 在 IDD 内,分析业务与平台解耦):deep-diagnosis=深度根因诊断(9 阶段管线,最重);stability-report=产线稳定报告(评分+等级+建议,零根因);quick-screen=快速筛查(越限/漂移/冻结异常清单+HTML 看板,最快);doe-analysis=DOE 试验分析(因子效应/显著性/最优工况);experience-mining=调参经验挖掘(结构化经验条目,供知识库沉淀);optimizer-campaign=优化战役(寻优迭代+推荐工况,最重)。数据来源三选一:① line+时间窗(导出产线 DAQ 快照);② data_path:诊断服务内已有数据文件;③ export_id(推荐):daq_export 导出的数据集。',
+      description: '发起 IDD 后台分析任务(提交即返 task_id;完成后平台自动回执,也可 diag_status 查询)。analysis_intent 选分析模式,由 IDD 对应 skill 执行(全 7 意图:深度诊断/稳定报告/快筛/DOE/经验挖掘/优化战役/改善建议)。数据来源三选一:① line+时间窗(平台 DAQ 快照);② data_path(诊断服务内文件);③ export_id(推荐,daq_export 数据集)。契约 auto=提交前 capabilities 定轨(v1 优先,老后端回退 legacy)。',
       parameters: {
         type: 'object',
         properties: {
@@ -131,17 +135,22 @@ export default {
           question: { type: 'string', description: '分析问题(缺省按意图自动生成情景化提示词;业务要求特殊时才覆写)' },
           analysis_intent: {
             type: 'string',
-            enum: ['deep-diagnosis', 'stability-report', 'quick-screen', 'doe-analysis', 'experience-mining', 'optimizer-campaign'],
-            description: '分析模式(缺省 deep-diagnosis)。按业务情景选择:要根因→deep-diagnosis;要运行健康度评分/等级→stability-report;要快速异常清单→quick-screen;要多因子试验数据→doe-analysis;要沉淀调参经验→experience-mining;要寻优推荐工况→optimizer-campaign',
+            enum: ['deep-diagnosis', 'stability-report', 'quick-screen', 'doe-analysis', 'experience-mining', 'optimizer-campaign', 'improvement-advisory'],
+            description: '分析模式(缺省 deep-diagnosis)。根因→deep-diagnosis;健康度评分→stability-report;异常清单→quick-screen;多因子试验→doe-analysis;调参经验→experience-mining;寻优推荐工况→optimizer-campaign;改善建议(A/B/C 分级+验证/回滚)→improvement-advisory',
           },
           scene: { type: 'string', description: '场景名(缺省 <line>_diag);场景为自由标签,分析管线按数据特征自适应' },
           mode: { type: 'string', enum: ['async', 'sync'], description: 'async(缺省)=提交即返后台跑;sync=同步等待完成(最长 sync_timeout_s,超时自动转后台继续)。建议改用 wait/wait_seconds(语义更直白)' },
           sync_timeout_s: { type: 'number', description: 'sync 模式等待上限秒(缺省 240,上限 540)' },
           wait: { type: 'boolean', description: '是否等待结果(推荐):true=本次调用挂起直到任务终态——成功/失败都返回完整结果,任务未完不返回;false=提交即返 task_id 后台跑(等价 mode=async)' },
           wait_seconds: { type: 'number', description: 'wait=true 的等待上限秒(缺省 600,上限 1800);窗口内未完则如实返回 running 态与 task_id,任务转后台继续并仍会自动回执' },
-          harness: { type: 'string', description: '分析引擎按次覆盖(omp/claude/mock;缺省用插件设置)' },
-          model: { type: 'string', description: '可选:引擎模型按次覆盖(合法性由 IDD 校验,不合法返回 400 说明)' },
-          permission_mode: { type: 'string', description: '可选:引擎权限模式按次覆盖(合法性由 IDD 校验)' },
+          harness: { type: 'string', description: '分析引擎按次覆盖(omp/claude/mock;缺省用插件设置,推荐 omp)' },
+          model: { type: 'string', description: '可选:引擎模型按次覆盖(合法性由 IDD 校验;external v1 无此字段时忽略)' },
+          permission_mode: { type: 'string', description: '可选:引擎权限模式按次覆盖(external v1 无此字段时忽略)' },
+          ontology_mode: { type: 'string', enum: ['auto', 'full', 'reuse', 'extend'], description: '本体策略(仅 deep-diagnosis/stability-report/quick-screen/doe-analysis;其它意图传了会被 IDD 拒绝)' },
+          ontology_scene: { type: 'string', description: '本体场景名(可选,配合 ontology_mode)' },
+          ontology_source: { type: 'string', description: '本体来源(可选,配合 ontology_mode;如已有本体文件)' },
+          preprocessing_mode: { type: 'string', enum: ['single_primary', 'integrate_merge'], description: '预处理模式(仅 stability-report:single_primary=单主数据源/integrate_merge=多源合并)' },
+          report_language: { type: 'string', enum: ['zh', 'en'], description: '报告语言(缺省 zh)' },
         },
         required: [],
       },
@@ -188,17 +197,14 @@ export default {
             via = `数据集 ${up.folder}(${nodeCount} 节点全量时序 + manifest,${win})`
           }
 
-          // 问题缺省:按数据来源自动组题(export 模式带产线与场景备注)
+          // 问题缺省:export 数据集模式自动组题(带节点数与场景备注);其余模式留空,
+          // 由 startDiagnosis 按 analysis_intent 生成对应模板(否则稳定性/快筛等意图
+          // 的 objective 会被"深度根因诊断"文案污染 —— 实测 v2.4 前一直如此)。
           let question = args.question ? String(args.question) : ''
-          if (!question) {
-            if (manifest) {
-              const lineNames = (Array.isArray(manifest.lines) ? manifest.lines : []).map(l => l?.lineName || l?.lineId).filter(Boolean).join('、') || line || 'offline'
-              const note = manifest.note ? `;场景备注:${String(manifest.note).slice(0, 200)}` : ''
-              question = `${lineNames} 产线数据集深度根因诊断(${via})${note}`
-            }
-            else {
-              question = `${line || 'offline-data'} 产线该时窗数据深度根因诊断`
-            }
+          if (!question && manifest) {
+            const lineNames = (Array.isArray(manifest.lines) ? manifest.lines : []).map(l => l?.lineName || l?.lineId).filter(Boolean).join('、') || line || 'offline'
+            const note = manifest.note ? `;场景备注:${String(manifest.note).slice(0, 200)}` : ''
+            question = `${lineNames} 产线数据集分析(${via})${note}`
           }
           const r = await startDiagnosis(ctx, {
             line: line || 'offline-data',
@@ -212,58 +218,84 @@ export default {
             analysisIntent: args.analysis_intent ? String(args.analysis_intent) : undefined,
             model: args.model ? String(args.model) : undefined,
             permissionMode: args.permission_mode ? String(args.permission_mode) : undefined,
+            ontologyMode: args.ontology_mode ? String(args.ontology_mode) : undefined,
+            ontologyScene: args.ontology_scene ? String(args.ontology_scene) : undefined,
+            ontologySource: args.ontology_source ? String(args.ontology_source) : undefined,
+            preprocessingMode: args.preprocessing_mode ? String(args.preprocessing_mode) : undefined,
+            reportLanguage: args.report_language ? String(args.report_language) : undefined,
             // 归因(分发层注入的调用方上下文):诊断完成后平台据此把结果回执给发起 Agent
             agentId: agent?.agentId ?? '',
             channelId: agent?.channelId ?? '',
           })
           if (!r.ok) return { text: r.error, isError: true }
           if (!via) via = dataPathDirect ? `离线数据 ${r.csvPath}` : `产线 ${line} 窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()} 快照 ${r.rows} 行 × ${r.nodes} 节点`
+          const contractTag = `contract=${r.contract}`
+          const notes = Array.isArray(r.notes) && r.notes.length ? `\n注意:${r.notes.join(';')}` : ''
+          const base = baseOf(ctx)
+
+          /** 按 run 契约轮询一次远端状态(等待循环与 sweep 同源语义) */
+          const pollOnce = async () => {
+            if (r.contract === 'v1') {
+              const q = await v1Task(ctx, r.taskId || r.runId, 8000)
+              if (!q.ok) {
+                const e = new Error(mapV1Error(q, { base: base ?? '' }))
+                e.status = q.status
+                throw e
+              }
+              return q.body?.data ?? {}
+            }
+            return (await jget(ctx, `${base}/api/diagnosis/tasks/${encodeURIComponent(r.runId)}`, 8000)).data ?? {}
+          }
 
           // 等待语义:wait=true 显式挂起到终态(成功/失败都给完整结果);兼容旧 mode=sync。
           // 挂起期间 Agent 的回合被本工具调用占住——结构上保证"任务未完不能标记完成"。
           const wantWait = args.wait === true || (args.wait === undefined && args.wait_seconds === undefined && String(args.mode ?? '').toLowerCase() === 'sync')
-          if (wantWait) {
-            const base = baseOf(ctx)
+          if (wantWait && base) {
             const timeoutS = args.wait === true
               ? Math.min(Math.max(Number(args.wait_seconds) || 600, 10), 1800)
               : Math.min(Math.max(Number(args.sync_timeout_s) || 240, 10), 540)
-            if (base) {
-              const deadline = Date.now() + timeoutS * 1000
-              let lastPollError = ''
-              while (Date.now() < deadline) {
-                await new Promise(resolve => setTimeout(resolve, 5000))
-                let st = null
-                try {
-                  st = (await jget(ctx, `${base}/api/diagnosis/tasks/${encodeURIComponent(r.runId)}`, 8000)).data ?? null
-                  lastPollError = ''
-                }
-                catch (err) {
-                  lastPollError = String(err?.message ?? err)
-                  // 鉴权失败/任务不存在:继续等只会空耗到超时,直接如实返回
-                  if (/HTTP (401|403|404)/.test(lastPollError)) {
-                    return { text: `同步等待中止 task_id=${r.runId}:${lastPollError}。任务可能仍在后台运行;修复后可用 diag_status(run_id=${r.runId}) 查询,完成后平台仍会回执。`, isError: true }
-                  }
-                }
-                const status = String(st?.status ?? r.status ?? 'running')
-                if (status === 'completed') {
-                  // 已同步拿到结果,认领回执防 sweep 补送重复
-                  try {
-                    const notify = await ctx.services.get('notify')
-                    await notify?.claim?.('diag_run', r.runId)
-                  }
-                  catch { /* 未接线时忽略 */ }
-                  const rep = st?.result?.report_md_path ?? '-'
-                  return { text: `✅ 同步诊断完成 task_id=${r.runId}(${via})\n评分=${st?.result?.score ?? '-'} 结论=${st?.result?.verdict ?? '-'}\nreport_md_path=${rep}\n总结:${String(st?.result?.summary ?? '').slice(0, 800)}\n结果已存分析结果台账(diag_results / diag_result_get 可随时复查)。\n\n入库知识库:调用 rag-bridge 的 kb_agent(wait=true,wait_seconds=600,prompt=「请把这份深度诊断报告入库到 aw-industrial 知识库:读取文件 ${rep} 的全文内容并入库,完成后报告 doc_path 与分块数。标签:诊断、深度诊断。」),完成后 kb_agent_status(task_id) 查询。` }
-                }
-                if (status === 'failed' || status === 'stopped') {
-                  return { text: `分析任务 ${r.runId} 以 ${status} 结束:${st?.result?.error ?? '详见 diag_status'}`, isError: true }
+            const deadline = Date.now() + timeoutS * 1000
+            let lastPollError = ''
+            while (Date.now() < deadline) {
+              await new Promise(resolve => setTimeout(resolve, 5000))
+              let st = null
+              try {
+                st = await pollOnce()
+                lastPollError = ''
+              }
+              catch (err) {
+                lastPollError = String(err?.message ?? err)
+                // 鉴权失败/任务不存在:继续等只会空耗到超时,直接如实返回
+                if ([401, 403, 404].includes(Number(err?.status ?? 0)) || /HTTP (401|403|404)/.test(lastPollError)) {
+                  return { text: `同步等待中止 task_id=${r.runId}:${lastPollError}\n任务可能仍在后台运行;修复后用 diag_status(run_id=${r.runId}) 查询,完成后平台仍会回执。(${contractTag})`, isError: true }
                 }
               }
-              return { text: `已发起${intentLabel(r.intent)}任务 task_id=${r.runId}(${via})。等待 ${timeoutS}s 窗口内未完(仍在后台运行${lastPollError ? `(最近一次轮询失败:${lastPollError})` : ''})——任务结果会存入分析结果台账;完成后平台会自动把结果回执到你的信箱并唤醒你;也可 diag_status(run_id=${r.runId}) 主动查询。注入的分析问题:${r.question}` }
+              const status = String(st?.status ?? r.status ?? 'running')
+              const norm = normalizeResult(st)
+              if (status === 'awaiting_input') {
+                // 不自称完成:如实返回需要人工介入,任务继续占锁(老化上限见插件设置)
+                return { text: `⏸ 分析任务 ${r.runId}(${via},${contractTag})进入 awaiting_input:等待人工介入(例如引擎权限确认)。本工具不再挂起;请在 IDD 控制台处理后用 diag_status(run_id=${r.runId}) 查结果(超过 ${awaitingMaxMinutesOf(ctx)} 分钟未处理将转 expired 并回执),或 diag_stop 停止。` }
+              }
+              if (status === 'completed') {
+                // 已同步拿到结果,认领回执防 sweep 补送重复
+                try {
+                  const notify = await ctx.services.get('notify')
+                  await notify?.claim?.('diag_run', r.runId)
+                }
+                catch { /* 未接线时忽略 */ }
+                const rep = norm.reportPath ?? '-'
+                return {
+                  text: `✅ 同步诊断完成 task_id=${r.runId}(${via},${contractTag})\n评分=${norm.score ?? '-'} 结论=${norm.verdict ?? '-'}\nreport_md_path=${rep}${norm.reportUrl ? `\nreport_url=${norm.reportUrl}` : ''}\n总结:${String(norm.summary ?? '').slice(0, 800)}\n结果已存分析结果台账(diag_results / diag_result_get 可随时复查)。${notes}\n\n入库知识库:调用 rag-bridge 的 kb_agent(wait=true,wait_seconds=600,prompt=「请把这份深度诊断报告入库到 aw-industrial 知识库:读取文件 ${rep} 的全文内容并入库,完成后报告 doc_path 与分块数。标签:诊断、深度诊断。」),完成后 kb_agent_status(task_id) 查询。`,
+                }
+              }
+              if (['failed', 'stopped', 'interrupted', 'expired'].includes(status)) {
+                return { text: `分析任务 ${r.runId} 以 ${status} 结束:${norm.error ?? '详见 diag_status'}(${contractTag})`, isError: true }
+              }
             }
+            return { text: `已发起${intentLabel(r.intent)}任务 task_id=${r.runId}(${via},${contractTag})。等待 ${timeoutS}s 窗口内未完(仍在后台运行${lastPollError ? `(最近一次轮询失败:${lastPollError})` : ''})——任务结果会存入分析结果台账;完成后平台会自动把结果回执到你的信箱并唤醒你;也可 diag_status(run_id=${r.runId}) 主动查询。注入的分析问题:${r.question}${notes}` }
           }
           return {
-            text: `已发起「${intentLabel(r.intent)}」异步分析任务 task_id=${r.runId}(${via})。IDD 在后台以对应 skill 协议执行,Channel 无需等待——可继续其他任务;完成后平台会自动把结果回执到你的信箱并唤醒你(空闲时也可用 diag_status(run_id=${r.runId}) 主动查询;完成后按指引调 kb_agent 把报告入库知识库)。注入的分析问题:${r.question}`,
+            text: `已发起「${intentLabel(r.intent)}」异步分析任务 task_id=${r.runId}(${via},${contractTag})。IDD 在后台以对应 skill 协议执行,Channel 无需等待——可继续其他任务;完成后平台会自动把结果回执到你的信箱并唤醒你(空闲时也可用 diag_status(run_id=${r.runId}) 主动查询;完成后按指引把报告入库知识库)。注入的分析问题:${r.question}${notes}`,
           }
         }
         catch (err) {
@@ -275,7 +307,7 @@ export default {
     registerDiagnosticTool(ctx, {
       name: 'diag_status',
       label: '分析任务状态',
-      description: '查询后台分析任务进度:传 run_id 看单条实时状态(完成时含评分/结论/总结/报告路径),不传看最近 5 条概要。适用 diag_run 发起的全部意图(深度诊断/产线报告/快速筛查/DOE/经验挖掘/优化战役)。',
+      description: '查询后台分析任务进度:传 run_id 看单条实时状态(完成时含评分/结论/总结/报告路径与在线 URL;awaiting_input 会提示需人工介入),不传看最近 5 条概要。适用全部 7 意图(深度诊断/稳定报告/快筛/DOE/经验挖掘/优化战役/改善建议)。',
       parameters: {
         type: 'object',
         properties: {
@@ -297,23 +329,24 @@ export default {
           }
           const meta = ctx.kv.get(runKey(id))
           const base = baseOf(ctx)
+          const contract = String(meta?.contract ?? contractModeOf(ctx))
           let st = null
           let remoteError = ''
           if (base) {
             try {
-              // v2.1:走任务管理面 /tasks/:id——result.report_md_path 是绝对路径,
-              // 可直接交给 kb_agent 读取入库(旧 /status 的相对路径会让 kb_agent 找不到文件)
-              st = (await jget(ctx, `${base}/api/diagnosis/tasks/${encodeURIComponent(id)}`, 8000)).data ?? null
-              if (st && st.result) {
-                st = {
-                  ...st,
-                  engineStatus: st.status,
-                  score: st.result.score ?? null,
-                  judge_verdict: st.result.verdict ?? null,
-                  summary: st.result.summary ?? '',
-                  report_path: st.result.report_md_path ?? st.report_path ?? null,
-                  error_message: st.result.error ?? st.error_message ?? null,
+              if (contract === 'v1') {
+                // v1:任务条目自带 result/files(refreshTask 已聚合完成结果)
+                const q = await v1Task(ctx, meta?.taskId || id, 8000)
+                if (!q.ok) {
+                  const e = new Error(mapV1Error(q, { base }))
+                  e.status = q.status
+                  throw e
                 }
+                st = q.body?.data ?? null
+              }
+              else {
+                // legacy:v2.1 走任务管理面 /tasks/:id(result.report_md_path 为绝对路径)
+                st = (await jget(ctx, `${base}/api/diagnosis/tasks/${encodeURIComponent(id)}`, 8000)).data ?? null
               }
             }
             catch (err) {
@@ -324,16 +357,23 @@ export default {
           if (!st && !meta) {
             return { text: `诊断 ${id} 不存在或诊断服务不可达${remoteError ? `(${remoteError})` : ''}。`, isError: true }
           }
-          const status = st?.engineStatus || st?.status || meta?.status || 'unknown'
+          const status = String(st?.status ?? st?.engineStatus ?? meta?.status ?? 'unknown')
+          const norm = st
+            ? normalizeResult(st)
+            : normalizeResult({
+                result: { score: meta?.score, verdict: meta?.verdict, summary: meta?.summary, error: meta?.error },
+                files: { report_md_path: meta?.reportPath ?? null, report_md_url: meta?.reportUrl ?? null },
+              })
           // 终态经轮询面亲自看到 → 认领结果所有权,取消平台的事后补送(先到先得)
-          if (['completed', 'failed', 'stopped'].includes(status)) {
+          if (isTerminal(status)) {
             const notify = await ctx.services.get('notify').catch(() => null)
             notify?.claim?.('diag_run', id)
           }
           const parts = [
             `run_id=${id}`,
+            `contract=${contract}`,
             `name=${st?.name ?? meta?.name ?? '?'}`,
-            `产线=${meta?.line ?? st?.scene_name ?? '?'}`,
+            `产线=${meta?.line ?? st?.scene_name ?? st?.scene ?? '?'}`,
             `意图=${meta?.intent ?? 'deep-diagnosis'}(${intentLabel(meta?.intent ?? 'deep-diagnosis')})`,
             `状态=${status}`,
             `来源=${meta?.source ?? '?'}`,
@@ -341,27 +381,153 @@ export default {
           if (meta?.fromMs && meta?.toMs) parts.push(`窗口=${new Date(meta.fromMs).toISOString()} ~ ${new Date(meta.toMs).toISOString()}`)
           if (meta?.question) parts.push(`问题=${meta.question}`)
           if (status === 'completed') {
-            const reportPath = st?.report_path ?? meta?.reportPath ?? '-'
-            parts.push(`评分=${st?.score ?? meta?.score ?? '-'}`)
-            parts.push(`结论=${st?.judge_verdict ?? meta?.verdict ?? '-'}`)
-            if (st?.summary) parts.push(`总结=${String(st.summary).slice(0, 600)}`)
-            parts.push(`report_md_path=${reportPath}`)
+            parts.push(`评分=${norm.score ?? meta?.score ?? '-'}`)
+            parts.push(`结论=${norm.verdict ?? meta?.verdict ?? '-'}`)
+            if (norm.summary) parts.push(`总结=${String(norm.summary).slice(0, 600)}`)
+            parts.push(`report_md_path=${norm.reportPath ?? meta?.reportPath ?? '-'}`)
+            if (norm.reportUrl || meta?.reportUrl) parts.push(`report_url=${norm.reportUrl ?? meta?.reportUrl}`)
             parts.push('')
             parts.push('✅ 分析完成,报告已就绪。入库知识库请调用 rag-bridge 的 kb_agent 工具:')
-            parts.push(`  mode=async, prompt=「请把这份分析报告入库到 aw-industrial 知识库:读取文件 ${reportPath} 的全文内容并入库(写盘+索引),完成后报告 doc_path 与分块数。标签:分析、${intentLabel(meta?.intent ?? 'deep-diagnosis')}。」`)
+            parts.push(`  mode=async, prompt=「请把这份分析报告入库到 aw-industrial 知识库:读取文件 ${norm.reportPath ?? meta?.reportPath ?? '-'} 的全文内容并入库(写盘+索引),完成后报告 doc_path 与分块数。标签:分析、${intentLabel(meta?.intent ?? 'deep-diagnosis')}。」`)
             parts.push('提交后频道无需等待,空闲时用 kb_agent_status(task_id) 查询入库结果。')
           }
-          if (status === 'failed' || status === 'stopped') parts.push(`错误=${st?.error_message ?? meta?.error ?? '-'}`)
+          if (status === 'awaiting_input') {
+            const sinceMs = Number(meta?.awaitingSince ?? 0)
+            const waitedMin = sinceMs ? Math.round((Date.now() - sinceMs) / 60000) : 0
+            parts.push(`⏸ 等待人工介入(awaiting_input):${waitedMin ? `已等待 ${waitedMin} 分钟;` : ''}产线单飞锁保持;超过 ${awaitingMaxMinutesOf(ctx)} 分钟未处理将转 expired 并回执。`)
+            parts.push('处理方式:到 IDD 控制台完成人工确认后继续;或 diag_stop(run_id=…) 停止。')
+          }
+          if (['failed', 'stopped', 'interrupted', 'expired'].includes(status)) parts.push(`错误=${norm.error ?? meta?.error ?? '-'}`)
           if (!st) {
             parts.push(`(远端查询失败:${remoteError || '诊断服务不可达'};以上为本地记录)`)
-            if (remoteError.includes('HTTP 404') && ['queued', 'running'].includes(String(meta?.status))) {
-              parts.push('远端任务已不存在(可能被 IDD 清理或服务重启);sweep 将在连续 3 轮确认后把本地状态收敛为 failed 并回执,不会永久占用产线单飞锁。')
+            if ((remoteError.includes('HTTP 404') || remoteError.includes('不存在')) && ['queued', 'running', 'awaiting_input'].includes(String(meta?.status))) {
+              parts.push(`远端任务已不存在(可能被 IDD 清理或服务重启);sweep 将在连续 3 轮确认后把本地状态收敛为 ${contract === 'v1' ? 'expired' : 'failed'} 并回执,不会永久占用产线单飞锁。`)
             }
           }
           return { text: parts.join('\n') }
         }
         catch (err) {
           return { text: `diag_status 异常: ${err?.message ?? err}`, isError: true }
+        }
+      },
+    })
+
+    // ── 工具 ×2:续聊 / 停止(WS-2 I7/I8;run 归属 + 产线可读面收敛) ──────────
+    const runMetaOrDeny = async (id, agent) => {
+      const meta = ctx.kv.get(runKey(id))
+      if (!meta) {
+        return { denied: { text: `run ${id} 不在本插件台账:只能对平台发起过的分析续聊/停止(用 diag_status 查 run_id)。`, isError: true } }
+      }
+      const line = String(meta.line ?? '').trim()
+      if (line && agent?.agentId) {
+        try {
+          const scope = await ctx.services.get('agentScope')
+          const readable = scope.readableLines(agent.agentId)
+          if (!readable.includes(line)) {
+            return { denied: { text: `产线「${line}」不在你的可读范围。你的可读产线:${readable.length ? readable.join(', ') : '(无)'}。`, isError: true } }
+          }
+        }
+        catch (err) {
+          return { denied: { text: `产线授权校验不可用,已拒绝本次操作:${err?.message ?? err}。`, isError: true } }
+        }
+      }
+      return { meta }
+    }
+
+    registerDiagnosticTool(ctx, {
+      name: 'diag_chat',
+      label: '分析任务续聊',
+      description: '向一条诊断 run 发追问(claude/omp/goose/mock 走原生会话续聊,其它引擎受控重建)。run_id 来自 diag_run/diag_status。运行中的 run 会被 IDD 拒绝(RUN_NOT_IDLE:先 diag_stop 或等终态)。只读追问,不改产线。',
+      parameters: {
+        type: 'object',
+        properties: {
+          run_id: { type: 'string', description: '诊断 run_id(平台发起过的 run)' },
+          message: { type: 'string', description: '追问内容(如"把第 3 条告警的证据链展开")' },
+        },
+        required: ['run_id', 'message'],
+      },
+      roles: ['lead', 'worker'],
+      riskClass: 'read',
+      noRefs: true,
+      handler: async (args, agent) => {
+        try {
+          const id = String(args.run_id ?? '').trim()
+          const message = String(args.message ?? '').trim()
+          if (!id || !message) return { text: 'run_id 与 message 都必填。', isError: true }
+          const guard = await runMetaOrDeny(id, agent)
+          if (guard.denied) return guard.denied
+          const meta = guard.meta
+          const contract = String(meta.contract ?? contractModeOf(ctx))
+          if (contract !== 'v1') {
+            return { text: `续聊依赖 external v1 契约,该 run 为 legacy(contract=${contract})。请把插件设置 contract 设为 auto/v1 后重新 diag_run,再续聊。`, isError: true }
+          }
+          const r = await v1Chat(ctx, meta.runId || id, message)
+          if (!r.ok) return { text: `续聊失败:${mapV1Error(r, { base: baseOf(ctx) ?? '' })}`, isError: true }
+          const d = r.body?.data ?? {}
+          const resumed = d.resumed === true
+          return { text: `status=ok run_id=${id} delivered=${d.delivered} mode=${d.mode ?? '?'} resumed=${resumed}\n追问已投递${resumed ? '(原生会话续聊)' : '(受控重建:该引擎无原生 resume,IDD 会重放上下文)'}。` }
+        }
+        catch (err) {
+          return { text: `diag_chat 异常:${err?.message ?? err}`, isError: true }
+        }
+      },
+    })
+
+    registerDiagnosticTool(ctx, {
+      name: 'diag_stop',
+      label: '停止分析任务',
+      description: '停止一条运行中的诊断 run(契约自动路由 v1/legacy)。已终态时返回可读说明(无需再停)。写类操作:会记录操作者与 run 到平台审计,便于归因。停止后 sweep 仍会收敛状态并回执。',
+      parameters: {
+        type: 'object',
+        properties: {
+          run_id: { type: 'string', description: '诊断 run_id(平台发起过的 run)' },
+        },
+        required: ['run_id'],
+      },
+      roles: ['lead', 'worker'],
+      riskClass: 'write',
+      noRefs: true,
+      handler: async (args, agent) => {
+        try {
+          const id = String(args.run_id ?? '').trim()
+          if (!id) return { text: 'run_id 必填。', isError: true }
+          const guard = await runMetaOrDeny(id, agent)
+          if (guard.denied) return guard.denied
+          const meta = guard.meta
+          if (isTerminal(meta.status)) {
+            return { text: `run ${id} 已是终态(${meta.status}),无需停止。详情用 diag_status(run_id=${id})。` }
+          }
+          const contract = String(meta.contract ?? contractModeOf(ctx))
+          let r
+          if (contract === 'v1') {
+            r = await v1Stop(ctx, meta.runId || id)
+            if (!r.ok) {
+              const msg = mapV1Error(r, { base: baseOf(ctx) ?? '' })
+              return { text: `停止失败:${msg}`, isError: true }
+            }
+          }
+          else {
+            const base = baseOf(ctx)
+            if (!base) return { text: 'diag.base_url 非法。', isError: true }
+            try {
+              await jpost(ctx, `${base}/api/diagnosis/stop/${encodeURIComponent(id)}`, {}, 15000)
+            }
+            catch (err) {
+              return { text: `停止失败:${String(err?.message ?? err)}`, isError: true }
+            }
+          }
+          ctx.kv.set(runKey(id), { ...meta, status: 'stopped', completedAt: Date.now(), deliverPending: Boolean(meta.agentId) })
+          await recordLineAudit({
+            actor: agent?.agentId ?? 'unknown', actorName: agent?.name ?? '', actorKind: 'agent',
+            action: 'diag.run.stop', kind: 'write', scope: 'system',
+            targetKind: 'run', targetId: id,
+            summary: `停止诊断 run(${meta.line ?? 'offline'},contract=${contract})`,
+            detail: { runId: meta.runId || id, taskId: meta.taskId ?? null, channelId: agent?.channelId ?? '', role: agent?.role ?? '' },
+          })
+          return { text: `status=stopped run_id=${id} contract=${contract}\n已停止该分析;状态收敛与回执由巡检完成(也可 diag_status 查询)。` }
+        }
+        catch (err) {
+          return { text: `diag_stop 异常:${err?.message ?? err}`, isError: true }
         }
       },
     })
@@ -381,7 +547,7 @@ export default {
         type: 'object',
         properties: {
           q: { type: 'string', description: '关键词(匹配 title/description/summary/scene/tags,大小写不敏感)' },
-          intent: { type: 'string', enum: ['deep-diagnosis', 'stability-report', 'quick-screen', 'doe-analysis', 'experience-mining', 'optimizer-campaign'], description: '按分析模式过滤' },
+          intent: { type: 'string', enum: ['deep-diagnosis', 'stability-report', 'quick-screen', 'doe-analysis', 'experience-mining', 'optimizer-campaign', 'improvement-advisory'], description: '按分析模式过滤' },
           category_id: { type: 'string', description: '按结果分类 id 过滤(见 /results/categories)' },
           tag: { type: 'string', description: '按标签精确匹配' },
           scene: { type: 'string', description: '按场景名精确匹配' },
@@ -612,6 +778,7 @@ export default {
       return {
         plugin: ctx.name,
         base: base ?? String(ctx.kv.get('diag.base_url') || DEFAULT_BASE),
+        contract: contractModeOf(ctx),
         harness: harnessOf(ctx),
         auth: diagTokenOf(ctx) ? 'bearer' : 'anonymous',
         /** Token 配置态 + 实测是否被上游接受(401/403 → false;网络不通 → null) */
@@ -729,6 +896,29 @@ export default {
         }
         const base = baseOf(ctx)
         if (!base) return { success: false, error: 'diag.base_url 非法' }
+        const contract = String(meta?.contract ?? contractModeOf(ctx))
+        if (contract === 'v1') {
+          // v1:终态结果稳定可读(report_md 内联 + files.report_md_url);运行中 409
+          const q = await v1Result(ctx, meta?.taskId || runId, 15000)
+          if (!q.ok) {
+            if (q.status === 409) return { success: false, error: `诊断 ${runId} 尚未到终态(EXTERNAL_TASK_RUNNING),报告未就绪` }
+            return { success: false, error: mapV1Error(q, { base }) }
+          }
+          const d = q.body?.data ?? {}
+          if (String(d.status ?? '') !== 'completed') {
+            return { success: false, error: `诊断 ${runId} 状态 ${d.status ?? 'unknown'},报告未就绪` }
+          }
+          const norm = normalizeResult(d)
+          return {
+            success: true,
+            run_id: runId,
+            run_name: d.name ?? meta?.name ?? '',
+            report: {
+              content: norm.reportMd || '(报告正文未内联到结果信封;请用 url 打开完整报告)',
+              url: norm.reportUrl ? absoluteUrl(base, norm.reportUrl) : '',
+            },
+          }
+        }
         const st = (await jget(ctx, `${base}/api/diagnosis/tasks/${encodeURIComponent(runId)}`, 8000)).data ?? {}
         if (String(st.status ?? '') !== 'completed') {
           return { success: false, error: `诊断 ${runId} 状态 ${st.status ?? 'unknown'},报告未就绪` }
@@ -846,6 +1036,6 @@ export default {
       }
     })
 
-    ctx.logger.info('diag-bridge 就绪:工具 diag_run/diag_status/diag_results/diag_result_get/diag_result_annotate + 路由 health/runs/snapshot/report/results,轮询 15s 已启动')
+    ctx.logger.info('diag-bridge 就绪(v2.4):工具 diag_run/diag_status/diag_chat/diag_stop/diag_results/diag_result_get/diag_result_annotate + 路由 health/runs/snapshot/report/results;external v1 定轨;轮询 15s 已启动')
   },
 }

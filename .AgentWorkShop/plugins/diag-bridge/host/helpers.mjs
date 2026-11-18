@@ -49,8 +49,10 @@ export function kvRuns(ctx) {
   return out
 }
 
-/** 未终态(仍占用产线单飞锁):queued 与 running 同等对待 */
-export const ACTIVE_RUN_STATUSES = new Set(['queued', 'running'])
+/** 未终态(仍占用产线单飞锁):queued/running/awaiting_input 同等对待。
+ *  awaiting_input = 等待人工介入(v1 六态之一,单列不冒充终态):必须继续占锁,
+ *  否则同线会并发第二个任务(与"awaiting 不释放锁"的治理语义直接矛盾)。 */
+export const ACTIVE_RUN_STATUSES = new Set(['queued', 'running', 'awaiting_input'])
 
 /** 该产线是否有未终态的诊断(queued 也占用,否则同线会并发两个任务) */
 export function runningOfLine(ctx, line) {
