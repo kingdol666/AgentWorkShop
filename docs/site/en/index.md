@@ -77,7 +77,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.11.3 · released</i></span>
+        <span>Version <i>v0.13.0 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -94,21 +94,23 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.11.3 (UNRELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.13.0 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      This is the current source snapshot, not a published release. The current change set aligns
-      the README, bilingual guides and operational Skills with Channel modes, product-bound
-      Sessions, memory scopes and line-tool contracts. See the line integration guide; its
-      simulated acceptance does not establish physical HIL or production readiness.
+      v0.13.0 is released. It productizes the IDD (industrial deep diagnostics) and RAG (rag-knowledge)
+      bridges: diag-bridge targets IDD <code>external/v1</code> with an explicit legacy fallback and adds
+      chat/stop/report-deposit tools; rag-bridge adds deterministic document tools on a dedicated
+      <code>aw-docs</code> knowledge base. Plugin write tools now join the fail-closed write classification
+      and plugin health exposes per-tool counters. See <a href="/AgentWorkShop/en/guide/idd-rag-plugins">IDD / RAG plugin integration</a>;
+      simulated acceptance is not physical HIL or production approval.
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">SCOPE</span>
-        <h3>Channel mode and product binding</h3>
-        <p>Integrated line tools require a trusted product-bound Session snapshot; choosing a line in a selector does not grant access.</p>
-        <p><a href="/AgentWorkShop/en/guide/channels-sessions">Channel sessions →</a></p>
+        <span class="tag">KNOWLEDGE</span>
+        <h3>Diagnosis → knowledge in one loop</h3>
+        <p>diag_deposit reads a completed run's report, writes it to aw-docs, indexes and tags it, then self-checks retrieval; empty reports fail readably without a partial document.</p>
+        <p><a href="/AgentWorkShop/en/guide/idd-rag-plugins">IDD / RAG plugin integration →</a></p>
       </div>
       <div class="hw-f">
         <span class="tag">DATA</span>
@@ -125,7 +127,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">Verification</span>
-      <p>This v0.11.3 source snapshot was verified on 2026-11-16: build/lint/typecheck passed; unit 1787/1787, MCP 14/14, plugins 22/22, docs 101/101, Skills 176/176. An isolated five-protocol simulator line provisioned 1 line / 5 DCW / 9 DAQ, passed V1–V6 25/25, and executed two HITL-approved steps (52→54→56 MPa) with readback. Simulator evidence only, not physical HIL; the seed task did not autonomously complete. <a href="/AgentWorkShop/en/guide/line-integration">Line integration guide</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md">Dated report</a></p>
+      <p>v0.13.0 verification: lint/typecheck/build passed; unit 2059/2060 (1 skipped). A fresh home three-system acceptance passed provisioning 9/9, channel forge 11/11 and V1–V6 11/11 with 142 host tools; a real model turn natively called <code>kb_doc_search → kb_doc_read → diag_run → diag_status</code>; the governed loop moved SP 156→150→144→138 °C (HITL every step, device-confirmed 1/1) with PV retest 3/3 inside [138,142] (mean 139.68). Simulator evidence only, not physical HIL; IDD skill terminal behavior and cloud model providers were external blockers — see the dated report. <a href="/AgentWorkShop/en/guide/idd-rag-plugins">IDD / RAG plugin integration</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-18-idd-rag-plugin-v1-contract/REPORT.md">Dated report</a></p>
     </div>
   </section>
 

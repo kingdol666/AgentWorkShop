@@ -73,7 +73,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.11.3 · 已发布</i></span>
+        <span>版本 <i>v0.13.0 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -90,20 +90,22 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.11.3 (UNRELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.13.0 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.11.3 源码快照（已发布）。本次改动对齐 README、双语指南与运维 Skill，
-      覆盖 Channel 模式、产品绑定 Session、记忆作用域与产线工具契约。请先阅读产线集成指南；
-      其中的模拟验收不构成物理 HIL 或生产就绪证明。
+      当前为 v0.13.0 发布版本。本版把 IDD（工业深度诊断）与 RAG（rag-knowledge）两座桥生产化：
+      diag-bridge 主契约迁移 IDD <code>external/v1</code> 并保留 legacy 回退，新增续聊/停止/报告入库；
+      rag-bridge 增加文档工具族并落在独立的 <code>aw-docs</code> 知识库。插件写工具纳入 fail-closed
+      写族联合判定，health 暴露逐工具计数。请先阅读 <a href="/AgentWorkShop/guide/idd-rag-plugins">IDD / RAG 插件集成</a>；
+      模拟验收不构成物理 HIL 或生产就绪证明。
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">SCOPE</span>
-        <h3>Channel 模式与产品绑定</h3>
-        <p>集成产线工具要求可信的产品绑定 Session 快照；仅在选择器中选择产线不会授予访问权限。</p>
-        <p><a href="/AgentWorkShop/guide/channels-sessions">Channel 多会话 →</a></p>
+        <span class="tag">KNOWLEDGE</span>
+        <h3>诊断 → 知识一条闭环</h3>
+        <p>diag_deposit 取已完成 run 的报告，写入 aw-docs、建索引、打标签并做两段检索自查；空报告可读失败不落半截文档。</p>
+        <p><a href="/AgentWorkShop/guide/idd-rag-plugins">IDD / RAG 插件集成 →</a></p>
       </div>
       <div class="hw-f">
         <span class="tag">DATA</span>
@@ -120,7 +122,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">验证</span>
-      <p>本 v0.11.3 源码快照已实测：build/lint/typecheck 通过，unit 1787/1787、MCP 14/14、插件 22/22、docs 101/101、Skills 176/176；隔离五协议模拟线完成 1 线/5 DCW/9 DAQ、V1–V6 25/25，并执行 52→54→56 MPa 两步 HITL 批准下发与回读。仅模拟证据，不构成物理 HIL；seed task 未自主收口。<a href="/AgentWorkShop/guide/line-integration">产线集成指南</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/2026-11-16-line-integration-skill-demo-acceptance.md">日期化报告</a></p>
+      <p>本 v0.13.0 已实测：lint/typecheck/build 通过，unit 2059/2060（1 skip）；全新 home 三系统验收供给 9/9、频道锻造 11/11、V1–V6 11/11，142 宿主工具，真实模型回合原生调用 <code>kb_doc_search → kb_doc_read → diag_run → diag_status</code>；受治理闭环 SP 156→150→144→138 °C（每步 HITL、设备证实 1/1），PV 复测 3/3 落 [138,142]（均值 139.68）。仅模拟证据，不构成物理 HIL；IDD 技能终态与云端模型供应商存在外部阻塞，详见报告。<a href="/AgentWorkShop/guide/idd-rag-plugins">IDD / RAG 插件集成</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-18-idd-rag-plugin-v1-contract/REPORT.md">日期化报告</a></p>
     </div>
   </section>
 

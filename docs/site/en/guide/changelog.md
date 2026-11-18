@@ -1,4 +1,4 @@
-## Current Unmerged Source — Compatibility Boundaries (unreleased, under review)
+## Compatibility boundaries (v0.13.0)
 
 - The agent-token bridge lacks trusted turn provenance and filters and rejects hazardous and authorization/dispatch tools. Plugin tools must explicitly declare `riskClass: 'read'` to pass this layer; other governance gates remain in force.
 - `dispatch_task` rejects combined `grant_node_ids` / `grantNodeIds`. Explicitly call `team_grant_nodes` first when needed, then dispatch; inspect and revoke a grant if appropriate after a failed dispatch. The operations are not atomic. Delegation defaults to `manual`; `auto` requires explicit `confirm: true`.
@@ -6,6 +6,15 @@
 - Existing saved Channel scenario prompts, member configurations and custom prompts are not automatically rewritten when defaults change. Review and manually migrate obsolete combined-grant instructions while preserving customizations.
 - Structured recipe-propose approval cards take a 0-based `choice` index into the package list; a missing or out-of-range `choice` on an approval is fail-closed denied.
 - A simulator process restart clears preset devices; re-materialize blueprint devices before platform writes (recipes and journals persist independently).
+
+## v0.13.0 — IDD/RAG plugin v1 contract & three-system acceptance (2026-11-18)
+
+- **diag-bridge v2.4**: `external/v1` is the primary contract with a pre-submit `GET /capabilities` probe (5-min fingerprint cache) and explicit `contract=legacy` fallback; the v1 six-state lifecycle treats `awaiting_input` as lock-holding and ages it to `expired`; new `diag_chat` / `diag_stop` / `diag_deposit`; all seven intents plus ontology/preprocessing/report-language pass through; nine error codes map to readable guidance.
+- **rag-bridge v2.3**: `kb_doc_create` / `kb_doc_search` / `kb_doc_read` / `kb_catalog` live on `aw-docs` (separate from `aw-industrial`); two-stage retrieval is primary with a labelled keyword fallback; creation is idempotent and indexed through `index-document` (vector + BM25).
+- **Closed loop**: `diag_deposit` reads a completed run's report → writes `aw-docs` → indexes → tags → two-stage self-check; empty reports fail readably without a partial document.
+- **Write safety & observability**: `isPolicyWriteTool` unions the static write list with registered plugin `riskClass='write'` tools (live registry); plugin health exposes per-tool ok/err counters and write tools emit ops audits.
+- **Verification**: lint, typecheck, build; unit 2059/2060 (1 skipped). Fresh-home acceptance: provisioning 9/9, channel forge 11/11, V1–V6 11/11; 142 host tools (127 builtin + 15 plugin, ≈965 schema tokens); a real model turn natively called `kb_doc_search → kb_doc_read → diag_run → diag_status`; governed loop SP 156→150→144→138 °C (HITL every step, device-confirmed 1/1), PV retest 3/3 inside [138,142] (mean 139.68). See [IDD / RAG plugin integration](/en/guide/idd-rag-plugins).
+- **Boundaries**: IDD quick-screen/stability did not reach a terminal state on a 60-min / 2,312-row export within 40 min (external skill/engine); the deposit loop was proven with a clearly-labelled mock report; cloud model providers were unavailable, so the real turn used a local model; Mimosa deep scan is sealed but inconclusive — no security-pass claim.
 
 ## v0.12.0 — round-3 agent safety boundaries (2026-11-17)
 

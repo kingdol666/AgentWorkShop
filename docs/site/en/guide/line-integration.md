@@ -42,7 +42,7 @@ The server freezes and verifies the line/product/recipe/node/agent binding snaps
 
 ## Legacy execution recovery hold
 
-> The following describes unreleased, unmerged source under review, not released 0.11.3 or behavior verified by historical acceptance.
+> The following behavior ships with v0.13.0 but was not verified line by line by historical acceptance; production use still requires on-site interlock and HITL review.
 
 During upgrade recovery, legacy active tasks without an execution lease are marked `[LEGACY_EXECUTION_RECOVERY_REQUIRED]` while their state and evidence are preserved. Matching pending or consuming task messages are marked dead, not automatically replayed. On `409 LEGACY_EXECUTION_RECOVERY_REQUIRED`, treat the affected task tree as held; do not retry execution or clear the restriction by merely removing the marker or editing the database.
 

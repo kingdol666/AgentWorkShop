@@ -61,7 +61,7 @@ write-hold window, but **only successful dispatches count**:
 
 ## Automatic Hold Interlock
 
-> The following describes unreleased, unmerged source under review, not released 0.11.3. Historical acceptance does not verify this behavior.
+> The following behavior ships with v0.13.0, but historical acceptance does not prove it in isolation; physical writes still require the on-site interlock and HITL review.
 
 Before each driver write, the node synchronously persists `holdBlocked=true`; if persistence fails, dispatch is refused. Failure, timeout, process interruption, or a transport-only ACK leaves automatic hold paused, including after restart, so the previous setpoint is not resent. The node card displays “Automatic hold paused”. This does not mean the physical device has stopped; inspect its actual state.
 

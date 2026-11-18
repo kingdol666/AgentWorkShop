@@ -1,4 +1,4 @@
-## 当前未合并源码 — 兼容性边界（未发布、待审查）
+## 兼容性边界（v0.13.0）
 
 - agent-token 回程桥缺少可信回合来源，过滤并拒绝危险工具及授权/派发工具；插件工具必须显式声明 `riskClass: 'read'` 才能通过该层，其他治理门仍生效。
 - `dispatch_task` 拒绝随任务的 `grant_node_ids` / `grantNodeIds`；先单独 `team_grant_nodes`，再派发，失败后检查并按需撤销授权，两步不具原子性。委派默认 `manual`，`auto` 须显式 `confirm: true`。
@@ -6,6 +6,15 @@
 - 已保存的 Channel 场景提示词、成员配置及自定义 prompt 不会因默认提示词更新而自动改写；请检查并手动迁移旧的随任务授权指令，保留原有定制。
 - 结构化配方审批卡的 `choice` 为方案集 0 基下标；越界或缺失一律按拒绝收敛（fail-closed）。
 - 仿真器进程重启会清空预设设备；平台写入前需重新物化蓝图设备（配方与台账独立保留）。
+
+## v0.13.0 — IDD/RAG 插件 v1 契约与三系统验收（2026-11-18）
+
+- **diag-bridge v2.4**：`external/v1` 为主契约，提交前 `GET /capabilities` 定轨（5 分钟指纹缓存）+ 显式 `contract=legacy` 回退；六态生命周期，`awaiting_input` 占产线单飞锁并按老化上限转 `expired`；新增 `diag_chat` / `diag_stop` / `diag_deposit`；全 7 意图与 ontology / preprocessing / report-language 透传；9 类错误码映射为可读处方。
+- **rag-bridge v2.3**：`kb_doc_create` / `kb_doc_search` / `kb_doc_read` / `kb_catalog` 落在 `aw-docs`（与 `aw-industrial` 分键）；two-stage 主检索 + 带标注的关键词降级；创建幂等并用 `index-document`（向量 + BM25 增量）建索引。
+- **一条闭环入库**：`diag_deposit` 取已完成 run 的报告 → 写 `aw-docs` → 建索引 → 打标签 → 两段检索自查；空报告可读失败、不落半截文档。
+- **写安全与可观测**：`isPolicyWriteTool` = 静态写名单 ∪ 已注册插件 `riskClass='write'`（实时注册表）；插件 health 暴露逐工具 ok/err 计数；写类工具留 ops 审计。
+- **验证**：lint、typecheck、build；unit 2059/2060（1 skip）。全新 home 三系统验收：供给 9/9、频道锻造 11/11、V1–V6 11/11；142 宿主工具（127 内置 + 15 插件，schema 增量 ≈965 tokens）；真实模型回合原生调用 `kb_doc_search → kb_doc_read → diag_run → diag_status`；受治理闭环 SP 156→150→144→138 °C（每步 HITL、设备证实 1/1），PV 复测 3/3 落 [138,142]（均值 139.68）。详见 [IDD / RAG 插件集成](/guide/idd-rag-plugins)。
+- **边界**：IDD quick-screen/stability 在 60min/2,312 行导出数据集上 40min 未落终态（外部技能/引擎）；deposit 链路以明确标注的 mock 报告证明；云端模型供应商当日不可用，真实回合使用本机模型；Mimosa 深扫封印但 inconclusive，不宣称安全。
 
 ## v0.12.0 — round-3 agent safety boundaries（2026-11-17）
 

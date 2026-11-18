@@ -1,4 +1,4 @@
-## Current unmerged source / 当前未合并源码 — compatibility boundaries（unreleased, under review / 未发布、待审查）
+## 兼容性边界(v0.13.0)/ Compatibility boundaries
 
 - The agent-token bridge lacks trusted turn provenance: hazardous and authorization/dispatch tools are filtered and denied; plugin tools must explicitly declare `riskClass: 'read'` to pass that layer, with other governance checks still applicable. agent-token 回程桥缺少可信回合来源，危险和授权/派发工具被过滤并拒绝；插件须显式声明只读风险类别才能通过该层。
 - `dispatch_task` rejects combined `grant_node_ids` / `grantNodeIds`. Where needed, explicitly grant with `team_grant_nodes` before dispatch; these are not atomic and a failed dispatch does not undo the grant. `manual` is the delegation default; `auto` requires `confirm: true`. 派发不再随任务授权，应先单独授权再派发；失败后检查并按需撤销授权。
@@ -6,6 +6,15 @@
 - Saved Channel scenario prompts, member configurations and custom prompts are not automatically rewritten. Review and manually migrate obsolete combined-grant instructions while preserving customization. 存量场景提示词、成员配置及自定义 prompt 不会自动改写，请检查并手动迁移旧指令。
 - Structured recipe-propose approval cards take a 0-based `choice` index into the package list; an out-of-range or missing `choice` on an approval is fail-closed denied. 结构化配方审批卡的 `choice` 为方案集 0 基下标，越界或缺失一律按拒绝收敛。
 - Simulator 冷启动清空预设设备:after a simulator process restart, re-materialize blueprint devices before platform writes (platform recipes/journals persist independently). 仿真器进程重启会清空预设设备，平台写入前需重新物化蓝图（配方与台账独立保留）。
+
+## v0.13.0 — IDD/RAG plugin v1 contract & three-system acceptance（2026-11-18）
+
+- diag-bridge v2.4: `external/v1` becomes the primary contract with a pre-submit `GET /capabilities` probe (5-min fingerprint cache) and explicit `contract=legacy` fallback; v1 six-state lifecycle, `awaiting_input` holds the line single-flight lock and ages to `expired`; new `diag_chat` / `diag_stop` / `diag_deposit`; all seven intents and ontology/preprocessing/report-language pass through; 9 error codes map to readable guidance. diag-bridge 主契约迁移 external v1（提交前定轨/legacy 回退），新增续聊/停止/入库工具，全 7 意图与本体参数透传。
+- rag-bridge v2.3: document tools `kb_doc_create/search/read/catalog` on `aw-docs` (separate kv from `aw-industrial`); two-stage retrieval primary with labelled keyword fallback; idempotent create plus `index-document` (vector + BM25) because a whole-KB reindex does not refresh the backend's in-process BM25 index. rag-bridge 新增文档工具族与 aw-docs 库，two-stage 主检索、关键词降级；创建幂等并以单文档索引刷新 BM25。
+- Closed loop: `diag_deposit` reads a completed run's report → `aw-docs` write → index → tags → two-stage self-check; empty report fails readably without a partial document. 诊断报告一键入库并检索自查；空报告可读失败不落半截文档。
+- Safety/observability: `isPolicyWriteTool` unions the static write list with registered plugin `riskClass='write'` tools (live registry, no cache window); plugin health exposes per-tool ok/err counters; write tools emit ops audits. 插件写工具纳入 fail-closed 写族联合判定；health 暴露工具计数并留写审计。
+- Verification: lint, typecheck, build; unit **2059/2060** (1 skipped). Fresh-home three-system acceptance: provisioning 9/9, channel forge 11/11, V1–V6 11/11; **142 host tools** (127 builtin + 15 plugin, +965 schema tokens); a real model turn natively called `kb_doc_search → kb_doc_read → diag_run → diag_status`; governed loop **SP 156→150→144→138 °C** (HITL every step, device-confirmed 1/1, PV retest 3/3 inside [138,142], mean 139.68), recipe v2 frozen. Evidence: `docs/audit/evidence/2026-11-18-idd-rag-plugin-v1-contract/REPORT.md`.
+- Boundaries: IDD's quick-screen/stability skill did not reach a terminal state on a 60-min / 2,312-row export within 40 min (external engine/skill behavior; plugin submit/poll/stop/failure normalization verified); the deposit→index→retrieval loop is proven with a clearly-labelled mock-engine report because no real analysis run completed; cloud model providers were unavailable during acceptance (quota/subscription/connection) so the real-agent turn used a local 9B model; Mimosa deep scan sealed but **inconclusive** — no security-pass claim. 如实边界：IDD 技能终态不稳定（外部）；deposit 闭环用明确标注的 mock 报告证明机制；云端模型不可用改用本机 9B；Mimosa inconclusive 不宣称安全。
 
 ## v0.12.0 — round-3 agent safety boundaries（2026-11-17）
 
