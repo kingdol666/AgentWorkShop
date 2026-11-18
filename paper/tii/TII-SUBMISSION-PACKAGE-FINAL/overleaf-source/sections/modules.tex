@@ -22,17 +22,9 @@ $\mathcal{L}^{\mathrm{base}}_n$, $\mathcal{L}^{\mathrm{prod}}_n$, and
 $\mathcal{L}^{\mathrm{rec}}_n$ are the baseline, active-product, and
 active-recipe limits. These numerical bounds are distinct from the scope,
 policy, grant, and binding predicates in Eq.~(\ref{eq:dispatch-contract}).
-An absent optional limit imposes no restriction; an empty intersection admits no
-candidate. The controller checks each candidate against the configured layers
-and identifies the first violated layer when a limit is exceeded. Recipe dispatch
-checks a replacement recipe against the hard, baseline, and product limits,
-rather than the previous recipe's window. Trial overrides are additionally checked against
-the applicable recipe window.
+The write guard skips an unset optional limit and rejects all candidates if the intersection is empty. It identifies the first configured limit the candidate violates. For a replacement recipe, the guard checks the hard, baseline, and product limits. A trial override must also fit the applicable recipe window.
 
-Algorithm~1 summarizes how an agent or direct caller's single-node control intent is admitted after shared dispatch. For
-\texttt{optimization\_explore}, it shows the ordinary full-limit profile; a failed
-check stops the request before driver dispatch. A benchmark ablation can
-omit soft limits while retaining the hard engineering range.
+Algorithm~1 shows the full-limit path for a single-node \texttt{optimization\_explore} request. A failed check stops the request before driver dispatch. Benchmark ablations can disable selected checks while retaining the hard engineering range.
 
 \par\medskip
 \noindent\begin{minipage}{\columnwidth}
@@ -63,9 +55,6 @@ omit soft limits while retaining the hard engineering range.
 \end{minipage}
 \par\medskip
 
-The operation uses an agent control-intent source; recipe and rollback sources follow
-their own paths. A driver-stage error may leave device state uncertain.
-These application-level
-checks complement, but do not replace, equipment interlocks.
+Recipe and rollback operations use their own write paths. A driver error can leave device state uncertain. Application-level admission runs alongside equipment interlocks.
 
 \input{sections/mechanisms}

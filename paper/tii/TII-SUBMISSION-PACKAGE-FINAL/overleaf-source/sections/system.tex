@@ -1,56 +1,34 @@
 \section{System Design}
 \label{sec:design}
-The runtime exposes named services through two entry paths. Task-mediated calls use the collaboration runtime and a registered agent harness; the harness gives the agent scoped tools for online acquisition, analysis, and control-intent submission. Direct REST or stdio-MCP calls provide verification and integration paths. Both enter the shared dispatcher, while scene configuration supplies context, acquisition bindings, objectives, and write limits.
+The runtime exposes named operations through two entry paths. In a task, a registered harness gives the agent scoped tools to read process data and submit a proposed change. External callers can invoke the same tools through the Representational State Transfer (REST) interface or the standard-I/O MCP bridge. Both paths enter the shared dispatcher. Scene configuration supplies the production context and the mappings and limits the handlers use.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{resources/fig2.png}
-\caption{Task-mediated and direct tool calls share a dispatcher; a registered agent can acquire observations and submit a control intent, while direct calls provide a verification path. Direct calls need no task. Approved intents undergo route-specific revalidation (omitted here; see Fig.~\ref{fig:hitl}). The no-approval path remains subject to applicable authorization and write guards. Requests rejected by pre-dispatch checks stop before driver dispatch. Feedback and signals are schematic, not measured traces. Approvals, command outcomes, optional readbacks, and later data-acquisition (DAQ) observations are distinct records. In-flight exclusion rejects overlapping writes per node and process; equipment interlocks remain necessary.}
+\caption{Scene configuration, shared dispatch, and governed write execution. Task-mediated and direct tool calls reach the same dispatcher. Every write follows the applicable authorization and guard checks. A required approval triggers route-specific revalidation (Fig.~\ref{fig:hitl}). Only an admitted command reaches the driver. Approval, command outcome, optional readback, and subsequent data acquisition (DAQ) produce separate records. The inset illustrates setpoint and process signals schematically.}
 \label{fig:arch}
 \end{figure*}
 
 \subsection{Design Rationale and Requirements}
 \label{sec:principles}
-The runtime must preserve process meaning across heterogeneous drivers, provide a stable contract for registered harness adapters, and check authority and process limits before each control write. It distinguishes acquired process data from command acceptance and later observations. Scene configuration, registered adapters, shared dispatch, route handlers, and service-owned records enforce these boundaries.
-
-The context builder assembles production context and eligible observations for an agent turn. The agent uses them to form a proposal, but context and observations do not grant write authority; the handler resolves live state when the control operation is invoked.
+The agent uses production context and available observations to decide what to propose. The operation handler determines whether it can execute that proposal against the current state. Keeping those decisions separate lets the harness present the same tools across scenes while the runtime checks the applicable node bindings, authority, and limits for each write.
 
 \subsection{Layered Architecture}
 \label{sec:layers}
-Fig.~\ref{fig:arch} shows the system layers. Task and chat routes use registered harness adapters that provide scoped acquisition and control tools; binding and channel policy constrain available operations. Agent analysis remains distinct from deterministic boundary checks. The figure also shows a schematic feedback path and illustrative signals.
-
-Direct REST agent-tool calls and the stdio-MCP bridge bypass task execution and enter the shared dispatcher. The task route gives the agent context, acquisition targets, and objectives; operation services resolve control mappings and guards. Read/analysis services (DAQ, MES access, retrieval, and optional model services) are separated from write and recipe services. Input/output mappings connect semantic nodes to built-in or plugin drivers, and owning services retain task, command, observation, and configuration records.
+Fig.~\ref{fig:arch} shows how task and chat calls enter the runtime through a harness, while direct tool calls reach the dispatcher without a task. The dispatcher routes reads to DAQ, MES access, retrieval, or other analysis services and writes to node or recipe services. The services use configured input and output mappings to reach built-in or plugin drivers. The administrative node-write interface used in Section~\ref{sec:eval-mapping} exercises the downstream write controller independently of task and agent-tool dispatch.
 
 \subsection{Scene Configuration as the Integration Boundary}
 \label{sec:scene-config}
-Scene-specific process semantics are configured before
-they are used by an operation. The active line identifies the production context; product
-and recipe records supply applicable targets and limits; the run record
-provides the current operating state. Semantic nodes bind process variables
-to direction-specific acquisition or control mappings, and the driver
-registry resolves each mapping to a supported protocol implementation. Here
-\emph{semantic} denotes a named process variable with a direction, unit, and
-configured mapping; it is not an OPC UA or Asset Administration Shell
-information model. Each agent-facing operation is named and typed, so a harness need not
-construct protocol-specific messages. A scene using an already registered
-driver can supply different context and node mappings behind the same
-operation contract. A protocol not present in the registry still requires a
-driver adapter; configuration alone does not implement a new protocol.
+The active line identifies the production context. Product and recipe records supply targets and limits, and the run record supplies the operating state. Each semantic node names a process variable and specifies its direction, unit, and mapping. The registry resolves that mapping to a registered driver. The harness calls a named, typed operation without constructing a protocol message. A new scene can bind existing drivers through configuration. Adding support for another protocol requires a driver adapter.
 
 In the cast-film simulator preset, for example, the MQTT command mapping
 \texttt{linespeed-sp} controls line speed in m/min, while the distinct
 \texttt{film-thickness} mapping supplies thickness in $\mu$m. An agent can
 acquire the thickness observation, compare it with its objective, and propose a
-line-speed intent; the runtime admits that intent against the control node's
-limits. Sharing MQTT does not make either signal a substitute for the other.
+line-speed adjustment. The runtime checks the proposal against the speed node's
+limits and sends an admitted command to its MQTT mapping.
 
-Table~\ref{tab:scene-config} summarizes how the execution path uses the scene
-description and distinguishes configuration-time bindings from checks against
-live state. The context assembled for an agent turn describes the active scene. Before a
-write, the handler resolves the live state required by its route and applies
-the current limits. Where a route supports context snapshots, approval is
-bound to both the proposal and the context. The command receipt remains
-separate from subsequent DAQ observations.
+Table~\ref{tab:scene-config} shows where the runtime uses each configuration element. Before dispatch, the handler resolves the live state required by its route. Recipe operations bind approval to both the proposal and the active production context.
 
 \begin{table*}[!t]
 \centering

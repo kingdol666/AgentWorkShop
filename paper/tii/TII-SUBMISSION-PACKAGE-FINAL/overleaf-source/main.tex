@@ -37,7 +37,7 @@
   pdftitle={A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations},
   pdfauthor={},
   pdfsubject={IEEE Transactions on Industrial Informatics},
-  pdfkeywords={industrial agents, online data acquisition, agent-mediated control, governed setpoint control, industrial communication}}
+  pdfkeywords={industrial agents, industrial communication, online data acquisition, setpoint governance}}
 
 % Float placement only; IEEEtran margins and body type remain unchanged.
 \setcounter{topnumber}{4}
@@ -71,11 +71,11 @@
 \maketitle
 
 \begin{abstract}
-Industrial agents that acquire process data and propose setpoint changes require a runtime that relates equipment operations to production context and controls access to them. This article presents a configuration-driven runtime for agent-mediated data acquisition and governed setpoint control. A production scene binds line, product, recipe, and run context to distinct acquisition and control mappings and registered protocol drivers. Agent harnesses provide acquisition and control-intent tools, while task-mediated and direct calls enter a shared dispatcher. The runtime applies applicable authorization and configured write limits, with route-specific revalidation following approval when required; command outcomes, optional readbacks, and later process observations remain distinct. In direct-interface probes of 55 write-capable endpoints across four simulated scenes and five protocols, all 220 admissible requests received the expected acceptance response and all 219 collected out-of-range requests received the expected rejection. In an exploratory simulator comparison, a bounded scripted policy had lower retained-window integrated absolute error than a no-write condition in all nine selected scene--seed blocks; the batch-selection rule remains unresolved. Three language-model-driven injection episodes were canceled below target. These results characterize selected application-level behaviors, while a complete correlated agent-to-device trace and physical-plant performance remain unverified.
+An industrial agent needs process measurements to propose a setpoint change and a governed route to execute it. We present a configuration-driven runtime that maps acquisition and control signals separately for each production scene. Task-mediated and direct tool calls share a dispatcher. The operation handler checks authorization and write limits and revalidates approved requests before dispatch. Command outcomes, setpoint readbacks, and subsequent process measurements are recorded separately. At 55 endpoints across four simulated scenes and five protocols, the node-write service accepted all 220 admissible requests and rejected all 219 hard-range probes and 110 recipe-window probes. All 216 follow-up reads matched the requested simulator setpoints. In an injection simulator, a governed write changed holding pressure from 60 to 63.7 bar with matching readback. In a separate exploratory comparison across injection molding, wastewater treatment, and annealing, a scripted policy yielded lower integrated absolute error than no-write in all nine valid pairs in the reported batch. Three language-model-driven injection runs issued two-parameter trials and ended below target. The experiments demonstrate governed writes in simulation and identify the remaining gap in autonomous execution.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Industrial agents, online data acquisition, agent-mediated control, governed setpoint writing, industrial communication, simulation-based evaluation.
+Industrial agents, industrial communication, online data acquisition, setpoint governance.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
@@ -89,7 +89,10 @@ Industrial agents, online data acquisition, agent-mediated control, governed set
 \input{sections/discussion}
 
 \section*{Declarations}
-The authors declare no competing interests. This anonymous study used simulated scenes, mock-driver fixtures, and a PLC-based simulated twin; no human participants, personal data, or physical-plant data were involved. Author contributions and funding are withheld during anonymous review. Generative AI was used for limited language editing and source organization; the authors reviewed the manuscript and remain responsible for its content and claims. The evidence is supplied in the anonymous supplementary package and supporting-evidence archive.
+The authors declare no competing interests. The study used simulated scenes, mock drivers, and a programmable logic controller simulator. It involved no human participants, personal data, or physical-plant data. Author contributions and funding are withheld during anonymous review. The narrative supplement and supporting-evidence archive describe the experimental records.
+
+\section*{Acknowledgment}
+OpenAI Codex assisted with source organization, English editing throughout the manuscript, and redrafting the abstract and experimental narrative from the recorded evidence.
 
 \bibliographystyle{IEEEtran}
 % \IEEEtriggeratref{10} removed 2026-11-13: with the longer data-availability
