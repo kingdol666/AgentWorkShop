@@ -1,0 +1,402 @@
+{
+ "at": "2026-11-18T07:41:17.041Z",
+ "line": "ln-5fb718a6",
+ "steps": [
+  {
+   "label": "A1 知识库目录",
+   "tool": "kb_catalog",
+   "args": {},
+   "isError": false,
+   "ms": 117,
+   "text": "status=ok kbs=64 shown=60 docs_kb=aw-docs(ebfdf37e-974f-4694-8d66-3f0367afeabc)\n- 计算机与人工智能 | b1199132-e4d4-4305-8c2e-82dc1753b0ba | docs=137\n- 自然科学与地球科学 | 1e6199ea-f380-44e2-94fc-d431f0f9bb6b | docs=75\n- 生命科学与医学 | b28f0a25-1e1d-40ad-96b8-61bd2b093a28 | docs=53\n- 工程与能源 | 8fa4db59-adde-4d6d-9fdb-2c375400e631 | docs=39\n- 经济与社会 | f5770687-6b05-4a8d-8645-af31686ca87e | docs=24\n- aw-industrial | 3aea5973-1d8a-4db6-b415-6d4432f514bb | docs=76\n- e2e-demo-0923-022632 | 09b2102e-7dd2-4f4e-afe0-13b40c9b1463 | docs=3\n- soul-e2e-tester-024115 | aa0fec78-6639-41f7-9fd9-65e0e8fc1a45 | docs=4\n- Novel-PridePrejudice | b4c48237-6937-440a-9696-cc1e66bed5c1 | docs=28\n- AI 基础设施 | 5bc21b9b-2a05-470a-9cd6-eaafedfb87a2 | docs=3\n- e2e-flow-20260926-022340 | d846a043-fe47-47ac-ae2e-3e523d8ee80e | docs=1\n- soul-e2e-20260926-022340 | 363ccb45-7a10-45b9-becb-0a3dbc156687 | docs=0\n- aw-industrial-e2e-20260926-022518 | b87f4dab-c83b-4a99-abe3-182773fc315a | docs=1\n- ZZ跨库复现库 | 801c7549-103b-489f-9d7d-4864580d99be | docs=1\n- ZZ跨库复现库2 | a0db9ea9-5e1e-4c38-87ee-65f631335eb6 | docs=1\n- demo-qa-20260927 | 455137b4-a0be-46ed-acf5-d8b475dc5d70 | docs=5\n- soul-demo-qa | e2e91a7d-e602-4c38-b4c1-aa3f60b18b42 | docs=4\n- soul-cs-library | 1cbebcfc-b674-48e0-89c1-e24b268ac039 | docs=4\n- 玄鸟演示库-125906 | 50b6c4be-cccd-494c-90b8-be55566b57bc | docs=3\n- 引线键合-扎线工艺 | 2222261d-4bdc-4e75-b6f8-d810b9f9fee9 | docs=0\n- Corpus-Chunks800 | ce642f28-e157-48af-b669-49862cd73b23 | docs=0\n- ralph-acc-kb-ralph20261029 | f59cba1c-8dbb-431c-8aa6-eaa69a57d65d | docs=1\n- final-acceptance-standalone | 84e73245-8e93-4e16-86ae-93d7fbf8dce7 | docs=0\n- ? | 55ff188c-3e68-4ca0-8287-bde4043a5d80 | docs=12\n- ? | 86dcce55-aff7-4f4e-a858-7a90cfa5e57f | docs=7\n- ? | 3d5e65f7-5bd1-4fa3-8e36-cd2b015f75cc | docs=12\n- ? | 1c2f042d-4439-4cc2-95dd-b36a5c8daa46 | docs=461\n- ? | 12dfd50b-f29c-4669-8ee1-62f9007e36e5 | docs=15\n- ? | 55acb7e9-d3dd-469b-8759-5e8d52ea7be1 | docs=93\n- ? | d7a93979-3454-4ae9-a738-985a0c5456a5 | docs=13\n- ? | 5311b428-b918-4597-b6c4-3b6a5098083a | docs=10\n- ? | deedad34-11e2-42b5-81d6-b4970b2dfbe5 | docs=146\n- ? | 264832f0-94eb-46c3-8255-bdd12d69dc68 | docs=137\n- r2-standalone | 4438ce4e-9095-4df0-a845-4b7130f99c8c | docs=0\n- MD语料-医学-英文 | 55acb7e9-d3dd-469b-8759-5e8d52ea7be1 | docs=93\n- MD语料-历史-中文 | 5311b428-b918-4597-b6c4-3b6a5098083a | docs=10\n- MD语料-哲学-英文 | deedad34-11e2-42b5-81d6-b4970b2dfbe5 | docs=146\n- MD语料-技术-英文 | d7a93979-3454-4ae9-a738-985a0c5456a5 | docs=13\n- MD语料-政务-中文 | 86dcce55-aff7-4f4e-a858-7a90cfa5e57f | docs=7\n- MD语料-文学-中文 | 3d5e65f7-5bd1-4fa3-8e36-cd2b015f75cc | docs=12\n- MD语料-文学-英文 | 1c2f042d-4439-4cc2-95dd-b36a5c8daa46 | docs=461\n- MD语料-法律-中文 | 55ff188c-3e68-4ca0-8287-bde4043a5d80 | docs=12\n- MD语料-科学-英文 | 12dfd50b-f29c-4669-8ee1-62f9007e36e5 | docs=15\n- MD语料-经济-英文 | 264832f0-94eb-46c3-8255-bdd12d69dc68 | docs=137\n- 演示-R1论文-20261112 | 2f63d95f-e3e1-4242-bfdf-9191a3c535a3 | docs=4\n- 演示-R1论文-20261112/安全与参考 | a940ac6e-72fd-4c45-b3ff-797893297255 | docs=1\n- 演示-LoRA论文-R2 | 606dbf27-64ab-49f0-981e-0f841e54a26a | docs=2\n- 演示-WikiLLM-R2 | 0d632603-362c-4270-89a6-05ea9f67fb77 | docs=1\n- 演示-DistilBERT-R3 | 4aa38d9f-ef74-403d-9ece-a16ddef5fa13 | docs=1\n- 演示-WikiRAG-R3 | 2e42b329-0ee1-43fa-a11d-d4e02fe701a2 | docs=1\n- ? | d77085f1-4e31-4da9-812e-504ac3835b72 | docs=1\n- 验收-WikiQA-1113 | 5053aaf4-a044-4e4f-9388-25052ee28696 | docs=1\n- A3无描述-law-zh | b9799082-31a7-4653-bae5-b7588e7b3d8c | docs=12\n- A3无描述-gov-zh | 0309eeae-e2c7-46d5-a25a-c29fc0e865b0 | docs=7\n- A3无描述-literature-zh | c6d87c92-be80-46cf-80c3-55086065fb56 | docs=12\n- A3无描述-literature-en | 718287e5-42e4-409c-a6e4-fd73b11224cb | docs=434\n- A3无描述-science-en | 2ab7ed80-18e6-48e2-9c56-b28f06f85c7b | docs=4\n- A3无描述-medicine-en | b2655f32-42ff-4798-98ea-c5bbb2b3fbf9 | docs=44\n- 实机演示-E2E-20261117-211320 | d1ff56c4-e2d8-4ec2-9c0f-3009b9da9271 | docs=1\n- 实机演示-多路入库-20261117-232320 | 19d9dc0c-6b63-4cae-b782-e0a2500ebc52 | docs=5\n…还有 4 个库未列出(按需用 kb 参数直接指定名称)",
+   "rawCode": 0
+  },
+  {
+   "label": "A2 文档检索",
+   "tool": "kb_doc_search",
+   "args": {
+    "query": "CNC-850 主轴 热漂移 治理",
+    "kb": "aw-docs",
+    "top_k": 5
+   },
+   "isError": false,
+   "ms": 4217,
+   "text": "status=ok mode=two-stage hits=3 kb=aw-docs total=3\n1. doc_path=aw-docs/AW-PLUGIN-V1-LIVE-2026-11-18T06-21-08.md score=0.7589 chunk=0\n   # AW-PLUGIN-V1-LIVE-2026-11-18T06:21:08 CNC-850 主轴热漂移治理:受治小步探索闭环。SP 156→138,PV 跟随,四步 HITL,复测 3/3。 入库时间:2026-11-18T06:21:08\n2. doc_path=aw-docs/AW-PLUGIN-V1-LIVE-2026-11-18T06-19-59.md score=0.7560 chunk=0\n   # AW-PLUGIN-V1-LIVE-2026-11-18T06:19:59 CNC-850 主轴热漂移治理:受治小步探索闭环。SP 156→138,PV 跟随,四步 HITL,复测 3/3。 入库时间:2026-11-18T06:19:59\n3. doc_path=aw-docs/AW-PLUGIN-V1-LIVE-2026-11-18T06-21-19.md score=0.7533 chunk=0\n   # AW-PLUGIN-V1-LIVE-2026-11-18T06-21-19 CNC-850 主轴热漂移治理:受治小步探索闭环。SP 156→138,PV 跟随,四步 HITL,复测 3/3。 入库时间:2026-11-18T06:21:19\n\n读全文 → kb_doc_read(doc_path=<上面任一条>)。",
+   "rawCode": 0
+  },
+  {
+   "label": "A3 文档读取",
+   "tool": "kb_doc_read",
+   "args": {
+    "doc_path": "aw-docs/AW-PLUGIN-V1-LIVE-2026-11-18T06-21-08.md",
+    "max_chars": 800
+   },
+   "isError": false,
+   "ms": 24,
+   "text": "status=ok doc_path=aw-docs/AW-PLUGIN-V1-LIVE-2026-11-18T06-21-08.md kb=aw-docs chars=124 total_lines=5 truncated=no\n# AW-PLUGIN-V1-LIVE-2026-11-18T06:21:08\n\nCNC-850 主轴热漂移治理:受治小步探索闭环。SP 156→138,PV 跟随,四步 HITL,复测 3/3。\n\n入库时间:2026-11-18T06:21:08",
+   "rawCode": 0
+  },
+  {
+   "label": "B1 发起快筛",
+   "tool": "diag_run",
+   "args": {
+    "line": "ln-5fb718a6",
+    "from_ms": 1794986481431,
+    "to_ms": 1794987681431,
+    "analysis_intent": "quick-screen",
+    "scene": "accept-b-quick",
+    "question": "CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+   },
+   "isError": false,
+   "ms": 1371,
+   "text": "已发起「快速筛查」异步分析任务 task_id=71a837c1(产线 ln-5fb718a6 窗口 2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00 快照 235 行 × 2 节点,contract=v1)。IDD 在后台以对应 skill 协议执行,Channel 无需等待——可继续其他任务;完成后平台会自动把结果回执到你的信箱并唤醒你(空闲时也可用 diag_status(run_id=71a837c1) 主动查询;完成后按指引把报告入库知识库)。注入的分析问题:CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#1",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 13,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#2",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#3",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#4",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#5",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 12,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#6",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#7",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#8",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#9",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#10",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 18,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#11",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 17,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#12",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#13",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#14",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#15",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#16",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#17",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#18",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#19",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#20",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 14,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#21",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#22",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#23",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#24",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#25",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#26",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#27",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#28",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#29",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 18,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "B2 状态轮询#30",
+   "tool": "diag_status",
+   "args": {
+    "run_id": "71a837c1"
+   },
+   "isError": false,
+   "ms": 12,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单",
+   "rawCode": 0
+  },
+  {
+   "label": "C1 worker 调 lead-only 工具",
+   "tool": "diag_result_annotate",
+   "args": {
+    "result_id": "71a837c1",
+    "tags": [
+     "accept"
+    ]
+   },
+   "isError": true,
+   "ms": 3,
+   "text": "工具 diag_result_annotate 仅对 lead 角色开放(当前 worker)。",
+   "rawCode": 0
+  }
+ ],
+ "runId": "71a837c1",
+ "finalStatus": "running"
+}

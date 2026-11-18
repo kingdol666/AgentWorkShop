@@ -1,0 +1,46 @@
+{
+ "at": "2026-11-18T06:57:09.646Z",
+ "agents": {
+  "lead": {
+   "agentId": "37924602-161c-4b0b-bc08-5a2151fe4c93",
+   "name": "生产主管",
+   "total": 90,
+   "has": {
+    "kb_doc_create": true,
+    "kb_doc_search": true,
+    "kb_doc_read": true,
+    "kb_catalog": true,
+    "diag_chat": true,
+    "diag_stop": true,
+    "diag_deposit": true
+   },
+   "newToolSchemaChars": 3087,
+   "allSchemaChars": 79111,
+   "budgetDeltaPct": 4.06
+  },
+  "worker": {
+   "agentId": "ce70389f-6c5e-4ea4-bcf4-172f99f4fc93",
+   "name": "数据分析师",
+   "total": 77,
+   "has": {
+    "kb_doc_create": true,
+    "kb_doc_search": true,
+    "kb_doc_read": true,
+    "kb_catalog": true,
+    "diag_chat": true,
+    "diag_stop": true,
+    "diag_deposit": true
+   },
+   "newToolSchemaChars": 3087,
+   "allSchemaChars": 67631,
+   "budgetDeltaPct": 4.78,
+   "leadOnlyAbsent": true
+  }
+ },
+ "budget": {
+  "newTools": 7,
+  "newSchemaChars": 3087,
+  "approxTokens": 965,
+  "note": "chars/3.2 为估算;WS-0 预算 ≤+1.2k tokens"
+ }
+}

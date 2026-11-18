@@ -1,0 +1,210 @@
+{
+ "runId": "0689e6a3",
+ "at": "2026-11-18T07:57:58.300Z",
+ "steps": [
+  {
+   "label": "wait#1",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#2",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#3",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#4",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#5",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#6",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#7",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#8",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#9",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#10",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#11",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#12",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#13",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#14",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#15",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#16",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#17",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#18",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#19",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#20",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#21",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#22",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#23",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#24",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#25",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#26",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 6,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#27",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#28",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段"
+  },
+  {
+   "label": "wait#29",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=0689e6a3\ncontract=v1\nname=\n产线=offline-data\n意图=quick-screen(快速筛查)\n状态=stopped\n来源=agent\n窗口=2026-11-18T14:57:52.726+08:00 ~ 2026-11-18T15:57:52.726+08:00\n问题=CNC-850 B线近60分钟数据集快速筛查:主轴实测温度越限/漂移/冻结异常,按严重度排序;数据含 SP 156 基线保持段\n错误=-"
+  }
+ ],
+ "finalStatus": "stopped"
+}

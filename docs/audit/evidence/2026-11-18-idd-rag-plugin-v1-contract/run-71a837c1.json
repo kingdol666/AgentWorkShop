@@ -1,0 +1,91 @@
+{
+ "runId": "71a837c1",
+ "at": "2026-11-18T07:52:12.977Z",
+ "steps": [
+  {
+   "label": "wait#1",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 16,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#2",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#3",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 11,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#4",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 10,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#5",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#6",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#7",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 9,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#8",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#9",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#10",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 8,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#11",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 7,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=running\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单"
+  },
+  {
+   "label": "wait#12",
+   "tool": "diag_status",
+   "isError": false,
+   "ms": 18,
+   "text": "run_id=71a837c1\ncontract=v1\nname=\n产线=ln-5fb718a6\n意图=quick-screen(快速筛查)\n状态=stopped\n来源=agent\n窗口=2026-11-18T15:21:21.431+08:00 ~ 2026-11-18T15:41:21.431+08:00\n问题=CNC-850 B线近20分钟主轴温度/环境温度快速筛查:越限/漂移/冻结异常清单\n错误=-"
+  }
+ ],
+ "finalStatus": "stopped"
+}
