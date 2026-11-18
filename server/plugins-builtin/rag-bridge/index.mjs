@@ -2,19 +2,32 @@
  * rag-bridge —— rag-knowledge 知识库桥接插件。
  *
  * 把本地 rag-knowledge 服务(FastAPI 后端 + Nuxt web)集成为 AgentWorkShop 的
- * 团队知识库:启动即确保「aw-industrial」知识库存在,并向 agent 注入三个工具——
- * kb_agent(知识库 Agent 对话)——检索/入库/经验全部由知识库内部 Agent 处理。
+ * 团队知识库:
+ *  - 经验面:启动即确保「aw-industrial」知识库存在,注入 kb_agent / kb_agent_status
+ *    ——检索/入库/经验全部由知识库内部 Agent 处理;
+ *  - 文档面(v2.3):kb_doc_create / kb_doc_search / kb_doc_read / kb_catalog 四个
+ *    确定性工具,直接走 Web 层文档与两段检索端点(不依赖知识库内部 agent 回合)。
  * 另开放 /health、/search、/experience 三个插件 API 便于运维探查。
  * 服务不可达时工具返回 isError 文本(含原因与修复建议),绝不抛异常拖垮宿主。
+ *
+ * WS-0 封装约束(2026-11-18):工具名 `{前缀}_{动作}`;描述点名输入来源与输出形状;
+ * 输出首行机器可读键值;写类 riskClass='write' + noRefs;读类 riskClass='read';
+ * 调用计数入 kv(health 可见);读 ≤15s、写 ≤60s、长任务返 task_id。
  */
 const KB_NAME = 'aw-industrial'
+const DOCS_KB_NAME = 'aw-docs'
 const DEFAULT_BASE = 'http://127.0.0.1:8770' // FastAPI 后端
-const DEFAULT_WEB = 'http://127.0.0.1:6789' // Nuxt web(文档写盘)
+const DEFAULT_WEB = 'http://127.0.0.1:6789' // Nuxt web(文档写盘/检索)
+
+/** 读类调用超时(WS-0:读 ≤15s;两段检索允许 15s) */
+const READ_TIMEOUT_MS = 15000
+/** 写类调用超时(WS-0:写 ≤60s;create+reindex 合计预算) */
+const WRITE_TIMEOUT_MS = 20000
 
 export default {
   name: 'rag-bridge',
-  version: '2.2.0',
-  description: 'rag-knowledge 知识库桥接 v2.1:kb_agent 对话工具(功能解耦,sync/async 双模式)+ kb_agent_status 异步结果查询',
+  version: '2.3.0',
+  description: 'rag-knowledge 知识库桥接 v2.3:kb_agent 对话工具(功能解耦)+ 文档工具族(kb_doc_create/search/read/catalog,aw-docs 库,two-stage 检索)+ 韧性(有界 prompt/429 退避/L1 超时)',
   auth: 'user', // 平台转发层按此声明统一校验(缺省 'none' 开放)
   client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
   // 插件配置分组:插件调用平台 API 增加自己的设置分区(设置页独立成区、可折叠)。
@@ -30,6 +43,7 @@ export default {
   settings: [
     { key: 'base_url', type: 'string', default: DEFAULT_BASE, group: 'default', labelKey: 'plugin.rag-bridge.settings.base_url', label: 'rag-knowledge 后端地址', description: 'FastAPI 后端(http/https,host 限 127.0.0.1/localhost);保存即热生效' },
     { key: 'web_url', type: 'string', default: DEFAULT_WEB, group: 'default', labelKey: 'plugin.rag-bridge.settings.web_url', label: 'rag-knowledge Web 地址', description: 'Nuxt Web(文档写盘/目录);保存即热生效' },
+    { key: 'docs_kb', type: 'string', default: DOCS_KB_NAME, group: 'default', labelKey: 'plugin.rag-bridge.settings.docs_kb', label: '文档知识库名', description: 'kb_doc_* 工具的缺省目标库(缺省 aw-docs;经验入库仍写 aw-industrial);保存即热生效' },
     { key: 'token', type: 'string', default: '', group: 'auth', labelKey: 'plugin.rag-bridge.settings.token', label: 'rag-knowledge API Token', description: '服务端开启鉴权时的 MCP/API Token(Authorization: Bearer);空=匿名;保存即热生效' },
     { key: 'agent_harness', type: 'string', default: '', group: 'default', labelKey: 'plugin.rag-bridge.settings.agent_harness', label: '知识库 Agent 引擎', description: '可选:rag-knowledge chat 的 harness(如 omp/claude);空=使用 RAG 服务默认。仅选择知识库内部 Agent 引擎,不改变平台固定的权限档。' },
   ],
@@ -39,6 +53,9 @@ export default {
     const base = () => trimSlash(String(ctx.config?.get?.('plugins.rag-bridge.base_url') || ctx.kv.get('kb.base_url') || DEFAULT_BASE))
     const web = () => trimSlash(String(ctx.config?.get?.('plugins.rag-bridge.web_url') || ctx.kv.get('kb.web_url') || DEFAULT_WEB))
     const kbId = () => String(ctx.kv.get('kb.id') || '')
+    // 文档库独立 kv 键:双库复用同一键会互踩(经验库与文档库 kbId 不同)
+    const docsKbId = () => String(ctx.kv.get('docs.kb.id') || '')
+    const docsKbName = () => String(ctx.config?.get?.('plugins.rag-bridge.docs_kb') || ctx.kv.get('docs.kb.name') || DOCS_KB_NAME).trim() || DOCS_KB_NAME
     // 鉴权 token(系统配置优先,kv 兜底):rag-knowledge 开启 server.auth 时所有 /api/*
     // 要求 Bearer;backend 与 web 都认 Authorization: Bearer / X-KB-Token 两种头
     const kbToken = () => String(ctx.config?.get?.('plugins.rag-bridge.token') || ctx.kv.get('kb.token') || '').trim()
@@ -54,6 +71,7 @@ export default {
     if (ctx.kv.get('kb.base_url') == null) ctx.kv.set('kb.base_url', DEFAULT_BASE)
     if (ctx.kv.get('kb.web_url') == null) ctx.kv.set('kb.web_url', DEFAULT_WEB)
     ctx.kv.set('kb.name', KB_NAME)
+    if (ctx.kv.get('docs.kb.name') == null) ctx.kv.set('docs.kb.name', DOCS_KB_NAME)
 
     // base_url/web_url 守卫:仅 http/https 且 host 必须是 127.0.0.1/localhost。
     // web_url 也会带 Bearer token 出站(文档写盘/目录),不能只校验 base_url。
@@ -82,8 +100,8 @@ export default {
 
     // ---- ensureKB:幂等初始化(失败仅告警,不阻塞装载) ----
     try {
-      await ensureKB()
-      ctx.logger.info(`rag-bridge 就绪:kb=${KB_NAME}(${kbId() || '待建'}),出站=${state.outbound ? '启用' : '禁用'}`)
+      await ensureKbByName(KB_NAME, 'kb.id', { experience: true })
+      ctx.logger.info(`rag-bridge 就绪:经验库=${KB_NAME}(${kbId() || '待建'}),文档库=${docsKbName()}(${docsKbId() || '按需自愈'}),出站=${state.outbound ? '启用' : '禁用'}`)
     }
     catch (err) {
       ctx.logger.warn(`ensureKB 未完成(不影响装载,工具会在服务可用后按需重试):${err?.message ?? err}`)
@@ -95,21 +113,63 @@ export default {
       return new Promise(resolve => ctx.timer.setTimeout(resolve, ms))
     }
 
-    /** 单次 JSON 请求;429/网络错误按 1s*重试次数退避,最多重试 2 次;检索类调用方传 timeoutMs:30000 */
-    async function callJson(method, url, body, { timeoutMs = 15000, retries = 2, headers = {} } = {}) {
+    /** 工具调用计数(kv;health 可见 —— WS-4 S3 可观测三件套之一) */
+    function bump(tool, ok) {
+      const key = `usage.${tool}.${ok ? 'ok' : 'err'}`
+      try {
+        ctx.kv.set(key, Number(ctx.kv.get(key) ?? 0) + 1)
+      }
+      catch { /* 计数失败不影响调用 */ }
+    }
+
+    function toolCounters() {
+      const out = {}
+      for (const [k, v] of Object.entries(ctx.kv.all())) {
+        const m = /^usage\.(.+)\.(ok|err)$/.exec(k)
+        if (!m) continue
+        out[m[1]] ??= { ok: 0, err: 0 }
+        out[m[1]][m[2]] = Number(v) || 0
+      }
+      return out
+    }
+
+    /**
+     * 单次 JSON 请求;429/网络错误按 1s*重试次数退避,最多重试 2 次;
+     * retry429Ms>0 时对 429 额外等待一次(限流退避,文档 §4.5)后重试。
+     * 非 2xx 返回 { ok:false, status, error, body }(body 供调用方读 stage/error 细节)。
+     */
+    async function callJson(method, url, body, { timeoutMs = 15000, retries = 2, headers = {}, retry429Ms = 0 } = {}) {
       let lastErr = ''
+      let lastStatus = 0
       const h = { ...authHeaders(), ...headers }
       for (let attempt = 0; attempt <= retries; attempt++) {
         if (attempt > 0) await sleep(1000 * attempt) // 退避 1s*n
         try {
-          const res = method === 'GET'
-            ? await ctx.http.get(url, { timeoutMs, headers: h })
-            : await ctx.http.post(url, body ?? {}, { timeoutMs, headers: h })
+          let res
+          if (method === 'GET') {
+            res = await ctx.http.get(url, { timeoutMs, headers: h })
+          }
+          else if (method === 'PATCH') {
+            if (typeof ctx.http.patch !== 'function') return { ok: false, error: '宿主不支持 PATCH 请求' }
+            res = await ctx.http.patch(url, body ?? {}, { timeoutMs, headers: h })
+          }
+          else {
+            res = await ctx.http.post(url, body ?? {}, { timeoutMs, headers: h })
+          }
           if (res.status === 429) {
-            lastErr = `HTTP 429(限流)`
+            lastErr = 'HTTP 429(限流)'
+            lastStatus = 429
+            if (retry429Ms > 0) {
+              ctx.logger.warn(`rag-knowledge 限流(429):退避 ${Math.round(retry429Ms / 1000)}s 后重试一次`)
+              await sleep(retry429Ms)
+              retry429Ms = 0 // 只退避一次
+            }
             continue
           }
-          if (!res.ok) return { ok: false, status: res.status, error: `HTTP ${res.status}` }
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => null)
+            return { ok: false, status: res.status, error: `HTTP ${res.status}`, body: errBody }
+          }
           const json = await res.json().catch(() => null)
           if (json == null) return { ok: false, status: res.status, error: '响应不是合法 JSON' }
           return { ok: true, status: res.status, body: json }
@@ -118,7 +178,7 @@ export default {
           lastErr = err?.message ?? String(err) // 网络错误/超时(AbortSignal.timeout)
         }
       }
-      return { ok: false, error: lastErr || '未知错误' }
+      return { ok: false, status: lastStatus || undefined, error: lastErr || '未知错误' }
     }
 
     /** rag 业务调用:铁律——HTTP 200 但 body.success !== true 一律视为失败 */
@@ -126,27 +186,38 @@ export default {
       const r = await callJson(method, url, body, opts)
       if (!r.ok) return r
       if (r.body?.success !== true) {
-        return { ok: false, error: `服务返回 success!=true:${JSON.stringify(r.body).slice(0, 200)}` }
+        return { ok: false, status: r.status, error: `服务返回 success!=true:${JSON.stringify(r.body).slice(0, 200)}`, body: r.body }
       }
       return r
     }
 
     const outboundOff = () => ({ ok: false, error: '出站调用已禁用:kv["kb.base_url"] 非法(仅允许 http/https 且 host 为 127.0.0.1/localhost)' })
 
-    // kb_agent 失败分类文案(2026-11-16 实测回归):过去一切失败都套同一句
+    // 失败分类文案(2026-11-16 实测回归,2026-11-18 扩文档面):过去一切失败都套同一句
     // "请确认 rag-knowledge web 已启动" —— 401(token 过期)时把人引去查一个活着的
-    // web,完全误导。按 status/错误形态分四类给出可执行的下一步。
+    // web,完全误导。按 status/错误形态分类给出可执行的下一步。
     const describeKbFailure = (r) => {
       const st = Number(r?.status ?? 0)
       const raw = String(r?.error ?? '')
+      const stage = String(r?.body?.stage ?? r?.body?.data?.stage ?? '')
       if (st === 401 || st === 403) {
-        return `rag-knowledge Token 被拒绝(HTTP ${st}):token 可能已过期或权限不足 —— 请在设置页「rag-knowledge 鉴权」轮换 plugins.rag-bridge.token 后重试(web/backend 本身不受影响)。`
+        return `rag-knowledge Token 被拒绝(HTTP ${st}):token 可能已过期或权限不足 —— 请在设置页「rag-knowledge 鉴权」轮换 plugins.rag-bridge.token 后重试(`
+          + `重铸路径:POST /api/auth/tokens,name=aw-bridge,scopes=[read,write];原登录会话不失效。web/backend 本身不受影响)。`
+      }
+      if (st === 429) {
+        return 'rag-knowledge 限流(HTTP 429,per-IP 600 req/60s):已退避重试一次仍限流 —— 请降低批量调用频率,稍后重试;单条检索可改用 kb_doc_search(以两段检索为主,请求更轻)。'
+      }
+      if (st === 404) {
+        return `目标资源不存在(HTTP 404):知识库/文档名可能拼错,或 async 任务已过期(2h/重启清空)。先用 kb_catalog 确认库名,再用 kb_doc_search 确认文档。原始:${raw}`
+      }
+      if (st === 502 || st === 503 || stage === 'timeout') {
+        return `知识库 Agent 面不可用(${st ? `HTTP ${st}` : ''}${stage ? `,stage=${stage}` : ''}):${raw}。只读检索可直接改用 kb_doc_search(两段检索,不依赖内部 agent 回合);若仍需 agent 面,稍后重试或改用 async + kb_agent_status。`
       }
       if (/abort|timeout|timed?\s*out/i.test(raw)) {
-        return `等待窗内知识库 Agent 未返回终态(${raw})——知识库内部执行慢或连接被对端挂断。建议改用 mode:'async' 提交,再用 kb_agent_status(task_id, wait_seconds=120) 轮询结果。`
+        return `等待窗内知识库 Agent 未返回终态(${raw})——知识库内部执行慢或连接被对端挂断(服务端 600s 硬顶,客户端读超时已设 ≥750s)。建议改用 mode:'async' 提交,再用 kb_agent_status(task_id, wait_seconds=120) 轮询结果;只读检索可用 kb_doc_search 兜底。`
       }
       if (/fetch failed|ECONN|socket|network/i.test(raw)) {
-        return `到 rag-knowledge web(${web()})的请求失败(${raw})。请确认 web/backend 存活;若两者健康(可用 /api/plugins/rag-bridge/health 核对),多为知识库内部 agent 回合挂断 —— 同样建议改用 async + kb_agent_status。`
+        return `到 rag-knowledge web(${web()})的请求失败(${raw})。请确认 web/backend 存活;若两者健康(可用 /api/plugins/rag-bridge/health 核对),多为知识库内部 agent 回合挂断 —— 同样建议改用 async + kb_agent_status,或只读用 kb_doc_search。`
       }
       return raw || '未知错误'
     }
@@ -259,47 +330,126 @@ export default {
       }
     }
 
-    // ================= ensureKB(catalog 查找 → 建库 → experience init) =================
+    // ================= ensureKB(catalog 查找 → 建库 → 可选 experience init) =================
 
-    async function ensureKB() {
+    /**
+     * 幂等确保某知识库存在并返回 kbId。
+     * ① catalog 查找同名库;② 无则建库;③ experience=true 时初始化经验文件夹(仅告警)。
+     * 双库分键:经验库 → kv 'kb.id',文档库 → kv 'docs.kb.id'(互不覆盖)。
+     */
+    async function ensureKbByName(name, idKey, { experience = false } = {}) {
+      if (!state.outbound) throw new Error('出站调用已禁用')
       // ① catalog 查找同名库(响应 {success,count,knowledgeBases:[{kbId,name,...}]})
-      const cat = state.outbound
-        ? await callJson('GET', `${web()}/api/kb/catalog`, null, { timeoutMs: 10000 })
-        : { ok: false, error: '出站已禁用' }
+      const cat = await callJson('GET', `${web()}/api/kb/catalog`, null, { timeoutMs: 10000 })
       if (cat.ok) {
         const list = Array.isArray(cat.body?.knowledgeBases) ? cat.body.knowledgeBases : []
-        const hit = list.find(kb => kb?.name === KB_NAME)
-        if (hit?.kbId) ctx.kv.set('kb.id', hit.kbId)
+        const hit = list.find(kb => kb?.name === name)
+        if (hit?.kbId) ctx.kv.set(idKey, hit.kbId)
       }
       else {
         ctx.logger.warn(`catalog 不可达(${cat.error}),跳过查找直接尝试建库`)
       }
       // ② 无则建库(响应 {success,knowledgeBase:{id,name,path,...}})
-      if (!kbId()) {
-        const created = state.outbound
-          ? await ragCall('POST', `${web()}/api/kb/create`, { name: KB_NAME, description: 'AgentWorkShop 工业知识库(诊断报告/经验教训/操作规范)' }, { timeoutMs: 15000 })
-          : { ok: false, error: '出站已禁用' }
-        if (!created.ok) throw new Error(`创建知识库 ${KB_NAME} 失败:${created.error}`)
-        const id = created.body?.knowledgeBase?.id
-        if (!id) throw new Error(`建库响应缺少 knowledgeBase.id:${JSON.stringify(created.body).slice(0, 200)}`)
-        ctx.kv.set('kb.id', id)
+      if (!ctx.kv.get(idKey)) {
+        const created = await ragCall('POST', `${web()}/api/kb/create`, { name, description: `AgentWorkShop ${name === DOCS_KB_NAME ? '文档库(报告/规范/协议)' : '工业知识库(诊断报告/经验教训/操作规范)'}` }, { timeoutMs: WRITE_TIMEOUT_MS })
+        // 并发建库:重名 409 时按 catalog 回查一次(其他实例已建好)
+        if (!created.ok) {
+          if (created.status === 409) {
+            const again = await callJson('GET', `${web()}/api/kb/catalog`, null, { timeoutMs: 10000 })
+            const hit = (again.body?.knowledgeBases ?? []).find(kb => kb?.name === name)
+            if (hit?.kbId) ctx.kv.set(idKey, hit.kbId)
+            else throw new Error(`创建知识库 ${name} 返回 409 但 catalog 查不到同名库`)
+          }
+          else {
+            throw new Error(`创建知识库 ${name} 失败:${created.error}`)
+          }
+        }
+        else {
+          const id = created.body?.knowledgeBase?.id
+          if (!id) throw new Error(`建库响应缺少 knowledgeBase.id:${JSON.stringify(created.body).slice(0, 200)}`)
+          ctx.kv.set(idKey, id)
+        }
       }
-      // ③ 经验文件夹初始化(容忍已初始化/失败:仅告警)
-      const init = state.outbound
-        ? await ragCall('POST', `${base()}/api/v1/experience/${kbId()}/init`, {}, { timeoutMs: 15000 })
-        : { ok: false, error: '出站已禁用' }
-      if (!init.ok) ctx.logger.warn(`experience init 未成功(可忽略或稍后手动重试):${init.error}`)
+      // ③ 经验文件夹初始化(仅经验库;容忍已初始化/失败:仅告警)
+      if (experience) {
+        const init = await ragCall('POST', `${base()}/api/v1/experience/${ctx.kv.get(idKey)}/init`, {}, { timeoutMs: 15000 })
+        if (!init.ok) ctx.logger.warn(`experience init 未成功(可忽略或稍后手动重试):${init.error}`)
+      }
+      return String(ctx.kv.get(idKey) || '')
     }
 
-    /** 工具侧兜底:kv 无 kb.id 时按需重跑 ensureKB */
+    /** 工具侧兜底:kv 无 kb.id 时按需重跑 ensureKbByName */
     async function requireKbId() {
       if (kbId()) return kbId()
-      await ensureKB()
-      if (kbId()) return kbId()
-      return null
+      await ensureKbByName(KB_NAME, 'kb.id', { experience: true })
+      return kbId() || null
     }
 
-    // ================= 工具 ×1(kb_agent —— 功能解耦的唯一入口) =================
+    /** 文档库按需自愈(懒初始化:装载期不增加一个建库往返) */
+    async function requireDocsKbId() {
+      if (docsKbId()) return docsKbId()
+      await ensureKbByName(docsKbName(), 'docs.kb.id')
+      ctx.kv.set('docs.kb.name', docsKbName())
+      return docsKbId() || null
+    }
+
+    // ================= 文档面基础调用(Web 层 §5.4/§5.5) =================
+
+    /** 目录缓存(30s):kb_doc_search/read 的 kb 解析与首个路径段归属判断用 */
+    let catalogCache = { at: 0, list: [] }
+    async function catalogList(force = false) {
+      if (!force && Date.now() - catalogCache.at < 30_000 && catalogCache.list.length) return { ok: true, list: catalogCache.list }
+      const r = await callJson('GET', `${web()}/api/kb/catalog`, null, { timeoutMs: 10000 })
+      if (!r.ok) return { ok: false, error: r.error, status: r.status }
+      const list = Array.isArray(r.body?.knowledgeBases) ? r.body.knowledgeBases : []
+      catalogCache = { at: Date.now(), list }
+      return { ok: true, list }
+    }
+
+    /** kb 参数(uuid 或名称)→ { kbId, name };缺省文档库 */
+    async function resolveKb(nameOrId) {
+      const want = String(nameOrId ?? '').trim()
+      if (!want) {
+        const id = await requireDocsKbId()
+        return id ? { ok: true, kbId: id, name: docsKbName() } : { ok: false, error: `文档库 ${docsKbName()} 不存在且自动建库失败(检查 web ${web()} 与 token)` }
+      }
+      const cat = await catalogList()
+      if (cat.ok) {
+        const hit = cat.list.find(kb => kb?.kbId === want || kb?.name === want || String(kb?.path ?? '').replace(/\\/g, '/') === want)
+        if (hit?.kbId) return { ok: true, kbId: hit.kbId, name: hit.name }
+        return { ok: false, error: `知识库「${want}」不存在。可用 kb_catalog 查看全部库名(缺省文档库=${docsKbName()})。` }
+      }
+      // catalog 不可达:直接按名称交给服务端解析(kb_id 接受 UUID 或相对路径名,§4.2)
+      return { ok: true, kbId: want, name: want }
+    }
+
+    /** 文档列表({success,kbId,count,documents:[{id,name,path,...}]}) */
+    async function docList(kbIdValue) {
+      return await ragCall('GET', `${web()}/api/kb/documents?kbId=${encodeURIComponent(kbIdValue)}`, null, { timeoutMs: READ_TIMEOUT_MS })
+    }
+
+    const normSlashes = p => String(p ?? '').replace(/\\/g, '/').replace(/^\/+/, '')
+
+    /** 同名文档预查(幂等):服务端 create 对重名是自动改名去重而非 409,故幂等必须前置 */
+    function findDocByName(documents, fileName) {
+      const want = String(fileName).toLowerCase()
+      return (Array.isArray(documents) ? documents : []).find(d => String(d?.name ?? '').toLowerCase() === want)
+        ?? (Array.isArray(documents) ? documents : []).find(d => normSlashes(d?.path).toLowerCase().endsWith('/' + want))
+        ?? null
+    }
+
+    /** 若 doc_path 首段命中某个库名/路径,按该库解析(跨库读取正确归属) */
+    async function kbOfDocPath(docPath) {
+      const norm = normSlashes(docPath)
+      const seg = norm.includes('/') ? norm.slice(0, norm.indexOf('/')) : ''
+      if (!seg) return null
+      const cat = await catalogList()
+      if (!cat.ok) return null
+      const hit = cat.list.find(kb => String(kb?.name ?? '') === seg || normSlashes(kb?.path) === seg)
+      return hit ? { kbId: hit.kbId, name: hit.name } : null
+    }
+
+    // ================= 工具 ×2(kb_agent / kb_agent_status) =================
     // 外部系统不再拼装检索/入库步骤:一个对话工具把任务原话交给 rag-knowledge
     // 的原生 Agent(claude SDK + QDCVR skill + kb-mcp),检索/入库/经验/图谱全部
     // 由知识库内部 Agent 自主完成,直接返回最终结果。
@@ -307,7 +457,7 @@ export default {
     ctx.omp.registerTool({
       name: 'kb_agent',
       label: '知识库Agent',
-      description: '与 rag-knowledge 知识库的原生 Agent 对话(知识库操作唯一入口,功能解耦)。把任务原话交给它:检索问答(知识库侧自动走 QDCVR 全流程,返回带引用的可信答案)、文档入库(给出标题与完整 markdown 正文,action=ingest)、经验沉淀(action=ingest)、图谱关联等,全部由知识库内部 Agent 自主处理并返回最终结果。入库类动作会进入平台审批(HITL),批准后才提交。',
+      description: '与 rag-knowledge 知识库的原生 Agent 对话(知识库操作唯一入口,功能解耦)。把任务原话交给它:检索问答(知识库侧自动走 QDCVR 全流程,返回带引用的可信答案)、文档入库(给出标题与完整 markdown 正文,action=ingest)、经验沉淀(action=ingest)、图谱关联等,全部由知识库内部 Agent 自主处理并返回最终结果。入库类动作会进入平台审批(HITL),批准后才提交。只读检索若需确定性/低延迟,优先用 kb_doc_search。',
       parameters: {
         type: 'object',
         properties: {
@@ -328,6 +478,7 @@ export default {
         }
         const prompt = String(args.prompt ?? '').trim()
         if (!prompt) return { text: 'prompt 必填(把要做的任务完整描述给知识库 Agent)。', isError: true }
+        const action = String(args.action ?? '').trim().toLowerCase()
         // 等待语义:wait=true 显式挂起到终态(成功/失败都给完整结果);wait=false/缺省=提交即返。
         // 挂起期间 Agent 的回合被本工具调用占住——结构上保证"任务未完不能标记完成"。
         const legacyAsync = args.wait === undefined && String(args.mode ?? '').trim().toLowerCase() === 'async'
@@ -337,16 +488,23 @@ export default {
         // 缺省 'default' 标准审批档;此前缺省传递 bypassPermissions 允许 Agent 自行提权。
         // RAG web 侧硬上限 600s(MAX_TIMEOUT_MS);异步入库给足上限,避免 540s 提前截断。
         const harness = agentHarness()
-        const body = { prompt, timeout_ms: mode === 'sync' ? waitSec * 1000 : 600000, mode, permission: 'default', ...(harness ? { harness } : {}) }
+        // 有界 prompt(api-web §7.4):只读检索追加执行约束,降低无界深检索触发 600s 硬顶的概率。
+        // 入库(ingest)不改写业务内容,避免污染待入库正文。
+        const boundedPrompt = action === 'ingest' ? prompt : `${prompt}\n\n执行约束(平台侧追加):按 /knowledgebase-search skill 的快速路径作业(kb_list 甄别 → kb_search_vector → kb_laya_judge 一批 ≤6 refs → 至多 1-2 次 kb_doc_read 验证),不要委派子代理,不要浏览仓库文件。最终答案 ≤800 字并给出 doc_path 出处。`
+        const body = { prompt: boundedPrompt, timeout_ms: mode === 'sync' ? waitSec * 1000 : 600000, mode, permission: 'default', ...(harness ? { harness } : {}) }
 
         if (mode === 'async') {
           // 异步:立即返回 task_id,知识库后台完成;结果稍后用 kb_agent_status 查询
-          const sub = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: 30000, retries: 0 })
+          const sub = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: 30000, retries: 0, retry429Ms: 30000 })
           if (!sub.ok) {
+            bump('kb_agent', false)
             return { text: '知识库异步任务提交失败:' + describeKbFailure(sub), isError: true }
           }
           const taskId = String(sub.body?.task_id ?? '')
-          if (!taskId) return { text: '知识库异步任务提交异常:响应缺少 task_id。', isError: true }
+          if (!taskId) {
+            bump('kb_agent', false)
+            return { text: '知识库异步任务提交异常:响应缺少 task_id。', isError: true }
+          }
           // 落 kv:异步任务与发起者归因,供后台轮询主动回执;进程重启后仍可继续跟踪
           ctx.kv.set(kbTaskKey(taskId), {
             taskId,
@@ -356,15 +514,24 @@ export default {
             channelId: agent?.channelId ?? '',
             prompt: prompt.slice(0, 160),
           })
+          bump('kb_agent', true)
           return { text: '已提交知识库异步任务(后台执行中,无需等待):\ntask_id=' + taskId + '\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wait_seconds=120) 等待并获取结果。' }
         }
 
-        // 同步请求禁止网络重试:POST 可能已在知识库侧启动回合,重试会重复入库/重复生成
-        const r = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: waitSec * 1000 + 30000, retries: 0 })
+        // 同步请求禁止网络重试:POST 可能已在知识库侧启动回合,重试会重复入库/重复生成。
+        // 读超时 ≥750s(L1:服务端 600s 硬顶,超时回合回包可能晚于 630s)。
+        const syncTimeoutMs = Math.max(waitSec * 1000 + 30_000, 750_000)
+        const r = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: syncTimeoutMs, retries: 0, retry429Ms: 30000 })
         if (!r.ok) {
-          return { text: '知识库 Agent 调用失败(本次调用即终态,失败结果已如实返回):' + describeKbFailure(r), isError: true }
+          bump('kb_agent', false)
+          // 只读检索类失败 → 追加确定性兜底指引(api-web §7.9:two-stage 可作只读降级)
+          const fallback = action !== 'ingest'
+            ? '\n\n降级方案:本次为只读检索,可直接改用 kb_doc_search(query=同一个问题,kb=目标库) 走两段检索(不依赖知识库内部 Agent 回合)。'
+            : ''
+          return { text: '知识库 Agent 调用失败(本次调用即终态,失败结果已如实返回):' + describeKbFailure(r) + fallback, isError: true }
         }
         const reply = String(r.body?.reply ?? '').trim()
+        bump('kb_agent', true)
         return { text: '✅ 知识库任务完成(等待到终态)。\n\n' + (reply || '(知识库 Agent 返回空回复)') }
       },
     })
@@ -382,6 +549,8 @@ export default {
         required: ['task_id'],
       },
       roles: ['lead', 'worker'],
+      riskClass: 'read',
+      noRefs: true,
       handler: async (args) => {
         if (!state.outbound) {
           return { text: '知识库 Agent 不可用:' + outboundOff().error + '。修复后重启服务。', isError: true }
@@ -424,6 +593,302 @@ export default {
       },
     })
 
+    // ================= 工具 ×4(文档面:确定性,不依赖内部 agent 回合) =================
+
+    ctx.omp.registerTool({
+      name: 'kb_doc_create',
+      label: '创建知识库文档',
+      description: '把 Markdown 文档写入 rag-knowledge 知识库(缺省 aw-docs)并重建索引。name=标题(同名已存在视为成功,幂等);content=完整正文;可选 description/tags。返回 doc_path,可直接交给 kb_doc_read/kb_doc_search 验证。写类工具,调用留审计。',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: '文档标题/文件名(自动补 .md;同名文档已存在时幂等返回既有 doc_path)' },
+          content: { type: 'string', description: '完整 Markdown 正文(纯文本直入;超过服务端大文档阈值时由服务端拆分)' },
+          description: { type: 'string', description: '文档描述(可选;进入检索元数据,建议 1-2 句)' },
+          kb: { type: 'string', description: `目标知识库名或 kbId(缺省 ${DOCS_KB_NAME};经验库是 ${KB_NAME},显式指定时输出漂移警告)` },
+          tags: { type: 'array', items: { type: 'string' }, description: '标签(可选,≤16 项;创建后尽力写入,失败不影响文档落盘)' },
+        },
+        required: ['name', 'content'],
+      },
+      roles: ['lead', 'worker'],
+      riskClass: 'write',
+      noRefs: true,
+      handler: async (args, agent) => {
+        try {
+          if (!state.outbound) return { text: '出站调用已禁用:' + outboundOff().error, isError: true }
+          const rawName = String(args.name ?? '').trim()
+          const content = String(args.content ?? '')
+          if (!rawName) return { text: 'name 必填(文档标题)。', isError: true }
+          if (!content.trim()) return { text: 'content 必填(文档正文不能为空)。', isError: true }
+          // 文件名净化:Windows 非法字符(<>:"/\|?* 与控制字符)会让服务端写盘 500;
+          // 在客户端先行替换为 '-' 并保留中文/空格,避免不可读的 500。
+          const unsafeChars = '<>:"/\\|?*'
+          const safeBase = Array.from(rawName)
+            .map(ch => (ch.charCodeAt(0) < 32 || unsafeChars.includes(ch) ? '-' : ch))
+            .join('')
+            .replace(/\s+/g, ' ')
+            .trim()
+          const fileName = /\.[A-Za-z0-9]+$/.test(safeBase) ? safeBase : `${safeBase}.md`
+          const kbSel = await resolveKb(args.kb)
+          if (!kbSel.ok) return { text: kbSel.error, isError: true }
+          const { kbId: targetKb, name: targetName } = kbSel
+          const drift = targetName === KB_NAME
+            ? `\n⚠️ 目标库是经验库 ${KB_NAME};文档默认应入 ${docsKbName()}(已按显式指定执行,未拦截)。`
+            : ''
+
+          // 幂等前置:服务端 create 对重名是「自动改名 (n)」而非 409 —— 先按同名查既有文档,
+          // 命中即视为完成(同一份文档重复调用不会产生副本)。
+          const listed = await docList(targetKb)
+          if (listed.ok) {
+            const hit = findDocByName(listed.body?.documents, fileName)
+            if (hit?.path) {
+              bump('kb_doc_create', true)
+              return { text: `status=exists doc_path=${normSlashes(hit.path)} kb=${targetName} chars=${String(content).length} idempotent=yes\n文档「${fileName}」已存在于 ${targetName},本次未重复创建(幂等)。` + drift }
+            }
+          }
+          else if (listed.status === 401 || listed.status === 403) {
+            bump('kb_doc_create', false)
+            return { text: describeKbFailure(listed), isError: true }
+          }
+
+          const created = await callJson('POST', `${web()}/api/kb/documents/create`,
+            { kbId: targetKb, name: fileName, content, description: String(args.description ?? '').trim() },
+            { timeoutMs: WRITE_TIMEOUT_MS, retries: 0 })
+          if (!created.ok) {
+            // 并发竞态或服务端策略:409 时回查同名文档,命中即按幂等成功
+            if (created.status === 409) {
+              const again = await docList(targetKb)
+              const hit = findDocByName(again.body?.documents, fileName)
+              if (hit?.path) {
+                bump('kb_doc_create', true)
+                return { text: `status=exists doc_path=${normSlashes(hit.path)} kb=${targetName} chars=${String(content).length} idempotent=yes\n重名冲突(HTTP 409)但同名文档已存在,按幂等成功处理。` + drift }
+              }
+            }
+            bump('kb_doc_create', false)
+            return { text: `文档创建失败(${describeKbFailure(created)})。先 kb_catalog 确认库「${targetName}」存在、token 有效后重试。`, isError: true }
+          }
+          const docPath = normSlashes(created.body?.document?.path ?? '')
+          const docId = String(created.body?.document?.id ?? '')
+          const partCount = Number(created.body?.part_count ?? 0) || 0
+          const splitNote = created.body?.split ? `(服务端按大文档拆分为 ${partCount} 篇,首篇 doc_path 如下)` : ''
+
+          // 单文档索引(documents/create 只写盘,不建向量/BM25 —— 文档 §5.5)。
+          // 走 backend /api/v1/search/index-document:向量 + 图谱 + **BM25 增量**
+          // (实测:web /api/search/reindex 不刷新 backend 进程内 BM25,新文档两段检索会 0 命中)。
+          let indexState = 'ok'
+          const idx = await callJson('POST', `${base()}/api/v1/search/index-document`,
+            docId
+              ? { doc_id: docId, doc_name: fileName, description: String(args.description ?? '').trim() }
+              : { kb_id: targetKb, doc_path: docPath, doc_name: fileName, description: String(args.description ?? '').trim(), content },
+            { timeoutMs: WRITE_TIMEOUT_MS, retries: 0 })
+          if (!idx.ok) {
+            // 索引失败不影响文档落盘:退一步整库 reindex(会重建向量;BM25 是否刷新取决于后端版本),如实标注降级
+            const rx = await callJson('POST', `${web()}/api/search/reindex`, { kb_id: targetKb }, { timeoutMs: WRITE_TIMEOUT_MS, retries: 0 })
+            indexState = rx.ok ? 'degraded(reindex)' : `failed(${idx.error})`
+            ctx.logger.warn(`kb_doc_create:index-document 失败(${idx.status ?? '?'} ${idx.error});fallback reindex=${rx.ok ? 'ok' : rx.error}`)
+          }
+          // 可见性窗口:create 已返回 path 时一次即时确认;缺失时按 3×5s 重试列表(≤15s)
+          let visible = Boolean(docPath)
+          if (!visible) {
+            for (let i = 0; i < 3 && !visible; i++) {
+              if (i > 0) await sleep(5000)
+              const again = await docList(targetKb)
+              const hit = findDocByName(again.body?.documents, fileName)
+              if (hit?.path) {
+                visible = true
+                break
+              }
+            }
+          }
+          // 标签:尽力写入(PATCH 失败不影响文档本体)
+          let tagsState = 'none'
+          if (Array.isArray(args.tags) && args.tags.length && docPath) {
+            const tagRes = await callJson('PATCH', `${web()}/api/kb/documents/tags`,
+              { kbId: targetKb, docPath, tags: args.tags.map(String).slice(0, 16) },
+              { timeoutMs: READ_TIMEOUT_MS, retries: 0 })
+            tagsState = tagRes.ok ? 'ok' : `failed(${tagRes.error})`
+          }
+          const finalPath = docPath || '(列表暂未确认,可稍后用 kb_doc_search 检索)'
+          bump('kb_doc_create', true)
+          return {
+            text: [
+              `status=created doc_path=${finalPath} kb=${targetName} chars=${String(content).length} index=${indexState} tags=${tagsState}${splitNote ? ' split=yes' : ''}`,
+              `✅ 文档「${fileName}」已写入 ${targetName}${splitNote}。${visible ? '' : ' 列表可见性暂未确认(索引窗口),稍后 kb_doc_search 复核。'}`,
+              `调用者=${agent?.agentId ?? '(用户直调)'} 角色=${agent?.role ?? '-'}${drift}`,
+              `下一步:kb_doc_search(query=标题或关键词) 验证可检索;kb_doc_read(doc_path) 核对正文。`,
+            ].filter(Boolean).join('\n'),
+          }
+        }
+        catch (err) {
+          bump('kb_doc_create', false)
+          return { text: `kb_doc_create 异常:${err?.message ?? err}`, isError: true }
+        }
+      },
+    })
+
+    ctx.omp.registerTool({
+      name: 'kb_doc_search',
+      label: '检索知识库文档',
+      description: '检索 rag-knowledge 文档(two-stage 两段检索为主,失败自动关键词兜底)。query=检索词(自然语言);kb 缺省 aw-docs,top_k 缺省 5。返回每条 doc_path+分数+片段,可直接接 kb_doc_read 读全文。只读、秒级。',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: '检索词/问题(自然语言;中文可直接用)' },
+          kb: { type: 'string', description: `知识库名或 kbId(缺省 ${DOCS_KB_NAME};不传=文档库)` },
+          top_k: { type: 'number', description: '返回条数(1-20,缺省 5)' },
+        },
+        required: ['query'],
+      },
+      roles: ['lead', 'worker'],
+      riskClass: 'read',
+      noRefs: true,
+      handler: async (args) => {
+        try {
+          if (!state.outbound) return { text: '出站调用已禁用:' + outboundOff().error, isError: true }
+          const query = String(args.query ?? '').trim()
+          if (!query) return { text: 'query 必填(检索词)。', isError: true }
+          const kbsel = await resolveKb(args.kb)
+          if (!kbsel.ok) return { text: kbsel.error, isError: true }
+          const topK = Math.min(Math.max(Math.round(Number(args.top_k) || 5), 1), 20)
+          const ts = await ragCall('POST', `${web()}/api/search/two-stage`, { query, kb_id: kbsel.kbId, stage2_top_k: topK }, { timeoutMs: READ_TIMEOUT_MS })
+          if (ts.ok) {
+            const results = Array.isArray(ts.body?.stage2?.results) ? ts.body.stage2.results.slice(0, topK) : []
+            const total = Number(ts.body?.total_results ?? results.length)
+            if (!results.length) {
+              bump('kb_doc_search', true)
+              return { text: `status=ok mode=two-stage hits=0 kb=${kbsel.name} total=${total}\n未命中。放宽关键词(去掉限定词),或确认文档是否已入库(kb_catalog 看 documentCount)。` }
+            }
+            const lines = results.map((r, i) => {
+              const snippet = String(r?.content ?? '').replace(/\s+/g, ' ').slice(0, 220)
+              return `${i + 1}. doc_path=${normSlashes(r?.doc_path)} score=${Number(r?.score ?? 0).toFixed(4)}${r?.chunk_index != null ? ` chunk=${r.chunk_index}` : ''}\n   ${snippet}${snippet.length >= 220 ? '…' : ''}`
+            })
+            bump('kb_doc_search', true)
+            return {
+              text: [
+                `status=ok mode=two-stage hits=${results.length} kb=${kbsel.name} total=${total}`,
+                ...lines,
+                '',
+                '读全文 → kb_doc_read(doc_path=<上面任一条>)。',
+              ].join('\n'),
+            }
+          }
+          // 兜底:关键词检索(api-web §5.4/§7.9)
+          const kw = await ragCall('GET', `${web()}/api/kb/search?query=${encodeURIComponent(query)}&top_k=${topK}`, null, { timeoutMs: READ_TIMEOUT_MS })
+          if (kw.ok) {
+            const hits = Array.isArray(kw.body?.hits) ? kw.body.hits.slice(0, topK) : []
+            bump('kb_doc_search', hits.length > 0)
+            if (!hits.length) {
+              return { text: `status=ok mode=keyword-degraded hits=0 kb=(跨库) total=0\n两段检索不可用(${ts.error}),关键词兜底也未命中。稍后重试两段检索,或换关键词。` }
+            }
+            const lines = hits.map((h, i) => `${i + 1}. doc_path=${normSlashes(h?.path)} score=${Number(h?.score ?? 0).toFixed(2)} kb=${h?.kbName ?? '?'}\n   名称=${h?.docName ?? '?'} 描述=${String(h?.description ?? '').slice(0, 160)}`)
+            return {
+              text: [
+                `status=ok mode=keyword-degraded hits=${hits.length} kb=(跨库) degraded=two-stage(${ts.error})`,
+                ...lines,
+                '',
+                '注意:两段检索(向量)不可用,本次为关键词元数据兜底(仅名称/描述匹配,不扫正文);命中后一定要 kb_doc_read 核实。',
+              ].join('\n'),
+            }
+          }
+          bump('kb_doc_search', false)
+          return { text: `文档检索失败(two-stage:${describeKbFailure(ts)};关键词兜底:${kw.error})。检查 web 地址/token 与 IDD/RAG 服务状态。`, isError: true }
+        }
+        catch (err) {
+          bump('kb_doc_search', false)
+          return { text: `kb_doc_search 异常:${err?.message ?? err}`, isError: true }
+        }
+      },
+    })
+
+    ctx.omp.registerTool({
+      name: 'kb_doc_read',
+      label: '读取知识库文档',
+      description: '读取知识库文档正文(doc_path 来自 kb_doc_search / kb_doc_create)。kb 缺省 aw-docs;doc_path 含库名前缀时自动识别归属。max_chars 截断(缺省 4000,上限 20000)。返回正文与截断标记,可核对内容一致性。',
+      parameters: {
+        type: 'object',
+        properties: {
+          doc_path: { type: 'string', description: '文档路径(kb_doc_search 返回的 doc_path,或库内相对路径/文件名)' },
+          kb: { type: 'string', description: `知识库名或 kbId(缺省 ${DOCS_KB_NAME};doc_path 自带库名前缀时以路径为准)` },
+          max_chars: { type: 'number', description: '正文截断上限(500-20000,缺省 4000)' },
+        },
+        required: ['doc_path'],
+      },
+      roles: ['lead', 'worker'],
+      riskClass: 'read',
+      noRefs: true,
+      handler: async (args) => {
+        try {
+          if (!state.outbound) return { text: '出站调用已禁用:' + outboundOff().error, isError: true }
+          const docPath = String(args.doc_path ?? '').trim()
+          if (!docPath) return { text: 'doc_path 必填(先用 kb_doc_search 检索)。', isError: true }
+          const maxChars = Math.min(Math.max(Math.round(Number(args.max_chars) || 4000), 500), 20000)
+          let kbSel = await resolveKb(args.kb)
+          if (!kbSel.ok) return { text: kbSel.error, isError: true }
+          // 路径自带库名前缀(如 aw-docs/xxx.md)→ 按前缀解析归属,避免跨库读取时被拼错库根
+          const byPath = await kbOfDocPath(docPath)
+          if (byPath) kbSel = { ok: true, kbId: byPath.kbId, name: byPath.name }
+          const r = await ragCall('GET', `${web()}/api/kb/document?kbId=${encodeURIComponent(kbSel.kbId)}&docPath=${encodeURIComponent(docPath)}&max_chars=${maxChars}`, null, { timeoutMs: READ_TIMEOUT_MS })
+          if (!r.ok) {
+            bump('kb_doc_read', false)
+            const detail = r.status === 400
+              ? 'doc_path 无法在目标库内解析(检查库名与路径;路径可来自 kb_doc_search)'
+              : r.status === 404
+                ? '404 文档不存在(路径可能拼错;先用 kb_doc_search 重新获取 doc_path)'
+                : describeKbFailure(r)
+            return { text: `文档读取失败(${detail})。`, isError: true }
+          }
+          const content = String(r.body?.content ?? '')
+          bump('kb_doc_read', true)
+          return {
+            text: [
+              `status=ok doc_path=${normSlashes(r.body?.path ?? docPath)} kb=${kbSel.name} chars=${content.length} total_lines=${r.body?.totalLines ?? '?'} truncated=${r.body?.truncated ? 'yes' : 'no'}`,
+              content,
+              r.body?.truncated ? `…[已截断:max_chars=${maxChars};需要更多内容可提高 max_chars(≤20000)]` : '',
+            ].filter(Boolean).join('\n'),
+          }
+        }
+        catch (err) {
+          bump('kb_doc_read', false)
+          return { text: `kb_doc_read 异常:${err?.message ?? err}`, isError: true }
+        }
+      },
+    })
+
+    ctx.omp.registerTool({
+      name: 'kb_catalog',
+      label: '知识库目录',
+      description: '列出 rag-knowledge 全部知识库:名称、kbId、文档数。用于确认目标库存在(如 aw-docs/aw-industrial)与挑选 kb_doc_search 的 kb 参数。只读一次调用,≤15s。',
+      parameters: { type: 'object', properties: {} },
+      roles: ['lead', 'worker'],
+      riskClass: 'read',
+      noRefs: true,
+      handler: async () => {
+        try {
+          if (!state.outbound) return { text: '出站调用已禁用:' + outboundOff().error, isError: true }
+          const cat = await catalogList(true)
+          if (!cat.ok) {
+            bump('kb_catalog', false)
+            return { text: `知识库目录不可用(${describeKbFailure(cat)})。`, isError: true }
+          }
+          const list = cat.list
+          const shown = list.slice(0, 60)
+          const lines = shown.map(kb => `- ${kb?.name ?? '?'} | ${kb?.kbId ?? '?'} | docs=${kb?.documentCount ?? '?'}${kb?.parentId ? ' (子库)' : ''}`)
+          bump('kb_catalog', true)
+          return {
+            text: [
+              `status=ok kbs=${list.length} shown=${shown.length} docs_kb=${docsKbName()}(${docsKbId() || '按需自愈'})`,
+              ...lines,
+              list.length > shown.length ? `…还有 ${list.length - shown.length} 个库未列出(按需用 kb 参数直接指定名称)` : '',
+            ].filter(Boolean).join('\n'),
+          }
+        }
+        catch (err) {
+          bump('kb_catalog', false)
+          return { text: `kb_catalog 异常:${err?.message ?? err}`, isError: true }
+        }
+      },
+    })
+
     // 后台轮询:15s 一次,终态主动回执(与 diag-bridge sweep 同构)
     ctx.timer.setInterval(() => {
       pollKbTasks().catch(err => ctx.logger.warn(`知识库任务轮询异常(继续):${err?.message ?? err}`))
@@ -444,7 +909,7 @@ export default {
       return q
     }
 
-    // 健康:后端 + web 存活、kb.id(缺失时按需自愈 ensureKB,token 后配的场景)、出站开关
+    // 健康:后端 + web 存活、双 kb.id(缺失时按需自愈)、出站开关、token 实测、工具计数
     ctx.route('GET', '/health', async () => {
       const backend = state.outbound
         ? await callJson('GET', `${base()}/api/v1/health`, null, { timeoutMs: 5000, retries: 0 })
@@ -452,30 +917,37 @@ export default {
       const webR = state.outbound
         ? await callJson('GET', `${web()}/api/kb/catalog`, null, { timeoutMs: 5000, retries: 0 })
         : { ok: false, error: '出站已禁用' }
-      if (!kbId() && state.outbound && backend.ok && webR.ok) {
-        await ensureKB().catch(() => {}) // 装载期 401/不可达导致 kb.id 缺失 → 探活时自愈
+      if ((!kbId() || !docsKbId()) && state.outbound && webR.ok) {
+        // 装载期 401/不可达导致 kb.id 缺失 → 探活时自愈(经验库与文档库各自独立)
+        if (!kbId()) await ensureKbByName(KB_NAME, 'kb.id', { experience: true }).catch(() => {})
+        if (!docsKbId()) await ensureKbByName(docsKbName(), 'docs.kb.id').catch(() => {})
       }
+      // token 三态实测(api-web §3:Web 层 POST /api/auth/verify {token});未配 token 时按匿名
+      const verify = await (async () => {
+        if (!state.outbound) return { configured: Boolean(kbToken()), accepted: null, reason: '出站已禁用' }
+        if (!kbToken()) return { configured: false, accepted: true, reason: 'anonymous' }
+        const v = await callJson('POST', `${web()}/api/auth/verify`, { token: kbToken() }, { timeoutMs: 5000, retries: 0 })
+        if (v.ok) return { configured: true, accepted: v.body?.valid === true, reason: 'verify' }
+        // verify 端点不可用(旧后端)→ 回退到受保护 GET /auth/me
+        const me = await callJson('GET', `${base()}/api/v1/auth/me`, null, { timeoutMs: 5000, retries: 0 })
+        return { configured: true, accepted: me.ok ? true : (me.status === 401 || me.status === 403 ? false : null), reason: 'auth/me-fallback' }
+      })()
       return {
         plugin: 'rag-bridge',
+        version: '2.3.0',
         outbound: state.outbound,
         auth: kbToken() ? 'bearer' : 'anonymous',
-        // token 配置与「实测是否被接受」分开呈现:401/403 = 明确被拒(运维一眼看出 token 配错),
-        // 网络不通/超时为 null(未知),2xx 或非鉴权类失败为 true(未被拒)。
-        // 实测打受保护 GET /api/v1/auth/me —— rag 后端 GET 只读端点公开(/health 匿名可过,
-        // 测不出 token 对错),/auth/me 无 token/错 token 均 401。
         token: {
           configured: Boolean(kbToken()),
-          accepted: await (async () => {
-            if (!state.outbound) return null
-            if (!kbToken()) return backend.ok ? true : null
-            const me = await callJson('GET', `${base()}/api/v1/auth/me`, null, { timeoutMs: 5000, retries: 0 })
-            return me.ok ? true : (me.status === 401 || me.status === 403 ? false : null)
-          })(),
+          accepted: verify.accepted,
+          verify: verify.reason,
         },
-        kb: { name: KB_NAME, id: kbId() || null },
+        kb: { name: KB_NAME, id: kbId() || null, role: 'experience' },
+        docs: { name: docsKbName(), id: docsKbId() || null, role: 'documents' },
         backend: { url: base(), ok: backend.ok, ...(backend.ok ? { status: backend.body?.status ?? null } : { status: backend.status ?? null, error: backend.error }) },
         web: { url: web(), ok: webR.ok, ...(webR.ok ? { knowledgeBases: webR.body?.count ?? null } : { error: webR.error }) },
         counters: { store: ctx.kv.get('store.count') ?? 0, index: ctx.kv.get('index.count') ?? 0 },
+        toolCounters: toolCounters(),
       }
     })
 
