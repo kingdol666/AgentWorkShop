@@ -436,3 +436,28 @@ test('意图目录:improvement-advisory 进静态目录与模板(7 意图)', asy
   const desc = run.tools.get('diag_run')!.description ?? ''
   assert.match(desc, /7 意图/)
 })
+
+test('diag_deposit:写类注册(lead+worker/write)+ 未知 run 可读拒绝', async () => {
+  const h = makePluginHarness()
+  await plugin.setup(h.ctx)
+  const tool = h.tools.get('diag_deposit')!
+  assert.ok(tool, 'diag_deposit 必须注册')
+  assert.deepEqual(tool.roles, ['lead', 'worker'])
+  assert.equal(tool.riskClass, 'write')
+  const r = await tool.handler({ run_id: 'no-such-run' }, { agentId: 'ag-1', channelId: 'ch-1', role: 'lead', name: 'lead' })
+  assert.equal(r.isError, true)
+  assert.match(r.text, /不在本插件台账/)
+})
+
+test('health:contract + toolCounters(WS-4 S3)', async () => {
+  const h = makePluginHarness({ taskResponses: { 'TASK-H': { task_id: 'TASK-H', status: 'running' } } })
+  await plugin.setup(h.ctx)
+  h.kv.set('run:r-h', { line: 'ln-1', status: 'running', contract: 'v1', taskId: 'TASK-H', intent: 'quick-screen' })
+  await h.tools.get('diag_status')!.handler({ run_id: 'r-h' }, { agentId: 'ag-1', channelId: 'ch-1', role: 'lead', name: 'lead' })
+  const health = await h.routes.get('GET /health')!() as {
+    contract: string
+    toolCounters: Record<string, { ok: number, err: number }>
+  }
+  assert.equal(health.contract, 'auto')
+  assert.ok(health.toolCounters.diag_status.ok >= 1, '工具计数应可见')
+})

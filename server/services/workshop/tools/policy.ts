@@ -9,6 +9,7 @@
  */
 import { getToolRegistryRepo, type ChannelToolPolicySnapshot, type ToolPolicyMode } from '../db/tool-registry.repo'
 import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES } from '../agents/tool-classes'
+import { listPluginTools } from '../agents/plugin-tools'
 import { createLogger } from '../logger'
 
 const log = createLogger('workshop.tool-policy')
@@ -28,8 +29,22 @@ let degradeWarned = false
 
 /** 写族:策略/目录不可判定时这些工具一律拒绝(物理安全优先) */
 const POLICY_WRITE_TOOL_NAMES = new Set<string>([...HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, 'line_start', 'line_stop'])
+/**
+ * 写族联合判定(WS-4 S1):静态名单 ∪ 已注册插件工具中 riskClass='write' 的工具。
+ * 插件工具历史上默认不在静态名单 → 策略不可读时不享受 fail-closed,这是真实缺口。
+ * 直接读注册表实时 Map(条目数 ~十几,O(n) 无压力),注册/热重载变更天然即时生效,
+ * 不做缓存(缓存反而引入"注册变更未失效"的静默窗口)。
+ */
 export function isPolicyWriteTool(name: string): boolean {
-  return POLICY_WRITE_TOOL_NAMES.has(name)
+  if (POLICY_WRITE_TOOL_NAMES.has(name)) return true
+  try {
+    return listPluginTools().get(name)?.riskClass === 'write'
+  }
+  catch {
+    // 注册表不可读:保守按写族处理?否 —— 静态名单外无法判定,交由上层目录闸门;
+    // 这里只回答"已知写族",返回 false 不改变物理写名单的 fail-closed 语义。
+    return false
+  }
 }
 
 function failOpenMode(): boolean {
