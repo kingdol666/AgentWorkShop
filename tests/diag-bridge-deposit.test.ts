@@ -109,3 +109,38 @@ test('可见性窗口:两段检索暂不可用 → 关键词兜底并如实标�
   // 关键词兜底(跨库)命中的 path 是反斜杠形式,仍应识别为已入库
   assert.equal(r.verified, true)
 })
+
+test('legacy 契约:workspace 目录名与 scene(-/_)不一致时仍能取到 report.md', async () => {
+  const h = makeCtx({ report: '' })
+  const baseGet = h.ctx.http.get
+  h.ctx.http.get = async (url: string) => {
+    if (url.includes('/api/diagnosis/tasks/run-old')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          data: {
+            name: 'accept-scene_run-old',
+            status: 'completed',
+            result: { score: 90, verdict: 'OK', report_md_path: 'D:/ws/1795000000000_accept_scene/report.md' },
+          },
+        }),
+      }
+    }
+    if (url.endsWith('/api/files/workspace')) {
+      return { ok: true, status: 200, json: async () => ({ success: true, data: [{ name: '1795000000000_accept_scene', hasReport: true }] }) }
+    }
+    if (url.includes('/api/files/workspace/report/1795000000000_accept_scene')) {
+      return { ok: true, status: 200, json: async () => ({ success: true, data: { content: '# legacy report\n\n主轴温度 155.9 高于目标窗' } }) }
+    }
+    return baseGet(url)
+  }
+  const r = await depositRunToRag(h.ctx, {
+    runId: 'run-old',
+    meta: { line: 'ln-1', intent: 'quick-screen', contract: 'legacy', scene: 'accept-scene', runId: 'run-old' },
+  })
+  assert.equal(r.ok, true, r.error)
+  assert.match(String(r.docPath), /aw-docs\/ln-1_quick-screen_run-old\.md/)
+  assert.ok(h.calls.some(c => c.url.includes('/api/kb/documents/create')))
+})
