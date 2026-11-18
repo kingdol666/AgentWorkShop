@@ -3,8 +3,17 @@
     "settings": {
       "base_url": "rag-knowledge 后端地址",
       "web_url": "rag-knowledge Web 地址",
+      "docs_kb": "文档知识库名",
       "token": "rag-knowledge API Token",
       "agent_harness": "知识库 Agent 引擎"
+    },
+    "tools": {
+      "kb_agent": "知识库Agent",
+      "kb_agent_status": "知识库任务状态",
+      "kb_doc_create": "创建知识库文档",
+      "kb_doc_search": "检索知识库文档",
+      "kb_doc_read": "读取知识库文档",
+      "kb_catalog": "知识库目录"
     },
     "panel": {
       "title": "工业知识库(rag-knowledge)",
@@ -45,8 +54,17 @@
     "settings": {
       "base_url": "rag-knowledge backend URL",
       "web_url": "rag-knowledge Web URL",
+      "docs_kb": "Documents knowledge base name",
       "token": "rag-knowledge API token",
       "agent_harness": "Knowledge-base agent engine"
+    },
+    "tools": {
+      "kb_agent": "Knowledge base agent",
+      "kb_agent_status": "KB task status",
+      "kb_doc_create": "Create KB document",
+      "kb_doc_search": "Search KB documents",
+      "kb_doc_read": "Read KB document",
+      "kb_catalog": "KB catalog"
     },
     "panel": {
       "title": "Industrial knowledge base (rag-knowledge)",
