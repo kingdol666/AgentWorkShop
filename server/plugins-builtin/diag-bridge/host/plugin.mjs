@@ -195,11 +195,15 @@ export default {
           let dataPaths
           let via = ''
           let manifest = null
+          // 数据集所属产线(manifest.lines[0]):export 模式若未显式传 line,用它做产线锁与归因,
+          // 避免所有离线数据集都挤在 'offline-data' 单锁上,也让 diag_stop/diag_chat 的产线授权可判定。
+          let datasetLine = ''
           if (exportId) {
             const up = await uploadExportDataset(ctx, exportId)
             if (!up.ok) return { text: up.error, isError: true }
             dataPaths = up.dataPaths
             manifest = up.manifest
+            datasetLine = String((Array.isArray(manifest?.lines) ? manifest.lines[0]?.lineId : '') ?? '').trim()
             const nodeCount = Array.isArray(manifest?.nodes) ? manifest.nodes.length : dataPaths.length - 1
             const win = manifest?.window ? `窗口 ${String(manifest.window.from ?? '').slice(0, 16)} ~ ${String(manifest.window.to ?? '').slice(0, 16)}` : ''
             via = `数据集 ${up.folder}(${nodeCount} 节点全量时序 + manifest,${win})`
@@ -215,7 +219,10 @@ export default {
             question = `${lineNames} 产线数据集分析(${via})${note}`
           }
           const r = await startDiagnosis(ctx, {
-            line: line || 'offline-data',
+            line: line || datasetLine || 'offline-data',
+            // 授权作用域:显式 line 才纳入产线可读面;纯离线数据集(lineScope='')不按产线拒,
+            // 其读取面已由 daq_export/数据集归属约束。stop/chat 用 lineScope 判定。
+            lineScope: line,
             fromMs, toMs,
             question,
             scene: args.scene ? String(args.scene) : '',
@@ -426,7 +433,7 @@ export default {
       if (!meta) {
         return { denied: { text: `run ${id} 不在本插件台账:只能对平台发起过的分析续聊/停止(用 diag_status 查 run_id)。`, isError: true } }
       }
-      const line = String(meta.line ?? '').trim()
+      const line = String(meta.lineScope ?? meta.line ?? '').trim()
       if (line && agent?.agentId) {
         try {
           const scope = await ctx.services.get('agentScope')
