@@ -91,7 +91,11 @@ test('maxDurationMs bounds an in-flight adapter that ignores abort signals', asy
   research.approveRead('run-expired')
 
   await assert.rejects(() => research.execute('run-expired'), (error: unknown) => error instanceof ResearchOrchestratorError && error.code === 'RESEARCH_EXPIRED')
-  assert.equal(receivedTimeout, 25)
+  // The adapter receives the remaining budget, computed from a wall clock; a 1ms tick
+  // between deadline creation and the adapter call can yield 24 on a loaded CI runner.
+  // Assert the budget boundary (never above maxDurationMs, positive) rather than an exact
+  // millisecond value that is inherently clock-race sensitive.
+  assert.ok(Number.isFinite(receivedTimeout) && receivedTimeout! > 0 && receivedTimeout! <= 25, `remaining budget out of bounds: ${receivedTimeout}`)
   assert.equal(research.get('run-expired').state, 'expired')
   assert.equal(research.get('run-expired').errorCode, 'RESEARCH_EXPIRED')
   assert.equal(store.size(), 0)

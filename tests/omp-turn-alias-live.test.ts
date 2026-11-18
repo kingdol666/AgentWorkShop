@@ -45,7 +45,12 @@ class LiveAgent extends OmpRpcAgentImpl {
 }
 
 test('product OMP agent rotates aliases across persistent live turns', { timeout: 60_000 }, async (t) => {
-  if (!ompAvailable) t.skip('omp binary unavailable (CI/fresh machine); live alias rotation requires it')
+  if (!ompAvailable) {
+    // t.skip() marks the test skipped but does NOT stop execution — without an explicit
+    // return the body still spawns omp and fails with ENOENT on CI/fresh machines.
+    t.skip('omp binary unavailable (CI/fresh machine); live alias rotation requires it')
+    return
+  }
   const root = await mkdtemp(join(tmpdir(), 'aw-omp-product-alias-'))
   const agentDir = join(root, 'agent')
   const work = join(root, 'work')
