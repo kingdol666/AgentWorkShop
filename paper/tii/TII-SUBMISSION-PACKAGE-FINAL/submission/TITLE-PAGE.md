@@ -10,7 +10,7 @@
 - Title: A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations
 - Type: Regular Research Paper
 - Pages: 10 (submission limit ≤ 10)
-- Abstract words: approximately 196 | References: 24 | Figures: 6 | Tables: 4
+- Abstract words: approximately 200 (IEEE-style whitespace count; verify in portal) | References: 24 | Figures: 6 | Tables: 4
 
 ## 2. Authors（按署名顺序）
 
@@ -37,7 +37,7 @@
 
 ## 6. Data availability
 
-Underlying simulator records are available on reasonable request. The S7 narrative and record-level evidence archive are retained by the authors, not routine initial uploads. No physical-plant data were collected.
+Selected simulator records and run summaries are available on reasonable request; complete service snapshots, raw twin samples, and row-level server journals were not retained. The S7 narrative and record-level evidence archive are author-reference materials, not routine initial uploads. No physical-plant data were collected.
 
 ## 7. AI-use disclosure
 

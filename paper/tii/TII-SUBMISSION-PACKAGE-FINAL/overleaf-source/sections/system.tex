@@ -1,11 +1,11 @@
 \section{System Design}
 \label{sec:design}
-The runtime exposes its named services through two entry paths. Task-mediated calls run through the collaboration runtime and a registered agent harness, which hands the agent scoped tools for online acquisition, analysis, and control-intent submission. Direct REST or stdio-MCP calls serve verification and integration. Both paths meet at the shared dispatcher, and scene configuration supplies the context, acquisition bindings, objectives, and write limits.
+The runtime exposes its named services through two entry paths. Task-mediated calls run through the collaboration runtime and a registered agent harness that hands the agent scoped tools for online acquisition, analysis, and control-intent submission. Direct REST or stdio-MCP calls support verification and integration testing. Both paths meet at the shared dispatcher, and scene configuration supplies the context, acquisition bindings, objectives, and write limits.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{resources/fig2.png}
-\caption{Task-mediated and direct tool calls share a dispatcher; a registered agent can acquire observations and submit a control intent, while direct calls provide a verification path. Direct calls need no task. Approved intents undergo route-specific revalidation (omitted here; see Fig.~\ref{fig:hitl}). The no-approval path remains subject to applicable authorization and write guards. Requests rejected by pre-dispatch checks stop before driver dispatch. Feedback and signals are schematic, not measured traces. Approvals, command outcomes, optional readbacks, and later data-acquisition (DAQ) observations are distinct records. In-flight exclusion rejects overlapping writes per node and process; equipment interlocks remain necessary.}
+\caption{Task-mediated and direct tool calls share a dispatcher; a registered agent can acquire observations and submit a control intent, while direct calls provide a verification path. Direct calls do not require a task. Approved intents undergo route-specific revalidation (omitted here; see Fig.~\ref{fig:hitl}). The no-approval path remains subject to applicable authorization and write guards. Requests rejected by pre-dispatch checks stop before driver dispatch. Feedback and signals are schematic, not measured traces. Approvals, command outcomes, optional readbacks, and later data-acquisition (DAQ) observations are distinct records. In-flight exclusion rejects overlapping writes per node and process; equipment interlocks remain necessary.}
 \label{fig:arch}
 \end{figure*}
 
@@ -19,7 +19,7 @@ For each agent turn, the context builder assembles the production context and el
 \label{sec:layers}
 Fig.~\ref{fig:arch} shows the system layers. Task and chat routes use registered harness adapters that provide scoped acquisition and control tools; binding and channel policy constrain available operations. Agent analysis remains distinct from deterministic boundary checks. The figure also shows a schematic feedback path and illustrative signals.
 
-Direct REST agent-tool calls and the stdio-MCP bridge bypass task execution and enter the shared dispatcher. The task route gives the agent context, acquisition targets, and objectives; operation services resolve control mappings and guards. Read/analysis services (DAQ, MES access, retrieval, and optional model services) are separated from write and recipe services. Input/output mappings connect semantic nodes to built-in or plugin drivers, and owning services retain task, command, observation, and configuration records.
+Direct REST agent-tool calls and the stdio-MCP bridge bypass task execution and enter the shared dispatcher. The task route gives the agent context, acquisition targets, and objectives; operation services resolve control mappings and guards. Read and analysis services (DAQ, MES access, retrieval, and optional model services) are separated from write and recipe services. Input/output mappings connect semantic nodes to built-in or plugin drivers, and owning services retain task, command, observation, and configuration records.
 
 \subsection{Scene Configuration as the Integration Boundary}
 \label{sec:scene-config}
@@ -39,7 +39,7 @@ driver adapter; configuration alone does not implement a new protocol.
 
 In the cast-film simulator preset, for example, the MQTT command mapping
 \texttt{linespeed-sp} controls line speed in m/min, while the distinct
-\texttt{film-thickness} mapping supplies thickness in $\mu$m. An agent can
+\texttt{film-thickness} mapping reads film thickness in $\mu$m. An agent can
 acquire the thickness observation, compare it with its objective, and propose a
 line-speed intent; the runtime admits that intent against the control node's
 limits. Sharing MQTT does not make either signal a substitute for the other.

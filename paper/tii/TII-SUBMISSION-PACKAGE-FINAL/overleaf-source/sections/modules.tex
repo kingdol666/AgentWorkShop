@@ -1,6 +1,6 @@
 \section{Operation Governance and Evidence}
 \label{sec:modules}
-Section~\ref{sec:design} defined the shared dispatch contract. This section follows the agent's control intent downstream: scene-specific write admission,
+Section~\ref{sec:design} defined the shared dispatch contract. This section traces the agent's control intent from submission through scene-specific write admission,
 conditional approval, and the records each route returns.
 
 \subsection{Scene-Specific Write Admission}
@@ -29,7 +29,7 @@ rather than the previous recipe's window. Trial overrides are additionally check
 the applicable recipe window.
 
 Algorithm~1 details the single-node write sequence after shared dispatch; Fig.~\ref{fig:hitl} maps the same boundary across the single-node and recipe routes. For
-\texttt{optimization\_explore} the algorithm shows the ordinary full-limit profile: a failed
+\texttt{optimization\_explore}, the algorithm shows the ordinary full-limit profile: a failed
 check stops the request before driver dispatch, while a benchmark ablation may
 omit soft limits and retain the hard engineering range.
 
@@ -39,7 +39,7 @@ omit soft limits and retain the hard engineering range.
 \noindent\textbf{Algorithm 1:} Governed online single-node write
 \par\kern2pt\hrule\kern2pt
 \begin{algorithmic}[1]
-\Require Node $n$, candidate $x$, and channel if present
+\Require Node $n$, candidate $x$, and channel, if present
 \Ensure Rejection or driver outcome and available readback
 \State Check execution mode, value, and node authorization
 \If{approval is required}
@@ -62,7 +62,7 @@ omit soft limits and retain the hard engineering range.
 \end{minipage}
 \par\medskip
 
-The operation uses an agent control-intent source; recipe and rollback sources follow
+The operation accepts an agent control intent; recipe and rollback sources follow
 their own paths. A driver-stage error may still leave device state uncertain. These
 application-level checks complement equipment interlocks; they do not replace them.
 
