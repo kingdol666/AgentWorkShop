@@ -8,23 +8,23 @@
 \label{fig:agent-loop}
 \end{figure*}
 
-A task supplies an objective and production context. In the intended workflow, the agent acquires configured DAQ or read-only observations, analyzes them, and proposes a typed adjustment. Fig.~\ref{fig:agent-loop} traces this conceptual iteration through governed execution and reassessment; it does not depict a successful end-to-end agent run. Data and context inform but do not authorize a write. The control node comes from \texttt{control\_node\_id} or a configured binding; the DAQ target comes from an explicit ID or agent DAQ binding.
+Section~\ref{sec:design} defined the entry paths and the shared dispatch checks; this section follows one task-mediated agent turn from acquisition to reassessment. A task supplies an objective and production context. In the intended workflow, the agent acquires configured DAQ or read-only observations, analyzes them, and proposes a typed adjustment. Fig.~\ref{fig:agent-loop} traces this conceptual iteration through governed execution and reassessment; it does not depict a successful end-to-end agent run. Data and context inform but do not authorize a write. The control node comes from \texttt{control\_node\_id} or a configured binding; the DAQ target comes from an explicit ID or agent DAQ binding.
 
 In goal mode, a lead agent may decompose the objective and dispatch worker subtasks. For an exploration step, the responsible agent may invoke \texttt{optimization\_explore}, which resolves the DAQ target, checks bindings, and submits a candidate before device I/O.
 
-The operation resolves the profile and control binding, then reads the stored value as $u_0$; this is not necessarily a fresh readback. The agent combines this state with its objective and direction. If direction is omitted, the operation defaults to an upward adjustment; otherwise $s\in\{-1,+1\}$. For a step $\Delta u$, it forms
+The operation resolves the applicable limit profile and control binding, then reads the stored value as $u_0$; this is not necessarily a fresh readback. The agent combines this state with its objective and direction. If direction is omitted, the operation defaults to an upward adjustment; otherwise $s\in\{-1,+1\}$. For a step $\Delta u$, it forms
 \begin{equation}
  u^{*}=\operatorname{clip}\!\left(u_0+s\Delta u,\,u_{\min},\,u_{\max}\right).
  \label{eq:optimization-candidate}
 \end{equation}
 In Eq.~(\ref{eq:optimization-candidate}), configured tuning bounds take precedence; node bounds are used otherwise. The effective step is selected in this order: an explicit argument, the binding's tuning step, the scene's maximum step, or one twentieth of the node range.
 
-The operation resolves the DAQ target and checks visibility before the intent enters the governed path. Later implementation gates include identifiability and model--ontology checks; these were added after the reported experiments. If the checks pass, the operation attempts a pre-write DAQ read, whose mean may be unavailable.
+The operation resolves the DAQ target and checks visibility before the intent enters the governed path. Implementation gates added after the reported experiments include identifiability and model--ontology checks. If the checks pass, the operation attempts a pre-write DAQ read, whose mean may be unavailable.
 
-A valid candidate enters the governed single-node write path in Algorithm~1. A pre-dispatch denial stops the request before any driver call. A driver-stage error, by contrast, may occur after dispatch has begun, so status alone cannot establish whether the device changed; state must be read and reconciled before retrying.
+A valid candidate enters the governed single-node write path in Algorithm~1: a pre-dispatch denial stops the request before any driver call, whereas a driver-stage error may occur after dispatch has begun, so status alone cannot establish whether the device changed and state must be reconciled before retrying.
 
-After a successful write, the operation waits 10--300~s (45~s by default) and attempts a post-write DAQ read before returning the exploration result to the agent. Later windows are $[t_0-\tau,t_0]$ and $[t_0,t_1]$; approval may include pre-dispatch samples, so the resulting mean is not causal. The earlier implementation used trailing 45-s windows.
+After a successful write, the operation waits 10--300~s (45~s default) and attempts a post-write DAQ read before returning the exploration result. The observation windows are $[t_0-\tau,t_0]$ and $[t_0,t_1]$, where $t_0$ is the write time, $\tau$ the pre-write window length, and $t_1$ the post-write read time; approval may include pre-dispatch samples, so the resulting mean is not causal. The earlier implementation used trailing 45-s windows.
 
-The exploration record stores the target, the step, the available DAQ means, and the write status and message; the shared path separately records the command outcome and any available readback. The operation then returns an exploration summary to the agent. On a later turn, the agent can inspect the returned evidence, choose another step, or stop; iteration always requires a subsequent agent decision.
+The exploration record stores the target, step, available DAQ means, and write status; the shared path separately records the command outcome and any available readback. The operation then returns an exploration summary to the agent. On a later turn, the agent can inspect the returned evidence, choose another step, or stop; iteration always requires a subsequent agent decision.
 
 

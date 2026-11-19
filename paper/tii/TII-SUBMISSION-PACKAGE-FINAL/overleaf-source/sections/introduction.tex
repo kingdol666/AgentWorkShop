@@ -3,12 +3,12 @@
 
 Prior work on industrial agents addresses service supervision and skill-based manufacturing~\cite{biskupovic2025supervision,koehle2026llmdriven}, semantic grounding and verification for plant-facing operations including programmable logic controller (PLC) interfaces~\cite{graul2026aas,schall2026safe}, and multi-agent fault-recovery planning~\cite{vyas2026detection}. These strands establish relevant capabilities but leave an integration question: how can online acquisition and analysis connect to governed operations across task-mediated and direct entry paths? This paper examines that runtime boundary; it introduces no new control law or agent-reasoning algorithm.
 
-Five invariants govern the design. Observations may inform an agent's proposal, but they never grant write authority, and acquisition and control mappings are direction-specific. An approved control intent is revalidated before dispatch. Command receipts, readbacks, and later process observations remain separate records, and task-mediated and direct calls converge on one guarded boundary. A scene binds line, product, recipe, and run to mappings, drivers, objectives, and limits.
+Five invariants govern the design: (i) observations may inform an agent's proposal but never grant write authority; (ii) acquisition and control mappings are direction-specific; (iii) an approved control intent is revalidated before dispatch; (iv) command receipts, readbacks, and later process observations remain separate records, and task-mediated and direct calls converge on one guarded boundary; and (v) a scene binds line, product, recipe, and run to mappings, drivers, objectives, and limits.
 
 The contributions are:
 \begin{enumerate}
   \item A production-scene model that links context, direction-specific acquisition and control mappings, registered drivers, objectives, and limits into one agent-facing operation contract. (Section~III.)
-  \item An agent-to-operation boundary in which registered harnesses acquire observations and submit control intents, while task-mediated and direct calls share one dispatcher and the applicable route-specific approval, revalidation, and write guards. (Sections~III--V.)
+  \item An agent-to-operation boundary in which registered agent harnesses (adapters that expose the runtime's scoped tools to a model) acquire observations and submit control intents, while task-mediated and direct calls share one dispatcher and the applicable route-specific approval, revalidation, and write guards. (Sections~III--V.)
   \item An evidence-bounded evaluation of these mappings and governance responses, together with an exploratory simulator comparison and language-model-driven episodes. (Section~VI.)
 \end{enumerate}
 

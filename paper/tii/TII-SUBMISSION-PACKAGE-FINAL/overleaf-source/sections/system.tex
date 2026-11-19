@@ -1,6 +1,6 @@
 \section{System Design}
 \label{sec:design}
-The runtime exposes its named services through two entry paths. Task-mediated calls run through the collaboration runtime and a registered agent harness that hands the agent scoped tools for online acquisition, analysis, and control-intent submission. Direct REST or stdio-MCP calls support verification and integration testing. Both paths meet at the shared dispatcher, and scene configuration supplies the context, acquisition bindings, objectives, and write limits.
+The runtime exposes its named services through two entry paths. Task-mediated calls run through the collaboration runtime and a registered agent harness that hands the agent scoped tools for online acquisition, analysis, and control-intent submission. Direct REST or stdio-MCP calls support verification and integration testing. Both paths meet at the shared dispatcher (Fig.~\ref{fig:arch}), and scene configuration supplies the context, acquisition bindings, objectives, and write limits.
 
 \begin{figure*}[!t]
 \centering
@@ -11,31 +11,19 @@ The runtime exposes its named services through two entry paths. Task-mediated ca
 
 \subsection{Design Rationale and Requirements}
 \label{sec:principles}
-The runtime must preserve process meaning across heterogeneous drivers, hold a stable contract for registered harness adapters, and check authority and process limits before every control write. Acquired process data, command acceptance, and later observations are kept distinct throughout. Scene configuration, registered adapters, shared dispatch, route handlers, and service-owned records enforce these boundaries.
+The runtime must preserve process meaning across heterogeneous drivers, hold a stable contract for registered harness adapters, and check authority and process limits before every control write, keeping acquired process data, command acceptance, and later observations distinct. Scene configuration, registered adapters, shared dispatch, route handlers, and service-owned records enforce these boundaries.
 
 For each agent turn, the context builder assembles the production context and eligible observations. The agent uses them to shape a proposal, but neither context nor observations grant write authority; the handler resolves live state when the operation is invoked.
 
 \subsection{Layered Architecture}
 \label{sec:layers}
-Fig.~\ref{fig:arch} shows the system layers. Task and chat routes use registered harness adapters that provide scoped acquisition and control tools; binding and channel policy constrain available operations. Agent analysis remains distinct from deterministic boundary checks. The figure also shows a schematic feedback path and illustrative signals.
+Fig.~\ref{fig:arch} shows the layers. Task and chat routes use registered harness adapters providing scoped acquisition and control tools, constrained by binding and channel policy; agent analysis remains distinct from deterministic boundary checks, and the feedback path and signals in the figure are schematic.
 
-Direct REST agent-tool calls and the stdio-MCP bridge bypass task execution and enter the shared dispatcher. The task route gives the agent context, acquisition targets, and objectives; operation services resolve control mappings and guards. Read and analysis services (DAQ, MES access, retrieval, and optional model services) are separated from write and recipe services. Input/output mappings connect semantic nodes to built-in or plugin drivers, and owning services retain task, command, observation, and configuration records.
+Direct REST agent-tool calls and the stdio-MCP bridge bypass task execution and enter the shared dispatcher. The task route gives the agent context, acquisition targets, and objectives; operation services resolve control mappings and guards. Read and analysis services---data acquisition (DAQ), MES access, retrieval, and optional model services---are separated from write and recipe services. Input/output mappings connect semantic nodes to built-in or plugin drivers, and owning services retain task, command, observation, and configuration records.
 
 \subsection{Scene Configuration as the Integration Boundary}
 \label{sec:scene-config}
-Scene-specific process semantics are configured before
-they are used by an operation. The active line identifies the production context; product
-and recipe records supply applicable targets and limits; the run record
-provides the current operating state. Semantic nodes bind process variables
-to direction-specific acquisition or control mappings, and the driver
-registry resolves each mapping to a supported protocol implementation. Here
-\emph{semantic} denotes a named process variable with a direction, unit, and
-configured mapping; it is not an OPC UA or Asset Administration Shell
-information model. Each agent-facing operation is named and typed, so a harness need not
-construct protocol-specific messages. A scene using an already registered
-driver can supply different context and node mappings behind the same
-operation contract. A protocol not present in the registry still requires a
-driver adapter; configuration alone does not implement a new protocol.
+Scene-specific semantics are configured before use: the active line identifies the production context, product and recipe records supply applicable targets and limits, and the run record provides the current operating state. Semantic nodes bind process variables to direction-specific acquisition or control mappings, which the driver registry resolves to protocol implementations; \emph{semantic} here denotes a named process variable with a direction, unit, and configured mapping, not an OPC UA or Asset Administration Shell information model. Each agent-facing operation is named and typed, so a harness need not construct protocol-specific messages; a scene using a registered driver can supply different context and node mappings behind the same operation contract, while a protocol absent from the registry still requires a driver adapter.
 
 In the cast-film simulator preset, for example, the MQTT command mapping
 \texttt{linespeed-sp} controls line speed in m/min, while the distinct
@@ -44,13 +32,7 @@ acquire the thickness observation, compare it with its objective, and propose a
 line-speed intent; the runtime admits that intent against the control node's
 limits. Sharing MQTT does not make either signal a substitute for the other.
 
-Table~\ref{tab:scene-config} summarizes how the execution path uses the scene
-description and distinguishes configuration-time bindings from checks against
-live state. The context assembled for an agent turn describes the active scene. Before a
-write, the handler resolves the live state required by its route and applies
-the current limits. Where a route supports context snapshots, approval is
-bound to both the proposal and the context. The command receipt remains
-separate from subsequent DAQ observations.
+Table~\ref{tab:scene-config} summarizes how the execution path uses the scene description, distinguishing configuration-time bindings from checks against live state. The context for an agent turn describes the active scene; before a write, the handler resolves the route's live state and applies current limits, binding approval to both proposal and context where snapshots are supported (Section~\ref{sec:modules}). The command receipt remains separate from subsequent DAQ observations.
 
 \begin{table*}[!t]
 \centering
@@ -89,13 +71,11 @@ shared dispatch condition as
 \mathcal{A}(a,c,u)=\bigwedge_{X\in\mathcal{C}(u)}X(a,c,u).
 \label{eq:dispatch-contract}
 \end{equation}
-In Eq.~(\ref{eq:dispatch-contract}), $S$, $P$, $G$, and $B$ denote invocation scope, current channel policy,
+The dispatch predicates $S$, $P$, $G$, and $B$ in Eq.~(\ref{eq:dispatch-contract}) denote invocation scope, current channel policy,
 the applicable industrial grant, and the agent's binding to referenced resources,
 respectively. The declared set $\mathcal{C}(u)\subseteq\{S,P,G,B\}$ always contains
-$S$ and $P$. The grant predicate $G$ joins the set when the resolved channel, target line, and owner/grant policy
-require it; explicit exemptions omit it. The binding predicate $B$ joins when
-the operation declares resource references, so an operation that declares
-no references omits $B$. Every included check must pass before handler
+$S$ and $P$; the grant predicate $G$ joins when the resolved channel, target line, and owner/grant policy
+require it, and the binding predicate $B$ joins when the operation declares resource references. Every included check must pass before handler
 selection. Where configured, the policy predicate also covers channel tool
 selection, profile, and duty-separation checks.
 
@@ -106,11 +86,7 @@ path; an invisible target returns an error before a write. The checks performed
 after approval depend on the route; Section~\ref{sec:modules} specifies the
 single-node and recipe-operation paths.
 
-For a direct REST agent-tool call, the service establishes $a$ and $c$ before applying
-these checks. An agent token must match the requested agent identifier; an
-authenticated user must be the channel owner or an administrator. The manager
-then loads the channel-agent record, rechecks scope and policy, and applies any
-applicable grant and binding checks. Handlers resolve live production state
+For a direct REST agent-tool call, the service establishes $a$ and $c$ before applying these checks: an agent token must match the requested agent identifier, an authenticated user must be the channel owner or an administrator, and the manager then loads the channel-agent record, rechecking scope and policy with any applicable grant and binding checks. Handlers resolve live production state
 from request identifiers and the owning services.
 
 
