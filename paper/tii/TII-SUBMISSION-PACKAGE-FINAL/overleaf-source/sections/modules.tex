@@ -28,8 +28,8 @@ checks a replacement recipe against the hard, baseline, and product limits,
 rather than the previous recipe's window. Trial overrides are additionally checked against
 the applicable recipe window.
 
-Algorithm~1 summarizes how a single-node control intent from an agent or direct caller is admitted after shared dispatch. For
-\texttt{optimization\_explore} it shows the ordinary full-limit profile: a failed
+Algorithm~1 details the single-node write sequence after shared dispatch; Fig.~\ref{fig:hitl} maps the same boundary across the single-node and recipe routes. For
+\texttt{optimization\_explore} the algorithm shows the ordinary full-limit profile: a failed
 check stops the request before driver dispatch, while a benchmark ablation may
 omit soft limits and retain the hard engineering range.
 
