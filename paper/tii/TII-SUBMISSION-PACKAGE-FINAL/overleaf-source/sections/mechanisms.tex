@@ -1,12 +1,12 @@
 \subsection{Approval, Execution, and Evidence}
 \label{sec:mech}
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig4-governed-flow.pdf}
+\includegraphics[width=\columnwidth]{resources/fig4-governed-flow.pdf}
 \caption{Simplified single-node \texttt{optimization\_explore} and recipe trial or apply write paths. Approved requests undergo route-specific revalidation. A decline, timeout, failed revalidation, or guard rejection stops the affected operation or parameter before driver dispatch. Other applicable dispatch and authorization checks are omitted; bypassing approval does not bypass them.}
 \label{fig:hitl}
-\end{figure*}
+\end{figure}
 Fig.~\ref{fig:hitl} shows the conditional approval path from an agent or manual control intent and the bypass to the shared write guard. For a manual single-node \texttt{optimization\_explore}
 request, the approval service receives the node, proposed value, current
 effective interval, and rationale. The same governed boundary receives an agent's typed intent after its acquisition and analysis step. As in Algorithm~1, a decline or timeout

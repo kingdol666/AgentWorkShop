@@ -1,40 +1,24 @@
-# IEEE TII 初稿提交清单（2026-11-18 核对版）
+# IEEE TII Regular Research Paper 初投清单
 
-依据：IEEE IES TII 官网页（双盲、Regular ≤10 页初稿/终稿 ≤12、ORCID 必须、IEEE Author Portal 新投）。
+核对日期：2026-11-19。依据：[TII 作者须知](https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics)、[初投清单](https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics/new-submission?view=article&id=423:tii-checklist-for-manuscript-submissions&catid=17)、[补充材料规定](https://www.ieee-ies.org/images/files/tii/resources/Supplementary_Material-Revised.pdf)和 [IEEE 摘要指南](https://journals.ieeeauthorcenter.ieee.org/create-your-ieee-journal-article/create-the-text-of-your-article/structure-your-article/)。
 
-## A. 提交渠道
+## 选择文件
 
-- [ ] IEEE 账号（与 ScholarOne 不同）：`ieee.atyponrex.com/journal/tii` → Submit new manuscript → Regular Research Paper
+| 文件（位于 `initial-package/`） | 本次初投处理 |
+|---|---|
+| `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | **上传至审稿稿件栏。** IEEEtran 双栏、Letter，10 页（上限 10 页），约 1.82 MB（上限 40 MB），嵌入字体，作者元数据为空。单段约 196 词的摘要无引文、脚注和公式。 |
+| `TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | 源码留存，可导入 Overleaf；官方清单未列为初投必传。 |
+| `Supplementary-File-S7-20261117.pdf` | 作者备查；不要把这份 9 页叙述 PDF 当作常规补充件上传。正文已保留主要选样依据与排除理由，不依赖 S7 叙述附件。 |
+| `Supporting-Evidence-S7.zip`（本地） | 作者备查；含脱敏记录、README 和校验清单，不是默认上传项。若编辑部要求数据，应先确认允许的类型、格式、大小和匿名方式；不要用补充材料规避页数限制。 |
 
-## B. 文件（本包路径 → Portal 上传项）
+TII 的常规初投清单仅要求上传匿名稿件。不要上传整个目录、Word 编辑版、作者信息模板或公开 GitHub 链接。只有期刊明确许可时才另行提供符合其政策的补充材料。
 
-| 上传项 | 文件 | 状态 |
-|---|---|---|
-| Anonymized Manuscript (PDF) | `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf`（10 页，双栏 IEEEtran） | ✅ 双盲合规（作者字段空、元数据净、无致谢/基金/单位泄漏） |
-| Supplementary 1 (narrative) | `supplementary/Supplementary-File-S7-20261117.pdf` | ✅ 匿名版 |
-| Supplementary 2 (evidence archive) | `supplementary/Supporting-Evidence-S7-20261112.zip` | ✅ 自带脱敏日志 |
-| Source files（如初稿阶段被要求） | `TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | ✅ 与源一致，可复编译 10 页 |
+## 作者在门户确认
 
-## C. Portal 字段（不进审稿版）
+- [ ] 登录 [IEEE Author Portal](https://ieee.atyponrex.com/journal/tii)，选择 Regular Research Paper；所有作者提供机构邮箱与 ORCID，确认作者顺序、单位、通讯作者。
+- [ ] 核对并填写作者贡献、基金和利益冲突（按门户实际字段）。如需提交作者信息页或投稿信，先确认不会向审稿人显示；不要把它们合并到稿件 PDF。
+- [ ] 确认所有作者批准本稿，稿件不在其他刊物审理；如存在会议论文、预印本或其他先前公开版本，按期刊政策如实披露。公开 Git 历史可能把稿件与项目或账号关联：在保密的编辑沟通渠道告知已有公开版本及链接，不在匿名稿件或审稿附件中放链接。不要把公开 Git 推送视为期刊授权的预印本存档。
+- [ ] 核对稿件的 AI 使用声明与实际工具及范围一致，包括摘要草拟和图 4 排版；根据 [IEEE PSPB 政策](https://pspb.ieee.org/images/files/PSPB/opsmanual.pdf) 和编辑部指引，在匿名审稿期间使用适当的披露位置，并在出版稿按要求披露生成内容。
+- [ ] 查看上传后的转换预览并确认 10 页完整、图 4 第 6 页、参考文献无截断、作者和识别性致谢不在审稿稿件中。门户字段、附件受理及编辑初筛，以实际系统与编辑部通知为准。
 
-- [ ] 全部作者姓名/单位/邮箱；通讯作者
-- [ ] **每位作者 ORCID**（强制）
-- [ ] Funding、Competing interests、CRediT（模板见 `submission/TITLE-PAGE.md`）
-- [ ] Cover letter（模板见 `submission/COVER-LETTER.md`，填作者信息段）
-- [ ] Suggested / excluded reviewers（可选；如填，避免合作者与同单位）
-
-## D. 双盲自查（提交前 3 分钟）
-
-- [ ] PDF 属性 Author 为空（当前已空）
-- [ ] 无致谢/基金/单位/项目名/仓库链接（已扫描 0 命中）
-- [ ] 自引均为第三人称（已核；如新增请保持）
-- [ ] Word 版仅自用改稿，不上传
-
-## E. 页数与费用
-
-- 初稿 10/10 页（不得再增行）；终稿上限 12 页，第 11 页起 $250/页（IES 会员 $200）
-
-## F. 提交后
-
-- 留意 Portal 状态（With Editor → Under Review）； CrossCheck 查重自动运行
-- 终稿阶段：补作者信息到正文、致谢/基金、作者简介+照片、（如扩展）最多至 12 页
+终稿上限 12 页；第 11 页起每页 250 美元（IES 会员每页 200 美元）。本清单不是查重结果，也不代表已提交或通过编辑初筛。

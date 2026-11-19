@@ -6,3 +6,6 @@
 
 # LaTeX 构建输出（可由 overleaf-source 重建）
 build/
+
+# 作者本地备查证据；不通过公开 Git 分发
+/submission/initial-package/Supporting-Evidence-S7.zip

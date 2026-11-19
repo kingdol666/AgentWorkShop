@@ -10,7 +10,7 @@
 - Title: A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations
 - Type: Regular Research Paper
 - Pages: 10 (submission limit ≤ 10)
-- Abstract words: 197 | References: 24 | Figures: 6 | Tables: 4
+- Abstract words: approximately 196 | References: 24 | Figures: 6 | Tables: 4
 
 ## 2. Authors（按署名顺序）
 
@@ -20,7 +20,7 @@
 | 2 | [名 姓] | [ ] | [ ] | [0000-0000-0000-0000] |
 
 - Corresponding author: [#]
-- All authors ORCID **required** by TII — 注册/绑定后再提交。
+- All authors need ORCID iDs and institutional email addresses under TII's submission instructions.
 
 ## 3. CRediT author contributions
 
@@ -37,11 +37,11 @@
 
 ## 6. Data availability
 
-Evidence archive: anonymized Supplementary File S7 (narrative PDF) and supporting-evidence archive (record-level data, checksum manifest, redaction log, missing-evidence list). No physical-plant data were collected.
+Underlying simulator records are available on reasonable request. The S7 narrative and record-level evidence archive are retained by the authors, not routine initial uploads. No physical-plant data were collected.
 
 ## 7. AI-use disclosure
 
-Generative AI was used for limited language editing and source organization; the authors reviewed the manuscript and remain responsible for its technical content, results, and claims.
+[Verify against actual use.] Generative AI via ZCode assisted with language editing, abstract drafting, LaTeX source organization, and the layout of Fig. 4. The authors remain responsible for the manuscript.
 
 ## 8. Dual-use / ethics
 
