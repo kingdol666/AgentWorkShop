@@ -5,7 +5,8 @@
 /** @typedef {'simulation' | 'offline' | 'physical_hil' | 'production' | 'unknown'} RunEnvironment */
 /** @typedef {'real_model' | 'fixture' | 'mixed' | 'unknown'} ModelProvenance */
 /** @typedef {CheckInput & { id: string, category: CheckCategory }} BaselineCheck */
-/** @typedef {{ revision: string | null, runId: string, environment: RunEnvironment, modelProvenance: ModelProvenance, checks: readonly BaselineCheck[], missing: readonly { id: string, reason: string }[], captureHashes: Readonly<Record<string, string>> }} BaselineInput */
+/** @typedef {'current' | 'historical'} CaptureOrigin */
+/** @typedef {{ revision: string | null, runId: string, environment: RunEnvironment, modelProvenance: ModelProvenance, captureOrigin: CaptureOrigin, checks: readonly BaselineCheck[], missing: readonly { id: string, reason: string }[], captureHashes: Readonly<Record<string, string>> }} BaselineInput */
 
 /** @param {CheckInput} input @returns {CheckStatus} */
 export function classifyEvidenceCheck(input) {
@@ -30,9 +31,13 @@ export function buildBaselineManifest(input) {
     ids.add(check.id)
     denominators[check.category]++
     const status = classifyEvidenceCheck(check)
-    const isPhysical = input.environment === 'physical_hil' || input.environment === 'production'
-    if (check.category === 'field_admission' && status === 'PASS' && !isPhysical) {
-      return { ...check, status: /** @type {const} */ ('BLOCKED'), blockedReason: 'physical evidence required' }
+    if (check.category === 'field_admission' && status === 'PASS') {
+      if (input.environment !== 'physical_hil' && input.environment !== 'production') {
+        return { ...check, status: /** @type {const} */ ('BLOCKED'), blockedReason: 'physical evidence required' }
+      }
+      if (input.captureOrigin !== 'current' || !input.revision) {
+        return { ...check, status: /** @type {const} */ ('BLOCKED'), blockedReason: 'current revision-bound evidence required' }
+      }
     }
     return { ...check, status }
   })

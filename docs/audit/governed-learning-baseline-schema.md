@@ -10,6 +10,7 @@
 | --- | --- |
 | `revision` / `runId` | 执行时实际仓库 SHA 和单次运行标识；历史构建无法绑定 SHA 时为 `null`，不填当前 `main`。 |
 | `environment` | `simulation`、`offline`、`physical_hil`、`production` 或 `unknown`。模拟过程可调用真实模型，但不能记为物理。 |
+| `captureOrigin` | `current` 或 `historical`。只有当前、绑定已知提交的物理证据才有资格通过现场单项；仍由调用方独立核验来源。 |
 | `modelProvenance` | `real_model`、`fixture`、`mixed` 或 `unknown`；不从环境类型推导。 |
 | `checks` | 唯一 `id`、`category`、原始执行状态、适用判据与推导状态；重复 ID 或未知分类拒绝生成清单。 |
 | `denominators` | `mechanism`（功能机制）、`effect`（有无效果）、`resilience`（故障恢复）、`field_admission`（现场）单列分母，包含失败、跳过和阻塞项。不汇总成一个通过率。 |
@@ -18,6 +19,8 @@
 `classifyEvidenceCheck` 的优先级是：明确阻断原因 → `BLOCKED`；未开始 → `NOT_RUN`；开始但未完成 → `PARTIAL`；终态且提交显式布尔判据 → `PASS/FAIL`；未知执行状态或缺合法判据 → `BLOCKED`。选定子检查全部绿不等于业务最终交付。非物理来源即使宣称通过现场检查，基线汇总也将该条标为 `BLOCKED`。物理类检查的单项通过仍不等于 Task 14 的准入签核。
 
 ## 历史基线与待补项
+
+[两轮脱敏清单输入](governed-learning-historical-baseline-inputs.json)可直接交给 `buildBaselineManifest`。每轮只记录四个汇总检查的状态；`denominators` 计清单中的检查，扩展字段 `historicalTotalDenominators` 表示当年的真实样本或任务总数，无法独立核实则为 `null`。索引引用与快照哈希只做对账，不作为真实模型或历史执行的再验证。
 
 | 运行 | 机制 | 效果 | 韧性 | 现场 |
 | --- | --- | --- | --- | --- |

@@ -6,7 +6,7 @@ test('a green selected subset does not complete an interrupted check', () => {
   assert.equal(classifyEvidenceCheck({ execution: 'incomplete', passed: true }), 'PARTIAL')
 })
 
-test('unstarted physical validation is not counted', () => {
+test('an unstarted physical validation is classified as NOT_RUN', () => {
   assert.equal(classifyEvidenceCheck({ execution: 'not_started' }), 'NOT_RUN')
 })
 
@@ -24,10 +24,26 @@ test('a terminal check requires an explicit Boolean verdict', () => {
   assert.equal(Reflect.apply(classifyEvidenceCheck, undefined, [{ execution: 'unrecognized', passed: true }]), 'BLOCKED')
 })
 
+test('historical physical evidence cannot pass the current field-admission check', () => {
+  const physical = {
+    revision: 'b'.repeat(40),
+    runId: 'fixture-physical',
+    environment: 'physical_hil' as const,
+    modelProvenance: 'unknown' as const,
+    checks: [{ id: 'on-site', category: 'field_admission' as const, execution: 'terminal' as const, passed: true }],
+    missing: [],
+    captureHashes: {},
+  }
+  assert.equal(buildBaselineManifest({ ...physical, captureOrigin: 'historical' }).checks[0]?.status, 'BLOCKED')
+  assert.equal(buildBaselineManifest({ ...physical, captureOrigin: 'current', revision: null }).checks[0]?.status, 'BLOCKED')
+  assert.equal(buildBaselineManifest({ ...physical, captureOrigin: 'current' }).checks[0]?.status, 'PASS')
+})
+
 test('the manifest accounts for incomplete delivery and excludes simulation from field admission', () => {
   const manifest = buildBaselineManifest({
     revision: null,
     runId: 'fixture-simulation',
+    captureOrigin: 'historical',
     environment: 'simulation',
     modelProvenance: 'real_model',
     captureHashes: { 'historical-summary': 'a'.repeat(64) },

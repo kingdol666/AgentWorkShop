@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | T01 | `docs/audit/2026-11-15-doc-to-simulated-plc-closed-loop-acceptance.md` | 历史模拟产线 | `tracked-historical` | `1cf25a9b4c9206348c0bbe53363421a73f2a186132744490bae51ed3a6a1bbbd` |
 | T02 | `docs/audit/2026-11-16-line-integration-memory-tools-acceptance.md` | 历史产线工具/模拟 | `tracked-historical` | `d986ed92f4f27aaf53b4a10f122e1e7f658dc7d0b8c8f224a5ecb1d8e85ebda8` |
-| T03 | `docs/audit/evidence/2026-11-18-idd-rag-plugin-v1-contract/REPORT.md` | 历史外部桥接与模拟端 | `tracked-historical` | `c74b9bf38ce05529bfb922b838648685b39a6ba6812102806e2fc0b03e26da36` |
+| T03 | `docs/audit/evidence/2026-11-18-idd-rag-plugin-v1-contract/REPORT.md` | 历史外部桥接与模拟端 | `tracked-historical` | `c74b9bf38ce05529bfb922b838652685b39a6ba6812102806e2fc0b03e26da36` |
 | T04 | `docs/audit/2026-11-15-gap-closure-final-acceptance.md` | 历史加固报告，混合验证 | `tracked-historical` | `b3136336ca49fab5abd006df941232d4204f54fe1a439be04e7c65106401e99f` |
 | T05 | `docs/audit/2026-11-16-round2-fixes-full-acceptance.md` | 历史回归，混合验证 | `tracked-historical` | `fe75a5b4d4198316e11a70794f161217d74674a84f3f4864d54db1d54ce2effe` |
 | L01 | `docs/audit/evidence/2026-11-19-three-system-acceptance/phase-c-c2-readback.json` | 三端轮 / 影子孪生回读 | `historical-local / unavailable` | `0d54d078e7a4b2409c5a5ab089b67026822400e9acd831990916c77b0feaf2fd` |
