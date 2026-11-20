@@ -1,0 +1,159 @@
+{
+ "revision": "cf9dfab35684b53f1af43b54f924d2c183387bb0",
+ "runId": "tsa3-20261120-governed-acceptance",
+ "captureOrigin": "current",
+ "environment": "simulation",
+ "modelProvenance": "real_model",
+ "checks": [
+  {
+   "id": "bridge-integration",
+   "category": "mechanism",
+   "execution": "terminal",
+   "passed": true,
+   "status": "PASS"
+  },
+  {
+   "id": "doc-to-line-onboarding",
+   "category": "mechanism",
+   "execution": "terminal",
+   "passed": true,
+   "status": "PASS"
+  },
+  {
+   "id": "daq-dcw-closed-loop",
+   "category": "mechanism",
+   "execution": "terminal",
+   "passed": true,
+   "status": "PASS"
+  },
+  {
+   "id": "rsi-governance-gates",
+   "category": "mechanism",
+   "execution": "terminal",
+   "passed": true,
+   "status": "PASS"
+  },
+  {
+   "id": "memory-management",
+   "category": "mechanism",
+   "execution": "terminal",
+   "passed": true,
+   "status": "PASS"
+  },
+  {
+   "id": "channel-internal-comms",
+   "category": "mechanism",
+   "execution": "terminal",
+   "passed": true,
+   "status": "PASS"
+  },
+  {
+   "id": "cross-channel-comms",
+   "category": "mechanism",
+   "execution": "terminal",
+   "passed": true,
+   "status": "PASS"
+  },
+  {
+   "id": "project-orchestration",
+   "category": "mechanism",
+   "execution": "terminal",
+   "passed": true,
+   "status": "PASS",
+   "note": "orchestration mechanism PASS (plan→approve→materialize→dispatch→execute→verify all exercised); G4 closure PARTIAL (post-completion artifact resubmission gap), G5 W3 formal submit/L1 in flight at report time"
+  },
+  {
+   "id": "rtu-stability",
+   "category": "resilience",
+   "execution": "terminal",
+   "passed": false,
+   "status": "FAIL"
+  },
+  {
+   "id": "retry-budget-gate",
+   "category": "resilience",
+   "execution": "terminal",
+   "passed": true,
+   "status": "PASS"
+  },
+  {
+   "id": "leader-plan-card-visibility",
+   "category": "resilience",
+   "execution": "terminal",
+   "passed": false,
+   "status": "FAIL"
+  },
+  {
+   "id": "kb-internal-agent",
+   "category": "mechanism",
+   "execution": "incomplete",
+   "status": "PARTIAL"
+  },
+  {
+   "id": "reproducible-effect-protocol",
+   "category": "effect",
+   "execution": "not_started",
+   "status": "NOT_RUN"
+  },
+  {
+   "id": "physical-field-admission",
+   "category": "field_admission",
+   "execution": "not_started",
+   "status": "NOT_RUN"
+  }
+ ],
+ "missing": [
+  {
+   "id": "physical-site-evidence",
+   "reason": "field admission NOT_RUN (simulated twin only)"
+  }
+ ],
+ "captureHashes": {
+  "acceptance-manifest.json": "0f73ccf0faa85e1b9c51850c89dc25ff26e3b6ca629c337027ac69ef77279fa8",
+  "c0-equip.json": "1b2fe712545fd6dd5e5bde8264f3ecc948f4c0e2b7736dc97e2397d4037d5dc3",
+  "c1-reply.json": "37848b6d0c98d174b68ea36827c64bf99ada87cf31355e619a296b128bae1ca4",
+  "c1-sent.json": "134443a67872526f3a75e6d15f43354427c922f6beae8dd0989519510684f369",
+  "c2-card.json": "e2c23b875b904fe894cdbf042a42fff1c452dda74f2bc969583133d1b858ef64",
+  "c2-decide.json": "329e1747c475d77265817a55e388c3473735a0a6704c0c15210f5eb6149c21e2",
+  "c2-readback.json": "7a8b39d3d1f550f21e52bbc74976184361a4b8aea5da58b642ef25ad6635de6f",
+  "c2-reply.json": "f2ea74d30e21a32fa05006c25b3d0f937a5863c37f782615f8b58b91aafc806d",
+  "c2-sent.json": "3d53ab79e2ba5613edc1c79e670162179517a10e12e664075ac598957512f68f",
+  "c3-card.json": "9e026b896210a4e2deec58f205111e16ab3b0115aeb488786c1ce21cc68b6557",
+  "c3-decide.json": "329e1747c475d77265817a55e388c3473735a0a6704c0c15210f5eb6149c21e2",
+  "c3-readback.json": "286a067e54fe142254212704be0f694e0c6fd1ac38e252a95cb986b3bd4b4f81",
+  "c3-reply.json": "408949a434012dfba1b68130fe28268202eb5116e89d2f11b09bafcc80c959a5",
+  "c3-sent.json": "50d3424e1ce0724dff86a052b90290725c1173288eba98fb655a60f00fc38b40",
+  "c4-candidates.json": "a7c5de957c07d0e8ac7d906bfbfc1e0173fa221495ba99ee2f1c61c0c8c46ac7",
+  "c4-human-decision.json": "60113fa80c965e02b2499a5a64ba3ab8e54586eb4d54d8effa84cdda0fb5427c",
+  "c4-merge-two-negatives.json": "80bdd36c2d357984b0c4878be582091c031b593c85051a21812266eb46d2a217",
+  "c4-single-gate.json": "499dfc0f43f6b99c97786ce2bc294ec33298edfc3da6942d0fcb3f342e9d431f",
+  "c5-reply.json": "b746a7a85502408916c5017ce5407db0f7779ff931a6e5cfc8f8cc9f63ed61dd",
+  "c6-cross.json": "0666f889690b9d98781b755f24a0ffc193e09ac529d17b0a492a5868a1d62c53",
+  "c6-oob.json": "4df870a61a54a096a0ebf24d7803f25a373d47e6e2162117d3433252d597222e",
+  "def-rtu-pool-pending.json": "efdee5285a100da091284b6ca08957e53e9b8e268203ff010d309056d7268d55",
+  "g4-plan-decide.json": "c602cab38dfbc2fe2a012ba61c587976375cc824db21c1410e45bc5092055b86",
+  "governance-observations.json": "e8907c75a64ec578daa6b8b316400247c541437540d76d59f375c23c01b63747",
+  "phase-s-aw-health.json": "09e956ad65e6723dfd663456816d3302813f38bc2abb6fea68decfcb64177449",
+  "phase-s-idd-token.json": "075d5539ae98aea3f3ba230b613c0c37684ded148543a55f70b59791d8fc21e9",
+  "phase-s-plugin-health.json": "5b59415235f8b193780dd87986b9cc7ffa1c669c3c8e13475f32f963184b8ca5",
+  "phase-s-plugins.json": "04395cf485bbf4ff14b12b441e7da8152a4559815017305a84fa21c77972abbd",
+  "phase-s-rag-token.json": "257a6b59cb950c5d6602fd7927a78be5632b8984692b9d7e2f6bfaaade617fd3",
+  "phase-s-settings-patch.json": "329e1747c475d77265817a55e388c3473735a0a6704c0c15210f5eb6149c21e2",
+  "phase-s-tools.json": "8b69e5a01985c10065621dcb639b527f91da3d633121cf06c22f156843847efb",
+  "rag-kbagent-status.json": "7c815e3c160236a1010ac994a2d606af858ddf2a5c3269d33c528b9692256c72",
+  "rag-kbagent-submit.json": "14aad847464ca7c7111912f329a9ce2d4efefedfb5c9b937e76b17c05d406a49",
+  "REPORT.md": "ef730aeebced3bb8dbb289f0849d7441734e5d15bc177f44ac53c90ddd24591e",
+  "smoke-decide-a1.json": "07a0c8c1da2dafdbf2606d5fce6ce9decf210b5c043200121111e4c5e0eef9b0",
+  "smoke-propose-a1.json": "8d3c4a0f61b626595583e40ab5911db51c685f10c88c4cfb2a98d23cb81df7dd",
+  "smoke-readback.json": "e4bb7a983586fe1138bfaf3716117598c9d25848ada6ca591ddd27b6303538e5",
+  "xch-arrival.json": "8002b40846873dd4e24584bcb8762be73f0198bcbf6178cde1820977ab25c1a8",
+  "xch-invoke.json": "caa1298053e46b3e8f14b4ab322e19e0d16c671f3778e3605777d1f44369b0c0",
+  "xch-reply.json": "295b37250d4e8aceefab351ca2c74f1d8e699f3192fda93f62286af0f35c365c"
+ },
+ "denominators": {
+  "mechanism": 9,
+  "effect": 1,
+  "resilience": 3,
+  "field_admission": 1
+ }
+}

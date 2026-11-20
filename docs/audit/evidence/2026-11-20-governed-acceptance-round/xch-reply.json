@@ -1,0 +1,5 @@
+{
+ "replied": true,
+ "from": "9e77484b-2eb4-4eac-b854-331b28de9a44",
+ "head": "回执已完成，无新增工作项。\n\n**处理结果**\n- 跨频道回复已使用 `send_cross_channel_message` 送达目标频道 `4bbf5d97-b677-499f-abaf-9698ac76a234`，消息 ID 为 `504ebe05…`，对方 leader 为 `ec2758d0…`。消息内容是确认旧线 `ln-db7a857c` 已收到口径同步：新线 `ln-a80dfb0"
+}

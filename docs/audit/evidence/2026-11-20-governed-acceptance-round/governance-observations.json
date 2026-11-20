@@ -1,0 +1,23 @@
+{
+  "round": "tsa3-20261120",
+  "observations": [
+    {
+      "id": "GOV-1-retry-budget",
+      "behavior": "对已达 3 次尝试上限的 W2 项,retry 与 dispatch 均被拒(DEPENDENCY_NOT_READY/UPSTREAM_CANCELED:已达最大尝试次数 3);未发生任何第 4 次盲重试",
+      "verdict": "正面:失败预算硬门生效,与「未知/重复失败不自动重发」一致",
+      "evidence": ["retry 409 响应(会话留档)", "dispatch 409 响应"]
+    },
+    {
+      "id": "GOV-2-root-self-registration",
+      "behavior": "实现频道 lead 试图为未派发的项目工作项自建 root 任务,被平台拒绝:「项目工作项…尚未派发/执行;禁止 lead 自建 root」",
+      "verdict": "正面:防伪造路由生效,升级链(实现组长→设计组长→owner)按设计工作",
+      "evidence": ["13:00:29 fc826d3c 消息原文(升级报告)"]
+    },
+    {
+      "id": "GOV-3-plan-card-visibility",
+      "behavior": "全局 /api/workshop/approvals 只列 ops 高危复核,不含 project plan_approval 卡;plan 卡只在其项目 /projects/:id/approvals 可见;自动化监控若只盯全局端点会漏判(与上轮 observability.plan=null 同族)",
+      "verdict": "缺口(非本轮新发现,补充了新证据):计划卡可见性应统一;对应计划 Task 9(PlanProgress 投影)",
+      "evidence": ["approvals index.get.ts 读取范围=ops.approvalRequests", "7c1846a4/8facd10e 两张卡均只在项目端点可见"]
+    }
+  ]
+}

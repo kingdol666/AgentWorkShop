@@ -1,0 +1,82 @@
+{
+  "runner": "acceptance-governed-product-learning",
+  "version": 1,
+  "entries": [
+    {
+      "id": "A1-line-rebuild",
+      "stage": "doc-to-line",
+      "status": "PASS",
+      "evidence": [
+        "sim-twin --spawn attestation bundle (api:4056, mqtt 64830, modbus 37642/37646, opcua 37648)",
+        "provision 33/33, forge 15/15, verify-line 24/24 (V6 skipped: protected fixture absent)",
+        "smoke closed loop: approval ap-22f1a6bd -> dispatch -> readback 72=72 (rr-44513a98)"
+      ]
+    },
+    {
+      "id": "A2-governed-writes",
+      "stage": "line-ops",
+      "status": "PASS",
+      "evidence": [
+        "seed-task driven compound tuning: seven HITL-approved rounds, weight 31.03 -> 32.58g inside 32.15-32.85 band",
+        "recipe v1 frozen via approval ap-f33fda7f with per-parameter readback",
+        "negative cases: out-of-range write 400, cross-user write 403 LINE_FORBIDDEN"
+      ]
+    },
+    {
+      "id": "A3-rsi-governance",
+      "stage": "rsi",
+      "status": "PASS",
+      "evidence": [
+        "three line-scope negative candidates surfaced (reflector gap for successful rounds recorded, not claimed fixed)",
+        "single promotion rejected by evidence gate (task evidence incomplete); negative-only merge declined by human",
+        "cross-kind key isolation and immutable version regression suites green"
+      ]
+    },
+    {
+      "id": "A4-memory-management",
+      "stage": "memory",
+      "status": "PASS",
+      "evidence": [
+        "save_memory line scope + search_memory recall round trip",
+        "episodic-peer rows observed as active (auto-injection surface) recorded as open gap for Tasks 3/4",
+        "kb_agent async task reached terminal via internal agent; kb-mcp permission denial degraded to read-only and was reported honestly"
+      ]
+    },
+    {
+      "id": "A5-cross-channel",
+      "stage": "comms",
+      "status": "PASS",
+      "evidence": [
+        "send_cross_channel_message new->legacy delivered 12:14:39; legacy lead replied",
+        "reverse delivery to new channel plus shared-memory dedup key xchannel-tsa3-... persisted"
+      ]
+    },
+    {
+      "id": "A6-project-orchestration",
+      "stage": "project",
+      "status": "PARTIAL",
+      "evidence": [
+        "real leader planned plan v2, owner approved, R1s/R2s items completed",
+        "closure blocked: completed item had no artifact and the platform has no rework route (recorded, not scored as pass)"
+      ]
+    },
+    {
+      "id": "A7-landing-page",
+      "stage": "project-generic",
+      "status": "PARTIAL",
+      "evidence": [
+        "W2 exhausted retry budget (fail-closed), leader produced W3 spec, owner approved plan v2, W3 dispatched",
+        "landing-page.html delivered 40054B sha256 36b31739..., canonical checker PASS=62 FAIL=0, dual copies identical",
+        "formal submit/L1 was still in flight at report time (read-only verifier subtask dispatched after rescue)"
+      ]
+    },
+    {
+      "id": "A8-physical-field",
+      "stage": "field",
+      "status": "NOT_RUN",
+      "evidence": [
+        "all devices were shadow twins with ownership attestation; no physical PLC/HIL, no site sign-off"
+      ]
+    }
+  ]
+}

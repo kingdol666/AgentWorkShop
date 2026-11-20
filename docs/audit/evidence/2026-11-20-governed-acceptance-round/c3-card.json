@@ -1,0 +1,18 @@
+{
+ "kind": "dcw-approval",
+ "id": "ap-f33fda7f",
+ "channelId": "4bbf5d97-b677-499f-abaf-9698ac76a234",
+ "agentId": "ec2758d0-53cc-41ff-8a98-e64a812dfa75",
+ "agentName": "生产主管",
+ "title": "配方参数写入审批",
+ "detail": "配方参数写入:「注塑克重基线配方」v1 拟保存 保压压力SP 50→64MPa;保压时间SP 3→6.5s;料温SP 205→226℃;冷却流量SP 14→21L/min;保压压力SP（复检） 35→49MPa | 理由:批次 rr-0cc3b0be 收口固化：人工七轮复合包（11:29–11:50，每轮 +2MPa/+0.5s/+3℃/+2MPa，11:42:26 冷却 14→21L/min）使克重 31.03→32.58g；11:51:30–11:57:00 共 13 个 30s 桶均值 32.58g（min 32.571/max 32.595），已入 32.15–32.85 且居中；飞边 0.178%、缺陷率 0.407%（最大桶 0.438，上限 0.5）、节拍 19.50s、模温 57.0℃（11:57 恢复，50–60 内）。七轮为复合共线、不可单参数归因；固化目的=把回退锚点从 v1(31.04g) 抬到现状 32.58g，防批次结束回落。冷却流量 PLC 回读不可用，21L/min 以 11:42:26 成功 ACK 为据。 | 批准=写入新版本(不下发产线);拒绝可附指导",
+ "createdAt": "2026-11-20T11:58:05.736+08:00",
+ "expiresAt": "2026-11-20T12:28:05.736+08:00",
+ "requestType": "approval",
+ "harness": "dcw",
+ "nodeId": "recipe:rc-1bafdcf9",
+ "status": "pending",
+ "policy": "owner_only",
+ "approvalPolicyVersion": 1,
+ "channelVersion": 1
+}

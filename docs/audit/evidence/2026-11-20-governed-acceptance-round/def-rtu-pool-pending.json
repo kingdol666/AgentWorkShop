@@ -1,0 +1,20 @@
+{
+  "id": "DEF-20261120-RTU-POOL-PENDING",
+  "severity": "P1(运行韧性)",
+  "found": "2026-11-20 集成验收 round3",
+  "symptom": [
+    "modbus-rtu 采集节点(模具温度PV dn-847baf8c)在无任何 warn/error 日志的情况下 samples 停止增长,state=offline/quality=bad",
+    "同 host:port:unitId 连接上的 DCW 读偶发「Modbus 响应超时(3s)——连接可能半开,已作废重连」后,该共享连接进入持续不可采样状态",
+    "DAQ controller stop/start、节点 enable 翻转、intervalMs 变更均无法恢复;逐出后立即恢复(state ok/quality good,样本 age 5s)"
+  ],
+  "rootCauseHypothesis": "server/services/workshop/daq/drivers/modbus-rtu.ts sample():conn.pending>8 时静默 return null,不计数、不告警、不逐出;modbus-tcp.ts getModbusConn():existing.client.isOpen 恒真即复用,pending 计数在半开超时重置路径上疑似泄漏,阈值一旦越过即永久卡死该 host:port:unitId 的采样面(DCW 读路径与 DAQ 采样共用连接键 rtu-tcp:host:port:unitId,一条卡死双面受影响)",
+  "workaroundUsed": "把节点 driverConfig.port 临时指向死端口制造 3 次采样异常触发 evictModbusConn,再恢复正确配置 → 新建连接立即恢复采样",
+  "recommendedFix": "pending>8 持续 N 个周期后主动 evictModbusConn 并落一条 warn;sample() 静默 null 需在节点观测面记 skipped 采样计数;连接半开作废时同步失效 DAQ/DCW 两面缓存",
+  "evidence": [
+    "aw-detached.log(本目录外,隔离留档):仅 62830 旧线重连 warn,无 37646 相关错误",
+    "11:52:53 dcw/dw-a197071e/read ok(value 17)与同分钟 daq/dn-847baf8c/samples 空并存",
+    "逐出前 state=offline/quality=bad;逐出后 state=ok/quality=good,value=57"
+  ],
+  "linksToPlan": "对应实施计划 Task 10(依赖健康)与 Task 11(采集缺口可见性):本缺陷正是「缺数可见、未知不是通过」要覆盖的面;修复回归建议纳入 PR-D3/D4 验收",
+  "status": "已用临时逐出恢复;缺陷保持 OPEN,随 PR-D 批次修复并回归"
+}
