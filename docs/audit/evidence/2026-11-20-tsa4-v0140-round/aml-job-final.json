@@ -1,0 +1,9 @@
+{
+ "status": 200,
+ "state": "failed",
+ "artifacts": null,
+ "raw": {
+  "state": "failed",
+  "metrics": null
+ }
+}

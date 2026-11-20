@@ -1,0 +1,16 @@
+{
+  "roundtrip": true,
+  "direction_new_to_old": {
+    "marker": "TSA4-跨频道联动-mwovkqdu",
+    "invokeStatus": 200,
+    "arrivedOldChannel": true,
+    "arrivedAt": "2026-11-20T19:07:48.525+08:00",
+    "from": "ec2758d0 (TSA3 线 lead)"
+  },
+  "direction_old_to_new": {
+    "repliedBy": "9e77484b (旧线 lead)",
+    "repliedAt": "2026-11-20T19:09:24.600+08:00",
+    "textHead": "跨频道回执已发出（send_cross_channel_message → channel 4bbf5d97 / TSA3 Lead"
+  },
+  "note": "回执方向为旧线 lead 主动使用 send_cross_channel_message 回到新频道(跨频道工具语义的双向闭环),而非旧频道内消息——脚本 xch-reply 探针按频道内消息匹配因此未命中,证据由频道消息面人工取证补齐。"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "F-TSA4-4",
+  "severity": "observation (agent-side governance escalation works; auto-L1 semantics worth review)",
+  "title": "结果验收流自动 L1 通过(8ms/空note)被旧线 QA 智能体监察并升级 owner",
+  "at": "2026-11-20T19:04~19:10",
+  "facts": [
+    "industrial 汇总结果 3feb86e9 提交后 8ms 被自动 L1 通过(note 为空)——旧线频道 QA 智能体立即发现,声明『无法再否决,已升级 owner』,并在频道内输出对账/冻结/单一口径声明。",
+    "随后 owner(review.post decision=reviewed)补了人工复核,状态 reviewed。",
+    "跨频道监察面:两个频道(旧线 830b81f3 / 新线 4bbf5d97)的 agent 对同一项目治理事件形成了独立复核与升级链,全程无人工提示。"
+  ],
+  "implications": [
+    "积极面:多 agent 治理监察真实生效(发现可疑快速通过 → 拒绝默认接受 → 升级)。",
+    "观察面:结果提交链存在自动 L1 通过路径(8ms/空 note),其适用条件与人工复核的关系值得产品化审视;本论仅记录,不判定为缺陷。"
+  ]
+}

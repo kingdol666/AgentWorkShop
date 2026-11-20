@@ -1,0 +1,11 @@
+{
+ "activeFromShadowWithClientRun": {
+  "s": 200,
+  "body": {
+   "ok": false,
+   "reasons": [
+    "BENCH_NOT_HOST_PROVENANCED: 客户端自报评测只读展示,不得作为 active 晋级证据"
+   ]
+  }
+ }
+}
