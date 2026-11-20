@@ -1,0 +1,5 @@
+{
+ "status": 400,
+ "code": "BENCH_INVALID",
+ "reasons": "primaryDelta 与 perSeed 复算不一致(自报 99 / 复算 0.42)"
+}

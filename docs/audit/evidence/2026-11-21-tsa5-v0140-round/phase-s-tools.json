@@ -1,0 +1,33 @@
+{
+ "total": 157,
+ "bridgeTools": [
+  "kb_doc_create",
+  "kb_doc_search",
+  "kb_doc_read",
+  "kb_catalog",
+  "kb_agent",
+  "kb_agent_status",
+  "diag_run",
+  "diag_status",
+  "diag_chat",
+  "diag_stop",
+  "diag_deposit",
+  "diag_results",
+  "diag_result_get",
+  "diag_result_annotate"
+ ],
+ "bridgeToolCount": 14,
+ "commTools": [
+  "send_message_to_agent",
+  "poll_messages",
+  "broadcast_message",
+  "send_cross_channel_message",
+  "search_other_teams_memory",
+  "project_send_message",
+  "project_read_messages"
+ ],
+ "memoryTools": [
+  "save_memory",
+  "search_memory"
+ ]
+}

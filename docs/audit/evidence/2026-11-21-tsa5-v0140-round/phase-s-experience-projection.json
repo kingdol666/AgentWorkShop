@@ -1,0 +1,12 @@
+{
+ "status": 200,
+ "body": {
+  "memoryId": "bd9d9e6e-3be4-4e01-8ec7-6f87e7208b26",
+  "versionId": "ev-legacy-bd9d9e6e-3be4-4e01-8ec7-6f87e7208b26",
+  "lifecycle": "legacy-unverified",
+  "deployment": "none",
+  "claimOriginTime": "2026-11-20T19:26:56.089+08:00",
+  "betaAncestors": [],
+  "auditActions": []
+ }
+}

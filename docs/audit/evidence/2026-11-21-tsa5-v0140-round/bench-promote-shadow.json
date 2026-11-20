@@ -1,0 +1,10 @@
+{
+ "status": 200,
+ "body": {
+  "ok": true,
+  "next": "shadow",
+  "reasons": [
+   "进入隔离验证期（仅本频道可见）"
+  ]
+ }
+}

@@ -1,0 +1,4 @@
+{
+ "status": 200,
+ "textHead": "MES 未配置:请在「系统设置 → 插件 → MES 工具桥」填写 base_url 与 token 后重试(未配置时不会发起任何外部请求)。"
+}

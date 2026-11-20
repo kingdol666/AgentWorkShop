@@ -1,0 +1,19 @@
+{
+ "count": 13,
+ "enabled": [
+  "mes-tool-bridge",
+  "aw-matrix-plugin",
+  "daq-sink-verify",
+  "daq-vector-demo",
+  "idd-closedloop-bridge",
+  "omp-sensor-tools",
+  "rsi-interface-beta",
+  "twin-castfilm",
+  "twin-thermal-demo",
+  "diag-bridge",
+  "rag-bridge",
+  "serial-bridge",
+  "twin-injection-default"
+ ],
+ "failures": []
+}
