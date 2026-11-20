@@ -1732,7 +1732,47 @@ CREATE TABLE IF NOT EXISTS learning_authorization_epochs (
   reason TEXT NOT NULL,
   actor  TEXT NOT NULL,
   at     TEXT NOT NULL
-);`
+);
+-- v5(Task 6):发布请求 + 审计 outbox(先落 outbox,确认送达后才允许 CAS 发布)
+CREATE TABLE IF NOT EXISTS experience_release_requests (
+  id                     TEXT PRIMARY KEY,
+  version_id             TEXT NOT NULL,
+  evidence_snapshot_hash TEXT NOT NULL,
+  policy_version         TEXT NOT NULL,
+  evaluation_run_id      TEXT NOT NULL,
+  expected_epoch         INTEGER NOT NULL,
+  review_decision_id     TEXT NOT NULL,
+  requested_by           TEXT NOT NULL,
+  reviewed_by            TEXT NOT NULL,
+  state                  TEXT NOT NULL,
+  reason                 TEXT NOT NULL DEFAULT '',
+  created_at             TEXT NOT NULL,
+  decided_at             TEXT
+);
+CREATE TABLE IF NOT EXISTS experience_release_outbox (
+  id           TEXT PRIMARY KEY,
+  request_id   TEXT NOT NULL,
+  state        TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  attempts     INTEGER NOT NULL DEFAULT 0,
+  created_at   TEXT NOT NULL,
+  acked_at     TEXT
+);
+-- v6(Task 7):反射 outbox(终态/评审/干预判读随来源事务登记,崩溃后可补扫)
+CREATE TABLE IF NOT EXISTS experience_reflection_outbox (
+  id              TEXT PRIMARY KEY,
+  source_kind     TEXT NOT NULL,
+  source_id       TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  state           TEXT NOT NULL,
+  payload_json    TEXT NOT NULL,
+  attempts        INTEGER NOT NULL DEFAULT 0,
+  lease_until     TEXT,
+  last_error      TEXT NOT NULL DEFAULT '',
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_reflection_pending ON experience_reflection_outbox(state, created_at);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 
