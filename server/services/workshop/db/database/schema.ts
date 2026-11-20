@@ -1688,7 +1688,51 @@ export const CHANNEL_PRODUCT_BINDINGS_SQL = `CREATE TABLE IF NOT EXISTS channel_
 CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_product_bindings_empty
   ON channel_product_bindings(channel_id) WHERE product_id IS NULL;
 CREATE INDEX IF NOT EXISTS idx_channel_product_bindings_channel
-  ON channel_product_bindings(channel_id, product_id);`
+  ON channel_product_bindings(channel_id, product_id);
+-- v4(Task 2):受治理经验复用 —— 不可变版本 + 当前指针 + 审计 + 授权版本。
+-- 正文/证据只插不改;部署与生命周期推进写 experience_version_audit。
+CREATE TABLE IF NOT EXISTS experience_versions (
+  version_id             TEXT PRIMARY KEY,
+  experience_id          TEXT NOT NULL,
+  claim_origin_id        TEXT NOT NULL,
+  scope_kind             TEXT NOT NULL,
+  scope_key              TEXT NOT NULL DEFAULT '',
+  claim_json             TEXT NOT NULL DEFAULT '{}',
+  content                TEXT NOT NULL,
+  content_hash           TEXT NOT NULL,
+  evidence_json          TEXT NOT NULL DEFAULT '[]',
+  evidence_snapshot_hash TEXT NOT NULL,
+  lifecycle              TEXT NOT NULL DEFAULT 'candidate',
+  deployment             TEXT NOT NULL DEFAULT 'none',
+  claim_origin_time      TEXT NOT NULL,
+  beta_ancestors_json    TEXT NOT NULL DEFAULT '[]',
+  idempotency_key        TEXT NOT NULL,
+  created_at             TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_expver_exp ON experience_versions(experience_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_expver_replay
+  ON experience_versions(experience_id, idempotency_key, content_hash, evidence_snapshot_hash);
+CREATE TABLE IF NOT EXISTS experience_heads (
+  experience_id TEXT PRIMARY KEY,
+  version_id    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS experience_version_audit (
+  id            TEXT PRIMARY KEY,
+  experience_id TEXT NOT NULL,
+  version_id    TEXT NOT NULL,
+  action        TEXT NOT NULL,
+  actor         TEXT NOT NULL,
+  created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_expver_audit ON experience_version_audit(version_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS learning_authorization_epochs (
+  id     TEXT PRIMARY KEY,
+  epoch  INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  actor  TEXT NOT NULL,
+  at     TEXT NOT NULL
+);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 

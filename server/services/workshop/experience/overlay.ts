@@ -15,6 +15,7 @@ import { createHarnessProfileRepo, renderHarnessOverlay } from './harness-profil
 import { advisoryBlock } from './advisory'
 import { unsegmentCJK } from '../runtime/memory/helpers'
 import { channelModeForAgent, channelModeOf } from '../channel-mode'
+import { readLearningAuthorizationEpoch } from './trusted-context'
 
 /** 进程内缓存：同一频道 60s 内不重复查库（profile 变更最迟 1 分钟生效，可接受） */
 const CACHE_TTL_MS = 60_000
@@ -38,7 +39,9 @@ export function channelOverlayText(channelId: string, agentId?: string): string 
     const session = agentId ? manager?.channelSessionScopeOfAgent?.(channelId, agentId) ?? null : null
     // Never substitute mutable channel bindings for an agent's missing session snapshot.
     const scope = agentId ? { lineId: session?.lineId ?? null, productId: session?.productId ?? null } : memRepo.channelScope(channelId)
-    const cacheKey = JSON.stringify([channelId, agentId ?? '', session?.sessionId ?? '', scope.lineId, scope.productId])
+    // Task 4:授权版本进缓存键 —— 撤权/切产品/退休推进 epoch 时,旧缓存立即失效。
+    const epoch = readLearningAuthorizationEpoch(db)
+    const cacheKey = JSON.stringify([channelId, agentId ?? '', session?.sessionId ?? '', scope.lineId, scope.productId, epoch])
     const hit = cache.get(cacheKey)
     if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.text
     const profile = createHarnessProfileRepo(db).activeOf(channelId)
@@ -48,6 +51,9 @@ export function channelOverlayText(channelId: string, agentId?: string): string 
         .map(id => memRepo.getById(id))
         .filter((r): r is NonNullable<typeof r> => {
           if (!r || r.channelId !== channelId || r.kind !== 'experience' || r.status !== 'validated') return false
+          // 自动注入面:未部署(shadow/none/withdrawn)的经验不得进入 prompt
+          const deployment = memRepo.experienceDeployment(r.id)
+          if (deployment !== 'active' && deployment !== 'canary') return false
           if (r.expiresAt !== null && r.expiresAt !== undefined) {
             const expiresAt = Date.parse(r.expiresAt)
             if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return false
