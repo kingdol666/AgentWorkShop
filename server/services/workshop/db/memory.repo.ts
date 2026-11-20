@@ -6,6 +6,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, StatementSync } from 'node:sqlite'
+import { AppError } from '../../../utils/errors'
 import type { MemoryKind, MemoryOutcome, MemoryRow, MemoryScopeKind, MemoryStatus } from './database'
 
 /** 团队共享记忆域 sentinel(单 channel 内全员可读) */
@@ -175,6 +176,16 @@ export function createMemoryRepo(db: DatabaseSync) {
   const getByIdStmt = db.prepare(
     `SELECT ${COLS} FROM agent_memories m WHERE m.id = ?`,
   )
+  // kind 隔离(Task 2):普通记忆与经验共用 (agent, dedup, channel) 键空间;
+  // 跨 kind 同键必须显式拒绝,不允许静默把经验转成普通记忆(或反之)。
+  const kindByKeyStmt = db.prepare(
+    `SELECT kind FROM agent_memories WHERE agent_id = ? AND dedup_key = ? AND channel_id = ?`,
+  )
+  const deploymentOfStmt = db.prepare(
+    `SELECT v.deployment AS deployment
+       FROM experience_heads h JOIN experience_versions v ON v.version_id = h.version_id
+      WHERE h.experience_id = ?`,
+  )
   // 经验条目写入(WP-A1):kind 恒 'experience';conflict 时刷新证据/作用域/生命周期(access_count 保留)。
   // **状态单调性**(2026-11-10 审计):validated/retired 是人类策展结果,重放/重存不得把它
   // 打回 candidate,也不得覆盖其证据(旧实现无条件写 status/evidence_json ——
@@ -236,6 +247,10 @@ export function createMemoryRepo(db: DatabaseSync) {
 
   return {
     upsert(input: MemoryUpsertInput): void {
+      const existing = kindByKeyStmt.get(input.agentId, input.dedupKey, input.channelId) as { kind?: string } | undefined
+      if (existing?.kind === 'experience' && input.kind !== 'experience') {
+        throw new AppError(409, 'EXPERIENCE_KEY_CONFLICT', '同键经验条目不可被普通记忆覆盖(请换 dedupKey)')
+      }
       upsertStmt.run(
         randomUUID(), input.channelId, input.agentId, input.kind,
         input.title, input.titleFts, input.content, input.importance,
@@ -250,6 +265,10 @@ export function createMemoryRepo(db: DatabaseSync) {
      */
     upsertExperience(input: ExperienceUpsertInput): { id: string } {
       const evidenceJson = normalizeExperienceEvidence(input.evidence)
+      const existing = kindByKeyStmt.get(input.agentId, input.dedupKey, input.channelId) as { kind?: string } | undefined
+      if (existing?.kind && existing.kind !== 'experience') {
+        throw new AppError(409, 'EXPERIENCE_KEY_CONFLICT', '同键普通记忆不可被经验覆盖(请换 dedupKey)')
+      }
       upsertExperienceStmt.run(
         randomUUID(), input.channelId, input.agentId,
         input.title, input.titleFts, input.content, input.importance,
@@ -537,6 +556,21 @@ export function createMemoryRepo(db: DatabaseSync) {
     /** 按 id 取单行(brief 置顶注入等直取场景;不存在返回 null) */
     getById(id: string): MemoryRow | null {
       return (getByIdStmt.get(id) as unknown as MemoryRow | undefined) ?? null
+    },
+
+    /**
+     * 经验行的部署状态(Task 4:自动注入只认 validated + canary/active)。
+     *  - 有版本指针:以版本 deployment 为准(回填的旧行=legacy-unverified/none → 不可自动注入);
+     *  - 无版本指针:迁移前的既有行,视为祖父条款 'active'(保持既有手动策展行为),
+     *    Task 6 起发布门会为所有新经验建版本,该分支只承接历史手工行。
+     */
+    experienceDeployment(id: string): 'none' | 'shadow' | 'canary' | 'active' | 'withdrawn' {
+      const row = deploymentOfStmt.get(id) as { deployment?: string } | undefined
+      if (!row) return 'active'
+      const value = row.deployment ?? 'none'
+      return value === 'shadow' || value === 'canary' || value === 'active' || value === 'withdrawn'
+        ? value
+        : 'none'
     },
 
     // ===== vec:延迟建表(vecInit)/ 刷新写入(vecSet)/ 删除(vecDelete)/ 分区 kNN(vecSearch)=====
