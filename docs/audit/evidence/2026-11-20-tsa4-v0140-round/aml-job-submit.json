@@ -1,0 +1,51 @@
+{
+ "status": 200,
+ "body": {
+  "job": {
+   "id": "job-mwovun18-t1mjz2",
+   "datasetId": "ds-mwovun0s-csxjjn",
+   "purpose": "quality_predict",
+   "status": "queued",
+   "stage": "",
+   "progress": 0,
+   "budget": {
+    "maxExperiments": 2,
+    "timeoutMs": 1800000,
+    "stallMs": 600000,
+    "seed": 7,
+    "params": {},
+    "changeNote": "TSA4 v0.14.0 验收作业(平台 supervised 参考训练器,真实批次数据集)",
+    "parentExperimentId": null,
+    "inlineCode": "# -*- coding: utf-8 -*-\r\n\"\"\"AML 参考训练实现(one-step 线性基线;e2e --real 模式与 Agent 的起点范本)。\r\n\r\n契约:\r\n  - 数据:amlkit.load_bundle(归一化 float32;x [N,H,nAll] / y [N,F,nTgt]);\r\n  - 模型:输入 [batch, H, nAll](展平)→ 输出 [batch, nTgt](下一拍目标,归一化);\r\n  - 产出:amlkit.export_torch_onnx(契约 ONNX)+ amlkit.save_metrics(自报指标,门禁另由平台评估器复算)。\r\n\r\n超参经作业 params 传入:lr / epochs / hidden / batch。\r\n\"\"\"\r\nimport json\r\nimport os\r\nfrom pathlib import Path\r\n\r\nimport torch\r\nimport torch.nn as nn\r\n\r\nimport amlkit\r\n\r\n\r\ndef main():\r\n    job_dir = Path(os.environ[\"AML_JOB_DIR\"]).resolve()\r\n    job = json.loads((job_dir / \"job.json\").read_text(encoding=\"utf-8\"))\r\n    params = job.get(\"params\", {})\r\n\r\n    bundle = amlkit.load_bundle(job[\"datasetPath\"])\r\n    manifest = bundle.manifest\r\n    h_steps = manifest[\"shapes\"][\"x\"][1]\r\n    n_all = manifest[\"shapes\"][\"x\"][2]\r\n    n_tgt = manifest[\"shapes\"][\"y\"][2]\r\n\r\n    x_train = bundle.get(\"x\", \"train\")\r\n    y_train = bundle.get(\"y\", \"train\")[:, 0, :]  # 下一拍目标(第 0 个 horizon 步)\r\n    x_val = bundle.get(\"x\", \"val\")\r\n    y_val = bundle.get(\"y\", \"val\")[:, 0, :]\r\n\r\n    hidden = int(params.get(\"hidden\", 128))\r\n    model = nn.Sequential(\r\n        nn.Flatten(),\r\n        nn.Linear(h_steps * n_all, hidden),\r\n        nn.ReLU(),\r\n        nn.Linear(hidden, n_tgt),\r\n    )\r\n    opt = torch.optim.Adam(model.parameters(), lr=float(params.get(\"lr\", 1e-3)))\r\n    loss_fn = nn.MSELoss()\r\n\r\n    xt = torch.tensor(x_train, dtype=torch.float32)\r\n    yt = torch.tensor(y_train, dtype=torch.float32)\r\n    xv = torch.tensor(x_val, dtype=torch.float32) if x_val.shape[0] else None\r\n    yv = torch.tensor(y_val, dtype=torch.float32) if y_val.shape[0] else None\r\n\r\n    epochs = int(params.get(\"epochs\", 80))\r\n    batch = int(params.get(\"batch\", 256))\r\n    n = xt.shape[0]\r\n    best_val = float(\"inf\")\r\n    train_loss = 0.0\r\n    val_loss = None\r\n    for epoch in range(epochs):\r\n        model.train()\r\n        perm = torch.randperm(n)\r\n        total = 0.0\r\n        for i in range(0, n, batch):\r\n            idx = perm[i:i + batch]\r\n            opt.zero_grad()\r\n            loss = loss_fn(model(xt[idx]), yt[idx])\r\n            loss.backward()\r\n            opt.step()\r\n            total += float(loss) * idx.shape[0]\r\n        train_loss = total / max(1, n)\r\n        if xv is not None:\r\n            model.eval()\r\n            with torch.no_grad():\r\n                val_loss = float(loss_fn(model(xv), yv))\r\n            best_val = min(best_val, val_loss)\r\n        amlkit.report_progress(5 + 90 * (epoch + 1) // epochs,\r\n                               \"epoch %d/%d train=%.5f val=%s\" % (epoch + 1, epochs, train_loss, val_loss if val_loss is not None else \"n/a\"))\r\n\r\n    amlkit.save_metrics({\"agent\": {\r\n        \"kind\": \"mlp_one_step_baseline\",\r\n        \"epochs\": epochs,\r\n        \"train_loss_last\": train_loss,\r\n        \"val_loss_best\": None if val_loss is None else best_val,\r\n        \"params\": params,\r\n    }})\r\n\r\n    amlkit.export_torch_onnx(model, manifest)\r\n    amlkit.report_progress(99, \"exported onnx\")\r\n    print(\"train-example done\")\r\n\r\n\r\nif __name__ == \"__main__\":\r\n    main()\r\n",
+    "byKind": "user",
+    "sceneId": null,
+    "sceneVersion": null,
+    "objectiveId": null,
+    "jobKind": "supervised",
+    "physicsManifest": null,
+    "physicsSpec": null,
+    "twinSnapshot": null,
+    "objectiveProfile": null,
+    "providerId": null,
+    "providerVersion": null,
+    "providerHash": null,
+    "providerGeneration": null,
+    "modelName": "tsa4-q-predict-mwovun0w",
+    "modelDescription": "v0.14.0 验收:克重质量预测(supervised 参考 GRU,小预算)",
+    "trainerRef": null,
+    "processModelSpec": null
+   },
+   "metricsJson": null,
+   "gatesJson": null,
+   "artifactsPath": null,
+   "error": null,
+   "retryCount": 0,
+   "agentId": "94d1be64-11dd-47b8-a2aa-8a102c94b021",
+   "channelId": "",
+   "taskId": "",
+   "createdAt": "2026-11-20T19:15:30.716+08:00",
+   "startedAt": null,
+   "endedAt": null
+  }
+ }
+}

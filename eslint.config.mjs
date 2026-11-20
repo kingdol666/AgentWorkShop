@@ -54,6 +54,21 @@ export default withNuxt(
       'no-empty': 'off',
     },
   },
+  // 实机验收轮脚本(scripts/experiments/tsaN-*.mjs):与 scripts/_audit 同性质——
+  // 单文件自包含的状态机/取证脚本,密集单行是刻意选择,为 docs/audit/evidence/ 的
+  // 验收结论提供可复现证据,不是产品代码。只豁免风格与卫生类规则,no-undef 等仍生效。
+  {
+    files: ['scripts/experiments/**/*.mjs'],
+    rules: {
+      '@stylistic/max-statements-per-line': 'off',
+      '@stylistic/brace-style': 'off',
+      '@stylistic/no-mixed-operators': 'off',
+      '@stylistic/arrow-parens': 'off',
+      'no-unused-vars': 'off',
+      'no-useless-assignment': 'off',
+      'no-empty': 'off',
+    },
+  },
   {
     files: ['scripts/live-aml-*.mjs', 'scripts/e2e-aml-decoupled.mjs'],
     rules: {

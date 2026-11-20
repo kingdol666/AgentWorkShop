@@ -1,0 +1,39 @@
+{
+ "note": "PR-D batch-quality gate live block: rr-0cc3b0be dropped at missingRate 30.9% > 0.30 (AML_NO_USABLE_RUNS). Policy decision: retry with maxDropRatio 0.4 (documented, not silent).",
+ "spec": {
+  "lineId": "ln-a80dfb0d",
+  "productId": "pd-5c8e005f",
+  "recipeId": "rc-1bafdcf9",
+  "nodes": [
+   {
+    "nodeId": "dn-5634369a",
+    "role": "feature"
+   },
+   {
+    "nodeId": "dn-847baf8c",
+    "role": "feature"
+   },
+   {
+    "nodeId": "dn-bad28587",
+    "role": "target"
+   }
+  ],
+  "beatMs": 5000,
+  "window": {
+   "historySteps": 12,
+   "horizonSteps": 3
+  },
+  "cleaning": {
+   "hampelK": 4,
+   "maxInterpMs": 15000,
+   "maxDropRatio": 0.3
+  },
+  "split": {
+   "valRatio": 0.2,
+   "testRatio": 0.2,
+   "seed": 7
+  },
+  "purpose": "quality_predict",
+  "note": "TSA4 v0.14.0 验收:真实批次数据集+质量门"
+ }
+}

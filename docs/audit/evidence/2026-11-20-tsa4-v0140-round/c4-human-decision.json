@@ -1,0 +1,4 @@
+{
+ "decision": "decline: merged rows are negative-only evidence; promoting to validated would be semantically invalid (recorded, not executed)",
+ "basis": "independence/polarity rules: negative-only rows must not become validated experience"
+}

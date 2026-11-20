@@ -1,0 +1,16 @@
+{
+  "id": "F-TSA4-2",
+  "severity": "P2 (regression unchanged)",
+  "title": "交付物状态不重算:结果已 submit+review(reviewed) 但 deliverable 仍 planned",
+  "at": "2026-11-20T19:10",
+  "facts": [
+    "landing 交付 83804bbc(landing-page)与 industrial 交付 024e5d91(shift-mid-analysis)对应结果均走完 POST /results/:rid/submit(200) → POST /results/:rid/review decision=reviewed(200)。",
+    "复查 GET /projects/:id/deliverables:五个交付物状态全部仍为 planned。",
+    "与 2026-11-18 Gemma4 验收轮记录的 P2『交付物状态不重算』一致 —— v0.14.0 未修复,回归未变。"
+  ],
+  "implications": [
+    "项目级『交付物完成度』读数偏低(显示 planned 而实际有 reviewed 产物);工作项/结果层面状态正确。",
+    "影响看板汇总口径,不影响治理与写控。"
+  ],
+  "workItemStates": "两个新工作项均 COMPLETED(attempt 1),验收流 200/200"
+}

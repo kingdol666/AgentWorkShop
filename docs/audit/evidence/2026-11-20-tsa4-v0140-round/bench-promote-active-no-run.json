@@ -1,0 +1,10 @@
+{
+ "status": 200,
+ "code": 0,
+ "body": {
+  "ok": false,
+  "reasons": [
+   "BENCH_PROVENANCE_REQUIRED: 晋级 active 必须引用已落库的 benchRunId（不接受客户端自报数字）"
+  ]
+ }
+}
