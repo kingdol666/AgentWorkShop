@@ -1772,7 +1772,23 @@ CREATE TABLE IF NOT EXISTS experience_reflection_outbox (
   created_at      TEXT NOT NULL,
   updated_at      TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_reflection_pending ON experience_reflection_outbox(state, created_at);`
+CREATE INDEX IF NOT EXISTS idx_reflection_pending ON experience_reflection_outbox(state, created_at);
+-- v7(Task 8):设备写尝试账本 —— 进程中断后可判「未发送 / 结果未知」,未知不得自动重发
+CREATE TABLE IF NOT EXISTS dcw_write_attempts (
+  id                 TEXT PRIMARY KEY,
+  node_id            TEXT NOT NULL,
+  line_id            TEXT NOT NULL DEFAULT '',
+  approval_id        TEXT NOT NULL DEFAULT '',
+  task_id            TEXT NOT NULL DEFAULT '',
+  execution_lease_id TEXT NOT NULL DEFAULT '',
+  payload_hash       TEXT NOT NULL,
+  state              TEXT NOT NULL,
+  detail             TEXT NOT NULL DEFAULT '',
+  created_at         TEXT NOT NULL,
+  updated_at         TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_write_attempts_node ON dcw_write_attempts(node_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_write_attempts_open ON dcw_write_attempts(state);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 

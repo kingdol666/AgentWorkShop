@@ -68,6 +68,7 @@ import {
   preflightApprovedPlan as validateApprovedPlan,
   type PlanMaterializationContext,
 } from './plan-materialization'
+import { conflictsWithPendingPlan, derivePlanProgress } from './plan-progress'
 
 // 计划/证据纯函数已拆到 plan-schema.ts;保留 service 的公开导出面(外部 import 路径不变)。
 export { assertAcyclic, evaluateCriteriaChecks, normalizeProjectPlan, requireLeaderHarness, resolveContractForMaterialize, verifyEvidenceAgainstTask } from './plan-schema'
@@ -758,6 +759,15 @@ export class ProjectService {
     if (!input.title?.trim()) throw new AppError(400, 'BAD_REQUEST', '工作项标题不能为空')
     const dependsOn = strictStringArray(input.dependsOn, 'dependsOn')
     const contract = strictContract(input.contract, 'contract')
+    // Task 9:待批计划窗口内的建项冲突确定性拒绝(标题/dedupeKey 命中或 payload 不可解析);
+    // 与待批计划不冲突的手工建项仍允许。
+    const pendingConflict = conflictsWithPendingPlan(this.approvals.listPending(id), {
+      title: input.title.trim(),
+      dedupeKey: input.dedupeKey ?? `${d.id}:${input.title.trim()}`,
+    })
+    if (pendingConflict.conflict) {
+      throw new AppError(409, 'PLAN_CHANGE_PENDING', `计划 ${pendingConflict.approvalId ?? ''} 待批准:${pendingConflict.reason};请等物化完成或撤销计划后再建项`)
+    }
     const existingItems = this.workItems.listByProject(id)
     assertWorkItemGraphIntegrity([
       ...existingItems.map(item => ({
@@ -3078,6 +3088,26 @@ export class ProjectService {
     const readyItems = projectedItems.filter(w => w.stage === 'ready')
     const waitingItems = projectedItems.filter(w => w.stage.startsWith('waiting'))
     const blockedItems = projectedItems.filter(w => ['blocked', 'rework'].includes(w.stage))
+    // Task 9:计划进度唯一投影(等批准/已物化/被拒/需关注),前端与自动化共用;
+    // 避免「plan 字段为 null 但 /approvals 有待批卡」的漏判。
+    const planApprovals = [
+      ...this.approvals.listPending(id),
+      ...this.approvals.listByProject(id).filter(a => a.kind === 'plan_approval' && a.status !== 'pending'),
+    ].filter(a => a.kind === 'plan_approval')
+    const planAppliedAt = this.events.listByProject(id)
+      .filter(e => e.type === 'plan.applied')
+      .map(e => e.createdAt)
+      .sort()
+      .pop() ?? null
+    const lastPlanDecision = planApprovals
+      .filter(a => a.status !== 'pending' && a.decidedAt)
+      .sort((a, b) => String(b.decidedAt).localeCompare(String(a.decidedAt)))[0]
+    const planProgress = derivePlanProgress({
+      planVersion: p.planVersion,
+      approvals: planApprovals,
+      materializedAt: planAppliedAt,
+      lastDecision: lastPlanDecision ? { status: lastPlanDecision.status, decidedAt: String(lastPlanDecision.decidedAt) } : null,
+    })
     return {
       project: {
         id: p.id, name: p.name, description: p.description, objective: p.objective,
@@ -3086,6 +3116,7 @@ export class ProjectService {
         planVersion: p.planVersion, autoDispatch: p.autoDispatch === 1, routingPolicy: p.routingPolicy,
         createdAt: p.createdAt, updatedAt: p.updatedAt,
       },
+      planProgress,
       access,
       dispatchLimits: resolveDispatchLimits(workshopSettings()),
       summary: {
