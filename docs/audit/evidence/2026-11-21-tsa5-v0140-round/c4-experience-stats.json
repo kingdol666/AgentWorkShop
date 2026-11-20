@@ -1,0 +1,66 @@
+{
+ "lineId": "ln-a80dfb0d",
+ "total": 5,
+ "byStatus": {
+  "candidate": 5
+ },
+ "byScope": {
+  "line": 5
+ },
+ "byOutcome": {
+  "positive": 3,
+  "negative": 2
+ },
+ "recent": [
+  {
+   "id": "b19325f1-bb62-4156-9dd4-26890551e71b",
+   "title": "完成：重启失效审批后的新批次 rr-a03144c0 复测判读与配方链路收口",
+   "outcome": "positive",
+   "status": "candidate",
+   "scopeKind": "line",
+   "scopeKey": "ln-a80dfb0d",
+   "taskId": "6493520a-25fe-4e16-b920-1e8de5262f50",
+   "createdAt": "2026-11-21T03:03:00.704+08:00"
+  },
+  {
+   "id": "bd9d9e6e-3be4-4e01-8ec7-6f87e7208b26",
+   "title": "完成：批次 rr-48cfb72b 全窗稳态复算与收口(窗口已冻结 19:15:30 停线)",
+   "outcome": "positive",
+   "status": "candidate",
+   "scopeKind": "line",
+   "scopeKey": "ln-a80dfb0d",
+   "taskId": "804580b0-44f1-47ba-a99a-2022839062fd",
+   "createdAt": "2026-11-20T19:26:56.089+08:00"
+  },
+  {
+   "id": "0987980f-2575-429c-b4a3-93f6b1f76920",
+   "title": "未完成：克重闭环首轮巡检",
+   "outcome": "negative",
+   "status": "candidate",
+   "scopeKind": "line",
+   "scopeKey": "ln-a80dfb0d",
+   "taskId": "e9eae12b-a69c-40b2-a42a-f27bbe991561",
+   "createdAt": "2026-11-20T11:40:09.756+08:00"
+  },
+  {
+   "id": "5a721ded-0f85-4d7c-971a-270537496318",
+   "title": "未完成：知识增强的首步调参建议（不写入）",
+   "outcome": "negative",
+   "status": "candidate",
+   "scopeKind": "line",
+   "scopeKey": "ln-a80dfb0d",
+   "taskId": "17121003-b9e0-4ecd-a975-457a315b1fd4",
+   "createdAt": "2026-11-20T11:40:09.730+08:00"
+  },
+  {
+   "id": "80e8efa0-b68f-46b4-b04e-97e45555a7cf",
+   "title": "完成：5分钟窗口克重闭环数据判读",
+   "outcome": "positive",
+   "status": "candidate",
+   "scopeKind": "line",
+   "scopeKey": "ln-a80dfb0d",
+   "taskId": "125b3a71-ad0f-460c-a2d5-ed0f897d8e84",
+   "createdAt": "2026-11-20T11:37:02.311+08:00"
+  }
+ ]
+}

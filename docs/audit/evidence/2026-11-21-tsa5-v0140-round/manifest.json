@@ -1,0 +1,231 @@
+{
+ "version": "0.14.0",
+ "generatedAt": "2026-11-20T19:58:15.607Z",
+ "evidenceDir": "docs/audit/evidence/2026-11-21-tsa5-v0140-round",
+ "files": {
+  "aml-dataset.json": {
+   "bytes": 2927,
+   "sha256": "0ebe9b3560a191c6"
+  },
+  "aml-job-final.json": {
+   "bytes": 111,
+   "sha256": "dddf3de7276389c5"
+  },
+  "aml-job-poll.json": {
+   "bytes": 57,
+   "sha256": "de44c0818571a8d9"
+  },
+  "aml-job-submit.json": {
+   "bytes": 4795,
+   "sha256": "d844db24ae64b716"
+  },
+  "aml-spec.json": {
+   "bytes": 625,
+   "sha256": "e32f36b707302337"
+  },
+  "bench-falsified-negative.json": {
+   "bytes": 125,
+   "sha256": "5414dbbc65572980"
+  },
+  "bench-profile-created.json": {
+   "bytes": 429,
+   "sha256": "b7bcbe5942c6ff85"
+  },
+  "bench-profiles-before.json": {
+   "bytes": 2,
+   "sha256": "4f53cda18c2baa0c"
+  },
+  "bench-promote-active-client-run.json": {
+   "bytes": 134,
+   "sha256": "9c043bbbada5153a"
+  },
+  "bench-promote-active-hostgate.json": {
+   "bytes": 208,
+   "sha256": "37e8a180372d13f8"
+  },
+  "bench-promote-active-no-run.json": {
+   "bytes": 197,
+   "sha256": "c77ca3efdb94c6cc"
+  },
+  "bench-promote-shadow.json": {
+   "bytes": 137,
+   "sha256": "79a97ff0f0a371c1"
+  },
+  "bench-record.json": {
+   "bytes": 265,
+   "sha256": "e63c7ff2e8654202"
+  },
+  "c0-equip.json": {
+   "bytes": 34,
+   "sha256": "1b2fe712545fd6dd"
+  },
+  "c1-reply.json": {
+   "bytes": 1488,
+   "sha256": "b853bade1cb9b8d4"
+  },
+  "c1-sent.json": {
+   "bytes": 57,
+   "sha256": "36dad2ecb030df1d"
+  },
+  "c2-ABORT.json": {
+   "bytes": 50,
+   "sha256": "bb1fd71f650361db"
+  },
+  "c2-sent.json": {
+   "bytes": 334,
+   "sha256": "399733134fbe24b2"
+  },
+  "c4-experience-stats.json": {
+   "bytes": 1899,
+   "sha256": "626c1e9653946471"
+  },
+  "c4-human-decision.json": {
+   "bytes": 243,
+   "sha256": "3461361efa815cb0"
+  },
+  "c4-merge-two-negatives.json": {
+   "bytes": 214,
+   "sha256": "80bdd36c2d357984"
+  },
+  "c4-projections.json": {
+   "bytes": 1785,
+   "sha256": "d556e4953bc6414c"
+  },
+  "c4-single-gate.json": {
+   "bytes": 117,
+   "sha256": "308846856309c525"
+  },
+  "c5-reply.json": {
+   "bytes": 1505,
+   "sha256": "8ffe52be19d6b144"
+  },
+  "c6-cross.json": {
+   "bytes": 45,
+   "sha256": "88371db02c5c54de"
+  },
+  "c6-oob.json": {
+   "bytes": 50,
+   "sha256": "4df870a61a54a096"
+  },
+  "phase-s-aw-health.json": {
+   "bytes": 156,
+   "sha256": "7b5392c3a89423c4"
+  },
+  "phase-s-experience-anon.json": {
+   "bytes": 18,
+   "sha256": "479fac48972da897"
+  },
+  "phase-s-experience-projection.json": {
+   "bytes": 310,
+   "sha256": "3de31d8a762b3679"
+  },
+  "phase-s-experience-stats.json": {
+   "bytes": 1530,
+   "sha256": "3e86045b5a2ef5be"
+  },
+  "phase-s-idd-token.json": {
+   "bytes": 119,
+   "sha256": "eb0677ffb6c6444a"
+  },
+  "phase-s-plugin-health.json": {
+   "bytes": 1317,
+   "sha256": "9a54f7f89dfd6044"
+  },
+  "phase-s-plugins.json": {
+   "bytes": 330,
+   "sha256": "0bae0e9827950e95"
+  },
+  "phase-s-rag-token.json": {
+   "bytes": 207,
+   "sha256": "c6011f1182191ab6"
+  },
+  "phase-s-settings-patch.json": {
+   "bytes": 44,
+   "sha256": "11be36de815b5ba2"
+  },
+  "phase-s-sim-twin.json": {
+   "bytes": 42,
+   "sha256": "b6196c8b71e7ca00"
+  },
+  "phase-s-tools.json": {
+   "bytes": 573,
+   "sha256": "2452c8b54ade2527"
+  },
+  "plugin-invoke-unconfigured.json": {
+   "bytes": 184,
+   "sha256": "013c3c282ffd5445"
+  },
+  "plugin-manifest.json": {
+   "bytes": 603,
+   "sha256": "2588460a425d9624"
+  },
+  "plugin-registry.json": {
+   "bytes": 50,
+   "sha256": "7c9745d022c71273"
+  },
+  "plugin-worker-surface.json": {
+   "bytes": 50,
+   "sha256": "be328c4b0787e842"
+  },
+  "r2-approve-readback.json": {
+   "bytes": 180,
+   "sha256": "1c95c8a657bfa917"
+  },
+  "r2-direct-invoke.json": {
+   "bytes": 512,
+   "sha256": "ae2418b82fbe17c9"
+  },
+  "reconcile-after.json": {
+   "bytes": 134338,
+   "sha256": "bb06fd6ef4eaf9bd"
+  },
+  "reconcile-before.json": {
+   "bytes": 134339,
+   "sha256": "f623decdaef13873"
+  },
+  "rtu-after.json": {
+   "bytes": 146,
+   "sha256": "711c3b17765b57f3"
+  },
+  "rtu-baseline.json": {
+   "bytes": 126,
+   "sha256": "63b631c5ccf1a5fe"
+  },
+  "rtu-burst.json": {
+   "bytes": 930,
+   "sha256": "cd965bed52cc097e"
+  },
+  "rtu-nodes.json": {
+   "bytes": 146,
+   "sha256": "711c3b17765b57f3"
+  },
+  "rtu-post-burst.json": {
+   "bytes": 302,
+   "sha256": "b4f778f1640642ad"
+  },
+  "smoke-ABORT.json": {
+   "bytes": 53,
+   "sha256": "af84b5779eed12b2"
+  },
+  "smoke-bindings.json": {
+   "bytes": 40,
+   "sha256": "ea90d8cbe81765da"
+  },
+  "smoke-direct-invoke.json": {
+   "bytes": 271,
+   "sha256": "21919d7939e5a9a0"
+  },
+  "smoke-plan.json": {
+   "bytes": 22,
+   "sha256": "dc27ed00fa767675"
+  },
+  "xch-arrival.json": {
+   "bytes": 49,
+   "sha256": "892eb5bc73622801"
+  },
+  "xch-invoke.json": {
+   "bytes": 37,
+   "sha256": "5ca5a896a67cda9b"
+  }
+ }
+}

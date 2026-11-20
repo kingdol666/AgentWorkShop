@@ -1,0 +1,55 @@
+{
+  "round": "TSA5",
+  "at": "2026-11-21T03:40Z",
+  "findings": [
+    {
+      "id": "F-TSA5-1",
+      "severity": "positive-governance + process observation",
+      "title": "Agent 链对不合理写指令做出证据性反驳;人工 override 路径可走但 lead 编排停滞",
+      "facts": [
+        "TSA5 批次以配方 v2 值(64/6.5)起跑,全指标带内 —— 与 TSA4(设备 72 偏离)相反。知识 worker 独立复核后明确「不建议 +1MPa,更不建议 +0.5s」,并引用 KB 条目佐证;lead 随之暂停提案做重启后授权核对。",
+        "人工以「知情 override(测试语义,责任在人工)」指令推进后,lead 仍多次派只读核对而未提交方案(编排停滞 ~40min,与 TSA3 'root 编排停滞 P1' 同族);最终经绑定 worker 直提 recipe_propose 完成验证。",
+        "方案依据如实写明设备实读值:R1 64→65(回读 65=65)、R2 6.5→7(回读 7=7)—— F-TSA4-1 的教训(用设备实读值而非配方存储值)在本轮被 agent 链自然吸收。",
+        "单飞互斥正确生效:在飞单存在期间,后续提案 0s 返回「已有在飞方案审批单」;60s 下发频控正确拦截(距上次 18s → 要求 ≥60s)。"
+      ]
+    },
+    {
+      "id": "F-TSA5-2",
+      "severity": "visibility gap (P3)",
+      "title": "整包审批卡不挂在发起频道:按 channelId 过滤 /hitl/pending 返回空,全局队列才可见",
+      "facts": [
+        "ap-0425af2d 在全局 /hitl/pending 可见,但 channelId=4bbf5d97 过滤下不可见 —— 卡片归属产线/owner 上下文而非发起频道。",
+        "影响:频道侧 watcher(按频道过滤)会漏看整包卡;TSA4 的 waitDcwCard 因恰好用全局轮询而未踩中。建议:整包卡补频道归属或在频道过滤中包含产线上下文卡。"
+      ]
+    },
+    {
+      "id": "F-TSA5-3",
+      "severity": "data observation + PARTIAL verdict unchanged",
+      "title": "AML:跨批次网格取交集,退化批次会把数据集整体归零;训练成功仍 NOT_COMPLETED(第三轮)",
+      "facts": [
+        "两封闭批次并集建数据集(5s 网格,drop≤0.4)→ rows=0;限定唯一完整批次 rr-0cc3b0be → 仍 rows=0(其网格对齐缺失率远高于批次级 30.9%)。",
+        "rr-48cfb72b 采样期正值孪生退化(twin 重启窗口),网格稀疏 —— 把它并入交集会拖垮整体,这是保守正确的行为,但值得在数据集报告里显式标注『交集语义』。",
+        "失败语义再次忠实(job 终态 failed,零产物零注册)。训练成功修复路径 = 干净高密度批次(rr-a03144c0 正常采样中)。"
+      ]
+    },
+    {
+      "id": "F-TSA5-4",
+      "severity": "P2 regression unchanged + new truncation note",
+      "title": "交付物状态不重算回归未变;产物摘要落库即截断 8000 字符",
+      "facts": [
+        "landing FAQ 迭代 COMPLETED+reviewed 后,交付物仍 planned(F-TSA4-2 复确认)。",
+        "结果摘要列在**入库时**即截断 8000 字符(TSA5 的迭代产物 >8K,tail 是 CSS 中段),完整产物无法从持久面验证(workspace 随 COMPLETED 回收)。建议:产物走 artifact store 而非 summary 列。"
+      ]
+    },
+    {
+      "id": "F-TSA5-5",
+      "severity": "P3 observations",
+      "title": "开批次瞬态通道占用 3/5;脚本化跨频道探针 401(运行时租约);多智能体跨频道协作有机发生",
+      "facts": [
+        "line start 5 参中 2 个返回「写入进行中」(keep 循环竞争;瞬态,值最终就位)——line start 与 keep 循环应串行化(建议)。",
+        "tsa5-xchannel 探针 send_cross_channel_message 返回 401(多轮重启后 lead 运行时租约形态);跨频道能力本身由有机流量证实:旧线智能体自主处置 industrial 失败项并向项目办频道回执(03:23-03:25 message 98694ab8)。",
+        "industrial 快检项 2× ROOT_TIMEOUT(深夜上游不稳窗口,与 TSA3 深夜连环同族);按尝试纪律停在 2/3。"
+      ]
+    }
+  ]
+}

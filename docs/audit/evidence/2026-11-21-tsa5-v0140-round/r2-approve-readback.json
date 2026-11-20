@@ -1,0 +1,11 @@
+{
+ "card": "ap-9b75ba82",
+ "decide": 200,
+ "readback": {
+  "ok": true,
+  "value": 7,
+  "raw": 7,
+  "message": "读回 raw 7 → eng 7",
+  "at": "2026-11-21T03:37:29.512+08:00"
+ }
+}

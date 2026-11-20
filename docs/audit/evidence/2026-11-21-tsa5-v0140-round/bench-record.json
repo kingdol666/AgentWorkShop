@@ -1,0 +1,12 @@
+{
+ "status": 200,
+ "body": {
+  "runId": "hbr-2ab1ab69-b7fd-433d-ae62-3ec135eaf002",
+  "pValue": 0.5,
+  "primaryDelta": 0.42,
+  "costDelta": 0,
+  "pairs": 3,
+  "excluded": 0,
+  "artifactSha256": "96e518014fb3908981a8b5e4bce4dccf64679c8276bd57144937047bbe3b2f54"
+ }
+}

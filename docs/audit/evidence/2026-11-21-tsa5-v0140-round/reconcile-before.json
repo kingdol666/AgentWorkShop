@@ -1,0 +1,5405 @@
+{
+ "phase": "before",
+ "at": "2026-11-20T19:57:41.490Z",
+ "tables": {
+  "writeAttempts": [
+   {
+    "id": "wat-4084281d-b74",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:11:49.573+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-47bb80a2-a09",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:11:49.622+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8743cc46-c34",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:11:49.650+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b835cd7b-44a",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:11:49.566+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cc1b89f4-3e4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:12:49.970+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-77356f53-1f6",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:12:50.002+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a2db23af-694",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:12:50.033+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-852d1004-25f",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:12:49.966+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a398ba78-e10",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:13:50.036+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-763e1138-e60",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:13:50.067+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d07334e1-e71",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:13:50.082+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-68e66aeb-297",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:13:50.029+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-185297eb-1f7",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:14:50.507+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-04722cb7-ee0",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:14:50.538+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-aa47bd73-414",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:14:50.568+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f2576505-c55",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:14:50.500+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-da767e1d-c51",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:15:50.581+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-12863aa6-74a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:15:50.612+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4f20d442-41c",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:15:50.643+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d943a3bc-f59",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:15:50.576+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-60c76f69-ab6",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:16:51.021+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1fec4f9d-bf3",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:16:51.053+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f434c14b-84b",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:16:51.084+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8844f4eb-ca2",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:16:51.015+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-78be4b4c-86c",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:17:51.098+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ecbea983-21d",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:17:51.127+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-94fb723f-d84",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:17:51.158+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a595b732-bce",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:17:51.092+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9b3940f6-9c7",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:18:51.109+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-afd6548f-881",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:18:51.140+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ee0d9d83-15e",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:18:51.170+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-75974344-5ea",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:18:51.104+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7e956f9f-582",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:19:51.168+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b2241a44-b5e",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:19:51.198+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f7b7810d-1f3",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:19:51.229+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-242b64b6-593",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:19:51.165+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-414c0d5a-ead",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:22:05.097+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9c2334eb-039",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:22:05.143+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a790d96d-9ab",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:22:05.189+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-254217ab-ccb",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:22:05.083+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4777fcde-5b4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:23:05.497+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a85de617-016",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:23:05.528+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7c903ffc-f53",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:23:05.559+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-82ab0284-791",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:23:05.492+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4607eee3-c51",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:24:05.985+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-595dc471-57a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:24:06.016+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-710abe2b-746",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:24:06.047+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e0b7db85-5ac",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:24:05.979+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9ac57a70-039",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:25:06.479+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c7d5282a-1f1",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:25:06.497+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-04751634-da7",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:25:06.527+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-921e8aed-1aa",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:25:06.479+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ba697b19-cb2",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:26:06.271+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-08e3a480-cf8",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:26:06.904+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e5508dea-d9b",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:26:06.934+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9cc67906-4bf",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:26:06.965+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2c7b13e5-92b",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:26:06.896+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c063f6c5-555",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:27:07.327+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f3318330-c99",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:27:07.358+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ca373992-66c",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:27:07.388+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-08efd33a-363",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:27:07.312+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a9b334e0-79f",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:28:07.659+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e46aefdb-771",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:28:07.677+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-77b800e2-450",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:28:07.705+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8bcab8bb-f6e",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:28:07.651+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f482ca03-5c7",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:29:08.073+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-662099ab-64c",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:29:08.104+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e48ba1b7-be0",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:29:08.137+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-aee269dc-1b2",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:29:08.068+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-93e1f2d1-bf3",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:30:08.187+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b735623d-94a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:30:08.193+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7d793480-58d",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:30:08.224+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cd67a3fb-acb",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:30:08.183+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bd15be46-e28",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:31:08.693+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d9a35868-52c",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:31:08.739+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2afe234e-3a8",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:31:08.786+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ad073ddb-689",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:31:08.690+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-313cd3d4-3b8",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:32:09.142+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6e58897a-a49",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:32:09.157+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6c321192-502",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:32:09.189+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0f878fe7-9a8",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:32:09.136+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-79399eae-acd",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:33:09.646+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2a702dd4-d91",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:33:09.678+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ed73376b-61e",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:33:09.709+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6977abae-a7b",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:33:09.641+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-887ec6f4-51b",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:34:10.114+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2c97e3c1-114",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:34:10.145+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d6433910-692",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:34:10.175+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3f1c425a-3c8",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:34:10.108+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bb430aae-ffa",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:35:10.475+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a16ab777-180",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:35:10.506+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-88006c90-136",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:35:10.539+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a0f9f662-e85",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:35:10.469+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9e01d119-9d0",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:36:10.928+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cb1f8b10-060",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:36:10.958+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-132d0a8e-c50",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:36:10.989+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-57802c0d-375",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:36:10.917+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-87435acc-4f7",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:37:11.323+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-428fbfc5-9ff",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:37:11.354+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f8878183-ed9",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:37:11.384+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8439bca8-b70",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:37:11.312+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4fc289ce-ad7",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:38:11.780+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5bd88a59-024",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:38:11.813+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ba51fd8e-e87",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:38:11.843+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-dcc12025-ace",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:38:11.779+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-75efd607-90e",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:39:12.223+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4454466f-374",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:39:12.254+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e5ac5d23-8a7",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:39:12.285+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1c5a5ab2-c03",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:39:12.215+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-92cff228-5ef",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:40:12.606+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c29bd645-5d1",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:40:12.622+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a494f054-ff1",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:40:12.653+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-75d186dc-9ae",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:40:12.600+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-418a6aa6-90c",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:41:12.631+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8e66438a-cc8",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:41:12.663+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4f7357da-22b",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:41:12.693+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5ed00716-b92",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:41:12.626+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4e4102b6-7b7",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:42:12.833+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-693f2724-c71",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:42:12.851+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-15029ddb-9f6",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:42:12.879+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9773c334-e40",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:42:12.826+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d536f331-5f7",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:43:13.068+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f8aaff34-d67",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:43:13.098+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-acb7ffc6-5b2",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:43:13.129+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-81dc0a13-76c",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:43:13.060+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-10f32818-8d4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:44:13.406+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a301ab2a-ece",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:44:13.437+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c4967581-148",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:44:13.468+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c9132759-536",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:44:13.390+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ff89398f-fd0",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:45:13.711+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5810daca-844",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:45:13.730+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0566e52c-eb9",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:45:13.760+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d9534f76-ec1",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:45:13.710+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7ab027d9-116",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:46:14.112+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d77b1967-48c",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:46:14.132+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1a28f2f3-959",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:46:14.146+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bed4b392-cbb",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:46:14.110+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-779096a1-69f",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:47:14.465+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6c81cd9b-46a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:47:14.496+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3e5860ae-88a",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:47:14.527+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5c01659f-942",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:47:14.458+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c550a44b-3d4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:48:14.960+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5c789f7e-a05",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:48:14.992+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-092b49f1-c06",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:48:15.023+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-358ef972-74b",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:48:14.953+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e8b900a8-5f4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:49:15.309+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e1079bfc-884",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:49:15.338+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fcebb6b5-f7d",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:49:15.356+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2db43f46-c0f",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:49:15.301+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-df23ace2-67d",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:50:15.603+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e2d53bca-17f",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:50:15.650+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-061748e4-453",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:50:15.696+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f0e93234-51f",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:50:15.598+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fb70499d-a17",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:51:15.949+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-17b56dce-e4a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:51:15.976+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-23ac73d4-bb6",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:51:15.994+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-42281925-80c",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:51:15.936+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-dca6d349-e66",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:52:16.322+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fdc60071-3a5",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:52:16.353+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c25f73a4-a3b",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:52:16.383+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-97c15d89-fb1",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:52:16.316+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d9bbc24f-e08",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:53:16.697+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-93c07a56-f25",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:53:16.728+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ec5e8a58-34e",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:53:16.758+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-077bb25b-9fb",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:53:16.690+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a9cc10e1-41b",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:54:16.718+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-888485a8-86a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:54:16.749+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4187b3cc-c01",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:54:16.779+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9d0c8e40-36c",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:54:16.712+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-05aeed77-3ee",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:55:16.743+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ba0e49cb-5e4",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:55:16.774+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bdf48c31-499",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:55:16.805+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-012fd97a-2a5",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:55:16.740+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-98810cbc-92d",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:56:16.750+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d15c373f-181",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:56:16.781+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5a823785-fcf",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:56:16.812+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f1dcf994-241",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:56:16.743+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-81505b0e-b5c",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:57:16.802+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ca9a0e64-2d8",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:57:16.833+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1047ec80-370",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:57:16.864+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d8d5c9a9-592",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:57:16.796+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-589e6c8b-72b",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:58:17.188+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c5720cf1-5ff",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:58:17.218+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-62a38c21-ae8",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:58:17.249+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7a14559c-249",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:58:17.176+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b1c160ab-9e1",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:59:17.593+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4a2d8dbb-c5c",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:59:17.624+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-91519ef4-994",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:59:17.655+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9174f5be-344",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T18:59:17.589+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9d89f69c-b7d",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:00:18.040+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b3e84e4d-9e7",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:00:18.071+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c256e9bd-1fa",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:00:18.104+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d5ed27c1-145",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:00:18.034+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b852eeab-009",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:01:18.530+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0383c307-0cf",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:01:18.545+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c5a05bc5-9eb",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:01:18.576+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-11bb8165-70f",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:01:18.525+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3579b56f-93b",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:02:18.952+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-61172253-b9a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:02:18.983+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f04fe82e-2df",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:02:19.014+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3c9b28a1-44f",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:02:18.944+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7375f4ba-d4b",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:03:19.382+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-896890ad-e3e",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:03:19.413+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f1938d71-4c2",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:03:19.443+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e21c0257-f85",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:03:19.375+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d09d8e32-cb9",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:04:19.769+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e84f3d3a-9c2",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:04:19.784+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0d170a47-d84",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:04:19.815+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d475169d-aec",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:04:19.752+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-460ec072-fb5",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:05:20.099+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b225327f-f11",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:05:20.131+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ea9e450e-663",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:05:20.162+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c0460dba-ce5",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:05:20.092+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-aac54a73-6db",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:06:20.478+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-820f2cec-452",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:06:20.511+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8c62ebed-6b9",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:06:20.555+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e28f51d3-830",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:06:20.467+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-59abfad0-df6",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:08:07.715+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2628b14b-ba7",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:08:07.730+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-247fc9a7-c37",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:08:07.792+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-89fab35f-5a4",
+    "node": "dw-a197071e",
+    "outcome": "rejected",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:08:11.229+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7d33d50c-f78",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:08:08.193+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6c1957ef-529",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:08:08.210+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-843f3793-6ff",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:08:08.240+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7eb521e2-84f",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:08:08.189+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5dcfe81d-ada",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:08:11.233+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-82a28d77-363",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:09:08.673+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-28d685bd-5bb",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:09:08.703+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b5a49314-262",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:09:08.734+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-48aea5d1-8a5",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:09:08.667+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-dea6e604-5f5",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:10:09.069+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-681f770f-727",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:10:09.101+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cb0d154c-1b8",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:10:09.131+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d046ec50-cc3",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:10:09.063+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c9ca5003-4fc",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:11:09.496+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c94ed6c0-bf7",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:11:09.528+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8004c502-16a",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:11:09.559+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ed3c4c6a-883",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:11:09.492+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4a957461-cc7",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:12:09.870+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f7741424-4b5",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:12:09.901+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-08416c0b-dba",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:12:09.931+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c8ac581c-7d7",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:12:09.862+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bc476787-0bb",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:13:10.364+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d09d8be4-a44",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:13:10.386+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e077641c-92f",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:13:10.411+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-933b6daa-1be",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:13:10.359+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2b0497e6-4cf",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:14:10.680+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d4cd2eef-050",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:14:10.711+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-307a9421-984",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:14:10.742+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-51b60b16-a6b",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:14:10.673+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4e95252d-a39",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:15:11.018+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c25ee39f-451",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:15:11.049+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-905f8791-c7d",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:15:11.080+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-92bf2688-121",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-20T19:15:11.007+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ba0574e3-6e5",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:34:42.000+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b45fc594-041",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:34:42.069+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-08bb7769-241",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:34:42.116+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d896be75-e9e",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:34:42.004+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c9f647de-16f",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:34:42.014+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-063de540-024",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:34:42.021+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bef02491-e68",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:34:42.440+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bab1ece9-307",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:34:42.432+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d1c63363-104",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:35:42.102+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-695947f9-6b4",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:35:42.134+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bcaabb1c-236",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:35:42.098+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-dc068155-7a7",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:35:42.612+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0714811f-f70",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:35:42.603+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8d78c006-2b3",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:36:42.160+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-26b6dfbd-0d0",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:36:42.192+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2bcc7211-361",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:36:42.152+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5581e216-238",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:36:42.669+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-74d9a673-e03",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:36:42.660+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d1fe6416-1b2",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:37:42.648+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1878f802-d73",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:37:42.679+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-24676925-8b2",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:37:42.641+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5525d5ec-fc3",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:37:43.157+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e1f1f3ae-5c6",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:37:43.146+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-88dc234e-2ce",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:38:42.757+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-66d5c383-be0",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:38:42.788+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0cf42649-341",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:38:42.751+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1c435cf7-42e",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:38:43.283+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-86c54b14-f17",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:38:43.256+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d6b73c09-15b",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:39:42.870+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-326d5fc6-a2c",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:39:42.901+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3d2ce079-e56",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:39:42.863+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2f39bfba-c19",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:39:43.379+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cdf6337e-dac",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:39:43.370+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e82ceb36-4d9",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:40:42.950+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fbb92c1b-086",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:40:42.980+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8e5fb960-97d",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:40:42.943+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1b9051ed-821",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:40:43.458+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b7c5df20-ef2",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:40:43.448+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-06e3b898-238",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:41:43.444+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ab04350f-7d3",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:41:43.475+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f3f6febb-17b",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:41:43.435+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1ab55e1a-d4c",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:41:43.952+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-81f013cb-d26",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:41:43.943+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-134b686a-7c4",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:42:43.554+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c8dcf179-d6b",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:42:43.585+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-14653ba7-202",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:42:43.547+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f747d25b-4f4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:42:44.065+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9799f52c-a71",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:42:44.055+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1cef04bc-cd1",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:43:43.644+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-283808f0-2c7",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:43:43.675+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f2113c7a-853",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:43:43.639+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-97e83953-980",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:43:44.151+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3b8c02ea-796",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:43:44.144+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d475586c-d5e",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:44:43.653+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8925ce10-0eb",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:44:43.684+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-068906c4-ce6",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:44:43.646+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1016add2-888",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:44:44.165+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-85f42497-654",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:44:44.154+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9caca4fd-26c",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:45:43.741+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-58215af8-d39",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:45:43.784+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-272050cc-1cc",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:45:43.731+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8b6ddfe9-70d",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:45:44.249+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fb19a269-7b7",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:45:44.231+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7ac5f2de-bb3",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:46:43.884+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-deac8967-38e",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:46:43.912+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b2ab09c3-b1c",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:46:43.884+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cd1ffc71-66a",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:46:44.392+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fac03a4e-ea1",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:46:44.381+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ffa7391d-71d",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:47:43.909+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7ffb051c-3c0",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:47:43.940+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-11334748-0ad",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:47:43.900+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1feb9831-cb8",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:47:44.417+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d15e395c-e8d",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:47:44.407+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8c2adae8-64a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:48:43.960+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d3619a34-aa9",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:48:43.992+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8e3df4b1-9e7",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:48:43.952+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7978d785-edf",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:48:44.473+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8a2dcf28-3fd",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:48:44.461+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6d43a68a-b36",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:49:44.053+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-180d6625-340",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:49:44.084+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-07096e94-272",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:49:44.038+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-14370fb7-2ed",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:49:44.539+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-df29b10b-143",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:49:44.537+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-dad16dbd-08c",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:50:44.442+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5b4e2a48-db8",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:50:44.473+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-331c3b16-184",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:50:44.434+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-aa770979-90b",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:50:44.954+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2cf4d845-539",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:50:44.943+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9bacac75-11a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:51:44.790+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3535e745-bc1",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:51:44.837+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c3ef5f26-0a0",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:51:44.766+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fe1bdede-a1a",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:51:45.287+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-df71685a-cc1",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:51:45.267+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6124b173-555",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:52:44.901+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5f05634c-4b2",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:52:44.931+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6a9c226a-0cd",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:52:44.891+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7f1c9e48-112",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:52:45.408+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-241591b1-a1c",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:52:45.397+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2363a263-fec",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:53:45.281+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6e8c8085-5d9",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:53:45.312+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2bd73aad-8c5",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:53:45.273+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cb7a440d-8d4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:53:45.793+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a2df761e-238",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:53:45.781+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-679dec4c-f50",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:54:45.773+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7d5189d9-548",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:54:45.790+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c38ca58e-263",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:54:45.767+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-844b7c32-782",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:54:46.283+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c2cd9fb8-9f0",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:54:46.271+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-56778768-50a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:55:45.796+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2009cca0-b5a",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:55:45.827+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-228dc895-8c6",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:55:45.786+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-81ca1d9b-825",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:55:46.304+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1eb2c9b0-089",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:55:46.293+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ec1b4218-ebe",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:56:45.941+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c606b0ca-a8e",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:56:45.972+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-50b8911b-836",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:56:45.933+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-56a7bc70-ecc",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:56:46.453+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bcd9be58-cea",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:56:46.441+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5142b5e3-c52",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:57:46.024+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-edd13b86-f4e",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:57:46.062+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-915ecb6b-132",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:57:46.007+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0f1a9a92-42d",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:57:46.534+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-de8c750e-8d2",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:57:46.514+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-06752165-6ef",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:58:46.045+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6f4a7ac5-933",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:58:46.077+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f3169208-95b",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:58:46.038+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-dd179cc2-ac1",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:58:46.555+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7ffe82e0-075",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:58:46.544+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ef7b0eee-089",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:59:46.101+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a92f7562-f94",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:59:46.131+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-971e3f64-288",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:59:46.093+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-74243cff-9b5",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:59:46.611+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9c9f4f65-021",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T02:59:46.600+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bc3cf82b-11b",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:00:46.141+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-831ad7ea-9e5",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:00:46.172+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9e0bd77b-7b5",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:00:46.135+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6680ee15-b45",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:00:46.650+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-79c9f89e-6a9",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:00:46.639+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-17ce1869-33d",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:01:46.245+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6e394c31-740",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:01:46.275+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7df83460-d8d",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:01:46.236+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ca3d0493-f1d",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:01:46.770+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1c400fab-d2f",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:01:46.747+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c8926b88-296",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:02:46.299+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c766c73c-8ef",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:02:46.345+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b618848d-9bd",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:02:46.275+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f0a426ea-49a",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:02:46.792+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-16791f24-80f",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:02:46.782+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2ec4f7aa-a59",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:03:46.311+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f4469834-ceb",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:03:46.342+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-99de3436-809",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:03:46.303+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-195bbc6e-e0a",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:03:46.820+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-84bbf11e-8d9",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:03:46.810+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-19390b1b-872",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:04:46.808+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-500e9745-71c",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:04:46.839+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-15ab160c-275",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:04:46.802+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-840f2418-7df",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:04:47.316+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6bb91bd6-699",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:04:47.308+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0de4fe3f-92d",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:05:46.832+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2af661da-9d8",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:05:46.863+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c2930057-bbb",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:05:46.823+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a0ac0762-095",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:05:47.343+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e952fd50-07e",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:05:47.334+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ec34d72a-766",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:06:47.056+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4411a699-179",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:06:47.087+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f4a65f40-b05",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:06:47.049+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0f03f4ed-058",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:06:47.569+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-26a57401-c3f",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:06:47.558+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7e329d05-7bd",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:07:47.153+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-81f78673-8f5",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:07:47.184+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7f8e6674-5b2",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:07:47.147+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fefb9547-4dc",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:07:47.665+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-17d2fc33-135",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:07:47.654+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3db85b84-399",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:08:47.391+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ff6f881b-83a",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:08:47.422+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9012005a-33e",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:08:47.382+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c98246b9-b81",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:08:47.904+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-578dbbdd-d64",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:08:47.894+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-dc801b55-e1e",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:09:47.455+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b01ccbf7-db0",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:09:47.488+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-61a8d2ff-ae8",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:09:47.438+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bc3673cc-73a",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:09:47.964+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2d1ca346-0ee",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:09:47.938+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2fdb8b83-e92",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:10:47.539+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-62eb3033-a1f",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:10:47.570+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bfacaee2-9fb",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:10:47.531+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-607bf657-97d",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:10:48.049+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c1bb5e97-eb6",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:10:48.037+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2fcae657-232",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:11:47.684+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9d3542e6-65a",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:11:47.715+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5771ba96-8da",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:11:47.676+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1f202288-287",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:11:48.178+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-510f0f87-f73",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:11:48.173+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2c205102-fc7",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:12:48.129+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-25653fb0-bd0",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:12:48.161+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ccb8261e-a37",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:12:48.121+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-db3ba2e9-651",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:12:48.652+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8f4b0dcb-5b8",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:12:48.625+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-190f09c7-8e9",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:13:48.599+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a00fd348-c60",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:13:48.630+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0eccee7b-895",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:13:48.586+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a817c3ed-65b",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:13:49.095+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d8fe7d74-314",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:13:49.083+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5b7761df-d5f",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:14:48.905+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-088bb4b6-264",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:14:48.934+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-45f6f62e-e16",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:14:48.880+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fbd4e322-374",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:14:49.396+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0e9b6567-e9f",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:14:49.385+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1a1b51a5-ca8",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:15:49.263+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-56ec5850-d58",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:15:49.294+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-714bd68f-7d4",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:15:49.255+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cda06ab6-7e4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:15:49.771+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7f2c624a-464",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:15:49.760+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1f56ff55-aa4",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:16:49.688+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2e2e4148-26f",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:16:49.718+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2de8fd94-6aa",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:16:49.678+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a87a66dc-03c",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:16:50.196+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-603e8e50-428",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:16:50.186+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-eec0622a-b21",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:17:50.068+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-acb70084-81a",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:17:50.099+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-64312671-0b4",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:17:50.065+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-63443f48-c1f",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:17:50.592+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-468781e7-e43",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:17:50.569+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-19e7ae61-40c",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:18:50.551+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a3167b1f-c56",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:18:50.582+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bc93a0a2-993",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:18:50.548+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-14f05adc-2b8",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:18:51.062+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d6d8f640-139",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:18:51.050+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9a235335-6d9",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:19:51.025+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9710d476-1a4",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:19:51.056+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c93590ae-eff",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:19:51.018+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0a42ecc8-bcf",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:19:51.534+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4ffbf05f-6cf",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:19:51.525+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-603c9c5d-e9e",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:20:51.532+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a0a077b1-8f8",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:20:51.562+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1b5344b1-276",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:20:51.525+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0c0c3683-dcd",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:20:52.055+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9d929857-5bf",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:20:52.028+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d38734a6-5ec",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:21:51.940+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a04e31f8-fb5",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:21:51.971+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-60e43ed1-585",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:21:51.931+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fbcd2923-d5b",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:21:52.448+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4cc5bc50-afa",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:21:52.437+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7640c17d-6eb",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:22:51.966+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c6bd8cd6-a63",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:22:51.998+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-69dfb3b9-7e3",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:22:51.952+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-76327de8-110",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:22:52.477+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6c3033c4-1df",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:22:52.455+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-48752f0a-c56",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:23:51.965+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ef9ce956-5f8",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:23:51.997+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-51bbf199-ad0",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:23:51.956+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1789eb8b-356",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:23:52.478+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3724fbf5-cf5",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:23:52.468+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-46ce400b-475",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:24:52.440+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c5ac6601-ec9",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:24:52.457+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-85a64699-95e",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:24:52.432+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4a0386b1-025",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:24:52.947+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-07331c17-9e6",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:24:52.936+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-582d728b-04e",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:25:52.893+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c6166bc3-465",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:25:52.923+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a7fc961a-e17",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:25:52.884+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7fef067e-7c6",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:25:53.416+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9dd1125d-c77",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:25:53.390+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6afe6b6b-b01",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:26:52.925+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bd058ec2-87a",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:26:52.956+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d0179d7b-ccd",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:26:52.917+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-10e63ec7-843",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:26:53.417+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-29c7f173-f53",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:26:53.414+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-01c55b18-615",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:27:49.106+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-63e7b16d-60d",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:27:53.428+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-58cfc4e2-f35",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:27:53.458+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-666b1c78-496",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:27:53.490+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ffe6eee1-f6c",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:27:53.423+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-dd16bead-301",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:27:53.423+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ab9e9b52-717",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:28:53.448+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-26d01e1f-cee",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:28:53.479+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-115eed51-7c5",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:28:53.510+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2f07847e-4bd",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:28:53.435+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-71676995-8f5",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:28:53.433+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1f48db18-3c5",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:29:53.517+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2f82adc6-cee",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:29:53.563+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3c119cd7-467",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:29:53.609+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1df28343-bb5",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:29:53.512+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cc22f314-9ee",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:29:53.512+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8cffb36c-4a1",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:30:54.017+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-aef21968-b9a",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:30:54.048+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5e348559-830",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:30:54.067+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1119152b-151",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:30:54.014+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b3718059-f21",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:30:54.013+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-1271641e-aab",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:31:54.502+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3bdf73cf-efa",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:31:54.520+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f0e734ff-9bc",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:31:54.548+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ef3752d9-93a",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:31:54.499+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-12e2ecde-276",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:31:54.498+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2ec033b1-c29",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:32:54.986+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7af230ab-167",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:32:55.018+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3ab86776-4cb",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:32:55.032+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c92cb466-c38",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:32:54.980+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-97209468-484",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:32:54.981+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6908ebc0-bf4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:33:55.422+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d179123a-7f6",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:33:55.453+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6de081d6-5d2",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:33:55.476+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5e533b41-35d",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:33:55.421+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-141bcf54-6b4",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:33:55.420+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-49f8eea0-387",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:34:55.843+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-569a618b-a3b",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:34:55.874+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8908f487-2c2",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:34:55.905+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-41dbfebc-444",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:34:55.839+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-46283d7e-9ae",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:34:55.839+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f053dfd9-abd",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:35:56.274+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b3856c62-6eb",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:35:56.306+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-867a32b2-6d2",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:35:56.337+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-19021432-6a2",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:35:56.271+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e24b7c73-481",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:35:56.272+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-65528c75-259",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:36:56.694+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-87f5a0e0-050",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:36:56.725+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fdc33162-b8d",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:36:56.756+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c114428f-3c8",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:36:56.691+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fecc0c04-8e1",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:36:56.691+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-6675d4f5-d3c",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:37:23.521+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0cbd4e81-e61",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:37:57.158+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0f6dbfae-053",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:37:57.188+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3b55f01f-7df",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:37:57.219+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f2eebb6c-ef0",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:37:57.142+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d5d4a02e-aeb",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:37:57.142+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f46b09fc-e19",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:38:57.624+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9e6418fa-320",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:38:57.655+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f1fe211b-873",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:38:57.686+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-86ccc7e4-79b",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:38:57.623+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-07f6e571-77f",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:38:57.623+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7bf96f92-050",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:39:57.647+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-848c42b6-bd7",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:39:57.678+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d8608baa-2b2",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:39:57.700+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-74a0065e-3ce",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:39:57.642+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c655e6f2-435",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:39:57.642+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-23881dbc-f50",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:40:58.135+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d750ebb4-a6c",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:40:58.166+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b8313444-c1c",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:40:58.197+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cdc6539b-4f8",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:40:58.131+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-001bf1cf-8a0",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:40:58.130+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-68fbe48e-366",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:41:58.170+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b0226550-693",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:41:58.201+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-46c8c92f-164",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:41:58.232+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e41d87d9-57d",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:41:58.165+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0e17d392-707",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:41:58.165+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-da05d15e-6c1",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:42:58.618+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d0a6affb-dd5",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:42:58.649+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ccf7de22-5e6",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:42:58.680+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e2ace0e6-ddf",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:42:58.616+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d03aa770-b8a",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:42:58.615+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-56bb196c-90b",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:43:59.016+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-81bfbc3b-162",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:43:59.048+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cb8a3bb8-ad1",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:43:59.051+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-afe69f42-7d0",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:43:59.007+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-edc1f14a-4dc",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:43:59.006+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3a14cf08-13a",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:44:59.319+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c1200afc-312",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:44:59.350+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-77ca18cb-e86",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:44:59.366+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f4848c73-edb",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:44:59.313+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-9e38e230-318",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:44:59.313+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-be75f88b-258",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:45:59.312+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3692585a-7a0",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:45:59.343+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8669b3f7-c91",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:45:59.373+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-5b37efa7-881",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:45:59.307+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-cbcb8790-1f3",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:45:59.306+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e0b95eee-896",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:46:59.360+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-030f8ab4-4a6",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:46:59.391+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-230720f9-ed1",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:46:59.422+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0f1e46de-a89",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:46:59.351+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ef03fc82-6ae",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:46:59.351+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-126f4ebe-c00",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:47:59.385+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-68fe30bf-826",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:47:59.416+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-7a1b59f4-30a",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:47:59.446+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0cfbd762-be9",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:47:59.370+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-23ca02bb-596",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:47:59.369+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-33cf552b-07a",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:48:59.842+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c383f2e5-781",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:48:59.872+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-de3510cd-ec1",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:48:59.903+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f6ebf1de-e18",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:48:59.837+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-87265861-e68",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:48:59.837+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-558bd1c7-7ea",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:49:59.957+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-030985f7-d36",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:49:59.988+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b4107df5-9f6",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:50:00.019+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b07e995b-6a4",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:49:59.954+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b025f836-49f",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:49:59.953+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-598681e4-ec7",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:51:00.395+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a32f6323-380",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:51:00.426+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ef0ae2c3-9f1",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:51:00.443+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-2ae1e92c-881",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:51:00.393+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-3a6133a9-333",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:51:00.392+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8846f562-d89",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:52:00.405+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-277d71e3-b9d",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:52:00.436+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-b85def75-e9c",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:52:00.466+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-c54fc257-ff3",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:52:00.400+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-bad45cd3-96e",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:52:00.401+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4021aca1-da8",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:53:00.904+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-0ff557a9-a78",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:53:00.951+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-4d2f19c6-655",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:53:00.997+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-310dd671-f58",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:53:00.902+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a3f8b80b-265",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:53:00.901+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-11cde965-b0f",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:54:01.382+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-71dbf4b6-ff8",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:54:01.414+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f540f872-300",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:54:01.444+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-84f43b0b-d63",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:54:01.377+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-f18bccf5-ee7",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:54:01.377+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-777b9fdd-66d",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:55:01.821+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8db732f1-6e2",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:55:01.851+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-d77c13dd-a91",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:55:01.882+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-055ed0ac-cc3",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:55:01.818+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-e54831a5-a47",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:55:01.817+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-fe745d9c-3c4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:56:02.305+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-81986a51-08f",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:56:02.336+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a6b48a37-34c",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:56:02.366+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-a42c1502-710",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:56:02.292+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-991809f5-6e5",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:56:02.292+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-805c7165-eb4",
+    "node": "dw-3495bb89",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:57:02.789+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-8cd3f086-888",
+    "node": "dw-852f4e0f",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:57:02.820+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-950616aa-28b",
+    "node": "dw-f04f2fe1",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:57:02.850+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-029058e7-e6b",
+    "node": "dw-a197071e",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:57:02.786+08:00",
+    "reconcileAction": null
+   },
+   {
+    "id": "wat-ab2b929f-8ea",
+    "node": "dw-f30b5641",
+    "outcome": "verified",
+    "dispatchedAt": null,
+    "settledAt": "2026-11-21T03:57:02.785+08:00",
+    "reconcileAction": null
+   }
+  ],
+  "experienceVersionsError": "no such column: state"
+ },
+ "countsByOutcome": {
+  "verified": 673,
+  "rejected": 1
+ }
+}
