@@ -1,5 +1,5 @@
 \section{Introduction}
-\IEEEPARstart{I}{ndustrial} agent integration couples online data acquisition with governed control. The agent gathers process observations and production context, weighs them against an objective, and proposes a typed setpoint or recipe adjustment. Before any write, the runtime resolves which line, process variable, and control signal the request concerns, then applies authority and limits. In practice, a cast-film line-speed setpoint may affect measured film thickness, yet the control node and the acquisition node remain distinct even when both use Message Queuing Telemetry Transport (MQTT). Acquired observations, command acceptance, device readback, and later process measurements are therefore separate evidence, as Fig.~\ref{fig:control-path} illustrates.
+\IEEEPARstart{I}{ndustrial} agent integration couples online data acquisition with governed control. The agent gathers process observations and production context, weighs them against an objective, and proposes a typed setpoint or recipe adjustment. Before any write, the runtime resolves which line, process variable, and control signal the request concerns, then applies authority and limits. In practice, a cast-film line-speed setpoint may affect measured film thickness, yet the control and acquisition nodes remain distinct even when both use Message Queuing Telemetry Transport (MQTT). Acquired observations, command acceptance, device readback, and later process measurements are therefore separate evidence, as Fig.~\ref{fig:control-path} illustrates.
 
 Prior work on industrial agents addresses service supervision and skill-based manufacturing~\cite{biskupovic2025supervision,koehle2026llmdriven}, semantic grounding and verification for plant-facing operations including programmable logic controller (PLC) interfaces~\cite{graul2026aas,schall2026safe}, and multi-agent fault-recovery planning~\cite{vyas2026detection}. These strands establish relevant capabilities but leave an integration question: how can online acquisition and analysis connect to governed operations across task-mediated and direct entry paths? This paper examines that runtime boundary; it introduces no new control law or agent-reasoning algorithm.
 
@@ -15,7 +15,7 @@ The contributions are:
 \begin{figure}[!b]
 \centering
 \includegraphics[width=0.98\columnwidth]{resources/fig1-vectorized-20261109.pdf}
-\caption{Configured cast-film example: an agent acquires film-thickness data and may propose a line-speed adjustment, but the line-speed control node and film-thickness acquisition node remain distinct even though both use MQTT. Command acceptance and optional setpoint readback are distinct from later process observations.}
+\caption{Configured cast-film example: the line-speed control node (\texttt{linespeed-sp}) and the film-thickness acquisition node remain distinct even though both use MQTT. A setpoint write produces a command receipt and an optional setpoint readback, while later film-thickness values are recorded as separate DAQ observations.}
 \label{fig:control-path}
 \end{figure}
 

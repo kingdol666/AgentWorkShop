@@ -5,10 +5,7 @@ conditional approval, and the records each route returns.
 
 \subsection{Scene-Specific Write Admission}
 \label{sec:governed}
-Authorization and value admission are checked separately. The target band describes a desired
-process outcome; it does not define the admissible write interval. A candidate may
-satisfy all write constraints even when the measured process value remains outside
-the target band.
+Authorization and value admission are checked separately: the target band describes a desired process outcome, not the admissible write interval, and a candidate may satisfy all write constraints while the measured value remains outside the band.
 
 For an online node write, the admissible value interval is
 \begin{equation}
@@ -21,12 +18,7 @@ $\mathcal{L}^{\mathrm{base}}_n$, $\mathcal{L}^{\mathrm{prod}}_n$, and
 $\mathcal{L}^{\mathrm{rec}}_n$ are the baseline, active-product, and
 active-recipe limits. These numerical bounds are distinct from the scope,
 policy, grant, and binding predicates in Eq.~(\ref{eq:dispatch-contract}).
-An absent optional limit imposes no restriction; an empty intersection admits no
-candidate. The controller checks each candidate against the configured layers
-and identifies the first violated layer when a limit is exceeded. Recipe dispatch
-checks a replacement recipe against the hard, baseline, and product limits,
-rather than the previous recipe's window. Trial overrides are additionally checked against
-the applicable recipe window.
+An absent optional limit imposes no restriction; an empty intersection admits no candidate, and the controller identifies the first violated layer when a limit is exceeded. Recipe dispatch checks a replacement recipe against the hard, baseline, and product limits rather than the previous recipe's window; trial overrides are additionally checked against the applicable recipe window.
 
 Algorithm~1 details the single-node write sequence after shared dispatch; Fig.~\ref{fig:hitl} maps the same boundary across the single-node and recipe routes. For
 \texttt{optimization\_explore}, the algorithm shows the ordinary full-limit profile: a failed
