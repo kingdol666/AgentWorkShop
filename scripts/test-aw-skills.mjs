@@ -19,7 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const SKILLS_DIR = join(REPO, 'skills')
 const DISCOVERY_SKILLS_DIR = join(REPO, '.agents', 'skills')
-const REQUIRED_MIRRORS = ['aw-line-onboarding', 'aw-plc-sim-twin', 'aw-protocol-onboarding', 'aw-doc-to-project', 'aw-system-acceptance']
+const REQUIRED_MIRRORS = ['aw-line-onboarding', 'aw-plc-sim-twin', 'aw-protocol-onboarding', 'aw-doc-to-project', 'aw-system-acceptance', 'aw-live-acceptance-round']
 
 let pass = 0
 const fails = []
