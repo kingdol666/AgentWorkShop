@@ -73,7 +73,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.13.0 · 已发布</i></span>
+        <span>版本 <i>v0.14.0 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -90,14 +90,15 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.13.0 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.14.0 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.13.0 发布版本。本版把 IDD（工业深度诊断）与 RAG（rag-knowledge）两座桥生产化：
-      diag-bridge 主契约迁移 IDD <code>external/v1</code> 并保留 legacy 回退，新增续聊/停止/报告入库；
-      rag-bridge 增加文档工具族并落在独立的 <code>aw-docs</code> 知识库。插件写工具纳入 fail-closed
-      写族联合判定，health 暴露逐工具计数。请先阅读 <a href="/AgentWorkShop/guide/idd-rag-plugins">IDD / RAG 插件集成</a>；
+      当前为 v0.14.0 版本。本版把「受治理的产品经验复用」计划端到端落地：
+      经验变为不可变版本（内容/证据快照哈希 + CAS 指针），统一解析器按授权
+      epoch、产品/配方作用域与部署状态管住全部读取面；晋升必须引用宿主来源
+      评测，发布走待发布+审计 outbox 两段提交；产线写持久化尝试账本，重启对账
+      不自动重发。请先阅读 <a href="/AgentWorkShop/guide/governed-learning">受治理产品经验</a>；
       模拟验收不构成物理 HIL 或生产就绪证明。
     </p>
     <div class="hw-feats">
@@ -122,7 +123,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">验证</span>
-      <p>本 v0.13.0 已实测：lint/typecheck/build 通过，unit 2059/2060（1 skip）；全新 home 三系统验收供给 9/9、频道锻造 11/11、V1–V6 11/11，142 宿主工具，真实模型回合原生调用 <code>kb_doc_search → kb_doc_read → diag_run → diag_status</code>；受治理闭环 SP 156→150→144→138 °C（每步 HITL、设备证实 1/1），PV 复测 3/3 落 [138,142]（均值 139.68）。仅模拟证据，不构成物理 HIL；IDD 技能终态与云端模型供应商存在外部阻塞，详见报告。<a href="/AgentWorkShop/guide/idd-rag-plugins">IDD / RAG 插件集成</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-18-idd-rag-plugin-v1-contract/REPORT.md">日期化报告</a></p>
+      <p>本 v0.14.0 合并主干审计（<code>5614aa06</code>）：固定 13 项矩阵（typecheck/lint/unit 2107/2108/i18n/cssvars/frontend-lifecycle/acceptance-context/onboarding-v6/sdk-surface/plugin-lifecycle/mcp/docs/build）全部退出 0，<code>checkMainAudit</code> = PASS；隔离模拟验收 onboarding 33/33+15/15+V1–V6 24/24、冒烟回读 72=72、七轮治理调参 31.03→32.58 g 进带。仅模拟证据，不构成物理 HIL；收益验证与现场准入 NOT_RUN，详见报告。<a href="/AgentWorkShop/guide/governed-learning">受治理产品经验</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/governed-product-learning-main-audit.md">主干审计报告</a></p>
     </div>
   </section>
 

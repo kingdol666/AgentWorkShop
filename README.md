@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.13.0)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.14.0)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>source v0.13.0 (released 2026-11-18)</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **IDD/RAG plugin integration** · 142 host tools · 144 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>source v0.14.0 (released 2026-11-20)</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[Quick start](#quick-start) · [Current source](#current-source-v0-13-0) · [0.13.0 release notes](#whats-new-in-0130) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [Current source](#current-source-v0-14-0) · [0.14.0 release notes](#whats-new-in-0140) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,13 +49,25 @@ A configuration-driven platform where **AI agent teams** and industrial systems 
 - **Delivery is a first-class concept**: **Project mode** turns a blueprint into a plan, a WBS with dependencies, L1 technical review, L2 owner acceptance and real deliverables — the project closes only when the deliverables pass;
 - **The loop is implemented in governed stages**: read → analyze → propose → policy-controlled approval where required → write → readback/audit; the scope of each test and whether it used a simulator or physical equipment are stated with its evidence.
 
-## Current source: v0.13.0
+## Current source: v0.14.0
 
-The source version is **0.13.0**, published on 2026-11-18 (npm + GitHub Release). This release productizes the **IDD** (industrial deep-diagnostic) and **RAG** (rag-knowledge) bridges: diag-bridge now targets IDD's `external/v1` contract with pre-submit capability pinning and an explicit legacy fallback, adds `diag_chat` / `diag_stop` / `diag_deposit`, and rag-bridge adds a deterministic document tool family (`kb_doc_create/search/read/catalog`) on a dedicated `aw-docs` knowledge base. Plugin write tools now join the fail-closed write classification, tool counters are exposed on plugin health, and the whole lifecycle (submit → poll → receipts → results → deposit) routes on one persisted contract.
+The source version is **0.14.0** (npm + GitHub Release, 2026-11-20). This release implements the governed product experience plan end to end (six merged PRs, #240–#245): experiences become **immutable versions** with CAS head pointers and crash-safe migration, a single **resolver** gates every read path by authorization epoch, product/recipe scope and deployment state, **promotion requires host-provenanced evaluation** (client-submitted bench is display-only), **release is a two-step commit** (pending request + durable audit outbox → CAS activation with maker-checker separation), industrial writes persist a **write-attempt ledger** whose unclosed attempts reconcile to `not_sent`/`unknown` (never auto-resend), projects expose **plan progress** and reject pending-plan conflicts (`PLAN_CHANGE_PENDING`), dependency health separates provider/RPC/process/budget/progress with unknown-effect → `attention_required`, batch quality and external job terminal states are surfaced separately, ontology constraints distinguish `verified/violated/unobservable/unknown`, and a **merged-main audit checker** binds a fixed check matrix to one build SHA.
 
-Fresh-home three-system acceptance: provisioning **9/9**, channel forge **11/11**, V1–V6 **11/11**; **142 host tools** (127 builtin + 15 plugin, +965 schema tokens); a real model turn natively called `kb_doc_search → kb_doc_read → diag_run → diag_status`; governed closed loop **SP 156→150→144→138 °C** with HITL on every step and device-confirmed 1/1 writes, PV retest 3/3 inside [138,142] (mean 139.68), recipe v2 frozen. Gates: lint, typecheck, unit **2059/2060** (1 skipped), build. Evidence: [2026-11-18 plugin v1 acceptance](docs/audit/evidence/2026-11-18-idd-rag-plugin-v1-contract/REPORT.md).
+Fresh-clone merged-main audit at `5614aa06`: all five merge commits verified as ancestors; the fixed 13-check matrix (typecheck, lint, unit **2107/2108** with 1 conditional skip, i18n, cssvars, frontend lifecycle, acceptance-context, onboarding-v6, sdk-surface, plugin-lifecycle, mcp, docs, build) all exited 0, `checkMainAudit` = PASS; isolated runtime boot created all governance tables and the new experience projection endpoint returned 401 unauthenticated. Isolated simulation acceptance: doc→line onboarding 33/33 + 15/15 + V1–V6 24/24, smoke write readback 72=72, seven governed tuning rounds moved weight 31.03→32.58 g into the 32.15–32.85 band, cross-channel message round trip with shared-memory receipt. Boundaries: project closure has no post-completion artifact resubmission route (recorded); effect validation and physical/site admission remain NOT_RUN; Mimosa deep scan (sealed) found 33 findings, **0 in the new governed modules** — no security-pass claim. See the [main audit report](docs/audit/governed-product-learning-main-audit.md), the [acceptance report](docs/audit/governed-product-learning-acceptance.md) and the [admission record](docs/audit/governed-learning-expert-admission.md).
 
-## What's new in 0.13.0
+## What's new in 0.14.0
+
+- **Immutable experience versions (#241)**: insert-only `experience_versions` with content/evidence snapshot hashes, CAS head pointers (`EXPERIENCE_VERSION_CONFLICT`), transactional idempotent backfill (legacy rows → `legacy-unverified`, never auto-injected), and cross-kind key isolation (`EXPERIENCE_KEY_CONFLICT`).
+- **One governed resolver (#241)**: authorization-epoch → scope → purpose gating; `automatic` reads require `validated` + `canary/active` deployment; overlay cache keys include the epoch so revoke/product-switch stops injection on the next turn.
+- **Host-provenanced release gate (#243)**: promotion to `active` requires a `host-evaluation` ledger row; the ledger records real C−B measurements (`pValue: null` when no significance test ran — fabricated significance is rejected), release is pending → audit-acked → CAS with maker-checker separation, and withdrawal stops injection without rewriting facts.
+- **Durable write-attempt ledger (#244)**: prepared/dispatched/verified/rejected/not_sent/unknown around every plant write; restart reconciliation classifies unclosed attempts and never resends; old approvals are rejected on generation/lease/context/payload mismatch. HITL rows gain the same correlation columns.
+- **Plan progress & pending-plan fencing (#244)**: `planProgress` projection on project observability (`pending_approval/applied/rejected/attention_required`), and `PLAN_CHANGE_PENDING` rejects manual work items that conflict with a pending plan approval.
+- **Dependency health & evidence quality (#244)**: provider/RPC/process/budget/queue/progress produce bounded actions (`continue/wait/retry/fallback_readonly/attention_required/failed`) with unknown-effect → attention; batch quality gates control evidence and training on coverage/gaps; external jobs keep upstream terminal state faithful while artifact validity gates acceptance; OMP readiness timeout reaps its own child.
+- **Ontology tri-state & model reuse (#245)**: missing declared edge is `unknown` (not refuted), critical-guard observability and recipe/product lineage gate artifact reuse, and ontology candidates carry evidence provenance behind the existing human publication gate.
+- **Acceptance runner & merged-main checker (#245)**: a simulation manifest is BLOCKED before any write unless environment/revision/targets/ownership-proof/arm-roots all verify; the main-audit checker requires an exact SHA, ancestor merge commits, a clean checkout and a complete evidence-digested check matrix.
+- **Bilingual docs**: [governed product experience guide](https://kingdol666.github.io/AgentWorkShop/guide/governed-learning) covers the version lifecycle, resolver purposes, release flow, write ledger and audit boundaries.
+
+## What's new in 0.13.0 (historical release notes)
 
 - **diag-bridge v2.4**: `external/v1` is the primary contract with a pre-submit `GET /capabilities` probe (5-min fingerprint cache) and an explicit `contract=legacy` fallback; the six v1 terminal states are handled, `awaiting_input` holds the line single-flight lock and ages to `expired`, and `diag_chat` / `diag_stop` / `diag_deposit` are new tools. All seven analysis intents pass through, along with ontology / preprocessing / report-language fields.
 - **rag-bridge v2.3**: document tools `kb_doc_create` / `kb_doc_search` / `kb_doc_read` / `kb_catalog` on the `aw-docs` knowledge base (separate from the `aw-industrial` experience base); two-stage retrieval is the primary path with a labelled keyword fallback; creation is idempotent and uses `index-document` (vector + BM25) because a whole-KB reindex does not refresh the backend's in-process BM25 index.
@@ -426,7 +438,7 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current source version: **v0.13.0 (released 2026-11-18)** — [Latest release v0.13.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.13.0) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current source version: **v0.14.0 (released 2026-11-20)** — [Latest release v0.14.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.14.0) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />
