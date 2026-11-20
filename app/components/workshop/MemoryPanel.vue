@@ -147,6 +147,31 @@ const doWrite = async (): Promise<void> => {
     message.error(json.message ?? t('memoryPanel.k1bb5i1l018'))
   }
 }
+
+/** 经验治理投影(Task 7):从一个使用追到精确版本/生命周期/部署/审计动作 */
+interface ExperienceGov {
+  versionId: string | null
+  lifecycle: string
+  deployment: string
+  claimOriginTime: string | null
+  auditActions: string[]
+}
+const govDetail = ref<Record<string, ExperienceGov | undefined>>({})
+const govLoading = ref('')
+const loadGov = async (memoryId: string): Promise<void> => {
+  govLoading.value = memoryId
+  try {
+    const res = await fetch(`/api/workshop/channels/${props.channelId}/memories/${memoryId}/experience`, {
+      headers: authHeaders.value,
+    })
+    const json = await res.json()
+    if (json.code === 0) govDetail.value = { ...govDetail.value, [memoryId]: json.data as ExperienceGov }
+    else message.warning(json.message ?? t('memoryPanel.k186sctu014'))
+  }
+  finally {
+    govLoading.value = ''
+  }
+}
 </script>
 
 <template>
@@ -280,6 +305,42 @@ const doWrite = async (): Promise<void> => {
         <div class="row-content">
           {{ r.content.slice(0, 140) }}{{ r.content.length > 140 ? '…' : '' }}
         </div>
+        <!-- Task 7:经验治理投影(版本/生命周期/部署/审计),只读 -->
+        <div
+          v-if="r.kind === 'experience'"
+          class="row-gov"
+        >
+          <a-button
+            size="small"
+            type="link"
+            :loading="govLoading === r.id"
+            @click="loadGov(r.id)"
+          >
+            {{ $t('memoryPanel.k9gov190002') }}
+          </a-button>
+          <template v-if="govDetail[r.id]">
+            <a-tag
+              v-if="govDetail[r.id]!.versionId"
+              class="gov-tag"
+            >
+              {{ $t('memoryPanel.k9gov190003') }} {{ govDetail[r.id]!.versionId!.slice(0, 12) }}
+            </a-tag>
+            <span
+              v-else
+              class="gov-tag gov-none"
+            >{{ $t('memoryPanel.k9gov190007') }}</span>
+            <a-tag class="gov-tag">
+              {{ $t('memoryPanel.k9gov190004') }} {{ govDetail[r.id]!.lifecycle }}
+            </a-tag>
+            <a-tag class="gov-tag">
+              {{ $t('memoryPanel.k9gov190005') }} {{ govDetail[r.id]!.deployment }}
+            </a-tag>
+            <span
+              v-if="govDetail[r.id]!.auditActions.length"
+              class="gov-audit"
+            >{{ $t('memoryPanel.k9gov190006') }}: {{ govDetail[r.id]!.auditActions.join(' → ') }}</span>
+          </template>
+        </div>
       </div>
       <div
         v-if="rows.length === 0 && !loading"
@@ -406,6 +467,26 @@ const doWrite = async (): Promise<void> => {
 .row-content {
   font-size: 11px;
   opacity: 0.65;
+  word-break: break-all;
+}
+/* 经验治理投影:与行内元数据同层级,弱化呈现 */
+.row-gov {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+.row-gov .gov-tag {
+  font-size: 10px;
+  margin-inline-end: 0;
+}
+.row-gov .gov-none {
+  opacity: 0.55;
+}
+.row-gov .gov-audit {
+  font-size: 10px;
+  opacity: 0.55;
   word-break: break-all;
 }
 .empty { padding: 8px 0; opacity: 0.4; }
