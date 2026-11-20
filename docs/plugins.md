@@ -65,7 +65,7 @@ export default {
   name: 'my-plugin',         // 必填,全局唯一(缺失/非字符串立即装载失败)
   version: '1.1.0',          // 可选,manifest 展示用
   description: '…',          // 可选
-  auth: 'user',              // 可选:none(默认)| user | admin | agent-or-user
+  auth: 'user',              // 可选:user(默认,default-deny) | admin | agent-or-user | none(显式开放匿名)
   client: './client.mjs',    // 可选:浏览器入口(必须是相对路径字符串)
   settings: [ /* 可选:插件设置声明,见 §4 */ ],
   configGroups: [ /* 可选:插件配置分组声明,见 §4 */ ],

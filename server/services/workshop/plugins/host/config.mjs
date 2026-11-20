@@ -81,11 +81,13 @@ export function modePaths(cwd) {
   // packageRoot:宿主运行时取 initPluginHost 注入值;冒烟/单测(cwd 在包根)回退 cwd
   const packageRoot = g.__awPluginHost?.packageRoot ?? (isRepo ? cwd : null)
   const builtinDir = packageRoot ? join(packageRoot, 'server', 'plugins-builtin') : null
+  // home 解析只做一次:此前 userDir 与 homeDir 各写一遍同一表达式,两处漂移会静默分叉
+  const awHome = process.env.AW_HOME && String(process.env.AW_HOME).trim() ? String(process.env.AW_HOME).trim() : defaultHome()
   return {
     builtinDir: builtinDir && existsSync(builtinDir) ? builtinDir : null,
     projectDir: isRepo ? join(cwd, '.AgentWorkShop', 'plugins') : null,
-    userDir: join(process.env.AW_HOME && String(process.env.AW_HOME).trim() ? String(process.env.AW_HOME).trim() : defaultHome(), 'plugins'),
-    homeDir: process.env.AW_HOME && String(process.env.AW_HOME).trim() ? String(process.env.AW_HOME).trim() : defaultHome(),
+    userDir: join(awHome, 'plugins'),
+    homeDir: awHome,
   }
 }
 
