@@ -1,0 +1,58 @@
+[
+  {
+    "revision": null,
+    "runId": "historical-2026-11-19-three-system-acceptance",
+    "captureOrigin": "historical",
+    "environment": "simulation",
+    "modelProvenance": "real_model",
+    "historicalTotalDenominators": { "mechanism": null, "effect": null, "resilience": null, "field_admission": null },
+    "checks": [
+      { "id": "full-mechanism-matrix", "category": "mechanism", "execution": "incomplete" },
+      { "id": "product-reuse-effect", "category": "effect", "execution": "not_started" },
+      { "id": "full-recovery-matrix", "category": "resilience", "execution": "incomplete" },
+      { "id": "physical-field-check", "category": "field_admission", "execution": "not_started" }
+    ],
+    "missing": [
+      { "id": "L01", "reason": "historical-local / unavailable" },
+      { "id": "L02", "reason": "historical-local / unavailable" },
+      { "id": "L03", "reason": "historical-local / unavailable" },
+      { "id": "L04", "reason": "historical-local / unavailable" },
+      { "id": "L05", "reason": "historical-local / unavailable" }
+    ],
+    "captureHashes": {
+      "L01": "0d54d078e7a4b2409c5a5ab089b67026822400e9acd831990916c77b0feaf2fd",
+      "L02": "3c0ebd5fe21db467b2a589ba44ea420cb9d3748bda46cf589d7368fc021d1f68",
+      "L03": "b18a798f5a875f19d0ee339364f9a7bda21488b072ba2a2a6223d1576861a481",
+      "L04": "29ce1d84fe88c2490c2a4707b65076200518aea2a4e9cc1a7196b3cefe0e6087",
+      "L05": "3d493fe9ea6658b818ee1c4ccecab573bc590234422f97bcf35a198ac81c039b"
+    }
+  },
+  {
+    "revision": null,
+    "runId": "historical-2026-11-19-integrated-live-round",
+    "captureOrigin": "historical",
+    "environment": "simulation",
+    "modelProvenance": "real_model",
+    "historicalTotalDenominators": { "mechanism": null, "effect": null, "resilience": null, "field_admission": null },
+    "checks": [
+      { "id": "full-mechanism-matrix", "category": "mechanism", "execution": "incomplete" },
+      { "id": "product-reuse-effect", "category": "effect", "execution": "not_started" },
+      { "id": "full-recovery-matrix", "category": "resilience", "execution": "incomplete" },
+      { "id": "physical-field-check", "category": "field_admission", "execution": "not_started" }
+    ],
+    "missing": [
+      { "id": "L06", "reason": "historical-local / unavailable" },
+      { "id": "L07", "reason": "historical-local / unavailable" },
+      { "id": "L08", "reason": "historical-local / unavailable" },
+      { "id": "L09", "reason": "historical-local / unavailable" },
+      { "id": "L10", "reason": "historical-local / unavailable" }
+    ],
+    "captureHashes": {
+      "L06": "26bb05477dd39f9e1937edccb7adaeb1a28ee0691e907a774648476dcb12a5d0",
+      "L07": "4ef015d1c14e56512fc27ad2555078b16db0eb4970908562dead27c2daa19623",
+      "L08": "56c18eb00267ee6e147de6c78de7cb99ecef8efa2dc0f76feb5399bd0f7b0914",
+      "L09": "cd95e7f3fdbc5bfbf5f6f6190f5d419a58c1cbdcd85d7b00be040f4013ab66e8",
+      "L10": "d1992d8e731b631023ab09db5076ab542cbaa70ee7f1f4c149be7042f3759685"
+    }
+  }
+]
