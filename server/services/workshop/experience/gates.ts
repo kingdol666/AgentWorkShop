@@ -131,6 +131,11 @@ export interface PairedBenchResult {
   primaryDelta: number
   /** 相对基线的成本变化（正=更贵） */
   costDelta: number
+  /**
+   * 证据来源(Task 5/C1):只有宿主执行并留原始证据的评测(host)可作为 active 发布证据;
+   * 客户端自报台账(client/缺省)只读展示,不得支撑晋升。
+   */
+  hostProvenance?: 'host' | 'client'
 }
 
 /**
@@ -153,6 +158,9 @@ export function evaluateProfileGate(
   if (target === 'active') {
     if (status !== 'shadow') return { allowed: false, reasons: [`仅 shadow 可晋级 active（当前 ${status}）`] }
     if (!bench) return { allowed: false, reasons: ['缺少配对评测结果（WP-B2），不得晋级'] }
+    if (bench.hostProvenance !== 'host') {
+      return { allowed: false, reasons: ['BENCH_NOT_HOST_PROVENANCED: 客户端自报评测只读展示,不得作为 active 晋级证据'] }
+    }
     const pValue = bench.pValue
     if (typeof pValue !== 'number' || !Number.isFinite(pValue) || pValue < 0 || pValue > 1) {
       return { allowed: false, reasons: ['配对评测 pValue 无效：必须是有限且位于 [0,1] 的数值'] }
