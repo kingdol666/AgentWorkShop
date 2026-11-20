@@ -65,10 +65,18 @@ export abstract class OmpRpcClientStart extends OmpRpcClientUsage {
         }
       })
 
-      // 超时保护
-      setTimeout(() => {
-        if (!this.ready) reject(new Error('omp RPC ready 超时(10s)'))
+      // 超时保护(Task 10):ready 超时必须回收本次拉起的子进程,否则调用层尚未拿到
+      // 客户端对象,重试会再拉一个而旧的永远不被纳管(进程泄漏/重建风暴根因之一)。
+      const readyTimer = setTimeout(() => {
+        if (!this.ready) {
+          try {
+            this.child?.kill()
+          }
+          catch { /* 已退出 */ }
+          reject(new Error('omp RPC ready 超时(10s)'))
+        }
       }, 10_000)
+      this.child?.once('exit', () => clearTimeout(readyTimer))
     })
   }
 }

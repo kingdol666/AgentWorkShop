@@ -17,12 +17,47 @@ import type { ExecutionScope } from '../../agents/execution-scope'
 import type { DcwWriteOutcome } from '../dcw-runtime'
 import { writeTolerance } from '../dcw-runtime'
 import { getTsdb } from '../../daq/storage'
+import { getAmlRuntime } from '../../aml/runtime'
+import { markWriteDispatched, payloadHashOf, recordWriteIntent, settleWriteAttempt } from '../write-attempt-ledger'
 
 /** 驱动未显式上报 ack 时的旧口径归一(ok+回读→设备证实;ok 无回读→链路受理;失败→未证实) */
 function normalizeAck(outcome: { ok: boolean, readback: number | null, ack?: WriteAckLevel }): WriteAckLevel {
   if (outcome.ack) return outcome.ack
   if (!outcome.ok) return 'unverified'
   return outcome.readback != null ? 'readback-verified' : 'transport-ack'
+}
+
+/** Task 8:治理库可用时登记写尝试;不可用(单测/降级)跳过,不阻断既有写路径 */
+function beginWriteAttemptLedger(
+  node: DcwNode,
+  refs: { taskId?: string, executionLeaseId?: string },
+  payload: unknown,
+): { attemptId: string, db: import('node:sqlite').DatabaseSync } | null {
+  try {
+    const db = getAmlRuntime().db
+    const attemptId = recordWriteIntent(db, {
+      nodeId: node.id,
+      lineId: node.lineId ?? '',
+      taskId: refs.taskId,
+      executionLeaseId: refs.executionLeaseId,
+      payloadHash: payloadHashOf(payload),
+    })
+    markWriteDispatched(db, attemptId)
+    return { attemptId, db }
+  }
+  catch { return null }
+}
+
+function settleWriteAttemptLedger(
+  handle: { attemptId: string, db: import('node:sqlite').DatabaseSync } | null,
+  outcome: 'verified' | 'rejected' | 'unknown',
+  detail: string,
+): void {
+  if (!handle) return
+  try {
+    settleWriteAttempt(handle.db, handle.attemptId, outcome, detail)
+  }
+  catch { /* 记账失败不影响已发生的物理结果 */ }
 }
 
 export abstract class DcwControllerActuation extends DcwControllerState {
@@ -67,6 +102,12 @@ export abstract class DcwControllerActuation extends DcwControllerState {
       })
       throw preFlightError
     }
+    // Task 8:进入驱动调用前持久登记尝试(prepared→dispatched),进程中断后可判
+    // 「未发送」或「结果未知」;未知一律不自动重发。无治理库(降级/单测)时跳过记账。
+    const attemptLedger = beginWriteAttemptLedger(node, {
+      taskId: executionScope?.taskId ?? undefined,
+      executionLeaseId: executionScope?.executionLeaseId ?? undefined,
+    }, { eng, tolerance: plcTolerance, min: node.min, max: node.max })
     try {
       outcome = await driver.write({
         eng: plcValue,
@@ -89,6 +130,11 @@ export abstract class DcwControllerActuation extends DcwControllerState {
     catch {
       reported = { ...outcome, ok: false, ack: 'unverified', message: `执行租约失效:写入已进入驱动,设备状态不确定,须核实。驱动返回:${outcome.message}`, driverOutcome: { ...outcome } }
     }
+    // 结果落账:readback-verified 才是「已验证」;transport-ack 只代表链路受理(未知),
+    // 失败明确为 rejected —— 三者分开,避免把受理当设备生效。
+    settleWriteAttemptLedger(attemptLedger, outcome.ok
+      ? (outcome.ack === 'readback-verified' ? 'verified' : 'unknown')
+      : 'rejected', outcome.message)
     this.writesTotal++
     if (!outcome.ok) this.writesFailed++
     // set 后 hook:节点暴露值 = PLC 回读经 decoder 解码的**真实物理值**(而非指令值);

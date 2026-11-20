@@ -11,6 +11,7 @@ import { migrateProjectColumns, ensureProjectIndexes, migrateApprovedSlotScope }
 import { migrateSessionContextColumns, migrateSessionChannelModeColumn, ensureSessionIndexes } from './migrations-session'
 import { migrateExperienceColumns, ensureExperienceIndexes } from './migrations-experience'
 import { migrateExperienceVersionStore } from './migrations-experience-versions'
+import { migrateHitlExecutionRefColumns } from './migrations-hitl-ref'
 import { migrateImprovementProposals } from './migrations-improvement'
 import { migrateHarnessProfiles } from './migrations-harness-profile'
 import { migrateHarnessBenchRuns } from './migrations-harness-bench'
@@ -44,9 +45,10 @@ export function openWorkshopDb(path: string): DatabaseSync {
  * 版本号是存量库不被新契约哈希拒绝启动的前提:老库只记录了旧版本号,
  * assertMigrationFingerprint 查不到新版本行即放行并补录;同版本内的 SQL
  * 漂移(手改/回滚 schema)仍会被哈希比对抓住。
- * 历史:v1 初始契约;v2 2026-11-15 channels.channel_mode;v3 messages.claim_token;v4 受治理经验版本。
+ * 历史:v1 初始契约;v2 2026-11-15 channels.channel_mode;v3 messages.claim_token;v4 受治理经验版本;
+ * v5 发布请求+审计 outbox;v6 反射 outbox;v7 设备写尝试账本。
  */
-export const SCHEMA_CONTRACT_VERSION = 4
+export const SCHEMA_CONTRACT_VERSION = 7
 
 /** 对已打开的库执行初始化:WAL + 外键约束 + 建表 + 增量迁移 */
 export function initWorkshopDb(db: DatabaseSync): void {
@@ -74,6 +76,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateExperienceColumns(db)
   // Task 2:旧经验行 → 不可变版本(幂等回填;失败即中止初始化,不暴露半迁移状态)。
   migrateExperienceVersionStore(db)
+  // Task 8:HITL 执行关联(task/代次/lease/载荷)补列;旧批准对不上当前上下文即拒绝复用。
+  migrateHitlExecutionRefColumns(db)
   migrateLegacySchema(db)
   migrateAddColumn(db, 'channels', 'scenario_prompt', 'TEXT NOT NULL DEFAULT \'\'')
   // v11:channel 级默认 LLM(四引擎统一注入面;成员 config 显式指定时优先)
