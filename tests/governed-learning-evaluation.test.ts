@@ -103,8 +103,26 @@ test('host evaluation evidence becomes a promotable host-provenanced run', () =>
   assert.equal(bad.ok, false)
   const good = recordHostEvaluationEvidence(db, { channelId: 'ch-1', profileId: 'pf-1', evidence, createdBy: 'u-1' })
   assert.equal(good.ok, true)
-  const row = db.prepare('SELECT kind, pairs, artifact_sha256 AS sha FROM harness_bench_runs WHERE id = ?').get(good.benchRunId!) as { kind: string, pairs: number, sha: string }
+  const row = db.prepare('SELECT kind, pairs, artifact_sha256 AS sha, p_value AS pValue, primary_delta AS primaryDelta, cost_delta AS costDelta FROM harness_bench_runs WHERE id = ?').get(good.benchRunId!) as { kind: string, pairs: number, sha: string, pValue: number | null, primaryDelta: number, costDelta: number }
   assert.equal(row.kind, 'host-evaluation')
   assert.equal(row.pairs, evidence.denominator)
   assert.equal(row.sha, evidence.manifestHash)
+  // 台账必须携带**真实测量值**(C−B),不得编造显著性数字换绿灯
+  assert.equal(row.primaryDelta, 0.08)
+  assert.ok(Math.abs(row.costDelta - 0.02) < 1e-9, `costDelta 应为实测 0.02,收到 ${row.costDelta}`)
+  assert.equal(row.pValue, null, '未做显著性检验时不得写伪造 pValue')
+})
+
+test('host run without significance test promotes only via the pre-registered non-inferiority path', async () => {
+  const { evaluateProfileGate } = await import('../server/services/workshop/experience/gates')
+  const passed = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', {
+    pValue: null, primaryDelta: 0.08, costDelta: 0.02, hostProvenance: 'host',
+  })
+  assert.equal(passed.allowed, true)
+  assert.match(passed.reasons.join(), /成本非劣/)
+  // 真实效应为负 → 非劣路径也不得过
+  const regressed = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', {
+    pValue: null, primaryDelta: -0.05, costDelta: 0.0, hostProvenance: 'host',
+  })
+  assert.equal(regressed.allowed, false)
 })
