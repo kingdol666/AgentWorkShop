@@ -56,6 +56,9 @@ export interface EvaluationRunRef {
   manifestHash: string
   releaseEligible: boolean
   provenance: 'host' | 'client'
+  /** 真实测量:C−B 主终点效应与成本差;臂缺失时 null(不编造数字) */
+  effect: number | null
+  costDelta: number | null
 }
 
 const sha256 = (text: string): string => createHash('sha256').update(text).digest('hex')
@@ -89,11 +92,12 @@ export function planExperienceEvaluation(spec: FrozenEvaluationSpec, outcomes: r
   const primary = outcomes.find(o => o.arm === 'C')
   const baseline = outcomes.find(o => o.arm === 'B')
   let status: EvaluationStatus = blockers.length > 0 ? 'BLOCKED' : 'FAIL'
-  if (blockers.length === 0 && primary && baseline) {
-    const effect = primary.effect
-    const cost = primary.cost - baseline.cost
-    if (effect >= spec.minEffect && cost <= spec.maxCostDelta) status = 'PASS'
-    else if (effect >= -Math.abs(spec.nonInferiorityBound) && cost <= spec.maxCostDelta) status = 'PASS'
+  // 真实测量:C−B 主终点效应与成本差;未跑出臂时 null(绝不编造数字)
+  const effect = primary && baseline ? primary.effect - baseline.effect : null
+  const costDelta = primary && baseline ? primary.cost - baseline.cost : null
+  if (blockers.length === 0 && primary && baseline && effect !== null && costDelta !== null) {
+    if (effect >= spec.minEffect && costDelta <= spec.maxCostDelta) status = 'PASS'
+    else if (effect >= -Math.abs(spec.nonInferiorityBound) && costDelta <= spec.maxCostDelta) status = 'PASS'
   }
   return {
     runId: `evr-${specHash(spec).slice(0, 16)}`,
@@ -103,6 +107,8 @@ export function planExperienceEvaluation(spec: FrozenEvaluationSpec, outcomes: r
     manifestHash: specHash(spec),
     releaseEligible: status === 'PASS' && spec.provenance === 'host',
     provenance: spec.provenance,
+    effect,
+    costDelta,
   }
 }
 
@@ -125,6 +131,8 @@ export async function runExperienceEvaluation(
         manifestHash: specHash(spec),
         releaseEligible: false,
         provenance: spec.provenance,
+        effect: null,
+        costDelta: null,
       }
     }
   }
@@ -143,15 +151,17 @@ export function recordHostEvaluationEvidence(
     return { ok: false, reasons: [`宿主评测不可作为发布证据:${input.evidence.status} ${input.evidence.blockers.join(';')}`] }
   }
   const now = new Date().toISOString()
+  // 台账只写**真实测量值**:pValue=null(未做显著性检验),效应/成本取冻结口径的 C−B 实测;
+  // 晋升门对宿主来源运行按预注册非劣界判定,不再消费任何编造的显著性数字。
   const run = createHarnessBenchRunRepo(db).create({
     channelId: input.channelId,
     profileId: input.profileId,
     baselineProfileId: input.baselineProfileId ?? '',
     kind: 'host-evaluation',
     status: 'completed',
-    pValue: 0.01,
-    primaryDelta: input.evidence.manifestHash ? 1 : 0,
-    costDelta: 0,
+    pValue: null,
+    primaryDelta: input.evidence.effect ?? 0,
+    costDelta: input.evidence.costDelta ?? 0,
     pairs: input.evidence.denominator,
     excluded: 0,
     seedsJson: '[]',
@@ -160,6 +170,6 @@ export function recordHostEvaluationEvidence(
     createdBy: input.createdBy,
     createdAt: now,
     completedAt: now,
-  } as never)
+  })
   return { ok: true, benchRunId: run.id, reasons: [] }
 }
