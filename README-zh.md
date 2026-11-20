@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.13.0)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.14.0)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.13.0（2026-11-18 发布）</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **IDD/RAG 插件集成** · 142 个宿主工具 · 144 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.14.0（2026-11-20 发布）</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-13-0) · [0.13.0 发布说明](#whats-new-in-0130) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-14-0) · [0.14.0 发布说明](#whats-new-in-0140) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,11 +49,25 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 当前源码 v0.13.0
+## 当前源码 v0.14.0
 
-当前源码版本为 **0.13.0**，已于 2026-11-18 发布（npm + GitHub Release）。本版把 **IDD**（工业深度诊断）与 **RAG**（rag-knowledge）两座桥生产化：diag-bridge 主契约迁移 IDD `external/v1`（提交前 capabilities 定轨 + 显式 legacy 回退），新增 `diag_chat` / `diag_stop` / `diag_deposit`；rag-bridge 新增文档工具族（`kb_doc_create/search/read/catalog`），落在独立的 `aw-docs` 知识库。插件写工具纳入 fail-closed 写族联合判定，插件 health 暴露逐工具计数，提交→轮询→回执→结果→入库全链按同一持久化契约路由。全新 home 三系统实测：供给 **9/9**、频道锻造 **11/11**、V1–V6 **11/11**；**142 个宿主工具**（127 内置 + 15 插件，schema 增量约 965 tokens）；真实模型回合原生调用 `kb_doc_search → kb_doc_read → diag_run → diag_status`；受治理闭环 **SP 156→150→144→138 °C**（每步 HITL、设备证实 1/1），PV 复测 3/3 落 [138,142]（均值 139.68），配方 v2 固化。门禁：lint、typecheck、unit **2059/2060**（1 skip）、build。证据：[2026-11-18 插件 v1 验收](docs/audit/evidence/2026-11-18-idd-rag-plugin-v1-contract/REPORT.md)。
+当前源码版本为 **0.14.0**（npm + GitHub Release，2026-11-20）。本版把「受治理的产品经验复用」计划（六个合并 PR，#240–#245）端到端落地：经验变为**不可变版本**（内容/证据快照哈希 + CAS 指针 + 崩溃安全迁移），一个**统一解析器**按授权 epoch、产品/配方作用域与部署状态管住全部读取面，**晋升必须引用宿主来源评测**（客户端自报台账只读展示），**发布走两段提交**（待发布 + 审计 outbox → CAS 激活 + maker-checker 分离），产线写持久化**尝试账本**（未闭合尝试对账为 `not_sent/unknown`，绝不自动重发），Project 暴露**计划进度**并拒绝待批冲突（`PLAN_CHANGE_PENDING`），依赖健康按提供方/RPC/进程/预算/进展分域（未知效果→`attention_required`），批次质量与外部任务终态分开出账，本体约束区分 `verified/violated/unobservable/unknown`，并新增**合并主干审计检查器**。
 
-## What's new in 0.13.0
+新克隆合并主干审计（`5614aa06`）：五个合并提交验证为祖先；固定 13 项矩阵（typecheck、lint、unit **2107/2108** 含 1 条件跳过、i18n、cssvars、frontend lifecycle、acceptance-context、onboarding-v6、sdk-surface、plugin-lifecycle、mcp、docs、build）全部退出 0，`checkMainAudit` = PASS；隔离启动创建全部治理表且新经验投影端点未认证返回 401。隔离模拟验收：文档→产线 onboard 33/33 + 15/15 + V1–V6 24/24，冒烟写回读 72=72，七轮治理调参使克重 31.03→32.58 g 进入 32.15–32.85 目标带，跨频道消息双向闭环+共享记忆落账。边界：Project 完成后无产物补交通道（已记录）；收益验证与物理/现场准入保持 NOT_RUN；Mimosa 深度扫描（有封印）33 条发现、**本轮新增治理模块 0 条**——不作安全通过声明。见[主干审计报告](docs/audit/governed-product-learning-main-audit.md)、[验收报告](docs/audit/governed-product-learning-acceptance.md)与[准入记录](docs/audit/governed-learning-expert-admission.md)。
+
+## What's new in 0.14.0
+
+- **不可变经验版本（#241）**：`experience_versions` 只插不改（内容/证据快照哈希）、CAS 指针（`EXPERIENCE_VERSION_CONFLICT`）、事务化幂等回填（旧行 → `legacy-unverified`，永不自动注入）、跨 kind 同键隔离（`EXPERIENCE_KEY_CONFLICT`）。
+- **统一治理解析器（#241）**：授权 epoch → 作用域 → 用途三段闸；`automatic` 读取要求 `validated` + `canary/active` 部署；overlay 缓存键含 epoch，撤权/换产品下一回合即停止注入。
+- **宿主来源发布门（#243）**：晋升 `active` 必须引用 `host-evaluation` 台账行；台账只写真实 C−B 测量（未做显著性检验即 `pValue: null`——伪造显著性被拒绝），发布 = pending → 审计确认 → CAS，maker-checker 分离；撤销只停注入、不改写事实。
+- **持久写尝试账本（#244）**：每次产线写围绕 prepared/dispatched/verified/rejected/not_sent/unknown 记账；重启对账分类未闭合尝试且绝不重发；代次/租约/上下文/载荷任一不符即拒绝复用旧批准，HITL 行同步补关联列。
+- **计划进度与待批围栏（#244）**：项目 observability 新增 `planProgress` 投影（`pending_approval/applied/rejected/attention_required`），待批计划冲突的手工建项被 `PLAN_CHANGE_PENDING` 拒绝。
+- **依赖健康与证据质量（#244）**：提供方/RPC/进程/预算/队列/进展产出有界动作（`continue/wait/retry/fallback_readonly/attention_required/failed`，未知效果→attention）；批次质量按覆盖率/缺口闸控制证据与训练；外部任务忠实记录上游终态、产物有效性单独闸验收；OMP ready 超时回收自启子进程。
+- **本体三态与工件复用（#245）**：缺声明边 = `unknown`（不是否证），关键护栏可观测性与产品/配方谱系闸工件复用，本体候选带证据来源且仍走现有人工发布门。
+- **验收 runner 与主干检查器（#245）**：模拟清单任一项不满足（环境/revision/目标/归属证明/臂根）即在任何写之前 BLOCKED；主干检查器要求精确 SHA、祖先合并提交、干净检出与完整证据摘要矩阵。
+- **双语文档**：[受治理产品经验指南](https://kingdol666.github.io/AgentWorkShop/guide/governed-learning)覆盖版本生命周期、解析器用途、发布流程、写账本与审计边界。
+
+## What's new in 0.13.0 — 历史发布说明
 
 - **diag-bridge v2.4**：`external/v1` 为主契约，提交前 `GET /capabilities` 定轨（5 分钟指纹缓存）+ 显式 `contract=legacy` 回退；六态生命周期，`awaiting_input` 占产线单飞锁并按老化上限转 `expired`；新增 `diag_chat` / `diag_stop` / `diag_deposit`；全 7 意图与 ontology / preprocessing / report-language 透传；9 类错误码映射为可读处方。
 - **rag-bridge v2.3**：`kb_doc_create` / `kb_doc_search` / `kb_doc_read` / `kb_catalog` 四工具落在 `aw-docs`（与 `aw-industrial` 经验库分键）；two-stage 主检索 + 带标注的关键词降级；创建幂等，并用 `index-document`（向量 + BM25 增量）建索引——整库 reindex 不会刷新后端进程内 BM25。
@@ -428,7 +442,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.13.0（已发布 2026-11-18）** —— [最新版本 v0.13.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.13.0) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.14.0（已发布 2026-11-20）** —— [最新版本 v0.14.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.14.0) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

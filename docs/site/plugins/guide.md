@@ -6,7 +6,7 @@
 > 本文是唯一权威参考;`docs/site/plugins/` 的分页文档与本文同源。
 >
 > 适用版本:插件系统 v2 自 **v0.7.29** 起可用(前端组件注入 / 插件设置 / 插件 i18n /
-> 运行时服务面);本文档对应当前版本 **v0.13.0**。`ctx.sdkVersion` 当前为 `0.3.0`。
+> 运行时服务面);本文档对应当前版本 **v0.14.0**。`ctx.sdkVersion` 当前为 `0.3.0`。
 
 ## 一、目录结构与快速开始
 
@@ -477,7 +477,7 @@ ctx.route('POST', '/threshold', (event) => {
 
 `ctx.omp.registerTool(def)` 注册的工具按角色、频道与调用路径过滤后提供给 harness。omp 经 RPC `set_host_tools` 注入；其他引擎可经 agent-token MCP 桥获取工具列表；mock 可经已授权用户的 REST invoke 调用。注册表变更会向在跑的会话重发工具定义。
 
-兼容性边界（v0.13.0;不属于稳定承诺）：agent token 只标识 agent，不能证明可信回合来源；桥接路径只允许显式声明 `riskClass: 'read'` 的插件工具，缺省、`write` 或 `admin` 均被过滤并拒绝调用。仅对真正只读的工具声明 `read`，不要为了绕过限制错误标注；角色、频道和其他治理检查仍然适用。原生 omp 工具调用和用户鉴权 REST 路径有各自的检查，不能假定它们与 agent-token 桥的工具面相同。
+兼容性边界（v0.14.0;不属于稳定承诺）：agent token 只标识 agent，不能证明可信回合来源；桥接路径只允许显式声明 `riskClass: 'read'` 的插件工具，缺省、`write` 或 `admin` 均被过滤并拒绝调用。仅对真正只读的工具声明 `read`，不要为了绕过限制错误标注；角色、频道和其他治理检查仍然适用。原生 omp 工具调用和用户鉴权 REST 路径有各自的检查，不能假定它们与 agent-token 桥的工具面相同。
 
 ```js
 ctx.omp.registerTool({
