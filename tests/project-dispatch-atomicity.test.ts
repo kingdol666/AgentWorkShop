@@ -200,6 +200,24 @@ test('prefab snapshot: retry reuses the exact first bindings after its instance 
   finally { f.db.close() }
 })
 
+test('prefab snapshot: active retry rejects drift in actual clone bindings even when the session snapshot matches', async () => {
+  const f = fixture()
+  try {
+    const { svc, owner, p, w, member } = await prepareWorkItem(f)
+    f.agents.update(member.leadAgentId!, { prefabBindingJson: binding(1, 'original') })
+    const first = await svc.dispatchWorkItem(p.id, w.id, owner)
+    const instance = f.channels.findById(first.instanceChannelId!)!
+    f.agents.update(instance.leadAgentId!, { prefabBindingJson: '' })
+    finishAttempt(f, w.id)
+
+    await assert.rejects(() => svc.dispatchWorkItem(p.id, w.id, owner), { code: 'TASK_PREFAB_SNAPSHOT_INVALID' })
+    assert.equal(f.createdInstances.length, 1)
+    assert.equal(createProjectAttemptRepo(f.db).listByWorkItem(w.id).length, 1)
+    assert.equal(createProjectWorkItemRepo(f.db).findById(w.id)?.prefabSnapshotHash, first.prefabSnapshotHash)
+  }
+  finally { f.db.close() }
+})
+
 for (const kind of ['missing', 'hash-only', 'bad-hash', 'bad-json', 'bad-binding', 'missing-member'] as const) {
   test(`prefab snapshot: retry fails closed for ${kind}`, async () => {
     const f = fixture()

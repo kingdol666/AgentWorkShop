@@ -94,7 +94,8 @@ const draft = {
     scenario: 'Simulated line diagnostics; no physical operation.',
     slots: [{ key: 'objective', label: 'Objective', defaultValue: 'verify-readings', required: true, allowMemberOverride: true, maxLength: 200 }],
   },
-  profile: { provider: 'mock', model: 'mock', settings: { thinkingLevel: 'high' } },
+  // This acceptance uses the mock harness, which has no model/runtime profile.
+  profile: {},
   capabilities: revisionId ? [{ kind: 'skill', id: revisionId, required: true }] : [],
 }
 const created = await api('POST', '/api/workshop/agent-prefabs', { draft }, token)

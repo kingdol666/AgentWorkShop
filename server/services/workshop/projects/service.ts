@@ -27,7 +27,8 @@ import {
   createProjectMessageRepo,
 } from '../db/project.repo'
 import { createTaskRepo } from '../db/task.repo'
-import { createChannelSessionRepo } from '../db/channel-session.repo'
+import { createChannelSessionRepo, type ChannelSessionRow } from '../db/channel-session.repo'
+import { createChannelAgentRepo } from '../db/channel-agent.repo'
 import { readTaskPrefabSnapshot, type TaskPrefabSnapshot } from '../agents/task-channel'
 import { createProjectKernelRepo } from '../db/project-kernel.repo'
 import { createMemoryRepo } from '../db/memory.repo'
@@ -155,6 +156,7 @@ export class ProjectService {
   private readonly technicalReviews
   private readonly messages
   private readonly tasks
+  private readonly channelAgents
   /** 任务实例会话（2026-11-07）：project_work_item_id → 任务专属 Channel 的会话行 */
   private readonly sessions
   /** PR17 M4 内核仓储：ledger / plan_versions / effects / health。 */
@@ -179,6 +181,7 @@ export class ProjectService {
     this.technicalReviews = createProjectTechnicalReviewRepo(db)
     this.messages = createProjectMessageRepo(db)
     this.tasks = createTaskRepo(db)
+    this.channelAgents = createChannelAgentRepo(db)
     this.sessions = createChannelSessionRepo(db)
     this.kernelRepo = createProjectKernelRepo(db)
   }
@@ -1283,12 +1286,18 @@ export class ProjectService {
     }
     const activeSession = sessions.find(s => s.status === 'active' && s.channelId === wi.instanceChannelId)
     if (wi.instanceChannelId && activeSession) {
-      const ch = this.manager.getChannelForUser(wi.instanceChannelId, p.ownerUserId)
-      if (ch && ch.enabled === 1 && ch.leadAgentId) {
-        if (!prefabSnapshot || activeSession.prefabSnapshotJson !== prefabSnapshot.prefabSnapshotJson
-          || activeSession.prefabSnapshotHash !== prefabSnapshot.prefabSnapshotHash) {
-          throw new AppError(409, 'TASK_PREFAB_SNAPSHOT_INVALID', '任务实例会话与工作项的 AgentPrefab 绑定快照不一致')
+      const ch = (() => {
+        try {
+          return this.manager.getChannelForUser(wi.instanceChannelId!, p.ownerUserId)
         }
+        catch (err) {
+          if (err instanceof AppError && err.code === 'NOT_FOUND') return undefined
+          throw err
+        }
+      })()
+      if (ch && ch.enabled === 1 && ch.leadAgentId) {
+        if (!prefabSnapshot) throw new AppError(409, 'TASK_PREFAB_SNAPSHOT_MISSING', '任务实例缺少工作项 AgentPrefab 绑定快照')
+        this.assertTaskInstancePrefabSnapshot(activeSession, prefabSnapshot, ch.leadAgentId)
         return { channelId: wi.instanceChannelId, created: false, sessionId: activeSession.id }
       }
     }
@@ -1309,11 +1318,19 @@ export class ProjectService {
     })
     const pinned = this.workItems.findById(wi.id)
     const session = this.sessions.findById(created.sessionId)
-    if (!pinned?.prefabSnapshotJson || pinned.prefabSnapshotJson !== created.prefabSnapshotJson
-      || pinned.prefabSnapshotHash !== created.prefabSnapshotHash
-      || session?.prefabSnapshotJson !== pinned.prefabSnapshotJson || session.prefabSnapshotHash !== pinned.prefabSnapshotHash) {
+    try {
+      if (!pinned?.prefabSnapshotJson || !pinned.prefabSnapshotHash || pinned.prefabSnapshotJson !== created.prefabSnapshotJson
+        || pinned.prefabSnapshotHash !== created.prefabSnapshotHash || session?.channelId !== created.channelId
+        || session.projectWorkItemId !== wi.id || session.projectId !== p.id || session.status !== 'active') {
+        throw new AppError(409, 'TASK_PREFAB_SNAPSHOT_INVALID', '新任务实例与工作项的 AgentPrefab 绑定快照不一致')
+      }
+      this.assertTaskInstancePrefabSnapshot(session, {
+        prefabSnapshotJson: pinned.prefabSnapshotJson, prefabSnapshotHash: pinned.prefabSnapshotHash,
+      }, created.leadAgentId)
+    }
+    catch (err) {
       await this.releaseCreatedInstance(wi, created.channelId)
-      throw new AppError(409, 'TASK_PREFAB_SNAPSHOT_INVALID', '新任务实例与工作项的 AgentPrefab 绑定快照不一致')
+      throw err
     }
     const afterCreate = this.projects.findById(p.id)
     if (!afterCreate || afterCreate.status !== 'active') {
@@ -1349,6 +1366,26 @@ export class ProjectService {
       workItemId: wi.id, instanceChannelId: created.channelId, sessionId: created.sessionId, templateChannelId: wi.channelId,
     })
     return { channelId: created.channelId, created: true, sessionId: created.sessionId }
+  }
+
+  private assertTaskInstancePrefabSnapshot(session: ChannelSessionRow, snapshot: TaskPrefabSnapshot, leadAgentId: string): void {
+    const bindings = readTaskPrefabSnapshot(snapshot)
+    const memberMap = parseJson<Record<string, unknown> | null>(session.memberMapJson, null)
+    const invalid = () => new AppError(409, 'TASK_PREFAB_SNAPSHOT_INVALID', '任务实例会话或成员与工作项的 AgentPrefab 绑定快照不一致')
+    if (session.instanceKind !== 'task' || session.prefabSnapshotJson !== snapshot.prefabSnapshotJson
+      || session.prefabSnapshotHash !== snapshot.prefabSnapshotHash || !memberMap || typeof memberMap !== 'object'
+      || Array.isArray(memberMap) || Object.keys(memberMap).length !== bindings.size) throw invalid()
+
+    // Runtime reads the clone's binding, not session metadata. Do not reuse a clone whose binding drifted.
+    const seen = new Set<string>()
+    for (const [baseId, binding] of bindings) {
+      const instanceId = Object.hasOwn(memberMap, baseId) ? memberMap[baseId] : undefined
+      if (typeof instanceId !== 'string' || seen.has(instanceId)) throw invalid()
+      const member = this.channelAgents.findByChannelAgent(session.channelId, instanceId)
+      if (!member || (member.prefabBindingJson ?? '') !== binding) throw invalid()
+      seen.add(instanceId)
+    }
+    if (!seen.has(leadAgentId)) throw invalid()
   }
 
   private detachTaskInstanceBinding(projectId: string, channelId: string): void {
