@@ -14,6 +14,8 @@ function fixture() {
   mkdirSync(join(root, '.AgentWorkShop', 'prompts'), { recursive: true })
   mkdirSync(join(root, 'shared', 'config'), { recursive: true })
   mkdirSync(join(root, 'server', 'services', 'workshop', 'aml', 'python'), { recursive: true })
+  mkdirSync(join(root, 'skills', 'demo-skill'), { recursive: true })
+  writeFileSync(join(root, 'skills', 'demo-skill', 'SKILL.md'), '---\nname: demo-skill\ndescription: demo\n---\n')
   for (const p of [join(output, 'server', 'chunks', '_', 'nitro.mjs'), join(output, 'server', 'chunks', 'virtual', 'entry.mjs')]) writeFileSync(p, 'export const url = import.meta.url')
   writeFileSync(join(root, '.AgentWorkShop', 'prompts', 'host-tools.json'), '{}')
   writeFileSync(join(root, 'shared', 'config', 'schema.json'), '{}')
@@ -28,6 +30,8 @@ test('postBuildArtifacts copies and validates all runtime assets', () => {
     assert.ok(result.assets.includes('prompts'))
     assert.ok(result.assets.includes('schema.json'))
     assert.ok(result.assets.includes('aml-python'))
+    assert.ok(result.assets.includes('skills'))
+    assert.ok(existsSync(join(root, '.output', 'skills', 'demo-skill', 'SKILL.md')))
     assert.ok(existsSync(join(root, '.output', '.AgentWorkShop', 'prompts', 'host-tools.json')))
     assert.equal(readFileSync(join(root, '.output', '.AgentWorkShop', 'schema.json'), 'utf8'), '{}')
   }
@@ -39,6 +43,7 @@ test('postBuildArtifacts fails when required runtime assets are missing', () => 
     ['prompts', '.AgentWorkShop/prompts'],
     ['schema', 'shared/config/schema.json'],
     ['aml-python', 'server/services/workshop/aml/python'],
+    ['skills', 'skills'],
   ]) {
     const root = fixture()
     try {
