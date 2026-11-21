@@ -12,6 +12,7 @@ delete process.env.AW_BENCH_MODE
 const { openWorkshopDb } = await import('../server/services/workshop/db/database')
 const { createChannelSessionRepo } = await import('../server/services/workshop/db/channel-session.repo')
 const { migrateSessionContextColumns } = await import('../server/services/workshop/db/database/migrations-session')
+const { migratePrefabColumns } = await import('../server/services/workshop/db/database/migrations-prefab')
 
 test('channel session persists selected product and immutable binding snapshot', () => {
   const db = openWorkshopDb(':memory:')
@@ -87,6 +88,7 @@ test('legacy channel session rows survive snapshot migration with empty defaults
       VALUES ('cs-legacy', 'channel-legacy', 'Legacy session', '2026-11-13T00:00:00.000Z');`)
 
     migrateSessionContextColumns(db)
+    migratePrefabColumns(db)
     migrateSessionContextColumns(db)
 
     const legacy = createChannelSessionRepo(db).findById('cs-legacy')
@@ -96,6 +98,8 @@ test('legacy channel session rows survive snapshot migration with empty defaults
     assert.equal(legacy.bindingSnapshotJson, '')
     assert.equal(legacy.bindingSnapshotHash, '')
     assert.equal(legacy.bindingSnapshotRevision, 0)
+    assert.equal(legacy.prefabSnapshotJson, '')
+    assert.equal(legacy.prefabSnapshotHash, '')
   }
   finally {
     db.close()

@@ -43,14 +43,17 @@ export interface ChannelSessionRow {
   bindingSnapshotJson: string
   bindingSnapshotHash: string
   bindingSnapshotRevision: number
+  /** AgentPrefab 绑定快照（Session 创建时固定 revision/slot/hash） */
+  prefabSnapshotJson: string
+  prefabSnapshotHash: string
 }
 
-const SESSION_COLS = 'id, channel_id AS channelId, title, status, memory_policy AS memoryPolicy, member_map_json AS memberMapJson, created_by AS createdBy, created_at AS createdAt, closed_at AS closedAt, project_id AS projectId, project_work_item_id AS projectWorkItemId, created_by_kind AS createdByKind, instance_kind AS instanceKind, summary, brief_json AS briefJson, last_active_at AS lastActiveAt, generation, channel_mode AS channelMode, product_id AS productId, line_id AS lineId, binding_snapshot_json AS bindingSnapshotJson, binding_snapshot_hash AS bindingSnapshotHash, binding_snapshot_revision AS bindingSnapshotRevision'
+const SESSION_COLS = 'id, channel_id AS channelId, title, status, memory_policy AS memoryPolicy, member_map_json AS memberMapJson, created_by AS createdBy, created_at AS createdAt, closed_at AS closedAt, project_id AS projectId, project_work_item_id AS projectWorkItemId, created_by_kind AS createdByKind, instance_kind AS instanceKind, summary, brief_json AS briefJson, last_active_at AS lastActiveAt, generation, channel_mode AS channelMode, product_id AS productId, line_id AS lineId, binding_snapshot_json AS bindingSnapshotJson, binding_snapshot_hash AS bindingSnapshotHash, binding_snapshot_revision AS bindingSnapshotRevision, prefab_snapshot_json AS prefabSnapshotJson, prefab_snapshot_hash AS prefabSnapshotHash'
 
 export function createChannelSessionRepo(db: DatabaseSync) {
   const insertStmt = db.prepare(
-    `INSERT INTO channel_sessions (id, channel_id, title, status, memory_policy, member_map_json, created_by, created_at, project_id, project_work_item_id, created_by_kind, instance_kind, summary, brief_json, last_active_at, generation, channel_mode, product_id, line_id, binding_snapshot_json, binding_snapshot_hash, binding_snapshot_revision)
-     VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, '', '{}', ?, 0, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO channel_sessions (id, channel_id, title, status, memory_policy, member_map_json, created_by, created_at, project_id, project_work_item_id, created_by_kind, instance_kind, summary, brief_json, last_active_at, generation, channel_mode, product_id, line_id, binding_snapshot_json, binding_snapshot_hash, binding_snapshot_revision, prefab_snapshot_json, prefab_snapshot_hash)
+     VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, '', '{}', ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const byIdStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE id = ?`)
   const byChannelStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE channel_id = ? ORDER BY created_at DESC`)
@@ -77,6 +80,8 @@ export function createChannelSessionRepo(db: DatabaseSync) {
       bindingSnapshotJson?: string
       bindingSnapshotHash?: string
       bindingSnapshotRevision?: number
+      prefabSnapshotJson?: string
+      prefabSnapshotHash?: string
     }): ChannelSessionRow {
       const id = `cs-${randomUUID().slice(0, 8)}`
       const now = new Date().toISOString()
@@ -99,6 +104,8 @@ export function createChannelSessionRepo(db: DatabaseSync) {
         input.bindingSnapshotJson ?? '',
         input.bindingSnapshotHash ?? '',
         input.bindingSnapshotRevision ?? 0,
+        input.prefabSnapshotJson ?? '',
+        input.prefabSnapshotHash ?? '',
       )
       return this.findById(id)!
     },

@@ -10,6 +10,7 @@ import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTe
 import { migrateProjectColumns, ensureProjectIndexes, migrateApprovedSlotScope } from './migrations-project'
 import { migrateSessionContextColumns, migrateSessionChannelModeColumn, ensureSessionIndexes } from './migrations-session'
 import { migrateExperienceColumns, ensureExperienceIndexes } from './migrations-experience'
+import { migratePrefabColumns } from './migrations-prefab'
 import { migrateExperienceVersionStore } from './migrations-experience-versions'
 import { migrateHitlExecutionRefColumns } from './migrations-hitl-ref'
 import { migrateImprovementProposals } from './migrations-improvement'
@@ -46,9 +47,9 @@ export function openWorkshopDb(path: string): DatabaseSync {
  * assertMigrationFingerprint 查不到新版本行即放行并补录;同版本内的 SQL
  * 漂移(手改/回滚 schema)仍会被哈希比对抓住。
  * 历史:v1 初始契约;v2 2026-11-15 channels.channel_mode;v3 messages.claim_token;v4 受治理经验版本;
- * v5 发布请求+审计 outbox;v6 反射 outbox;v7 设备写尝试账本。
+ * v5 发布请求+审计 outbox;v6 反射 outbox;v7 设备写尝试账本;v8 AgentPrefab 草稿/不可变 revision。
  */
-export const SCHEMA_CONTRACT_VERSION = 7
+export const SCHEMA_CONTRACT_VERSION = 8
 
 /** 对已打开的库执行初始化:WAL + 外键约束 + 建表 + 增量迁移 */
 export function initWorkshopDb(db: DatabaseSync): void {
@@ -68,6 +69,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateAgentTeamTaskQueueColumns(db)
   // Project 层新列必须先于 tasks legacy rebuild，否则 rebuild 的 INSERT SELECT 会丢列。
   migrateProjectColumns(db)
+  // AgentPrefab 绑定/快照列：additive；既有行默认空（无绑定/无快照）
+  migratePrefabColumns(db)
   migrateApprovedSlotScope(db)
   // Session Context：同样必须先于 tasks legacy rebuild 补列；rebuild 列清单已带 session_id。
   migrateSessionContextColumns(db)

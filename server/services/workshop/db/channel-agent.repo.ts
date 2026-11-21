@@ -34,6 +34,8 @@ export interface ChannelAgentCreateInput {
   role: 'lead' | 'worker'
   agentKind?: 'channel_agent' | 'project_leader'
   token?: string
+  /** AgentPrefabBinding JSON（缺省 '' = 无绑定） */
+  prefabBindingJson?: string
 }
 
 export interface ChannelAgentPatch {
@@ -42,17 +44,19 @@ export interface ChannelAgentPatch {
   config?: Record<string, unknown>
   role?: 'lead' | 'worker'
   enabled?: number
+  /** undefined = 保留；'' = 显式解绑 */
+  prefabBindingJson?: string
 }
 
 export type ChannelAgentRepo = ReturnType<typeof createChannelAgentRepo>
 
 const COLS
-  = 'id, channel_id AS channelId, template_id AS templateId, name, harness, config_json AS configJson, role, agent_kind AS agentKind, token, enabled, created_at AS createdAt, updated_at AS updatedAt'
+  = 'id, channel_id AS channelId, template_id AS templateId, name, harness, config_json AS configJson, prefab_binding_json AS prefabBindingJson, role, agent_kind AS agentKind, token, enabled, created_at AS createdAt, updated_at AS updatedAt'
 
 export function createChannelAgentRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO channel_agents (id, channel_id, template_id, name, harness, config_json, role, agent_kind, token, enabled, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO channel_agents (id, channel_id, template_id, name, harness, config_json, prefab_binding_json, role, agent_kind, token, enabled, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectByChannel = db.prepare(`SELECT ${COLS} FROM channel_agents WHERE channel_id = ? ORDER BY created_at ASC`)
   const selectById = db.prepare(`SELECT ${COLS} FROM channel_agents WHERE id = ?`)
@@ -64,7 +68,7 @@ export function createChannelAgentRepo(db: DatabaseSync) {
   const rotateStmt = db.prepare(`UPDATE channel_agents SET prev_token = token, prev_token_until = ?, token = ?, updated_at = ? WHERE id = ?`)
   const selectByTemplate = db.prepare(`SELECT ${COLS} FROM channel_agents WHERE template_id = ? ORDER BY created_at ASC`)
   const updateStmt = db.prepare(
-    `UPDATE channel_agents SET name = ?, harness = ?, config_json = ?, role = ?, enabled = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE channel_agents SET name = ?, harness = ?, config_json = ?, prefab_binding_json = ?, role = ?, enabled = ?, updated_at = ? WHERE id = ?`,
   )
   const removeStmt = db.prepare(`DELETE FROM channel_agents WHERE channel_id = ? AND id = ?`)
 
@@ -79,6 +83,7 @@ export function createChannelAgentRepo(db: DatabaseSync) {
         name: input.name,
         harness: input.harness,
         configJson: JSON.stringify(input.config ?? {}),
+        prefabBindingJson: input.prefabBindingJson ?? '',
         role: input.role,
         agentKind: input.agentKind ?? 'channel_agent',
         token: input.token ?? randomUUID(),
@@ -87,7 +92,7 @@ export function createChannelAgentRepo(db: DatabaseSync) {
         updatedAt: now,
       }
       insert.run(
-        row.id, row.channelId, row.templateId, row.name, row.harness, row.configJson, row.role, row.agentKind, row.token, row.enabled, row.createdAt, row.updatedAt,
+        row.id, row.channelId, row.templateId, row.name, row.harness, row.configJson, row.prefabBindingJson ?? '', row.role, row.agentKind, row.token, row.enabled, row.createdAt, row.updatedAt,
       )
       return row
     },
@@ -160,11 +165,12 @@ export function createChannelAgentRepo(db: DatabaseSync) {
         name: patch.name ?? current.name,
         harness: patch.harness ?? current.harness,
         configJson: patch.config !== undefined ? JSON.stringify(patch.config) : current.configJson,
+        prefabBindingJson: patch.prefabBindingJson !== undefined ? patch.prefabBindingJson : current.prefabBindingJson ?? '',
         role: patch.role ?? current.role,
         enabled: patch.enabled ?? current.enabled,
         updatedAt: new Date().toISOString(),
       }
-      updateStmt.run(next.name, next.harness, next.configJson, next.role, next.enabled, next.updatedAt, id)
+      updateStmt.run(next.name, next.harness, next.configJson, next.prefabBindingJson ?? '', next.role, next.enabled, next.updatedAt, id)
       return next
     },
 
