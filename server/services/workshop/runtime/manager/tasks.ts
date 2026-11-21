@@ -22,6 +22,8 @@ import { assertDispatchAllowed } from '../task-engine/policy'
 import { fenceToMetadata } from '../task-engine/lease'
 import { assertNotLegacyRecoveryHeld } from '../task-engine/legacy-recovery'
 import { currentExecutionScope } from '../../agents/execution-scope'
+import { createChannelSessionRepo } from '../../db/channel-session.repo'
+import { activeSessionOfMember } from '../../agents/session-clone'
 
 export abstract class ManagerTasks extends ManagerChannelTemplates {
   /**
@@ -121,6 +123,13 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       ...fenceToMetadata(task),
     }
     if (input.fromLabel) messageMetadata['x-aw-from-label'] = input.fromLabel
+    // 会话归属:直派目标是会话 clone 时按持久化成员关系盖章(服务端事实,与 sendA2A 同源;
+    // 消息行/回合记忆据此落 session,REST 直派不再产生无会话戳的对话痕迹)。
+    const assigneeSession = activeSessionOfMember(
+      createChannelSessionRepo(this.deps.db).listByChannel(input.channelId),
+      assigneeId,
+    )
+    if (assigneeSession) messageMetadata['x-aw-session-id'] = assigneeSession.id
     // 简报兜底:人类直派常只填 title/description(不带 parts)——assign 消息若只有空
     // parts,worker 的回合提示词里任务正文为空,LLM worker 只能对着任务名瞎猜
     // (实测 codex worker 完成任务却答"未提供任务目标")。
