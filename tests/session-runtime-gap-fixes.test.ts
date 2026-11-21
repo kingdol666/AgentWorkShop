@@ -99,7 +99,9 @@ test('invokeHostTool stamps generic-session memory with the trusted session id a
   const globals = globalThis as typeof globalThis & { __workshopManager?: unknown }
   const previousManager = globals.__workshopManager
   globals.__workshopManager = { deps: manager.deps }
-  t.after(() => { globals.__workshopManager = previousManager })
+  t.after(() => {
+    globals.__workshopManager = previousManager
+  })
   manager.lastToolInvokeAt = new Map()
   manager.activeInvocationScopes = new Map()
   manager.ensureAgentRuntime = (channelId: string, agentId: string) => {
