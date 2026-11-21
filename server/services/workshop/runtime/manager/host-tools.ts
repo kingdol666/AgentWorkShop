@@ -18,6 +18,7 @@ import { recordOps } from '../../ops/ops'
 import { rowToMessage } from '../mailbox'
 import { isRecoveryBlockedMessage } from '../../db/message.repo'
 import { allowedWithoutTurnProvenance } from '../../agents/tool-classes'
+import type { DeviceAccessScope } from '../../../../mcp/ingress-auth'
 
 /** WP4:token 路径需要留痕的协作面工具(可作数据二次外传的通道) */
 const COLLAB_AUDIT_TOOLS = new Set([
@@ -234,6 +235,42 @@ export abstract class ManagerHostTools extends ManagerA2A {
     const row = this.deps.repos.channelAgents.findByToken(token)
     if (!row || row.enabled !== 1) return null
     return { agentId: row.id, channelId: row.channelId }
+  }
+
+  /**
+   * MCP HTTP ingress 的严格主体解析：成员与 Channel 都必须 enabled。
+   * 与 resolveAgentByToken 的区别：返回完整 AgentInfo，供 route 绑定/复核会话主体；
+   * 停用成员或停用 Channel 后，旧 token 立即失效。
+   */
+  findActiveAgentByToken(token: string): AgentInfo | undefined {
+    if (!token) return undefined
+    const row = this.deps.repos.channelAgents.findByToken(token)
+    if (!row || row.enabled !== 1) return undefined
+    const channel = this.deps.repos.channels.findById(row.channelId)
+    if (!channel || channel.enabled === 0) return undefined
+    return instanceToAgentInfo(row)
+  }
+
+  /**
+   * 数字孪生设备可见范围：全局设备（workspaceId=''）+ 挂载本成员 Channel 的工作区
+   * + boundAgentId=本成员的设备。工作区从 Channel.ownerUserId 的 workspace 挂载解析；
+   * 无归属/仓储异常时只保留全局与直接绑定，不扩大范围。
+   */
+  deviceAccessScopeOf(agentId: string): DeviceAccessScope | null {
+    const row = this.deps.repos.channelAgents.findById(agentId)
+    if (!row) return null
+    const workspaceIds: string[] = []
+    const channel = this.deps.repos.channels.findById(row.channelId)
+    if (channel?.ownerUserId) {
+      try {
+        for (const ws of this.deps.repos.users.listWorkspaces(channel.ownerUserId)) {
+          const mounted = this.deps.repos.users.listMountedChannels(ws.id)
+          if (mounted.includes(row.channelId)) workspaceIds.push(ws.id)
+        }
+      }
+      catch { /* 工作区仓储不可用：按空工作区范围降级，不阻断工具 */ }
+    }
+    return { agentId, channelId: row.channelId, workspaceIds }
   }
 
   /** 工具面 schema(MCP 桥 tools/list):按 agent 角色装配,与 omp 注入面同源 */

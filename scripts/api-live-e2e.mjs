@@ -533,9 +533,20 @@ async function main() {
 
   // ═══════════ 11. MCP Streamable HTTP(Agent harness 作业面) ═══════════
   section('MCP 端点 — initialize 会话建立')
-  const mcpRes = await fetch(`${BASE}/api/mcp/workshop`, {
+  // 2026-11-21:ingress 现在要求每个请求都携带有效 Agent token,并在会话上绑定主体。
+  const mcpUnauth = await fetch(`${BASE}/api/mcp/workshop`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'accept': 'application/json, text/event-stream' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 'anon', method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'api-e2e-anon', version: '1.0.0' } } }),
+  })
+  check('MCP initialize 无 token → 401', mcpUnauth.status === 401, `status=${mcpUnauth.status}`)
+  const mcpRes = await fetch(`${BASE}/api/mcp/workshop`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'accept': 'application/json, text/event-stream',
+      'authorization': `Bearer ${ids.leadToken}`,
+    },
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: 1,
@@ -553,16 +564,36 @@ async function main() {
   const mcpSid = mcpRes.headers.get('mcp-session-id')
   check('MCP 会话 id 下发(状态复用)', Boolean(mcpSid), `sid=${mcpSid?.slice(0, 8)}`)
   if (mcpSid) {
+    // 换另一个有效 Agent token 复用同一 session → 403(会话主体不可切换)
+    const mcpCross = await fetch(`${BASE}/api/mcp/workshop`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'accept': 'application/json, text/event-stream',
+        'mcp-session-id': mcpSid,
+        'authorization': `Bearer ${ids.workerToken}`,
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 'cross', method: 'tools/list', params: {} }),
+    })
+    check('MCP 会话主体切换 → 403', mcpCross.status === 403, `status=${mcpCross.status}`)
     const toolsRes = await fetch(`${BASE}/api/mcp/workshop`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'accept': 'application/json, text/event-stream', 'mcp-session-id': mcpSid },
+      headers: {
+        'content-type': 'application/json',
+        'accept': 'application/json, text/event-stream',
+        'mcp-session-id': mcpSid,
+        'authorization': `Bearer ${ids.leadToken}`,
+      },
       body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }),
     })
     const toolsBody = await toolsRes.text()
     const toolCount = (toolsBody.match(/"name":"/g) ?? []).length
     check('MCP tools/list 返回工具集', toolCount > 0, `tools≈${toolCount}`)
     // 清理会话
-    await fetch(`${BASE}/api/mcp/workshop?sessionId=${mcpSid}`, { method: 'DELETE' })
+    await fetch(`${BASE}/api/mcp/workshop?sessionId=${mcpSid}`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${ids.leadToken}` },
+    })
   }
 
   // ═══════════ 12. 清理(删除本测试数据) ═══════════
