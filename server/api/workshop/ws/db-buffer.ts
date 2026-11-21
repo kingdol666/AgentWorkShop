@@ -5,7 +5,7 @@
 import type { AgentChannelManager } from '../../../services/workshop/runtime/manager'
 import type { ChannelStream } from './shared'
 import { DB_FLUSH_MS, internalsOf } from './hub'
-import { hub, log } from './shared'
+import { log } from './shared'
 import { isTransactionOpen } from '../../../services/workshop/db/transaction'
 
 export function flushDbBuffer(manager: AgentChannelManager, stream: ChannelStream): void {
@@ -21,7 +21,10 @@ export function flushDbBuffer(manager: AgentChannelManager, stream: ChannelStrea
     if (!stream.dbFlushTimer) {
       stream.dbFlushTimer = setTimeout(() => {
         stream.dbFlushTimer = null
-        if (hub.boundManager) flushDbBuffer(hub.boundManager, stream)
+        // 归属管理器优先:manager 更替(swap)后缓冲帧可能仍属于旧库,
+        // 只有 stream.manager 知道它们该落哪里(hub.boundManager 已是新 manager)。
+        const owner = stream.manager ?? manager
+        if (owner) flushDbBuffer(owner, stream)
       }, DB_FLUSH_MS)
       stream.dbFlushTimer.unref?.()
     }

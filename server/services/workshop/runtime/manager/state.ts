@@ -94,8 +94,12 @@ export abstract class ManagerState extends ManagerContracts {
    * 把消息投进正在关闭的信箱(假送达 + 永久丢失)。
    */
   protected readonly stoppingAgents = new Set<string>()
+  /** 频道级总线不随 ChannelRuntime 空闲卸载；只在频道删除或 manager 停机时释放。 */
   protected buses = new Map<string, ChannelBus>()
+  protected abstract ensureChannelBus(channelId: string): ChannelBus | undefined
   protected taskEngine: TaskEngine | null = null
+  /** 频道创建后的录制流挂接(插件装配):MCP/Project/模板等所有 createChannel 路径共用 */
+  channelCreatedSink?: (channelId: string) => void
   /**
    * Router v3 P0：Project 层任务回调 sink（插件装配）。
    * 运行时不得反向依赖 ProjectService —— 只通过本回调把 source=project 的状态迁移
@@ -520,12 +524,8 @@ export abstract class ManagerState extends ManagerContracts {
       // 调度器直呼 channelRuntime.route 的消息同样可见
       }, msg => this.buses.get(channelId)?.notifyMessage(msg))
       cr.setLoader(id => this.ensureAgentRuntime(channelId, id))
+      this.ensureChannelBus(channelId)
       this.channels.set(channelId, cr)
-      this.buses.set(channelId, this.buildBus(cr))
-      // 团队记忆沉淀(任务终态事件单点收口):team-task 共享行 + 编年史滚动重写。
-      // 事件总线保证每次状态迁移恰好一次通知——worker/lead 各自私有域 harvest 之外
-      // 的团队域写入不存在双写;失败仅记日志,绝不影响任务流。
-      this.buses.get(channelId)!.onTaskEvent(e => this.recordTeamTaskEvent(channelId, e))
     }
     return cr
   }

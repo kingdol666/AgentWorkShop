@@ -11,6 +11,8 @@ import { AppError } from '../../../../utils/errors'
 import { WORKSHOP_PERMISSION_SCOPE_HEADER, intersectWorkshopPermissionScope, parseWorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
 import { buildMessage } from './helpers'
 import { segmentCJK, unsegmentCJK } from '../memory'
+import { createChannelSessionRepo } from '../../db/channel-session.repo'
+import { activeSessionOfMember, isUnclosedSessionClone, SESSION_MARKER } from '../../agents/session-clone'
 
 export abstract class ManagerA2A extends ManagerTasks {
   async sendA2A(
@@ -18,9 +20,21 @@ export abstract class ManagerA2A extends ManagerTasks {
     callerAgentId: string,
     input: { toAgentId: string, parts: Part[], metadata?: Record<string, unknown> },
   ): Promise<A2AMessage> {
-    this.requireMember(channelId, callerAgentId)
+    const caller = this.requireMember(channelId, callerAgentId)
     // 容错寻址:id/模板 id/名字/唯一前缀;失败错误携带当前名册(LLM 自我纠正)
     const target = this.resolveMemberRef(channelId, input.toAgentId)
+    const sessions = createChannelSessionRepo(this.deps.db).listByChannel(channelId)
+    const senderSession = activeSessionOfMember(sessions, caller.id)
+    const targetSession = activeSessionOfMember(sessions, target.id)
+    const requiresSession = (member: typeof caller) => member.name.includes(SESSION_MARKER) || isUnclosedSessionClone(sessions, member.id)
+    if ((requiresSession(caller) && !senderSession) || (requiresSession(target) && !targetSession)
+      || (senderSession && targetSession && senderSession.id !== targetSession.id)) {
+      throw new AppError(403, 'SESSION_MEMBER_SCOPE_MISMATCH', '成员不在同一可用会话，不能投递该消息')
+    }
+    // 归属由目标会话成员关系决定；基础成员仍收频道级邮件。
+    const metadata = { ...input.metadata }
+    delete metadata['x-aw-session-id']
+    if (targetSession) metadata['x-aw-session-id'] = targetSession.id
     // ── 委派链传播(§13.3「子任务和 Agent 间委派必须传播 permissionScope」)─────────
     // 调用者若正在服务一次人类发起的调用,其委派必须继承**同一个**(并只收紧)作用域:
     // 否则普通成员 @Agent 后,该 Agent 再委派给兄弟 Agent,被委派者就变回"无人类上下文",
@@ -31,7 +45,7 @@ export abstract class ManagerA2A extends ManagerTasks {
       ? intersectWorkshopPermissionScope(callerScope, inbound)
       : inbound
     const message = buildMessage(channelId, 'ROLE_AGENT', input.parts, {
-      ...(input.metadata ?? {}),
+      ...metadata,
       ...(delegatedScope
         ? { [WORKSHOP_PERMISSION_SCOPE_HEADER]: JSON.stringify(delegatedScope) }
         : {}),

@@ -118,10 +118,11 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       // §2.4/§6.2:worker 回合与 Lead supervise 共用同一 harness 进程/会话 ——
       // 回合起点观测租约(复用计数 / 重建归因)。
       this.noteHarnessUse()
-      // Session Context：metadata 优先，其次 task.sessionId；非 session 消息保持 legacy。
-      const sessionId = typeof msg.metadata?.['x-aw-session-id'] === 'string'
-        ? String(msg.metadata['x-aw-session-id'])
-        : (taskId ? this.deps.taskEngine.get(taskId)?.sessionId : undefined)
+      // 克隆身份优先；旧队列里的消息可能没有会话戳。基础实例保留任务与消息的会话语义。
+      const messageSessionId = msg.metadata?.['x-aw-session-id']
+      const sessionId = (this.deps.trustedSessionId || undefined) ?? (typeof messageSessionId === 'string' && messageSessionId
+        ? messageSessionId
+        : (taskId ? this.deps.taskEngine.get(taskId)?.sessionId : undefined))
       // 记忆召回(异常不阻塞):查询=消息原文(title 首词天然显著)+ 任务关联加权
       // sessionId 透传:当前会话作用域记忆在 auto 档获得排序加分(session 行更相关)
       let memoryBlock: string | undefined
@@ -149,12 +150,8 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       catch (err) {
         log.error(`[AgentRuntime:${this.agentId}] 记忆召回失败:`, err)
       }
-      const runtimeSession = sessionId ? this.getSessionContext(sessionId) : null
-      const request: AgentRunRequest = this.toRequest(
-        msg,
-        memoryBlock,
-        runtimeSession ? { id: runtimeSession.id, block: runtimeSession.block } : undefined,
-      )
+      const runtimeSession = sessionId ? { id: sessionId, block: this.getSessionContext(sessionId)?.block ?? '' } : undefined
+      const request = this.toRequest(msg, memoryBlock, runtimeSession)
       if (interruptedWithoutSettlement(runSignal)) return
       const activeRunSignal = runSignal
       const generation = fence?.generation
@@ -432,7 +429,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
           }
           else if (!taskId) {
             const fromAgentId = (msg.metadata?.['x-aw-from-agent'] as string | undefined) ?? null
-            if (fromAgentId) await this.deps.memory.recordPeerExchange(msg, replyText)
+            if (fromAgentId) await this.deps.memory.recordPeerExchange(msg, replyText, sessionId)
           }
         }
         catch (err) {

@@ -297,6 +297,12 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
     this.scheduleRuntime = null
     await Promise.all([...this.channels.values()].map(cr => cr.stopSchedulersAndWait()))
     await Promise.all([...this.agentIndex.values()].map(a => a.stop()))
+    // 空闲卸载/回收可能已经摘出 agentIndex 但 stop 屏障仍在飞:等它们收尾后再清空,
+    // 否则关停尾部的 agent.status/task 事件可能在总线/缓冲仍活着时被丢掉。
+    const pendingStops = [...this.channelAgentStops.values()].flatMap(stops => [...stops])
+    if (pendingStops.length > 0) await Promise.allSettled(pendingStops)
+    const pendingUnloads = [...this.channelUnloads.values()]
+    if (pendingUnloads.length > 0) await Promise.allSettled(pendingUnloads)
     this.agentIndex.clear()
     this.channels.clear()
     this.buses.clear()

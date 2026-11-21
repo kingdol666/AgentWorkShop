@@ -6,42 +6,74 @@ import type { AgentChannelManager, ManagerDeps } from '../../../services/worksho
 import type { AgentRuntime, TaskEngine } from '../../../services/workshop/runtime/agent-runtime'
 import type { ChannelStream, WsPeer } from './shared'
 import { PEER_SEND_BUDGET_BYTES, hub, streams } from './shared'
-import { ensureStream } from './streams'
+import { rebindStreamIfStale, closeStream } from './streams'
+import { bindHitlSubscription } from './subscriptions'
 import { flushDbBuffer } from './db-buffer'
 import { getWorkshopManager } from '../../../plugins/workshop'
 import { registerScenePeer, setPeerIdentity, setPeerVisibleLines } from '../../../services/workshop/scene-events'
 import { visibleLineIds } from '../../../services/workshop/permissions'
 
+/**
+ * manager 更替前把未落库帧与流隔离:旧帧属于创建该流的**原**管理器数据库。
+ * 事务未提交时 flushDbBuffer 会延迟重试,因此必须把旧帧搬到 detached 快照流
+ * (携带 owner):否则重试路径会读 hub.boundManager(新 manager)把旧帧写进新库,
+ * 或与之后新 manager 的事件混在同一缓冲里。
+ */
+export function drainDbBuffer(owner: AgentChannelManager | null | undefined, stream: ChannelStream): void {
+  if (stream.dbFlushTimer) {
+    clearTimeout(stream.dbFlushTimer)
+    stream.dbFlushTimer = null
+  }
+  if (stream.dbBuffer.length === 0) return
+  if (!owner) {
+    // 无归属可追溯(异常路径):丢弃无主帧,不把它写进未知数据库
+    stream.dbBuffer = []
+    return
+  }
+  const detached: ChannelStream = {
+    ...stream,
+    peers: new Set(),
+    unsubs: [],
+    hitlUnsub: null,
+    dbBuffer: stream.dbBuffer,
+    dbFlushTimer: null,
+    manager: owner,
+  }
+  stream.dbBuffer = []
+  flushDbBuffer(owner, detached)
+}
+
 export function ensureHubBound(manager: AgentChannelManager): void {
   if (hub.boundManager === manager) return
+  const previous = hub.boundManager
   hub.boundManager = manager
+  const internal = internalsOf(manager)
   for (const stream of [...streams.values()]) {
-    const channelId = stream.channelId
-    // manager 更替前刷净落库缓冲:流即将重建,缓冲帧必须先落库保序
     try {
-      flushDbBuffer(manager, stream)
-    }
-    catch { /* 尽力刷盘 */ }
-    // seq/ring 延续:客户端游标(已收到的 lastSeq)不变,重建流必须接续原 seq 递增,
-    // 否则新事件 seq 从 1 重来会被客户端 ingest 的 seq>lastSeq 判重逻辑整段丢弃。
-    const seq = stream.seq
-    const ring = stream.ring
-    const peers = [...stream.peers]
-    for (const unsub of stream.unsubs) {
+      const channelId = stream.channelId
+      const owner = stream.manager ?? previous
+      // 先把旧缓冲搬进 detached 流并按 owner 落库(事务中则延后由 detached 自己的 owner 重试)
+      drainDbBuffer(owner, stream)
+      // 新库不认识该频道(换库/跨库 HMR):立即回收流,不建总线也不重绑 HITL,
+      // 否则会为已不存在的频道维持常驻流直到 3s sweep。
+      if (!internal.deps.repos.channels.findById(channelId)) {
+        closeStream(owner ?? manager, channelId)
+        continue
+      }
+      // 流本身保留(seq/ring/peers 延续):录制流即使无 peer 也不得断流,
+      // 否则 manager 更替窗口内发布的事件永久丢失。只把订阅面重绑到新 manager 的总线。
+      rebindStreamIfStale(manager, stream)
+      // 替换库可能已有更高 seq:接续持久层,避免 INSERT OR IGNORE 静默丢弃新帧
       try {
-        unsub()
+        stream.seq = Math.max(stream.seq, internal.deps.repos.channelEvents.maxSeq(channelId))
       }
-      catch { /* 尽力清理 */ }
+      catch { /* 读失败保持内存 seq */ }
+      // manager 更替(HMR)时 hitl 订阅闭包持旧 manager → 幂等重挂(bind 内先退订)
+      bindHitlSubscription(manager, stream)
     }
-    streams.delete(channelId)
-    // 有 peer 的 channel 立即按新 manager 重建(peers 平移 + seq/ring 延续);无 peer 的任其自然重建
-    if (peers.length > 0) {
-      const fresh = ensureStream(manager, channelId)
-      if (fresh) {
-        fresh.peers = new Set(peers)
-        fresh.seq = seq
-        fresh.ring = ring
-      }
+    catch (err) {
+      // 单个流的 DB/订阅异常不得中断其余流的重绑(旧语义是整体循环裸跑)
+      console.warn('[workshop-ws] hub 换绑单流失败(继续):', err instanceof Error ? err.message : err)
     }
   }
 }
@@ -65,8 +97,10 @@ if (hub.streams.size > 0) {
 export interface ManagerInternals {
   deps: ManagerDeps
   agentIndex: Map<string, AgentRuntime>
-  /** channel → 事件总线(生命期与管理器同源;空闲卸载后 channel 重激活会重建) */
+  /** channel → 事件总线(生命期 = 频道;仅频道删除与 manager 停机时释放) */
   buses: Map<string, object>
+  /** 按需建立频道级总线(不激活运行时;订阅/录制面的入口) */
+  ensureChannelBus(channelId: string): object | undefined
   getTaskEngine(): TaskEngine
 }
 

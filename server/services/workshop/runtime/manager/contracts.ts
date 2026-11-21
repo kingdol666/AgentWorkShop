@@ -60,7 +60,6 @@ import type { ModeConfig } from '../execution-mode'
 import type { NotificationRepo } from '../../db/notification.repo'
 import type { OutboxRepo } from '../../db/outbox.repo'
 import type { AgentMemory } from '../memory'
-import type { ChannelRuntime } from '../channel-runtime'
 
 export abstract class ManagerContracts {
   abstract ackMailbox(channelId: string, callerAgentId: string, messageIds: string[]): void
@@ -74,7 +73,7 @@ export abstract class ManagerContracts {
     inReplyTo?: string
   }): ChatMessageDto | null
   protected abstract auditChat(action: string, channelId: string, actor: string, detail: Record<string, unknown>): void
-  protected abstract buildBus(cr: ChannelRuntime): ChannelBus
+  protected abstract buildBus(channelId: string): ChannelBus
   protected abstract buildWorkspace(agent: AgentInfo, memory: AgentMemory): AgentWorkspace
   abstract cancelTask(
     channelId: string,

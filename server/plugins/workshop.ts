@@ -47,7 +47,9 @@ import { bindOpsRepos } from '../services/workshop/ops/ops'
 import { configureHitlResolver } from '../services/workshop/agents/hitl-registry'
 import { reconcileHitlOnStartup } from '../services/workshop/agents/hitl-decision'
 import { configureAgentBadgeResolver } from '../services/workshop/agents/agent-badge'
-import { ensureAllEventRecorders } from '../api/workshop/ws'
+import { ensureAllEventRecorders, ensureStream } from '../api/workshop/ws'
+import { ensureHubBound } from '../api/workshop/ws/hub'
+import { closeAllStreams } from '../api/workshop/ws/streams'
 import { createAgentImpl } from '../services/workshop/agents/factory'
 import {
   createAgentChannelManager,
@@ -212,14 +214,28 @@ export default function workshopPlugin(nitroApp: {
   // 创建 manager → 挂全局单例(后续 REST/A2A/WS 经 getWorkshopManager() 读取)
   const manager = createAgentChannelManager(deps)
   globalThis.__workshopManager = manager
-  // 启动即绑定 WS hub(幂等):publish 的 400ms 延迟刷盘与 3s rebind sweep 都以
-  // hub.boundManager 为前提 —— 此前只在首个 WS 连接(ensureHubBound)时设置,
-  // 无客户端期间事件滞留 dbBuffer、总线重建后流也无法重订("全时事件录制"失效)。
-  // 此处无已存在流,ensureHubBound 仅设置 boundManager,无副作用。plugin 是同步
-  // 函数(nitro 同步调用),动态 import 落 microtask,不阻塞其余启动步骤。
-  void import('../api/workshop/ws/hub')
-    .then(({ ensureHubBound }) => ensureHubBound(manager))
-    .catch((err) => { console.warn('[workshop] hub 绑定失败(不阻断启动):', err instanceof Error ? err.message : err) })
+  // 全时事件录制的前置(必须**先于** restore 重放 chat outbox):
+  // ① 绑定 WS hub(幂等,同步):publish 的 400ms 延迟刷盘与 3s rebind sweep 以
+  //    hub.boundManager 为前提;
+  // ② 为全部存量 channel 建立常驻录制流(函数体无 await,同步完成)。
+  // 顺序错误会让 restore 回放阶段发布的事件在流建立前落地 → channel_events 启动空洞。
+  try {
+    ensureHubBound(manager)
+  }
+  catch (err) {
+    console.warn('[workshop] hub 绑定失败(不阻断启动):', err instanceof Error ? err.message : err)
+  }
+  // 新频道(含 MCP/Project/模板路径)创建即建录制流,不等首个 WS 订阅
+  manager.channelCreatedSink = (channelId) => {
+    ensureStream(manager, channelId)
+  }
+  // 同步预热:失败只记日志,不阻断启动
+  try {
+    ensureAllEventRecorders(manager)
+  }
+  catch (err) {
+    console.error('[workshop] 事件录制器初始化失败(不阻断启动):', err)
+  }
   // 启动对账:上次进程在会话关闭级联中途退出 → closing 会话在此补完 clone 停用与终态。
   // 在开始处理请求前同步收敛;失败不阻断启动(下一次启动会再对账)。
   try {
@@ -365,9 +381,6 @@ export default function workshopPlugin(nitroApp: {
     console.warn('[workshop] optimizer dispatch 对账失败(不影响启动):', err instanceof Error ? err.message : err)
   }
 
-  // 全时事件录制:为全部存量 channel 建立常驻流(事件 server 驱动落库,与 client 无关)
-  void ensureAllEventRecorders(manager).catch(err => console.error('[workshop] 事件录制器初始化失败:', err))
-
   // idle sweeper:空闲 agent 超时自动卸载(释放 omp 子进程与内存)。
   // busy 成员有三重守卫(state!==idle / 信箱 pending / lead 活跃任务)不会被卸载,
   // "作业期间进程不断开"由守卫保证;空闲宽限可经 workshop.idle_grace_ms 调整 ——
@@ -383,7 +396,21 @@ export default function workshopPlugin(nitroApp: {
     stopSweeper()
     projectReconciler.stop()
     projectKernel.stop()
-    await manager.shutdown()
+    // shutdown 失败也必须继续刷流并关库:否则最后 400ms 的缓冲事件与 SQLite 句柄一起泄漏。
+    try {
+      await manager.shutdown()
+    }
+    catch (err) {
+      console.warn('[workshop] manager 停机失败(继续关停):', err instanceof Error ? err.message : err)
+    }
+    // db.close 之前刷净并退订全部录制流:关停尾部事件(agent.status/task.status)
+    // 只在内存缓冲里,先关库会让它们永久丢失(streams 现在生命期 = 进程)。
+    try {
+      closeAllStreams(manager)
+    }
+    catch (err) {
+      console.warn('[workshop] 事件流关停刷盘失败(继续关闭):', err instanceof Error ? err.message : err)
+    }
     db.close()
   })
 }
