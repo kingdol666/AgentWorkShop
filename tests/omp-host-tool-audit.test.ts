@@ -1,6 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { OmpRpcClient } from '../server/services/workshop/agents/adapters/omp-rpc-client'
+import { OmpRpcClient, type RpcCommand, type RpcResponse } from '../server/services/workshop/agents/adapters/omp-rpc-client'
+import { OmpRpcAgentImpl } from '../server/services/workshop/agents/omp-agent'
+import type { AgentRunContext } from '../server/services/workshop/agents/agent-interface'
 
 class TestOmpRpcClient extends OmpRpcClient {
   runHostToolCall(req: { id: string, toolCallId: string, toolName: string, arguments: Record<string, unknown> }): Promise<void> {
@@ -11,6 +13,29 @@ class TestOmpRpcClient extends OmpRpcClient {
     this.dispatchFrame(frame)
   }
 }
+
+test('OMP applies the configured reasoning level after model selection via RPC', async (t) => {
+  class TestOmpAgent extends OmpRpcAgentImpl {
+    async connect(): Promise<void> {
+      await this.ensureClient({ channelId: 'channel', role: 'worker', workspace: {} } as AgentRunContext)
+    }
+  }
+  t.mock.method(OmpRpcClient.prototype, 'start', async () => {})
+  const commands: RpcCommand[] = []
+  const send = async <T = RpcResponse>(command: RpcCommand): Promise<T & RpcResponse> => {
+    commands.push(command)
+    return { type: 'response', command: command.type, success: true } as T & RpcResponse
+  }
+  t.mock.method(OmpRpcClient.prototype, 'send', send)
+  const agent = new TestOmpAgent({ provider: 'provider', model: 'model', effort: 'high' })
+  t.after(() => agent.dispose())
+  await agent.connect()
+  assert.deepEqual(commands.slice(0, 3), [
+    { type: 'set_model', provider: 'provider', modelId: 'model' },
+    { type: 'set_thinking_level', level: 'high' },
+    { type: 'get_state' },
+  ])
+})
 
 test('untagged ordinary frames cannot be correlated to a prompt by the adapter', () => {
   const client = new TestOmpRpcClient()

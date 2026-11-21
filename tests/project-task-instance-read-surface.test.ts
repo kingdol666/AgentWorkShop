@@ -11,6 +11,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { sha256 } from '../shared/context/hash'
 import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
@@ -94,7 +95,11 @@ function fixture() {
       return { task: { id: row.id } as never, created: true }
     },
     /** 任务实例创建最小子集：Channel + 实例 lead + 任务会话行（service 负责项目绑定）。 */
-    async createTaskInstance(input: { projectId: string, workItemId: string, templateChannelId: string, title: string }) {
+    async createTaskInstance(input: Parameters<AgentChannelManager['createTaskInstance']>[0]) {
+      const templateLeadId = channels.findById(input.templateChannelId)!.leadAgentId!
+      const prefabSnapshotJson = JSON.stringify({ [templateLeadId]: '' })
+      const snapshot = input.prefabSnapshot ?? { prefabSnapshotJson, prefabSnapshotHash: sha256(prefabSnapshotJson) }
+      if (!input.prefabSnapshot) input.pinPrefabSnapshot?.(snapshot)
       const ch = channels.create({ name: `任务实例-${createdInstances.length + 1}`, ownerUserId: 'u-1' })
       channels.update(ch.id, { workspace: `data/workspaces/${ch.id}` })
       const lead = agents.create({
@@ -109,14 +114,15 @@ function fixture() {
       const s = sessions.create({
         channelId: ch.id,
         title: input.title,
-        memberMap: { [lead.id]: lead.id },
+        memberMap: { [templateLeadId]: lead.id },
         projectId: input.projectId,
         projectWorkItemId: input.workItemId,
         createdByKind: 'project',
         instanceKind: 'task',
+        ...snapshot,
       })
       createdInstances.push({ channelId: ch.id, sessionId: s.id, leadAgentId: lead.id })
-      return { channelId: ch.id, sessionId: s.id, members: [{ id: lead.id }], leadAgentId: lead.id }
+      return { channelId: ch.id, sessionId: s.id, members: [{ id: lead.id }], leadAgentId: lead.id, ...snapshot }
     },
     async closeChannelSession(input: { sessionId: string }) {
       sessions.close(input.sessionId)

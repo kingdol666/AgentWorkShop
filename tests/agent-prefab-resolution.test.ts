@@ -114,6 +114,32 @@ test('MCP tools require approved review; skills require harness support and expo
   assert.ok(approved.toolIds.includes('mcp_mes_search'))
 })
 
+test('a unique Skill alias resolves to the managed revision id, subject to pin, enabled state and harness support', () => {
+  const key = 'skill:skill'
+  const entry = { kind: 'skill', id: 'skill@rev', version: 'full-hash', enabled: true, reviewStatus: 'approved' } as const
+  const base = input({
+    prefab: prefab({ capabilities: [{ kind: 'skill', id: 'skill', version: 'full-hash', required: true }] }),
+    registry: { [key]: entry },
+  })
+  const allowed = resolveAgentCapabilitySet(base)
+  assert.deepEqual(allowed.skillIds, ['skill@rev'])
+  assert.deepEqual(allowed.active.map(cap => cap.id), ['skill@rev'])
+  assert.deepEqual(allowed.requiredMissing, [])
+  assert.ok(allowed.toolIds.includes('activate_skill'))
+
+  for (const overrides of [
+    { registry: { 'skill:skill@rev': entry } },
+    { registry: { [key]: { ...entry, version: 'other-hash' } } },
+    { registry: { [key]: { ...entry, enabled: false } } },
+    { harness: { ...base.harness, managedSkillIds: ['skill'] } },
+  ]) {
+    const denied = resolveAgentCapabilitySet({ ...base, ...overrides })
+    assert.deepEqual(denied.skillIds, [])
+    assert.deepEqual(denied.requiredMissing, [key])
+    assert.equal(denied.toolIds.includes('activate_skill'), false)
+  }
+})
+
 test('invalid slot values use canonical validation and expose no prompt or tools', () => {
   const cases = [
     [{ goal: '' }, /goal.*必填/, ['slot:goal']],

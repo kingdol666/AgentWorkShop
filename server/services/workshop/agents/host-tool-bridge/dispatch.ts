@@ -47,7 +47,9 @@ import { createMcpBroker } from '../../mcp-client/broker'
 import { listManifests } from '../../mcp-client/config'
 import { resolveRunMode } from '@/shared/config/home.mjs'
 import { recordOps } from '../../ops/ops'
-import { prefabAllowsTool, resolveRuntimeForAgentGlobal } from '../../agent-prefabs/runtime'
+import type { DatabaseSync } from 'node:sqlite'
+import { prefabAllowsTool, resolveRuntimeForMember } from '../../agent-prefabs/runtime'
+import type { ChannelAgentRow } from '../../db/database/rows'
 import { handleActivateSkill } from './tools/skills'
 
 /** A peer turn has no task lease, so its writes must honor the channel hold. */
@@ -106,6 +108,25 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
   noteToolActivity(ctx.identity.agentId)
   try {
     return await withGovernanceHarnessToolAudit(ctx, req, activeRootTaskId, async () => {
+      // Native harnesses can keep a bridge context after a member or Channel has
+      // been revoked. Only a live, matching DB member can reach any tool route.
+      const { agentId, channelId } = ctx.identity
+      let db: DatabaseSync
+      let member: ChannelAgentRow
+      try {
+        const deps = globalThis.__workshopManager?.deps
+        if (!deps?.db) return { text: 'FORBIDDEN: 无法验证当前成员及 Channel', isError: true }
+        const row = deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+        if (row?.enabled !== 1 || deps.repos.channels.findById(channelId)?.enabled !== 1) {
+          return { text: 'FORBIDDEN: 成员或 Channel 不存在、已停用或归属不匹配', isError: true }
+        }
+        db = deps.db
+        member = row
+      }
+      catch {
+        return { text: 'FORBIDDEN: 无法验证当前成员及 Channel', isError: true }
+      }
+      const dispatch = async () => truncateToolResult(await dispatchHostToolInner(ctx, req, db, member, activeRootTaskId), req.toolName)
       const scope = currentExecutionScope()
       if (scope && !scope.taskId && OBSERVE_BLOCKED_TOOL_NAMES.has(req.toolName)) {
         const guarded = peerWriteScope(scope, ctx.identity)
@@ -115,10 +136,9 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
         catch (error) {
           return { text: error instanceof Error ? error.message : String(error), isError: true }
         }
-        return runWithExecutionScope(guarded, async () =>
-          truncateToolResult(await dispatchHostToolInner(ctx, req, activeRootTaskId), req.toolName))
+        return runWithExecutionScope(guarded, dispatch)
       }
-      return truncateToolResult(await dispatchHostToolInner(ctx, req, activeRootTaskId), req.toolName)
+      return dispatch()
     })
   }
   catch (error) {
@@ -208,7 +228,7 @@ function truncateToolResult(result: HostToolResult, toolName: string): HostToolR
   }
 }
 
-async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCall, activeRootTaskId?: string): Promise<HostToolResult> {
+async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCall, db: DatabaseSync, member: ChannelAgentRow, activeRootTaskId?: string): Promise<HostToolResult> {
   const identity = ctx.identity
   const state = ctx.state
   // Tool lists are advisory: reject cached or manually invoked production tools too.
@@ -237,9 +257,9 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
   }
   // 按解析模式判定，而非 binding 真值：损坏的持久化 binding 也是 prefab（空授权）。
   // 必须先于 Project 工具的提前返回；Project、Channel 的既有闸门仍独立生效。
-  let prefabRuntime: ReturnType<typeof resolveRuntimeForAgentGlobal>
+  let prefabRuntime: ReturnType<typeof resolveRuntimeForMember>
   try {
-    prefabRuntime = resolveRuntimeForAgentGlobal(identity.agentId)
+    prefabRuntime = resolveRuntimeForMember(db, member)
   }
   catch {
     return { text: 'FORBIDDEN: 无法验证当前 AgentPrefab 能力范围', isError: true }

@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, type TestContext } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -15,21 +15,25 @@ const { dispatchHostTool } = await import('../server/services/workshop/agents/ho
 const { registerPluginTool, unregisterPluginTools } = await import('../server/services/workshop/agents/plugin-tools')
 const { ManagerHostTools } = await import('../server/services/workshop/runtime/manager/host-tools')
 const { OBSERVE_BLOCKED_TOOL_NAMES } = await import('../server/services/workshop/agents/tool-classes')
+const { openWorkshopDb } = await import('../server/services/workshop/db/database')
+const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
+const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
 
 const g = globalThis as typeof globalThis & { __workshopManager?: unknown }
 const oldManager = g.__workshopManager
-let agentMode = 'generic'
-let channelMode = 'generic'
-g.__workshopManager = {
-  channelModeOf: () => channelMode,
-  channelModeForAgent: () => agentMode,
+
+function persistedWorker(t: TestContext) {
+  const db = openWorkshopDb(':memory:')
+  t.after(() => db.close())
+  const channels = createChannelRepo(db)
+  const channelAgents = createChannelAgentRepo(db)
+  const channel = channels.create({ name: 'mode test' })
+  const row = channelAgents.create({ channelId: channel.id, templateId: null, name: 'worker', harness: 'mock', role: 'worker', token: 'token' })
+  return { deps: { db, repos: { channels, channelAgents } }, row }
 }
 
 test('channel line binding uses an active session snapshot and never falls back for generic or stale clones', async () => {
   const { ManagerAdminAgents } = await import('../server/services/workshop/runtime/manager/admin-agents')
-  const { openWorkshopDb } = await import('../server/services/workshop/db/database')
-  const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
-  const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
   const { createChannelSessionRepo } = await import('../server/services/workshop/db/channel-session.repo')
   const db = openWorkshopDb(':memory:')
   try {
@@ -56,9 +60,8 @@ test('channel line binding uses an active session snapshot and never falls back 
   finally { db.close() }
 })
 
-const ctx = { identity: { agentId: 'worker-1', channelId: 'ch-1', role: 'worker' as const, name: 'worker' }, state: { currentTaskId: null, sessionId: null, sourceChatMessageId: null, sourceChatDeliveryId: null, replyContext: null }, getWorkspace: () => null }
-
-test('ManagerHostTools plugin shortcut applies the same generic-mode gate as native dispatch', async () => {
+test('ManagerHostTools plugin shortcut applies the same generic-mode gate as native dispatch', async (t) => {
+  const { deps, row } = persistedWorker(t)
   let serialCalled = false
   let genericCalled = false
   registerPluginTool('serial-bridge', {
@@ -80,11 +83,8 @@ test('ManagerHostTools plugin shortcut applies the same generic-mode gate as nat
     },
   })
   const manager = Object.create(ManagerHostTools.prototype) as Record<string, unknown>
-  const row = { id: 'manager-worker', enabled: 1, channelId: 'manager-channel', role: 'worker', name: 'worker', token: 'token' }
   manager.lastToolInvokeAt = new Map()
-  manager.deps = {
-    repos: { channelAgents: { findById: () => row, isTokenValid: () => true } },
-  }
+  manager.deps = deps
   manager.activeScopeOf = () => null
   manager.ensureAgentRuntime = () => ({
     dispatchHostTool: async () => null,
@@ -98,6 +98,7 @@ test('ManagerHostTools plugin shortcut applies the same generic-mode gate as nat
   manager.channelSessionScopeOfAgent = () => null
   manager.auditCollabInvocation = () => {}
   g.__workshopManager = {
+    deps,
     channelModeOf: () => 'generic',
     channelModeForAgent: () => 'generic',
     invocationScopeOf: () => null,
@@ -185,9 +186,9 @@ test('external agent tokens cannot dispatch hazardous tools without turn provena
   }
 })
 
-test('external agent token plugin calls require an explicit read risk class', async () => {
+test('external agent token plugin calls require an explicit read risk class', async (t) => {
+  const { deps, row } = persistedWorker(t)
   const manager = Object.create(ManagerHostTools.prototype) as Record<string, unknown>
-  const row = { id: 'risk-worker', enabled: 1, channelId: 'risk-channel', role: 'worker', name: 'worker' }
   const called: string[] = []
   for (const risk of ['read', 'write', 'admin', 'undeclared', 'invalid'] as const) {
     registerPluginTool('risk-test', {
@@ -202,12 +203,12 @@ test('external agent token plugin calls require an explicit read risk class', as
     })
   }
   manager.lastToolInvokeAt = new Map()
-  manager.deps = { repos: { channelAgents: { findById: () => row, isTokenValid: () => true } } }
+  manager.deps = deps
   manager.activeScopeOf = () => null
   manager.ensureAgentRuntime = () => ({ workspace: {}, dispatchHostTool: async () => null })
   manager.channelSessionScopeOfAgent = () => null
   manager.auditCollabInvocation = () => {}
-  g.__workshopManager = { channelModeOf: () => 'generic', channelModeForAgent: () => 'generic', invocationScopeOf: () => null }
+  g.__workshopManager = { deps, channelModeOf: () => 'generic', channelModeForAgent: () => 'generic', invocationScopeOf: () => null }
   const invoke = ManagerHostTools.prototype.invokeHostTool as (input: { agentId: string, token?: string, tool: string }) => Promise<{ text: string, isError?: boolean }>
   try {
     for (const risk of ['write', 'admin', 'undeclared', 'invalid']) {
@@ -228,9 +229,13 @@ test('external agent token plugin calls require an explicit read risk class', as
   }
 })
 
-test('generic mode filters production tools and rejects direct invocation while keeping collaboration and generic plugin tools', async () => {
-  const initialAgentMode = agentMode
-  const initialChannelMode = channelMode
+test('generic mode filters production tools and rejects direct invocation while keeping collaboration and generic plugin tools', async (t) => {
+  const { deps, row } = persistedWorker(t)
+  const { id: agentId, channelId } = row
+  const ctx = { identity: { agentId, channelId, role: 'worker' as const, name: row.name }, state: { currentTaskId: null, sessionId: null, sourceChatMessageId: null, sourceChatDeliveryId: null, replyContext: null }, getWorkspace: () => null }
+  let agentMode = 'generic'
+  let channelMode = 'generic'
+  g.__workshopManager = { deps, channelModeOf: () => channelMode, channelModeForAgent: () => agentMode }
   let called = false
   registerPluginTool('diag-bridge', {
     name: 'diag_mode_test', description: 'diagnostic', handler: async () => {
@@ -240,7 +245,7 @@ test('generic mode filters production tools and rejects direct invocation while 
   })
   registerPluginTool('generic-test', { name: 'rsi_generic_test', description: 'generic', handler: async () => ({ text: 'ok' }) })
   try {
-    const names = new Set(hostToolsForAgent('worker-1', 'worker', 'ch-1').map(t => t.name))
+    const names = new Set(hostToolsForAgent(agentId, 'worker', channelId).map(t => t.name))
     for (const name of ['daq_query', 'line_context', 'aml_node_catalog', 'mes_fetch', 'exp_collect', 'diag_mode_test']) assert.equal(names.has(name), false, name)
     for (const name of ['save_memory', 'search_memory', 'send_message_to_agent', 'rsi_generic_test']) assert.equal(names.has(name), true, name)
     for (const name of ['daq_query', 'line_context', 'aml_node_catalog', 'mes_fetch', 'exp_collect', 'diag_mode_test']) {
@@ -252,18 +257,20 @@ test('generic mode filters production tools and rejects direct invocation while 
     assert.equal((await dispatchHostTool(ctx, { toolName: 'rsi_generic_test', arguments: {} })).text, 'ok')
 
     channelMode = 'production_line_integrated'
-    assert.equal(hostToolsForRole('worker', 'ch-1').some(t => t.name === 'daq_query'), false, 'without AML runtime, profile lookup fails closed to legacy')
-    assert.equal(hostToolsForAgent('worker-1', 'worker', 'ch-1').some(t => t.name === 'daq_query'), false, 'agent snapshot overrides channel mode even when profile is unavailable')
+    assert.equal(hostToolsForRole('worker', channelId).some(t => t.name === 'daq_query'), true, 'legacy production mode retains DAQ reads')
+    assert.equal(hostToolsForRole('worker', channelId).some(t => t.name === 'mpc_optimize'), false, 'without AML runtime, profile lookup fails closed to legacy')
+    assert.equal(hostToolsForAgent(agentId, 'worker', channelId).some(t => t.name === 'daq_query'), false, 'generic agent snapshot overrides channel mode')
     agentMode = 'production_line_integrated'
-    assert.equal(hostToolsForAgent('worker-1', 'worker', 'ch-1').some(t => t.name === 'daq_query'), false, 'unavailable AML profile remains fail-closed')
+    assert.equal(hostToolsForAgent(agentId, 'worker', channelId).some(t => t.name === 'daq_query'), true, 'production agent snapshot retains DAQ reads')
+    assert.equal(hostToolsForAgent(agentId, 'worker', channelId).some(t => t.name === 'mpc_optimize'), false, 'unavailable AML profile remains fail-closed')
     channelMode = 'generic'
-    assert.equal(hostToolsForAgent('worker-1', 'worker', 'ch-1').some(t => t.name === 'daq_query'), false, 'generic snapshot stays filtered after channel change')
+    assert.equal(hostToolsForAgent(agentId, 'worker', channelId).some(t => t.name === 'daq_query'), true, 'production snapshot stays available after channel mode change')
+    agentMode = 'generic'
+    assert.equal(hostToolsForAgent(agentId, 'worker', channelId).some(t => t.name === 'daq_query'), false, 'generic snapshot filters DAQ reads')
   }
   finally {
     unregisterPluginTools('diag-bridge')
     unregisterPluginTools('generic-test')
-    agentMode = initialAgentMode
-    channelMode = initialChannelMode
     g.__workshopManager = oldManager
   }
 })

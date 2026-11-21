@@ -12,6 +12,8 @@ process.env.AW_TOOL_VERIFY_LEGACY_SPECS = '1'
 const { openWorkshopDb } = await import('../server/services/workshop/db/database')
 const { createTaskRepo } = await import('../server/services/workshop/db/task.repo')
 const { createMessageRepo } = await import('../server/services/workshop/db/message.repo')
+const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
+const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
 const { TaskEngine } = await import('../server/services/workshop/runtime/task-engine/facade')
 const { LEGACY_RECOVERY_MARKER } = await import('../server/services/workshop/runtime/task-engine/legacy-recovery')
 const { configureAmlRuntime } = await import('../server/services/workshop/aml/runtime')
@@ -33,31 +35,37 @@ const { clearActiveLineRun } = await import('../server/services/workshop/dcw/lin
 const db = openWorkshopDb(':memory:')
 configureAmlRuntime(db)
 const engine = new TaskEngine({ tasks: createTaskRepo(db), messages: createMessageRepo(db) })
+const channels = createChannelRepo(db)
+const channelAgents = createChannelAgentRepo(db)
+const { id: channelId } = channels.create({ name: 'Recovery test', channelMode: 'production_line_integrated' })
+const { id: agentId } = channelAgents.create({ channelId, templateId: null, name: 'peer', harness: 'omp', role: 'lead' })
+channels.update(channelId, { leadAgentId: agentId })
 db.exec('PRAGMA foreign_keys = OFF')
 const line = getDcwLineRepo().create({ name: 'Recovery test', simulated: true })
 const node = new DcwNode({ id: 'peer-recovery-node', templateRef: 'dcw-temp-sp', driver: 'mock', driverConfig: { key: 'peer-recovery' }, min: 0, max: 100, unit: 'C', decimals: 1, lineId: line.id, readIntervalMs: 0, holdIntervalMs: null })
 getDcwNodeRepo().insert(node)
 const product = getDcwProductRepo().create({ name: 'Recovery product', lineId: line.id })
 const recipe = getDcwRecipeRepo().create({ name: 'Recovery recipe', productId: product.id, opIntervalMs: 0, params: [{ nodeId: node.id, value: 50 }] })
-getAgentNodeBindingRepo().bind('peer-agent', recipe.id, 'recipe', 'manual')
+getAgentNodeBindingRepo().bind(agentId, recipe.id, 'recipe', 'manual')
+channels.setLine(channelId, line.id)
 const manager = {
   getTaskEngine: () => engine,
   channelModeForAgent: () => 'production_line_integrated',
   channelModeOf: () => 'production_line_integrated',
   invocationScopeOf: () => null,
   channelLineBindingOf: () => line.id,
-  deps: { repos: { channels: { findById: () => ({ id: 'peer-channel', leadAgentId: 'peer-agent', lineId: line.id, ownerUserId: null }) } } },
+  deps: { db, repos: { channels, channelAgents } },
 }
 const g = globalThis as unknown as { __workshopManager?: unknown }
 g.__workshopManager = manager
-const ctx = { identity: { agentId: 'peer-agent', channelId: 'peer-channel', role: 'lead' as const, name: 'peer' }, state: { currentTaskId: null, sessionId: null, sourceChatMessageId: null, sourceChatDeliveryId: null, replyContext: null }, getWorkspace: () => null }
+const ctx = { identity: { agentId, channelId, role: 'lead' as const, name: 'peer' }, state: { currentTaskId: null, sessionId: null, sourceChatMessageId: null, sourceChatDeliveryId: null, replyContext: null }, getWorkspace: () => null }
 const controller = new AbortController()
-const scope = { agentId: 'peer-agent', channelId: 'peer-channel', signal: controller.signal, assertActive: () => {
+const scope = { agentId, channelId, signal: controller.signal, assertActive: () => {
   if (controller.signal.aborted) throw new Error('turn aborted')
 } }
 const invoke = (toolName: string, args: Record<string, unknown> = {}) => runWithExecutionScope(scope, () => dispatchHostTool(ctx, { toolName, arguments: args }))
-function hold(channelId = 'peer-channel') {
-  db.prepare(`INSERT INTO tasks(id, channel_id, assignee_id, title, state, progress, close_reason, created_at, updated_at) VALUES (?, ?, 'old-agent', 'legacy', 'WORKING', 0, ?, '2026-01-01', '2026-01-01')`).run(`held-${channelId}`, channelId, LEGACY_RECOVERY_MARKER)
+function hold(heldChannelId = channelId) {
+  db.prepare(`INSERT INTO tasks(id, channel_id, assignee_id, title, state, progress, close_reason, created_at, updated_at) VALUES (?, ?, 'old-agent', 'legacy', 'WORKING', 0, ?, '2026-01-01', '2026-01-01')`).run(`held-${heldChannelId}`, heldChannelId, LEGACY_RECOVERY_MARKER)
 }
 function clearHold() {
   db.prepare('DELETE FROM tasks').run()
@@ -68,14 +76,14 @@ async function pendingCard(result: Promise<{ text: string, isError?: boolean }>)
     early = value
   })
   for (let i = 0; i < 100; i++) {
-    const card = getToolApprovals().listPending('peer-agent')[0]
+    const card = getToolApprovals().listPending(agentId)[0]
     if (card) return card
     if (early) assert.fail(`line start ended before approval: ${early.text}`)
     await new Promise(resolve => setTimeout(resolve, 10))
   }
   assert.fail('line start did not reach approval')
 }
-const start = () => runWithExecutionScope(peerWriteScope(scope, ctx.identity), () => toolLineStart('peer-agent', { recipe_id: recipe.id, reason: 'Recovery guard test' }, 'peer-channel'))
+const start = () => runWithExecutionScope(peerWriteScope(scope, ctx.identity), () => toolLineStart(agentId, { recipe_id: recipe.id, reason: 'Recovery guard test' }, channelId))
 
 test('channel hold blocks taskless industrial writes but not chat, reads or another channel', async () => {
   hold()
@@ -85,7 +93,7 @@ test('channel hold blocks taskless industrial writes but not chat, reads or anot
     assert.equal(result.isError, true, name)
     assert.match(result.text, /LEGACY_EXECUTION_RECOVERY_REQUIRED/, name)
   }
-  assert.ok(toolActivityAt('peer-agent'), 'rejected calls still register tool activity, not proof of physical progress')
+  assert.ok(toolActivityAt(agentId), 'rejected calls still register tool activity, not proof of physical progress')
   const chat = await invoke('poll_messages')
   assert.doesNotMatch(chat.text, /LEGACY_EXECUTION_RECOVERY/)
   const read = await invoke('line_status')

@@ -8,6 +8,9 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { sha256 } from '../shared/context/hash'
+import { createTaskInstanceChannel } from '../server/services/workshop/agents/task-channel'
+import type { TaskInstanceDeps } from '../server/services/workshop/agents/task-channel'
 import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
@@ -28,12 +31,8 @@ function fixture() {
   const createdInstances: CreatedInstance[] = []
 
   const manager = {
-    async createChannel(input: {
-      name: string
-      description?: string
-      scenarioPrompt?: string
-      ownerUserId?: string | null
-      leadAgent?: { name: string, harness: string, config?: Record<string, unknown>, agentKind?: 'channel_agent' | 'project_leader' }
+    async createChannel(input: Parameters<TaskInstanceDeps['createChannel']>[0] & {
+      leadAgent: { agentKind?: 'channel_agent' | 'project_leader' }
     }) {
       const ch = channels.create({
         name: input.name,
@@ -51,6 +50,7 @@ function fixture() {
           name: input.leadAgent.name,
           harness: input.leadAgent.harness,
           config: input.leadAgent.config,
+          prefabBindingJson: input.leadAgent.prefabBindingJson,
           role: 'lead',
           agentKind: input.leadAgent.agentKind ?? 'channel_agent',
         })
@@ -99,37 +99,22 @@ function fixture() {
       })
       return { task: { id: row.id } as never, created: true }
     },
-    /** 任务实例创建（真实 manager.createTaskInstance 的最小子集：Channel + lead 实例 + 会话行） */
-    async createTaskInstance(input: { projectId: string, workItemId: string, templateChannelId: string, title: string }) {
-      const ch = channels.create({ name: `任务实例-${createdInstances.length + 1}`, ownerUserId: 'u-1' })
-      channels.update(ch.id, { workspace: `data/workspaces/${ch.id}` })
-      const lead = agents.create({
-        channelId: ch.id,
-        templateId: null,
-        name: '实例Lead',
-        harness: 'mock',
-        role: 'lead',
-        agentKind: 'channel_agent',
-      })
-      channels.update(ch.id, { leadAgentId: lead.id, enabled: 1 })
-      const s = sessions.create({
-        channelId: ch.id,
-        title: input.title,
-        memberMap: { [lead.id]: lead.id },
-        projectId: input.projectId,
-        projectWorkItemId: input.workItemId,
-        createdByKind: 'project',
-        instanceKind: 'task',
-      })
-      createdInstances.push({ channelId: ch.id, sessionId: s.id })
-      return { channelId: ch.id, sessionId: s.id, members: [{ id: lead.id }], leadAgentId: lead.id }
+    async createTaskInstance(input: Parameters<AgentChannelManager['createTaskInstance']>[0]) {
+      const instance = await createTaskInstanceChannel({
+        channels,
+        channelAgents: agents,
+        sessions,
+        createChannel: ch => this.createChannel(ch),
+      }, { ...input, actorId: input.actor.id })
+      createdInstances.push(instance)
+      return instance
     },
     async closeChannelSession(input: { sessionId: string, channelId: string }) {
       sessions.close(input.sessionId)
     },
   } as unknown as AgentChannelManager
 
-  return { db, manager, channels, createdInstances, tasks }
+  return { db, manager, channels, agents, sessions, createdInstances, tasks }
 }
 
 /** 建项目→成员频道→交付物→工作项→激活（与 project-core 同一最小路径） */
@@ -153,7 +138,120 @@ async function prepareWorkItem(f: ReturnType<typeof fixture>) {
     dedupeKey: 'race',
   })
   svc.activate(p.id, owner)
-  return { svc, owner, p, w }
+  return { svc, owner, p, w, member }
+}
+
+function binding(revision: number, goal: string): string {
+  return JSON.stringify({ prefabId: 'test-prefab', revision, slotValues: { goal }, contentHash: String(revision).repeat(64) })
+}
+
+function finishAttempt(f: ReturnType<typeof fixture>, workItemId: string) {
+  const attempts = createProjectAttemptRepo(f.db)
+  attempts.close(attempts.findLiveByWorkItem(workItemId)!.id, 'CLOSED')
+  createProjectWorkItemRepo(f.db).update(workItemId, { state: 'FAILED' })
+}
+
+function instanceBindings(f: ReturnType<typeof fixture>, sessionId: string): Record<string, string | undefined> {
+  const members = JSON.parse(f.sessions.findById(sessionId)!.memberMapJson) as Record<string, string>
+  return Object.fromEntries(Object.entries(members).map(([baseId, instanceId]) => [baseId, f.agents.findById(instanceId)?.prefabBindingJson]))
+}
+
+test('prefab snapshot: retry reuses the exact first bindings after its instance closes; a new item captures current bindings', async () => {
+  const f = fixture()
+  try {
+    const { svc, owner, p, w, member } = await prepareWorkItem(f)
+    const leadId = member.leadAgentId!
+    const worker = f.agents.create({ channelId: member.channelId, templateId: null, name: 'Worker', harness: 'mock', role: 'worker', prefabBindingJson: binding(1, 'first-worker') })
+    f.agents.update(leadId, { prefabBindingJson: binding(1, 'first-lead') })
+    const first = await svc.dispatchWorkItem(p.id, w.id, owner)
+    const snapshot = { prefabSnapshotJson: first.prefabSnapshotJson, prefabSnapshotHash: first.prefabSnapshotHash }
+    const initialBindings = { [leadId]: binding(1, 'first-lead'), [worker.id]: binding(1, 'first-worker') }
+    assert.deepEqual(JSON.parse(snapshot.prefabSnapshotJson!), initialBindings)
+    assert.equal(snapshot.prefabSnapshotHash, sha256(snapshot.prefabSnapshotJson!))
+    const originalSession = f.createdInstances[0]!.sessionId
+    assert.deepEqual(instanceBindings(f, originalSession), initialBindings)
+
+    f.agents.update(leadId, { prefabBindingJson: binding(2, 'next-lead') })
+    f.agents.update(worker.id, { prefabBindingJson: '' })
+    finishAttempt(f, w.id)
+    // A usable first instance is still reused despite changes to the template.
+    const activeRetry = await svc.dispatchWorkItem(p.id, w.id, owner)
+    assert.equal(activeRetry.instanceChannelId, first.instanceChannelId)
+    assert.equal(f.createdInstances.length, 1)
+
+    finishAttempt(f, w.id)
+    f.sessions.close(originalSession)
+    f.channels.update(first.instanceChannelId!, { enabled: 0 })
+    const retry = await svc.dispatchWorkItem(p.id, w.id, owner)
+    assert.notEqual(retry.instanceChannelId, first.instanceChannelId)
+    assert.equal(retry.prefabSnapshotJson, snapshot.prefabSnapshotJson)
+    assert.equal(retry.prefabSnapshotHash, snapshot.prefabSnapshotHash)
+    const retrySession = f.sessions.findById(f.createdInstances[1]!.sessionId)!
+    assert.equal(retrySession.prefabSnapshotJson, snapshot.prefabSnapshotJson)
+    assert.equal(retrySession.prefabSnapshotHash, snapshot.prefabSnapshotHash)
+    assert.deepEqual(instanceBindings(f, retrySession.id), initialBindings)
+    assert.equal(createProjectAttemptRepo(f.db).findLiveByWorkItem(w.id)?.sessionId, retrySession.id)
+
+    const newItem = svc.createWorkItem(p.id, owner, { deliverableId: w.deliverableId, channelId: w.channelId, title: '新任务', dedupeKey: 'new-prefab-task' })
+    const fresh = await svc.dispatchWorkItem(p.id, newItem.id, owner)
+    assert.notEqual(fresh.prefabSnapshotHash, snapshot.prefabSnapshotHash)
+    assert.deepEqual(instanceBindings(f, f.createdInstances[2]!.sessionId), { [leadId]: binding(2, 'next-lead'), [worker.id]: '' })
+  }
+  finally { f.db.close() }
+})
+
+for (const kind of ['missing', 'hash-only', 'bad-hash', 'bad-json', 'bad-binding', 'missing-member'] as const) {
+  test(`prefab snapshot: retry fails closed for ${kind}`, async () => {
+    const f = fixture()
+    try {
+      const { svc, owner, p, w, member } = await prepareWorkItem(f)
+      const first = await svc.dispatchWorkItem(p.id, w.id, owner)
+      const originalJson = first.prefabSnapshotJson!
+      const leadId = member.leadAgentId!
+      let json = originalJson
+      let hash = first.prefabSnapshotHash!
+      let code = 'TASK_PREFAB_SNAPSHOT_INVALID'
+      switch (kind) {
+        case 'missing':
+          json = ''
+          hash = ''
+          code = 'TASK_PREFAB_SNAPSHOT_MISSING'
+          break
+        case 'hash-only':
+          json = ''
+          break
+        case 'bad-hash':
+          hash = '0'.repeat(64)
+          break
+        case 'bad-json':
+          json = '{bad'
+          hash = sha256(json)
+          break
+        case 'bad-binding':
+          json = JSON.stringify({ [leadId]: 'bad-binding' })
+          hash = sha256(json)
+          break
+        case 'missing-member':
+          json = JSON.stringify({ 'other-member': '' })
+          hash = sha256(json)
+          code = 'TASK_PREFAB_SNAPSHOT_MEMBERS_CHANGED'
+          break
+      }
+      finishAttempt(f, w.id)
+      if (kind !== 'bad-hash') f.sessions.close(f.createdInstances[0]!.sessionId)
+      f.agents.update(leadId, { prefabBindingJson: binding(2, 'must-not-be-used') })
+      f.db.prepare('UPDATE project_work_items SET prefab_snapshot_json = ?, prefab_snapshot_hash = ? WHERE id = ?').run(json, hash, w.id)
+
+      await assert.rejects(() => svc.dispatchWorkItem(p.id, w.id, owner), { code })
+      assert.equal(f.createdInstances.length, 1)
+      assert.equal(createProjectAttemptRepo(f.db).listByWorkItem(w.id).length, 1)
+      const blocked = createProjectWorkItemRepo(f.db).findById(w.id)!
+      assert.equal(blocked.state, 'BLOCKED')
+      assert.equal(blocked.prefabSnapshotJson, json)
+      assert.equal(blocked.prefabSnapshotHash, hash)
+    }
+    finally { f.db.close() }
+  })
 }
 
 test('DA-1 同一工作项并发派发：恰一个 attempt、另一路 WORK_ITEM_IN_FLIGHT、只建一个实例', async () => {

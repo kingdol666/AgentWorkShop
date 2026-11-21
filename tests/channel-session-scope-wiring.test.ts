@@ -7,6 +7,9 @@ import { createMessageRepo } from '../server/services/workshop/db/message.repo'
 import { createMemoryRepo } from '../server/services/workshop/db/memory.repo'
 import { ManagerRuntimeWiring } from '../server/services/workshop/runtime/manager/runtime-wiring'
 import { AgentRuntime } from '../server/services/workshop/runtime/agent-runtime/facade'
+import type { AgentInfo } from '../server/services/workshop/agents/agent-interface'
+import { createAgentPrefabService } from '../server/services/workshop/agent-prefabs/service'
+import { initToolRegistryDb } from '../server/services/workshop/db/tool-registry.repo'
 
 process.env.AGENTWORKSHOP_TEST = '1'
 
@@ -55,4 +58,83 @@ test('wireMember calls setChannelSessionScope with the impl as receiver', () => 
   finally {
     db.close()
   }
+})
+
+test('wireMember applies the pinned Prefab profile before implFactory without touching launch or context settings', (t) => {
+  const db = openWorkshopDb(':memory:')
+  t.after(() => db.close())
+  initToolRegistryDb(db)
+  const channels = createChannelRepo(db)
+  const channel = channels.create({ name: 'profile-wire', scenarioPrompt: 'channel scenario' })
+  channels.update(channel.id, { llm: { provider: 'channel-provider', model: 'channel-model', effort: 'low' } })
+  const agents = createChannelAgentRepo(db)
+  const prefabs = createAgentPrefabService(db)
+  const owner = { id: 'u1' }
+  const draft = { name: 'Expert', prompt: { role: 'prefab role' }, profile: {
+    provider: 'prefab-provider', model: 'prefab-model', effort: 'high', settings: { thinkingLevel: 'low' },
+  } }
+  const prefab = prefabs.create(owner, draft)
+  const first = prefabs.publish(owner, prefab.id, 0)
+  const binding = prefabs.buildBinding(owner, prefab.id, first.revision, {})
+  prefabs.update(owner, prefab.id, prefabs.get(owner, prefab.id).updatedAt, { ...draft, profile: { model: 'new-head' } })
+  prefabs.publish(owner, prefab.id, first.revision)
+  const config = {
+    provider: 'member-provider', model: 'member-model', effort: 'minimal', thinkingLevel: 'minimal',
+    command: 'omp', args: ['--existing'], env: { KEEP: 'yes' }, cwd: '/member', systemPromptPrefix: 'platform prefix',
+  }
+  const member = agents.create({ channelId: channel.id, templateId: null, name: 'worker', harness: 'omp', role: 'worker', config, prefabBindingJson: JSON.stringify(binding) })
+  let wired: AgentInfo | undefined
+  const manager = Object.assign(Object.create(ManagerRuntimeWiring.prototype), {
+    deps: {
+      db,
+      repos: { channels, channelAgents: agents, messages: createMessageRepo(db), memories: createMemoryRepo(db) },
+      implFactory: (agent: AgentInfo) => {
+        wired = agent
+        return {}
+      },
+    },
+    buses: new Map([[channel.id, {}]]),
+    agentIndex: new Map(),
+    ensureChannelRuntime: () => ({ addAgent() {}, wakeScheduler() {} }),
+    buildWorkspace: () => ({}),
+    channelWorkspace: () => '/channel',
+    getTaskEngine: () => ({}),
+  }) as { wireMember: (row: typeof member) => void }
+  t.mock.method(AgentRuntime.prototype, 'start', () => {})
+
+  manager.wireMember(member)
+  assert.equal(wired?.harness, 'omp')
+  assert.deepEqual(wired?.config, {
+    ...config,
+    provider: 'prefab-provider', model: 'prefab-model', effort: 'high', thinkingLevel: 'high', cwd: '/channel',
+    scenarioPrompt: 'channel scenario', prefabPrompt: wired?.config.prefabPrompt, prefabBindingHash: first.contentHash,
+  })
+  assert.match(String(wired?.config.prefabPrompt), /prefab role/)
+  assert.deepEqual(JSON.parse(agents.findById(member.id)!.configJson), config)
+
+  const partial = prefabs.create(owner, { name: 'Partial', profile: { settings: { thinkingLevel: 'high' } } })
+  const partialRev = prefabs.publish(owner, partial.id, 0)
+  const partialBinding = prefabs.buildBinding(owner, partial.id, partialRev.revision, {})
+  const partialMember = agents.update(member.id, { config: { model: 'member-model' }, prefabBindingJson: JSON.stringify(partialBinding) })
+  manager.wireMember(partialMember!)
+  assert.equal(wired?.config.provider, 'channel-provider')
+  assert.equal(wired?.config.model, 'member-model')
+  assert.equal(wired?.config.thinkingLevel, 'high')
+  assert.equal(wired?.config.effort, 'high')
+
+  for (const settings of [{ providerBaseUrl: 'untrusted' }, { piExtensionPath: 'untrusted' }, { thinkingLevel: true }]) {
+    const unsafe = prefabs.create(owner, { name: 'Unsafe', profile: { settings } })
+    const unsafeRev = prefabs.publish(owner, unsafe.id, 0)
+    const unsafeBinding = prefabs.buildBinding(owner, unsafe.id, unsafeRev.revision, {})
+    const updated = agents.update(member.id, { prefabBindingJson: JSON.stringify(unsafeBinding) })
+    wired = undefined
+    assert.throws(() => manager.wireMember(updated!), { code: 'PREFAB_PROFILE_UNSUPPORTED' })
+    assert.equal(wired, undefined, 'unsupported settings must not reach implFactory')
+  }
+
+  const legacy = agents.update(member.id, { prefabBindingJson: '' })
+  manager.wireMember(legacy!)
+  assert.deepEqual((wired as AgentInfo | undefined)?.config, {
+    model: 'member-model', provider: 'channel-provider', effort: 'low', cwd: '/channel', scenarioPrompt: 'channel scenario',
+  })
 })
