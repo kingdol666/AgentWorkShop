@@ -140,6 +140,14 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
 
   /** 更新 Channel 模板(属主/admin;内置拒绝) */
   updateChannelTemplate(templateId: string, patch: Parameters<ChannelTemplateRepo['update']>[1]): ChannelTemplateDetail {
+    const current = this.deps.repos.channelTemplates.findById(templateId)
+    if (!current) throw new AppError(404, 'NOT_FOUND', `Channel 模板不存在: ${templateId}`)
+    const nextVisibility = patch.visibility ?? current.visibility
+    const nextLead: { prefabBindingJson?: string } | null = patch.lead !== undefined
+      ? patch.lead
+      : (current.leadJson ? parseJson<{ prefabBindingJson?: string }>(current.leadJson, {}) : null)
+    const nextMembers = patch.members ?? parseJson<ChannelTemplateMember[]>(current.membersJson, [])
+    this.validateTemplatePrefabBindings(nextLead, nextMembers, nextVisibility, { id: current.ownerUserId ?? '' })
     const updated = this.deps.repos.channelTemplates.update(templateId, patch)
     if (!updated) throw new AppError(404, 'NOT_FOUND', `Channel 模板不存在: ${templateId}`)
     return this.channelTemplateDetailOf(updated)
@@ -174,6 +182,8 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
     const scenarioPrompt = extraScenarioPrompt
       ? `${baseScenarioPrompt ?? ''}${baseScenarioPrompt ? '\n\n' : ''}${extraScenarioPrompt}`
       : baseScenarioPrompt
+    const members = parseJson<ChannelTemplateMember[]>(tpl.membersJson, [])
+    this.validateTemplatePrefabBindings(lead, members, tpl.ownerUserId === null ? 'public' : tpl.visibility, user)
     const created = await this.createChannel({
       name: (nameOverride && nameOverride.trim()) || tpl.name,
       channelMode: options?.channelMode ?? 'generic',
@@ -187,8 +197,6 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
     if (kb !== undefined) {
       getChannelPluginsRepo().setMany(created.channelId, [{ name: 'rag-bridge', enabled: kbOn }])
     }
-    const members = parseJson<ChannelTemplateMember[]>(tpl.membersJson, [])
-    this.validateTemplatePrefabBindings(lead, members, tpl.ownerUserId === null ? 'public' : tpl.visibility, user)
     const agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> = []
     if (created.leadAgentId) agents.push({ id: created.leadAgentId, name: lead?.name ?? 'lead', role: 'lead' })
     let agentCount = lead ? 1 : 0
