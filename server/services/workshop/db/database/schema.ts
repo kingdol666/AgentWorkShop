@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS channel_agents (
   config_json TEXT NOT NULL DEFAULT '{}',      -- 从模板复制
   role        TEXT NOT NULL DEFAULT 'worker',  -- 'lead' | 'worker'(按 channel 独立)
   agent_kind  TEXT NOT NULL DEFAULT 'channel_agent', -- 'channel_agent' | 'project_leader'
+  created_by_kind TEXT NOT NULL DEFAULT 'system', -- 'system' | 'user' | 'leader'
+  created_by_id   TEXT,                         -- leader 来源只记录频道实例 id，不关联模板
+  created_via     TEXT NOT NULL DEFAULT 'protected',
+  created_reason  TEXT NOT NULL DEFAULT '',
   token       TEXT NOT NULL,                   -- MCP 身份凭证(实例级 UUIDv4)
   enabled     INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL,

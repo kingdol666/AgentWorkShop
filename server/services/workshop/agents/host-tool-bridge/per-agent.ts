@@ -158,8 +158,8 @@ export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', chan
     : filterProjectToolSurface(tools, projectMode)
   // AgentPrefab：有绑定才注入已审 MCP 工具并按 allowlist 收窄；无绑定保持 legacy。
   const prefabRuntime = resolveRuntimeForAgentGlobal(agentId)
-  if (prefabRuntime?.binding) {
-    const extra: RpcHostToolDefinition[] = approvedMcpToolDefs()
+  if (prefabRuntime?.resolution.mode === 'prefab') {
+    const extra: RpcHostToolDefinition[] = prefabRuntime.resolution.toolIds.length > 0 ? approvedMcpToolDefs() : []
     if (prefabRuntime.resolution.skillIds.length > 0) {
       extra.push({
         name: 'activate_skill',

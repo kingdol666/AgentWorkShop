@@ -5,14 +5,14 @@
 import { ManagerAdminChannel } from './admin-channel'
 import type { AgentInfo } from '../../agents/agent-interface'
 import type { MaintenanceResult, MemorySnippet } from '../memory'
-import type { MemoryRow } from '../../db/database'
+import type { ChannelAgentCreationSource, ChannelAgentRow, MemoryRow } from '../../db/database/rows'
 import { AgentMemory, runMemoryMaintenance, segmentCJK, unsegmentCJK, vectorizeMemory } from '../memory'
 import { AppError } from '../../../../utils/errors'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { assertSpawnConfigAllowed, assertSpawnConfigPatchAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
-import { instanceToAgentInfo } from './helpers'
-import { createChannelSession, closeChannelSession, reconcileClosingSessions, activeSessionIdOfMember, activeSessionOfMember, SESSION_MARKER } from '../../agents/session-clone'
+import { instanceToAgentInfo, log } from './helpers'
+import { createChannelSession, closeChannelSession, reconcileClosingSessions, activeSessionIdOfMember, activeSessionOfMember, isUnclosedSessionClone, SESSION_MARKER } from '../../agents/session-clone'
 import { createChannelSessionBindingSnapshot, trustedSessionBindingIdentity } from '../../agents/session-snapshot'
 import { createChannelProductBindingRepo } from '../../db/channel-product-binding.repo'
 import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
@@ -30,22 +30,31 @@ import { workshopSettings } from '../../settings'
 import { selectBroadcastTargets } from './broadcast-targets'
 import { randomUUID } from 'node:crypto'
 
+type AddChannelAgentInput = Partial<ChannelAgentCreationSource> & {
+  channelId: string
+  agentId: string
+  role: 'lead' | 'worker'
+  /** 模板 config 覆盖项(浅合并;用于注入/覆盖 systemPromptPrefix 等场景配置) */
+  configOverride?: Record<string, unknown>
+  /** 操作发起方(AEP agent.member 的 by;缺省 'user') */
+  by?: string
+  reason?: string
+  /** 操作者（spawn 授权；缺省按普通用户处理） */
+  actor?: SpawnActor
+  /** 模板/Channel 模板携带的 AgentPrefab 绑定 JSON（缺省无绑定） */
+  prefabBindingJson?: string
+}
+
 export abstract class ManagerAdminAgents extends ManagerAdminChannel {
   /** 把 Agent 模板放入 channel → 克隆出独立身份 id 的新实例(复制 name/harness/config) */
-  async addAgentToChannel(input: {
-    channelId: string
-    agentId: string
-    role: 'lead' | 'worker'
-    /** 模板 config 覆盖项(浅合并;用于注入/覆盖 systemPromptPrefix 等场景配置) */
-    configOverride?: Record<string, unknown>
-    /** 操作发起方(AEP agent.member 的 by;缺省 'user') */
-    by?: string
-    reason?: string
-    /** 操作者（spawn 授权；缺省按普通用户处理） */
-    actor?: SpawnActor
-    /** 模板/Channel 模板携带的 AgentPrefab 绑定 JSON（缺省无绑定） */
-    prefabBindingJson?: string
-  }): Promise<AgentInfo> {
+  async addAgentToChannel(input: AddChannelAgentInput): Promise<AgentInfo> {
+    const inst = this.insertChannelAgent(input)
+    this.notifyChannelAgentAdded(inst, input)
+    return instanceToAgentInfo(inst)
+  }
+
+  /** Synchronous DB-only path; callers owning a transaction notify only after commit. */
+  protected insertChannelAgent(input: AddChannelAgentInput): ChannelAgentRow {
     const tpl = this.deps.repos.agents.findById(input.agentId)
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${input.agentId}`)
     const instConfig = { ...parseJson<Record<string, unknown>>(tpl.configJson, {}), ...input.configOverride }
@@ -67,11 +76,19 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       config: instConfig,
       prefabBindingJson: input.prefabBindingJson ?? '',
       role: input.role,
+      createdByKind: input.createdByKind,
+      createdById: input.createdById,
+      createdVia: input.createdVia,
+      createdReason: input.createdReason,
     })
     if (input.role === 'lead') {
       this.deps.repos.channels.update(input.channelId, { leadAgentId: inst.id })
     }
-    this.notifyMember(input.channelId, {
+    return inst
+  }
+
+  protected notifyChannelAgentAdded(inst: ChannelAgentRow, meta: { by?: string, reason?: string }): void {
+    this.notifyMember(inst.channelId, {
       op: 'added',
       agentId: inst.id,
       name: inst.name,
@@ -79,10 +96,9 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       harness: inst.harness,
       enabled: inst.enabled,
       config: parseJson<Record<string, unknown>>(inst.configJson, {}),
-      by: input.by ?? 'user',
-      reason: input.reason,
+      by: meta.by ?? 'user',
+      reason: meta.reason,
     })
-    return instanceToAgentInfo(inst)
   }
 
   async listChannelAgents(channelId: string): Promise<AgentInfo[]> {
@@ -353,16 +369,41 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     return instanceToAgentInfo(updated)
   }
 
+  protected assertRemovableChannelAgent(member: ChannelAgentRow): void {
+    if (member.agentKind === 'project_leader' || member.role === 'lead'
+      || this.deps.repos.channels.findById(member.channelId)?.leadAgentId === member.id) {
+      throw new AppError(409, 'CHANNEL_AGENT_PROTECTED', '不能从频道直接删除 lead 或项目 leader')
+    }
+    const sessions = createChannelSessionRepo(this.deps.db).listByChannel(member.channelId)
+    if (isUnclosedSessionClone(sessions, member.id)) {
+      throw new AppError(409, 'CHANNEL_AGENT_PROTECTED', '不能删除未关闭会话中的成员实例，请先关闭会话')
+    }
+  }
+
   /** 从 channel 移除实例(仅删实例,不删模板) */
   async removeAgentFromChannel(channelId: string, instanceId: string, meta?: { by?: string, reason?: string }): Promise<void> {
     const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, instanceId)
     if (!m) return
+    this.assertRemovableChannelAgent(m)
     await this.stopAndDetach(channelId, instanceId)
-    if (m.role === 'lead') {
-      this.deps.repos.channels.update(channelId, { leadAgentId: null })
+    const removed = withTransaction(this.deps.db, () => {
+      const current = this.deps.repos.channelAgents.findByChannelAgent(channelId, instanceId)
+      if (!current) return false
+      this.assertRemovableChannelAgent(current)
+      // 等运行时收尾，再于同一事务取消未消费投递和删除成员，避免重试或取消状态被收尾覆盖。
+      this.chatMessageRepo.cancelPendingDeliveriesForAgent(channelId, instanceId)
+      this.deps.repos.subscriptions.removeByAgent(channelId, instanceId)
+      this.deps.repos.channelAgents.remove(channelId, instanceId)
+      return true
+    })
+    if (!removed) return
+    // 节点绑定由 JSON 存储，不参与 SQLite 事务；只清理这个实例的绑定，不动模板/其他成员。
+    try {
+      getAgentNodeBindingRepo().removeAgent(instanceId)
     }
-    this.deps.repos.subscriptions.removeByAgent(channelId, instanceId)
-    this.deps.repos.channelAgents.remove(channelId, instanceId)
+    catch (err) {
+      log.warn(`[workshop] 清理已删除实例 ${instanceId} 的节点绑定失败:`, err)
+    }
     this.notifyMember(channelId, {
       op: 'removed',
       agentId: instanceId,
@@ -384,7 +425,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
    * mailbox/omp 进程），注册 channel_sessions 行。同 member 的会话间并行、
    * 会话内串行（execLock 按 runtime 成立）。
    */
-  async createChannelSession(input: {
+  async createChannelSession(input: Partial<ChannelAgentCreationSource> & {
     channelId: string
     actor: { id: string, role: string }
     title?: string
@@ -456,6 +497,10 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       {
         channelId: input.channelId,
         actorId: input.actor.id,
+        createdByKind: input.createdByKind,
+        createdById: input.createdById,
+        createdVia: input.createdVia,
+        createdReason: input.createdReason,
         title: input.title,
         channelMode,
         productId: snapshot?.productId,
@@ -618,7 +663,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
    * 项目任务实例（plan 2026-11-07）：为工作项创建专属执行 Channel + 会话行。
    * 返回实例 Channel 与其 lead（root 任务 assignee）。幂等由调用方（项目派发）负责。
    */
-  async createTaskInstance(input: {
+  async createTaskInstance(input: Partial<ChannelAgentCreationSource> & {
     projectId: string
     workItemId: string
     templateChannelId: string
@@ -652,6 +697,10 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
         templateChannelId: input.templateChannelId,
         title: input.title,
         actorId: input.actor.id,
+        createdByKind: input.createdByKind,
+        createdById: input.createdById,
+        createdVia: input.createdVia,
+        createdReason: input.createdReason,
       },
     )
     const { recordOps } = await import('../../ops/ops')

@@ -83,6 +83,7 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
         this.buses.get(channelId)?.notifyMemory({ agentId: agent.id, scope: 'private', title: `会话压缩摘要(${input.summary.length}字)`, dedupKey: saved.dedupKey })
       },
       // 团队成员管理(仅 lead;manager 内二次校验角色,工具面与决策面共用)
+      listTeamMembers: () => this.listTeamMembers(channelId, agent.id),
       createTeamMember: input => this.createTeamMember(channelId, agent.id, input),
       updateTeamMember: (agentId, patch) => this.updateTeamMember(channelId, agent.id, agentId, patch),
       removeTeamMember: (agentId, reason) => this.removeTeamMember(channelId, agent.id, agentId, reason),

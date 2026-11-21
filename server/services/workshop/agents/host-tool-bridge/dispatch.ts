@@ -36,7 +36,7 @@ import { handleBroadcastMessage, handleListOtherTeams, handlePollMessages, handl
 import { handleSaveMemory, handleSearchMemory } from './tools/memory'
 import { handleImprovementList } from './tools/improvement'
 import { handleCreateTeamAgent, handleGetQueueOverview, handleListTeamAgents, handleRemoveTeamAgent, handleUpdateTeamAgent } from './tools/team'
-import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, OBSERVE_BLOCKED_TOOL_NAMES } from '../tool-classes'
+import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, LEAD_ONLY_TOOL_NAMES, OBSERVE_BLOCKED_TOOL_NAMES } from '../tool-classes'
 import { GovernanceHarnessAuditError, withGovernanceHarnessToolAudit } from '../governance-harness-audit'
 import { PROJECT_GATED_WRITE_TOOL_NAMES, PROJECT_TOOL_NAMES } from '../../projects/tool-surface'
 import { dispatchProjectTool } from '../../projects/tools'
@@ -235,6 +235,20 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
     const gate = projectExecutionGate(identity.agentId, req.toolName)
     if (gate) return gate
   }
+  // 按解析模式判定，而非 binding 真值：损坏的持久化 binding 也是 prefab（空授权）。
+  // 必须先于 Project 工具的提前返回；Project、Channel 的既有闸门仍独立生效。
+  let prefabRuntime: ReturnType<typeof resolveRuntimeForAgentGlobal>
+  try {
+    prefabRuntime = resolveRuntimeForAgentGlobal(identity.agentId)
+  }
+  catch {
+    return { text: 'FORBIDDEN: 无法验证当前 AgentPrefab 能力范围', isError: true }
+  }
+  const prefabResolution = prefabRuntime?.resolution.mode === 'prefab' ? prefabRuntime.resolution : null
+  if (prefabResolution && (!prefabAllowsTool(prefabResolution, req.toolName)
+    || (identity.role !== 'lead' && LEAD_ONLY_TOOL_NAMES.has(req.toolName)))) {
+    return { text: `FORBIDDEN: 工具 ${req.toolName} 不在当前 AgentPrefab 能力范围`, isError: true }
+  }
   // Project 工具不依赖 workspace，先于 Channel 工具策略/插件面执行（项目层自己校验归属）。
   if (PROJECT_TOOL_NAMES.has(req.toolName)) {
     return await dispatchProjectTool(identity, req.toolName, req.arguments ?? {}, activeRootTaskId)
@@ -245,10 +259,8 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
     const gate = channelToolGate(identity.channelId, req.toolName)
     if (gate.blocked) return { text: gate.message ?? `工具 ${req.toolName} 不可用`, isError: true }
   }
-  // AgentPrefab 执行面：每次调用重新解析当前 binding/registry/Channel 策略；
-  // 注入面缓存不能绕过撤销/停用。无绑定保持 legacy，但未绑定成员不得直调受管 MCP 工具。
+  // 无绑定保留 legacy，但未绑定成员不得调用受管 MCP 工具。
   {
-    const prefabRuntime = resolveRuntimeForAgentGlobal(identity.agentId)
     const isManagedMcp = (() => {
       try {
         return listManifests(resolveRunMode().configRoot).some(m => m.tools.some(t => t.exposedName === req.toolName))
@@ -257,32 +269,35 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
         return false
       }
     })()
-    if (prefabRuntime?.binding) {
-      if (!prefabAllowsTool(prefabRuntime.resolution, req.toolName)) {
-        return { text: `FORBIDDEN: 工具 ${req.toolName} 不在当前 AgentPrefab 能力范围`, isError: true }
+    if (isManagedMcp) {
+      if (!prefabResolution || !prefabRuntime?.draft) {
+        return { text: 'FORBIDDEN: MCP 工具仅对绑定 AgentPrefab 的成员开放', isError: true }
       }
-      if (isManagedMcp) {
-        const broker = createMcpBroker({ configRoot: resolveRunMode().configRoot })
-        const result = await broker.call(identity.agentId, req.toolName, req.arguments ?? {}, {
-          channelId: identity.channelId,
-          authorize: () => prefabAllowsTool(prefabRuntime.resolution, req.toolName),
-          audit: entry => recordOps({
-            actor: identity.agentId,
-            actorName: identity.name,
-            actorKind: 'agent',
-            action: 'mcp.tool.call',
-            kind: 'system',
-            level: entry.outcome === 'ok' ? 'info' : 'warn',
-            targetKind: 'mcp_tool',
-            targetId: entry.toolId,
-            summary: `MCP ${entry.serverId}/${entry.toolId} ${entry.outcome} (${entry.durationMs}ms)`,
-          }),
-        })
-        return { text: result.text, isError: result.isError }
+      // 名称相同的内置/插件工具授权不能替代 MCP 授权。
+      const refs = prefabRuntime.draft.capabilities.filter(ref => ref.kind === 'mcp-tool'
+        && prefabResolution.active.some(cap => cap.kind === ref.kind && cap.id === ref.id))
+      if (!refs.some(ref => ref.id === req.toolName)) {
+        return { text: `FORBIDDEN: MCP 工具 ${req.toolName} 不在当前 AgentPrefab 能力范围`, isError: true }
       }
-    }
-    else if (isManagedMcp) {
-      return { text: 'FORBIDDEN: MCP 工具仅对绑定 AgentPrefab 的成员开放', isError: true }
+      const broker = createMcpBroker({ configRoot: resolveRunMode().configRoot })
+      const result = await broker.call(identity.agentId, req.toolName, req.arguments ?? {}, {
+        channelId: identity.channelId,
+        // 发现刷新可能发生在两次检查之间；固定版本必须匹配 broker 实际调用的 schema。
+        authorize: ({ tool }) => tool.exposedName === req.toolName && refs.some(ref => ref.id === tool.exposedName
+          && (ref.version === undefined || ref.version === tool.schemaHash)),
+        audit: entry => recordOps({
+          actor: identity.agentId,
+          actorName: identity.name,
+          actorKind: 'agent',
+          action: 'mcp.tool.call',
+          kind: 'system',
+          level: entry.outcome === 'ok' ? 'info' : 'warn',
+          targetKind: 'mcp_tool',
+          targetId: entry.toolId,
+          summary: `MCP ${entry.serverId}/${entry.toolId} ${entry.outcome} (${entry.durationMs}ms)`,
+        }),
+      })
+      return { text: result.text, isError: result.isError }
     }
   }
   if (req.toolName === 'activate_skill') {

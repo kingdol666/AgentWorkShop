@@ -324,7 +324,7 @@
   {
     "name": "list_team_agents",
     "label": "List Team",
-    "description": "List all agents in the current channel (lead + workers) with their roles and names.",
+    "description": "List the current channel's agents, their roles, prefab revision/content hash, and whether you can manage them (manageable/protected).",
     "parameters": {
       "type": "object",
       "properties": {},
@@ -574,7 +574,7 @@
   {
     "name": "create_team_agent",
     "label": "Create Team Agent",
-    "description": "(Lead only) Create a NEW worker only when capability/load evidence shows existing members cannot handle the work. Reuse existing workers first. The platform enforces a per-Channel worker roster cap, including disabled members; do not retry with another name after TEAM_WORKER_LIMIT.",
+    "description": "(Lead only) Create a worker when existing workers cannot meet capability or load needs. Optionally pin a published AgentPrefab owned by the channel owner or public. Reuse existing workers first; do not retry with another name after TEAM_WORKER_LIMIT.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -595,6 +595,17 @@
           "type": "string",
           "description": "System prompt prefix defining this member's specialty, working style, and conventions (maps to its systemPromptPrefix config)"
         },
+        "prefab": {
+          "type": "object",
+          "properties": {
+            "prefabId": { "type": "string", "minLength": 1 },
+            "revision": { "type": "integer", "minimum": 1 },
+            "slotValues": { "type": "object", "additionalProperties": { "type": "string" } }
+          },
+          "required": ["prefabId", "revision"],
+          "additionalProperties": false,
+          "description": "Optional published revision selector. Supply only declared member-overridable slot values."
+        },
         "reason": {
           "type": "string",
           "description": "Why this member is being added (shown to the user in the team event timeline)"
@@ -611,7 +622,7 @@
   {
     "name": "update_team_agent",
     "label": "Update Team Agent",
-    "description": "(Lead only) Update an existing team member (worker): rename it, revise its system prompt (e.g. to specialize or correct its behavior), or enable/disable it. The member's runtime reloads with the new config on its next assignment. You cannot update yourself.",
+    "description": "(Current lead only) Update a worker you created (manageable=true). Rename, configure, enable/disable, or replace/detach its published prefab binding. Protected members and prefab authoring cannot be changed with this tool.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -629,7 +640,23 @@
         },
         "enabled": {
           "type": "boolean",
-          "description": "true = activate member, false = disable member (disabled members receive no new tasks; default true)"
+          "description": "true = activate member; false = disable member; omit to keep the current state"
+        },
+        "prefab": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "prefabId": { "type": "string", "minLength": 1 },
+                "revision": { "type": "integer", "minimum": 1 },
+                "slotValues": { "type": "object", "additionalProperties": { "type": "string" } }
+              },
+              "required": ["prefabId", "revision"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ],
+          "description": "Omit to preserve the binding, pass a published revision selector to replace it, or pass null to detach."
         },
         "reason": {
           "type": "string",
@@ -647,7 +674,7 @@
   {
     "name": "remove_team_agent",
     "label": "Remove Team Agent",
-    "description": "(Lead only) Remove a worker from your channel's team. Its queued tasks are automatically re-dispatched to the remaining worker with the shortest queue (or failed for retry if it was mid-execution), so no work is lost — but the member's context is. Use ONLY for sustained idle surplus or persistent underperformance; never as an experiment, and avoid removing members with active work. You cannot remove yourself.",
+    "description": "(Current lead only) Remove a worker you created (manageable=true). Queued tasks are reassigned or canceled if no worker is available; running tasks are failed for retry. Use only for sustained surplus or persistent underperformance, and avoid removing members with active work.",
     "parameters": {
       "type": "object",
       "properties": {

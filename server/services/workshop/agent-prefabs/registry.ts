@@ -4,6 +4,7 @@
  */
 import { resolveRunMode } from '@/shared/config/home.mjs'
 import { HOST_TOOLS } from '../agents/host-tool-bridge/catalog'
+import { LEAD_ONLY_TOOL_NAMES } from '../agents/tool-classes'
 import { listPluginTools, pluginOfTool } from '../agents/plugin-tools'
 import { getChannelPluginsRepo } from '../db/channel-plugins.repo'
 import { listManifests } from '../mcp-client/config'
@@ -23,7 +24,10 @@ export function buildCapabilityRegistry(channelId: string, configRoot?: string):
   const skillIds = new Set<string>()
 
   for (const tool of HOST_TOOLS) {
-    registry[`tool:${tool.name}`] = { kind: 'tool', id: tool.name, enabled: true, label: tool.label }
+    registry[`tool:${tool.name}`] = {
+      kind: 'tool', id: tool.name, enabled: true, label: tool.label,
+      roles: LEAD_ONLY_TOOL_NAMES.has(tool.name) ? ['lead'] : undefined,
+    }
     toolIds.add(tool.name)
   }
 
@@ -35,10 +39,13 @@ export function buildCapabilityRegistry(channelId: string, configRoot?: string):
   try {
     for (const [name, tool] of listPluginTools()) {
       const owner = pluginOfTool(name)
+      // 同名内置工具优先，不能将插件的能力声明用于内置 handler。
+      if (registry[`tool:${name}`]?.kind === 'tool') continue
       const enabled = !owner || channelPlugins?.get(owner) !== false
-      registry[`plugin-tool:${name}`] = { kind: 'plugin-tool', id: name, enabled, label: tool.description?.slice(0, 80) }
-      // 兼容以 tool 类型引用插件工具的旧编辑器输入；仍受同一 enabled 约束
-      registry[`tool:${name}`] = { kind: 'tool', id: name, enabled, label: tool.description?.slice(0, 80) }
+      const definition = { id: name, enabled, label: tool.description?.slice(0, 80), roles: tool.roles }
+      registry[`plugin-tool:${name}`] = { kind: 'plugin-tool', ...definition }
+      // 兼容以 tool 类型引用插件工具的旧编辑器输入；保持相同的 enabled / roles 约束。
+      registry[`tool:${name}`] = { kind: 'tool', ...definition }
       toolIds.add(name)
     }
   }
@@ -50,6 +57,7 @@ export function buildCapabilityRegistry(channelId: string, configRoot?: string):
       kind: 'skill',
       id: revision.id,
       enabled: revision.enabled,
+      version: revision.contentHash,
       reviewStatus: 'approved',
       label: revision.name,
     }
@@ -75,6 +83,7 @@ export function buildCapabilityRegistry(channelId: string, configRoot?: string):
         kind: 'mcp-tool',
         id: tool.exposedName,
         enabled,
+        version: tool.schemaHash,
         reviewStatus: tool.reviewStatus,
         label: `${manifest.label}/${tool.upstreamName}`,
       }

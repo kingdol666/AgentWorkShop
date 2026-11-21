@@ -5,7 +5,7 @@
  * 发布快照不含 secret/命令/任意代码；binding 固定 revision + contentHash。
  */
 import type { DatabaseSync } from 'node:sqlite'
-import { createAgentPrefabRepo, type AgentPrefabRepo } from '../db/agent-prefab.repo'
+import { createAgentPrefabRepo, prefabSnapshotHash, type AgentPrefabRepo } from '../db/agent-prefab.repo'
 import type {
   AgentPrefabBinding,
   AgentPrefabDraft,
@@ -24,6 +24,9 @@ const FORBIDDEN_SETTING_KEYS = /^(command|args|env|cwd|extension|shell|exec|toke
 const CAPABILITY_KINDS = new Set<PrefabCapabilityKind>(['tool', 'plugin-tool', 'skill', 'mcp-tool'])
 
 export interface PrefabActor { id: string, role?: string }
+
+/** Bind-only principal derived from the channel row after checking the current lead. */
+export interface ChannelLeadPrefabUse { kind: 'channel-lead', channelOwnerUserId: string | null }
 
 function isAdmin(actor: PrefabActor): boolean {
   return actor.role === 'admin'
@@ -162,44 +165,48 @@ function parseDraft(row: AgentPrefabRow): AgentPrefabDraft {
   }
 }
 
+export class BindingSlotError extends AppError {
+  constructor(readonly slotKey: string, message: string) {
+    super(400, 'VALIDATION_ERROR', message)
+  }
+}
+
 /** 绑定 slot 值：只允许声明 key，required 必须非空，限长；返回规范值 */
-export function validateBindingSlots(draft: AgentPrefabDraft, raw: unknown): Record<string, string> {
+export function validateBindingSlots(draft: AgentPrefabDraft, raw: unknown, persisted = false): Record<string, string> {
   if (raw === undefined || raw === null) raw = {}
   if (typeof raw !== 'object' || Array.isArray(raw)) throw new AppError(400, 'VALIDATION_ERROR', 'slotValues 必须是对象')
   const values = raw as Record<string, unknown>
   const declared = new Map(draft.prompt.slots.map(s => [s.key, s]))
   for (const key of Object.keys(values)) {
-    if (!declared.has(key)) throw new AppError(400, 'VALIDATION_ERROR', `未声明的 slot：${key}`)
+    if (!declared.has(key)) throw new BindingSlotError(key, `未声明的 slot：${key}`)
   }
   const out: Record<string, string> = {}
   for (const slot of draft.prompt.slots) {
-    const provided = values[slot.key]
-    if (provided !== undefined && typeof provided !== 'string') throw new AppError(400, 'VALIDATION_ERROR', `slotValues.${slot.key} 必须是字符串`)
-    if (provided !== undefined && slot.allowMemberOverride === false) {
-      throw new AppError(400, 'VALIDATION_ERROR', `slot ${slot.key} 不允许成员覆盖`)
+    const provided = Object.hasOwn(values, slot.key) ? values[slot.key] : undefined
+    if (provided !== undefined && typeof provided !== 'string') throw new BindingSlotError(slot.key, `slotValues.${slot.key} 必须是字符串`)
+    // 旧 binding 持久化了展开后的默认值；只接受与发布快照完全相等的锁定值。
+    if (provided !== undefined && slot.allowMemberOverride === false && !(persisted && provided === slot.defaultValue)) {
+      throw new BindingSlotError(slot.key, `slot ${slot.key} 不允许成员覆盖`)
     }
     const text = (provided as string | undefined) ?? slot.defaultValue ?? ''
-    if (text.length > (slot.maxLength ?? 4000)) throw new AppError(400, 'VALIDATION_ERROR', `slot ${slot.key} 超过长度限制`)
-    if (slot.required && !text.trim()) throw new AppError(400, 'VALIDATION_ERROR', `slot ${slot.key} 必填`)
-    if (text) out[slot.key] = text
+    if (text.length > (slot.maxLength ?? 4000)) throw new BindingSlotError(slot.key, `slot ${slot.key} 超过长度限制`)
+    if (slot.required && !text.trim()) throw new BindingSlotError(slot.key, `slot ${slot.key} 必填`)
+    if (text || provided !== undefined) out[slot.key] = text
   }
   return out
 }
 
 export function parseAgentPrefabBinding(raw: string | undefined | null): AgentPrefabBinding | null {
-  if (!raw || !raw.trim()) return null
+  if (raw === undefined || raw === null || raw === '') return null
   try {
     const parsed = JSON.parse(raw) as Partial<AgentPrefabBinding>
-    if (!parsed || typeof parsed.prefabId !== 'string' || !Number.isInteger(parsed.revision) || (parsed.revision ?? 0) < 1
+    if (!parsed || typeof parsed.prefabId !== 'string' || !parsed.prefabId.trim() || !Number.isSafeInteger(parsed.revision) || (parsed.revision ?? 0) < 1
       || typeof parsed.contentHash !== 'string' || !parsed.contentHash
       || !parsed.slotValues || typeof parsed.slotValues !== 'object' || Array.isArray(parsed.slotValues)) {
       throw new Error('shape')
     }
-    const slotValues: Record<string, string> = {}
-    for (const [key, value] of Object.entries(parsed.slotValues as Record<string, unknown>)) {
-      if (typeof value !== 'string') throw new Error('slot value')
-      slotValues[key] = value
-    }
+    const slotValues = Object.fromEntries(Object.entries(parsed.slotValues))
+    if (Object.values(slotValues).some(value => typeof value !== 'string')) throw new Error('slot value')
     return { prefabId: parsed.prefabId, revision: parsed.revision!, slotValues, contentHash: parsed.contentHash }
   }
   catch {
@@ -249,7 +256,9 @@ export function createAgentPrefabService(db: DatabaseSync) {
     try {
       const parsed = JSON.parse(rev.snapshotJson) as { schemaVersion?: number, draft?: unknown }
       if (parsed.schemaVersion !== 1) return null
-      return { row, revision: rev, draft: validatePrefabDraft(parsed.draft) }
+      const draft = validatePrefabDraft(parsed.draft)
+      if (prefabSnapshotHash(draft) !== rev.contentHash) return null
+      return { row, revision: rev, draft }
     }
     catch {
       return null
@@ -257,13 +266,20 @@ export function createAgentPrefabService(db: DatabaseSync) {
   }
 
   /** 绑定前校验权限/插槽；返回可持久化的 binding */
-  function buildBinding(actor: PrefabActor, prefabId: string, revision: number, rawSlots: unknown): AgentPrefabBinding {
+  function buildBinding(actor: PrefabActor | ChannelLeadPrefabUse, prefabId: string, revision: number, rawSlots: unknown): AgentPrefabBinding {
+    const row = repo.findById(prefabId)
+    if (row) {
+      if ('kind' in actor) {
+        if (row.visibility !== 'public' && (!actor.channelOwnerUserId || row.ownerUserId !== actor.channelOwnerUserId)) {
+          throw new AppError(403, 'PREFAB_FORBIDDEN', '仅可使用频道所有者的或公开的 AgentPrefab')
+        }
+      }
+      else {
+        assertVisible(row, actor)
+      }
+    }
     const loaded = loadRevision(prefabId, revision)
     if (!loaded) throw new AppError(404, 'PREFAB_REVISION_NOT_FOUND', `AgentPrefab revision 不存在：${prefabId}@${revision}`)
-    assertVisible(loaded.row, actor)
-    if (loaded.row.ownerUserId !== actor.id && !isAdmin(actor) && loaded.row.visibility !== 'public') {
-      throw new AppError(403, 'PREFAB_FORBIDDEN', '无权使用该 AgentPrefab')
-    }
     const slotValues = validateBindingSlots(loaded.draft, rawSlots)
     return { prefabId, revision, slotValues, contentHash: loaded.revision.contentHash }
   }

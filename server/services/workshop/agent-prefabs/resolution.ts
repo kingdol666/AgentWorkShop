@@ -8,11 +8,14 @@
  *  - 平台基础协作/任务工具始终保留（但仍受 Channel/Project 策略约束）；
  *  - slot 只按发布定义校验/限长，不允许覆盖系统指令或授权。
  */
+import { LEAD_ONLY_TOOL_NAMES } from '../agents/tool-classes'
+import { BindingSlotError, validateBindingSlots } from './service'
 import type {
   AgentCapabilityInput,
   AgentCapabilityResolution,
   CapabilityState,
   PrefabCapabilityRef,
+  PrefabCapabilityRegistryEntry,
 } from './types'
 
 /** 平台基础协作/任务面（与 host-tool-bridge 的 OBSERVER_COLLAB_TOOL_NAMES 同源；测试锁定一致性） */
@@ -39,7 +42,6 @@ export const PREFAB_BASELINE_TOOL_IDS = [
   'activate_skill',
 ]
 
-const SLOT_MAX_DEFAULT = 4000
 const TOOL_KINDS = new Set(['tool', 'plugin-tool', 'mcp-tool'])
 
 function state(ref: PrefabCapabilityRef, reason?: string): CapabilityState {
@@ -71,31 +73,9 @@ function harnessSupports(input: AgentCapabilityInput, ref: PrefabCapabilityRef):
   return input.harness.managedToolIds !== null && input.harness.managedToolIds.includes(ref.id)
 }
 
-function resolveSlots(input: AgentCapabilityInput): AgentCapabilityResolution['prompt'] & { slotErrors: string[] } {
-  const prefab = input.prefab
-  if (!prefab) return { role: '', scenario: '', slots: [], slotErrors: [] }
-  const values = input.slotValues ?? input.binding?.slotValues ?? {}
-  const errors: string[] = []
-  const slots: Array<{ key: string, label: string, text: string }> = []
-  for (const slot of prefab.prompt.slots) {
-    const provided = values[slot.key]
-    if (provided !== undefined && slot.allowMemberOverride === false) {
-      errors.push(`${slot.key}: 该插槽不允许成员覆盖`)
-    }
-    const chosen = provided !== undefined && slot.allowMemberOverride !== false
-      ? provided
-      : slot.defaultValue ?? ''
-    const max = Math.min(20_000, Math.max(1, slot.maxLength ?? SLOT_MAX_DEFAULT))
-    if (chosen.length > max) errors.push(`${slot.key}: 超过 ${max} 字符`)
-    if (slot.required && !chosen.trim()) errors.push(`${slot.key}: 必填插槽为空`)
-    slots.push({ key: slot.key, label: slot.label, text: chosen.slice(0, max) })
-  }
-  return {
-    role: prefab.prompt.role ?? '',
-    scenario: prefab.prompt.scenario ?? '',
-    slots,
-    slotErrors: errors,
-  }
+function roleAllows(input: AgentCapabilityInput, id: string, entry?: PrefabCapabilityRegistryEntry): boolean {
+  const { role } = input.member
+  return (role === 'lead' || !LEAD_ONLY_TOOL_NAMES.has(id)) && (entry?.roles?.includes(role) ?? true)
 }
 
 export function resolveAgentCapabilitySet(input: AgentCapabilityInput): AgentCapabilityResolution {
@@ -127,6 +107,22 @@ export function resolveAgentCapabilitySet(input: AgentCapabilityInput): AgentCap
     }
   }
 
+  const prefab = input.prefab
+  let slotValues: Record<string, string>
+  try {
+    slotValues = validateBindingSlots(prefab, input.slotValues ?? input.binding.slotValues, true)
+  }
+  catch (err) {
+    const required = err instanceof BindingSlotError && prefab.prompt.slots.some(slot => slot.key === err.slotKey && slot.required)
+    return {
+      ...empty,
+      mode: 'prefab',
+      bindingHash,
+      slotErrors: [err instanceof Error ? err.message : String(err)],
+      requiredMissing: required ? [`slot:${err.slotKey}`] : [],
+    }
+  }
+
   const active: CapabilityState[] = []
   const disabled: CapabilityState[] = []
   const missing: CapabilityState[] = []
@@ -144,6 +140,10 @@ export function resolveAgentCapabilitySet(input: AgentCapabilityInput): AgentCap
       missing.push(state(ref, 'registry 中不存在'))
       reasons[key] = 'registry 中不存在'
     }
+    else if (ref.version !== undefined && ref.version !== entry.version) {
+      missing.push(state(ref, 'registry 能力版本不匹配'))
+      reasons[key] = 'registry 能力版本不匹配'
+    }
     else if (!entry.enabled) {
       disabled.push(state(ref, '系统已停用'))
       reasons[key] = '系统已停用'
@@ -151,6 +151,10 @@ export function resolveAgentCapabilitySet(input: AgentCapabilityInput): AgentCap
     else if (entry.reviewStatus && entry.reviewStatus !== 'approved') {
       disabled.push(state(ref, `审阅状态 ${entry.reviewStatus}`))
       reasons[key] = `审阅状态 ${entry.reviewStatus}`
+    }
+    else if (TOOL_KINDS.has(ref.kind) && (!roleAllows(input, ref.id, entry) || !roleAllows(input, entry.id))) {
+      denied.push(state(ref, '成员角色不允许'))
+      reasons[key] = '成员角色不允许'
     }
     else if (TOOL_KINDS.has(ref.kind) && !channelAllows(input, ref.id)) {
       denied.push(state(ref, 'Channel 工具策略不允许'))
@@ -173,22 +177,14 @@ export function resolveAgentCapabilitySet(input: AgentCapabilityInput): AgentCap
     if (ref.required) requiredMissing.push(key)
   }
 
-  // 平台基础协作/任务面：仍受 Channel/Project 策略约束，但不占 prefab 选择名额
+  // 基础协作工具不占选择名额，但显式引用失败时不借 baseline 回退。
   for (const id of PREFAB_BASELINE_TOOL_IDS) {
-    if (!channelAllows(input, id) || !projectAllows(input, id)) continue
+    if (prefab.capabilities.some(ref => TOOL_KINDS.has(ref.kind) && (ref.id === id || input.registry[registryKey(ref.kind, ref.id)]?.id === id))) continue
+    if (!roleAllows(input, id, input.registry[registryKey('tool', id)]) || !channelAllows(input, id) || !projectAllows(input, id)) continue
     toolIds.add(id)
   }
   // 预置 Skill 才暴露激活工具；无 Skill 时不额外暴露
   if (skillIds.size === 0) toolIds.delete('activate_skill')
-
-  const slots = resolveSlots(input)
-  if (slots.slotErrors.length > 0) {
-    for (const key of input.prefab.prompt.slots) {
-      if (slots.slotErrors.some(error => error.startsWith(`${key.key}:`)) && key.required) {
-        requiredMissing.push(`slot:${key.key}`)
-      }
-    }
-  }
 
   return {
     mode: 'prefab',
@@ -201,8 +197,16 @@ export function resolveAgentCapabilitySet(input: AgentCapabilityInput): AgentCap
     denied,
     unsupported,
     reasons,
-    prompt: { role: slots.role, scenario: slots.scenario, slots: slots.slots },
-    slotErrors: slots.slotErrors,
+    prompt: {
+      role: prefab.prompt.role ?? '',
+      scenario: prefab.prompt.scenario ?? '',
+      slots: prefab.prompt.slots.map(slot => ({
+        key: slot.key,
+        label: slot.label,
+        text: Object.hasOwn(slotValues, slot.key) ? slotValues[slot.key]! : '',
+      })),
+    },
+    slotErrors: [],
     requiredMissing: [...new Set(requiredMissing)].sort(),
   }
 }

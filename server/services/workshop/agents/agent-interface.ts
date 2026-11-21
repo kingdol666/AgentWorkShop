@@ -7,7 +7,32 @@
 import type { A2AMessage, A2AArtifact, A2AError, ChannelMail, Part } from '../types/a2a'
 import type { WorkspaceTask, AgentTaskQueueView, AgentStatusView, AgentContextStats } from '../types/task'
 import type { ExecutionScope } from './execution-scope'
-import type { AgentPrefabBinding } from '../agent-prefabs/types'
+import type { AgentPrefabBinding, AgentPrefabSelector } from '../agent-prefabs/types'
+
+export interface CreateTeamMemberInput {
+  name: string
+  harness?: string
+  config?: Record<string, unknown>
+  templateId?: string
+  prefab?: AgentPrefabSelector
+  reason?: string
+}
+
+export interface UpdateTeamMemberPatch {
+  name?: string
+  config?: Record<string, unknown>
+  enabled?: number
+  /** Omit to preserve; null to detach; an explicit selector replaces the binding. */
+  prefab?: AgentPrefabSelector | null
+  reason?: string
+}
+
+/** Caller-relative team roster; no tokens, configs or prefab slot values. */
+export interface TeamMemberView extends Pick<AgentInfo, 'id' | 'name' | 'role' | 'harness' | 'enabled'> {
+  prefabBinding: Pick<AgentPrefabBinding, 'prefabId' | 'revision' | 'contentHash'> | null
+  manageable: boolean
+  protected: boolean
+}
 
 /** Agent 元信息:Channel 内成员声明(hook harness 类型与配置) */
 export interface AgentInfo {
@@ -236,22 +261,13 @@ export interface AgentWorkspace {
   recordSessionMemory?(input: { summary: string, tokensBefore?: number, tokensAfter?: number, reason?: string, sessionId?: string | null }): Promise<void>
   /** 订阅同事产出 */
   subscribe(input: { agentIds?: string[] }): Promise<void>
-  /** (lead)在本 channel 内新建团队成员(worker):按需建模板并克隆为独立实例 */
-  createTeamMember(input: {
-    name: string
-    harness?: string
-    config?: Record<string, unknown>
-    templateId?: string
-    reason?: string
-  }): Promise<AgentInfo>
-  /** (lead)更新团队成员(改名/改配置/启停;不能改 lead 自己);变更后运行时重载 */
-  updateTeamMember(agentId: string, patch: {
-    name?: string
-    config?: Record<string, unknown>
-    enabled?: number
-    reason?: string
-  }): Promise<AgentInfo>
-  /** (lead)移除团队成员(worker;不能移除自己);其未终态任务回收集成为 FAILED 待重派 */
+  /** 只读、相对于当前调用者的管理名册；旧 workspace 实现可以不提供。 */
+  listTeamMembers?(): Promise<TeamMemberView[]>
+  /** (lead)在本 channel 内新建 worker，可选绑定已发布的 prefab。 */
+  createTeamMember(input: CreateTeamMemberInput): Promise<AgentInfo>
+  /** (lead)只更新自己创建的 worker。 */
+  updateTeamMember(agentId: string, patch: UpdateTeamMemberPatch): Promise<AgentInfo>
+  /** (lead)只移除自己创建的 worker；回收未终态任务。 */
   removeTeamMember(agentId: string, reason?: string): Promise<{ recycledTasks: string[] }>
 }
 
@@ -334,8 +350,8 @@ export type SupervisionDecision
     | { kind: 'cancel', taskId: string, reason?: string }
     | { kind: 'complete', taskId: string, artifacts?: A2AArtifact[] }
     | { kind: 'notify', toAgentId: string, parts: Part[] }
-    | { kind: 'spawn_agent', name: string, harness?: string, config?: Record<string, unknown>, templateId?: string, reason?: string }
-    | { kind: 'update_agent', agentId: string, name?: string, config?: Record<string, unknown>, enabled?: boolean, reason?: string }
+    | ({ kind: 'spawn_agent' } & CreateTeamMemberInput)
+    | ({ kind: 'update_agent', agentId: string, enabled?: boolean } & Omit<UpdateTeamMemberPatch, 'enabled'>)
     | { kind: 'remove_agent', agentId: string, reason?: string }
 /** 执行模式:channel 任务提交时选择 */
 export type ExecutionMode = 'goal' | 'loop' | 'pipeline'
