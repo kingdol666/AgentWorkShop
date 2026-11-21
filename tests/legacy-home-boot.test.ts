@@ -44,5 +44,5 @@ test('legacy pre-ledger home with old chat_deliveries boots: columns backfilled 
   assert.ok(idx, 'idx_chat_deliveries_retry must exist after boot')
   // schema contract is recorded on the legacy home
   const ledger = db.prepare('SELECT MAX(version) AS v FROM aw_migration_ledger WHERE name = \'schema-contract\'').get() as { v?: number }
-  assert.equal(Number(ledger.v), 9)
+  assert.equal(Number(ledger.v), 10)
 })
