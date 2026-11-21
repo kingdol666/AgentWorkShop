@@ -17,14 +17,14 @@ process.env.AW_HOME = mkdtempSync(join(tmpdir(), 'aw-migration-contract-'))
 delete process.env.DAQ_TSDB_URL
 
 const { DatabaseSync } = await import('node:sqlite')
-const { openWorkshopDb, initWorkshopDb, SCHEMA_CONTRACT_VERSION } = await import('../server/services/workshop/db/database/open')
+const { openWorkshopDb, initWorkshopDb } = await import('../server/services/workshop/db/database/open')
 const { fingerprintMigration } = await import('../server/services/workshop/db/database/migration-ledger')
 const { migrateDropOwnerFks, migrateMissingForeignKeys } = await import('../server/services/workshop/db/database/migrations')
 const { SCHEMA_SQL } = await import('../server/services/workshop/db/database/schema')
 
 type Db = InstanceType<typeof DatabaseSync>
 
-const CONTRACT_VERSION = SCHEMA_CONTRACT_VERSION
+const CONTRACT_VERSION = 3
 
 /** 语句逐条执行(不用 exec:与生产写入走同一参数化入口)。 */
 function run(db: Db, sql: string, ...params: unknown[]): void {

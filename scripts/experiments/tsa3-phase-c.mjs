@@ -20,19 +20,17 @@ const NODE_PRESSURE = 'dw-3495bb89'
 const statePath = join(PRIVATE, 'tsa3-c-state.json')
 const state = existsSync(statePath) ? JSON.parse(readFileSync(statePath, 'utf8')) : {}
 const persist = () => writeFileSync(statePath, JSON.stringify(state, null, 1))
-const log = m => console.log(`[tsa3-c] ${m}`)
-const sleep = ms => new Promise(r => setTimeout(r, ms))
+const log = (m) => console.log(`[tsa3-c] ${m}`)
+const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const save = (name, obj) => writeFileSync(join(EV, name), JSON.stringify(obj, null, 1))
 
 async function api(method, path, body, token, timeoutMs = 60_000) {
   let r
   try {
     r = await fetch(BASE + path, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) })
-  }
-  catch (e) { return { status: 0, json: { raw: `network-error:${e.cause?.code ?? e.name}` } } }
+  } catch (e) { return { status: 0, json: { raw: `network-error:${e.cause?.code ?? e.name}` } } }
   const text = await r.text()
-  let json; try { json = JSON.parse(text) }
-  catch { json = { raw: text.slice(0, 400) } }
+  let json; try { json = JSON.parse(text) } catch { json = { raw: text.slice(0, 400) } }
   return { status: r.status, json }
 }
 
@@ -41,7 +39,7 @@ async function sendWork(text) {
   writeFileSync(bodyPath, JSON.stringify({ toAgentId: LEAD, text, priority: 'immediate', requireReply: true }))
   const r = await fetch(`${BASE}/api/workshop/channels/${CH}/messages`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${TOKEN}` },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${TOKEN}` },
     body: readFileSync(bodyPath),
     signal: AbortSignal.timeout(60_000),
   })
@@ -104,8 +102,7 @@ if (!state.c2) {
   let sentAt
   if (existsSync(join(EV, 'c2-sent.json'))) {
     sentAt = Date.parse(JSON.parse(readFileSync(join(EV, 'c2-sent.json'), 'utf8')).sentAt)
-  }
-  else {
+  } else {
     const sent = await sendWork('【闭环调参 R1】基于刚才巡检结论执行一次受控调参:把「保压压力SP」在当前值基础上 +1MPa(步限内),走配方审批提交方案(依据写本轮实测),等我批准;获批后回报审批单号、下发与设备回读值。只允许这一个参数这一步。')
     sentAt = Date.now()
     save('c2-sent.json', { status: sent.status, sentAt: new Date(sentAt).toISOString() })

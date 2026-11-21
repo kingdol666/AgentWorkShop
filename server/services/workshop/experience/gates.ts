@@ -131,11 +131,6 @@ export interface PairedBenchResult {
   primaryDelta: number
   /** 相对基线的成本变化（正=更贵） */
   costDelta: number
-  /**
-   * 证据来源(Task 5/C1):只有宿主执行并留原始证据的评测(host)可作为 active 发布证据;
-   * 客户端自报台账(client/缺省)只读展示,不得支撑晋升。
-   */
-  hostProvenance?: 'host' | 'client'
 }
 
 /**
@@ -158,20 +153,15 @@ export function evaluateProfileGate(
   if (target === 'active') {
     if (status !== 'shadow') return { allowed: false, reasons: [`仅 shadow 可晋级 active（当前 ${status}）`] }
     if (!bench) return { allowed: false, reasons: ['缺少配对评测结果（WP-B2），不得晋级'] }
-    if (bench.hostProvenance !== 'host') {
-      return { allowed: false, reasons: ['BENCH_NOT_HOST_PROVENANCED: 客户端自报评测只读展示,不得作为 active 晋级证据'] }
-    }
     const pValue = bench.pValue
-    // 宿主来源运行未做显著性检验时 pValue=null:按预注册非劣界判定(不消费编造的显著性数字)
-    const hasSignificance = pValue !== null
-    if (hasSignificance && (typeof pValue !== 'number' || !Number.isFinite(pValue) || pValue < 0 || pValue > 1)) {
-      return { allowed: false, reasons: ['配对评测 pValue 无效：必须是有限且位于 [0,1] 的数值或 null'] }
+    if (typeof pValue !== 'number' || !Number.isFinite(pValue) || pValue < 0 || pValue > 1) {
+      return { allowed: false, reasons: ['配对评测 pValue 无效：必须是有限且位于 [0,1] 的数值'] }
     }
-    const significant = hasSignificance && pValue! < PROFILE_GATE.significanceP && bench.primaryDelta > 0
+    const significant = pValue < PROFILE_GATE.significanceP && bench.primaryDelta > 0
     const nonInferior = bench.primaryDelta >= 0 && bench.costDelta <= PROFILE_GATE.maxCostDelta
     if (significant) return { allowed: true, next: 'active', reasons: [`配对显著改善 p=${pValue}`] }
     if (nonInferior) return { allowed: true, next: 'active', reasons: ['无回归且成本非劣'] }
-    return { allowed: false, reasons: [`配对未通过：p=${pValue ?? 'null(未检验)'} Δ主终点=${bench.primaryDelta} Δ成本=${bench.costDelta}`] }
+    return { allowed: false, reasons: [`配对未通过：p=${pValue} Δ主终点=${bench.primaryDelta} Δ成本=${bench.costDelta}`] }
   }
   // superseded
   if (status === 'superseded') return { allowed: false, reasons: ['已 superseded'] }

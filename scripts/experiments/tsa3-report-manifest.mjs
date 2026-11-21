@@ -12,8 +12,8 @@ const { buildBaselineManifest } = await import('file:///D:/tmp/aw-governed-learn
 
 const REPO = process.cwd()
 const EV = join(REPO, 'docs', 'audit', 'evidence', '2026-11-20-governed-acceptance-round')
-const read = f => JSON.parse(readFileSync(join(EV, f), 'utf8'))
-const has = f => existsSync(join(EV, f))
+const read = (f) => JSON.parse(readFileSync(join(EV, f), 'utf8'))
+const has = (f) => existsSync(join(EV, f))
 const HEAD = 'cf9dfab35684b53f1af43b54f924d2c183387bb0'
 
 // ---------- evidence digests for the manifest ----------

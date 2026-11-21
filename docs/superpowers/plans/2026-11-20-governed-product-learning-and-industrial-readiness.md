@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
-> **状态：PR-A 证据基线；功能实现未验收。** 本计划的独立专家评审基于远端 `main` 的洁净检出 `cf9dfab35684b53f1af43b54f924d2c183387bb0`。本批只整理可共享的证据和增加离线基线工具，不改生产运行行为。第 6 节规定各批的未关闭阻断、分 PR 门禁及最终主干审计。历史实测不是对此 SHA 的重验。本文件不是变更单、现场作业票或产品安全结论。
+> **状态：计划文档，尚未实施。** 当前交付仅更新 Markdown；下述执行、提交、合并、部署及现场操作各以对应授权为准。第 6 节规定实施前复审、分 PR 门禁和合并后主干审计；独立评审未返回完整结论的场次不计通过。源码阅读基线是工作区 `HEAD cf9dfab3`，开始每批前须在远端 `main` 上重新锚定；历史实测不视为对该 HEAD 的重验。本文件不是变更单、现场作业票或产品安全结论。
 
 **Goal:** 让 AgentWorkShop 稳定完成产品设计与受治理的产线作业，使后续任务能主动获取或自动使用适用、可追溯、可撤回的经验，并验证使用经验是否改善实际交付。
 
@@ -42,10 +42,10 @@
 
 | 能力 | 证据支持 | 不能据此宣布 |
 |---|---|---|
-| 产线集成与数采数控 | [11-15 闭环与割接](../../audit/2026-11-15-doc-to-simulated-plc-closed-loop-acceptance.md) 记录闭环 8/8、割接 12/12。[脱敏索引](../../audit/governed-learning-evidence-index.md) L01–L02 对应 11-19 三端轮独立回读与 journal；L06 对应另一轮的回读和治理负例。 | 这些设备是带归属证明的影子孪生；真实模型调用、网络协议和工具回合不等于物理 PLC/HIL。读回相等不等于克重进目标带或长期优化收益。S7 当前显式未实现，MQTT broker ACK 不等于设备证实。 |
-| Channel / Project | 三端轮（索引 L03）一条 Project 第一次失败、第二次完成，经 L1/L2；另一次集成轮（L06）记录了派工、跨频道消息与 handoff 门；落地页设计简报和文案落盘。 | 后一轮产线 Project 尾项及落地页 HTML 实现未收口；设计稿不等于可运行交付，消息送达不等于已采用。 |
-| RSI 与产品知识 | [11-16 记忆工具](../../audit/2026-11-16-line-integration-memory-tools-acceptance.md) 支持线索自动注入、主动检索和跨频道用例。11-19 三端轮候选、单样本拒绝、合并、人审、Agent 401 有历史记录，模型召回未完成。集成轮班中回报（索引 L07）记录了主动检索命中，包含共享 semantic 与 line experience。 | 不能只凭回报里的 dedupKey 字符串把 semantic 写入定为治理后的 line 经验。不能将 API 命中或人审 `validated` 当作同产品新任务获益、持续自动学习或可扩散到别的产品。 |
-| IDD/RAG/AML | 选定矩阵 16/16 与 761 个真实模型回合有历史记录（索引 L04–L05）；IDD 一次 quick-screen 完成入库，RAG 文档面可用。历史 AML 训练网格过稀，质量门按设计拒绝。 | 不是完整故障矩阵、外部服务 SLA、真实 MES、全量前端或物理安全验收。`kb_agent` 内部链和 IDD 长窗要单独验收。 |
+| 产线集成与数采数控 | [11-15 闭环与割接](../../audit/2026-11-15-doc-to-simulated-plc-closed-loop-acceptance.md) 记录闭环 8/8、割接 12/12。11-19 三端轮有 [独立回读 53=53](../../audit/evidence/2026-11-19-three-system-acceptance/phase-c-c2-readback.json) 与 [journal 关联](../../audit/evidence/2026-11-19-three-system-acceptance/phase-c-c2-journal.json)；[另一轮](../../audit/evidence/2026-11-19-integrated-live-round/REPORT.md) 又观察到 55=55、4=4 和越界/跨用户拒绝。 | 这些设备是带归属证明的影子孪生；真实模型调用、网络协议和工具回合不等于物理 PLC/HIL。读回相等不等于克重进目标带或长期优化收益。S7 当前显式未实现，MQTT broker ACK 不等于设备证实。 |
+| Channel / Project | [三端轮](../../audit/evidence/2026-11-19-three-system-acceptance/REPORT.md) 一条 Project 第一次失败、第二次完成，经 L1/L2；另一次集成轮验证了派工、跨频道消息与 handoff 门；落地页设计简报和文案落盘。 | 后一轮产线 Project 尾项及落地页 HTML 实现未收口；设计稿不等于可运行交付，消息送达不等于已采用。 |
+| RSI 与产品知识 | [11-16 记忆工具](../../audit/2026-11-16-line-integration-memory-tools-acceptance.md) 支持线索自动注入、主动检索和跨频道用例。11-19 三端轮候选、单样本拒绝、合并、人审、Agent 401 均实测，模型召回未完成。另一次集成轮 [班中回报](../../audit/evidence/2026-11-19-integrated-live-round/phase-c2-c5-reply.json) 记录了主动检索命中，包含共享 semantic 与 line experience。 | 不能只凭回报里的 dedupKey 字符串把 semantic 写入定为治理后的 line 经验。不能将 API 命中或人审 `validated` 当作同产品新任务获益、持续自动学习或可扩散到别的产品。 |
+| IDD/RAG/AML | [选定矩阵 16/16](../../audit/evidence/2026-11-19-three-system-acceptance/final-verification.json) 和 [761 个真实模型回合](../../audit/evidence/2026-11-19-three-system-acceptance/model-provenance.json) 有盘上来源；IDD 一次 quick-screen 完成入库，RAG 文档面可用。本轮 AML 训练网格过稀，质量门按设计拒绝。 | 不是完整故障矩阵、外部服务 SLA、真实 MES、全量前端或物理安全验收。`kb_agent` 内部链和 IDD 长窗要单独验收。 |
 
 ### 1.2 当前前后端的真实路径
 
@@ -63,16 +63,16 @@ P0 指**阻断相关功能放量**，并不表示已经发生生产事故。按�
 | 级别 / 类型 | 根因与证据 | 影响与处置 |
 |---|---|---|
 | P0 · 源码确认，未证实生产改写 | [`memory.repo.ts:178–197`](../../../server/services/workshop/db/memory.repo.ts#L178) 同键更新保留 `validated/retired` 与旧证据，仍替换正文、scope、结论等字段；普通与经验 upsert 共用键空间。 | 已审标签可能随旧证据留在新主张上；Task 2。 |
-| P0 · 历史触发记录 + 源码确认 | 取证索引 L08–L09 记载：R1/R2 候选分别为保压压力和保压时间，却以同一基行合并两任务。 [`promote.ts:43–105`](../../../server/services/workshop/experience/promote.ts#L43) 未检查产品、变量或极性相容；[`gates.ts:75–123`](../../../server/services/workshop/experience/gates.ts#L75) 计不同 task ID，不验证独立数据来源。 | 历史通过是治理入口记录，不是同一假设的复验；Task 3。 |
+| P0 · 实际触发 + 源码确认 | [R1/R2 候选](../../audit/evidence/2026-11-19-integrated-live-round/phase-c2-c4-candidates.json) 分别为保压压力和保压时间，[合并返回](../../audit/evidence/2026-11-19-integrated-live-round/phase-c2-c4-merge.json) 却以同一基行合并两任务。 [`promote.ts:43–105`](../../../server/services/workshop/experience/promote.ts#L43) 未检查产品、变量或极性相容；[`gates.ts:75–123`](../../../server/services/workshop/experience/gates.ts#L75) 计不同 task ID，不验证独立数据来源。 | 当前通过实例是治理入口实证，不是同一假设的复验；Task 3。 |
 | P0 · 源码确认，未观察到生产泄漏 | [`reflect-collector.ts:77–123`](../../../server/services/workshop/runtime/memory/reflect-collector.ts#L77) 任务事实只解析 line，未绑定产品/配方版本/批次和已使用经验。 [`reflector.ts:123–181`](../../../server/services/workshop/runtime/memory/reflector.ts#L123) 频道反思可以 `active`，包含 `[anecdotal]` 内容；[`state.ts:36–63`](../../../server/services/workshop/runtime/memory/state.ts#L36) 自动召回没有排除这类 active 条目；L0、Profile 和 advisory 有独立装配。 | 未验证内容有资格进入提示，且无法事后准确回答“回合用了哪版经验”；Tasks 3–4。 |
 | P1 · 源码确认，近期漏记未证实 | 反射失败不阻塞主线，但现有经验反射没有覆盖三类来源的持久 outbox；[`reflector.ts:285–334`](../../../server/services/workshop/runtime/memory/reflector.ts#L285)。[`bench-run.ts:1–13`](../../../server/services/workshop/experience/bench-run.ts#L1) 仍信任客户端逐样本来源，复算不能证明宿主真实跑过。 | 崩溃可能漏学，评测不能作为自动生产授权；Tasks 5–7。 |
-| P0 · 历史运行中断记录；精确外部归因待证实 | 索引 L06 记录慢回合、硬超时、RPC ready 超时、`PROCESS_EXIT` 重建及隔离 AW 停止监听；L10 记录 900000 ms root/supervise 配置。串行和重复尝试放大故障，缺可观测且有界的降级策略。 | 不能仅凭报错证明 USTC 整体停机或 AW 退出的因果，也不把报告中约 70% 估算当测量；Task 10 拆分提供方/RPC/进程/预算/排队。 |
+| P0 · 运行中断实测；精确外部归因待证实 | [独立集成轮](../../audit/evidence/2026-11-19-integrated-live-round/REPORT.md) 记录慢回合、硬超时、RPC ready 超时、`PROCESS_EXIT` 重建及隔离 AW 停止监听；[配置证据](../../audit/evidence/2026-11-19-integrated-live-round/phase-s-settings-patch.json) 支持 900000 ms root/supervise 窗。串行和重复尝试放大故障，缺可观测且有界的降级策略。 | 不能仅凭报错证明 USTC 整体停机或 AW 退出的因果，也不把报告中约 70% 估算当测量；Task 10 拆分提供方/RPC/进程/预算/排队。 |
 | P1 · 重复、待批不可见均实测 | 当前 [`createWorkItem`](../../../server/services/workshop/projects/service.ts#L735) 缺待批计划冲突检查，观测投影不能对齐 pending 卡。现行源码[在批准事务调用物化](../../../server/services/workshop/projects/service.ts#L2487)。 | 历史约 15 分钟是提案到观测物化的区间，不等于物化事务耗时；保留现有事务，补互斥和时间戳；Task 9。 |
 | P0（现场前） · 源码确认，未观察到越权写 | [`tool-approvals.ts:438–449`](../../../server/services/workshop/agents/tool-approvals.ts#L438) 以 task/代次/lease 关联进程内审批；[`hitl-request.repo.ts:17–22`](../../../server/services/workshop/db/hitl-request.repo.ts#L17) 持久行没有这些关联。启动对账可以关闭旧等待，不足以还原旧请求所属 attempt 和可能的设备效果。 | 保持重启 fail-closed，增加关联和明确对账理由，不尝试“恢复旧批准”；Task 8。 |
 | P1 · 运行复现，责任分层 | [IDD/RAG 契约轮](../../audit/evidence/2026-11-18-idd-rag-plugin-v1-contract/REPORT.md) 有 2312 行长窗 30–40 分钟未达终态；RAG 文档绿但内部 Agent 超时。DAQ 有界缓冲可丢项，网格不足已在三端轮触发门拒。 | 不能靠增加 timeout 或只看 health 200；分别跟踪外部终态和平台证据质量；Task 11。 |
 | P1 · 设计缺口 / 源码确认 | [`ontology-learning.ts:94–141`](../../../server/services/workshop/aml/ontology-learning.ts#L94) 已发布图无匹配边返回 `false`，未声明不等于已否证；[`model-backed-provider.ts:290–325`](../../../server/services/workshop/aml/twin/model-backed-provider.ts#L290) 建议模式下部分缺测项为 `passed:true` 加文字说明。 | 不能外推为物理验证；本体“缺边”“否证”及模型“缺测”“已验证”须结构化区分；Task 12。 |
 
-**非现存缺陷的证据：** 首捕错把派工当最终回报、查团队记忆而非 lead 私有经验、journal 形状解析误判均是取证脚本问题，不是存储丢数据。历史配置更新误回收活跃 runtime、看门狗误终止有[修复记录](../../audit/2026-11-15-gap-closure-final-acceptance.md)和[复测](../../audit/2026-11-16-round2-fixes-full-acceptance.md)，只保留回归，不冒充本轮新缺陷。其他未覆盖面参见脱敏证据索引 L11；L01–L11 均为 `historical-local / unavailable`，新克隆不能以此复跑或填补验收证据。
+**非现存缺陷的证据：** 首捕错把派工当最终回报、查团队记忆而非 lead 私有经验、journal 形状解析误判均是取证脚本问题，不是存储丢数据。历史配置更新误回收活跃 runtime、看门狗误终止有[修复记录](../../audit/2026-11-15-gap-closure-final-acceptance.md)和[复测](../../audit/2026-11-16-round2-fixes-full-acceptance.md)，只保留回归，不冒充本轮新缺陷。其他未覆盖面参见[完整度报告](../../audit/2026-11-19-system-completeness-final-report.md)。
 
 ## 2. 文件结构、契约与发布顺序
 
@@ -96,7 +96,7 @@ P0 指**阻断相关功能放量**，并不表示已经发生生产事故。按�
 
 **Files:** Create `scripts/_audit/governed-learning-evidence.mjs`、`tests/governed-learning-evidence-baseline.test.ts`、`docs/audit/governed-learning-baseline-schema.md`。现有报告和 JSON 仅读。
 
-**Interfaces:** Consumes 两个独立历史验收 run 的脱敏索引及环境声明，缺原件不得补作新证据。Produces `buildBaselineManifest(input: BaselineInput): BaselineManifest`（`revision`, `runId`, `environment`, `modelProvenance`, `captureOrigin`, `checks`, `missing`, `captureHashes`, 四类 `denominators`）及 `classifyEvidenceCheck(input: CheckInput): CheckStatus`（`scripts/_audit/governed-learning-evidence.mjs`，由 Task 13 复用）。`CheckInput` 包含 `execution: 'not_started' | 'incomplete' | 'terminal'`、`blockedReason?: string`、`passed?: boolean`；`CheckStatus = 'PASS' | 'FAIL' | 'PARTIAL' | 'BLOCKED' | 'NOT_RUN'`。明确阻断原因优先判 `BLOCKED`；否则未执行为 `NOT_RUN`，未完为 `PARTIAL`，终态按真实判据判 `PASS/FAIL`；判据不合法为 `BLOCKED`。详见[基线契约](../../audit/governed-learning-baseline-schema.md)。
+**Interfaces:** Consumes 两个独立验收 run 和各自环境声明。Produces `BaselineManifest`（`revision`, `runId`, `environment`, `modelProvenance`, `checks`, `missing`, `captureHashes`）及 `classifyEvidenceCheck(input: CheckInput): CheckStatus`（`scripts/_audit/governed-learning-evidence.mjs`，由 Task 13 复用）。`CheckInput` 包含 `execution: 'not_started' | 'incomplete' | 'terminal'`、`blockedReason?: string`、`passed?: boolean`；`CheckStatus = 'PASS' | 'FAIL' | 'PARTIAL' | 'BLOCKED' | 'NOT_RUN'`。独立检查有明确阻断原因优先判 `BLOCKED`；否则未执行为 `NOT_RUN`，未完为 `PARTIAL`，终态按真实判据判 `PASS/FAIL`；缺判据不得通过。
 
 - [ ] **Step 1: 写失败测试。** `missing_or_unfinished_is_not_pass`：`assert.equal(classifyEvidenceCheck(nonTerminalWith16SelectedChecks), 'PARTIAL')`；`assert.equal(classifyEvidenceCheck(physicalNotRun), 'NOT_RUN')`。
 - [ ] **Step 2: 确认红灯。** Run `pnpm exec tsx --tsconfig .nuxt/tsconfig.server.json --test tests/governed-learning-evidence-baseline.test.ts`；预期缺少分类契约或上述断言失败。
@@ -218,7 +218,7 @@ P0 指**阻断相关功能放量**，并不表示已经发生生产事故。按�
 
 **Interfaces:** Consumes Task 10 依赖状态约定及现有 202/status/stop。Produces `BatchQuality`（`expectedCount`, `validCount`, `droppedCount`, `gapWindows`, `state`）与 `ExternalJobOutcome`（`accepted | running | completed | overdue | failed | stopped | unknown`；产物、索引与只读降级另列）。
 
-- [ ] **Step 1: 写失败测试。** `critical_sample_gap_blocks_use`：`assert.equal(gap.eligibleForControlEvidence, false)`、`assert.equal(gap.eligibleForTraining, false)`；`external_terminal_and_artifact_validity_are_separate`：受理未终态不为 `completed`；上游明确终态但缺工件时 `assert.equal(missingArtifact.outcome, 'completed')`、`assert.equal(missingArtifact.artifactStatus, 'missing')`、`assert.equal(missingArtifact.acceptanceEligible, false)`；`assert.equal(kbAgentTimeout.documentFallbackMode, 'readonly')`。
+- [ ] **Step 1: 写失败测试。** `critical_sample_gap_blocks_use`：`assert.equal(gap.eligibleForControlEvidence, false)`、`assert.equal(gap.eligibleForTraining, false)`；`accepted_or_missing_artifact_is_not_completed`：`assert.notEqual(missingArtifact.outcome, 'completed')`、`assert.equal(kbAgentTimeout.documentFallbackMode, 'readonly')`。
 - [ ] **Step 2: 确认红灯。** Run `pnpm exec tsx --tsconfig .nuxt/tsconfig.server.json --test tests/daq-batch-evidence-quality.test.ts tests/workshop-external-job-terminal.test.ts`；预期缺批次质量或外部产物/终态口径。
 - [ ] **Step 3: 接入质量及结果投影。** 每批记录 drop、陈旧、断点、降级、后端来源；实时 UI 可降采样但证据流显式保留缺口，阻断受缺口影响的训练/判读。以插件能力协商记录 IDD 短/长窗、超预算、报告缺失及沉库校验；长诊断引擎改动由外部负责人负责。RAG 文档检索与 `kb_agent` 分别统计时延、鉴权与终态，只在授权只读情境降级到文档检索，不把它记成 agent 入库完成。
 - [ ] **Step 4: 确认绿灯。** Run `pnpm exec tsx --tsconfig .nuxt/tsconfig.server.json --test tests/daq-batch-evidence-quality.test.ts tests/workshop-external-job-terminal.test.ts tests/daq-runtime-tsdb-recovery.test.ts`；预期队列满、掉线恢复、外部 401/超时/缺产物均不变成控制证据或假成功；实际外部稳定性另由 Task 13 复测。
@@ -315,7 +315,7 @@ P0 指**阻断相关功能放量**，并不表示已经发生生产事故。按�
 
 ### 6.2 实施前专家准入
 
-**本次冻结复审：** [三路准入记录](../../audit/governed-learning-expert-admission.md) 钉住评审人与原始计划 SHA-256，逐项列出源码、失败情形、修订约束和回归门。三路均只放行 PR-A（计划、脱敏索引及离线 Task 1）。PR-B–E 按各自阻断关闭后再评定准入；其中未知写结果不得重发、旧评测不得支撑晋升、授权失效不得再注入，均不得以拆 PR 为由暂缓防护。该处置表是本计划的验收补充，批次正文与表冲突时按更严格约束执行。历史原件不构成可复现证据；可用性和脱敏摘要参见[基线契约](../../audit/governed-learning-baseline-schema.md)。
+本轮三路只读复核的发现已纳入计划：开发规范组指出 CI 快测不等于构建/文档/运行验收，已在 §6.1、§6.3、§6.4 分层；技术依赖组指出旧经验迁移发布顺序、可信字段来源和 RSI adapter 读取边界未钉死，已补到 Tasks 2–4；验收组指出迁移 PR 原子性、模拟环境拒绝条件和最终主干来源不足，已补到 Task 13、Task 15 与 §6.3–6.4。以上是计划修订，不是实现复核通过，也不是迁移、测试、远端分支保护或现场验收结论。
 
 - [ ] **冻结可复核输入。** 在新检出的远端基线记下 SHA、计划版本以及每个证据的路径、来源环境、哈希与可获取状态。本地未跟踪的近期报告与运行材料不假定远端可见；首个文档 PR 只提交审阅过的脱敏证据索引或经批准的最小摘录，保留原始记录的受权获取方式。不可共享、未来新克隆无法取得的材料标 `historical-local / unavailable`，不得用来满足可复现必验项；不将全量本地证据作为依赖打包。
 - [ ] **独立复审。** 以同一份固定计划和基线开展三路审阅：① 架构/迁移与规范；② Spec/经验授权、证据治理与控制边界；③ 运行恢复、统计/验收与可追溯性。每路交付 `reviewer / baselineSha / planRevision / findings / disposition`，每条发现附文件与失败场景、改法及可验证的回归项。审查中断、未完成或缺结论记 `PENDING`，不得当作同意；已有报告遗漏的视角再补审，不需要重复已具证的结论。
@@ -347,4 +347,4 @@ P0 指**阻断相关功能放量**，并不表示已经发生生产事故。按�
 3. **执行隔离系统验收。** 只运行该 SHA 的构建；使用独立 `AW_MODE=home`、全新 `AW_HOME`、独占端口和安全注入的临时会话密钥；模拟器验归属后才运行 Job。运行 Task 13 业务、浏览器和恢复矩阵，覆盖权限/只读边界、协调、产品隔离及撤权、Project 重启去重、外部诊断和检索、DAQ 失联恢复与不确定结果，另在副本演练迁移备份/恢复。禁用共享或生产设备和凭据；没有真实模型额度、外部服务或浏览器时分别 `BLOCKED/NOT_RUN`，模拟结果不得填这些格。
 4. **独立安全与结论复核。** 对固定 SHA 做经批准的防御性代码审查与覆盖核对；Mimosa 记录结论、覆盖、封印、未完成项，不把单有封印或 `inconclusive` 写成安全通过。附验收矩阵、原始证据引用、变更范围、回滚检查和未覆盖项；软件门、外部依赖、真实收益、物理准入分开出 verdict。所需检查未运行、未留证或失败则不给该层 PASS；修复必须新 PR 并重新锚定 `main`，不能沿用旧报告。
 
-**文档边界：** 本文及 PR-A 不授权部署、自动晋升、现场或物理 HIL 操作。后续执行记录与结论按逐批门禁和最终主干审计填写。
+**文档终止点：** 本轮只写、复审和校验此计划，不执行任何 Task、不运行项目测试、不启动或停止实例、不连接现场、不提交/推送/合并。后续执行的权限和专项准入不由本文本产生。

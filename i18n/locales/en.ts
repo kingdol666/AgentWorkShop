@@ -2425,12 +2425,6 @@ export default {
     k1dpj734016: 'Title/content/member identity are required',
     k3n5bat017: 'Written',
     k1bb5i1l018: 'Write failed',
-    k9gov190002: 'View version projection',
-    k9gov190003: 'Version',
-    k9gov190004: 'Lifecycle',
-    k9gov190005: 'Deployment',
-    k9gov190006: 'Audit actions',
-    k9gov190007: 'No version (ungoverned)',
   },
   mentionHoverCard: {
     k1t89ag4001: 'Click a mention to open execution details',

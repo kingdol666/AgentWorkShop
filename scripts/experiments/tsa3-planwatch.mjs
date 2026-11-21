@@ -9,14 +9,13 @@ mkdirSync(EV, { recursive: true })
 const BASE = 'http://127.0.0.1:3021'
 const TOKEN = process.env.AW_TOKEN
 const PROJECTS = ['87407519-2508-4f40-82a6-e729fc6ce9c0', '26389929-f571-4670-b235-d04445764e60']
-const sleep = ms => new Promise(r => setTimeout(r, ms))
+const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const save = (name, obj) => writeFileSync(join(EV, name), JSON.stringify(obj, null, 1))
 
 async function api(method, path, body, timeoutMs = 30_000) {
-  const r = await fetch(BASE + path, { method, headers: { 'content-type': 'application/json', 'authorization': `Bearer ${TOKEN}` }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) })
+  const r = await fetch(BASE + path, { method, headers: { 'content-type': 'application/json', authorization: `Bearer ${TOKEN}` }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) })
   const text = await r.text()
-  let json; try { json = JSON.parse(text) }
-  catch { json = { raw: text.slice(0, 300) } }
+  let json; try { json = JSON.parse(text) } catch { json = { raw: text.slice(0, 300) } }
   return { status: r.status, json }
 }
 

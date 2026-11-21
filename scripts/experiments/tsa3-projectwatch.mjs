@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs'
 
 const BASE = 'http://127.0.0.1:3021'
 const TOKEN = process.env.AW_TOKEN
-const sleep = ms => new Promise(r => setTimeout(r, ms))
+const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const save = (name, obj) => writeFileSync(`D:/tmp/aw-liv3-1120/${name}`, JSON.stringify(obj, null, 1))
 
 async function items(pid) {
@@ -15,7 +15,7 @@ async function items(pid) {
 
 const G4 = '87407519-2508-4f40-82a6-e729fc6ce9c0'
 const G5 = '26389929-f571-4670-b235-d04445764e60'
-const terminal = s => ['COMPLETED', 'FAILED', 'CANCELED', 'REJECTED'].includes(String(s).toUpperCase())
+const terminal = (s) => ['COMPLETED', 'FAILED', 'CANCELED', 'REJECTED'].includes(String(s).toUpperCase())
 
 const t0 = Date.now()
 let last = ''

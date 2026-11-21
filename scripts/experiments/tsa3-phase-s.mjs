@@ -12,19 +12,17 @@ const IDD = 'http://127.0.0.1:3210'
 const RAG_BACKEND = 'http://127.0.0.1:8770'
 const RAG_WEB = 'http://127.0.0.1:6789'
 const BRIDGE_TOOLS = ['kb_doc_create', 'kb_doc_search', 'kb_doc_read', 'kb_catalog', 'kb_agent', 'kb_agent_status', 'diag_run', 'diag_status', 'diag_chat', 'diag_stop', 'diag_deposit', 'diag_results', 'diag_result_get', 'diag_result_annotate']
-const log = m => console.log(`[tsa3-s] ${m}`)
-const sleep = ms => new Promise(r => setTimeout(r, ms))
+const log = (m) => console.log(`[tsa3-s] ${m}`)
+const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const save = (name, obj) => writeFileSync(join(EV, name), JSON.stringify(obj, null, 1))
 
 async function api(base, method, path, body, token, timeoutMs = 30_000) {
   let r
   try {
     r = await fetch(base + path, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) })
-  }
-  catch (e) { return { status: 0, json: { raw: `network-error:${e.cause?.code ?? e.name}` } } }
+  } catch (e) { return { status: 0, json: { raw: `network-error:${e.cause?.code ?? e.name}` } } }
   const text = await r.text()
-  let json; try { json = JSON.parse(text) }
-  catch { json = { raw: text.slice(0, 400) } }
+  let json; try { json = JSON.parse(text) } catch { json = { raw: text.slice(0, 400) } }
   return { status: r.status, json }
 }
 

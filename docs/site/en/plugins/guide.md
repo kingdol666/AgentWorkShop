@@ -9,7 +9,7 @@
 >
 > Applies to: plugin system v2 has been available since **v0.7.29** (frontend component
 > injection / plugin settings / plugin i18n / runtime services surface); this document
-> describes **v0.14.0**. `ctx.sdkVersion` is currently `0.3.0`.
+> describes **v0.13.0**. `ctx.sdkVersion` is currently `0.3.0`.
 
 ## 1. Folder layout & quick start
 
@@ -488,7 +488,7 @@ ctx.route('POST', '/threshold', (event) => {
 
 Tools registered with `ctx.omp.registerTool(def)` are exposed to harnesses subject to role, channel and invocation-path filters. Omp receives definitions over RPC `set_host_tools`; other engines can obtain a list through the agent-token MCP bridge; mock can use an authorized user REST invoke. Registry changes are re-pushed to running sessions.
 
-Compatibility boundary (v0.14.0; not a stability guarantee): an agent token identifies the agent, not a trusted turn. The bridge filters and rejects plugin tools unless they explicitly declare `riskClass: 'read'`; omitted, `write` and `admin` classifications are denied. Declare `read` only for genuinely read-only tools, not to bypass the restriction. Role, channel and other governance checks still apply. Native omp calls and user-authenticated REST calls have their own checks and do not necessarily expose the same tool surface as the agent-token bridge.
+Compatibility boundary (v0.13.0; not a stability guarantee): an agent token identifies the agent, not a trusted turn. The bridge filters and rejects plugin tools unless they explicitly declare `riskClass: 'read'`; omitted, `write` and `admin` classifications are denied. Declare `read` only for genuinely read-only tools, not to bypass the restriction. Role, channel and other governance checks still apply. Native omp calls and user-authenticated REST calls have their own checks and do not necessarily expose the same tool surface as the agent-token bridge.
 
 ```js
 ctx.omp.registerTool({

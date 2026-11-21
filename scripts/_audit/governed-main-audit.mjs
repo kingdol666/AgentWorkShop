@@ -2,9 +2,9 @@
 /**
  * 合并后主干审计检查器(Task 15)。
  *
- * 只做证据完整性判定,不产出「主干通过」结论:调用方必须提供本次运行的真实检查结果
- * (绑定同一 SHA 的命令/退出码/证据摘要)。缺项、重复、版本漂移、合并提交不可达、
- * 脏检出或证据摘要缺失都不得判 PASS。
+ * 只做证据完整性判定,不产出"主干通过"结论:必须由调用方提供本次运行的真实
+ * 检查结果(绑定同一 SHA 的命令/退出码/证据摘要),缺项、重复、版本漂移、
+ * 非祖先合并提交、脏检出或证据摘要缺失都不得判 PASS。
  */
 export const REQUIRED_MAIN_AUDIT_CHECKS = Object.freeze([
   'typecheck',
@@ -53,8 +53,6 @@ export function checkMainAudit(input) {
   for (const id of seen) {
     if (!REQUIRED_MAIN_AUDIT_CHECKS.includes(id)) blockingChecks.push({ id, reason: 'UNEXPECTED_CHECK_ID' })
   }
-  const status = blockingChecks.length === 0
-    ? 'PASS'
-    : blockingChecks.some(b => b.reason === 'REQUIRED_CHECK_MISSING' || b.reason.startsWith('CHECK_')) ? 'FAIL' : 'BLOCKED'
+  const status = blockingChecks.length === 0 ? 'PASS' : blockingChecks.some(b => b.reason === 'REQUIRED_CHECK_MISSING' || b.reason.startsWith('CHECK_')) ? 'FAIL' : 'BLOCKED'
   return { status, blockingChecks }
 }

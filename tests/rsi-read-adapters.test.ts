@@ -56,7 +56,7 @@ test('memory and experience adapters preserve source metadata while projecting r
   }
   assert.equal(reads, 1)
 
-  const experienceAdapter = createExperienceReadAdapter({ reader: () => source('memory', { ...memory, kind: 'experience', status: 'validated' as const }) })
+  const experienceAdapter = createExperienceReadAdapter({ reader: () => source('memory', { ...memory, kind: 'experience' }) })
   const experience = await experienceAdapter.read({ scope: scopeA })
   assert.equal(experience.ok, true)
   if (experience.ok) assert.equal(experience.records[0]?.payload.kind, 'experience')

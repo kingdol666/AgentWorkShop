@@ -12,14 +12,13 @@ const NEW_CH = '4bbf5d97-b677-499f-abaf-9698ac76a234'
 const NEW_LEAD = 'ec2758d0-53cc-41ff-8a98-e64a812dfa75'
 const OLD_CH = '830b81f3-5359-463d-b998-4ac99f360ca2'
 const OLD_LEAD = '9e77484b-2eb4-4eac-b854-331b28de9a44'
-const sleep = ms => new Promise(r => setTimeout(r, ms))
+const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const save = (name, obj) => writeFileSync(join(EV, name), JSON.stringify(obj, null, 1))
 
 async function api(method, path, body, timeoutMs = 240_000) {
-  const r = await fetch(BASE + path, { method, headers: { 'content-type': 'application/json', 'authorization': `Bearer ${TOKEN}` }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) })
+  const r = await fetch(BASE + path, { method, headers: { 'content-type': 'application/json', authorization: `Bearer ${TOKEN}` }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) })
   const text = await r.text()
-  let json; try { json = JSON.parse(text) }
-  catch { json = { raw: text.slice(0, 300) } }
+  let json; try { json = JSON.parse(text) } catch { json = { raw: text.slice(0, 300) } }
   return { status: r.status, json }
 }
 

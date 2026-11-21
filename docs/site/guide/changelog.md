@@ -1,20 +1,5 @@
-## v0.14.0 — 受治理产品经验：不可变版本、统一解析器、围栏写入（2026-11-20）
+## 兼容性边界（v0.13.0）
 
-- **不可变经验版本**：`experience_versions` 只插不改（内容/证据快照哈希）、CAS 指针（`EXPERIENCE_VERSION_CONFLICT`）；事务化幂等回填，旧行 → `legacy-unverified`（不自动注入）；跨 kind 同键隔离（`EXPERIENCE_KEY_CONFLICT`）。
-- **统一治理解析器**：授权 epoch → 产品/配方作用域 → 用途三段闸；`automatic` 只认 `validated` + `canary/active`；overlay 缓存键含 epoch，撤权/换产品即时停止注入。
-- **宿主来源发布门**：晋升 `active` 必须引用 `host-evaluation` 台账（真实 C−B 测量，`pValue: null` = 未做显著性检验）；发布 = 待发布 + 审计 outbox → CAS 激活，maker-checker 分离；客户端自报台账只读展示；撤销只停注入。
-- **产线写尝试账本**：`prepared/dispatched/verified/rejected/not_sent/unknown` 持久记账；重启对账不自动重发；旧批准按代次/租约/上下文/载荷拒绝复用；HITL 行补关联列。
-- **计划进度与待批围栏**：`planProgress` 投影 + `PLAN_CHANGE_PENDING` 拒绝待批冲突建项。
-- **依赖健康与证据质量**：分域决策（未知效果 → attention）；批次质量闸控制证据/训练；外部任务终态与产物有效性分开出账。
-- **本体三态与工件复用**：缺声明边 = `unknown`；护栏可观测性/谱系/校准/漂移闸工件复用；本体候选带证据来源走人工发布门。
-- **验收 runner 与主干检查器**：模拟清单预检 BLOCKED 先于任何写；主干审计绑定精确 SHA + 证据摘要矩阵。
-
-## 兼容性边界（v0.14.0）
-
-- 受治理经验的部署必须经人工发布门：新版本为 candidate/none，自动注入只认 validated+canary/active，回填旧行 legacy-unverified 不继承部署。
-- 未闭合产线写尝试对账为 not_sent/unknown 且绝不自动重发；unknown 须人工独立核实。
-- 晋升 active 必须引用宿主来源评测；客户端自报台账只读展示、不能授权发布。
-- 既有 validated 行回填后不再自动注入，需经审阅面查看或走新发布门重新发布。
 - agent-token 回程桥缺少可信回合来源，过滤并拒绝危险工具及授权/派发工具；插件工具必须显式声明 `riskClass: 'read'` 才能通过该层，其他治理门仍生效。
 - `dispatch_task` 拒绝随任务的 `grant_node_ids` / `grantNodeIds`；先单独 `team_grant_nodes`，再派发，失败后检查并按需撤销授权，两步不具原子性。委派默认 `manual`，`auto` 须显式 `confirm: true`。
 - 原生 omp 的工作或监督回合中止时退役进程；正常完成后的迟到帧逐回合来源仍未解决。无新增物理 HIL 或安全通过声明。

@@ -108,26 +108,26 @@ test('Profile 门：candidate→shadow 允许；shadow→active 无 bench 拒绝
   assert.equal(noBench.allowed, false)
   assert.match(noBench.reasons.join(), /缺少配对评测结果/)
 
-  const sig = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.01, primaryDelta: 0.1, costDelta: 0.2, hostProvenance: 'host' as const })
+  const sig = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.01, primaryDelta: 0.1, costDelta: 0.2 })
   assert.equal(sig.allowed, true)
   assert.match(sig.reasons.join(), /配对显著改善/)
 
-  const nonInferior = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.4, primaryDelta: 0.0, costDelta: 0.02, hostProvenance: 'host' as const })
+  const nonInferior = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.4, primaryDelta: 0.0, costDelta: 0.02 })
   assert.equal(nonInferior.allowed, true)
   assert.match(nonInferior.reasons.join(), /成本非劣/)
 
-  const regress = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.4, primaryDelta: -0.05, costDelta: 0.0, hostProvenance: 'host' as const })
+  const regress = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.4, primaryDelta: -0.05, costDelta: 0.0 })
   assert.equal(regress.allowed, false)
   assert.match(regress.reasons.join(), /配对未通过/)
 
   for (const pValue of [0, 0.05, 1, null, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -0.01, 1.01]) {
-    const decision = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue, primaryDelta: 0.1, costDelta: 0.2, hostProvenance: 'host' as const })
+    const decision = evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue, primaryDelta: 0.1, costDelta: 0.2 })
     assert.equal(decision.allowed, pValue === 0, `pValue=${String(pValue)}: only 0 with positive delta is significant`)
   }
-  assert.equal(evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.01, primaryDelta: 0, costDelta: 0.02, hostProvenance: 'host' as const }).allowed, true, 'zero delta uses non-inferiority path')
-  assert.equal(evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.01, primaryDelta: -0.01, costDelta: 0.0, hostProvenance: 'host' as const }).allowed, false, 'negative delta must fail')
+  assert.equal(evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.01, primaryDelta: 0, costDelta: 0.02 }).allowed, true, 'zero delta uses non-inferiority path')
+  assert.equal(evaluateProfileGate({ status: 'shadow', version: 1 }, 'active', { pValue: 0.01, primaryDelta: -0.01, costDelta: 0.0 }).allowed, false, 'negative delta must fail')
 
-  const notShadow = evaluateProfileGate({ status: 'candidate', version: 1 }, 'active', { pValue: 0.01, primaryDelta: 0.1, costDelta: 0, hostProvenance: 'host' as const })
+  const notShadow = evaluateProfileGate({ status: 'candidate', version: 1 }, 'active', { pValue: 0.01, primaryDelta: 0.1, costDelta: 0 })
   assert.equal(notShadow.allowed, false, '仅 shadow 可登 active')
 })
 
@@ -173,31 +173,22 @@ test('执行面：promoteProfile 需要 bench；落地后单 active 不变量保
     // 2026-11-10:active 必须引用已落库的 benchRunId,不再接受客户端自报三个数字
     assert.equal(promoteProfile(db, {
       profileId: p.id, channelId: 'ch-1', to: 'active', actor: 'u-1',
-      bench: { pValue: 0.02, primaryDelta: 0.12, costDelta: 0.01, hostProvenance: 'host' as const },
+      bench: { pValue: 0.02, primaryDelta: 0.12, costDelta: 0.01 },
     }).ok, false, '自报 bench 不得登 active(provenance 缺失)')
     const run = recordBenchRun(db, {
       channelId: 'ch-1', actor: 'u-1',
       artifact: { profileId: p.id, pValue: 0.02, perSeed: [{ seed: 1, a: 1.12, b: 1 }, { seed: 2, a: 1.12, b: 1 }, { seed: 3, a: 1.12, b: 1 }] },
     })
     assert.equal(run.ok, true, run.ok ? '' : run.reasons.join('；'))
-    const clientBenchRunId = (run as { run: { id: string } }).run.id
-    // Task 5/C1:客户端台账(harness-ab-paired)只读展示,不得支撑 active
-    const clientPromote = promoteProfile(db, {
-      profileId: p.id, channelId: 'ch-1', to: 'active', actor: 'u-1', benchRunId: clientBenchRunId,
-    })
-    assert.equal(clientPromote.ok, false, '客户端自报台账不得作为发布证据')
-    assert.match(clientPromote.reasons.join(), /BENCH_NOT_HOST_PROVENANCED/)
-    // 宿主评测(kind=host-evaluation)才能支撑晋升
-    db.prepare('UPDATE harness_bench_runs SET kind = ? WHERE id = ?').run('host-evaluation', clientBenchRunId)
     const promoted = promoteProfile(db, {
-      profileId: p.id, channelId: 'ch-1', to: 'active', actor: 'u-1', benchRunId: clientBenchRunId,
+      profileId: p.id, channelId: 'ch-1', to: 'active', actor: 'u-1', benchRunId: (run as { run: { id: string } }).run.id,
     })
     assert.equal(promoted.ok, true, promoted.reasons.join('；'))
     assert.equal(profiles.activeOf('ch-1')!.id, p.id)
     assert.equal(profiles.listByChannel('ch-1').filter(x => x.status === 'active').length, 1)
     // 采纳证据绑定到 profile 行
     const bound = db.prepare('SELECT bench_run_id AS id, promoted_at AS at FROM channel_harness_profiles WHERE id = ?').get(p.id) as { id?: string, at?: string }
-    assert.equal(bound.id, clientBenchRunId)
+    assert.equal(bound.id, (run as { run: { id: string } }).run.id)
     assert.ok(bound.at, 'promoted_at 必须落值')
 
     // markStatus=false 必须 fail closed，且不写 bench binding/action/audit
@@ -208,7 +199,6 @@ test('执行面：promoteProfile 需要 bench；落地后单 active 不变量保
       artifact: { profileId: stale.id, perSeed: [{ seed: 1, a: 1.12, b: 1 }, { seed: 2, a: 1.12, b: 1 }, { seed: 3, a: 1.12, b: 1 }] },
     })
     assert.equal(staleRun.ok, true)
-    db.prepare('UPDATE harness_bench_runs SET kind = ? WHERE id = ?').run('host-evaluation', (staleRun as { run: { id: string } }).run.id)
     bindOpsRepos({ audit: createAuditRepo(db) } as never)
     const staleRepo = {
       get: (id: string) => profiles.get(id),

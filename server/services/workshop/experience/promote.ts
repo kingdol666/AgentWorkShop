@@ -196,13 +196,7 @@ export function promoteProfile(
     const resolved = resolveBenchRunForPromote(db, { channelId: input.channelId, profileId: input.profileId, benchRunId: input.benchRunId })
     if (!resolved.ok) return { ok: false, reasons: resolved.reasons }
     benchRunId = resolved.run.id
-    bench = {
-      pValue: resolved.run.pValue,
-      primaryDelta: resolved.run.primaryDelta,
-      costDelta: resolved.run.costDelta,
-      // 只有 Task 5 的宿主评测(kind=host-evaluation)带宿主来源;其余为客户端台账
-      hostProvenance: resolved.run.kind === 'host-evaluation' ? 'host' : 'client',
-    }
+    bench = { pValue: resolved.run.pValue, primaryDelta: resolved.run.primaryDelta, costDelta: resolved.run.costDelta }
   }
 
   const decision = evaluateProfileGate(row, input.to, bench)

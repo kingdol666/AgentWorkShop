@@ -52,22 +52,6 @@ export default {
   async setup(ctx) {
     ctx.logger.info('已装载 ✓')
 
-    // 示例:注册 Agent 工具(注入 lead+worker 会话;name 按插件名派生避免脚手架撞名)
-    ctx.omp.registerTool({
-      name: '${name.replace(/-/g, '_')}_ping',
-      description: '${name} 的示例只读工具:回显输入并附带插件私有 KV 计数',
-      parameters: {
-        type: 'object',
-        properties: { text: { type: 'string', description: '要回显的文本' } },
-        required: ['text'],
-        additionalProperties: false,
-      },
-      roles: ['lead', 'worker'],
-      riskClass: 'read',
-      noRefs: true,
-      handler: async (args) => ({ text: \`\${String(args.text ?? '')} (samples=\${ctx.kv.get('samples') ?? 0})\` }),
-    })
-
     // 示例:订阅数采采样(下发级),计数落插件私有 KV
     ctx.hooks.on('daq:sample', (s) => {
       ctx.kv.bump('samples')

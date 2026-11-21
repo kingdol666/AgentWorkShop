@@ -6,8 +6,6 @@ import { log } from './shared'
 import { getHitlRegistry, resolveHitlRuntime } from '../hitl-registry'
 import { sendHitlNote } from '../../runtime/platform-notice'
 import { getOps } from '../../ops/ops'
-import { getAmlRuntime } from '../../aml/runtime'
-import { reconcileOpenWriteAttempts } from '../../dcw/write-attempt-ledger'
 
 // ============================================================================
 // 启动对账(重启不自动批准)
@@ -87,16 +85,6 @@ export function reconcileHitlOnStartup(opts: { force?: boolean, error?: string, 
       }
     }
     catch { /* 历史同步失败不影响对账主流程 */ }
-    // Task 8:设备写尝试账本对账 —— 未闭合尝试一律不重发:
-    // prepared→not_sent(驱动未调用),dispatched→unknown(可能已生效,须人工核实)。
-    try {
-      const db = getAmlRuntime().db
-      const report = reconcileOpenWriteAttempts(db)
-      if (report.notSent.length > 0 || report.unknown.length > 0) {
-        log.warn(`[dcw] 写尝试对账:not_sent=${report.notSent.length} unknown=${report.unknown.length}(不自动重发)`)
-      }
-    }
-    catch { /* 无治理库(纯内存脚手架)时跳过 */ }
     // Agent 侧补送:受影响的审批等待方(其回合随上一进程消亡)必须知道"发生过审批、
     // 未执行、未自动批准",否则人类面对过的决议对 Agent 而言凭空蒸发(人机断话)。
     // 直接落 messages 表(此时 runtime 未装配也持久),Agent 下次装配即从信箱看到。

@@ -77,7 +77,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.14.0 · released</i></span>
+        <span>Version <i>v0.13.0 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -94,17 +94,15 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.14.0 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.13.0 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      v0.14.0 implements the governed product experience plan end to end:
-      experiences become immutable versions (body/evidence snapshot hashes with CAS head pointers),
-      one resolver gates every read path by authorization epoch, product/recipe scope and deployment
-      state; promotion requires a host-provenanced evaluation and release is a two-step commit
-      (pending + audit outbox → CAS); plant writes persist an attempt ledger whose unclosed attempts
-      reconcile to not_sent/unknown and never auto-resend. See
-      <a href="/AgentWorkShop/en/guide/governed-learning">governed product experience</a>;
+      v0.13.0 is released. It productizes the IDD (industrial deep diagnostics) and RAG (rag-knowledge)
+      bridges: diag-bridge targets IDD <code>external/v1</code> with an explicit legacy fallback and adds
+      chat/stop/report-deposit tools; rag-bridge adds deterministic document tools on a dedicated
+      <code>aw-docs</code> knowledge base. Plugin write tools now join the fail-closed write classification
+      and plugin health exposes per-tool counters. See <a href="/AgentWorkShop/en/guide/idd-rag-plugins">IDD / RAG plugin integration</a>;
       simulated acceptance is not physical HIL or production approval.
     </p>
     <div class="hw-feats">
@@ -129,7 +127,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">Verification</span>
-      <p>Merged-main audit for v0.14.0 (<code>5614aa06</code>): the fixed 13-check matrix (typecheck/lint/unit 2107/2108/i18n/cssvars/frontend-lifecycle/acceptance-context/onboarding-v6/sdk-surface/plugin-lifecycle/mcp/docs/build) all exited 0, <code>checkMainAudit</code> = PASS; isolated simulation acceptance passed onboarding 33/33 + 15/15 + V1–V6 24/24, smoke readback 72=72, and seven governed tuning rounds moved weight 31.03→32.58 g into band. Simulator evidence only, not physical HIL; effect validation and site admission remain NOT_RUN — see the report. <a href="/AgentWorkShop/en/guide/governed-learning">Governed product experience</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/governed-product-learning-main-audit.md">Main audit report</a></p>
+      <p>v0.13.0 verification: lint/typecheck/build passed; unit 2059/2060 (1 skipped). A fresh home three-system acceptance passed provisioning 9/9, channel forge 11/11 and V1–V6 11/11 with 142 host tools; a real model turn natively called <code>kb_doc_search → kb_doc_read → diag_run → diag_status</code>; the governed loop moved SP 156→150→144→138 °C (HITL every step, device-confirmed 1/1) with PV retest 3/3 inside [138,142] (mean 139.68). Simulator evidence only, not physical HIL; IDD skill terminal behavior and cloud model providers were external blockers — see the dated report. <a href="/AgentWorkShop/en/guide/idd-rag-plugins">IDD / RAG plugin integration</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-18-idd-rag-plugin-v1-contract/REPORT.md">Dated report</a></p>
     </div>
   </section>
 

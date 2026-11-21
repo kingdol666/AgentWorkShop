@@ -38,13 +38,7 @@ export abstract class AgentMemoryState extends AgentMemoryContracts {
   protected inScope(row: MemoryRow, scope: MemoryScope, sessionId?: string | null, scopeContext?: ScopeContext, automatic = false): boolean {
     // RSI(WP-A3):retired 经验不参与任何档位检索/注入(过期或劣化回滚后的行只保留审计价值)
     if (row.status === 'retired') return false
-    // Task 4:自动注入只认 validated + 已获准部署(canary/active)。candidate、shadow、
-    // legacy-unverified(旧行回填)一律不进提示,堵住「未验证内容有资格入词」。
-    if (automatic && row.kind === 'experience') {
-      if (row.status !== 'validated') return false
-      const deployment = this.repo.experienceDeployment(row.id)
-      if (deployment !== 'active' && deployment !== 'canary') return false
-    }
+    if (automatic && row.kind === 'experience' && row.status === 'candidate') return false
     if (row.kind === 'experience' && this.opts.industrialScopeEnabled !== true
       && (row.scopeKind === 'line' || row.scopeKind === 'product' || row.scopeKind === 'global')) return false
     if (row.kind === 'experience' && (row.scopeKind === 'line' || row.scopeKind === 'product')) {
