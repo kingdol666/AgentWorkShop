@@ -41,5 +41,11 @@ export interface HostToolBridgeContext {
   state: HostToolSessionState
   /** Trusted server-side scope; never populated from model/tool arguments. */
   channelSessionScope?: ChannelSessionExecutionScope | null
+  /**
+   * 通用(无工业快照)会话的可信会话身份:与 channelSessionScope.sessionId 同源
+   * (wireMember 经 activeSessionOfMember 唯一命中派生),仅用于记忆戳/会话检索,
+   * 不携带任何工业授权(空 recipes/无 hash)。两字段都缺 → 工具面无会话身份。
+   */
+  trustedSessionId?: string | null
   getWorkspace(): AgentWorkspace | null
 }

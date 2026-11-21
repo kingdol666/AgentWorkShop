@@ -87,6 +87,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
       state: this.toolState,
       getWorkspace: () => this.workspace,
       channelSessionScope: null,
+      trustedSessionId: null,
     }
     this.refreshIdentity()
   }
@@ -133,15 +134,26 @@ export abstract class BaseAgentImpl implements AgentInterface {
   dispatchHostTool(toolName: string, args: Record<string, unknown>, activeRootTaskId?: string): Promise<{ text: string, isError?: boolean }> {
     const channelScope = this.bridgeCtx.channelSessionScope
     const state = createSessionState()
-    state.sessionId = channelScope?.sessionId ?? null
+    // 会话身份优先取工业快照;通用频道(无快照)回落 wireMember 注入的可信会话 id。
+    // 两者都缺 → null(记忆按频道级落库,不虚构会话归属)。
+    state.sessionId = channelScope?.sessionId ?? this.bridgeCtx.trustedSessionId ?? null
     const bridge: HostToolBridgeContext = {
       identity: { ...this.bridgeCtx.identity },
       state,
       channelSessionScope: channelScope ? { ...channelScope, recipes: channelScope.recipes.map(recipe => ({ ...recipe })) } : null,
+      trustedSessionId: this.bridgeCtx.trustedSessionId,
       getWorkspace: this.bridgeCtx.getWorkspace,
     }
     return runWithExecutionScope(undefined, () =>
       dispatchHostTool(bridge, { toolName, arguments: args }, activeRootTaskId))
+  }
+
+  /**
+   * wireMember 注入通用会话的可信会话 id(工业快照缺失时的记忆归属锚点)。
+   * 仅影响记忆戳/会话检索;工业授权仍完全由 channelSessionScope 的快照哈希决定。
+   */
+  setTrustedSessionId(id: string | null): void {
+    this.bridgeCtx.trustedSessionId = id
   }
 
   protected get currentTurnScope(): ExecutionScope | undefined {

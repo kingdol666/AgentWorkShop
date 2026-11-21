@@ -6,7 +6,7 @@ import type { AepEnvelope, RootQueueView } from '../../../../shared/workshop-pro
 import type { AgentChannelManager } from '../../../services/workshop/runtime/manager'
 import type { WorkspaceTask } from '../../../services/workshop/types/task'
 import type { ChannelStream } from './shared'
-import { AEP_VERSION, DB_BUFFER_CAP, RING_BYTES_CAP, RING_CAP, hub } from './shared'
+import { AEP_VERSION, DB_BUFFER_CAP, RING_BYTES_CAP, RING_CAP } from './shared'
 import { DB_FLUSH_MS, internalsOf, sendFrame } from './hub'
 import { flushDbBuffer } from './db-buffer'
 import { parseJson } from '../../../services/workshop/db/database'
@@ -46,7 +46,10 @@ export function publish(
   else if (!stream.dbFlushTimer) {
     stream.dbFlushTimer = setTimeout(() => {
       stream.dbFlushTimer = null
-      if (hub.boundManager) flushDbBuffer(hub.boundManager, stream)
+      // 必须用闭包内的 manager：hub.boundManager 只在首个 WS 连接(ensureHubBound)后才有值,
+      // 无订阅者期间该门控会让事件无限期滞留 dbBuffer——"全时事件录制(与订阅者无关)"失效
+      // (实测:无客户端时 seq 持续滞留,首个连接 attach 才一次性落库)。与 CAP 路径同口径。
+      flushDbBuffer(manager, stream)
     }, DB_FLUSH_MS)
     stream.dbFlushTimer.unref?.()
   }

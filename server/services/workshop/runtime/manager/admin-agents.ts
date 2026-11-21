@@ -660,6 +660,16 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
   }
 
   /**
+   * 会话身份(仅 id;不含工业授权):generic 会话无绑定快照、trustedSessionBindingIdentity
+   * 返回 null,但记忆归属仍需要可信 sessionId。与 channelSessionScopeOfAgent 同源派生
+   * (activeSessionOfMember 唯一命中才返回,歧义/legacy fail-closed),只暴露会话 id —— 不含
+   * productId/lineId/recipes,不构成任何工业授权。
+   */
+  sessionIdOfAgent(channelId: string, agentId: string): string | null {
+    return activeSessionOfMember(createChannelSessionRepo(this.deps.db).listByChannel(channelId), agentId)?.id ?? null
+  }
+
+  /**
    * 项目任务实例（plan 2026-11-07）：为工作项创建专属执行 Channel + 会话行。
    * 返回实例 Channel 与其 lead（root 任务 assignee）。幂等由调用方（项目派发）负责。
    */

@@ -192,8 +192,14 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const impl = this.deps.implFactory(agentWithCtx)
     // 必须保留接收者调用:setChannelSessionScope 是原型方法,解构后裸调用会丢 this,
     // 所有 BaseAgentImpl 系引擎(omp/claude/codex/…)在频道激活时直接 TypeError。
-    const sessionScopedImpl = impl as { setChannelSessionScope?: (scope: ChannelSessionExecutionScope | null) => void }
+    const sessionScopedImpl = impl as {
+      setChannelSessionScope?: (scope: ChannelSessionExecutionScope | null) => void
+      setTrustedSessionId?: (id: string | null) => void
+    }
     sessionScopedImpl.setChannelSessionScope?.(channelSessionScope)
+    // 通用会话(无工业快照)→ channelSessionScope 为 null,但记忆归属仍需可信会话 id;
+    // 与 AgentMemory 的 sessionId(上方 memory 构造)同源,全部来自持久会话行。
+    sessionScopedImpl.setTrustedSessionId?.(sessionRow?.id ?? null)
     const runtime = new AgentRuntime(agent, impl, {
       mailbox,
       taskEngine: this.getTaskEngine(),
