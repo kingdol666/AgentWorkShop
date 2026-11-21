@@ -45,7 +45,12 @@ function fixture(t: TestContext) {
         agents,
         chatMessages,
         subscriptions,
-        tasks: { listByChannelAssignee: () => { taskLookups++; return [] } },
+        tasks: {
+          listByChannelAssignee: () => {
+            taskLookups++
+            return []
+          },
+        },
       },
     },
     activeInvocationScopes: new Map(),
