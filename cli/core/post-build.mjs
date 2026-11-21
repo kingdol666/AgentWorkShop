@@ -16,7 +16,7 @@
 //      (运行时经 fs 读取,nitro 不会打包它们)
 //   ③ 结果汇报(便于 CI 与排障)
 // ============================================================
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /** nitropack 2.13.4 写入的 import.meta.url 占位兜底 */
@@ -40,6 +40,7 @@ export function outputAssetsReady(root) {
     && existsSync(join(asDir, 'prompts'))
     && existsSync(join(asDir, 'schema.json'))
     && existsSync(join(asDir, 'aml-python'))
+    && existsSync(join(root, '.output', 'skills'))
 }
 
 /**
@@ -98,6 +99,17 @@ export function postBuildArtifacts(root) {
     'aml-python',
     { recursive: true },
   )
+  // 内置 Agent Skills：源码/安装包根目录与 standalone .output 都可发现
+  ship(join(root, 'skills'), join(outputRoot, 'skills'), 'skills', { recursive: true })
+  // Nitro 在混合依赖(zod 3 直依赖 + 传递 zod 4)时可能把传递版本复制到产物根，
+  // 而应用代码按 zod 3 的入口导入；用直依赖覆盖产物根，传递依赖的嵌套副本保持不变。
+  const directZod = join(root, 'node_modules', 'zod')
+  const outputZod = join(outputRoot, 'server', 'node_modules', 'zod')
+  if (existsSync(join(directZod, 'index.js')) && existsSync(outputZod)) {
+    rmSync(outputZod, { recursive: true, force: true })
+    cpSync(directZod, outputZod, { recursive: true, force: true, dereference: true })
+    assets.push('zod-direct')
+  }
 
   if (unresolved.length > 0) {
     throw new Error(

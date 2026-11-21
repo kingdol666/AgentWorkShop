@@ -34,6 +34,7 @@
     "i18n",
     "public",
     "scripts",
+    "skills",
     ".AgentWorkShop/prompts",
     ".AgentWorkShop/plugins/rsi-interface-beta",
     "docs/rsi-beta-management.md",

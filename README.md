@@ -371,6 +371,10 @@ One runtime, one source of truth: **`config.yml`** (defaults) < **`runtime-setti
 
 Plugins are a first-class extension surface: a directory + `index.mjs` gives you **agent tool registration (`ctx.tools`), custom DAQ drivers (`ctx.daq.registerDriver`), processors & node templates, HTTP routes, browser panels, settings & i18n, Twin Providers (`ctx.twin`), and line-permission hooks (`ctx.permissions`)** — enable/disable hot-reloads instantly, and a failing plugin is isolated from the main service. Built-ins cover the whole surface: custom driver + derate processor (`aw-matrix-plugin`), vector frames (`daq-vector-demo`), knowledge bridge (`rag-bridge`), diagnostics bridge (`diag-bridge`), serial (`serial-bridge`), twin provider (`twin-injection-default`). External simulators (e.g. MATLAB/Simulink) plug in via “Twin Provider registration” or “plugin tool spawn”, and their outputs feed the optimizer directly. → [Plugin API](./docs/plugins.md) · [SDK](./docs/sdk.md) · [MCP](./docs/mcp.md)
 
+## AgentPrefabs, Skills & MCP
+
+System Settings now manages the capability supply chain: standard `SKILL.md` discovery (built-in, managed `<configRoot>/skills`, `~/.agent/skills`, `~/.agents/skills`, XDG, `AW_SKILL_ROOTS`), immutable reviewed imports, and admin-managed external MCP Streamable HTTP servers with `AW_MCP_*` credential references and explicit shared-safe read-tool review. AgentPrefabs combine role/scenario prompts, multi-dimensional slots, supported model settings and per-capability switches into published immutable revisions; a Channel member pins `(prefabId, revision, slots, hash)`, and Session/Project instances keep that snapshot. Effective tools are re-authorized at dispatch, so revocation cannot be bypassed by a cached catalog. → [AgentPrefabs, Skills & MCP](https://kingdol666.github.io/AgentWorkShop/guide/agent-prefabs)
+
 ## Documentation
 
 | Start | Build | Operate |
