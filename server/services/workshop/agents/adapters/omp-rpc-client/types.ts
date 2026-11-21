@@ -11,6 +11,7 @@ export type RpcCommand
     | { id?: string, type: 'set_todos', phases: unknown[] }
     | { id?: string, type: 'negotiate_protocol', protocolVersion: number }
     | { id?: string, type: 'set_model', provider: string, modelId: string }
+    | { id?: string, type: 'set_thinking_level', level: string }
     | { id?: string, type: 'get_state' }
     | { id?: string, type: 'new_session' }
     // ===== 上下文治理(70% 压缩环;协议权威 omp://rpc.md)=====

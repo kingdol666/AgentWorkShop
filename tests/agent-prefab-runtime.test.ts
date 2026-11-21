@@ -196,6 +196,8 @@ test('session clone copies member binding and stores a prefab snapshot', () => {
 })
 
 test('project task instance copies bindings and returns pinned snapshot', async () => {
+  const leadBinding = JSON.stringify({ prefabId: 'p1', revision: 1, slotValues: { goal: 'lead' }, contentHash: 'a'.repeat(64) })
+  const workerBinding = JSON.stringify({ prefabId: 'p1', revision: 2, slotValues: { goal: 'worker' }, contentHash: 'b'.repeat(64) })
   const created: Array<{ prefabBindingJson?: string }> = []
   let leadInput: { prefabBindingJson?: string } | undefined
   let sessionInput: { prefabSnapshotJson?: string, prefabSnapshotHash?: string } | undefined
@@ -205,8 +207,8 @@ test('project task instance copies bindings and returns pinned snapshot', async 
     },
     channelAgents: {
       listByChannel: () => [
-        { id: 'lead-1', name: 'Lead', harness: 'omp', role: 'lead', enabled: 1, configJson: '{}', prefabBindingJson: 'lead-binding' },
-        { id: 'w-1', name: 'Worker', harness: 'omp', role: 'worker', enabled: 1, configJson: '{}', prefabBindingJson: 'worker-binding' },
+        { id: 'lead-1', name: 'Lead', harness: 'omp', role: 'lead', enabled: 1, configJson: '{}', prefabBindingJson: leadBinding },
+        { id: 'w-1', name: 'Worker', harness: 'omp', role: 'worker', enabled: 1, configJson: '{}', prefabBindingJson: workerBinding },
       ],
       create: (input) => {
         created.push(input)
@@ -225,8 +227,8 @@ test('project task instance copies bindings and returns pinned snapshot', async 
     },
   }
   const result = await createTaskInstanceChannel(deps, { projectId: 'p', workItemId: 'w', templateChannelId: 'tpl', title: 'task', actorId: 'u1' })
-  assert.equal(leadInput?.prefabBindingJson, 'lead-binding')
-  assert.equal(created[0]?.prefabBindingJson, 'worker-binding')
+  assert.equal(leadInput?.prefabBindingJson, leadBinding)
+  assert.equal(created[0]?.prefabBindingJson, workerBinding)
   assert.match(result.prefabSnapshotHash, /^[a-f0-9]{64}$/)
   assert.ok(result.prefabSnapshotJson.includes('lead-1'))
   assert.equal(sessionInput?.prefabSnapshotHash, result.prefabSnapshotHash)

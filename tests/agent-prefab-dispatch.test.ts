@@ -187,7 +187,9 @@ test('native dispatch requires a live member in its claimed Channel before ordin
   globals.__workshopManager = undefined
   await assertDenied('no trusted manager DB')
   globals.__workshopManager = manager
-  const lookup = t.mock.method(agents, 'findByChannelAgent', () => { throw new Error('DB unavailable') })
+  const lookup = t.mock.method(agents, 'findByChannelAgent', () => {
+    throw new Error('DB unavailable')
+  })
   await assertDenied('member lookup failed')
   lookup.mock.restore()
 

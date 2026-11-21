@@ -88,7 +88,10 @@ test('wireMember applies the pinned Prefab profile before implFactory without to
     deps: {
       db,
       repos: { channels, channelAgents: agents, messages: createMessageRepo(db), memories: createMemoryRepo(db) },
-      implFactory: (agent: AgentInfo) => { wired = agent; return {} },
+      implFactory: (agent: AgentInfo) => {
+        wired = agent
+        return {}
+      },
     },
     buses: new Map([[channel.id, {}]]),
     agentIndex: new Map(),

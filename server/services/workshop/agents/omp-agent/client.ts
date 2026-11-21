@@ -7,6 +7,7 @@ import type { AgentRunContext } from '../agent-interface'
 import { OmpRpcClient } from '../adapters/omp-rpc-client'
 import { attachTerminalTap, markTerminalSessionExit } from '../harness-terminal'
 import { bindHarnessProcess, markHarnessProcessExit, registerHarnessProcess } from '../harness-process'
+import { log } from './helpers'
 
 export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping {
   protected async ensureClient(ctx: AgentRunContext): Promise<void> {
@@ -36,8 +37,6 @@ export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping 
       const client = new OmpRpcClient({
         command,
         mode: this.rpcMode,
-        // 重复键 args 的生效者是下一行(JS 对象字面量后写覆盖先写):保留生效语义,删除被覆盖项。
-        // (原 ['--thinking', level] 从未真正传给 omp —— 见报告"未修的缺陷"一节。)
         args: this.config.args,
         cwd: this.config.cwd ?? process.cwd(),
         // 进程退出 → 注册表标记(供运行时资源监控);pid=-1 表示无法取得,忽略
@@ -88,6 +87,16 @@ export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping 
         }
         catch {
           // 模型设置失败不致命(用 omp 默认模型)
+        }
+      }
+
+      // Apply thinking after model selection, over RPC rather than modifying launch arguments.
+      if (typeof this.config.thinkingLevel === 'string' && this.config.thinkingLevel) {
+        try {
+          await client.send({ type: 'set_thinking_level', level: this.config.thinkingLevel })
+        }
+        catch {
+          log.warn(`[OmpAgent:${this.selfAgentId}] omp 未接受配置的 thinking level`)
         }
       }
 
