@@ -15,21 +15,25 @@ const { dispatchHostTool } = await import('../server/services/workshop/agents/ho
 const { registerPluginTool, unregisterPluginTools } = await import('../server/services/workshop/agents/plugin-tools')
 const { ManagerHostTools } = await import('../server/services/workshop/runtime/manager/host-tools')
 const { OBSERVE_BLOCKED_TOOL_NAMES } = await import('../server/services/workshop/agents/tool-classes')
+const { openWorkshopDb } = await import('../server/services/workshop/db/database')
+const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
+const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
 
 const g = globalThis as typeof globalThis & { __workshopManager?: unknown }
 const oldManager = g.__workshopManager
-let agentMode = 'generic'
-let channelMode = 'generic'
-g.__workshopManager = {
-  channelModeOf: () => channelMode,
-  channelModeForAgent: () => agentMode,
+
+function persistedWorker(t: { after: (fn: () => void) => void }) {
+  const db = openWorkshopDb(':memory:')
+  t.after(() => db.close())
+  const channels = createChannelRepo(db)
+  const channelAgents = createChannelAgentRepo(db)
+  const channel = channels.create({ name: 'mode test' })
+  const row = channelAgents.create({ channelId: channel.id, templateId: null, name: 'worker', harness: 'mock', role: 'worker', token: 'token' })
+  return { deps: { db, repos: { channels, channelAgents } }, row }
 }
 
 test('channel line binding uses an active session snapshot and never falls back for generic or stale clones', async () => {
   const { ManagerAdminAgents } = await import('../server/services/workshop/runtime/manager/admin-agents')
-  const { openWorkshopDb } = await import('../server/services/workshop/db/database')
-  const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
-  const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
   const { createChannelSessionRepo } = await import('../server/services/workshop/db/channel-session.repo')
   const db = openWorkshopDb(':memory:')
   try {

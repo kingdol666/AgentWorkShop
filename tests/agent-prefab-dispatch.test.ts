@@ -37,11 +37,12 @@ test('ordinary and Project tools reject invalid prefab bindings before handlers 
     unregisterPluginTools('prefab-dispatch-test')
     db.close()
   })
-  globals.__workshopManager = { deps: { db } }
+  const channels = createChannelRepo(db)
+  const agents = createChannelAgentRepo(db)
+  globals.__workshopManager = { deps: { db, repos: { channels, channelAgents: agents } } }
   initToolRegistryDb(db)
   initChannelPluginsDb(db)
-  const channel = createChannelRepo(db).create({ name: 'dispatch' })
-  const agents = createChannelAgentRepo(db)
+  const channel = channels.create({ name: 'dispatch' })
   const member = agents.create({ channelId: channel.id, templateId: null, name: 'lead', harness: 'omp', role: 'lead' })
   const ctx: HostToolBridgeContext = {
     identity: { agentId: member.id, channelId: channel.id, name: member.name, role: 'lead' },
@@ -116,4 +117,85 @@ test('ordinary and Project tools reject invalid prefab bindings before handlers 
     assert.equal(result.isError, true)
     assert.match(result.text, /FORBIDDEN:.*AgentPrefab/)
   }
+})
+
+test('native dispatch requires a live member in its claimed Channel before ordinary or Project tools run', async (t) => {
+  const db = openWorkshopDb(':memory:')
+  const channels = createChannelRepo(db)
+  const agents = createChannelAgentRepo(db)
+  const channel = channels.create({ name: 'dispatch' })
+  const other = channels.create({ name: 'other' })
+  const member = agents.create({ channelId: channel.id, templateId: null, name: 'lead', harness: 'omp', role: 'lead' })
+  const globals = globalThis as unknown as { __workshopManager?: unknown }
+  const previous = globals.__workshopManager
+  const manager = { deps: { db, repos: { channels, channelAgents: agents } } }
+  globals.__workshopManager = manager
+  t.after(() => {
+    globals.__workshopManager = previous
+    unregisterPluginTools('dispatch-membership-test')
+    db.close()
+  })
+  initToolRegistryDb(db)
+  initChannelPluginsDb(db)
+  const ctx: HostToolBridgeContext = {
+    identity: { agentId: member.id, channelId: channel.id, name: member.name, role: 'lead' },
+    state: { currentTaskId: null, sessionId: null, sourceChatMessageId: null, sourceChatDeliveryId: null, replyContext: null },
+    getWorkspace: () => null,
+  }
+  const ordinaryTool = 'dispatch_membership_probe'
+  const projectTool = 'project_propose_plan'
+  const ordinaryHandler = t.mock.fn(() => ({ text: 'ok' }))
+  registerPluginTool('dispatch-membership-test', {
+    name: ordinaryTool, description: 'local probe', parameters: {}, riskClass: 'read', handler: ordinaryHandler,
+  })
+  const projects = initProjectService({} as Parameters<typeof initProjectService>[0], db)
+  let projectLead = false
+  t.mock.method(projects, 'agentProjectContext', () => projectLead ? { isLeader: true } : null)
+  const projectHandler = t.mock.method(projects, 'agentRequestPlan', () => ({ approval: { id: 'approval' }, version: 1, proposalId: 'proposal' }))
+  const invoke = (toolName: string) => {
+    projectLead = toolName === projectTool
+    return dispatchHostTool(ctx, { toolName, arguments: { plan: {} } })
+  }
+  const assertDenied = async (reason: string) => {
+    for (const tool of [ordinaryTool, projectTool]) {
+      const result = await invoke(tool)
+      assert.equal(result.isError, true, `${reason}: ${tool}`)
+      assert.match(result.text, /^FORBIDDEN:.*Channel/, `${reason}: ${tool}`)
+    }
+    assert.equal(ordinaryHandler.mock.callCount(), 1, reason)
+    assert.equal(projectHandler.mock.callCount(), 1, reason)
+  }
+
+  // A persisted member with no prefab binding remains legacy.
+  assert.equal(agents.findById(member.id)?.prefabBindingJson, '')
+  assert.equal((await invoke(ordinaryTool)).text, 'ok')
+  assert.equal((await invoke(projectTool)).isError, undefined)
+  assert.equal(projectHandler.mock.callCount(), 1)
+
+  // Reuse the same native context to simulate a harness with a cached tool list.
+  agents.update(member.id, { enabled: 0 })
+  await assertDenied('disabled member')
+  agents.update(member.id, { enabled: 1 })
+  channels.update(channel.id, { enabled: 0 })
+  await assertDenied('disabled Channel')
+  channels.update(channel.id, { enabled: 1 })
+
+  ctx.identity.channelId = other.id
+  await assertDenied('member does not belong to the claimed Channel')
+  ctx.identity.channelId = channel.id
+
+  globals.__workshopManager = undefined
+  await assertDenied('no trusted manager DB')
+  globals.__workshopManager = manager
+  const lookup = t.mock.method(agents, 'findByChannelAgent', () => { throw new Error('DB unavailable') })
+  await assertDenied('member lookup failed')
+  lookup.mock.restore()
+
+  // Keep the member row to exercise the Channel check independently of FK cascade.
+  db.exec('PRAGMA foreign_keys = OFF')
+  channels.remove(channel.id)
+  assert.ok(agents.findById(member.id))
+  await assertDenied('missing Channel')
+  agents.remove(channel.id, member.id)
+  await assertDenied('missing member')
 })

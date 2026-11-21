@@ -18,7 +18,9 @@
  *
  * deps 注入式（可单测）；manager 包装提供真实依赖。
  */
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
+import { canonicalJson, sha256 } from '../../../../shared/context/hash'
+import { parseAgentPrefabBinding } from '../agent-prefabs/service'
 import { parseJson } from '../db/database'
 import { AppError } from '../../../utils/errors'
 import { inheritChannelProfile } from './task-channel-profile'
@@ -86,11 +88,44 @@ export function templateMembersOf(deps: TaskInstanceDeps, templateChannelId: str
   })
 }
 
+export interface TaskPrefabSnapshot {
+  prefabSnapshotJson: string
+  prefabSnapshotHash: string
+}
+
+export interface TaskInstancePrefabOptions {
+  prefabSnapshot?: TaskPrefabSnapshot
+  /** First creation pins the snapshot before any instance resources are created. */
+  pinPrefabSnapshot?: (snapshot: TaskPrefabSnapshot) => void
+}
+
+export function readTaskPrefabSnapshot(snapshot: TaskPrefabSnapshot): ReadonlyMap<string, string> {
+  try {
+    // Hash the stored bytes to accept existing snapshots (which used template order).
+    if (!snapshot.prefabSnapshotJson || sha256(snapshot.prefabSnapshotJson) !== snapshot.prefabSnapshotHash) throw new Error()
+    const parsed: unknown = JSON.parse(snapshot.prefabSnapshotJson)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error()
+    const entries = Object.entries(parsed) as Array<[string, unknown]>
+    if (!entries.length) throw new Error()
+    const bindings = new Map<string, string>()
+    for (const [id, binding] of entries) {
+      if (!id || typeof binding !== 'string') throw new Error()
+      // An explicit empty string is a pinned unbound member, not a missing entry.
+      parseAgentPrefabBinding(binding)
+      bindings.set(id, binding)
+    }
+    return bindings
+  }
+  catch {
+    throw new AppError(409, 'TASK_PREFAB_SNAPSHOT_INVALID', '工作项 AgentPrefab 绑定快照损坏或不完整')
+  }
+}
+
 /**
  * 为项目任务创建专属 Channel + 实例成员 + 会话行。
  * 返回实例 Channel 与其 lead（root 任务的 assignee）。
  */
-export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: Partial<ChannelAgentCreationSource> & {
+export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: Partial<ChannelAgentCreationSource> & TaskInstancePrefabOptions & {
   projectId: string
   workItemId: string
   templateChannelId: string
@@ -109,9 +144,16 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: P
   const bases = templateMembersOf(deps, input.templateChannelId)
   const lead = bases.find(m => m.role === 'lead')
   if (!lead) throw new AppError(409, 'CHANNEL_NO_LEAD', '模板 Channel 没有可克隆的 lead，无法建立任务实例')
-  // Project 首次实例：固定模板成员的 prefab binding（同 work item 重试复用，不追最新版）
-  const prefabSnapshotJson = JSON.stringify(Object.fromEntries(bases.map(b => [b.id, b.prefabBindingJson ?? ''])))
-  const prefabSnapshotHash = createHash('sha256').update(prefabSnapshotJson, 'utf8').digest('hex')
+  // Only a first instance may capture live bindings. Keep the exact stored bytes on retry.
+  const snapshot = input.prefabSnapshot ?? (() => {
+    const prefabSnapshotJson = canonicalJson(Object.fromEntries(bases.map(b => [b.id, b.prefabBindingJson ?? ''])))
+    return { prefabSnapshotJson, prefabSnapshotHash: sha256(prefabSnapshotJson) }
+  })()
+  const bindings = readTaskPrefabSnapshot(snapshot)
+  if (bindings.size !== bases.length || bases.some(b => !bindings.has(b.id))) {
+    throw new AppError(409, 'TASK_PREFAB_SNAPSHOT_MEMBERS_CHANGED', '模板成员已变更，无法按工作项 AgentPrefab 快照重建实例')
+  }
+  if (!input.prefabSnapshot) input.pinPrefabSnapshot?.(snapshot)
   const short = randomUUID().slice(0, 4)
   const memberSuffix = `${TASK_INSTANCE_MARKER}${short}`
   const instanceName = `${template.name} · 任务 ${short}`
@@ -146,7 +188,7 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: P
       name: `${lead.name}${memberSuffix}`,
       harness: lead.harness,
       config: parseJson<Record<string, unknown>>(lead.configJson ?? '{}', {}),
-      prefabBindingJson: lead.prefabBindingJson ?? '',
+      prefabBindingJson: bindings.get(lead.id)!,
     },
   })
   if (!created.leadAgentId) throw new AppError(500, 'TASK_INSTANCE_NO_LEAD', '任务实例 Channel 装配 lead 失败')
@@ -164,7 +206,7 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: P
       name: `${base.name}${memberSuffix}`,
       harness: base.harness,
       config: parseJson<Record<string, unknown>>(base.configJson ?? '{}', {}),
-      prefabBindingJson: base.prefabBindingJson ?? '',
+      prefabBindingJson: bindings.get(base.id)!,
       role: 'worker',
     })
     memberMap[base.id] = inst.id
@@ -182,10 +224,9 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: P
     createdByKind: 'project',
     instanceKind: 'task',
     channelMode: taskChannelMode,
-    prefabSnapshotJson,
-    prefabSnapshotHash,
+    ...snapshot,
   })
   // 5) RSI WP-D5:继承母频道 AML profile（降档 + 不继承模型绑定；legacy 不写）
   inheritChannelProfile(input.templateChannelId, created.channelId)
-  return { sessionId: session.id, channelId: created.channelId, leadAgentId: created.leadAgentId, members, prefabSnapshotJson, prefabSnapshotHash }
+  return { sessionId: session.id, channelId: created.channelId, leadAgentId: created.leadAgentId, members, ...snapshot }
 }

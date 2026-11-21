@@ -28,6 +28,7 @@ import {
 } from '../db/project.repo'
 import { createTaskRepo } from '../db/task.repo'
 import { createChannelSessionRepo } from '../db/channel-session.repo'
+import { readTaskPrefabSnapshot, type TaskPrefabSnapshot } from '../agents/task-channel'
 import { createProjectKernelRepo } from '../db/project-kernel.repo'
 import { createMemoryRepo } from '../db/memory.repo'
 import { createImprovementRepo } from '../db/improvement.repo'
@@ -1018,7 +1019,6 @@ export class ProjectService {
         throw new AppError(409, 'TASK_INSTANCE_UNAVAILABLE', `任务实例 Channel 不可用: ${instanceChannelId}`)
       }
       assertProjectRecoveryClear(this.db, id)
-      const taskSession = this.sessions.listByWorkItem(wi.id).find(s => s.status === 'active')
       const attemptNo = this.attempts.listByWorkItem(wi.id).reduce((max, a) => Math.max(max, a.attemptNo), 0) + 1
       const sourceKey = `pw:${wi.id}:${attemptNo}`
       const traceId = wi.traceId || `trace:${wi.id}`
@@ -1027,7 +1027,7 @@ export class ProjectService {
       withTransaction(this.db, () => {
         attempt = this.attempts.create({
           projectId: id, workItemId: wi.id, attemptNo, channelId: instanceChannelId, sourceKey, traceId,
-          sessionId: taskSession?.id,
+          sessionId: instance.sessionId,
         })
         if (!this.workItems.claimForDispatch(wi.id, attempt.id)) {
           throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项已被其他派发者领取')
@@ -1043,7 +1043,7 @@ export class ProjectService {
         traceId,
         channelId: instanceChannelId,
         assigneeId: instanceChannel.leadAgentId,
-        sessionId: taskSession?.id,
+        sessionId: instance.sessionId,
         title: wi.title,
         description: wi.brief,
         execBudgetMinutes: wi.execBudgetMinutes,
@@ -1266,15 +1266,31 @@ export class ProjectService {
     project: ProjectRow
     workItem: ProjectWorkItemRow
     actor: ProjectActor
-  }): Promise<{ channelId: string, created: boolean }> {
+  }): Promise<{ channelId: string, created: boolean, sessionId?: string }> {
     const { project: p, workItem: wi, actor } = input
     // 兼容降级：测试替身/旧 manager 无任务实例能力时，退回共享 Channel 派发（既有语义）。
     const mgr = this.manager as unknown as { createTaskInstance?: AgentChannelManager['createTaskInstance'] }
     if (typeof mgr.createTaskInstance !== 'function') return { channelId: wi.channelId, created: false }
-    const activeSession = this.sessions.listByWorkItem(wi.id).find(s => s.status === 'active')
-    if (wi.instanceChannelId && activeSession && activeSession.channelId === wi.instanceChannelId) {
+    const sessions = this.sessions.listByWorkItem(wi.id)
+    const { prefabSnapshotJson = '', prefabSnapshotHash = '' } = wi
+    let prefabSnapshot: TaskPrefabSnapshot | undefined
+    if (prefabSnapshotJson || prefabSnapshotHash) {
+      prefabSnapshot = { prefabSnapshotJson, prefabSnapshotHash }
+      readTaskPrefabSnapshot(prefabSnapshot)
+    }
+    else if (wi.instanceChannelId || wi.attemptCount > 0 || sessions.length || this.attempts.listByWorkItem(wi.id).length) {
+      throw new AppError(409, 'TASK_PREFAB_SNAPSHOT_MISSING', '已创建过实例或尝试过派发的工作项缺少 AgentPrefab 绑定快照')
+    }
+    const activeSession = sessions.find(s => s.status === 'active' && s.channelId === wi.instanceChannelId)
+    if (wi.instanceChannelId && activeSession) {
       const ch = this.manager.getChannelForUser(wi.instanceChannelId, p.ownerUserId)
-      if (ch && ch.enabled === 1 && ch.leadAgentId) return { channelId: wi.instanceChannelId, created: false }
+      if (ch && ch.enabled === 1 && ch.leadAgentId) {
+        if (!prefabSnapshot || activeSession.prefabSnapshotJson !== prefabSnapshot.prefabSnapshotJson
+          || activeSession.prefabSnapshotHash !== prefabSnapshot.prefabSnapshotHash) {
+          throw new AppError(409, 'TASK_PREFAB_SNAPSHOT_INVALID', '任务实例会话与工作项的 AgentPrefab 绑定快照不一致')
+        }
+        return { channelId: wi.instanceChannelId, created: false, sessionId: activeSession.id }
+      }
     }
     // actor 取项目 owner（系统派发无 Channel 所有权，不能传 system）；admin 保留管理员能力
     const ownerActor = { id: p.ownerUserId, role: actor.role === 'admin' ? 'admin' : 'user' }
@@ -1284,13 +1300,20 @@ export class ProjectService {
       templateChannelId: wi.channelId,
       title: wi.title,
       actor: ownerActor,
+      prefabSnapshot,
+      pinPrefabSnapshot: (snapshot) => {
+        if (!this.workItems.setPrefabSnapshot(wi.id, snapshot.prefabSnapshotJson, snapshot.prefabSnapshotHash)) {
+          throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项 AgentPrefab 绑定快照已被其他派发者固定')
+        }
+      },
     })
-    // Project 首次实例固定 AgentPrefab 快照；同 work item 重试复用，不追随 Channel 最新 binding。
-    if (created.prefabSnapshotJson) {
-      const latest = this.workItems.findById(wi.id)
-      if (latest && !latest.prefabSnapshotJson) {
-        this.workItems.setPrefabSnapshot(wi.id, created.prefabSnapshotJson, created.prefabSnapshotHash)
-      }
+    const pinned = this.workItems.findById(wi.id)
+    const session = this.sessions.findById(created.sessionId)
+    if (!pinned?.prefabSnapshotJson || pinned.prefabSnapshotJson !== created.prefabSnapshotJson
+      || pinned.prefabSnapshotHash !== created.prefabSnapshotHash
+      || session?.prefabSnapshotJson !== pinned.prefabSnapshotJson || session.prefabSnapshotHash !== pinned.prefabSnapshotHash) {
+      await this.releaseCreatedInstance(wi, created.channelId)
+      throw new AppError(409, 'TASK_PREFAB_SNAPSHOT_INVALID', '新任务实例与工作项的 AgentPrefab 绑定快照不一致')
     }
     const afterCreate = this.projects.findById(p.id)
     if (!afterCreate || afterCreate.status !== 'active') {
@@ -1325,7 +1348,7 @@ export class ProjectService {
     }, wi.traceId || `trace:${wi.id}`, 'work.instance_created', `work:${wi.id}:instance:${created.channelId}`, {
       workItemId: wi.id, instanceChannelId: created.channelId, sessionId: created.sessionId, templateChannelId: wi.channelId,
     })
-    return { channelId: created.channelId, created: true }
+    return { channelId: created.channelId, created: true, sessionId: created.sessionId }
   }
 
   private detachTaskInstanceBinding(projectId: string, channelId: string): void {

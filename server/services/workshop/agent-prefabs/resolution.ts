@@ -66,11 +66,9 @@ function projectAllows(input: AgentCapabilityInput, id: string): boolean {
   return allowed.includes(id)
 }
 
-function harnessSupports(input: AgentCapabilityInput, ref: PrefabCapabilityRef): boolean {
-  if (ref.kind === 'skill') {
-    return input.harness.managedSkillIds !== null && input.harness.managedSkillIds.includes(ref.id)
-  }
-  return input.harness.managedToolIds !== null && input.harness.managedToolIds.includes(ref.id)
+function harnessSupports(input: AgentCapabilityInput, kind: PrefabCapabilityRef['kind'], id: string): boolean {
+  const managedIds = kind === 'skill' ? input.harness.managedSkillIds : input.harness.managedToolIds
+  return managedIds?.includes(id) ?? false
 }
 
 function roleAllows(input: AgentCapabilityInput, id: string, entry?: PrefabCapabilityRegistryEntry): boolean {
@@ -136,6 +134,8 @@ export function resolveAgentCapabilitySet(input: AgentCapabilityInput): AgentCap
   for (const ref of input.prefab.capabilities) {
     const key = registryKey(ref.kind, ref.id)
     const entry = input.registry[key]
+    // Skill 名称别名由 registry 仅在唯一时注册；harness 和激活入口都使用 revision id。
+    const id = ref.kind === 'skill' ? entry?.id ?? ref.id : ref.id
     if (!entry) {
       missing.push(state(ref, 'registry 中不存在'))
       reasons[key] = 'registry 中不存在'
@@ -164,14 +164,14 @@ export function resolveAgentCapabilitySet(input: AgentCapabilityInput): AgentCap
       denied.push(state(ref, 'Project 作用域不允许'))
       reasons[key] = 'Project 作用域不允许'
     }
-    else if (!harnessSupports(input, ref)) {
+    else if (!harnessSupports(input, ref.kind, id)) {
       unsupported.push(state(ref, '当前 harness 未声明受管支持'))
       reasons[key] = '当前 harness 未声明受管支持'
     }
     else {
-      active.push(state(ref))
-      if (ref.kind === 'skill') skillIds.add(ref.id)
-      else toolIds.add(ref.id)
+      active.push(state({ ...ref, id }))
+      if (ref.kind === 'skill') skillIds.add(id)
+      else toolIds.add(id)
       continue
     }
     if (ref.required) requiredMissing.push(key)

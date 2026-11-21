@@ -19,7 +19,7 @@ import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { executionModeOfChannel } from '../../agents/execution-mode'
 import { createTaskInstanceChannel } from '../../agents/task-channel'
-import type { TaskInstanceDeps } from '../../agents/task-channel'
+import type { TaskInstanceDeps, TaskInstancePrefabOptions } from '../../agents/task-channel'
 import { getAgentNodeBindingRepo } from '../../agents/node-bindings.repo'
 import { createChannelSessionRepo, type ChannelSessionRow } from '../../db/channel-session.repo'
 import type { SessionCloneDeps } from '../../agents/session-clone'
@@ -663,7 +663,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
    * 项目任务实例（plan 2026-11-07）：为工作项创建专属执行 Channel + 会话行。
    * 返回实例 Channel 与其 lead（root 任务 assignee）。幂等由调用方（项目派发）负责。
    */
-  async createTaskInstance(input: Partial<ChannelAgentCreationSource> & {
+  async createTaskInstance(input: Partial<ChannelAgentCreationSource> & TaskInstancePrefabOptions & {
     projectId: string
     workItemId: string
     templateChannelId: string
@@ -697,6 +697,8 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
         templateChannelId: input.templateChannelId,
         title: input.title,
         actorId: input.actor.id,
+        prefabSnapshot: input.prefabSnapshot,
+        pinPrefabSnapshot: input.pinPrefabSnapshot,
         createdByKind: input.createdByKind,
         createdById: input.createdById,
         createdVia: input.createdVia,

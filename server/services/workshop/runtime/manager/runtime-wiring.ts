@@ -31,12 +31,38 @@ import { isLegacyRecoveryHeld } from '../task-engine/legacy-recovery'
 import { AppError } from '../../../../utils/errors'
 import { prefabPromptText } from '../../agent-prefabs/prompt'
 import { prefabBlockedReason, resolveRuntimeForAgent } from '../../agent-prefabs/runtime'
+import type { PrefabRuntimeProfile } from '../../agent-prefabs/types'
 
 /**
  * 有原生会话持久化的引擎 → session 注入用 brief 档（只注身份+关键事实，历史归引擎）。
  * 未知引擎缺省 full：平台三层装配是无持久化引擎的安全缺省。
  */
 const SESSION_BRIEF_PROFILE_ENGINES = new Set(['claude'])
+
+// 仅列 adapter 已识别的模型设置；不能把 settings 任意展开到 harness config。
+const PREFAB_EFFORT_SETTINGS: Readonly<Record<string, string>> = {
+  omp: 'thinkingLevel',
+  opencode: 'variant',
+  pi: 'thinking',
+}
+
+function applyPrefabProfile(config: Record<string, unknown>, harness: string, profile: PrefabRuntimeProfile): void {
+  const effortSetting = Object.hasOwn(PREFAB_EFFORT_SETTINGS, harness) ? PREFAB_EFFORT_SETTINGS[harness] : undefined
+  for (const [key, value] of Object.entries(profile.settings ?? {})) {
+    if (key !== effortSetting || typeof value !== 'string' || !value.trim()) {
+      throw new AppError(409, 'PREFAB_PROFILE_UNSUPPORTED', `AgentPrefab profile.settings.${key} 不受 ${harness} 支持`)
+    }
+  }
+  // 逐字段优先级：已发布的 Prefab > 成员配置 > Channel 默认值。
+  // effort 与 adapter 原生别名是同一设置：同一 profile 中顶层 effort 优先。
+  if (profile.provider) config.provider = profile.provider
+  if (profile.model) config.model = profile.model
+  const effort = profile.effort || (effortSetting ? profile.settings?.[effortSetting] : undefined)
+  if (effort) {
+    config.effort = effort
+    if (effortSetting) config[effortSetting] = effort
+  }
+}
 
 function memberMapContains(memberMapJson: string, memberId: string): boolean {
   const map = parseJson<unknown>(memberMapJson, null)
@@ -123,6 +149,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       if (prefabRuntime?.resolution.mode === 'prefab') {
         const blocked = prefabBlockedReason(prefabRuntime.resolution)
         if (blocked) throw new AppError(409, 'PREFAB_REQUIRED_CAPABILITY_MISSING', blocked)
+        if (prefabRuntime.draft) applyPrefabProfile(configWithCtx, agent.harness, prefabRuntime.draft.profile)
         const prompt = prefabPromptText(prefabRuntime.resolution)
         if (prompt) configWithCtx.prefabPrompt = prompt
         configWithCtx.prefabBindingHash = prefabRuntime.resolution.bindingHash ?? undefined

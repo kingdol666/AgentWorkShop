@@ -39,9 +39,12 @@ function emptyPrefabResolution(reason: string): AgentCapabilityResolution {
 }
 
 export function resolveRuntimeForAgent(db: DatabaseSync, agentId: string): ResolvedAgentRuntime | null {
-  const memberRow = createChannelAgentRepo(db).findById(agentId)
-  if (!memberRow) return null
+  const member = createChannelAgentRepo(db).findById(agentId)
+  return member ? resolveRuntimeForMember(db, member) : null
+}
 
+/** Resolve capabilities from a member already read from the workshop DB. */
+export function resolveRuntimeForMember(db: DatabaseSync, memberRow: ChannelAgentRow): ResolvedAgentRuntime {
   let binding: AgentPrefabBinding | null = null
   let bindingError: string | undefined
   try {

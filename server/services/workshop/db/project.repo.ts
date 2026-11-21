@@ -511,14 +511,12 @@ export function createProjectWorkItemRepo(db: DatabaseSync) {
     findById(id: string): ProjectWorkItemRow | undefined {
       return selectById.get(id) as unknown as ProjectWorkItemRow | undefined
     },
-    /** 首次实例创建时固定 AgentPrefab 快照；重试不得覆盖（调用方只在空快照时写） */
-    setPrefabSnapshot(id: string, snapshotJson: string, snapshotHash: string): ProjectWorkItemRow | undefined {
-      const cur = selectById.get(id) as unknown as ProjectWorkItemRow | undefined
-      if (!cur) return undefined
-      const ts = now()
-      db.prepare('UPDATE project_work_items SET prefab_snapshot_json = ?, prefab_snapshot_hash = ?, updated_at = ? WHERE id = ?')
-        .run(snapshotJson, snapshotHash, ts, id)
-      return { ...cur, prefabSnapshotJson: snapshotJson, prefabSnapshotHash: snapshotHash, updatedAt: ts }
+    /** First writer pins both fields; never overwrite even a partially populated snapshot. */
+    setPrefabSnapshot(id: string, snapshotJson: string, snapshotHash: string): boolean {
+      const result = db.prepare(`UPDATE project_work_items SET prefab_snapshot_json = ?, prefab_snapshot_hash = ?, updated_at = ?
+        WHERE id = ? AND prefab_snapshot_json = '' AND prefab_snapshot_hash = ''`)
+        .run(snapshotJson, snapshotHash, now(), id)
+      return Number(result.changes ?? 0) === 1
     },
     listByProject(projectId: string): ProjectWorkItemRow[] {
       return selectByProject.all(projectId) as unknown as ProjectWorkItemRow[]
