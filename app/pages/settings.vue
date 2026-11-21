@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppearancePane from '~/components/settings/AppearancePane.vue'
 import RuntimePane from '~/components/settings/RuntimePane.vue'
+import SkillsPane from '~/components/settings/SkillsPane.vue'
 import SystemPane from '~/components/settings/SystemPane.vue'
 
 const { t } = useI18n()
@@ -11,14 +12,15 @@ const activeTab = ref('appearance')
 const tabs = computed(() => [
   { key: 'appearance', icon: 'i-tabler-palette', label: t('settings.theme') },
   { key: 'runtime', icon: 'i-tabler-settings', label: t('settings.runtimeTab') },
+  { key: 'skills', icon: 'i-tabler-puzzle', label: t('settings.skillsTab') },
   { key: 'system', icon: 'i-tabler-server-2', label: t('settings.systemTab') },
 ])
 
 /** 懒挂载:隐藏 pane 此前也在跑请求(Runtime 98 项配置/系统参数);首次激活才挂载,挂后保留状态 */
-type SettingsTab = 'appearance' | 'runtime' | 'system'
-const mountedPanes = reactive<Record<SettingsTab, boolean>>({ appearance: true, runtime: false, system: false })
+type SettingsTab = 'appearance' | 'runtime' | 'skills' | 'system'
+const mountedPanes = reactive<Record<SettingsTab, boolean>>({ appearance: true, runtime: false, skills: false, system: false })
 watch(activeTab, (k) => {
-  if (k === 'appearance' || k === 'runtime' || k === 'system') mountedPanes[k] = true
+  if (k === 'appearance' || k === 'runtime' || k === 'skills' || k === 'system') mountedPanes[k] = true
 })
 </script>
 
@@ -68,6 +70,11 @@ watch(activeTab, (k) => {
           <!-- 运行配置:服务端持久化 + live 热重载/restart 重启生效 -->
           <RuntimePane
             v-if="mountedPanes.runtime"
+            :active-tab="activeTab"
+          />
+          <!-- 技能:发现/受管导入/启停(admin 写,admin/editor 读) -->
+          <SkillsPane
+            v-if="mountedPanes.skills"
             :active-tab="activeTab"
           />
           <!-- 系统:只读运行参数 -->
