@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-15-1) · [0.16.0 发布说明](#whats-new-in-0151) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-16-0) · [0.16.0 发布说明](#whats-new-in-0160) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -51,13 +51,17 @@
 
 ## 当前源码 v0.16.0
 
-当前源码版本为 **0.16.0**（npm + GitHub Release，2026-11-21）。本版包含 **0.15.0 的全部内容**——「AgentPrefab 能力装配」计划（七个合并 PR，#252–#258）端到端落地：系统设置新增三条能力供应链页——**技能管理**（标准 `SKILL.md` 发现 → 不可变受管导入 → 显式启用；发现范围覆盖内置 `skills/`、受管 `<configRoot>/skills`、`~/.agent/skills`（npm/Agent Skills 标准）、`~/.agents/skills`、XDG 与 `AW_SKILL_ROOTS`；发现/导入/激活全程不执行 Skill 脚本）、**外部 MCP**（仅 HTTPS Streamable HTTP 清单 + `AW_MCP_*` 凭据引用 + 管理员评审的 shared-safe 只读工具 + 私网/环回/保留地址出口封锁）、**Agent 预制件**（角色/场景提示词 + 多维自定义插槽 + 逐能力开关封装为不可变 revision，发布即冻结）。Channel 成员固定绑定 `(prefabId, revision, slots, contentHash)`，Session 克隆与 Project 任务实例冻结同一快照，运行时按「预制体选择 ∩ 系统启用/评审 ∩ 频道/项目策略 ∩ 角色工业门 ∩ harness 受管面」在每次 dispatch 重新授权，撤销无法被缓存目录绕过。数据库契约 v7→v9（v8：AgentPrefab 表与快照列；v9：修复 0.7 时代存量家目录启动即崩——`chat_deliveries` 重试索引移出契约 SQL、在补列之后幂等创建，已用真实旧库副本验证升级路径）。
+当前源码版本为 **0.16.0**（npm + GitHub Release，2026-11-21）。本版包含 0.15.x 全部内容——「AgentPrefab 能力装配」计划（#252–#258）加上 **Leader 自主管理 Worker 的 AgentPrefab 能力**（合并 PR #262/#264/#265）：Channel Leader 创建 Worker 时可携带已发布 revision 选择器并原子固定 `(prefabId, revision, slotValues, contentHash)`；名册带 `manageable`/`protected` 标记；可按 revision 切换/解绑绑定；且只能移除自己创建的 Worker。Worker 创建来源持久化（`created_by_kind`/`created_by_id`/`created_via`/`created_reason`）；人类绑定 Worker、其他 Leader 的 Worker、Lead、Project Leader 与未关闭 Session 克隆均受删除保护，移除时回收任务、同事务取消待投递并清理实例节点绑定，不动全局模板与不可变 revision。native/REST/MCP/Project 各路径 dispatch 对损坏/哈希不匹配绑定、停用成员、角色/版本不匹配与模板可见性越界一律 fail-closed；Project 任务实例重试复用首次固定的快照并做 CAS/哈希校验。已发布 Prefab profile 按字段应用到受支持 harness（OMP thinking level 走 RPC）；唯一 Skill 别名解析为 canonical revision id。数据库契约 **v10** 新增来源列（存量行保守迁移为 `system`/`protected`）。
 
-合并主干门禁（`87805eaf`）：typecheck、lint、build、docs **101/0**、readme、i18n **3439/3439**、cssvars、frontend-lifecycle、skills **197/0**、MCP **14/14**、unit **2185/2186**（1 条件跳过）全绿。隔离全新实例实机验收 **21/21**：`~/.agent/skills` 全局发现 → 不可变导入 → 启用 → 预制体发布/成员绑定 → 工具目录收窄 → `activate_skill` 低信任正文注入 → 越权调用拒绝 → Session 克隆绑定与快照哈希 → 发布新 revision 不自动升级 → Skill 撤销即时拒绝 → MCP 非 HTTPS/无密钥/失败有界；另在存量实例上完成两次重启持久性核验（写尝试台账 3277 行分布一致、绝不重发）与治理评测门实机触发（伪报 400、无宿主来源拒晋升 active、客户端 run 拒 active、shadow 晋级成功）。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN；Mimosa 深扫有封印但 inconclusive，不作安全通过声明。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
+v0.16.0 验证：#262/#264/#265/#263/#266 PR quick-gate 全绿；focused 套件 **38/38**、合并后 **22/22** 与 **13/13**、Project/Prefab/Session 回归集 **235/235**；发布构建实机隔离验收——Leader/Prefab 全链 **30/30 ×2**（创建带 Prefab 的 Worker → SQLite 来源核验 → 名册标记 → 目录收窄 → dispatch 放行/拒绝 → 用户路径 Worker 保护 → lead 自改拒绝 → revision 切换即收窄 → 解绑 → 移除保留模板与 revision → REST 删 lead 409），官方 L10 全新实例 **21/21**，AgentTeam CRUD/部署/派发 **25/25**，前端 SSR 路由 200。Mimosa 深扫有封印（`sha256:a91957e0…`，54 findings，依赖风险 0）——findings 如实呈报，不作安全通过声明。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
 
 ## What's new in 0.16.0
 
-- **存量家目录启动修复（v9）**：0.7 时代的旧家目录（无迁移台账、`chat_deliveries` 缺 `next_retry_at` 列）在 0.15.0 及更早版本上启动即崩（`no such column: next_retry_at`）——契约 SQL 内的 `idx_chat_deliveries_retry` 在补列迁移之前执行。v9 把该索引移出契约 SQL，改为补列后幂等创建；发布验证在真实旧库副本上实证：boot OK、三列补齐、索引重建、契约 v9 落账、Prefab 列就位。
+- **Leader 自主管理 Worker 的 AgentPrefab（#262）**：`create_team_agent` 支持已发布 revision 选择器（`prefabId`/`revision`/`slotValues`），创建即原子固定绑定；`update_team_agent` 可切换 revision（传 selector）或解绑（`prefab: null`）；`list_team_agents` 展示每个成员固定的 revision/哈希与 `manageable`/`protected`。仅当前 Leader 自己经 `lead_team` 创建的 Worker 可管理——人类绑定 Worker、其他 Leader 的 Worker、Lead、Project Leader 与未关闭 Session 克隆均受保护，且移除不再连带删除全局 Agent 模板。
+- **创建来源持久化（#262，契约 v10）**：`channel_agents.created_by_kind/created_by_id/created_via/created_reason` 在所有创建路径落库；存量行保守迁移为 `system`/`protected`，不继承 Leader 管理权。移除 Worker 时回收排队/执行中任务、同事务取消待投递聊天消息并清理实例节点绑定。
+- **运行时 fail-closed 边界（#264）**：native/REST/MCP/Project 派发先验证成员在所属 Channel 存活；损坏或哈希不匹配的 Prefab 绑定不再回落 legacy；Prefab 闸先于 Project 工具提前返回；Worker 无法获得 lead-only 基线工具；固定 capability 版本必须与 registry 精确匹配。
+- **Prefab profile、Skill 别名与 Project 重试快照（#265）**：已发布 profile 按字段应用到受支持 harness（provider/model/effort；OMP thinking level 经 `set_thinking_level` RPC 下发，不改启动参数）；唯一 Skill 别名 canonical 化为 revision id；Project 工作项重试复用首次固定的 Prefab 快照（CAS/哈希/成员漂移校验），不再读取当前模板绑定。
+- **存量家目录启动修复（v9，来自 0.15.1）**：0.7 时代旧家目录启动即崩（契约 SQL 在补列前建 `idx_chat_deliveries_retry`）；v9 把该索引移出契约 SQL、补列后幂等创建——已在真实旧库副本上实证。
 
 ## What's new in 0.15.0 — 历史发布说明
 
