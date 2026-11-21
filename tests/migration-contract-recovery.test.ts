@@ -64,7 +64,10 @@ test('v9 channel agents migrate to protected provenance without claiming a leade
     for (const column of ['created_by_kind', 'created_by_id', 'created_via', 'created_reason']) {
       db.exec(`ALTER TABLE channel_agents DROP COLUMN ${column}`)
     }
-    const v9Schema = SCHEMA_SQL.replace(/^  created_by_kind TEXT NOT NULL DEFAULT 'system'.*\n  created_by_id .*\n  created_via .*\n  created_reason .*\n/m, '')
+    const v9Schema = SCHEMA_SQL.replace(
+      /^  created_by_kind TEXT NOT NULL DEFAULT 'system'.*\n  created_by_id .*\n  created_via .*\n  created_reason .*\n/m,
+      '',
+    )
     assert.notEqual(v9Schema, SCHEMA_SQL)
     const v9Fingerprint = fingerprintMigration(v9Schema)
     assert.equal(CONTRACT_VERSION, 10)

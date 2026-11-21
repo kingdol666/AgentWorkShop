@@ -39,7 +39,14 @@ function fixture(t: TestContext) {
   const manager = Object.assign(Object.create(AgentChannelManager.prototype) as InstanceType<typeof AgentChannelManager>, {
     deps: {
       db,
-      repos: { channels, channelAgents, agents, chatMessages, subscriptions, tasks: { listByChannelAssignee: () => { taskLookups++; return [] } } },
+      repos: {
+        channels,
+        channelAgents,
+        agents,
+        chatMessages,
+        subscriptions,
+        tasks: { listByChannelAssignee: () => { taskLookups++; return [] } },
+      },
     },
     activeInvocationScopes: new Map(),
     ensureAgentRuntime: () => undefined,

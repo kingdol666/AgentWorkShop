@@ -31,18 +31,18 @@ import { selectBroadcastTargets } from './broadcast-targets'
 import { randomUUID } from 'node:crypto'
 
 type AddChannelAgentInput = Partial<ChannelAgentCreationSource> & {
-    channelId: string
-    agentId: string
-    role: 'lead' | 'worker'
-    /** 模板 config 覆盖项(浅合并;用于注入/覆盖 systemPromptPrefix 等场景配置) */
-    configOverride?: Record<string, unknown>
-    /** 操作发起方(AEP agent.member 的 by;缺省 'user') */
-    by?: string
-    reason?: string
-    /** 操作者（spawn 授权；缺省按普通用户处理） */
-    actor?: SpawnActor
-    /** 模板/Channel 模板携带的 AgentPrefab 绑定 JSON（缺省无绑定） */
-    prefabBindingJson?: string
+  channelId: string
+  agentId: string
+  role: 'lead' | 'worker'
+  /** 模板 config 覆盖项(浅合并;用于注入/覆盖 systemPromptPrefix 等场景配置) */
+  configOverride?: Record<string, unknown>
+  /** 操作发起方(AEP agent.member 的 by;缺省 'user') */
+  by?: string
+  reason?: string
+  /** 操作者（spawn 授权；缺省按普通用户处理） */
+  actor?: SpawnActor
+  /** 模板/Channel 模板携带的 AgentPrefab 绑定 JSON（缺省无绑定） */
+  prefabBindingJson?: string
 }
 
 export abstract class ManagerAdminAgents extends ManagerAdminChannel {

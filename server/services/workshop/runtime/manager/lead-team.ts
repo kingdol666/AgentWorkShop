@@ -140,8 +140,11 @@ export abstract class ManagerLeadTeam extends ManagerAdminAgents {
   async updateTeamMember(channelId: string, callerAgentId: string, agentId: string, patch: UpdateTeamMemberPatch): Promise<AgentInfo> {
     const channel = this.requireTeamLead(channelId, callerAgentId, 'update_team_agent')
     this.requireManagedWorker(channelId, callerAgentId, agentId)
-    const prefabBindingJson = patch.prefab === undefined ? undefined
-      : patch.prefab === null ? '' : this.buildTeamBindingJson(channel, patch.prefab)
+    const prefabBindingJson = patch.prefab === undefined
+      ? undefined
+      : patch.prefab === null
+        ? ''
+        : this.buildTeamBindingJson(channel, patch.prefab)
     // Explicitly pick instance fields. In particular, no caller-supplied serialized binding or source can pass through.
     return this.updateChannelAgent(agentId, { name: patch.name, config: patch.config, enabled: patch.enabled, prefabBindingJson }, {
       channelId, by: `lead:${callerAgentId}`, reason: patch.reason, actor: { role: 'agent', id: callerAgentId },

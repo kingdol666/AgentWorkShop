@@ -53,7 +53,10 @@ test('ordinary and Project tools reject invalid prefab bindings before handlers 
   let ordinaryCalls = 0
   registerPluginTool('prefab-dispatch-test', {
     name: ordinaryTool, description: 'local probe', parameters: {}, riskClass: 'read',
-    handler: () => { ordinaryCalls++; return { text: 'ok' } },
+    handler: () => {
+      ordinaryCalls++
+      return { text: 'ok' }
+    },
   })
   const projects = initProjectService({} as Parameters<typeof initProjectService>[0], db)
   // The existing Project gate sees an authorized project lead. Spy on the mutation
