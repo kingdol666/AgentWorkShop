@@ -1,0 +1,49 @@
+{
+  "round": "agent-prefab-skills-mcp-acceptance",
+  "at": "2026-11-21T06:40:00.000Z",
+  "testedSha": "f6b20707b541779991c704a129a5b401082335a2",
+  "instance": {
+    "base": "http://127.0.0.1:3026",
+    "version": "0.14.0",
+    "mode": "home",
+    "cleanHome": true,
+    "cleanUserHome": true
+  },
+  "files": [
+    {
+      "path": "scripts/experiments/prefab-acceptance.mjs",
+      "sha256": "1413169a17fd8d94a5ed0713b24c33f8b228bbbad0f78aa4b378a1a2f4b737be"
+    },
+    {
+      "path": "docs/audit/evidence/2026-11-21-agent-prefab-acceptance/result.json",
+      "sha256": "a1d4374fdd20fd8d339aed9c5e28d889a0c1f5818340499900a6afea862253ab"
+    },
+    {
+      "path": "docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md",
+      "sha256": "70a5206c358497a31c224d1c98ea0e1265a83cb1a30b4bce126b1682770897e1"
+    }
+  ],
+  "result": {
+    "total": 21,
+    "pass": 21,
+    "fail": 0,
+    "notRunLiveMcpPositive": true,
+    "notRunRealOmpModel": true,
+    "notRunProjectTaskInstanceE2E": true,
+    "mimosa": "not-run-in-this-round"
+  },
+  "gates": {
+    "test:unit": "2185 pass / 1 skipped / 0 fail (2186)",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "test:mcp": "14/14",
+    "test:skills": "197 PASS / 0 FAIL",
+    "docs:check": "101/0",
+    "readme:lint": "PASS",
+    "i18n:check": "PARITY OK (3439/3439)",
+    "check:cssvars": "OK (161 refs)",
+    "frontend-lifecycle-contract": "PASS"
+  },
+  "boundary": "Software/simulator evidence only; not physical HIL, site admission or production approval. Mimosa was not completed; no security pass is claimed."
+}
