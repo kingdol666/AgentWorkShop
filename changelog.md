@@ -1,3 +1,9 @@
+## v0.15.1 — legacy-home boot fix (schema contract v9)（2026-11-21）
+
+- Legacy-home boot fix: a 0.7-era home (no migration ledger, `chat_deliveries` shaped without `attempts`/`next_retry_at`/`claimed_at`) crashed on boot with `no such column: next_retry_at` — the contract SQL created `idx_chat_deliveries_retry(status, next_retry_at)` before the column-backfill migration. The index moves out of the contract SQL and is created idempotently (`ensureChatDeliveryRetryIndex`) right after the backfill; SCHEMA_CONTRACT_VERSION bumps to 9 so existing v8 databases replay cleanly. 0.7 时代存量家目录启动即崩的修复：重试索引移出契约 SQL、补列后幂等创建，契约版本升到 v9。
+- Verified against a copy of a real 2026-11-02 legacy home: boot completes, the three columns are backfilled, the retry index exists, schema-contract v9 is recorded, and the AgentPrefab columns land in the same pass. 在真实旧库副本上实证：boot 完成、三列补齐、索引重建、契约 v9 落账、Prefab 列同批就位。
+- npm-installed 0.15.0 instances on pre-ledger homes were affected; fresh homes were never affected (first boot creates the full current schema). 全新家目录从未受影响；受影响的是 npm 安装后在旧家目录上的启动。
+
 ## v0.15.0 — AgentPrefab capability assembly: managed Skills, external MCP, pinned revisions（2026-11-21）
 
 - Managed Skills catalog: Agent Skills-standard `SKILL.md` discovery across built-in `skills/`, managed `<configRoot>/skills`, `~/.agent/skills`, `~/.agents/skills`, XDG and `AW_SKILL_ROOTS`; import stages an immutable content-hash copy under `<configRoot>/skills/<name>/<hash>/` (disabled by default), enable/disable/delete are admin-audited, and no script inside a Skill package is ever executed during discovery, import or activation. 受管 Skill 目录：标准发现（内置/受管/`~/.agent` 等全局根）、按内容哈希不可变导入（默认未启用）、管理员审计启停、全程零脚本执行。

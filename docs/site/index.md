@@ -73,7 +73,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.15.0 · 已发布</i></span>
+        <span>版本 <i>v0.15.1 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -90,11 +90,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.15.0 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.15.1 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.15.0 版本。本版把「AgentPrefab 能力装配」计划（#252–#258）端到端落地：
+      当前为 v0.15.1 版本（含 0.15.0 全部内容与存量家目录启动修复）。本版把「AgentPrefab 能力装配」计划（#252–#258）端到端落地：
       系统设置新增技能管理（标准 SKILL.md 发现 → 不可变受管导入 → 显式启用，覆盖
       内置、<code>&lt;configRoot&gt;/skills</code>、<code>~/.agent/skills</code> 等全局根，全程不执行
       Skill 脚本）、外部 MCP（HTTPS 清单 + <code>AW_MCP_*</code> 凭据引用 + 评审制
@@ -126,7 +126,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">验证</span>
-      <p>本 v0.15.0 合并主干门禁（<code>87805eaf</code>）：typecheck/lint/build、docs 101/0、i18n 3439/3439、skills 197/0、MCP 14/14、unit 2185/2186（1 条件跳过）全绿；隔离全新实例实机验收 21/21（Skill 发现→导入→启用→预制体发布→绑定→目录收窄→activate_skill 低信任注入→越权拒绝→会话快照→修订不自动升级→撤销即时生效→MCP HTTPS/无密钥/失败有界）；存量实例两轮重启持久性核验（写尝试台账 3277 行分布一致、绝不重发）。仅模拟证据，不构成物理 HIL；外部 MCP 正向实网、Prefab 下真实模型作业、浏览器点击验收 NOT_RUN；Mimosa inconclusive 不作安全通过声明，详见报告。<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md">全流程验收报告</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP 实机报告</a></p>
+      <p>v0.15.0 合并主干门禁（<code>87805eaf</code>）：typecheck/lint/build、docs 101/0、i18n 3439/3439、skills 197/0、MCP 14/14、unit 2185/2186（1 条件跳过）全绿；隔离全新实例实机验收 21/21（Skill 发现→导入→启用→预制体发布→绑定→目录收窄→activate_skill 低信任注入→越权拒绝→会话快照→修订不自动升级→撤销即时生效→MCP HTTPS/无密钥/失败有界）；存量实例两轮重启持久性核验（写尝试台账 3277 行分布一致、绝不重发）；v0.15.1 在真实旧库副本上实证存量家目录升级路径（契约 v9）。仅模拟证据，不构成物理 HIL；外部 MCP 正向实网、Prefab 下真实模型作业、浏览器点击验收 NOT_RUN；Mimosa inconclusive 不作安全通过声明，详见报告。<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md">全流程验收报告</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP 实机报告</a></p>
     </div>
   </section>
 

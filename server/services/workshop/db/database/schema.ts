@@ -528,7 +528,10 @@ CREATE TABLE IF NOT EXISTS chat_deliveries (
   updated_at          TEXT NOT NULL,
   UNIQUE(chat_message_id, target_agent_id)
 );
-CREATE INDEX IF NOT EXISTS idx_chat_deliveries_retry ON chat_deliveries(status, next_retry_at);
+-- idx_chat_deliveries_retry(status, next_retry_at) 不在契约 SQL 里创建:
+-- 0.7 时代存量库的 chat_deliveries 缺 next_retry_at 列,建契约 schema 时建索引会以
+-- "no such column" 中断启动;改为在 migrateAddColumn 补列之后由
+-- ensureChatDeliveryRetryIndex 幂等创建(migrations.ts)。
 CREATE INDEX IF NOT EXISTS idx_chat_deliveries_message ON chat_deliveries(chat_message_id);
 CREATE INDEX IF NOT EXISTS idx_chat_deliveries_agent ON chat_deliveries(target_agent_id, status);
 -- Agent 回复关联链热路径:agentReplyToChat 按 mailboxMessageId 反查群聊来源

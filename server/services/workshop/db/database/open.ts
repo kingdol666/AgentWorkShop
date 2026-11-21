@@ -6,7 +6,7 @@ import type * as sqliteVec from 'sqlite-vec'
 import { DatabaseSync } from 'node:sqlite'
 import { CHANNEL_PRODUCT_BINDINGS_SQL, SCHEMA_SQL } from './schema'
 import { createRequire } from 'node:module'
-import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateAmlChannelOptimizationColumns, migrateAmlModelIdentityColumns, migrateAnalysisEditColumns, migrateApprovalPayloadColumns, migrateAuditQueryIndexes, migrateAuditScopeColumn, migrateChannelExecutionModeColumn, migrateChannelModeColumn, migrateDropOwnerFks, migrateDualDriveColumns, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns, migrateOptimizerFoundationColumns, migrateAgentTokenGraceColumns } from './migrations'
+import { migrateAddColumn, ensureChatDeliveryRetryIndex, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateAmlChannelOptimizationColumns, migrateAmlModelIdentityColumns, migrateAnalysisEditColumns, migrateApprovalPayloadColumns, migrateAuditQueryIndexes, migrateAuditScopeColumn, migrateChannelExecutionModeColumn, migrateChannelModeColumn, migrateDropOwnerFks, migrateDualDriveColumns, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns, migrateOptimizerFoundationColumns, migrateAgentTokenGraceColumns } from './migrations'
 import { migrateProjectColumns, ensureProjectIndexes, migrateApprovedSlotScope } from './migrations-project'
 import { migrateSessionContextColumns, migrateSessionChannelModeColumn, ensureSessionIndexes } from './migrations-session'
 import { migrateExperienceColumns, ensureExperienceIndexes } from './migrations-experience'
@@ -47,9 +47,10 @@ export function openWorkshopDb(path: string): DatabaseSync {
  * assertMigrationFingerprint 查不到新版本行即放行并补录;同版本内的 SQL
  * 漂移(手改/回滚 schema)仍会被哈希比对抓住。
  * 历史:v1 初始契约;v2 2026-11-15 channels.channel_mode;v3 messages.claim_token;v4 受治理经验版本;
- * v5 发布请求+审计 outbox;v6 反射 outbox;v7 设备写尝试账本;v8 AgentPrefab 草稿/不可变 revision。
+ * v5 发布请求+审计 outbox;v6 反射 outbox;v7 设备写尝试账本;v8 AgentPrefab 草稿/不可变 revision;
+ * v9 chat_deliveries 重试索引移出契约 SQL(0.7 时代存量库缺 next_retry_at 列,契约内建索引会中断启动)。
  */
-export const SCHEMA_CONTRACT_VERSION = 8
+export const SCHEMA_CONTRACT_VERSION = 9
 
 /** 对已打开的库执行初始化:WAL + 外键约束 + 建表 + 增量迁移 */
 export function initWorkshopDb(db: DatabaseSync): void {
@@ -92,6 +93,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   // 2026-10-30 chat 投递崩溃恢复:pending 且 mailbox 未落库的投递由补偿器退避重投(阶段2)
   migrateAddColumn(db, 'chat_deliveries', 'attempts', 'INTEGER NOT NULL DEFAULT 0')
   migrateAddColumn(db, 'chat_deliveries', 'next_retry_at', 'TEXT')
+  // 重试索引在补列之后幂等创建（契约 SQL 不建它；0.7 时代存量库缺列会中断启动）
+  ensureChatDeliveryRetryIndex(db)
   migrateAddColumn(db, 'chat_deliveries', 'claimed_at', 'TEXT')
   // v10:模板可见性列(既有库补列;默认 private,仅属主可见)
   migrateAddColumn(db, 'agents', 'visibility', 'TEXT NOT NULL DEFAULT \'private\'')
