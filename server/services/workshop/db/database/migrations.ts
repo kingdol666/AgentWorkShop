@@ -614,3 +614,13 @@ export function migrateDualDriveColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'process_model_eligibility', 'dataset_id', 'TEXT NOT NULL DEFAULT \'\'')
   migrateAddColumn(db, 'process_model_eligibility', 'dataset_hash', 'TEXT NOT NULL DEFAULT \'\'')
 }
+
+/**
+ * 补齐 chat_deliveries 的重试面：idx_chat_deliveries_retry(status, next_retry_at)
+ * 不在契约 SCHEMA_SQL 里创建（0.7 时代存量库缺 next_retry_at 列，建契约 schema
+ * 时建索引会中断启动），改为在 attempts/next_retry_at/claimed_at 补列之后
+ * 幂等创建（全新库与存量库都走这里）。
+ */
+export function ensureChatDeliveryRetryIndex(db: DatabaseSync): void {
+  db.prepare('CREATE INDEX IF NOT EXISTS idx_chat_deliveries_retry ON chat_deliveries(status, next_retry_at)').run()
+}

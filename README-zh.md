@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.15.0)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.15.1)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.15.0（2026-11-21 发布）</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.15.1（2026-11-21 发布）</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-15-0) · [0.15.0 发布说明](#whats-new-in-0150) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-15-1) · [0.15.1 发布说明](#whats-new-in-0151) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,13 +49,17 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 当前源码 v0.15.0
+## 当前源码 v0.15.1
 
-当前源码版本为 **0.15.0**（npm + GitHub Release，2026-11-21）。本版把「AgentPrefab 能力装配」计划（七个合并 PR，#252–#258）端到端落地：系统设置新增三条能力供应链页——**技能管理**（标准 `SKILL.md` 发现 → 不可变受管导入 → 显式启用；发现范围覆盖内置 `skills/`、受管 `<configRoot>/skills`、`~/.agent/skills`（npm/Agent Skills 标准）、`~/.agents/skills`、XDG 与 `AW_SKILL_ROOTS`；发现/导入/激活全程不执行 Skill 脚本）、**外部 MCP**（仅 HTTPS Streamable HTTP 清单 + `AW_MCP_*` 凭据引用 + 管理员评审的 shared-safe 只读工具 + 私网/环回/保留地址出口封锁）、**Agent 预制件**（角色/场景提示词 + 多维自定义插槽 + 逐能力开关封装为不可变 revision，发布即冻结）。Channel 成员固定绑定 `(prefabId, revision, slots, contentHash)`，Session 克隆与 Project 任务实例冻结同一快照，运行时按「预制体选择 ∩ 系统启用/评审 ∩ 频道/项目策略 ∩ 角色工业门 ∩ harness 受管面」在每次 dispatch 重新授权，撤销无法被缓存目录绕过。数据库契约 v7→v8（增量迁移，不动存量行为）。
+当前源码版本为 **0.15.1**（npm + GitHub Release，2026-11-21）。本版包含 **0.15.0 的全部内容**——「AgentPrefab 能力装配」计划（七个合并 PR，#252–#258）端到端落地：系统设置新增三条能力供应链页——**技能管理**（标准 `SKILL.md` 发现 → 不可变受管导入 → 显式启用；发现范围覆盖内置 `skills/`、受管 `<configRoot>/skills`、`~/.agent/skills`（npm/Agent Skills 标准）、`~/.agents/skills`、XDG 与 `AW_SKILL_ROOTS`；发现/导入/激活全程不执行 Skill 脚本）、**外部 MCP**（仅 HTTPS Streamable HTTP 清单 + `AW_MCP_*` 凭据引用 + 管理员评审的 shared-safe 只读工具 + 私网/环回/保留地址出口封锁）、**Agent 预制件**（角色/场景提示词 + 多维自定义插槽 + 逐能力开关封装为不可变 revision，发布即冻结）。Channel 成员固定绑定 `(prefabId, revision, slots, contentHash)`，Session 克隆与 Project 任务实例冻结同一快照，运行时按「预制体选择 ∩ 系统启用/评审 ∩ 频道/项目策略 ∩ 角色工业门 ∩ harness 受管面」在每次 dispatch 重新授权，撤销无法被缓存目录绕过。数据库契约 v7→v9（v8：AgentPrefab 表与快照列；v9：修复 0.7 时代存量家目录启动即崩——`chat_deliveries` 重试索引移出契约 SQL、在补列之后幂等创建，已用真实旧库副本验证升级路径）。
 
 合并主干门禁（`87805eaf`）：typecheck、lint、build、docs **101/0**、readme、i18n **3439/3439**、cssvars、frontend-lifecycle、skills **197/0**、MCP **14/14**、unit **2185/2186**（1 条件跳过）全绿。隔离全新实例实机验收 **21/21**：`~/.agent/skills` 全局发现 → 不可变导入 → 启用 → 预制体发布/成员绑定 → 工具目录收窄 → `activate_skill` 低信任正文注入 → 越权调用拒绝 → Session 克隆绑定与快照哈希 → 发布新 revision 不自动升级 → Skill 撤销即时拒绝 → MCP 非 HTTPS/无密钥/失败有界；另在存量实例上完成两次重启持久性核验（写尝试台账 3277 行分布一致、绝不重发）与治理评测门实机触发（伪报 400、无宿主来源拒晋升 active、客户端 run 拒 active、shadow 晋级成功）。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN；Mimosa 深扫有封印但 inconclusive，不作安全通过声明。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
 
-## What's new in 0.15.0
+## What's new in 0.15.1
+
+- **存量家目录启动修复（v9）**：0.7 时代的旧家目录（无迁移台账、`chat_deliveries` 缺 `next_retry_at` 列）在 0.15.0 及更早版本上启动即崩（`no such column: next_retry_at`）——契约 SQL 内的 `idx_chat_deliveries_retry` 在补列迁移之前执行。v9 把该索引移出契约 SQL，改为补列后幂等创建；发布验证在真实旧库副本上实证：boot OK、三列补齐、索引重建、契约 v9 落账、Prefab 列就位。
+
+## What's new in 0.15.0 — 历史发布说明
 
 - **技能管理（#253）**：Agent Skills 标准发现目录与不可变受管副本（`<configRoot>/skills/<name>/<hash>/`，导入默认未启用）；设置页支持发现/导入/启用/停用/删除与 SKILL.md 读取；同名多来源保留冲突提示；`allowed-tools` 仅为实验性 metadata，不授予工具权限。
 - **外部 MCP 管理（#254）**：HTTPS-only Streamable HTTP 清单（`<configRoot>/mcp/servers/<id>.json`）、`AW_MCP_*` 环境凭据引用（不落文件/界面/日志）、发现 → pending → 管理员评审（`dataSharing=shared-safe` 且 `classification=read` 才可批准，首版不开放写工具）、endpoint/凭据代际/协议/工具名/schema 变化或超过 `maxDiscoveryAgeMs` 自动回到 pending、出口防护（私网/环回/保留地址拒绝 + 固定 DNS 解析 + 同源重定向 + 超时不自动重试）。
@@ -462,7 +466,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.15.0（已发布 2026-11-21）** —— [最新版本 v0.15.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.15.0) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.15.1（已发布 2026-11-21）** —— [最新版本 v0.15.1](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.15.1) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />
