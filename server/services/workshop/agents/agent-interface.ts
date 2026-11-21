@@ -7,6 +7,7 @@
 import type { A2AMessage, A2AArtifact, A2AError, ChannelMail, Part } from '../types/a2a'
 import type { WorkspaceTask, AgentTaskQueueView, AgentStatusView, AgentContextStats } from '../types/task'
 import type { ExecutionScope } from './execution-scope'
+import type { AgentPrefabBinding } from '../agent-prefabs/types'
 
 /** Agent 元信息:Channel 内成员声明(hook harness 类型与配置) */
 export interface AgentInfo {
@@ -24,6 +25,8 @@ export interface AgentInfo {
   /** 来源 Agent 模板 id(成员实例专有;手工创建的成员为 null)。
    *  Agent↔工业节点绑定必须以实例 id 为主体,调用方靠它把模板映射到已部署实例。 */
   templateId?: string | null
+  /** 当前成员固定的 AgentPrefab binding（null/缺省 = legacy 成员） */
+  prefabBinding?: AgentPrefabBinding | null
 }
 
 /** 运行请求:平台向 Agent 投递的一次消息输入 */

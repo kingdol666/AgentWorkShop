@@ -75,7 +75,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     description?: string
     scenarioPrompt?: string
     workspace?: string
-    leadAgent?: { name: string, harness: string, config?: Record<string, unknown>, agentKind?: 'channel_agent' | 'project_leader' }
+    leadAgent?: { name: string, harness: string, config?: Record<string, unknown>, agentKind?: 'channel_agent' | 'project_leader', prefabBindingJson?: string }
     ownerUserId?: string | null
     /** 操作者（用于 spawn/workspace 授权；缺省按普通用户处理） */
     actor?: SpawnActor
@@ -112,6 +112,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
         name: tpl.name,
         harness: tpl.harness,
         config: parseJson<Record<string, unknown>>(tpl.configJson, {}),
+        prefabBindingJson: input.leadAgent.prefabBindingJson ?? '',
         role: 'lead',
         agentKind: input.leadAgent.agentKind,
       })

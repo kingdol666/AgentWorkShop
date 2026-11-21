@@ -51,6 +51,7 @@ function registryKey(kind: string, id: string): string {
 }
 
 function channelAllows(input: AgentCapabilityInput, id: string): boolean {
+  if (Array.isArray(input.channelPolicy.disabledToolIds) && input.channelPolicy.disabledToolIds.includes(id)) return false
   if (input.channelPolicy.mode !== 'selected') return true
   return Array.isArray(input.channelPolicy.enabledToolIds)
     ? input.channelPolicy.enabledToolIds.includes(id)
