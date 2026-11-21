@@ -39,24 +39,50 @@ import type { PrefabRuntimeProfile } from '../../agent-prefabs/types'
  */
 const SESSION_BRIEF_PROFILE_ENGINES = new Set(['claude'])
 
-// 仅列 adapter 已识别的模型设置；不能把 settings 任意展开到 harness config。
-const PREFAB_EFFORT_SETTINGS: Readonly<Record<string, string>> = {
-  omp: 'thinkingLevel',
-  opencode: 'variant',
-  pi: 'thinking',
-}
+// Only adapters that consume these model selectors may receive them from a Prefab.
+const PREFAB_PROVIDER_HARNESSES = new Set(['omp', 'opencode', 'dsh', 'goose', 'pi', 'hermes'])
+const PREFAB_MODEL_HARNESSES = new Set([...PREFAB_PROVIDER_HARNESSES, 'codex', 'claude', 'gemini', 'copilot', 'cursor', 'crush', 'qwen'])
+const PREFAB_EFFORT_SETTINGS = new Map([['omp', 'thinkingLevel'], ['opencode', 'variant'], ['pi', 'thinking']])
+const PREFAB_EFFORT_HARNESSES = new Set([...PREFAB_EFFORT_SETTINGS.keys(), 'codex'])
+const PREFAB_SETTING_ID = /^[a-z0-9][a-z0-9_.-]*$/i
+const PREFAB_MODEL_ID = /^[a-z0-9_@][a-z0-9_.:@+/-]*$/i
+const OMP_EFFORT_LEVELS = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'auto'])
 
 function applyPrefabProfile(config: Record<string, unknown>, harness: string, profile: PrefabRuntimeProfile): void {
-  const effortSetting = Object.hasOwn(PREFAB_EFFORT_SETTINGS, harness) ? PREFAB_EFFORT_SETTINGS[harness] : undefined
+  const { provider, model } = profile
+  const effortSetting = PREFAB_EFFORT_SETTINGS.get(harness)
+  const unsupported = (field: string) => new AppError(409, 'PREFAB_PROFILE_UNSUPPORTED', `AgentPrefab profile.${field} 不受 ${harness} 支持或值无效`)
+  const validEffort = (value: unknown): value is string => typeof value === 'string'
+    && (harness === 'omp' ? OMP_EFFORT_LEVELS.has(value) : PREFAB_SETTING_ID.test(value))
   for (const [key, value] of Object.entries(profile.settings ?? {})) {
-    if (key !== effortSetting || typeof value !== 'string' || !value.trim()) {
-      throw new AppError(409, 'PREFAB_PROFILE_UNSUPPORTED', `AgentPrefab profile.settings.${key} 不受 ${harness} 支持`)
-    }
+    if (key !== effortSetting || !validEffort(value)) throw unsupported(`settings.${key}`)
   }
+  if (provider && (!PREFAB_PROVIDER_HARNESSES.has(harness) || !PREFAB_SETTING_ID.test(provider))) throw unsupported('provider')
+  if (model && (!PREFAB_MODEL_HARNESSES.has(harness) || !PREFAB_MODEL_ID.test(model))) throw unsupported('model')
+  if (profile.effort && (!PREFAB_EFFORT_HARNESSES.has(harness) || !validEffort(profile.effort))) throw unsupported('effort')
+
   // 逐字段优先级：已发布的 Prefab > 成员配置 > Channel 默认值。
+  if (harness === 'opencode' && (provider || model)) {
+    // OpenCode reads provider from its qualified model. Keep that selector in sync.
+    const fallbackModel = typeof config.model === 'string' ? config.model : ''
+    const fallbackSlash = fallbackModel.indexOf('/')
+    const selectedModel = model || fallbackModel.slice(fallbackSlash + 1)
+    const slash = selectedModel.indexOf('/')
+    const modelProvider = model && slash >= 0 ? model.slice(0, slash) : undefined
+    const modelId = modelProvider !== undefined ? selectedModel.slice(slash + 1) : selectedModel
+    const fallbackProvider = fallbackSlash >= 0 ? fallbackModel.slice(0, fallbackSlash) : config.provider
+    const selectedProvider = provider || modelProvider || fallbackProvider
+    if (!modelId || (modelProvider !== undefined && (!PREFAB_SETTING_ID.test(modelProvider) || (provider && provider !== modelProvider)))) {
+      throw new AppError(409, 'PREFAB_PROFILE_CONFLICT', 'AgentPrefab OpenCode profile 需要有效且一致的 provider/model')
+    }
+    config.model = typeof selectedProvider === 'string' && selectedProvider ? `${selectedProvider}/${modelId}` : modelId
+    if (provider || modelProvider) config.provider = selectedProvider
+  }
+  else {
+    if (provider) config.provider = provider
+    if (model) config.model = model
+  }
   // effort 与 adapter 原生别名是同一设置：同一 profile 中顶层 effort 优先。
-  if (profile.provider) config.provider = profile.provider
-  if (profile.model) config.model = profile.model
   const effort = profile.effort || (effortSetting ? profile.settings?.[effortSetting] : undefined)
   if (effort) {
     config.effort = effort

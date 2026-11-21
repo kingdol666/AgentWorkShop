@@ -122,13 +122,36 @@ test('wireMember applies the pinned Prefab profile before implFactory without to
   assert.equal(wired?.config.thinkingLevel, 'high')
   assert.equal(wired?.config.effort, 'high')
 
-  for (const settings of [{ providerBaseUrl: 'untrusted' }, { piExtensionPath: 'untrusted' }, { thinkingLevel: true }]) {
-    const unsafe = prefabs.create(owner, { name: 'Unsafe', profile: { settings } })
+  const openCodePrefab = prefabs.create(owner, { name: 'OpenCode', profile: {
+    provider: 'prefab-provider', model: 'prefab-model', settings: { variant: 'high' },
+  } })
+  const openCodeRev = prefabs.publish(owner, openCodePrefab.id, 0)
+  const openCodeBinding = prefabs.buildBinding(owner, openCodePrefab.id, openCodeRev.revision, {})
+  const openCodeMember = agents.create({
+    channelId: channel.id, templateId: null, name: 'opencode-worker', harness: 'opencode', role: 'worker',
+    config: { model: 'member-provider/member-model', variant: 'low' }, prefabBindingJson: JSON.stringify(openCodeBinding),
+  })
+  manager.wireMember(openCodeMember)
+  assert.equal(wired?.config.provider, 'prefab-provider')
+  assert.equal(wired?.config.model, 'prefab-provider/prefab-model')
+  assert.equal(wired?.config.variant, 'high')
+
+  for (const [harness, profile, code] of [
+    ['omp', { settings: { providerBaseUrl: 'untrusted' } }, 'PREFAB_PROFILE_UNSUPPORTED'],
+    ['omp', { settings: { piExtensionPath: 'untrusted' } }, 'PREFAB_PROFILE_UNSUPPORTED'],
+    ['omp', { settings: { thinkingLevel: true } }, 'PREFAB_PROFILE_UNSUPPORTED'],
+    ['omp', { effort: 'unknown-level' }, 'PREFAB_PROFILE_UNSUPPORTED'],
+    ['omp', { model: '--not-a-model' }, 'PREFAB_PROFILE_UNSUPPORTED'],
+    ['codex', { provider: 'unused' }, 'PREFAB_PROFILE_UNSUPPORTED'],
+    ['dsh', { effort: 'high' }, 'PREFAB_PROFILE_UNSUPPORTED'],
+    ['opencode', { provider: 'first', model: 'second/model' }, 'PREFAB_PROFILE_CONFLICT'],
+  ] as const) {
+    const unsafe = prefabs.create(owner, { name: 'Unsafe', profile })
     const unsafeRev = prefabs.publish(owner, unsafe.id, 0)
     const unsafeBinding = prefabs.buildBinding(owner, unsafe.id, unsafeRev.revision, {})
-    const updated = agents.update(member.id, { prefabBindingJson: JSON.stringify(unsafeBinding) })
+    const updated = agents.create({ channelId: channel.id, templateId: null, name: `rejected-${unsafe.id}`, harness, role: 'worker', prefabBindingJson: JSON.stringify(unsafeBinding) })
     wired = undefined
-    assert.throws(() => manager.wireMember(updated!), { code: 'PREFAB_PROFILE_UNSUPPORTED' })
+    assert.throws(() => manager.wireMember(updated), { code })
     assert.equal(wired, undefined, 'unsupported settings must not reach implFactory')
   }
 

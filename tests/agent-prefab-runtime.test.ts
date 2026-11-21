@@ -19,6 +19,7 @@ import { createChannelSession } from '../server/services/workshop/agents/session
 import type { SessionCloneDeps } from '../server/services/workshop/agents/session-clone'
 import { createTaskInstanceChannel } from '../server/services/workshop/agents/task-channel'
 import type { TaskInstanceDeps } from '../server/services/workshop/agents/task-channel'
+import { handleActivateSkill } from '../server/services/workshop/agents/host-tool-bridge/tools/skills'
 
 function draft(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -158,6 +159,57 @@ test('registry publishes full Skill hashes and MCP schema hashes as capability v
   finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+test('a unique pinned Skill alias authorizes activation by canonical revision id only', async (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'aw-prefab-alias-'))
+  const db = openWorkshopDb(':memory:')
+  const globals = globalThis as { __workshopManager?: unknown }
+  const previousManager = globals.__workshopManager
+  const { AW_MODE, AW_HOME } = process.env
+  t.after(() => {
+    if (AW_MODE === undefined) delete process.env.AW_MODE
+    else process.env.AW_MODE = AW_MODE
+    if (AW_HOME === undefined) delete process.env.AW_HOME
+    else process.env.AW_HOME = AW_HOME
+    globals.__workshopManager = previousManager
+    db.close()
+    rmSync(root, { recursive: true, force: true })
+  })
+  process.env.AW_MODE = 'home'
+  process.env.AW_HOME = root
+  globals.__workshopManager = { deps: { db } }
+  initToolRegistryDb(db)
+
+  const name = 'alias-skill'
+  const hash = 'a'.repeat(64)
+  const revisionId = `${name}@${hash.slice(0, 12)}`
+  function addSkillRevision(contentHash: string): void {
+    const revisionDir = join(root, 'skills', name, contentHash)
+    mkdirSync(revisionDir, { recursive: true })
+    writeFileSync(join(revisionDir, 'manifest.json'), JSON.stringify({ name, contentHash, importedAt: '2026-11-21' }))
+    writeFileSync(join(revisionDir, 'SKILL.md'), 'Read-only calibration checklist.')
+  }
+  addSkillRevision(hash)
+  writeFileSync(join(root, 'skills', 'skills-state.json'), JSON.stringify({ [revisionId]: { enabled: true } }))
+
+  const owner = { id: 'u1' }
+  const channel = createChannelRepo(db).create({ name: 'skill alias', ownerUserId: owner.id })
+  const prefabs = createAgentPrefabService(db)
+  const prefab = prefabs.create(owner, draft({ capabilities: [{ kind: 'skill', id: name, version: hash, required: true }] }))
+  const revision = prefabs.publish(owner, prefab.id, 0)
+  const binding = prefabs.buildBinding(owner, prefab.id, revision.revision, {})
+  const member = createChannelAgentRepo(db).create({
+    channelId: channel.id, templateId: null, name: 'worker', harness: 'omp', role: 'worker', prefabBindingJson: JSON.stringify(binding),
+  })
+  const activate = (skillId: string) => handleActivateSkill({ agentId: member.id }, { skillId })
+  assert.deepEqual(resolveRuntimeForAgent(db, member.id)?.resolution.skillIds, [revisionId])
+  assert.match((await activate(revisionId)).text, /Read-only calibration checklist/)
+  assert.equal((await activate(name)).isError, true)
+
+  addSkillRevision('b'.repeat(64))
+  assert.deepEqual(resolveRuntimeForAgent(db, member.id)?.resolution.requiredMissing, [`skill:${name}`])
+  assert.equal((await activate(revisionId)).isError, true)
 })
 
 test('session clone copies member binding and stores a prefab snapshot', () => {
