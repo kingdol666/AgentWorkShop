@@ -14,7 +14,7 @@ import { setHybridChannelProfile } from '../../aml/twin/channel-profile'
 import { defaultInjectionScene } from '../../aml/twin/physics-runtime'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { KNOWLEDGE_BASE_PROMPT_SECTION, KNOWLEDGE_BASE_TEMPLATE_IDS } from './channel-template-constants'
-import { createAgentPrefabService, parseAgentPrefabBinding } from '../../agent-prefabs/service'
+import { createAgentPrefabService, parseAgentPrefabBinding, validateBindingSlots } from '../../agent-prefabs/service'
 // 常量本体已下沉到纯模块(避免单测 import 触发 nitro #imports);此处保持原导出面不变
 export { KNOWLEDGE_BASE_PROMPT_SECTION, KNOWLEDGE_BASE_TEMPLATE_IDS } from './channel-template-constants'
 
@@ -45,7 +45,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
     if (loaded.row.visibility !== 'public' && loaded.row.ownerUserId !== user.id && user.role !== 'admin') {
       throw new AppError(403, 'PREFAB_FORBIDDEN', '当前用户无权转移该 AgentPrefab')
     }
-    service.buildBinding({ id: user.id, role: user.role }, binding.prefabId, binding.revision, binding.slotValues)
+    validateBindingSlots(loaded.draft, binding.slotValues, true)
   }
 
   private validateTemplatePrefabBindings(
