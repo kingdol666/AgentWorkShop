@@ -77,7 +77,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.15.1 · released</i></span>
+        <span>Version <i>v0.16.0 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -94,11 +94,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.15.1 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.16.0 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      v0.15.1 (everything in 0.15.0 plus a legacy-home boot fix) implements the AgentPrefab capability-assembly plan (#252–#258) end to end:
+      v0.16.0 (everything in 0.15.0 plus a legacy-home boot fix) implements the AgentPrefab capability-assembly plan (#252–#258) end to end:
       System Settings gains Skills (standard SKILL.md discovery → immutable managed import →
       explicit enable, covering built-in, <code>&lt;configRoot&gt;/skills</code> and
       <code>~/.agent/skills</code> global roots with zero script execution), external MCP
@@ -132,7 +132,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">Verification</span>
-      <p>Merged-main gates for v0.15.0 (<code>87805eaf</code>): typecheck/lint/build, docs 101/0, i18n 3439/3439, skills 197/0, MCP 14/14, unit 2185/2186 (1 conditional skip) all green; isolated fresh-instance live acceptance 21/21 (skill discovery→import→enable→prefab publish→binding→catalog narrowing→activate_skill low-trust injection→denial→session snapshot→no auto-upgrade→revocation→MCP HTTPS/secret-less/bounded checks); the provisioned instance passed two restart-persistence cycles (write-attempt ledger 3277 rows, identical distribution, never resent); v0.15.1 verified the legacy-home upgrade path on a copy of a real pre-ledger home (contract v9). Simulator evidence only, not physical HIL; external MCP live trace, real-model work under a prefab and browser click-through remain NOT_RUN; Mimosa inconclusive, no security-pass claim — see the reports. <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md">Full-flow acceptance report</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP live report</a></p>
+      <p>Merged-main gates for v0.15.0 (<code>87805eaf</code>): typecheck/lint/build, docs 101/0, i18n 3439/3439, skills 197/0, MCP 14/14, unit 2185/2186 (1 conditional skip) all green; isolated fresh-instance live acceptance 21/21 (skill discovery→import→enable→prefab publish→binding→catalog narrowing→activate_skill low-trust injection→denial→session snapshot→no auto-upgrade→revocation→MCP HTTPS/secret-less/bounded checks); the provisioned instance passed two restart-persistence cycles (write-attempt ledger 3277 rows, identical distribution, never resent); v0.16.0 verified the legacy-home upgrade path on a copy of a real pre-ledger home (contract v9). Simulator evidence only, not physical HIL; external MCP live trace, real-model work under a prefab and browser click-through remain NOT_RUN; Mimosa inconclusive, no security-pass claim — see the reports. <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md">Full-flow acceptance report</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP live report</a></p>
     </div>
   </section>
 
