@@ -62,7 +62,7 @@ const artifactEvent: AgentEvent = {
 }
 const lateError: AgentEvent = { kind: 'error', error: { code: 'LATE_ERROR', message: 'error after abort' } }
 
-function fixture(options: { initialState?: string, event?: AgentEvent, transitionGate?: Promise<void>, recallGate?: Promise<void>, lateError?: boolean, peer?: boolean, preflightError?: boolean, settlementError?: boolean, steerGate?: Promise<'steer' | 'deferred'>, recoveryHold?: boolean, invalidFence?: 'missing' | 'generation-only' | 'lease-only' | 'generation-mismatch' | 'lease-mismatch' | 'revoked' } = {}) {
+function fixture(options: { initialState?: string, event?: AgentEvent, transitionGate?: Promise<void>, recallGate?: Promise<void>, lateError?: boolean, peer?: boolean, preflightError?: boolean, settlementError?: boolean, steerGate?: Promise<'steer' | 'deferred'>, recoveryHold?: boolean, invalidFence?: 'missing' | 'generation-only' | 'lease-only' | 'generation-mismatch' | 'lease-mismatch' | 'revoked', trustedSessionId?: string, messageSessionId?: string, sessionContextBlock?: string } = {}) {
   const db = new DatabaseSync(':memory:')
   initWorkshopDb(db)
   db.exec('PRAGMA foreign_keys = OFF')
@@ -165,7 +165,7 @@ function fixture(options: { initialState?: string, event?: AgentEvent, transitio
       },
       notifyAgent() {}, wakeScheduler() {},
     } as never,
-    workspace: { async driverWrite() { driverCalls += 1 } } as never, memory: memory as never, platformReply: (reply: unknown) => replies.push(reply) },
+    workspace: { async driverWrite() { driverCalls += 1 } } as never, memory: memory as never, trustedSessionId: options.trustedSessionId, sessionContext: options.sessionContextBlock ? () => ({ block: options.sessionContextBlock!, summary: '' }) : undefined, platformReply: (reply: unknown) => replies.push(reply) },
   )
   const fenceMetadata = fenceToMetadata(task)
   if (options.invalidFence === 'missing' || options.invalidFence === 'lease-only') delete fenceMetadata['x-aw-assignment-generation']
@@ -174,7 +174,7 @@ function fixture(options: { initialState?: string, event?: AgentEvent, transitio
   if (options.invalidFence === 'lease-mismatch') fenceMetadata['x-aw-execution-lease-id'] = 'stale-lease'
   const message: A2AMessage = {
     messageId: 'message', contextId: 'ch', ...(options.peer ? {} : { taskId: 'task' }), role: 'ROLE_USER', parts: [{ text: 'Perform the task' }],
-    metadata: { ...(options.peer ? { 'x-aw-from-agent': 'peer' } : { 'x-aw-task-kind': 'assign', ...fenceMetadata }), 'x-aw-require-reply': 'true', 'x-aw-from-label': 'requester' },
+    metadata: { ...(options.peer ? { 'x-aw-from-agent': 'peer' } : { 'x-aw-task-kind': 'assign', ...fenceMetadata }), 'x-aw-require-reply': 'true', 'x-aw-from-label': 'requester', ...(options.messageSessionId ? { 'x-aw-session-id': options.messageSessionId } : {}) },
   }
   assert.equal(runtime.enqueue(message), true)
   const row = (id = message.messageId) => ({ ...db.prepare('SELECT state, attempts, consumed_at AS consumedAt FROM messages WHERE id = ?').get(id) })
@@ -529,6 +529,52 @@ test('an error event arriving after abort is not emitted or applied to the task'
     assert.equal(row.state, 'consumed')
     assert.equal(row.attempts, 0)
     assert.equal(typeof row.consumedAt, 'string')
+  }
+  finally { await f.cleanup() }
+})
+
+test('native peer turn stamps the trusted session id even without message metadata', { timeout: 5000 }, async () => {
+  const f = fixture({ event: artifactEvent, peer: true, trustedSessionId: 'cs-native', sessionContextBlock: 'SESSION-BLOCK' })
+  try {
+    f.runtime.start()
+    const context = await f.runStarted.promise
+    assert.deepEqual(context.session, { id: 'cs-native', block: 'SESSION-BLOCK' }, 'the harness must receive the clone session identity')
+    await f.outputApplied.promise
+    f.finishRun.resolve(undefined)
+    await f.runtime.processed.promise
+    assert.equal(f.harvested.length, 1)
+    const [message, reply, sessionId] = f.harvested[0] as [A2AMessage, string, string | undefined]
+    assert.equal(message.metadata?.['x-aw-session-id'], undefined, 'fixture message must stay unstamped')
+    assert.equal(typeof reply, 'string')
+    assert.equal(sessionId, 'cs-native', 'clone identity must stamp peer memory when the message has no session metadata')
+  }
+  finally { await f.cleanup() }
+})
+
+test('an untouched peer message keeps its own session fallback when the runtime has no trusted clone identity', { timeout: 5000 }, async () => {
+  const f = fixture({ event: artifactEvent, peer: true, messageSessionId: 'cs-message' })
+  try {
+    f.runtime.start()
+    await f.runStarted.promise
+    await f.outputApplied.promise
+    f.finishRun.resolve(undefined)
+    await f.runtime.processed.promise
+    assert.equal(f.harvested.length, 1)
+    assert.equal((f.harvested[0] as unknown[])[2], 'cs-message', 'base runtime must keep the message session stamp')
+  }
+  finally { await f.cleanup() }
+})
+
+test('trusted clone session wins over stale message metadata', { timeout: 5000 }, async () => {
+  const f = fixture({ event: artifactEvent, peer: true, trustedSessionId: 'cs-trusted', messageSessionId: 'cs-stale' })
+  try {
+    f.runtime.start()
+    await f.runStarted.promise
+    await f.outputApplied.promise
+    f.finishRun.resolve(undefined)
+    await f.runtime.processed.promise
+    assert.equal(f.harvested.length, 1)
+    assert.equal((f.harvested[0] as unknown[])[2], 'cs-trusted', 'persisted membership is authoritative over queued metadata')
   }
   finally { await f.cleanup() }
 })

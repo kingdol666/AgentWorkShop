@@ -135,6 +135,19 @@ test('source contract: deferred event flush uses the closure manager and the plu
 
   const plugin = readFileSync(join(ROOT, 'server/plugins/workshop.ts'), 'utf-8')
   assert.match(plugin, /ensureHubBound\(manager\)/, 'workshop plugin must bind the hub at startup (all-time event recording)')
+  const prewarmIndex = plugin.indexOf('ensureAllEventRecorders(manager)')
+  const closeIndex = plugin.indexOf('closeAllStreams(manager)')
+  assert.notEqual(prewarmIndex, -1, 'plugin must prewarm recorders at startup')
+  assert.notEqual(closeIndex, -1, 'plugin must flush recorders on close')
+  assert.ok(
+    prewarmIndex < plugin.indexOf('void manager.restore()'),
+    'recorder prewarm must run before restore replays the chat outbox',
+  )
+  assert.ok(
+    closeIndex > plugin.indexOf('await manager.shutdown()')
+    && closeIndex < plugin.indexOf('db.close()'),
+    'shutdown must flush/detach streams after manager shutdown and before db.close',
+  )
 
   const streams = readFileSync(join(ROOT, 'server/api/workshop/ws/streams.ts'), 'utf-8')
   assert.match(streams, /rebindStreamIfStale\(hub\.boundManager, stream\)/, 'rebind sweep self-heal must stay wired')

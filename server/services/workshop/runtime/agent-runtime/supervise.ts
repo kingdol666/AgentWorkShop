@@ -207,6 +207,14 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
         }
       : undefined
     if (rootId && !executionScope) controller.abort(new Error('task abort'))
+    // Session Context:克隆身份优先;supervision 的根任务可能带 task.sessionId
+    // (task-instance/project 实例会话)—— native 监督回合的工具记忆归属依赖它。
+    const trustedSessionId = this.deps.trustedSessionId || undefined
+    if (trustedSessionId && root?.sessionId && root.sessionId !== trustedSessionId) {
+      log.warn(`[AgentRuntime:${this.agentId}] supervision 根任务会话(${root.sessionId})与成员会话(${trustedSessionId})不一致,按成员会话收口`)
+    }
+    const sessionId = trustedSessionId ?? (root?.sessionId || undefined)
+    const runtimeSession = sessionId ? { id: sessionId, block: this.getSessionContext(sessionId)?.block ?? '' } : undefined
     const ctx: AgentRunContext = {
       agentId: this.agentId,
       channelId: this.channelId,
@@ -215,6 +223,7 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
       signal: controller.signal,
       memory: memoryBlock,
       ...(executionScope ? { executionScope } : {}),
+      ...(runtimeSession ? { session: runtimeSession } : {}),
     }
     let decisions: SupervisionDecision[] | null = null
     try {

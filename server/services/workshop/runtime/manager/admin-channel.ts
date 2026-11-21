@@ -9,6 +9,7 @@ import { trustedSessionBindingIdentity } from '../../agents/session-snapshot'
 import type { AgentRow, ChannelRow, WorkspaceRow } from '../../db/database'
 import type { ChannelAgentCreationSource, ChannelMode } from '../../db/database/rows'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
+import { log } from './helpers'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { getToolRegistryRepo } from '../../db/tool-registry.repo'
@@ -123,6 +124,14 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
       this.deps.repos.channels.update(channel.id, { leadAgentId: inst.id })
       leadAgentId = inst.id
       // 懒加载:仅持久化,不装配运行时;首次任务提交时 ensureChannelActive 触发装配
+    }
+    // 全时事件录制:频道创建即挂常驻录制流(插件注入 sink;MCP/Project/模板路径统一覆盖)。
+    // 失败不阻断创建 —— 订阅入口的 ensureStream 仍会兜底补建。
+    try {
+      this.channelCreatedSink?.(channel.id)
+    }
+    catch (err) {
+      log.warn('[workshop] 频道录制流初始化失败(不阻断创建):', err instanceof Error ? err.message : err)
     }
     return { channelId: channel.id, leadAgentId, workspace }
   }

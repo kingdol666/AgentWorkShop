@@ -40,7 +40,16 @@ test('shutdown waits for runtime cleanup before database close', () => {
   assert.match(lifecycle, /await this\.loopPromise/)
   assert.match(lifecycle, /await this\.postSettlePromise/)
   assert.match(observe, /await Promise\.all\(\[\.\.\.this\.agentIndex\.values\(\)\]\.map\(a => a\.stop\(\)\)\)/)
-  assert.match(plugin, /await manager\.shutdown\(\)\s+db\.close\(\)/)
+  assert.match(observe, /await Promise\.allSettled\(pendingStops\)/, 'shutdown 必须等在途卸载/停机屏障收尾')
+  assert.match(plugin, /await manager\.shutdown\(\)/)
+  assert.ok(
+    plugin.indexOf('closeAllStreams(manager)') > plugin.indexOf('await manager.shutdown()'),
+    '录制流必须在 manager 停机之后刷盘',
+  )
+  assert.ok(
+    plugin.indexOf('closeAllStreams(manager)') < plugin.indexOf('db.close()'),
+    '录制流必须在 database 关闭之前刷盘',
+  )
 })
 
 test('R-1: stop waits for the consume loop before disposing the harness', async () => {

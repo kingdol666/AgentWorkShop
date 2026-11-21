@@ -7,10 +7,18 @@ import type { ChannelStream } from './shared'
 import { EVENTS_RETENTION_DAYS, hub, hubGlobal, peerChannels, streams } from './shared'
 import { bindHitlSubscription, bindStreamSubscriptions } from './subscriptions'
 import { flushDbBuffer } from './db-buffer'
-import { internalsOf } from './hub'
+import { drainDbBuffer, internalsOf } from './hub'
 
 export function rebindStreamIfStale(manager: AgentChannelManager, stream: ChannelStream): void {
-  const currentBus = internalsOf(manager).buses.get(stream.channelId) ?? null
+  const internal = internalsOf(manager)
+  // 部分入口(如 HMR 窗口的 publishSceneLayoutEvent)会直接 ensureStream(newManager):
+  // 先按**原** owner 把缓冲落净,再改归属,避免旧帧被之后的定时器写进新库。
+  if (stream.manager && stream.manager !== manager) drainDbBuffer(stream.manager, stream)
+  // 频道级总线可能尚未建立(只订阅不激活运行时):先按需建立,再比较/重订
+  internal.ensureChannelBus(stream.channelId)
+  const currentBus = internal.buses.get(stream.channelId) ?? null
+  // 记录当前归属管理器:之后 manager 更替时缓冲帧要落回它自己的数据库
+  stream.manager = manager
   if (stream.busRef === currentBus) return
   for (const unsub of stream.unsubs) {
     try {
@@ -77,7 +85,7 @@ if (!(hubGlobal as Record<string, unknown>)[RETENTION_TIMER_KEY]) {
  * 退订总线 → 释放 ring/peers。不做 manager→api 反向依赖的回调接线,
  * 由 sweep 自愈发现(≤3s 收敛)。
  */
-export function closeStream(manager: AgentChannelManager, channelId: string): void {
+export function closeStream(manager: AgentChannelManager, channelId: string, reason: 'deleted' | 'shutdown' = 'deleted'): void {
   const stream = streams.get(channelId)
   if (!stream) return
   try {
@@ -103,7 +111,14 @@ export function closeStream(manager: AgentChannelManager, channelId: string): vo
   }
   stream.peers.clear()
   stream.ring.length = 0
-  console.log(`[workshop-ws] channel ${channelId.slice(0, 8)} 已删除,事件流已回收`)
+  if (reason === 'deleted') console.log(`[workshop-ws] channel ${channelId.slice(0, 8)} 已删除,事件流已回收`)
+}
+
+/** 停机收口:刷净并退订全部流(db.close 之前调用;顺序 = 刷盘 → 退订 → 释放 ring/peers) */
+export function closeAllStreams(manager: AgentChannelManager): void {
+  for (const channelId of [...streams.keys()]) {
+    closeStream(manager, channelId, 'shutdown')
+  }
 }
 
 /**
@@ -125,6 +140,7 @@ export function ensureStream(manager: AgentChannelManager, channelId: string): C
   const initSeq = internalsOf(manager).deps.repos.channelEvents.maxSeq(channelId)
   const stream: ChannelStream = {
     channelId,
+    manager,
     seq: initSeq,
     ring: [],
     ringBytes: 0,

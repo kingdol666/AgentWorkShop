@@ -37,8 +37,9 @@ class TestRuntime extends AgentRuntime {
   protected override queueContext(): never { return {} as never }
 }
 
-function fixture(options: { recall?: () => Promise<string | undefined>, onSupervise?: (ctx: AgentRunContext) => Promise<void> } = {}) {
+function fixture(options: { recall?: () => Promise<string | undefined>, onSupervise?: (ctx: AgentRunContext) => Promise<void>, sessionId?: string | null, trustedSessionId?: string | null, sessionContextBlock?: string } = {}) {
   const row = rootRow()
+  if (options.sessionId !== undefined) row.sessionId = options.sessionId
   const task = rowToTaskLite(row)
   const snapshot: SupervisionSnapshot = {
     tick: 1, now: Date.now(), activeRootId: row.id, queuedRootIds: [],
@@ -59,6 +60,8 @@ function fixture(options: { recall?: () => Promise<string | undefined>, onSuperv
       bus: {} as never,
       workspace: {} as never,
       ...(options.recall ? { memory: { recall: options.recall } as never } : {}),
+      trustedSessionId: options.trustedSessionId ?? null,
+      ...(options.sessionContextBlock ? { sessionContext: () => ({ block: options.sessionContextBlock!, summary: '' }) } : {}),
     },
   )
   return {
@@ -206,4 +209,22 @@ test('supervision without an active root remains unscoped', async () => {
   assert.deepEqual(await f.runtime.supervise(f.snapshot), [])
   assert.equal(f.contexts.length, 1)
   assert.equal(f.contexts[0]!.executionScope, undefined)
+})
+
+test('supervision passes the root task session to the harness context', async () => {
+  const f = fixture({ sessionId: 'cs-root', sessionContextBlock: 'SESSION-BLOCK' })
+  assert.deepEqual(await f.runtime.supervise(f.snapshot), [])
+  assert.deepEqual(f.contexts[0]?.session, { id: 'cs-root', block: 'SESSION-BLOCK' })
+})
+
+test('trusted clone session wins over the root task session in supervision', async () => {
+  const f = fixture({ sessionId: 'cs-root', trustedSessionId: 'cs-clone', sessionContextBlock: 'BLOCK' })
+  assert.deepEqual(await f.runtime.supervise(f.snapshot), [])
+  assert.deepEqual(f.contexts[0]?.session, { id: 'cs-clone', block: 'BLOCK' })
+})
+
+test('supervision without any session identity keeps the legacy context', async () => {
+  const f = fixture()
+  assert.deepEqual(await f.runtime.supervise(f.snapshot), [])
+  assert.equal(f.contexts[0]?.session, undefined)
 })

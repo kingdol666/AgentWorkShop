@@ -73,8 +73,10 @@ export interface ChannelStream {
    * 而 registry 订阅与总线生命周期无关,只在建流/回收时挂接一次。
    */
   hitlUnsub: (() => void) | null
-  /** 当前已订阅的 channel 总线对象(总线生命期短于 stream:空闲卸载会重建 bus → 需重订) */
+  /** 当前已订阅的 channel 总线对象(总线生命期 = 频道:仅频道删除/停机时释放 → 需重绑仅发生在 manager 更替) */
   busRef: object | null
+  /** 创建/最近一次重绑该流的管理器(manager 更替时待刷帧必须落回**原**数据库) */
+  manager?: AgentChannelManager
   /**
    * 落库聚合缓冲(全部事件类型,保持发布序):逐帧同步 insert 会阻塞事件循环;
    * 400ms 批量事务刷盘(单次 fsync 落整批)。实时广播不经缓冲(逐帧直推),

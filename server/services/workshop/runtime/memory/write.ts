@@ -185,7 +185,8 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       content: segmentCJK(content).slice(0, CONTENT_STORE_LIMIT),
       importance: task.state === 'COMPLETED' ? 0.8 : 0.55,
       taskId: task.id,
-      sessionId: task.sessionId ?? '',
+      // 任务自带会话优先;克隆执行无 sessionId 的任务时按成员会话归属,避免记忆掉回频道级
+      sessionId: task.sessionId || this.opts.sessionId || '',
       dedupKey: `task:${task.id}`,
     })
     await this.vectorize(content, `task:${task.id}`)
@@ -193,7 +194,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
   }
 
   /** run 后(点对点路径):请求 + 我方回复摘要 */
-  async recordPeerExchange(msg: A2AMessage, replyText: string): Promise<void> {
+  async recordPeerExchange(msg: A2AMessage, replyText: string, sessionId?: string): Promise<void> {
     const ask = partsText(msg.parts).slice(0, 150)
     const content = replyText ? `问:${ask} 答:${replyText.slice(0, 250)}` : ask
     const fromId = (msg.metadata?.['x-aw-from-agent'] as string | undefined) ?? 'unknown'
@@ -207,7 +208,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       content: segmentCJK(content).slice(0, 600),
       importance: 0.4,
       taskId: msg.taskId ?? null,
-      sessionId: (msg.metadata?.['x-aw-session-id'] as string | undefined) ?? '',
+      sessionId: sessionId ?? (msg.metadata?.['x-aw-session-id'] as string | undefined) ?? '',
       dedupKey: `peer:${msg.messageId}`,
     })
     await this.vectorize(content, `peer:${msg.messageId}`)

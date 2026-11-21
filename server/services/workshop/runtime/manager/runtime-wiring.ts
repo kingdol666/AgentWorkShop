@@ -98,7 +98,7 @@ function memberMapContains(memberMapJson: string, memberId: string): boolean {
 
 export abstract class ManagerRuntimeWiring extends ManagerBus {
   private sessionContextService: SessionContextService | null = null
-  private readonly channelUnloads = new Map<string, Promise<boolean>>()
+  protected readonly channelUnloads = new Map<string, Promise<boolean>>()
   protected readonly channelRemovals = new Map<string, Promise<void>>()
   protected readonly channelAgentStops = new Map<string, Set<Promise<void>>>()
 
@@ -206,6 +206,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       bus,
       workspace,
       memory,
+      trustedSessionId: sessionRow?.id ?? null,
       channelSessionScope,
       // Session Context：按 sessionId 装配平台上下文块；异常降级为 legacy 回合，不阻断执行。
       // profile 按引擎能力选择（harness 无关的唯一开关点）：有原生会话持久化的引擎
@@ -458,7 +459,8 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       }
       if (cr && this.channels.get(channelId) === cr && !this.channelUnloads.has(channelId) && !this.channelRemovals.has(channelId) && cr.getAgents().length === 0 && !cr.scheduler) {
         this.channels.delete(channelId)
-        this.buses.delete(channelId)
+        // 总线不随运行时卸载:录制流订阅在频道级总线上,删除会让之后的事件静默丢失。
+        // 只在 removeChannel / shutdown 释放(见 ensureChannelBus)。
       }
     })
     stops.add(stop)
@@ -666,7 +668,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
         if (failed?.status === 'rejected') throw failed.reason
         if (this.channels.get(channelId) === cr && cr.getAgents().length === 0) {
           this.channels.delete(channelId)
-          this.buses.delete(channelId)
+          // 同上:频道级总线保留,避免回收期间/之后的事件录制中断
         }
         unloaded = true
         return true

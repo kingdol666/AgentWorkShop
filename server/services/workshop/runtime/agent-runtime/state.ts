@@ -95,6 +95,8 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
       bus: ChannelBus
       workspace: AgentWorkspace
       memory?: AgentMemory
+      /** Active clone membership, independent of the industrial binding snapshot. */
+      trustedSessionId?: string | null
       channelSessionScope?: import('../../agents/host-tool-bridge').ChannelSessionExecutionScope | null
       /** 平台代投(落时间线+广播):人类 requireReply 的回执 —— 人类无信箱,emitExternal 只广播不落库。
        *  v17:额外携带全链路关联 ID(sourceChatMessageId/requesterUserId/replyToId/deliveryId),

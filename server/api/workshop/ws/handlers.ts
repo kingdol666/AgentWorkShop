@@ -4,7 +4,7 @@
  */
 import type { AgentChannelManager } from '../../../services/workshop/runtime/manager'
 import { AEP_VERSION, peerIdentities, peerUsers } from './shared'
-import { attachScenePeer, ensureHubBound, resolveChannelIdFromUrl, resolveQueryParam, sendControl } from './hub'
+import { attachScenePeer, ensureHubBound, internalsOf, resolveChannelIdFromUrl, resolveQueryParam, sendControl } from './hub'
 import { bindUserPeer, unbindUserPeer } from '../../../services/workshop/runtime/user-notification-hub'
 import { defineWebSocketHandler } from 'h3'
 import { ensureStream } from './streams'
@@ -27,10 +27,20 @@ export function publishSceneLayoutEvent(
   publish(manager, stream, type, payload)
 }
 
-/** 插件启动钩子:为全部存量 channel 建立常驻录制流(新 channel 由 ensureStream 即时建) */
-export async function ensureAllEventRecorders(manager: AgentChannelManager): Promise<void> {
-  for (const ch of await manager.listChannels()) {
-    ensureStream(manager, ch.id)
+/**
+ * 插件启动钩子:为全部存量 channel 建立常驻录制流(新 channel 由 createChannel sink / 订阅即时建)。
+ * **同步函数**(非 async):必须在 restore() 重放 outbox 之前完成,否则回放产生的事件
+ * 在流建立前发布,只留下 outbox 消费记录而不落 channel_events(启动静默空洞)。
+ * 单频道失败不阻断其余频道。
+ */
+export function ensureAllEventRecorders(manager: AgentChannelManager): void {
+  for (const ch of internalsOf(manager).deps.repos.channels.list()) {
+    try {
+      ensureStream(manager, ch.id)
+    }
+    catch (err) {
+      console.warn(`[workshop-ws] 频道 ${ch.id.slice(0, 8)} 录制流初始化失败(继续):`, err instanceof Error ? err.message : err)
+    }
   }
 }
 
