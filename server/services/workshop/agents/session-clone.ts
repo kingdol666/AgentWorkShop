@@ -7,7 +7,7 @@
  *   - 记忆按 clone agentId 归属（session 域隔离）；team 域仍按频道共享
  * deps 注入式编排（可单测）；manager 包装提供真实依赖。
  */
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { parseJson } from '../db/database'
 import { AppError } from '../../../utils/errors'
 import type { ChannelSessionBindingSnapshot } from './session-snapshot'
@@ -22,12 +22,13 @@ export interface SessionCloneMemberRow {
   enabled?: number
   agentKind?: string | null
   configJson?: string
+  prefabBindingJson?: string
 }
 
 export interface SessionCloneDeps {
   channelAgents: {
     listByChannel(channelId: string): SessionCloneMemberRow[]
-    create(input: { channelId: string, templateId: null, name: string, harness: string, config: Record<string, unknown>, role: string }): { id: string, name: string, role: string }
+    create(input: { channelId: string, templateId: null, name: string, harness: string, config: Record<string, unknown>, role: string, prefabBindingJson?: string }): { id: string, name: string, role: string }
     remove?(channelId: string, id: string): unknown
   }
   tasks: {
@@ -94,7 +95,7 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
   bindingSnapshot?: ChannelSessionBindingSnapshot
   /** Captured binding rows; clone creation must not re-read mutable JSON after snapshot. */
   bindingsSnapshot?: Record<string, Array<{ nodeId: string, kind: string, mode?: string, tuning?: unknown }>>
-  sessionRepo: { create(input: { channelId: string, title?: string, memberMap: Record<string, string>, createdBy?: string, memoryPolicy?: string, channelMode?: ChannelMode, productId?: string | null, lineId?: string | null, bindingSnapshotJson?: string, bindingSnapshotHash?: string, bindingSnapshotRevision?: number }): ChannelSessionRow }
+  sessionRepo: { create(input: { channelId: string, title?: string, memberMap: Record<string, string>, createdBy?: string, memoryPolicy?: string, channelMode?: ChannelMode, productId?: string | null, lineId?: string | null, bindingSnapshotJson?: string, bindingSnapshotHash?: string, bindingSnapshotRevision?: number, prefabSnapshotJson?: string, prefabSnapshotHash?: string }): ChannelSessionRow }
 }): { sessionId: string, title: string, productId?: string, lineId?: string, bindingSnapshotHash?: string, bindingSnapshotRevision?: number, members: Array<{ baseAgentId: string, cloneId: string, name: string, role: string }> } {
   const bases = baseMembersOf(deps, input.channelId)
   if (bases.length === 0) {
@@ -124,6 +125,9 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
   // (node-bindings.repo),不参与 sqlite 事务,放到事务提交后复制 —— 失败只留
   // 孤儿绑定(读侧按 agent 过滤,无害),不会产生孤儿 clone。
   const withTx = deps.withTx ?? (<T>(fn: () => T): T => fn())
+  // Session 创建时固定每个基础成员的 prefab binding（克隆不追最新版）
+  const prefabSnapshotJson = JSON.stringify(Object.fromEntries(bases.map(b => [b.id, b.prefabBindingJson ?? ''])))
+  const prefabSnapshotHash = createHash('sha256').update(prefabSnapshotJson, 'utf8').digest('hex')
   const created = withTx(() => {
     deps.beforeCreate?.()
     const rows: Array<{ base: typeof bases[number], cloneId: string, name: string }> = []
@@ -139,6 +143,7 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
         name: cloneName,
         harness: base.harness,
         config,
+        prefabBindingJson: base.prefabBindingJson ?? '',
         // clone 统一 worker 定位：会话=执行单元；基础 lead 保持频道协调者身份不变
         role: 'worker',
       })
@@ -158,6 +163,8 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
       bindingSnapshotJson: input.bindingSnapshot?.json ?? '',
       bindingSnapshotHash: input.bindingSnapshot?.hash ?? '',
       bindingSnapshotRevision: input.bindingSnapshot?.revision ?? 0,
+      prefabSnapshotJson,
+      prefabSnapshotHash,
     })
     return { rows, sessionId: session.id }
   })

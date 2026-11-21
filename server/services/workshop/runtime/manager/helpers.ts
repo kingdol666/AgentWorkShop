@@ -11,6 +11,7 @@ import { knownHarnesses } from '../../agents/registry'
 import { parseJson } from '../../db/database'
 import { randomUUID } from 'node:crypto'
 import { userRepository } from '../../../../repositories/user.repository'
+import { parseAgentPrefabBinding } from '../../agent-prefabs/service'
 
 export const log = createLogger('workshop.manager')
 
@@ -30,6 +31,15 @@ export function instanceToAgentInfo(m: ChannelAgentRow): AgentInfo {
      *  外部调用方需要它把「模板 → 已部署实例」对上 —— Agent↔节点绑定必须落到实例 id,
      *  而绑定接口只回一个实例 id;不暴露这个字段时调用方只能靠名字猜(实测踩过)。 */
     templateId: m.templateId ?? null,
+    prefabBinding: (() => {
+      try {
+        return parseAgentPrefabBinding(m.prefabBindingJson)
+      }
+      catch {
+        // 损坏绑定不在读面崩溃；runtime 解析会对同一原值 fail closed。
+        return null
+      }
+    })(),
   }
 }
 

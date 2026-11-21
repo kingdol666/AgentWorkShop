@@ -65,8 +65,8 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
     const members = this.deps.repos.channelAgents.listByChannel(channelId)
       .filter(m => m.id !== channel.leadAgentId)
       .map((m): ChannelTemplateMember => m.templateId
-        ? { templateId: m.templateId, role: m.role === 'lead' ? 'lead' : 'worker' }
-        : { inline: { name: m.name, harness: m.harness, config: parseJson<Record<string, unknown>>(m.configJson, {}) }, role: m.role === 'lead' ? 'lead' : 'worker' })
+        ? { templateId: m.templateId, role: m.role === 'lead' ? 'lead' : 'worker', prefabBindingJson: m.prefabBindingJson ?? '' }
+        : { inline: { name: m.name, harness: m.harness, config: parseJson<Record<string, unknown>>(m.configJson, {}), prefabBindingJson: m.prefabBindingJson ?? '' }, role: m.role === 'lead' ? 'lead' : 'worker' })
     const leadInst = channel.leadAgentId
       ? this.deps.repos.channelAgents.findById(channel.leadAgentId)
       : undefined
@@ -75,6 +75,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
           name: leadInst.name,
           harness: leadInst.harness,
           config: parseJson<Record<string, unknown>>(leadInst.configJson, {}),
+          prefabBindingJson: leadInst.prefabBindingJson ?? '',
         }
       : null
     const row = this.deps.repos.channelTemplates.create({
@@ -112,7 +113,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Channel 模板不存在: ${templateId}`)
     this.requireTemplateReadable(tpl, user, 'Channel 模板')
     const lead = tpl.leadJson
-      ? parseJson<{ name: string, harness: string, config?: Record<string, unknown> } | null>(tpl.leadJson, null)
+      ? parseJson<{ name: string, harness: string, config?: Record<string, unknown>, prefabBindingJson?: string } | null>(tpl.leadJson, null)
       : null
     // 知识库集成:显式 true → 启用 rag-bridge 并在场景提示词追加 KB 作业段;
     // 显式 false → 显式停用(频道内 kb_* 工具不注入);缺省 → 不写开关行(平台默认)。
@@ -132,7 +133,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
       description: tpl.description,
       scenarioPrompt,
       workspace: tpl.workspace || undefined,
-      leadAgent: lead ? { name: lead.name, harness: lead.harness, config: lead.config } : undefined,
+      leadAgent: lead ? { name: lead.name, harness: lead.harness, config: lead.config, prefabBindingJson: lead.prefabBindingJson } : undefined,
       ownerUserId: user.id,
       actor: user,
     })
@@ -148,13 +149,13 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
         const tplRow = this.deps.repos.agents.findById(m.templateId)
         if (!tplRow) throw new AppError(404, 'NOT_FOUND', `成员 Agent 模板不存在: ${m.templateId}`)
         this.requireTemplateReadable(tplRow, user, '成员 Agent 模板')
-        const inst = await this.addAgentToChannel({ channelId: created.channelId, agentId: m.templateId, role: m.role, by: 'template', actor: user })
+        const inst = await this.addAgentToChannel({ channelId: created.channelId, agentId: m.templateId, role: m.role, by: 'template', actor: user, prefabBindingJson: m.prefabBindingJson })
         agents.push({ id: inst.id, templateId: inst.templateId, name: inst.name, role: inst.role })
       }
       else {
         this.assertHarness(m.inline.harness)
         const inlineTpl = await this.createAgent({ name: m.inline.name, harness: m.inline.harness, config: m.inline.config, ownerUserId: user.id })
-        const inst = await this.addAgentToChannel({ channelId: created.channelId, agentId: inlineTpl.id, role: m.role, by: 'template', actor: user })
+        const inst = await this.addAgentToChannel({ channelId: created.channelId, agentId: inlineTpl.id, role: m.role, by: 'template', actor: user, prefabBindingJson: m.inline.prefabBindingJson })
         agents.push({ id: inst.id, templateId: inst.templateId, name: inst.name, role: inst.role })
       }
       agentCount += 1

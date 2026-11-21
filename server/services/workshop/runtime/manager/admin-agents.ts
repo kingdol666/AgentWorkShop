@@ -43,6 +43,8 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     reason?: string
     /** 操作者（spawn 授权；缺省按普通用户处理） */
     actor?: SpawnActor
+    /** 模板/Channel 模板携带的 AgentPrefab 绑定 JSON（缺省无绑定） */
+    prefabBindingJson?: string
   }): Promise<AgentInfo> {
     const tpl = this.deps.repos.agents.findById(input.agentId)
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${input.agentId}`)
@@ -63,6 +65,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       name: tpl.name,
       harness: tpl.harness,
       config: instConfig,
+      prefabBindingJson: input.prefabBindingJson ?? '',
       role: input.role,
     })
     if (input.role === 'lead') {
@@ -626,6 +629,8 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     channelId: string
     leadAgentId: string
     members: Array<{ templateAgentId: string, instanceId: string, name: string, role: string }>
+    prefabSnapshotJson: string
+    prefabSnapshotHash: string
   }> {
     const template = this.deps.repos.channels.findById(input.templateChannelId)
     if (!template) throw new AppError(404, 'NOT_FOUND', `模板 Channel 不存在: ${input.templateChannelId}`)

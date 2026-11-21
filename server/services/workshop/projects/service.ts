@@ -1285,6 +1285,13 @@ export class ProjectService {
       title: wi.title,
       actor: ownerActor,
     })
+    // Project 首次实例固定 AgentPrefab 快照；同 work item 重试复用，不追随 Channel 最新 binding。
+    if (created.prefabSnapshotJson) {
+      const latest = this.workItems.findById(wi.id)
+      if (latest && !latest.prefabSnapshotJson) {
+        this.workItems.setPrefabSnapshot(wi.id, created.prefabSnapshotJson, created.prefabSnapshotHash)
+      }
+    }
     const afterCreate = this.projects.findById(p.id)
     if (!afterCreate || afterCreate.status !== 'active') {
       await this.releaseCreatedInstance(wi, created.channelId)

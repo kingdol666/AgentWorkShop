@@ -18,7 +18,7 @@
  *
  * deps 注入式（可单测）；manager 包装提供真实依赖。
  */
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { parseJson } from '../db/database'
 import { AppError } from '../../../utils/errors'
 import { inheritChannelProfile } from './task-channel-profile'
@@ -35,6 +35,7 @@ export interface TaskInstanceMemberRow {
   enabled?: number
   agentKind?: string | null
   configJson?: string
+  prefabBindingJson?: string
 }
 
 export interface TaskInstanceDeps {
@@ -43,7 +44,7 @@ export interface TaskInstanceDeps {
   }
   channelAgents: {
     listByChannel(channelId: string): TaskInstanceMemberRow[]
-    create(input: { channelId: string, templateId: null, name: string, harness: string, config: Record<string, unknown>, role: string }): { id: string, name: string, role: string }
+    create(input: { channelId: string, templateId: null, name: string, harness: string, config: Record<string, unknown>, role: string, prefabBindingJson?: string }): { id: string, name: string, role: string }
   }
   sessions: {
     create(input: {
@@ -56,6 +57,8 @@ export interface TaskInstanceDeps {
       createdByKind?: 'user' | 'project'
       instanceKind?: 'manual' | 'task'
       channelMode?: ChannelMode
+      prefabSnapshotJson?: string
+      prefabSnapshotHash?: string
     }): { id: string }
   }
   /** 建 Channel（含 lead 内联模板实例）+ owner 成员行 + workspace 目录 */
@@ -65,7 +68,7 @@ export interface TaskInstanceDeps {
     scenarioPrompt?: string
     llm?: { provider?: string, model?: string, effort?: string } | null
     ownerUserId?: string | null
-    leadAgent: { name: string, harness: string, config?: Record<string, unknown> }
+    leadAgent: { name: string, harness: string, config?: Record<string, unknown>, prefabBindingJson?: string }
     channelMode?: ChannelMode
   }): Promise<{ channelId: string, leadAgentId?: string, workspace: string }>
   notify?: (channelId: string, payload: { op: 'added', agentId: string, name: string, role: 'lead' | 'worker', harness: string }) => void
@@ -97,12 +100,17 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
   channelId: string
   leadAgentId: string
   members: Array<{ templateAgentId: string, instanceId: string, name: string, role: string }>
+  prefabSnapshotJson: string
+  prefabSnapshotHash: string
 }> {
   const template = deps.channels.findById(input.templateChannelId)
   if (!template) throw new AppError(404, 'NOT_FOUND', `模板 Channel 不存在: ${input.templateChannelId}`)
   const bases = templateMembersOf(deps, input.templateChannelId)
   const lead = bases.find(m => m.role === 'lead')
   if (!lead) throw new AppError(409, 'CHANNEL_NO_LEAD', '模板 Channel 没有可克隆的 lead，无法建立任务实例')
+  // Project 首次实例：固定模板成员的 prefab binding（同 work item 重试复用，不追最新版）
+  const prefabSnapshotJson = JSON.stringify(Object.fromEntries(bases.map(b => [b.id, b.prefabBindingJson ?? ''])))
+  const prefabSnapshotHash = createHash('sha256').update(prefabSnapshotJson, 'utf8').digest('hex')
   const short = randomUUID().slice(0, 4)
   const memberSuffix = `${TASK_INSTANCE_MARKER}${short}`
   const instanceName = `${template.name} · 任务 ${short}`
@@ -130,6 +138,7 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
       name: `${lead.name}${memberSuffix}`,
       harness: lead.harness,
       config: parseJson<Record<string, unknown>>(lead.configJson ?? '{}', {}),
+      prefabBindingJson: lead.prefabBindingJson ?? '',
     },
   })
   if (!created.leadAgentId) throw new AppError(500, 'TASK_INSTANCE_NO_LEAD', '任务实例 Channel 装配 lead 失败')
@@ -146,6 +155,7 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
       name: `${base.name}${memberSuffix}`,
       harness: base.harness,
       config: parseJson<Record<string, unknown>>(base.configJson ?? '{}', {}),
+      prefabBindingJson: base.prefabBindingJson ?? '',
       role: 'worker',
     })
     memberMap[base.id] = inst.id
@@ -163,8 +173,10 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
     createdByKind: 'project',
     instanceKind: 'task',
     channelMode: taskChannelMode,
+    prefabSnapshotJson,
+    prefabSnapshotHash,
   })
   // 5) RSI WP-D5:继承母频道 AML profile（降档 + 不继承模型绑定；legacy 不写）
   inheritChannelProfile(input.templateChannelId, created.channelId)
-  return { sessionId: session.id, channelId: created.channelId, leadAgentId: created.leadAgentId, members }
+  return { sessionId: session.id, channelId: created.channelId, leadAgentId: created.leadAgentId, members, prefabSnapshotJson, prefabSnapshotHash }
 }

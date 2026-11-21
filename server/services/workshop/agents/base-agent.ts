@@ -59,6 +59,9 @@ export interface BaseAgentConfigView {
   superviseHardTimeoutMs?: number
   systemPromptPrefix?: string
   scenarioPrompt?: string
+  /** AgentPrefab 低信任提示层（由 wireMember 解析注入；不覆盖系统/工业/Project 约束） */
+  prefabPrompt?: string
+  prefabBindingHash?: string
 }
 
 export abstract class BaseAgentImpl implements AgentInterface {
@@ -399,6 +402,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
     })
     return [
       base,
+      typeof cfg.prefabPrompt === 'string' ? cfg.prefabPrompt : '',
       this.currentSessionBlock,
       // WP-B1:频道 Harness overlay（仅 active profile；无 profile → ''，prompt 与现状逐字节一致）
       channelOverlayText(this.channelId, this.selfAgentId),

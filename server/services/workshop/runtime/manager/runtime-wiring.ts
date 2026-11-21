@@ -28,6 +28,9 @@ import { SessionContextService, formatBriefText } from '../../sessions/context'
 import { channelModeForAgent } from '../../channel-mode'
 import { fenceToMetadata } from '../task-engine/lease'
 import { isLegacyRecoveryHeld } from '../task-engine/legacy-recovery'
+import { AppError } from '../../../../utils/errors'
+import { prefabPromptText } from '../../agent-prefabs/prompt'
+import { prefabBlockedReason, resolveRuntimeForAgent } from '../../agent-prefabs/runtime'
 
 /**
  * 有原生会话持久化的引擎 → session 注入用 brief 档（只注身份+关键事实，历史归引擎）。
@@ -112,6 +115,25 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       if (!configWithCtx.model && chLlm.model) configWithCtx.model = chLlm.model
       if (!configWithCtx.provider && chLlm.provider) configWithCtx.provider = chLlm.provider
       if (!configWithCtx.effort && chLlm.effort) configWithCtx.effort = chLlm.effort
+    }
+    // AgentPrefab:在 implFactory 之前解析一份有效能力/提示层；缺失必需能力时阻止装配（fail closed）。
+    // 无绑定的旧成员保持 legacy 行为；resolver 读失败且有绑定时不静默回落 legacy。
+    try {
+      const prefabRuntime = resolveRuntimeForAgent(this.deps.db, agent.id)
+      if (prefabRuntime?.binding) {
+        const blocked = prefabBlockedReason(prefabRuntime.resolution)
+        if (blocked) throw new AppError(409, 'PREFAB_REQUIRED_CAPABILITY_MISSING', blocked)
+        const prompt = prefabPromptText(prefabRuntime.resolution)
+        if (prompt) configWithCtx.prefabPrompt = prompt
+        configWithCtx.prefabBindingHash = prefabRuntime.binding.contentHash
+      }
+    }
+    catch (err) {
+      if (err instanceof AppError) throw err
+      const hasBinding = Boolean(m.prefabBindingJson)
+      if (hasBinding) {
+        throw new AppError(500, 'PREFAB_RESOLUTION_FAILED', `AgentPrefab 解析失败：${err instanceof Error ? err.message : String(err)}`)
+      }
     }
     const agentWithCtx: AgentInfo = { ...agent, config: configWithCtx }
     const impl = this.deps.implFactory(agentWithCtx)

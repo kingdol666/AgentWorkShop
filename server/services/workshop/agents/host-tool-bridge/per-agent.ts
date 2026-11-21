@@ -19,6 +19,10 @@ import { promptLocaleOf, tr, type PromptLocale } from '../prompt-i18n'
 import { getProjectService } from '../../projects/service'
 import { filterLeaderToolSurface, filterProjectToolSurface, type ProjectToolMode } from '../../projects/tool-surface'
 import { channelModeForAgent } from '../../channel-mode'
+import type { RpcHostToolDefinition } from '../adapters/omp-rpc-client'
+import { resolveRunMode } from '@/shared/config/home.mjs'
+import { listManifests } from '../../mcp-client/config'
+import { prefabAllowsTool, resolveRuntimeForAgentGlobal } from '../../agent-prefabs/runtime'
 
 function projectToolModeOfAgent(agentId: string): ProjectToolMode {
   try {
@@ -120,6 +124,27 @@ export function agentToolResources(agentId: string): AgentToolResourceView {
  */
 const foldList = (prefix: string, items: string[]): string => foldListImpl(prefix, items)
 
+/** 已审阅、shared-safe、只读的 MCP 工具定义（仅 prefab 模式注入，再由 allowlist 过滤） */
+function approvedMcpToolDefs(): RpcHostToolDefinition[] {
+  try {
+    const manifests = listManifests(resolveRunMode().configRoot)
+    return manifests.flatMap((manifest) => {
+      if (!manifest.enabled || manifest.dataSharing !== 'shared-safe') return []
+      return manifest.tools
+        .filter(tool => tool.reviewStatus === 'approved' && tool.classification === 'read')
+        .map(tool => ({
+          name: tool.exposedName,
+          label: `MCP ${manifest.label}`,
+          description: `[MCP ${manifest.label}/${tool.upstreamName}] ${tool.description}`.slice(0, 1200),
+          parameters: tool.inputSchema,
+        }))
+    })
+  }
+  catch {
+    return []
+  }
+}
+
 /** 在角色过滤后的工具面上追加 Agent 绑定资源描述 + 优化器绑定裁剪 */
 export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', channelId?: string, localeInput?: PromptLocale) {
   const locale = localeInput ?? promptLocaleOf(agentId, channelId)
@@ -128,9 +153,27 @@ export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', chan
   // Project 层（PR8）：leader 走项目工具白名单；成员按 channel lead/worker 裁剪；
   // 非项目 Channel 的 project 工具为 0。执行层 dispatch 同源再判一次。
   const projectMode = projectToolModeOfAgent(agentId)
-  const scoped = projectMode === 'leader'
+  let scoped = projectMode === 'leader'
     ? filterLeaderToolSurface(tools)
     : filterProjectToolSurface(tools, projectMode)
+  // AgentPrefab：有绑定才注入已审 MCP 工具并按 allowlist 收窄；无绑定保持 legacy。
+  const prefabRuntime = resolveRuntimeForAgentGlobal(agentId)
+  if (prefabRuntime?.binding) {
+    const extra: RpcHostToolDefinition[] = approvedMcpToolDefs()
+    if (prefabRuntime.resolution.skillIds.length > 0) {
+      extra.push({
+        name: 'activate_skill',
+        label: 'Activate Skill',
+        description: 'Activate one of the AgentPrefab-assigned Skills. Returns low-trust SKILL.md instructions and its managed directory; relative resources are read on demand.',
+        parameters: {
+          type: 'object',
+          properties: { skillId: { type: 'string', description: 'Managed Skill revision id from the prefab' } },
+          required: ['skillId'],
+        },
+      })
+    }
+    scoped = [...scoped, ...extra].filter(tool => prefabAllowsTool(prefabRuntime.resolution, tool.name))
+  }
   if (mode !== 'production_line_integrated') return scoped
   // G4.3 #10:无有效绑定时移除 solve/status/cancel/plan_get(保留 capabilities 作解释入口);
   // 多绑定时在描述中列出 bindingId(solve 需显式选择)。过滤不改变返回类型。

@@ -101,7 +101,7 @@ export interface PrefabCapabilityRegistryEntry {
 export interface AgentCapabilityInput {
   binding: AgentPrefabBinding | null
   member: { id: string, channelId: string, role: 'lead' | 'worker', harness: string }
-  channelPolicy: { mode: 'all' | 'selected', enabledToolIds?: string[] | null }
+  channelPolicy: { mode: 'all' | 'selected', enabledToolIds?: string[] | null, disabledToolIds?: string[] | null }
   projectScope: { allowedToolIds?: string[] | null, leader?: boolean } | null
   harness: { managedToolIds: string[] | null, managedSkillIds: string[] | null }
   registry: Record<string, PrefabCapabilityRegistryEntry>

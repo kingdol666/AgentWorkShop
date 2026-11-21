@@ -13,15 +13,15 @@ const COLS = `id, name, description, scenario_prompt AS scenarioPrompt, workspac
 
 /** members_json 元素契约 */
 export type ChannelTemplateMember
-  = | { templateId: string, role: 'lead' | 'worker' }
-    | { inline: { name: string, harness: string, config?: Record<string, unknown> }, role: 'lead' | 'worker' }
+  = | { templateId: string, role: 'lead' | 'worker', prefabBindingJson?: string }
+    | { inline: { name: string, harness: string, config?: Record<string, unknown>, prefabBindingJson?: string }, role: 'lead' | 'worker' }
 
 export interface ChannelTemplateCreateInput {
   name: string
   description?: string
   scenarioPrompt?: string
   workspace?: string
-  lead?: { name: string, harness: string, config?: Record<string, unknown> } | null
+  lead?: { name: string, harness: string, config?: Record<string, unknown>, prefabBindingJson?: string } | null
   members?: ChannelTemplateMember[]
   visibility?: string
   ownerUserId?: string | null
@@ -32,7 +32,7 @@ export interface ChannelTemplatePatch {
   description?: string
   scenarioPrompt?: string
   workspace?: string
-  lead?: { name: string, harness: string, config?: Record<string, unknown> } | null
+  lead?: { name: string, harness: string, config?: Record<string, unknown>, prefabBindingJson?: string } | null
   members?: ChannelTemplateMember[]
   visibility?: string
 }

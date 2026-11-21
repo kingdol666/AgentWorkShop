@@ -43,6 +43,12 @@ import { dispatchProjectTool } from '../../projects/tools'
 import { getProjectService } from '../../projects/service'
 import { projectExecutionGate } from '../../projects/execution-gate'
 import { currentExecutionScope, runWithExecutionScope, type ExecutionScope } from '../execution-scope'
+import { createMcpBroker } from '../../mcp-client/broker'
+import { listManifests } from '../../mcp-client/config'
+import { resolveRunMode } from '@/shared/config/home.mjs'
+import { recordOps } from '../../ops/ops'
+import { prefabAllowsTool, resolveRuntimeForAgentGlobal } from '../../agent-prefabs/runtime'
+import { handleActivateSkill } from './tools/skills'
 
 /** A peer turn has no task lease, so its writes must honor the channel hold. */
 export function peerWriteScope(scope: ExecutionScope, identity: HostToolBridgeContext['identity']): ExecutionScope {
@@ -238,6 +244,49 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
   {
     const gate = channelToolGate(identity.channelId, req.toolName)
     if (gate.blocked) return { text: gate.message ?? `工具 ${req.toolName} 不可用`, isError: true }
+  }
+  // AgentPrefab 执行面：每次调用重新解析当前 binding/registry/Channel 策略；
+  // 注入面缓存不能绕过撤销/停用。无绑定保持 legacy，但未绑定成员不得直调受管 MCP 工具。
+  {
+    const prefabRuntime = resolveRuntimeForAgentGlobal(identity.agentId)
+    const isManagedMcp = (() => {
+      try {
+        return listManifests(resolveRunMode().configRoot).some(m => m.tools.some(t => t.exposedName === req.toolName))
+      }
+      catch {
+        return false
+      }
+    })()
+    if (prefabRuntime?.binding) {
+      if (!prefabAllowsTool(prefabRuntime.resolution, req.toolName)) {
+        return { text: `FORBIDDEN: 工具 ${req.toolName} 不在当前 AgentPrefab 能力范围`, isError: true }
+      }
+      if (isManagedMcp) {
+        const broker = createMcpBroker({ configRoot: resolveRunMode().configRoot })
+        const result = await broker.call(identity.agentId, req.toolName, req.arguments ?? {}, {
+          channelId: identity.channelId,
+          authorize: () => prefabAllowsTool(prefabRuntime.resolution, req.toolName),
+          audit: entry => recordOps({
+            actor: identity.agentId,
+            actorName: identity.name,
+            actorKind: 'agent',
+            action: 'mcp.tool.call',
+            kind: 'system',
+            level: entry.outcome === 'ok' ? 'info' : 'warn',
+            targetKind: 'mcp_tool',
+            targetId: entry.toolId,
+            summary: `MCP ${entry.serverId}/${entry.toolId} ${entry.outcome} (${entry.durationMs}ms)`,
+          }),
+        })
+        return { text: result.text, isError: result.isError }
+      }
+    }
+    else if (isManagedMcp) {
+      return { text: 'FORBIDDEN: MCP 工具仅对绑定 AgentPrefab 的成员开放', isError: true }
+    }
+  }
+  if (req.toolName === 'activate_skill') {
+    return await handleActivateSkill(identity, req.arguments ?? {})
   }
   // Project-origin 工业写闸门（plan §6.2 write_intent）：项目来源任务默认 project_may_write=false;
   // 高风险写必须匹配 owner 已批准、未消费、tool/args digest/attempt 完全一致的审批。
