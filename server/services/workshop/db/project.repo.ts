@@ -92,6 +92,9 @@ export interface ProjectWorkItemRow {
   createdBy: string
   /** 任务专属执行实例 Channel（2026-11-07；派发时创建，任务终态后停用保留审计） */
   instanceChannelId: string | null
+  /** AgentPrefab 首次实例绑定快照（重试复用；空 = 无绑定/旧数据） */
+  prefabSnapshotJson?: string
+  prefabSnapshotHash?: string
   createdAt: string
   updatedAt: string
   closedAt: string | null
@@ -221,7 +224,7 @@ export interface ProjectApprovalRow {
 const PROJECT_COLS = 'id, name, description, objective, success_criteria_json AS successCriteriaJson, status, mode, owner_user_id AS ownerUserId, office_channel_id AS officeChannelId, lead_agent_id AS leadAgentId, plan_version AS planVersion, plan_json AS planJson, plan_approval_required AS planApprovalRequired, auto_dispatch AS autoDispatch, routing_policy AS routingPolicy, config_json AS configJson, deadline_at AS deadlineAt, created_at AS createdAt, updated_at AS updatedAt'
 const PROJECT_CHANNEL_COLS = 'project_id AS projectId, channel_id AS channelId, binding_type AS bindingType, charter, status, added_by AS addedBy, added_at AS addedAt, detached_at AS detachedAt'
 const DELIVERABLE_COLS = 'id, project_id AS projectId, name, description, owner_channel_id AS ownerChannelId, required, acceptance_criteria_json AS acceptanceCriteriaJson, due_at AS dueAt, depends_on_json AS dependsOnJson, status, waiver_reason AS waiverReason, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt'
-const WORK_ITEM_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, title, brief, state, state_reason AS stateReason, priority, weight, depends_on_json AS dependsOnJson, acceptance_json AS acceptanceJson, result_key AS resultKey, current_attempt_id AS currentAttemptId, plan_version AS planVersion, contract_json AS contractJson, exec_budget_minutes AS execBudgetMinutes, trace_id AS traceId, dedupe_key AS dedupeKey, deadline_at AS deadlineAt, rework_count AS reworkCount, accepted_result_id AS acceptedResultId, last_result_status AS lastResultStatus, attempt_count AS attemptCount, max_attempts AS maxAttempts, deferred_until AS deferredUntil, created_by AS createdBy, instance_channel_id AS instanceChannelId, created_at AS createdAt, updated_at AS updatedAt, closed_at AS closedAt, close_reason AS closeReason'
+const WORK_ITEM_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, title, brief, state, state_reason AS stateReason, priority, weight, depends_on_json AS dependsOnJson, acceptance_json AS acceptanceJson, result_key AS resultKey, current_attempt_id AS currentAttemptId, plan_version AS planVersion, contract_json AS contractJson, exec_budget_minutes AS execBudgetMinutes, trace_id AS traceId, dedupe_key AS dedupeKey, deadline_at AS deadlineAt, rework_count AS reworkCount, accepted_result_id AS acceptedResultId, last_result_status AS lastResultStatus, attempt_count AS attemptCount, max_attempts AS maxAttempts, deferred_until AS deferredUntil, created_by AS createdBy, instance_channel_id AS instanceChannelId, prefab_snapshot_json AS prefabSnapshotJson, prefab_snapshot_hash AS prefabSnapshotHash, created_at AS createdAt, updated_at AS updatedAt, closed_at AS closedAt, close_reason AS closeReason'
 const ATTEMPT_COLS = 'id, project_id AS projectId, work_item_id AS workItemId, attempt_no AS attemptNo, channel_id AS channelId, session_id AS sessionId, channel_task_id AS channelTaskId, source_key AS sourceKey, state, blocked_reason AS blockedReason, approval_id AS approvalId, args_digest AS argsDigest, failure_class AS failureClass, retryable, next_retry_at AS nextRetryAt, trace_id AS traceId, created_at AS createdAt, closed_at AS closedAt'
 const RESULT_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, line_id AS lineId, work_item_id AS workItemId, attempt_no AS attemptNo, result_key AS resultKey, version, title, summary, method, data_window_json AS dataWindowJson, sample_count AS sampleCount, confidence, validity_scope AS validityScope, payload_json AS payloadJson, evidence_json AS evidenceJson, change_summary AS changeSummary, open_questions AS openQuestions, status, submitted_at AS submittedAt, source_task_id AS sourceTaskId, supersedes_id AS supersedesId, author_agent_id AS authorAgentId, author_user_id AS authorUserId, reviewed_by AS reviewedBy, reviewed_at AS reviewedAt, approved_by AS approvedBy, approved_at AS approvedAt, reject_reason AS rejectReason, content_sha256 AS contentSha256, evidence_verified_at AS evidenceVerifiedAt, criteria_check_json AS criteriaCheckJson, technical_verdict_json AS technicalVerdictJson, rework_required AS reworkRequired, trace_id AS traceId, created_at AS createdAt'
 const DECISION_COLS = 'id, project_id AS projectId, seq, source, decision_type AS decisionType, actor_agent_id AS actorAgentId, actor_user_id AS actorUserId, actor_kind AS actorKind, args_json AS argsJson, args_sha256 AS argsSha256, snapshot_sha256 AS snapshotSha256, state, outcome, reason, approval_id AS approvalId, trace_id AS traceId, created_at AS createdAt'
@@ -490,6 +493,8 @@ export function createProjectWorkItemRepo(db: DatabaseSync) {
         deferredUntil: null,
         createdBy: input.createdBy ?? 'project_leader',
         instanceChannelId: null,
+        prefabSnapshotJson: '',
+        prefabSnapshotHash: '',
         createdAt: ts,
         updatedAt: ts,
         closedAt: null,
@@ -505,6 +510,15 @@ export function createProjectWorkItemRepo(db: DatabaseSync) {
     },
     findById(id: string): ProjectWorkItemRow | undefined {
       return selectById.get(id) as unknown as ProjectWorkItemRow | undefined
+    },
+    /** 首次实例创建时固定 AgentPrefab 快照；重试不得覆盖（调用方只在空快照时写） */
+    setPrefabSnapshot(id: string, snapshotJson: string, snapshotHash: string): ProjectWorkItemRow | undefined {
+      const cur = selectById.get(id) as unknown as ProjectWorkItemRow | undefined
+      if (!cur) return undefined
+      const ts = now()
+      db.prepare('UPDATE project_work_items SET prefab_snapshot_json = ?, prefab_snapshot_hash = ?, updated_at = ? WHERE id = ?')
+        .run(snapshotJson, snapshotHash, ts, id)
+      return { ...cur, prefabSnapshotJson: snapshotJson, prefabSnapshotHash: snapshotHash, updatedAt: ts }
     },
     listByProject(projectId: string): ProjectWorkItemRow[] {
       return selectByProject.all(projectId) as unknown as ProjectWorkItemRow[]

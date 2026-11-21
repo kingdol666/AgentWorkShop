@@ -297,6 +297,8 @@ export interface ChannelAgentRow {
   name: string
   harness: string
   configJson: string
+  /** AgentPrefabBinding JSON（'' = 旧成员无绑定；与自由 config_json 分离） */
+  prefabBindingJson?: string
   role: string
   /** 'channel_agent' | 'project_leader'（Project 层角色标识；role 仍为 lead/worker） */
   agentKind: string

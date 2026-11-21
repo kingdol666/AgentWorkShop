@@ -325,7 +325,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
   /** 更新实例(name/harness/config/enabled);变更后卸载已装配运行时以重载 */
   async updateChannelAgent(
     instanceId: string,
-    patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number },
+    patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number, prefabBindingJson?: string },
     meta?: { channelId?: string, by?: string, reason?: string, actor?: SpawnActor },
   ): Promise<AgentInfo> {
     const m = this.deps.repos.channelAgents.findById(instanceId)

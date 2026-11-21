@@ -1788,7 +1788,33 @@ CREATE TABLE IF NOT EXISTS dcw_write_attempts (
   updated_at         TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_write_attempts_node ON dcw_write_attempts(node_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_write_attempts_open ON dcw_write_attempts(state);`
+CREATE INDEX IF NOT EXISTS idx_write_attempts_open ON dcw_write_attempts(state);
+
+-- v8(2026-11-21): AgentPrefab 草稿 + 不可变发布 revision。
+-- prefab 只保存配置/提示词/能力引用；不保存凭据、命令行或动态代码。
+CREATE TABLE IF NOT EXISTS agent_prefabs (
+  id             TEXT PRIMARY KEY,
+  name           TEXT NOT NULL,
+  description    TEXT NOT NULL DEFAULT '',
+  visibility     TEXT NOT NULL DEFAULT 'private',  -- private|public
+  owner_user_id  TEXT,
+  draft_json     TEXT NOT NULL DEFAULT '{}',
+  head_revision  INTEGER NOT NULL DEFAULT 0,
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_agent_prefabs_owner ON agent_prefabs(owner_user_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS agent_prefab_revisions (
+  prefab_id       TEXT NOT NULL,
+  revision        INTEGER NOT NULL,
+  snapshot_json   TEXT NOT NULL,
+  content_hash    TEXT NOT NULL,
+  created_at      TEXT NOT NULL,
+  created_by      TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (prefab_id, revision)
+);
+CREATE INDEX IF NOT EXISTS idx_agent_prefab_revisions_hash ON agent_prefab_revisions(prefab_id, content_hash);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 

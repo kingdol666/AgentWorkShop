@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppearancePane from '~/components/settings/AppearancePane.vue'
+import AgentPrefabsPane from '~/components/settings/AgentPrefabsPane.vue'
 import McpServersPane from '~/components/settings/McpServersPane.vue'
 import RuntimePane from '~/components/settings/RuntimePane.vue'
 import SkillsPane from '~/components/settings/SkillsPane.vue'
@@ -15,14 +16,15 @@ const tabs = computed(() => [
   { key: 'runtime', icon: 'i-tabler-settings', label: t('settings.runtimeTab') },
   { key: 'skills', icon: 'i-tabler-puzzle', label: t('settings.skillsTab') },
   { key: 'mcp', icon: 'i-tabler-plug', label: t('settings.mcpTab') },
+  { key: 'prefabs', icon: 'i-tabler-box', label: t('settings.prefabsTab') },
   { key: 'system', icon: 'i-tabler-server-2', label: t('settings.systemTab') },
 ])
 
 /** 懒挂载:隐藏 pane 此前也在跑请求(Runtime 98 项配置/系统参数);首次激活才挂载,挂后保留状态 */
-type SettingsTab = 'appearance' | 'runtime' | 'skills' | 'mcp' | 'system'
-const mountedPanes = reactive<Record<SettingsTab, boolean>>({ appearance: true, runtime: false, skills: false, mcp: false, system: false })
+type SettingsTab = 'appearance' | 'runtime' | 'skills' | 'mcp' | 'prefabs' | 'system'
+const mountedPanes = reactive<Record<SettingsTab, boolean>>({ appearance: true, runtime: false, skills: false, mcp: false, prefabs: false, system: false })
 watch(activeTab, (k) => {
-  if (k === 'appearance' || k === 'runtime' || k === 'skills' || k === 'mcp' || k === 'system') mountedPanes[k] = true
+  if (k === 'appearance' || k === 'runtime' || k === 'skills' || k === 'mcp' || k === 'prefabs' || k === 'system') mountedPanes[k] = true
 })
 </script>
 
@@ -82,6 +84,11 @@ watch(activeTab, (k) => {
           <!-- 外部 MCP:登记/发现/审阅/启停(admin 写,admin/editor 读) -->
           <McpServersPane
             v-if="mountedPanes.mcp"
+            :active-tab="activeTab"
+          />
+          <!-- AgentPrefab:草稿/插槽/能力选择/发布/绑定 -->
+          <AgentPrefabsPane
+            v-if="mountedPanes.prefabs"
             :active-tab="activeTab"
           />
           <!-- 系统:只读运行参数 -->
