@@ -162,11 +162,13 @@ export abstract class ManagerHostTools extends ManagerA2A {
         if (!runtime?.workspace) return finish(input, { text: 'workspace 未就绪,插件工具拒绝执行。', isError: true })
         const channelSessionScope = this.channelSessionScopeOfAgent(row.channelId, row.id)
         const state = createSessionState()
-        state.sessionId = channelSessionScope?.sessionId ?? null
+        // generic 会话无工业快照 → scope 为 null,但记忆归属仍需可信 sessionId(见 sessionIdOfAgent)
+        state.sessionId = channelSessionScope?.sessionId ?? this.sessionIdOfAgent(row.channelId, row.id)
         return finish(input, await dispatchHostTool({
           identity,
           state,
           channelSessionScope,
+          trustedSessionId: state.sessionId,
           getWorkspace: () => runtime.workspace,
         }, { toolName: input.tool, arguments: input.args ?? {} }))
       }
@@ -182,7 +184,8 @@ export abstract class ManagerHostTools extends ManagerA2A {
       if (workspace) {
         const channelSessionScope = this.channelSessionScopeOfAgent(row.channelId, row.id)
         const state = createSessionState()
-        state.sessionId = channelSessionScope?.sessionId ?? null
+        // 同上:generic 会话回落到仅会话 id 的可信身份,保证记忆戳/检索按会话生效
+        state.sessionId = channelSessionScope?.sessionId ?? this.sessionIdOfAgent(row.channelId, row.id)
         return finish(input, await dispatchHostTool({
           identity: {
             agentId: row.id,
@@ -192,6 +195,7 @@ export abstract class ManagerHostTools extends ManagerA2A {
           },
           state,
           channelSessionScope,
+          trustedSessionId: state.sessionId,
           getWorkspace: () => workspace,
         }, { toolName: input.tool, arguments: input.args ?? {} }))
       }

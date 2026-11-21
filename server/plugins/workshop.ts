@@ -212,6 +212,14 @@ export default function workshopPlugin(nitroApp: {
   // 创建 manager → 挂全局单例(后续 REST/A2A/WS 经 getWorkshopManager() 读取)
   const manager = createAgentChannelManager(deps)
   globalThis.__workshopManager = manager
+  // 启动即绑定 WS hub(幂等):publish 的 400ms 延迟刷盘与 3s rebind sweep 都以
+  // hub.boundManager 为前提 —— 此前只在首个 WS 连接(ensureHubBound)时设置,
+  // 无客户端期间事件滞留 dbBuffer、总线重建后流也无法重订("全时事件录制"失效)。
+  // 此处无已存在流,ensureHubBound 仅设置 boundManager,无副作用。plugin 是同步
+  // 函数(nitro 同步调用),动态 import 落 microtask,不阻塞其余启动步骤。
+  void import('../api/workshop/ws/hub')
+    .then(({ ensureHubBound }) => ensureHubBound(manager))
+    .catch((err) => { console.warn('[workshop] hub 绑定失败(不阻断启动):', err instanceof Error ? err.message : err) })
   // 启动对账:上次进程在会话关闭级联中途退出 → closing 会话在此补完 clone 停用与终态。
   // 在开始处理请求前同步收敛;失败不阻断启动(下一次启动会再对账)。
   try {
