@@ -73,7 +73,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.14.0 · 已发布</i></span>
+        <span>版本 <i>v0.15.0 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -90,40 +90,43 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.14.0 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.15.0 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.14.0 版本。本版把「受治理的产品经验复用」计划端到端落地：
-      经验变为不可变版本（内容/证据快照哈希 + CAS 指针），统一解析器按授权
-      epoch、产品/配方作用域与部署状态管住全部读取面；晋升必须引用宿主来源
-      评测，发布走待发布+审计 outbox 两段提交；产线写持久化尝试账本，重启对账
-      不自动重发。请先阅读 <a href="/AgentWorkShop/guide/governed-learning">受治理产品经验</a>；
+      当前为 v0.15.0 版本。本版把「AgentPrefab 能力装配」计划（#252–#258）端到端落地：
+      系统设置新增技能管理（标准 SKILL.md 发现 → 不可变受管导入 → 显式启用，覆盖
+      内置、<code>&lt;configRoot&gt;/skills</code>、<code>~/.agent/skills</code> 等全局根，全程不执行
+      Skill 脚本）、外部 MCP（HTTPS 清单 + <code>AW_MCP_*</code> 凭据引用 + 评审制
+      shared-safe 只读工具 + 出口防护）与 Agent 预制件（角色/场景提示词 + 多维插槽 +
+      逐能力开关封装为不可变 revision）；Channel 成员固定绑定，Session/Project 实例
+      冻结快照，运行时每次调用重新授权。请先阅读
+      <a href="/AgentWorkShop/guide/agent-prefabs">AgentPrefab / Skill / MCP</a>；
       模拟验收不构成物理 HIL 或生产就绪证明。
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">KNOWLEDGE</span>
-        <h3>诊断 → 知识一条闭环</h3>
-        <p>diag_deposit 取已完成 run 的报告，写入 aw-docs、建索引、打标签并做两段检索自查；空报告可读失败不落半截文档。</p>
-        <p><a href="/AgentWorkShop/guide/idd-rag-plugins">IDD / RAG 插件集成 →</a></p>
+        <span class="tag">SKILLS</span>
+        <h3>标准 Skill 供应链</h3>
+        <p>发现内置与全局根（npm 标准 ~/.agent/skills）的 SKILL.md；导入为按内容哈希的不可变受管副本，默认未启用，启停留审计。</p>
+        <p><a href="/AgentWorkShop/guide/agent-prefabs">技能管理 →</a></p>
       </div>
       <div class="hw-f">
-        <span class="tag">DATA</span>
-        <h3>按信号契约选择取数面</h3>
-        <p>先确认产线上下文并检索记忆，再按信号类型选择标量 DAQ 或帧读取；记录 raw 与 normalized 向量点数。</p>
-        <p><a href="/AgentWorkShop/guide/line-integration">产线集成指南 →</a></p>
+        <span class="tag">MCP</span>
+        <h3>外部 MCP 评审制接入</h3>
+        <p>HTTPS Streamable HTTP 清单 + AW_MCP_* 凭据引用；发现只产生 pending，管理员评审 shared-safe 只读后才可调用；出口防护拒绝私网/环回。</p>
+        <p><a href="/AgentWorkShop/guide/agent-prefabs">外部 MCP →</a></p>
       </div>
       <div class="hw-f">
-        <span class="tag">WRITE</span>
-        <h3>受治理提案与回读</h3>
-        <p>配方变更走提案路径；有效产线、Channel 与绑定策略共同决定是否需要 HITL。对账确认、设备回读与 journal。</p>
-        <p><a href="/AgentWorkShop/guide/hitl">HITL 指南 →</a></p>
+        <span class="tag">PREFAB</span>
+        <h3>专家智能体预制件</h3>
+        <p>角色/场景提示词 + 多维自定义插槽 + 逐能力开关发布为不可变 revision；Channel 成员固定绑定，作业运行时按交集重新授权。</p>
+        <p><a href="/AgentWorkShop/guide/agent-prefabs">AgentPrefab 指南 →</a></p>
       </div>
     </div>
     <div class="hw-note">
       <span class="t">验证</span>
-      <p>本 v0.14.0 合并主干审计（<code>5614aa06</code>）：固定 13 项矩阵（typecheck/lint/unit 2107/2108/i18n/cssvars/frontend-lifecycle/acceptance-context/onboarding-v6/sdk-surface/plugin-lifecycle/mcp/docs/build）全部退出 0，<code>checkMainAudit</code> = PASS；隔离模拟验收 onboarding 33/33+15/15+V1–V6 24/24、冒烟回读 72=72、七轮治理调参 31.03→32.58 g 进带。仅模拟证据，不构成物理 HIL；收益验证与现场准入 NOT_RUN，详见报告。<a href="/AgentWorkShop/guide/governed-learning">受治理产品经验</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/governed-product-learning-main-audit.md">主干审计报告</a></p>
+      <p>本 v0.15.0 合并主干门禁（<code>87805eaf</code>）：typecheck/lint/build、docs 101/0、i18n 3439/3439、skills 197/0、MCP 14/14、unit 2185/2186（1 条件跳过）全绿；隔离全新实例实机验收 21/21（Skill 发现→导入→启用→预制体发布→绑定→目录收窄→activate_skill 低信任注入→越权拒绝→会话快照→修订不自动升级→撤销即时生效→MCP HTTPS/无密钥/失败有界）；存量实例两轮重启持久性核验（写尝试台账 3277 行分布一致、绝不重发）。仅模拟证据，不构成物理 HIL；外部 MCP 正向实网、Prefab 下真实模型作业、浏览器点击验收 NOT_RUN；Mimosa inconclusive 不作安全通过声明，详见报告。<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md">全流程验收报告</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP 实机报告</a></p>
     </div>
   </section>
 
