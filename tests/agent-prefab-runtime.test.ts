@@ -4,6 +4,11 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { buildCapabilityRegistry } from '../server/services/workshop/agent-prefabs/registry'
+import { hashSchema, newManifest, writeManifest } from '../server/services/workshop/mcp-client/config'
 import { openWorkshopDb } from '../server/services/workshop/db/database/open'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
@@ -82,6 +87,76 @@ test('required missing or corrupt binding fails closed', () => {
   }
   finally {
     db.close()
+  }
+})
+
+test('persisted binding must match the published revision and canonical slot rules', () => {
+  const db = openWorkshopDb(':memory:')
+  try {
+    initToolRegistryDb(db)
+    const channel = createChannelRepo(db).create({ name: 'c', ownerUserId: 'u1' })
+    const owner = { id: 'u1' }
+    const service = createAgentPrefabService(db)
+    const prefab = service.create(owner, draft({
+      prompt: { slots: [
+        { key: 'goal', label: 'Goal', required: true, maxLength: 4 },
+        { key: 'policy', label: 'Policy', defaultValue: 'fixed', allowMemberOverride: false },
+      ] },
+    }))
+    const revision = service.publish(owner, prefab.id, 0)
+    const binding = service.buildBinding(owner, prefab.id, revision.revision, { goal: 'grow' })
+    const repo = createChannelAgentRepo(db)
+    const member = repo.create({ channelId: channel.id, templateId: null, name: 'bound', harness: 'omp', config: {}, role: 'worker', prefabBindingJson: JSON.stringify(binding) })
+    assert.equal(resolveRuntimeForAgent(db, member.id)?.resolution.prompt.slots.find(s => s.key === 'policy')?.text, 'fixed')
+
+    for (const [value, error] of [
+      [' \t ', /绑定格式非法/],
+      ['null', /绑定格式非法/],
+      [JSON.stringify({ ...binding, revision: revision.revision + 1 }), /快照缺失/],
+      [JSON.stringify({ ...binding, contentHash: '0'.repeat(64) }), /contentHash/],
+      [JSON.stringify({ ...binding, slotValues: { goal: 'grow', unknown: 'value' } }), /未声明的 slot/],
+      [JSON.stringify({ ...binding, slotValues: JSON.parse('{"goal":"grow","__proto__":"unknown"}') }), /未声明的 slot/],
+      [JSON.stringify({ ...binding, slotValues: {} }), /goal.*必填/],
+      [JSON.stringify({ ...binding, slotValues: { goal: 'longer' } }), /goal.*长度/],
+      [JSON.stringify({ ...binding, slotValues: { goal: 'grow', policy: 'changed' } }), /policy.*不允许/],
+    ] as const) {
+      repo.update(member.id, { prefabBindingJson: value })
+      const runtime = resolveRuntimeForAgent(db, member.id)!
+      assert.equal(runtime.resolution.mode, 'prefab', value)
+      assert.deepEqual(runtime.resolution.toolIds, [], value)
+      assert.deepEqual(runtime.resolution.skillIds, [], value)
+      assert.equal(prefabAllowsTool(runtime.resolution, 'send_message_to_agent'), false, value)
+      assert.ok(prefabBlockedReason(runtime.resolution), value)
+      assert.match(runtime.resolution.reasons.__prefab__ ?? runtime.resolution.slotErrors[0] ?? '', error)
+    }
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('registry publishes full Skill hashes and MCP schema hashes as capability versions', () => {
+  const root = mkdtempSync(join(tmpdir(), 'aw-prefab-versions-'))
+  try {
+    const skillHash = 'a'.repeat(64)
+    const skillDir = join(root, 'skills', 'test-skill', skillHash)
+    mkdirSync(skillDir, { recursive: true })
+    writeFileSync(join(skillDir, 'manifest.json'), JSON.stringify({ name: 'test-skill', contentHash: skillHash }))
+    const manifest = newManifest({ id: 'test', label: 'Test', endpoint: 'https://example.com/mcp', dataSharing: 'shared-safe' })
+    const inputSchema = { type: 'object' }
+    const schemaHash = hashSchema(inputSchema)
+    manifest.tools.push({ id: 'mcp_test_read', exposedName: 'mcp_test_read', serverId: manifest.id, upstreamName: 'read', description: '', inputSchema, schemaHash, reviewStatus: 'approved', classification: 'read' })
+    writeManifest(root, manifest)
+
+    const { registry } = buildCapabilityRegistry('', root)
+    assert.equal(registry[`skill:test-skill@${skillHash.slice(0, 12)}`]?.version, skillHash)
+    assert.equal(registry['skill:test-skill']?.version, skillHash)
+    assert.equal(registry['mcp-tool:mcp_test_read']?.version, schemaHash)
+    assert.equal(registry['tool:submit_task']?.version, undefined)
+    assert.deepEqual(registry['tool:submit_task']?.roles, ['lead'])
+  }
+  finally {
+    rmSync(root, { recursive: true, force: true })
   }
 })
 

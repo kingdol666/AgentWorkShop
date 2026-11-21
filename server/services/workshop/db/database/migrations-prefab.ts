@@ -15,6 +15,19 @@ export function migratePrefabColumns(db: DatabaseSync): void {
   if (!hasColumn(db, 'channel_agents', 'prefab_binding_json')) {
     db.exec('ALTER TABLE channel_agents ADD COLUMN prefab_binding_json TEXT NOT NULL DEFAULT \'\'')
   }
+  // 历史记录没有可靠的创建者。不要根据名称、owner 或模板关系推断 Lead 所有权。
+  if (!hasColumn(db, 'channel_agents', 'created_by_kind')) {
+    db.exec('ALTER TABLE channel_agents ADD COLUMN created_by_kind TEXT NOT NULL DEFAULT \'system\'')
+  }
+  if (!hasColumn(db, 'channel_agents', 'created_by_id')) {
+    db.exec('ALTER TABLE channel_agents ADD COLUMN created_by_id TEXT')
+  }
+  if (!hasColumn(db, 'channel_agents', 'created_via')) {
+    db.exec('ALTER TABLE channel_agents ADD COLUMN created_via TEXT NOT NULL DEFAULT \'protected\'')
+  }
+  if (!hasColumn(db, 'channel_agents', 'created_reason')) {
+    db.exec('ALTER TABLE channel_agents ADD COLUMN created_reason TEXT NOT NULL DEFAULT \'\'')
+  }
   if (!hasColumn(db, 'channel_sessions', 'prefab_snapshot_json')) {
     db.exec('ALTER TABLE channel_sessions ADD COLUMN prefab_snapshot_json TEXT NOT NULL DEFAULT \'\'')
   }

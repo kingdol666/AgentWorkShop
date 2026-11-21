@@ -2,13 +2,23 @@
  * 团队面(list_team_agents / get_queue_overview / create_team_agent / update_team_agent /
  * remove_team_agent)——原 dispatchHostTool 对应 case 的函数体按行搬运。
  */
-import type { AgentWorkspace, AgentInfo } from '../../agent-interface'
+import type { AgentWorkspace, AgentInfo, TeamMemberView } from '../../agent-interface'
+import type { AgentPrefabSelector } from '../../../agent-prefabs/types'
 import type { HostToolResult } from '../types'
 
+function formatPrefab(binding: TeamMemberView['prefabBinding'] | undefined): string {
+  return binding
+    ? `prefabId=${binding.prefabId}, revision=${binding.revision}, contentHash=${binding.contentHash}`
+    : 'prefab=none, revision=-, contentHash=-'
+}
+
 export async function handleListTeamAgents(ws: AgentWorkspace): Promise<HostToolResult> {
-  const agents = await ws.listAgents()
+  // Old workspace implementations have no authoritative management metadata. Fail closed.
+  const agents = ws.listTeamMembers
+    ? await ws.listTeamMembers()
+    : (await ws.listAgents()).map(a => ({ ...a, manageable: false, protected: true }))
   const text = agents.map(a =>
-    `  ${a.id} (${a.name}, role=${a.role}, harness=${a.harness})`,
+    `  ${a.id} (${a.name}, role=${a.role}, harness=${a.harness}, enabled=${a.enabled ?? 1}, ${formatPrefab(a.prefabBinding)}, manageable=${a.manageable}, protected=${a.protected})`,
   ).join('\n')
   return { text: `团队成员(${agents.length}):\n${text || '(空)'}` }
 }
@@ -30,6 +40,7 @@ export async function handleCreateTeamAgent(args: Record<string, unknown>, ws: A
     name,
     harness,
     config: systemPrompt ? { systemPromptPrefix: systemPrompt } : undefined,
+    prefab: args.prefab as AgentPrefabSelector | undefined,
     reason,
   })
   return {
@@ -37,7 +48,8 @@ export async function handleCreateTeamAgent(args: Record<string, unknown>, ws: A
       `团队成员已创建并加入 channel:`,
       `  id: ${agent.id}`,
       `  name: ${agent.name}(role=worker, harness=${agent.harness})`,
-      `新成员当前空闲,可立即 dispatch_task 指派任务;list_team_agents 可随时查看团队名册。`,
+      `  ${formatPrefab(agent.prefabBinding)}`,
+      `list_team_agents 可随时查看团队名册。`,
     ].join('\n'),
   }
 }
@@ -52,10 +64,11 @@ export async function handleUpdateTeamAgent(args: Record<string, unknown>, ws: A
     name,
     config: systemPrompt !== undefined ? { systemPromptPrefix: systemPrompt } : undefined,
     enabled: enabled === undefined ? undefined : (enabled ? 1 : 0),
+    prefab: args.prefab as AgentPrefabSelector | null | undefined,
     reason,
   })
   return {
-    text: `团队成员 ${agentId} 已更新:name="${agent.name}"${enabled !== undefined ? `, enabled=${enabled ? 1 : 0}` : ''};运行时将按新配置重载(下次任务生效)。`,
+    text: `团队成员 ${agentId} 已更新:name="${agent.name}"${enabled !== undefined ? `, enabled=${enabled ? 1 : 0}` : ''}, ${formatPrefab(agent.prefabBinding)}。`,
   }
 }
 

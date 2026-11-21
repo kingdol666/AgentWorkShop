@@ -51,7 +51,7 @@
  *   wakeAgent  → 由 internal.ts 实现
  */
 import type { A2AArtifact, A2AMessage, ChannelMail, Part } from '../../types/a2a'
-import type { AgentInfo, AgentWorkspace, ExecutionMode } from '../../agents/agent-interface'
+import type { AgentInfo, AgentWorkspace, CreateTeamMemberInput, ExecutionMode, TeamMemberView, UpdateTeamMemberPatch } from '../../agents/agent-interface'
 import type { AgentStatusView, AgentTaskQueueView, WorkspaceTask } from '../../types/task'
 import type { ChannelAgentRow } from '../../db/database'
 import type { ChannelBus, AgentRuntime } from '../agent-runtime'
@@ -98,8 +98,9 @@ export abstract class ManagerContracts {
   abstract createTeamMember(
     channelId: string,
     callerAgentId: string,
-    input: { name: string, harness?: string, config?: Record<string, unknown>, templateId?: string, reason?: string },
+    input: CreateTeamMemberInput,
   ): Promise<AgentInfo>
+  abstract listTeamMembers(channelId: string, callerAgentId: string): Promise<TeamMemberView[]>
   abstract dispatchTask(
     channelId: string,
     callerAgentId: string,
@@ -235,7 +236,7 @@ export abstract class ManagerContracts {
     channelId: string,
     callerAgentId: string,
     agentId: string,
-    patch: { name?: string, config?: Record<string, unknown>, enabled?: number, reason?: string },
+    patch: UpdateTeamMemberPatch,
   ): Promise<AgentInfo>
   abstract waitMailbox(channelId: string, callerAgentId: string, limit: number, waitMs: number): Promise<A2AMessage[]>
   protected abstract wakeAgent(channelId: string, agentId: string): void

@@ -114,15 +114,58 @@ test('MCP tools require approved review; skills require harness support and expo
   assert.ok(approved.toolIds.includes('mcp_mes_search'))
 })
 
-test('slot validation: required, override policy and max length', () => {
-  const resolution = resolveAgentCapabilitySet(input({
-    slotValues: { goal: '', policy: 'changed' },
-  }))
-  assert.ok(resolution.slotErrors.some(e => e.startsWith('goal:')))
-  assert.ok(resolution.slotErrors.some(e => e.startsWith('policy:')))
-  assert.ok(resolution.requiredMissing.includes('slot:goal'))
-  assert.equal(resolution.prompt.slots.find(s => s.key === 'policy')?.text, 'fixed')
+test('invalid slot values use canonical validation and expose no prompt or tools', () => {
+  const cases = [
+    [{ goal: '' }, /goal.*必填/, ['slot:goal']],
+    [{ policy: 'changed' }, /policy.*不允许/, []],
+    [{ goal: 'x'.repeat(101) }, /goal.*长度/, ['slot:goal']],
+    [{ unknown: 'x' }, /未声明.*unknown/, []],
+  ] as const
+  for (const [slotValues, error, missing] of cases) {
+    const resolution = resolveAgentCapabilitySet(input({ slotValues }))
+    assert.equal(resolution.mode, 'prefab')
+    assert.equal(resolution.slotErrors.length, 1)
+    assert.match(resolution.slotErrors[0]!, error)
+    assert.deepEqual(resolution.requiredMissing, missing)
+    assert.deepEqual(resolution.toolIds, [])
+    assert.deepEqual(resolution.skillIds, [])
+    assert.deepEqual(resolution.prompt, { role: '', scenario: '', slots: [] })
+  }
+})
 
-  const tooLong = resolveAgentCapabilitySet(input({ slotValues: { goal: 'x'.repeat(101) } }))
-  assert.ok(tooLong.slotErrors.some(e => e.startsWith('goal:')))
+test('worker cannot get lead-only baseline or selected tools; plugin roles also narrow selection', () => {
+  const base = input({
+    prefab: prefab({ capabilities: [{ kind: 'tool', id: 'dispatch_task' }, { kind: 'plugin-tool', id: 'lead_plugin' }] }),
+    harness: { managedToolIds: ['dispatch_task', 'lead_plugin'], managedSkillIds: [] },
+    registry: {
+      'tool:dispatch_task': { kind: 'tool', id: 'dispatch_task', enabled: true },
+      'plugin-tool:lead_plugin': { kind: 'plugin-tool', id: 'lead_plugin', enabled: true, roles: ['lead'] },
+    },
+  })
+  const worker = resolveAgentCapabilitySet(base)
+  const lead = resolveAgentCapabilitySet({ ...base, member: { ...base.member, role: 'lead' } })
+  for (const name of ['submit_task', 'read_channel_mail', 'dispatch_task', 'lead_plugin']) {
+    assert.equal(worker.toolIds.includes(name), false, name)
+    assert.equal(lead.toolIds.includes(name), true, name)
+  }
+  assert.ok(worker.toolIds.includes('poll_messages'))
+  assert.deepEqual(worker.denied.map(cap => cap.id), ['dispatch_task', 'lead_plugin'])
+})
+
+test('pinned capability versions require an exact registry match, including baseline refs', () => {
+  const id = 'send_message_to_agent'
+  const key = `tool:${id}`
+  for (const [pinned, actual, allowed] of [
+    ['v1', 'v1', true], ['v1', 'V1', false], ['v1', undefined, false],
+    ['', undefined, false], [undefined, 'v2', true],
+  ] as const) {
+    const result = resolveAgentCapabilitySet(input({
+      prefab: prefab({ capabilities: [{ kind: 'tool', id, version: pinned, required: true }] }),
+      registry: { [key]: { kind: 'tool', id, enabled: true, version: actual } },
+      harness: { managedToolIds: [id], managedSkillIds: [] },
+    }))
+    assert.equal(result.toolIds.includes(id), allowed)
+    assert.deepEqual(result.requiredMissing, allowed ? [] : [key])
+    if (!allowed) assert.match(result.reasons[key]!, /版本不匹配/)
+  }
 })

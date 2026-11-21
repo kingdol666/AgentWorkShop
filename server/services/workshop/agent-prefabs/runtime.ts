@@ -54,16 +54,19 @@ export function resolveRuntimeForAgent(db: DatabaseSync, agentId: string): Resol
     return { member: memberRow, binding: null, resolution: emptyPrefabResolution(bindingError), draft: null, bindingError }
   }
 
-  const service = createAgentPrefabService(db)
-  const loaded = binding ? service.loadRevision(binding.prefabId, binding.revision) : null
-  const bundle = buildCapabilityRegistry(memberRow.channelId)
-  const policy = getPolicySnapshot(memberRow.channelId)
+  const loaded = binding ? createAgentPrefabService(db).loadRevision(binding.prefabId, binding.revision) : null
+  if (binding && loaded && binding.contentHash !== loaded.revision.contentHash) {
+    const bindingError = 'AgentPrefab 绑定 contentHash 与发布 revision 不匹配'
+    return { member: memberRow, binding, resolution: emptyPrefabResolution(bindingError), draft: null, bindingError }
+  }
+  const bundle = binding && loaded ? buildCapabilityRegistry(memberRow.channelId) : null
+  const policy = bundle ? getPolicySnapshot(memberRow.channelId) : null
   const channelPolicy = {
-    mode: policy.mode,
-    enabledToolIds: policy.mode === 'selected'
+    mode: policy?.mode ?? 'all',
+    enabledToolIds: policy?.mode === 'selected'
       ? [...policy.settings.entries()].filter(([, enabled]) => enabled === true).map(([name]) => name)
       : null,
-    disabledToolIds: [...policy.settings.entries()].filter(([, enabled]) => enabled === false).map(([name]) => name),
+    disabledToolIds: policy ? [...policy.settings.entries()].filter(([, enabled]) => enabled === false).map(([name]) => name) : null,
   }
   const resolution = resolveAgentCapabilitySet({
     binding,
@@ -75,10 +78,9 @@ export function resolveRuntimeForAgent(db: DatabaseSync, agentId: string): Resol
     },
     channelPolicy,
     projectScope: null,
-    harness: { managedToolIds: bundle.managedToolIds, managedSkillIds: bundle.managedSkillIds },
-    registry: bundle.registry,
+    harness: { managedToolIds: bundle?.managedToolIds ?? null, managedSkillIds: bundle?.managedSkillIds ?? null },
+    registry: bundle?.registry ?? {},
     prefab: loaded?.draft ?? null,
-    slotValues: binding?.slotValues,
   })
   return { member: memberRow, binding, resolution, draft: loaded?.draft ?? null }
 }

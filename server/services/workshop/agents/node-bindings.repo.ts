@@ -179,8 +179,9 @@ export class AgentNodeBindingRepo {
 
   /** Agent 删除级联清理 */
   removeAgent(agentId: string): void {
+    const before = this.list.length
     this.list = this.list.filter(b => b.agentId !== agentId)
-    this.flush()
+    if (this.list.length !== before) this.flush()
   }
 
   private flush(): void {

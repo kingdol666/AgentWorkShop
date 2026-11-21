@@ -6,7 +6,7 @@
  */
 import { randomUUID, timingSafeEqual } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
-import type { ChannelAgentRow } from './database'
+import type { ChannelAgentCreationSource, ChannelAgentRow } from './database/rows'
 
 /**
  * token 比对(定长归一 + 常量时间):长度不同直接 false,不抛异常。
@@ -25,7 +25,7 @@ export function safeTokenEqual(a: string, b: string): boolean {
   }
 }
 
-export interface ChannelAgentCreateInput {
+export interface ChannelAgentCreateInput extends Partial<ChannelAgentCreationSource> {
   channelId: string
   templateId: string | null
   name: string
@@ -51,12 +51,12 @@ export interface ChannelAgentPatch {
 export type ChannelAgentRepo = ReturnType<typeof createChannelAgentRepo>
 
 const COLS
-  = 'id, channel_id AS channelId, template_id AS templateId, name, harness, config_json AS configJson, prefab_binding_json AS prefabBindingJson, role, agent_kind AS agentKind, token, enabled, created_at AS createdAt, updated_at AS updatedAt'
+  = 'id, channel_id AS channelId, template_id AS templateId, name, harness, config_json AS configJson, prefab_binding_json AS prefabBindingJson, role, agent_kind AS agentKind, token, enabled, created_at AS createdAt, updated_at AS updatedAt, created_by_kind AS createdByKind, created_by_id AS createdById, created_via AS createdVia, created_reason AS createdReason'
 
 export function createChannelAgentRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO channel_agents (id, channel_id, template_id, name, harness, config_json, prefab_binding_json, role, agent_kind, token, enabled, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO channel_agents (id, channel_id, template_id, name, harness, config_json, prefab_binding_json, role, agent_kind, token, enabled, created_at, updated_at, created_by_kind, created_by_id, created_via, created_reason)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectByChannel = db.prepare(`SELECT ${COLS} FROM channel_agents WHERE channel_id = ? ORDER BY created_at ASC`)
   const selectById = db.prepare(`SELECT ${COLS} FROM channel_agents WHERE id = ?`)
@@ -90,9 +90,14 @@ export function createChannelAgentRepo(db: DatabaseSync) {
         enabled: 1,
         createdAt: now,
         updatedAt: now,
+        createdByKind: input.createdByKind ?? 'system',
+        createdById: input.createdById ?? null,
+        createdVia: input.createdVia ?? 'protected',
+        createdReason: input.createdReason ?? '',
       }
       insert.run(
         row.id, row.channelId, row.templateId, row.name, row.harness, row.configJson, row.prefabBindingJson ?? '', row.role, row.agentKind, row.token, row.enabled, row.createdAt, row.updatedAt,
+        row.createdByKind, row.createdById, row.createdVia, row.createdReason,
       )
       return row
     },

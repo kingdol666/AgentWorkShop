@@ -120,12 +120,12 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // 无绑定的旧成员保持 legacy 行为；resolver 读失败且有绑定时不静默回落 legacy。
     try {
       const prefabRuntime = resolveRuntimeForAgent(this.deps.db, agent.id)
-      if (prefabRuntime?.binding) {
+      if (prefabRuntime?.resolution.mode === 'prefab') {
         const blocked = prefabBlockedReason(prefabRuntime.resolution)
         if (blocked) throw new AppError(409, 'PREFAB_REQUIRED_CAPABILITY_MISSING', blocked)
         const prompt = prefabPromptText(prefabRuntime.resolution)
         if (prompt) configWithCtx.prefabPrompt = prompt
-        configWithCtx.prefabBindingHash = prefabRuntime.binding.contentHash
+        configWithCtx.prefabBindingHash = prefabRuntime.resolution.bindingHash ?? undefined
       }
     }
     catch (err) {

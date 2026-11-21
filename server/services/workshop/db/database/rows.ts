@@ -289,8 +289,16 @@ export interface MemoryRow {
   status?: MemoryStatus
   expiresAt?: string | null
 }
+export interface ChannelAgentCreationSource {
+  createdByKind: 'system' | 'user' | 'leader'
+  /** Lead 创建时为认证过的频道成员实例 id；不以模板 id 表示归属。 */
+  createdById: string | null
+  createdVia: string
+  createdReason: string
+}
+
 /** channel_agents 表行(Channel 中的 Agent 实例:独立身份 id + 复制自模板的字段) */
-export interface ChannelAgentRow {
+export interface ChannelAgentRow extends ChannelAgentCreationSource {
   id: string
   channelId: string
   templateId: string | null

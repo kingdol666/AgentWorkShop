@@ -212,6 +212,7 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
           harness: decision.harness,
           config: decision.config,
           templateId: decision.templateId,
+          prefab: decision.prefab,
           reason: decision.reason,
         }).then(
           () => undefined,
@@ -225,6 +226,7 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
           name: decision.name,
           config: decision.config,
           enabled: decision.enabled === undefined ? undefined : (decision.enabled ? 1 : 0),
+          prefab: decision.prefab,
           reason: decision.reason,
         }).then(
           () => undefined,

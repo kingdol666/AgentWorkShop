@@ -1,4 +1,27 @@
 {
+  "create_team_agent": {
+    "description": "(Lead only) Create a worker and optionally pin a published AgentPrefab revision owned by the channel owner or public.",
+    "parameters": {
+      "properties": {
+        "prefab": {
+          "description": "Optional published revision selector.",
+          "properties": {
+            "prefabId": { "description": "Published AgentPrefab id" },
+            "revision": { "description": "Published revision number" },
+            "slotValues": { "description": "Declared member-overridable slot values" }
+          }
+        }
+      }
+    }
+  },
+  "update_team_agent": {
+    "description": "(Current lead only) Update a worker you created, including replacing or detaching its published AgentPrefab binding.",
+    "parameters": {
+      "properties": {
+        "prefab": { "description": "Published revision selector, or null to detach" }
+      }
+    }
+  },
   "daq_query": {
     "description": "Query historical/live data for DAQ nodes you can access. Access is granted either by direct node binding or by the channel's line binding (read-only for all DAQ nodes on that line). Filters: line/product/recipe/run/time window/downsampling (product and recipe filters use per-sample tags, so a specific batch can be selected precisely). Results carry physical meaning (semantics, unit, range, statistics, recent series). By default only the **current active batch (active recipe)** is queried; pass scope=all explicitly to compare across recipes or review full history.",
     "parameters": {

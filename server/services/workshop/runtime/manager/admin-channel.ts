@@ -7,7 +7,7 @@ import type { ActingUser, AgentTemplateDetail } from './types'
 import type { AgentInfo } from '../../agents/agent-interface'
 import { trustedSessionBindingIdentity } from '../../agents/session-snapshot'
 import type { AgentRow, ChannelRow, WorkspaceRow } from '../../db/database'
-import type { ChannelMode } from '../../db/database/rows'
+import type { ChannelAgentCreationSource, ChannelMode } from '../../db/database/rows'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
@@ -75,7 +75,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     description?: string
     scenarioPrompt?: string
     workspace?: string
-    leadAgent?: { name: string, harness: string, config?: Record<string, unknown>, agentKind?: 'channel_agent' | 'project_leader', prefabBindingJson?: string }
+    leadAgent?: Partial<ChannelAgentCreationSource> & { name: string, harness: string, config?: Record<string, unknown>, agentKind?: 'channel_agent' | 'project_leader', prefabBindingJson?: string }
     ownerUserId?: string | null
     /** 操作者（用于 spawn/workspace 授权；缺省按普通用户处理） */
     actor?: SpawnActor
@@ -115,6 +115,10 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
         prefabBindingJson: input.leadAgent.prefabBindingJson ?? '',
         role: 'lead',
         agentKind: input.leadAgent.agentKind,
+        createdByKind: input.leadAgent.createdByKind,
+        createdById: input.leadAgent.createdById,
+        createdVia: input.leadAgent.createdVia,
+        createdReason: input.leadAgent.createdReason,
       })
       this.deps.repos.channels.update(channel.id, { leadAgentId: inst.id })
       leadAgentId = inst.id

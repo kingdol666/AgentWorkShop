@@ -14,11 +14,56 @@ import { setHybridChannelProfile } from '../../aml/twin/channel-profile'
 import { defaultInjectionScene } from '../../aml/twin/physics-runtime'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { KNOWLEDGE_BASE_PROMPT_SECTION, KNOWLEDGE_BASE_TEMPLATE_IDS } from './channel-template-constants'
-
+import { createAgentPrefabService, parseAgentPrefabBinding } from '../../agent-prefabs/service'
 // 常量本体已下沉到纯模块(避免单测 import 触发 nitro #imports);此处保持原导出面不变
 export { KNOWLEDGE_BASE_PROMPT_SECTION, KNOWLEDGE_BASE_TEMPLATE_IDS } from './channel-template-constants'
 
 export abstract class ManagerChannelTemplates extends ManagerTeams {
+  /**
+   * Validate a persisted binding before it crosses a template visibility boundary.
+   * Public templates may only carry public Prefabs; private templates additionally
+   * require the importing user to own the Prefab (unless they are an admin).
+   */
+  private validateTemplatePrefabBinding(raw: string | undefined, templateVisibility: string, user: ActingUser): void {
+    if (!raw || !raw.trim()) return
+    let binding
+    try {
+      binding = parseAgentPrefabBinding(raw)
+    }
+    catch {
+      throw new AppError(403, 'PREFAB_FORBIDDEN', 'Channel 模板包含非法 AgentPrefab 绑定')
+    }
+    if (!binding) return
+    const service = createAgentPrefabService(this.deps.db)
+    const loaded = service.loadRevision(binding.prefabId, binding.revision)
+    if (!loaded || loaded.revision.contentHash !== binding.contentHash) {
+      throw new AppError(403, 'PREFAB_FORBIDDEN', 'Channel 模板包含失效或篡改的 AgentPrefab revision')
+    }
+    if (templateVisibility === 'public' && loaded.row.visibility !== 'public') {
+      throw new AppError(403, 'PREFAB_FORBIDDEN', '公开 Channel 模板不能携带私有 AgentPrefab')
+    }
+    if (loaded.row.visibility !== 'public' && loaded.row.ownerUserId !== user.id && user.role !== 'admin') {
+      throw new AppError(403, 'PREFAB_FORBIDDEN', '当前用户无权转移该 AgentPrefab')
+    }
+    service.buildBinding({ id: user.id, role: user.role }, binding.prefabId, binding.revision, binding.slotValues)
+  }
+
+  private validateTemplatePrefabBindings(
+    lead: { prefabBindingJson?: string } | null | undefined,
+    members: ChannelTemplateMember[],
+    templateVisibility: string,
+    user: ActingUser,
+  ): void {
+    this.validateTemplatePrefabBinding(lead?.prefabBindingJson, templateVisibility, user)
+    for (const member of members) {
+      this.validateTemplatePrefabBinding(
+        'templateId' in member ? member.prefabBindingJson : member.inline.prefabBindingJson,
+        templateVisibility,
+        user,
+      )
+    }
+  }
+
   /** 可见性感知 Channel 模板列表:普通用户 = 本人 + public(含内置);admin = 全量 */
   listChannelTemplatesVisibleTo(user: ActingUser): ChannelTemplateDetail[] {
     const rows = user.role === 'admin'
@@ -78,6 +123,8 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
           prefabBindingJson: leadInst.prefabBindingJson ?? '',
         }
       : null
+    const visibility = input.visibility ?? 'private'
+    this.validateTemplatePrefabBindings(lead, members, visibility, { id: ownerUserId })
     const row = this.deps.repos.channelTemplates.create({
       name: input.name,
       description: input.description,
@@ -85,7 +132,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
       workspace: channel.workspace,
       lead,
       members,
-      visibility: input.visibility,
+      visibility,
       ownerUserId,
     })
     return this.channelTemplateDetailOf(row)
@@ -141,6 +188,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
       getChannelPluginsRepo().setMany(created.channelId, [{ name: 'rag-bridge', enabled: kbOn }])
     }
     const members = parseJson<ChannelTemplateMember[]>(tpl.membersJson, [])
+    this.validateTemplatePrefabBindings(lead, members, tpl.ownerUserId === null ? 'public' : tpl.visibility, user)
     const agents: Array<{ id: string, templateId?: string | null, name: string, role: string }> = []
     if (created.leadAgentId) agents.push({ id: created.leadAgentId, name: lead?.name ?? 'lead', role: 'lead' })
     let agentCount = lead ? 1 : 0

@@ -21,6 +21,8 @@ const { openWorkshopDb, initWorkshopDb, SCHEMA_CONTRACT_VERSION } = await import
 const { fingerprintMigration } = await import('../server/services/workshop/db/database/migration-ledger')
 const { migrateDropOwnerFks, migrateMissingForeignKeys } = await import('../server/services/workshop/db/database/migrations')
 const { SCHEMA_SQL } = await import('../server/services/workshop/db/database/schema')
+const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
+const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
 
 type Db = InstanceType<typeof DatabaseSync>
 
@@ -52,6 +54,35 @@ test('a database created before the contract bump still boots and records the cu
   assert.doesNotThrow(() => initWorkshopDb(db))
   assert.equal(ledgerRow(db, CONTRACT_VERSION)?.fingerprint, fingerprintMigration(SCHEMA_SQL))
   db.close()
+})
+
+test('v9 channel agents migrate to protected provenance without claiming a leader owner', () => {
+  const db = openWorkshopDb(':memory:')
+  try {
+    const channel = createChannelRepo(db).create({ name: 'Legacy channel' })
+    const member = createChannelAgentRepo(db).create({ channelId: channel.id, templateId: null, name: 'Legacy worker', harness: 'mock', role: 'worker' })
+    for (const column of ['created_by_kind', 'created_by_id', 'created_via', 'created_reason']) {
+      db.exec(`ALTER TABLE channel_agents DROP COLUMN ${column}`)
+    }
+    const v9Schema = SCHEMA_SQL.replace(/^  created_by_kind TEXT NOT NULL DEFAULT 'system'.*\n  created_by_id .*\n  created_via .*\n  created_reason .*\n/m, '')
+    assert.notEqual(v9Schema, SCHEMA_SQL)
+    const v9Fingerprint = fingerprintMigration(v9Schema)
+    assert.equal(CONTRACT_VERSION, 10)
+    run(db, 'UPDATE aw_migration_ledger SET version = 9, fingerprint = ? WHERE version = ?', v9Fingerprint, CONTRACT_VERSION)
+
+    initWorkshopDb(db)
+    initWorkshopDb(db)
+    const row = createChannelAgentRepo(db).findById(member.id)!
+    assert.equal(row.name, member.name)
+    assert.equal(row.token, member.token)
+    assert.equal(row.createdByKind, 'system')
+    assert.equal(row.createdById, null)
+    assert.equal(row.createdVia, 'protected')
+    assert.equal(row.createdReason, '')
+    assert.equal(ledgerRow(db, 9)?.fingerprint, v9Fingerprint)
+    assert.equal(ledgerRow(db, 10)?.fingerprint, fingerprintMigration(SCHEMA_SQL))
+  }
+  finally { db.close() }
 })
 
 test('schema drift inside the current contract version still fails closed', () => {

@@ -80,6 +80,13 @@ export interface AgentPrefabRevisionRow {
   createdBy: string
 }
 
+/** 请求只选择已发布版本；哈希由服务端生成，不接受客户端提供的 binding。 */
+export interface AgentPrefabSelector {
+  prefabId: string
+  revision: number
+  slotValues?: Record<string, string>
+}
+
 /** 成员绑定：固定 revision + 成员 slot 值 + 发布内容 hash */
 export interface AgentPrefabBinding {
   prefabId: string
@@ -93,6 +100,9 @@ export interface PrefabCapabilityRegistryEntry {
   kind: PrefabCapabilityKind
   id: string
   enabled: boolean
+  /** 权威版本：Skill content hash / MCP schema hash；未提供版本的条目不能匹配固定版本引用 */
+  version?: string
+  roles?: readonly AgentCapabilityInput['member']['role'][]
   /** MCP/Skill 需 approved；普通工具可省略 */
   reviewStatus?: 'approved' | 'pending' | 'rejected'
   label?: string

@@ -12,7 +12,8 @@ import { parseJson } from '../db/database'
 import { AppError } from '../../../utils/errors'
 import type { ChannelSessionBindingSnapshot } from './session-snapshot'
 import type { ChannelSessionRow } from '../db/channel-session.repo'
-import type { ChannelMode } from '../db/database/rows'
+import type { ChannelAgentCreateInput } from '../db/channel-agent.repo'
+import type { ChannelAgentCreationSource, ChannelMode } from '../db/database/rows'
 
 export interface SessionCloneMemberRow {
   id: string
@@ -28,7 +29,7 @@ export interface SessionCloneMemberRow {
 export interface SessionCloneDeps {
   channelAgents: {
     listByChannel(channelId: string): SessionCloneMemberRow[]
-    create(input: { channelId: string, templateId: null, name: string, harness: string, config: Record<string, unknown>, role: string, prefabBindingJson?: string }): { id: string, name: string, role: string }
+    create(input: ChannelAgentCreateInput): { id: string, name: string, role: string }
     remove?(channelId: string, id: string): unknown
   }
   tasks: {
@@ -84,7 +85,7 @@ function baseMembersOf(deps: SessionCloneDeps, channelId: string) {
 }
 
 /** 创建会话：克隆全部基础成员（统一 worker 定位）+ 复制绑定面 + 注册会话。 */
-export function createChannelSession(deps: SessionCloneDeps, input: {
+export function createChannelSession(deps: SessionCloneDeps, input: Partial<ChannelAgentCreationSource> & {
   channelId: string
   actorId: string
   title?: string
@@ -144,6 +145,10 @@ export function createChannelSession(deps: SessionCloneDeps, input: {
         harness: base.harness,
         config,
         prefabBindingJson: base.prefabBindingJson ?? '',
+        createdByKind: input.createdByKind,
+        createdById: input.createdById,
+        createdVia: input.createdVia,
+        createdReason: input.createdReason,
         // clone 统一 worker 定位：会话=执行单元；基础 lead 保持频道协调者身份不变
         role: 'worker',
       })
@@ -341,6 +346,12 @@ function memberMapContains(memberMapJson: string, memberId: string): boolean {
   const map = parseJson<unknown>(memberMapJson, null)
   return !!map && typeof map === 'object' && !Array.isArray(map)
     && Object.values(map as Record<string, unknown>).some(value => value === memberId)
+}
+
+/** 删除守卫：任一未关闭会话引用即受保护，重复映射也不能降格为普通成员。 */
+export function isUnclosedSessionClone(sessions: ChannelSessionRow[], memberId: string): boolean {
+  return sessions.some(session => (session.status === 'active' || session.status === 'closing')
+    && session.instanceKind !== 'project' && memberMapContains(session.memberMapJson, memberId))
 }
 
 export function activeSessionOfMember(

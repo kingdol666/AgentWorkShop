@@ -22,7 +22,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { parseJson } from '../db/database'
 import { AppError } from '../../../utils/errors'
 import { inheritChannelProfile } from './task-channel-profile'
-import type { ChannelMode } from '../db/database/rows'
+import type { ChannelAgentCreateInput } from '../db/channel-agent.repo'
+import type { ChannelAgentCreationSource, ChannelMode } from '../db/database/rows'
 
 export const TASK_INSTANCE_MARKER = '·任务·'
 const EXCLUDED_NAME_MARKERS = [TASK_INSTANCE_MARKER, '·session·']
@@ -44,7 +45,7 @@ export interface TaskInstanceDeps {
   }
   channelAgents: {
     listByChannel(channelId: string): TaskInstanceMemberRow[]
-    create(input: { channelId: string, templateId: null, name: string, harness: string, config: Record<string, unknown>, role: string, prefabBindingJson?: string }): { id: string, name: string, role: string }
+    create(input: ChannelAgentCreateInput): { id: string, name: string, role: string }
   }
   sessions: {
     create(input: {
@@ -68,7 +69,7 @@ export interface TaskInstanceDeps {
     scenarioPrompt?: string
     llm?: { provider?: string, model?: string, effort?: string } | null
     ownerUserId?: string | null
-    leadAgent: { name: string, harness: string, config?: Record<string, unknown>, prefabBindingJson?: string }
+    leadAgent: Partial<ChannelAgentCreationSource> & { name: string, harness: string, config?: Record<string, unknown>, prefabBindingJson?: string }
     channelMode?: ChannelMode
   }): Promise<{ channelId: string, leadAgentId?: string, workspace: string }>
   notify?: (channelId: string, payload: { op: 'added', agentId: string, name: string, role: 'lead' | 'worker', harness: string }) => void
@@ -89,7 +90,7 @@ export function templateMembersOf(deps: TaskInstanceDeps, templateChannelId: str
  * 为项目任务创建专属 Channel + 实例成员 + 会话行。
  * 返回实例 Channel 与其 lead（root 任务的 assignee）。
  */
-export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
+export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: Partial<ChannelAgentCreationSource> & {
   projectId: string
   workItemId: string
   templateChannelId: string
@@ -126,6 +127,12 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
   // Work items have no trusted product selector; task instances remain generic even
   // when cloned from an integrated template until a validated product binding exists.
   const taskChannelMode: ChannelMode = 'generic'
+  const creationSource: Partial<ChannelAgentCreationSource> = {
+    createdByKind: input.createdByKind,
+    createdById: input.createdById,
+    createdVia: input.createdVia,
+    createdReason: input.createdReason,
+  }
   // 1) 建实例 Channel（含 lead 内联模板实例；workspace 独立 → 任务间文件系统隔离）
   const created = await deps.createChannel({
     name: instanceName,
@@ -135,6 +142,7 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
     ownerUserId: template.ownerUserId,
     channelMode: taskChannelMode,
     leadAgent: {
+      ...creationSource,
       name: `${lead.name}${memberSuffix}`,
       harness: lead.harness,
       config: parseJson<Record<string, unknown>>(lead.configJson ?? '{}', {}),
@@ -150,6 +158,7 @@ export async function createTaskInstanceChannel(deps: TaskInstanceDeps, input: {
   for (const base of bases) {
     if (base.role === 'lead') continue
     const inst = deps.channelAgents.create({
+      ...creationSource,
       channelId: created.channelId,
       templateId: null,
       name: `${base.name}${memberSuffix}`,
