@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.15.1)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.16.0)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>source v0.15.1 (released 2026-11-21)</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
+<sub><b>source v0.16.0 (released 2026-11-21)</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[Quick start](#quick-start) · [Current source](#current-source-v0-15-1) · [0.15.1 release notes](#whats-new-in-0151) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [Current source](#current-source-v0-15-1) · [0.16.0 release notes](#whats-new-in-0151) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,13 +49,13 @@ A configuration-driven platform where **AI agent teams** and industrial systems 
 - **Delivery is a first-class concept**: **Project mode** turns a blueprint into a plan, a WBS with dependencies, L1 technical review, L2 owner acceptance and real deliverables — the project closes only when the deliverables pass;
 - **The loop is implemented in governed stages**: read → analyze → propose → policy-controlled approval where required → write → readback/audit; the scope of each test and whether it used a simulator or physical equipment are stated with its evidence.
 
-## Current source: v0.15.1
+## Current source: v0.16.0
 
-The source version is **0.15.1** (npm + GitHub Release, 2026-11-21). It contains everything in 0.15.0 — the AgentPrefab capability-assembly plan implemented end to end (seven merged PRs, #252–#258). System Settings gains three capability supply-chain panes: **Skills** (standard `SKILL.md` discovery → immutable managed import → explicit enable; discovery covers built-in `skills/`, managed `<configRoot>/skills`, `~/.agent/skills` (the npm/Agent Skills standard), `~/.agents/skills`, XDG and `AW_SKILL_ROOTS`; no Skill script is ever executed during discovery, import or activation), **External MCP** (HTTPS-only Streamable HTTP manifests + `AW_MCP_*` credential references + admin-reviewed shared-safe read tools + egress guard blocking private/loopback/reserved addresses), and **Agent Prefabs** (role/scenario prompts + multi-dimensional custom slots + per-capability switches packaged as immutable revisions frozen at publish). A Channel member pins `(prefabId, revision, slots, contentHash)`; Session clones and Project task instances freeze the same snapshot; the runtime re-authorizes every dispatch against the intersection of prefab selection × system enablement/review × Channel/Project policy × role/industrial gating × harness-managed surface, so revocation cannot be bypassed by a cached catalog. Database schema contract moves v7→v9 (v8: AgentPrefab tables and snapshot columns; v9: fixes a boot crash on 0.7-era homes by moving the `chat_deliveries` retry index out of the contract SQL and creating it idempotently after column backfill — verified against a copy of a real legacy home).
+The source version is **0.16.0** (npm + GitHub Release, 2026-11-21). It contains everything in 0.15.0 — the AgentPrefab capability-assembly plan implemented end to end (seven merged PRs, #252–#258). System Settings gains three capability supply-chain panes: **Skills** (standard `SKILL.md` discovery → immutable managed import → explicit enable; discovery covers built-in `skills/`, managed `<configRoot>/skills`, `~/.agent/skills` (the npm/Agent Skills standard), `~/.agents/skills`, XDG and `AW_SKILL_ROOTS`; no Skill script is ever executed during discovery, import or activation), **External MCP** (HTTPS-only Streamable HTTP manifests + `AW_MCP_*` credential references + admin-reviewed shared-safe read tools + egress guard blocking private/loopback/reserved addresses), and **Agent Prefabs** (role/scenario prompts + multi-dimensional custom slots + per-capability switches packaged as immutable revisions frozen at publish). A Channel member pins `(prefabId, revision, slots, contentHash)`; Session clones and Project task instances freeze the same snapshot; the runtime re-authorizes every dispatch against the intersection of prefab selection × system enablement/review × Channel/Project policy × role/industrial gating × harness-managed surface, so revocation cannot be bypassed by a cached catalog. Database schema contract moves v7→v9 (v8: AgentPrefab tables and snapshot columns; v9: fixes a boot crash on 0.7-era homes by moving the `chat_deliveries` retry index out of the contract SQL and creating it idempotently after column backfill — verified against a copy of a real legacy home).
 
 Merged-main gates at `87805eaf`: typecheck, lint, build, docs **101/0**, readme, i18n **3439/3439**, cssvars, frontend-lifecycle, skills **197/0**, MCP **14/14**, unit **2185/2186** (1 conditional skip) all green. Isolated fresh-instance live acceptance **21/21**: `~/.agent/skills` global discovery → immutable import → enable → prefab publish/member binding → tool-catalog narrowing → `activate_skill` low-trust body injection → unauthorized-invocation denial → session clone binding and snapshot hash → new revision does not auto-upgrade → skill revocation denied immediately → MCP non-HTTPS/secret-less/bounded failure. A provisioned instance additionally passed two restart persistence cycles (write-attempt ledger 3277 rows, identical outcome distribution, never resent) and live governed-evaluation gate triggers (falsified summary 400, promotion to active without host provenance rejected, client-submitted run rejected, shadow promotion succeeds). Boundaries: external MCP positive live trace, real-OMP-model work under a prefab, and browser UI click-through remain NOT_RUN; the Mimosa deep scan is sealed but inconclusive — no security-pass claim. See the [full-flow acceptance report](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md) and the [Prefab/Skills/MCP live report](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md).
 
-## What's new in 0.15.1
+## What's new in 0.16.0
 
 - **Legacy-home boot fix (schema v9)**: a 0.7-era home (no migration ledger, `chat_deliveries` missing `next_retry_at`) crashed on boot with `no such column: next_retry_at` on 0.15.0 and earlier — the contract SQL built `idx_chat_deliveries_retry` before the column-backfill migrations ran. v9 moves the index out of the contract SQL and creates it idempotently after backfill; release verification ran against a copy of a real legacy home: boot OK, columns backfilled, index rebuilt, contract v9 recorded, prefab columns in place.
 
@@ -462,7 +462,7 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current source version: **v0.15.1 (released 2026-11-21)** — [Latest release v0.15.1](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.15.1) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current source version: **v0.16.0 (released 2026-11-21)** — [Latest release v0.16.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.16.0) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />
