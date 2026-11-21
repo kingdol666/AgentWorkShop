@@ -17,6 +17,7 @@ const userStore = useUserStore()
 
 interface Slot { key: string, label: string, description?: string, defaultValue?: string, required?: boolean, allowMemberOverride?: boolean, maxLength?: number }
 interface Capability { kind: 'tool' | 'plugin-tool' | 'skill' | 'mcp-tool', id: string, version?: string, required?: boolean }
+interface CatalogEntry { kind: Capability['kind'], id: string, label?: string, enabled: boolean, reviewStatus?: 'approved' | 'pending' | 'rejected', key?: string }
 interface Draft {
   name: string
   description: string
@@ -56,7 +57,7 @@ const form = reactive<{
   model: string
   effort: string
   settingsJson: string
-  capabilitiesJson: string
+  capabilities: Capability[]
 }>({
   name: '',
   description: '',
@@ -68,8 +69,10 @@ const form = reactive<{
   model: '',
   effort: '',
   settingsJson: '{}',
-  capabilitiesJson: '[]',
+  capabilities: [],
 })
+
+const catalog = ref<CatalogEntry[]>([])
 
 const channels = ref<Channel[]>([])
 const members = ref<Member[]>([])
@@ -92,15 +95,13 @@ function applyRow(row: PrefabRow): void {
   form.model = row.draft.profile?.model ?? ''
   form.effort = row.draft.profile?.effort ?? ''
   form.settingsJson = JSON.stringify(row.draft.profile?.settings ?? {}, null, 2)
-  form.capabilitiesJson = JSON.stringify(row.draft.capabilities ?? [], null, 2)
+  form.capabilities = (row.draft.capabilities ?? []).map(c => ({ ...c }))
 }
 
 function buildDraft(): Draft {
   let settings: Record<string, string | number | boolean> = {}
-  let capabilities: Capability[] = []
   try {
     settings = JSON.parse(form.settingsJson || '{}')
-    capabilities = JSON.parse(form.capabilitiesJson || '[]')
   }
   catch {
     throw new Error(t('settings.prefabs.jsonInvalid'))
@@ -116,7 +117,7 @@ function buildDraft(): Draft {
       ...(form.effort ? { effort: form.effort } : {}),
       ...(Object.keys(settings).length ? { settings } : {}),
     },
-    capabilities,
+    capabilities: form.capabilities,
   }
 }
 
@@ -302,8 +303,40 @@ async function unbind(): Promise<void> {
   }
 }
 
+async function loadCatalog(): Promise<void> {
+  try {
+    const res = await apiFetch<{ entries: CatalogEntry[] }>({ base: '/api/workshop/agent-prefabs/catalog' })
+    catalog.value = (res.entries ?? []).map(entry => ({ ...entry, key: `${entry.kind}:${entry.id}` }))
+  }
+  catch {
+    catalog.value = []
+  }
+}
+
+function capSelected(kind: Capability['kind'], id: string): boolean {
+  return form.capabilities.some(c => c.kind === kind && c.id === id)
+}
+
+function capRequired(kind: Capability['kind'], id: string): boolean {
+  return form.capabilities.find(c => c.kind === kind && c.id === id)?.required === true
+}
+
+function toggleCap(entry: CatalogEntry, checked: boolean): void {
+  if (checked) {
+    if (!capSelected(entry.kind, entry.id)) form.capabilities.push({ kind: entry.kind, id: entry.id, required: false })
+  }
+  else {
+    form.capabilities = form.capabilities.filter(c => !(c.kind === entry.kind && c.id === entry.id))
+  }
+}
+
+function setCapRequired(entry: CatalogEntry, checked: boolean): void {
+  const item = form.capabilities.find(c => c.kind === entry.kind && c.id === entry.id)
+  if (item) item.required = checked
+}
+
 onMounted(async () => {
-  await Promise.all([load(), loadChannels()])
+  await Promise.all([load(), loadChannels(), loadCatalog()])
 })
 </script>
 
@@ -509,12 +542,58 @@ onMounted(async () => {
         :placeholder="t('settings.prefabs.settingsJson')"
         class="pf-block"
       />
-      <a-textarea
-        v-model:value="form.capabilitiesJson"
-        :rows="5"
-        :placeholder="t('settings.prefabs.capabilitiesJson')"
-        class="pf-block"
-      />
+      <h4 class="pf-subtitle">
+        {{ t('settings.prefabs.capabilities') }}
+      </h4>
+      <a-table
+        :data-source="catalog"
+        :pagination="{ pageSize: 12, size: 'small' }"
+        row-key="key"
+        size="small"
+      >
+        <a-table-column
+          :title="t('settings.prefabs.capKind')"
+          data-index="kind"
+          width="110px"
+        />
+        <a-table-column
+          :title="t('settings.prefabs.capId')"
+          data-index="id"
+        />
+        <a-table-column
+          :title="t('settings.prefabs.capStatus')"
+          width="120px"
+        >
+          <template #default="{ record }">
+            <a-tag :color="record.enabled ? (record.reviewStatus === 'pending' ? 'orange' : 'green') : 'default'">
+              {{ record.enabled ? (record.reviewStatus ?? 'enabled') : 'disabled' }}
+            </a-tag>
+          </template>
+        </a-table-column>
+        <a-table-column
+          :title="t('settings.prefabs.slotOverride')"
+          width="90px"
+        >
+          <template #default="{ record }">
+            <a-checkbox
+              :checked="capSelected(record.kind, record.id)"
+              @change="(v: unknown) => toggleCap(record, v === true)"
+            />
+          </template>
+        </a-table-column>
+        <a-table-column
+          :title="t('settings.prefabs.slotRequired')"
+          width="80px"
+        >
+          <template #default="{ record }">
+            <a-checkbox
+              :checked="capRequired(record.kind, record.id)"
+              :disabled="!capSelected(record.kind, record.id)"
+              @change="(v: unknown) => setCapRequired(record, v === true)"
+            />
+          </template>
+        </a-table-column>
+      </a-table>
 
       <div class="pf-actions">
         <a-button
