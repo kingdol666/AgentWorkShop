@@ -9,7 +9,8 @@
  *  - 后续 POST(带 sessionId)→ 复用 transport(会话内状态保留)
  *  - GET(带 sessionId)→ SSE 流(server → client 消息)
  *  - DELETE(带 sessionId)→ 关闭会话并从注册表移除
- * 传输层认证: 工具级 Bearer token(workshop-server 的 requireCaller 解析)。
+ * 传输层认证: 每个 HTTP 请求都解析有效 Agent Bearer token；会话初始化时绑定
+ * Agent 主体，后续请求必须仍是同一主体（停用成员/Channel 立即失效）。
  *
  * 兼容性: 手动构造 web Request + 直接返回 web Response——同时兼容 Nitro 内置 h3 1.x
  * 与项目根 h3 2.x(两者 Request/Response 转换助手名不一致,web 标准对象两版均可返回)。
@@ -19,7 +20,9 @@ import { defineEventHandler, getRequestURL, getRequestHeaders, readRawBody } fro
 import type { H3Event } from 'h3'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { createWorkshopMcpServer } from '../../mcp/workshop-server'
+import { assertSessionPrincipal, resolveIngressPrincipal } from '../../mcp/ingress-auth'
 import { getWorkshopManager } from '../../plugins/workshop'
+import { AppError } from '../../utils/errors'
 
 /** 会话注册表:sessionId → transport(stateful 会话状态保留);上限防匿名刷爆内存 */
 const MAX_MCP_SESSIONS = 64
@@ -32,8 +35,21 @@ function sessionTtlMs(): number {
 interface McpSession {
   transport: WebStandardStreamableHTTPServerTransport
   lastSeen: number
+  /** 会话初始化时绑定的 Agent id；后续请求必须是同一主体 */
+  principalAgentId: string
 }
 const sessions = new Map<string, McpSession>()
+
+/** 认证/会话主体失败:返回 JSON 错误响应(不进入 MCP transport) */
+function authFailureResponse(err: unknown): Response {
+  const status = err instanceof AppError ? err.status : 401
+  const code = err instanceof AppError ? err.code : 'UNAUTHORIZED'
+  const message = err instanceof Error ? err.message : 'UNAUTHORIZED'
+  return new Response(JSON.stringify({ code, message }), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
+}
 
 /** 惰性清扫:任一请求进来时回收过期会话(避免定时器在无流量时仍持有 transport) */
 function sweepIdleSessions(): void {
@@ -66,29 +82,51 @@ function sessionIdOf(event: H3Event): string | null {
 }
 
 export default defineEventHandler(async (event) => {
-  // WP9:先回收空闲会话(TTL 内无请求即释放;token 轮换后旧会话下一请求由工具级鉴权兜底)
+  // WP9:先回收空闲会话(TTL 内无请求即释放)
   sweepIdleSessions()
   const request = await toFetchRequest(event)
   const sessionId = sessionIdOf(event)
 
-  // DELETE:关闭会话
+  // 每个请求都重新解析当前有效 Agent（含复用会话、GET SSE、DELETE）。
+  let principal
+  try {
+    principal = resolveIngressPrincipal(getWorkshopManager(), request.headers.get('authorization'))
+  }
+  catch (err) {
+    return authFailureResponse(err)
+  }
+
+  // DELETE:关闭会话（必须是绑定该会话的同一 Agent；主体不符时不得删除他人会话）
   if (event.method === 'DELETE' && sessionId) {
     const session = sessions.get(sessionId)
     if (session) {
       try {
+        assertSessionPrincipal(session.principalAgentId, principal.id)
+      }
+      catch (err) {
+        return authFailureResponse(err)
+      }
+      try {
         await session.transport.handleRequest(request)
       }
-      finally {
-        sessions.delete(sessionId)
-      }
+      catch { /* transport 关闭异常不阻止会话从注册表移除 */ }
+      sessions.delete(sessionId)
       return new Response(null, { status: 204 })
     }
     return new Response(null, { status: 404 })
   }
 
-  // 复用已有会话(刷新活跃时间)
+  // 复用已有会话：主体必须一致（token 轮换但同一 Agent 仍允许）
   let session = sessionId ? sessions.get(sessionId) : undefined
-  if (session) session.lastSeen = Date.now()
+  if (session) {
+    try {
+      assertSessionPrincipal(session.principalAgentId, principal.id)
+    }
+    catch (err) {
+      return authFailureResponse(err)
+    }
+    session.lastSeen = Date.now()
+  }
 
   // 新会话:预生成 sessionId,transport 在 initialize 时把它写入响应头
   if (!session) {
@@ -104,7 +142,7 @@ export default defineEventHandler(async (event) => {
     })
     const server = createWorkshopMcpServer(getWorkshopManager())
     await server.connect(transport)
-    session = { transport, lastSeen: Date.now() }
+    session = { transport, lastSeen: Date.now(), principalAgentId: principal.id }
     sessions.set(newSessionId, session)
   }
 

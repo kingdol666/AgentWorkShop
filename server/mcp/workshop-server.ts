@@ -17,6 +17,7 @@ import type { AgentInfo } from '../services/workshop/agents/agent-interface'
 import type { A2AArtifact, Part } from '../services/workshop/types/a2a'
 import { getDeviceTwinRepo } from '../services/workshop/assets/device-twin.repo'
 import { channelAgentSummaries } from '../services/workshop/agents/agent-dto'
+import { assertCanBindDevice, assertDeviceVisible, deviceVisibleTo, emptyDeviceScope } from './ingress-auth'
 
 /** A2A 消息片段(Part):四种变体(text/data/url/raw)。运行时校验与契约一致;zod union 推断形状与契约存在无害差异,as 收窄 */
 const partSchema = z.union([
@@ -71,13 +72,26 @@ function resolveToken(extra: TokenSource): string | undefined {
   return undefined
 }
 
-/** 解析 caller:无 token / 无效 token 一律拒绝(防冒用) */
+/** 解析 caller:无 token / 无效 / 已停用成员或 Channel 一律拒绝(防冒用) */
 function requireCaller(manager: AgentChannelManager, extra: TokenSource): AgentInfo {
   const token = resolveToken(extra)
   if (!token) throw new Error('UNAUTHORIZED')
-  const caller = manager.findByToken(token)
+  // 生产 manager 有严格解析（成员+Channel enabled）；测试替身可退回 findByToken。
+  const caller = manager.findActiveAgentByToken
+    ? manager.findActiveAgentByToken(token)
+    : manager.findByToken(token)
   if (!caller) throw new Error('UNAUTHORIZED')
   return caller
+}
+
+/** 设备工具使用的最小范围：manager 未提供 scope 方法时只保留全局/已绑定设备。 */
+function deviceScopeFor(manager: AgentChannelManager, caller: AgentInfo) {
+  return manager.deviceAccessScopeOf?.(caller.id) ?? emptyDeviceScope(caller)
+}
+
+/** 把纯判定异常转成 MCP 工具错误文本（保留 FORBIDDEN 前缀，不泄漏内部类型）。 */
+function asToolError(err: unknown): Error {
+  return new Error(err instanceof Error ? err.message : 'FORBIDDEN')
 }
 
 /** 管理/设备面：MCP 只有 agent token，因此一律拒绝；人类走 REST。 */
@@ -474,8 +488,13 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       inputSchema: { workspaceId: z.string().optional() },
     },
     async (args, extra) => {
-      requireCaller(manager, extra)
-      return jsonResult(getDeviceTwinRepo().listAll(args.workspaceId))
+      const caller = requireCaller(manager, extra)
+      const scope = deviceScopeFor(manager, caller)
+      if (args.workspaceId && !scope.workspaceIds.includes(args.workspaceId)) {
+        throw new Error('FORBIDDEN: 无权访问该 workspace 的设备')
+      }
+      // 只返回调用者可见设备：全局设备 + 其 Channel 挂载工作区 + 已绑定给自身的设备
+      return jsonResult(getDeviceTwinRepo().listAll().filter(d => deviceVisibleTo(d, scope)))
     },
   )
 
@@ -486,9 +505,16 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       inputSchema: { deviceId: z.string() },
     },
     async (args, extra) => {
-      requireCaller(manager, extra)
+      const caller = requireCaller(manager, extra)
+      const scope = deviceScopeFor(manager, caller)
       const twin = getDeviceTwinRepo().findById(args.deviceId)
       if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
+      try {
+        assertDeviceVisible(twin, scope)
+      }
+      catch (err) {
+        throw asToolError(err)
+      }
       return jsonResult(twin)
     },
   )
@@ -531,10 +557,19 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       inputSchema: { deviceId: z.string(), agentId: z.string() },
     },
     async (args, extra) => {
-      requireCaller(manager, extra)
-      const twin = getDeviceTwinRepo().update(args.deviceId, { boundAgentId: args.agentId })
+      const caller = requireCaller(manager, extra)
+      const scope = deviceScopeFor(manager, caller)
+      const twin = getDeviceTwinRepo().findById(args.deviceId)
       if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
-      return jsonResult(twin)
+      try {
+        assertCanBindDevice(twin, scope, args.agentId)
+      }
+      catch (err) {
+        throw asToolError(err)
+      }
+      const updated = getDeviceTwinRepo().update(args.deviceId, { boundAgentId: args.agentId })
+      if (!updated) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
+      return jsonResult(updated)
     },
   )
 
