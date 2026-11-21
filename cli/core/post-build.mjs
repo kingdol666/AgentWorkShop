@@ -40,6 +40,7 @@ export function outputAssetsReady(root) {
     && existsSync(join(asDir, 'prompts'))
     && existsSync(join(asDir, 'schema.json'))
     && existsSync(join(asDir, 'aml-python'))
+    && existsSync(join(root, '.output', 'skills'))
 }
 
 /**
@@ -98,6 +99,8 @@ export function postBuildArtifacts(root) {
     'aml-python',
     { recursive: true },
   )
+  // 内置 Agent Skills：源码/安装包根目录与 standalone .output 都可发现
+  ship(join(root, 'skills'), join(outputRoot, 'skills'), 'skills', { recursive: true })
 
   if (unresolved.length > 0) {
     throw new Error(

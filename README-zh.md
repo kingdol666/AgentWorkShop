@@ -373,6 +373,10 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 插件是平台的一等扩展面：一个目录 + `index.mjs` 即可获得 **Agent 工具注册（`ctx.tools`）、自定义数采驱动（`ctx.daq.registerDriver`）、处理器与节点模板、HTTP 路由、浏览器面板、设置项与 i18n、Twin Provider（`ctx.twin`）、产线权限钩子（`ctx.permissions`）**；启停即时热重载，单插件失败隔离不影响主服务。内置示例覆盖全家桶：自定义驱动+降额处理器（`aw-matrix-plugin`）、向量帧（`daq-vector-demo`）、知识库桥（`rag-bridge`）、诊断桥（`diag-bridge`）、串口（`serial-bridge`）、孪生 Provider（`twin-injection-default`）。外部仿真程序（如 MATLAB/Simulink）可经「Twin Provider 注册」或「插件工具 spawn」接入，仿真输出直接作为优化依据。→ [插件 API](./docs/plugins.md) · [SDK](./docs/sdk.md) · [MCP](./docs/mcp.md)
 
+## AgentPrefab、Skill 与 MCP
+
+系统设置现在统一管理能力供应链：标准 `SKILL.md` 发现（内置、受管 `<configRoot>/skills`、`~/.agent/skills`、`~/.agents/skills`、XDG、`AW_SKILL_ROOTS`）、不可变审核导入，以及管理员登记的外部 MCP Streamable HTTP 服务（`AW_MCP_*` 凭据引用 + shared-safe 只读工具显式审阅）。AgentPrefab 把角色/场景提示、多维插槽、受支持模型配置与逐能力开关组合为已发布不可变 revision；Channel 成员固定 `(prefabId, revision, slots, hash)`，Session/Project 实例保留同一快照。有效工具在 dispatch 时重新授权，缓存目录不能绕过撤销。→ [AgentPrefab、Skill 与 MCP](https://kingdol666.github.io/AgentWorkShop/guide/agent-prefabs)
+
 ## 文档导航
 
 | 上手 | 开发 | 运维 |
