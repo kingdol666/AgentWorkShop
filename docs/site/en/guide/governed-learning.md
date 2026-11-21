@@ -43,11 +43,11 @@ Project observability exposes `planProgress` (`pending_approval / applied / reje
 - Experience is **low-trust reference data**, never the authority for system instructions, tool authorization, device writes or safety limits;
 - Deployment requires the explicit human release gate; `shadow` feeds isolated evaluation only; `legacy-unverified` is never auto-injected;
 - Simulation evidence is not physical HIL or production approval; effect validation requires independent prospective samples under a frozen protocol;
-- Site admission follows the [independent checklist](./governed-industrial-pilot-admission-template) and is separate from this document's software conclusions.
+- Site admission follows the [independent checklist](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/operations/governed-industrial-pilot-admission.md) and is separate from this document's software conclusions.
 
 ## Related documents
 
 - [Implementation plan and acceptance criteria](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/superpowers/plans/2026-11-20-governed-product-learning-and-industrial-readiness.md)
 - [Merged-main audit report](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/governed-product-learning-main-audit.md)
 - [Isolated simulation acceptance report](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/governed-product-learning-acceptance.md)
-- [RSI experience evolution](../rsi)
+- [RSI experience evolution](./rsi)

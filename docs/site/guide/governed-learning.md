@@ -43,7 +43,7 @@ v0.14.0 起，RSI 经验在"不可变版本 + 统一解析器 + 发布门"三层
 - 经验是**低可信参考数据**，不是系统指令、工具授权、设备写权限或安全限值的权威；
 - 部署必须经人工发布门；`shadow` 只进隔离评估；`legacy-unverified` 永不自动注入；
 - 模拟证据不等于物理 HIL 或生产投用；收益验证需要冻结协议下的独立前瞻样本；
-- 现场准入走[独立清单](./governed-industrial-pilot-admission-template)，与本文档的软件结论分开。
+- 现场准入走[独立清单](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/operations/governed-industrial-pilot-admission.md)，与本文档的软件结论分开。
 
 ## 相关文档
 
