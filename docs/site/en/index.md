@@ -77,7 +77,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.14.0 · released</i></span>
+        <span>Version <i>v0.15.0 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -94,42 +94,45 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.14.0 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.15.0 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      v0.14.0 implements the governed product experience plan end to end:
-      experiences become immutable versions (body/evidence snapshot hashes with CAS head pointers),
-      one resolver gates every read path by authorization epoch, product/recipe scope and deployment
-      state; promotion requires a host-provenanced evaluation and release is a two-step commit
-      (pending + audit outbox → CAS); plant writes persist an attempt ledger whose unclosed attempts
-      reconcile to not_sent/unknown and never auto-resend. See
-      <a href="/AgentWorkShop/en/guide/governed-learning">governed product experience</a>;
+      v0.15.0 implements the AgentPrefab capability-assembly plan (#252–#258) end to end:
+      System Settings gains Skills (standard SKILL.md discovery → immutable managed import →
+      explicit enable, covering built-in, <code>&lt;configRoot&gt;/skills</code> and
+      <code>~/.agent/skills</code> global roots with zero script execution), external MCP
+      (HTTPS manifests + <code>AW_MCP_*</code> credential references + reviewed shared-safe
+      read tools + egress guarding) and Agent Prefabs (role/scenario prompts + multi-dimensional
+      slots + per-capability switches packaged as immutable revisions). Channel members pin a
+      revision, Session/Project instances freeze the snapshot, and the runtime re-authorizes
+      every invocation. See
+      <a href="/AgentWorkShop/en/guide/agent-prefabs">AgentPrefabs / Skills / MCP</a>;
       simulated acceptance is not physical HIL or production approval.
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">KNOWLEDGE</span>
-        <h3>Diagnosis → knowledge in one loop</h3>
-        <p>diag_deposit reads a completed run's report, writes it to aw-docs, indexes and tags it, then self-checks retrieval; empty reports fail readably without a partial document.</p>
-        <p><a href="/AgentWorkShop/en/guide/idd-rag-plugins">IDD / RAG plugin integration →</a></p>
+        <span class="tag">SKILLS</span>
+        <h3>Standard skill supply chain</h3>
+        <p>Discover SKILL.md from built-in and global roots (npm-standard ~/.agent/skills); import immutable content-hash copies disabled by default with audited enable/disable.</p>
+        <p><a href="/AgentWorkShop/en/guide/agent-prefabs">Skills management →</a></p>
       </div>
       <div class="hw-f">
-        <span class="tag">DATA</span>
-        <h3>Choose the data surface deliberately</h3>
-        <p>Resolve line context and memory first, then use scalar DAQ queries or frame reads according to the signal contract. Record raw and normalized vector lengths.</p>
-        <p><a href="/AgentWorkShop/en/guide/line-integration">Line integration guide →</a></p>
+        <span class="tag">MCP</span>
+        <h3>Review-gated external MCP</h3>
+        <p>HTTPS Streamable HTTP manifests with AW_MCP_* credential references; discovery only yields pending records — admins review shared-safe read tools before any call; the egress guard rejects private/loopback targets.</p>
+        <p><a href="/AgentWorkShop/en/guide/agent-prefabs">External MCP →</a></p>
       </div>
       <div class="hw-f">
-        <span class="tag">WRITE</span>
-        <h3>Governed proposals and readback</h3>
-        <p>Recipe changes use the proposal path; effective line, Channel and binding policy determines whether HITL is required. Reconcile acknowledgements with readback and the journal.</p>
-        <p><a href="/AgentWorkShop/en/guide/hitl">HITL guide →</a></p>
+        <span class="tag">PREFAB</span>
+        <h3>Expert agent prefabs</h3>
+        <p>Role/scenario prompts + multi-dimensional custom slots + per-capability switches publish as immutable revisions; Channel members pin a revision and the runtime re-authorizes against the full intersection.</p>
+        <p><a href="/AgentWorkShop/en/guide/agent-prefabs">AgentPrefab guide →</a></p>
       </div>
     </div>
     <div class="hw-note">
       <span class="t">Verification</span>
-      <p>Merged-main audit for v0.14.0 (<code>5614aa06</code>): the fixed 13-check matrix (typecheck/lint/unit 2107/2108/i18n/cssvars/frontend-lifecycle/acceptance-context/onboarding-v6/sdk-surface/plugin-lifecycle/mcp/docs/build) all exited 0, <code>checkMainAudit</code> = PASS; isolated simulation acceptance passed onboarding 33/33 + 15/15 + V1–V6 24/24, smoke readback 72=72, and seven governed tuning rounds moved weight 31.03→32.58 g into band. Simulator evidence only, not physical HIL; effect validation and site admission remain NOT_RUN — see the report. <a href="/AgentWorkShop/en/guide/governed-learning">Governed product experience</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/governed-product-learning-main-audit.md">Main audit report</a></p>
+      <p>Merged-main gates for v0.15.0 (<code>87805eaf</code>): typecheck/lint/build, docs 101/0, i18n 3439/3439, skills 197/0, MCP 14/14, unit 2185/2186 (1 conditional skip) all green; isolated fresh-instance live acceptance 21/21 (skill discovery→import→enable→prefab publish→binding→catalog narrowing→activate_skill low-trust injection→denial→session snapshot→no auto-upgrade→revocation→MCP HTTPS/secret-less/bounded checks); the provisioned instance passed two restart-persistence cycles (write-attempt ledger 3277 rows, identical distribution, never resent). Simulator evidence only, not physical HIL; external MCP live trace, real-model work under a prefab and browser click-through remain NOT_RUN; Mimosa inconclusive, no security-pass claim — see the reports. <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md">Full-flow acceptance report</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP live report</a></p>
     </div>
   </section>
 

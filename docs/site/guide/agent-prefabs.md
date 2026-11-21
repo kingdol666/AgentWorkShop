@@ -46,3 +46,9 @@ AgentPrefab 把「角色/场景提示词 + 多维插槽 + 受支持模型配置 
 - OMP 与服务进程同账号运行：凭据不进 harness 配置/环境，但本功能不宣称 OS/文件系统沙箱，不防同权限下已失陷的 harness。
 - 模拟器/影子孪生证据不是物理 HIL、现场准入或生产批准。
 - 旧 MCP HTTP/REST/bridge 入口的授权差异已在本轮加固；新功能不改变既有工业 HITL/DCW 权威。
+
+## 6. 验收证据（v0.15.0）
+
+- 隔离全新实例实机验收 **21/21**（`scripts/experiments/prefab-acceptance.mjs`）：全新 `~/.agent/skills` 全局发现、导入默认未启用、启用、预制体草稿/发布、成员固定 revision 绑定、工具目录收窄且含 `activate_skill`、低信任 Skill 正文注入、越权调用拒绝、Session 克隆绑定与快照哈希、发布 revision 2 不自动升级、Skill 撤销即时拒绝、MCP 非 HTTPS 拒绝/清单无密钥/发现失败有界。
+- 合并主干门禁：unit 2185/2186（1 条件跳过）、MCP 14/14、skills 197/0、docs 101/0、i18n 3439/3439、lint/typecheck/build 全绿。
+- 未验证项：公网 HTTPS 外部 MCP 正向联通、Prefab 约束下真实 OMP 模型作业、浏览器 UI 点击验收。见[全流程验收报告](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)。

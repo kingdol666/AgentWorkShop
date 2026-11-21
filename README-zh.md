@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.14.0)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.15.0)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.14.0（2026-11-20 发布）</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.15.0（2026-11-21 发布）</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-14-0) · [0.14.0 发布说明](#whats-new-in-0140) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-15-0) · [0.15.0 发布说明](#whats-new-in-0150) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,13 +49,23 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 当前源码 v0.14.0
+## 当前源码 v0.15.0
 
-当前源码版本为 **0.14.0**（npm + GitHub Release，2026-11-20）。本版把「受治理的产品经验复用」计划（六个合并 PR，#240–#245）端到端落地：经验变为**不可变版本**（内容/证据快照哈希 + CAS 指针 + 崩溃安全迁移），一个**统一解析器**按授权 epoch、产品/配方作用域与部署状态管住全部读取面，**晋升必须引用宿主来源评测**（客户端自报台账只读展示），**发布走两段提交**（待发布 + 审计 outbox → CAS 激活 + maker-checker 分离），产线写持久化**尝试账本**（未闭合尝试对账为 `not_sent/unknown`，绝不自动重发），Project 暴露**计划进度**并拒绝待批冲突（`PLAN_CHANGE_PENDING`），依赖健康按提供方/RPC/进程/预算/进展分域（未知效果→`attention_required`），批次质量与外部任务终态分开出账，本体约束区分 `verified/violated/unobservable/unknown`，并新增**合并主干审计检查器**。
+当前源码版本为 **0.15.0**（npm + GitHub Release，2026-11-21）。本版把「AgentPrefab 能力装配」计划（七个合并 PR，#252–#258）端到端落地：系统设置新增三条能力供应链页——**技能管理**（标准 `SKILL.md` 发现 → 不可变受管导入 → 显式启用；发现范围覆盖内置 `skills/`、受管 `<configRoot>/skills`、`~/.agent/skills`（npm/Agent Skills 标准）、`~/.agents/skills`、XDG 与 `AW_SKILL_ROOTS`；发现/导入/激活全程不执行 Skill 脚本）、**外部 MCP**（仅 HTTPS Streamable HTTP 清单 + `AW_MCP_*` 凭据引用 + 管理员评审的 shared-safe 只读工具 + 私网/环回/保留地址出口封锁）、**Agent 预制件**（角色/场景提示词 + 多维自定义插槽 + 逐能力开关封装为不可变 revision，发布即冻结）。Channel 成员固定绑定 `(prefabId, revision, slots, contentHash)`，Session 克隆与 Project 任务实例冻结同一快照，运行时按「预制体选择 ∩ 系统启用/评审 ∩ 频道/项目策略 ∩ 角色工业门 ∩ harness 受管面」在每次 dispatch 重新授权，撤销无法被缓存目录绕过。数据库契约 v7→v8（增量迁移，不动存量行为）。
 
-新克隆合并主干审计（`5614aa06`）：五个合并提交验证为祖先；固定 13 项矩阵（typecheck、lint、unit **2107/2108** 含 1 条件跳过、i18n、cssvars、frontend lifecycle、acceptance-context、onboarding-v6、sdk-surface、plugin-lifecycle、mcp、docs、build）全部退出 0，`checkMainAudit` = PASS；隔离启动创建全部治理表且新经验投影端点未认证返回 401。隔离模拟验收：文档→产线 onboard 33/33 + 15/15 + V1–V6 24/24，冒烟写回读 72=72，七轮治理调参使克重 31.03→32.58 g 进入 32.15–32.85 目标带，跨频道消息双向闭环+共享记忆落账。边界：Project 完成后无产物补交通道（已记录）；收益验证与物理/现场准入保持 NOT_RUN；Mimosa 深度扫描（有封印）33 条发现、**本轮新增治理模块 0 条**——不作安全通过声明。见[主干审计报告](docs/audit/governed-product-learning-main-audit.md)、[验收报告](docs/audit/governed-product-learning-acceptance.md)与[准入记录](docs/audit/governed-learning-expert-admission.md)。
+合并主干门禁（`87805eaf`）：typecheck、lint、build、docs **101/0**、readme、i18n **3439/3439**、cssvars、frontend-lifecycle、skills **197/0**、MCP **14/14**、unit **2185/2186**（1 条件跳过）全绿。隔离全新实例实机验收 **21/21**：`~/.agent/skills` 全局发现 → 不可变导入 → 启用 → 预制体发布/成员绑定 → 工具目录收窄 → `activate_skill` 低信任正文注入 → 越权调用拒绝 → Session 克隆绑定与快照哈希 → 发布新 revision 不自动升级 → Skill 撤销即时拒绝 → MCP 非 HTTPS/无密钥/失败有界；另在存量实例上完成两次重启持久性核验（写尝试台账 3277 行分布一致、绝不重发）与治理评测门实机触发（伪报 400、无宿主来源拒晋升 active、客户端 run 拒 active、shadow 晋级成功）。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN；Mimosa 深扫有封印但 inconclusive，不作安全通过声明。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
 
-## What's new in 0.14.0
+## What's new in 0.15.0
+
+- **技能管理（#253）**：Agent Skills 标准发现目录与不可变受管副本（`<configRoot>/skills/<name>/<hash>/`，导入默认未启用）；设置页支持发现/导入/启用/停用/删除与 SKILL.md 读取；同名多来源保留冲突提示；`allowed-tools` 仅为实验性 metadata，不授予工具权限。
+- **外部 MCP 管理（#254）**：HTTPS-only Streamable HTTP 清单（`<configRoot>/mcp/servers/<id>.json`）、`AW_MCP_*` 环境凭据引用（不落文件/界面/日志）、发现 → pending → 管理员评审（`dataSharing=shared-safe` 且 `classification=read` 才可批准，首版不开放写工具）、endpoint/凭据代际/协议/工具名/schema 变化或超过 `maxDiscoveryAgeMs` 自动回到 pending、出口防护（私网/环回/保留地址拒绝 + 固定 DNS 解析 + 同源重定向 + 超时不自动重试）。
+- **MCP 入口身份加固（#252）**：每个请求重新鉴权 Bearer token、会话与认证主体绑定（换主体 403 `MCP_SESSION_PRINCIPAL_MISMATCH`）、设备面按授权工作区收窄（`device.list`/`device.read`/`device.bind_agent` 仅限自绑定）。
+- **AgentPrefab 修订与绑定（#255）**：草稿校验（危险槽键 command/env/token 等 fail-closed、必填槽缺失拒绝）→ CAS 发布不可变 revision（含 content hash）→ Channel 成员固定绑定；能力目录把内置工具、插件工具、托管 Skill、已批 MCP 工具投影为统一开关面。
+- **运行时装配（#256）**：有效能力 = 预制体选择 ∩ 系统启用/评审 ∩ 频道/项目策略 ∩ 角色/工业门 ∩ harness 受管面，每次调用重新授权；预制体提示词以低信任声明包裹注入上下文前缀；`activate_skill` 仅限固定且启用的受管 Skill；Session 克隆、任务实例频道与 Project 工作项在创建时冻结快照，重试复用原快照；必需能力缺失或绑定损坏时新作业 fail-closed（409）。
+- **打包与文档（#257/#258）**：`skills/` 随生产构建分发（含 zod 重复依赖修复）；双语指南 + 可复用 L10 实机验收腿。
+- **双语文档**：[AgentPrefab、Skills 与 MCP 指南](https://kingdol666.github.io/AgentWorkShop/guide/agent-prefabs)覆盖发现范围、导入语义、MCP 评审规则、预制件生命周期与快照边界。
+
+## What's new in 0.14.0 — 历史发布说明
 
 - **不可变经验版本（#241）**：`experience_versions` 只插不改（内容/证据快照哈希）、CAS 指针（`EXPERIENCE_VERSION_CONFLICT`）、事务化幂等回填（旧行 → `legacy-unverified`，永不自动注入）、跨 kind 同键隔离（`EXPERIENCE_KEY_CONFLICT`）。
 - **统一治理解析器（#241）**：授权 epoch → 作用域 → 用途三段闸；`automatic` 读取要求 `validated` + `canary/active` 部署；overlay 缓存键含 epoch，撤权/换产品下一回合即停止注入。
@@ -375,14 +385,20 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 ## AgentPrefab、Skill 与 MCP
 
-系统设置现在统一管理能力供应链：标准 `SKILL.md` 发现（内置、受管 `<configRoot>/skills`、`~/.agent/skills`、`~/.agents/skills`、XDG、`AW_SKILL_ROOTS`）、不可变审核导入，以及管理员登记的外部 MCP Streamable HTTP 服务（`AW_MCP_*` 凭据引用 + shared-safe 只读工具显式审阅）。AgentPrefab 把角色/场景提示、多维插槽、受支持模型配置与逐能力开关组合为已发布不可变 revision；Channel 成员固定 `(prefabId, revision, slots, hash)`，Session/Project 实例保留同一快照。有效工具在 dispatch 时重新授权，缓存目录不能绕过撤销。→ [AgentPrefab、Skill 与 MCP](https://kingdol666.github.io/AgentWorkShop/guide/agent-prefabs)
+系统设置（0.15.0）用三个页签管理**能力供应链**：
+
+- **技能管理**：按 Agent Skills 标准发现 `SKILL.md`（内置 `skills/`、受管 `<configRoot>/skills`、`~/.agent/skills`（npm 标准）、`~/.agents/skills`、XDG、`AW_SKILL_ROOTS`）；导入生成不可变受管副本（按内容哈希落盘，默认未启用），启用/停用/删除留审计；发现/导入/激活**全程不执行 Skill 包内脚本**，`allowed-tools` 仅为实验性 metadata。
+- **外部 MCP**：管理员登记 HTTPS Streamable HTTP 服务（凭据只走 `AW_MCP_*` 环境引用）；「发现工具」只产生 pending 清单，须管理员显式评审为 shared-safe 只读才可调用；目标地址/凭据/协议/schema 变化或超时即失效回 pending；出站经 SSRF 出口防护（私网/环回/保留地址拒绝、同源重定向、不自动重试）。
+- **Agent 预制件**：把角色提示词、场景提示词、多维自定义插槽（key/标题/默认值/必填/成员可覆盖/长度上限）与逐能力开关（内置工具/插件工具/受管 Skill/已批 MCP 工具）保存为草稿，CAS 发布为不可变 revision（含 content hash）；在 Channel 内给成员固定绑定 `(prefabId, revision, slots)`。
+
+运行时：绑定成员的作业按「预制体选择 ∩ 系统启用/评审 ∩ 频道/项目策略 ∩ 角色工业门 ∩ harness 受管面」在**每次调用时**重新授权；Session 克隆、任务实例与 Project 工作项在创建时冻结快照，重试复用原快照；`activate_skill` 以低信任文本注入受管 Skill 正文；撤销工具/Skill/MCP 后下一次调用立即被拒。实机验收 **21/21**（发现→导入→启用→发布→绑定→收窄→激活→拒绝→快照→不自动升级→撤销→MCP 校验），见[验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)。→ [AgentPrefab、Skill 与 MCP 指南](https://kingdol666.github.io/AgentWorkShop/guide/agent-prefabs)
 
 ## 文档导航
 
 | 上手 | 开发 | 运维 |
 |---|---|---|
 | [快速开始](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) · [第一次会话](https://kingdol666.github.io/AgentWorkShop/guide/first-session) | [插件 API](./docs/plugins.md) · [SDK](./docs/sdk.md) · [CLI](./docs/cli.md) | [配置系统](https://kingdol666.github.io/AgentWorkShop/guide/configuration) · [HITL](https://kingdol666.github.io/AgentWorkShop/guide/hitl) · [产线权限](https://kingdol666.github.io/AgentWorkShop/guide/line-permissions) |
-| [Harness UI](https://kingdol666.github.io/AgentWorkShop/guide/harness-ui) · [Channel 多会话](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) · [Project 模式](https://kingdol666.github.io/AgentWorkShop/guide/projects) | [DAQ 协议](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) · [DCW 读写](https://kingdol666.github.io/AgentWorkShop/guide/dcw-read-write) · [配方版本](https://kingdol666.github.io/AgentWorkShop/guide/recipe-versions) · [产线集成](https://kingdol666.github.io/AgentWorkShop/guide/line-integration) | [AML](./docs/aml.md) · [本体](https://kingdol666.github.io/AgentWorkShop/guide/ontology) · [EDA 工坊](https://kingdol666.github.io/AgentWorkShop/guide/eda) |
+| [Harness UI](https://kingdol666.github.io/AgentWorkShop/guide/harness-ui) · [Channel 多会话](https://kingdol666.github.io/AgentWorkShop/guide/channels-sessions) · [Project 模式](https://kingdol666.github.io/AgentWorkShop/guide/projects) | [DAQ 协议](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) · [DCW 读写](https://kingdol666.github.io/AgentWorkShop/guide/dcw-read-write) · [配方版本](https://kingdol666.github.io/AgentWorkShop/guide/recipe-versions) · [产线集成](https://kingdol666.github.io/AgentWorkShop/guide/line-integration) | [AML](./docs/aml.md) · [本体](https://kingdol666.github.io/AgentWorkShop/guide/ontology) · [EDA 工坊](https://kingdol666.github.io/AgentWorkShop/guide/eda) · [AgentPrefab / Skill / MCP](https://kingdol666.github.io/AgentWorkShop/guide/agent-prefabs) |
 
 ## 验证与验收
 
@@ -446,7 +462,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.14.0（已发布 2026-11-20）** —— [最新版本 v0.14.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.14.0) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.15.0（已发布 2026-11-21）** —— [最新版本 v0.15.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.15.0) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

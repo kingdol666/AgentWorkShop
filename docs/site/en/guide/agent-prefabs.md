@@ -46,3 +46,9 @@ Effective capability = prefab selection ∩ system enabled/review ∩ Channel/Pr
 - OMP runs under the same OS account as the service: credentials never enter harness config/environment, but this feature does not claim an OS/filesystem sandbox against a compromised same-identity harness.
 - Simulator/shadow-twin evidence is not physical HIL, site admission or production approval.
 - Existing MCP HTTP/REST/bridge authorization was hardened in this round; industrial HITL/DCW remains authoritative.
+
+## 6. Acceptance evidence (v0.15.0)
+
+- Isolated fresh-instance live acceptance **21/21** (`scripts/experiments/prefab-acceptance.mjs`): global-scope discovery from a clean `~/.agent/skills`, immutable import disabled by default, enable, prefab draft/publish, member binding to the pinned revision, tool-catalog narrowing with `activate_skill` present, low-trust skill body injection, unauthorized dispatch denial, session clone binding + snapshot hash, revision 2 without auto-upgrade, immediate denial after skill revocation, and MCP non-HTTPS rejection / secret-less manifest / bounded discovery failure.
+- Merged-main gates: unit 2185/2186 (1 conditional skip), MCP 14/14, skills 197/0, docs 101/0, i18n 3439/3439, lint/typecheck/build PASS.
+- Not yet verified: an external MCP positive live trace against a public HTTPS server, real OMP-model work under a prefab, and browser UI click-through. See the [full-flow acceptance report](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md).
