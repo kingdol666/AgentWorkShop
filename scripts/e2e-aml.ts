@@ -1,259 +1,268 @@
 /**
- * AML 端到端测试(对活服):fixtures → 数据集构建 → 隔离拒绝 → 训练作业 → 门禁 →
- * 排行榜 → 晋升守卫 → 预测守卫 → 审计归属。
- *
- * 运行:
- *   1) 存根模式(无 Python 环境;服务器以 AML_STUB=1 启动):
- *        npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-aml.ts
- *   2) 真实模式(服务器正常启动,venv 供给可用):… scripts/e2e-aml.ts --real
- *      真实模式走 venv 供给 + torch 训练 + ONNX 评估(首次约数分钟)。
- *
- * 前置:AW_BASE(默认 http://127.0.0.1:3001,仅允许本机回环);AW_E2E_TOKEN
- *       (admin/editor token —— 建数采节点需要 editor+;缺省时注册临时用户,
- *       仅 fresh 库首位=admin 时可行)。
+ * AML HTTP acceptance against an already-running, disposable instance you own.
+ * AW_BASE=http://127.0.0.1:<port> node scripts/e2e-aml.ts [--real]
+ * Use an admin AW_E2E_TOKEN from the environment, or omit it for first-admin setup.
+ * Default: server started with AML_STUB=1. --real: Python/venv + ONNX runtime ready.
+ * Uses new mock-device fixtures (4 batches; ~10 min at default sampling/gates).
+ * Does not change gate settings or start services; fixtures remain for inspection.
  */
+import { randomBytes, randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { setTimeout as sleep } from 'node:timers/promises'
 
-const BASE_URL = new URL(process.env.AW_BASE ?? 'http://127.0.0.1:3001')
-// 测试脚本安全守卫:仅允许 http(s) + 本机回环/私网主机名(防误把测试流量打向外部)
-if (BASE_URL.protocol !== 'http:' && BASE_URL.protocol !== 'https:') {
-  console.error('AW_BASE 协议必须为 http/https')
-  process.exit(1)
-}
-const host = BASE_URL.hostname
-const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local') || /^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2\d|3[01])\./.test(host)
-if (!isLocal && process.env.AW_ALLOW_REMOTE_BASE !== '1') {
-  console.error(`AW_BASE 主机 ${host} 非本机/私网;确需远程测试请设 AW_ALLOW_REMOTE_BASE=1`)
-  process.exit(1)
-}
-const BASE = BASE_URL.origin
 const REAL = process.argv.includes('--real')
+const BEAT_MS = 1000
+const HISTORY_STEPS = 3
+const HORIZON_STEPS = 2
+const BATCHES = 4
+// The stock G4 needs 500 aligned windows. Leave room for cleaning and lost beats.
+const SAMPLES_PER_NODE = 150
+const RUN_BUDGET_MS = 240_000
+const REQUEST_MS = 15_000
+const JOB_TERMINAL = new Set(['done', 'failed', 'timeout', 'cancelled', 'interrupted'])
+const JOB_ACTIVE = new Set(['queued', 'provisioning', 'training', 'evaluating'])
+const STUB_TRAIN_PY = '# AML_STUB acceptance only; executing this is a configuration error.\nraise RuntimeError("AML_STUB=1 is required on the server")\n'
+
+/* eslint-disable @typescript-eslint/no-explicit-any -- HTTP acceptance asserts the dynamic JSON contract */
+interface ApiRes { status: number, ok: boolean, data: any, code: unknown }
+
+function loopbackOrigin(raw: string | undefined): string {
+  let url: URL
+  try {
+    url = new URL(raw ?? '')
+  }
+  catch {
+    throw new Error('Set AW_BASE to the origin of a disposable loopback instance you own')
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || !['127.0.0.1', '[::1]'].includes(url.hostname)
+    || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('AW_BASE must be an HTTP(S) loopback origin (127.0.0.1 or [::1]), without credentials/path/query/fragment')
+  }
+  return url.origin
+}
+
+const statusOf = (r: ApiRes): string => `HTTP ${r.status}${typeof r.code === 'string' && /^[A-Z][A-Z_0-9]{1,47}$/.test(r.code) ? ` ${r.code}` : ''}`
+const isId = (v: unknown): v is string => typeof v === 'string' && /^[\w-]+$/.test(v)
+const sameIds = (actual: unknown, expected: string[]): boolean => Array.isArray(actual)
+  && actual.length === expected.length && new Set(actual).size === expected.length && expected.every(id => actual.includes(id))
 
 let passed = 0
-let failures = 0
-let step = 0
-function check(name: string, ok: boolean, detail = ''): void {
-  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`)
-  if (ok) passed++
-  else failures++
-}
-function section(title: string): void {
-  step += 1
-  console.log(`\n━━━ ${step}. ${title} ━━━`)
+function check(name: string, ok: unknown, detail = ''): asserts ok {
+  if (!ok) throw new Error(`${name}${detail ? ` — ${detail}` : ''}`)
+  passed++
+  console.log(`PASS ${name}${detail ? ` — ${detail}` : ''}`)
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- e2e 断言脚本:响应体按动态 JSON 探查 */
-
-interface ApiRes { status: number, ok: boolean, json: any }
-
-async function api(method: string, path: string, opts: { body?: unknown, token?: string } = {}): Promise<ApiRes> {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: { 'content-type': 'application/json', 'authorization': `Bearer ${opts.token ?? ''}` },
-    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
-  })
-  const json = await res.json().catch(() => null)
-  return { status: res.status, ok: res.ok, json }
+async function poll<T>(budgetMs: number, intervalMs: number, attempt: (remainingMs: number) => Promise<T | undefined>): Promise<T | undefined> {
+  const end = performance.now() + budgetMs
+  while (performance.now() < end) {
+    const result = await attempt(Math.max(1, Math.ceil(end - performance.now())))
+    if (performance.now() >= end) return undefined
+    if (result !== undefined) return result
+    await sleep(Math.max(0, Math.min(intervalMs, end - performance.now())))
+  }
+  return undefined
 }
-
-// ---------- 登录 ----------
-let token = process.env.AW_E2E_TOKEN ?? ''
-if (!token) {
-  const name = `e2e-aml-${process.pid.toString(36)}-${Date.now().toString(36).slice(-5)}`
-  const reg = await api('POST', '/api/workshop/users/register', { body: { name }, token: '' })
-  token = reg.json?.data?.token ?? ''
-}
-if (!token) {
-  console.error('缺少 token:设置 AW_E2E_TOKEN(admin/editor)后重试')
-  process.exit(1)
-}
-
-const suffix = `${process.pid.toString(36)}${Date.now().toString(36).slice(-5)}`
-const STUB_TRAIN_PY = [
-  '# e2e 存根训练代码(AML_STUB=1 时不会真正执行)',
-  'import amlkit',
-  'amlkit.report_progress(50, \'stub\')',
-  'amlkit.save_metrics({\'agent\': {\'note\': \'stub\'}})',
-  'print(\'stub train done\')',
-  '',
-].join('\n')
 
 async function main(): Promise<void> {
-  section('平台概览')
-  const overview = await api('GET', '/api/workshop/aml', { token })
-  check('GET /aml 返回运行时状态', overview.ok && !!overview.json?.data?.runtime, `python.ok=${overview.json?.data?.runtime?.python?.ok}`)
-  if (overview.json?.data?.runtime?.python?.ok === false && REAL) {
-    console.error('真实模式要求服务器具备 Python;当前探测失败:', overview.json?.data?.runtime?.python?.reason)
+  const base = loopbackOrigin(process.env.AW_BASE)
+  const tag = `aml-e2e-${randomUUID().slice(0, 12)}`
+  let token = process.env.AW_E2E_TOKEN?.trim() ?? ''
+  async function api(method: string, path: string, body?: unknown, timeoutMs = REQUEST_MS): Promise<ApiRes> {
+    const url = new URL(path, base)
+    if (url.origin !== base || !url.pathname.startsWith('/api/')) throw new Error('Invalid acceptance endpoint')
+    const signal = AbortSignal.timeout(timeoutMs)
+    const res = await fetch(url, {
+      method, redirect: 'error', signal,
+      headers: {
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }).catch(() => { throw new Error(`${method} ${url.pathname}: request failed (network, timeout or redirect)`) })
+    const json = await res.json().catch(() => null)
+    return { status: res.status, ok: res.status === 200 && json?.code === 0, data: json?.data, code: json?.code }
+  }
+  async function create(path: string, key: string, body: unknown): Promise<string> {
+    const r = await api('POST', path, body)
+    const id = r.data?.[key]?.id
+    check(`create ${key} (${path})`, r.ok && isId(id), statusOf(r))
+    return id
   }
 
-  section('门禁阈值放宽(幂等;无权限则降级;测试后恢复)')
-  const keysToRelax = ['aml.gates.minRows', 'aml.gates.minRuns', 'aml.gates.nrmse', 'aml.gates.rolloutNrmse', 'aml.gates.valTestGap'] as const
-  const relaxedValues: Record<string, unknown> = {
-    'aml.gates.minRows': 50,
-    'aml.gates.minRuns': 2,
-    'aml.gates.nrmse': 0.99,
-    'aml.gates.rolloutNrmse': 0.99,
-    'aml.gates.valTestGap': 2,
+  console.log(`AML HTTP acceptance: ${REAL ? 'real ONNX' : 'stub'}; fixtures=${tag}`)
+  if (!token) {
+    const setup = await api('GET', '/api/users/setup-status')
+    check('first-admin setup available (otherwise provide an admin AW_E2E_TOKEN)', setup.ok && setup.data?.needsSetup === true, statusOf(setup))
+    const reg = await api('POST', '/api/users/register', {
+      name: tag, email: `${tag}@example.test`, password: `Aw1-${randomBytes(24).toString('hex')}`,
+    })
+    check('first admin registered', reg.ok && reg.data?.user?.role === 'admin'
+    && typeof reg.data?.token === 'string' && reg.data.token.length > 0, statusOf(reg))
+    token = reg.data.token
   }
-  const before = await api('GET', '/api/system/settings', { token })
-  const prevEffective: Record<string, unknown> = before.json?.data?.effective ?? {}
-  const patch = await api('PATCH', '/api/system/settings', { token, body: { overrides: relaxedValues } })
-  const gatesRelaxed = patch.ok
-  const restoreSettings = async (): Promise<void> => {
-    if (!gatesRelaxed) return
-    const restore: Record<string, unknown> = {}
-    for (const k of keysToRelax) {
-      if (k in prevEffective) restore[k] = prevEffective[k]
+  const me = await api('GET', '/api/users/me')
+  const userId = me.data?.id
+  check('admin authenticated', me.ok && isId(userId) && me.data?.role === 'admin', statusOf(me))
+  const overview = await api('GET', '/api/workshop/aml')
+  check('AML runtime available', overview.ok && typeof overview.data?.runtime?.python?.ok === 'boolean', statusOf(overview))
+  if (REAL) check('Python available for real mode', overview.data.runtime.python.ok === true)
+
+  const lineId = await create('/api/workshop/dcw/lines', 'line', { name: `${tag} line` })
+  const productId = await create('/api/workshop/dcw/products', 'product', { lineId, name: `${tag} product` })
+  const dcwId = await create('/api/workshop/dcw', 'node', { name: `${tag}-sp`, driver: 'mock', lineId, templateRef: 'temp-sp' })
+  const recipeId = await create('/api/workshop/dcw/recipes', 'recipe', {
+    productId, name: `${tag} recipe`, params: [{ nodeId: dcwId, value: 175, min: 150, max: 200 }],
+  })
+  const daq = (label: string, templateRef: string) => create('/api/workshop/daq', 'node', {
+    name: `${tag}-${label}`, driver: 'mock', lineId, templateRef, intervalMs: BEAT_MS,
+  })
+  const ctrlId = await daq('control', 'daq-temp-tc')
+  const targetId = await daq('target', 'daq-pressure-tx')
+  const foreignLineId = await create('/api/workshop/dcw/lines', 'line', { name: `${tag} isolation line` })
+  const foreignNode = await create('/api/workshop/daq', 'node', {
+    name: `${tag}-isolation`, driver: 'mock', lineId: foreignLineId, templateRef: 'daq-temp-tc',
+  })
+
+  const linePath = `/api/workshop/dcw/lines/${lineId}`
+  const runIds: string[] = []
+  const isRun = (r: any, id: string) => r?.id === id && r.lineId === lineId && r.recipeId === recipeId && r.productId === productId
+  for (let i = 1; i <= BATCHES; i++) {
+    const start = await api('POST', `${linePath}/start`, { recipeId })
+    const run = start.data?.run
+    const runId = run?.id
+    check(`batch ${i} started a new run`, start.ok && isId(runId) && !runIds.includes(runId)
+    && isRun(run, runId) && run.endedAt === null && Number.isFinite(Date.parse(run.startedAt)), statusOf(start))
+    const matchesActiveRun = (state: any) => state?.active === true && state.runId === runId
+      && state.lineId === lineId && state.recipeId === recipeId && state.productId === productId
+    try {
+      check(`batch ${i} active with acknowledged mock write`, matchesActiveRun(start.data?.line)
+      && run.results?.length === 1 && run.results[0]?.nodeId === dcwId && run.results[0]?.ok === true)
+      let counts: unknown[] = []
+      const ready = await poll(RUN_BUDGET_MS, 5000, async (remaining) => {
+        const r = await api('GET', `/api/workshop/dcw/runs/${runId}/data`, undefined, Math.min(REQUEST_MS, remaining))
+        if (!r.ok || !isRun(r.data?.run, runId) || r.data?.run?.endedAt !== null || !Array.isArray(r.data?.daq)) {
+          throw new Error(`batch ${i}: active run data missing or mismatched (${statusOf(r)})`)
+        }
+        counts = [ctrlId, targetId].map(id => r.data.daq.find((node: any) => node.nodeId === id)?.cnt ?? 0)
+        return counts.every(n => typeof n === 'number' && n >= SAMPLES_PER_NODE) ? true : undefined
+      })
+      check(`batch ${i} has persisted tagged samples for both nodes`, ready === true,
+        `need ${SAMPLES_PER_NODE}/node; observed ${counts.map(n => Number.isSafeInteger(n) ? n : '?').join('/')}`)
     }
-    if (Object.keys(restore).length > 0) await api('PATCH', '/api/system/settings', { token, body: { overrides: restore } })
-  }
-  check('门禁阈值可写(权限或键缺失则降级)', gatesRelaxed || patch.status === 403 || patch.status === 404 || patch.status === 401, `status=${patch.status}`)
-
-  section('产线 fixtures')
-  const line = await api('POST', '/api/workshop/dcw/lines', { token, body: { name: `AML-E2E 线 ${suffix}` } })
-  const lineId: string = line.json?.data?.line?.id
-  check('创建产线', line.ok && !!lineId, lineId ?? line.json?.message)
-  const product = await api('POST', '/api/workshop/dcw/products', { token, body: { lineId, name: `AML-E2E 产品 ${suffix}` } })
-  const productId: string = product.json?.data?.product?.id
-  check('创建产品', product.ok && !!productId, productId ?? product.json?.message)
-  const dcwNode = await api('POST', '/api/workshop/dcw', {
-    token,
-    body: { name: `aml-e2e-dcw-${suffix}`, driver: 'mock', lineId, templateRef: 'temp-sp' },
-  })
-  const dcwNodeId: string = dcwNode.json?.data?.node?.id
-  check('创建数控节点(mock)', dcwNode.ok && !!dcwNodeId, dcwNodeId ?? dcwNode.json?.message)
-  const recipe = await api('POST', '/api/workshop/dcw/recipes', {
-    token,
-    body: {
-      productId, name: `AML-E2E 配方 ${suffix}`, description: 'e2e',
-      params: [{ nodeId: dcwNodeId, value: 60, min: 0, max: 100 }],
-    },
-  })
-  const recipeId: string = recipe.json?.data?.recipe?.id
-  check('创建配方(节点级绑定)', recipe.ok && !!recipeId, recipeId ?? recipe.json?.message)
-
-  section('数采节点 ×2')
-  const mkDaq = async (name: string, templateRef: string) => api('POST', '/api/workshop/daq', {
-    token,
-    body: { name, templateRef, driver: 'mock', lineId, intervalMs: 1000, publishIntervalMs: 0 },
-  })
-  const daqCtrl = await mkDaq(`aml-e2e-ctrl-${suffix}`, 'daq-temp-tc')
-  const daqTmp = await mkDaq(`aml-e2e-tmp-${suffix}`, 'daq-pressure-tx')
-  const ctrlId: string = daqCtrl.json?.data?.node?.id
-  const tmpId: string = daqTmp.json?.data?.node?.id
-  check('数采节点(控制量)', daqCtrl.ok, ctrlId)
-  check('数采节点(目标量)', daqTmp.ok, tmpId)
-
-  section('开跑 4 个批次(短窗采集;样本按 run 打标)')
-  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
-  for (let i = 0; i < 4; i++) {
-    const start = await api('POST', `/api/workshop/dcw/lines/${lineId}/start`, { token, body: { recipeId } })
-    if (!start.ok) {
-      check(`批次 ${i + 1} 开跑`, false, JSON.stringify(start.json)?.slice(0, 120))
-      break
+    finally {
+      // Recheck identity before stopping, including when collection fails. Never stop a replacement run.
+      const current = await api('GET', linePath)
+      check(`batch ${i} still owns the active window before stop`, current.ok && matchesActiveRun(current.data?.state), statusOf(current))
+      const stop = await api('POST', `${linePath}/stop`)
+      const closed = stop.data?.run
+      check(`batch ${i} stop closed the exact run`, stop.ok && isRun(closed, runId)
+      && closed.startedAt === run.startedAt && Date.parse(closed.endedAt) > Date.parse(run.startedAt)
+      && stop.data?.line?.lineId === lineId && stop.data.line.active === false && stop.data.line.runId === null, statusOf(stop))
     }
-    await sleep(20000)
-    await api('POST', `/api/workshop/dcw/lines/${lineId}/stop`, { token, body: {} })
-    check(`批次 ${i + 1} 采集完成(20s)`, true)
+    runIds.push(runId)
   }
 
-  section('数据集构建(隔离三元组)')
   const dsSpec = {
-    lineId, productId, recipeId,
-    nodes: [{ nodeId: ctrlId, role: 'control' }, { nodeId: tmpId, role: 'target' }],
-    beatMs: 1000, window: { historySteps: 3, horizonSteps: 2 },
-    cleaning: { hampelK: 5, maxInterpMs: 3000, maxDropRatio: 0.5 },
-    split: { valRatio: 0.25, testRatio: 0.25, seed: 42 },
-    purpose: 'mpc_surrogate',
-    note: 'e2e',
+    lineId, productId, recipeId, runIds,
+    nodes: [{ nodeId: ctrlId, role: 'control' }, { nodeId: targetId, role: 'target' }],
+    beatMs: BEAT_MS, window: { historySteps: HISTORY_STEPS, horizonSteps: HORIZON_STEPS },
+    cleaning: { hampelK: 0, maxInterpMs: 3000, maxDropRatio: 0.25 },
+    split: { valRatio: 0.25, testRatio: 0.25, seed: 42 }, purpose: 'mpc_surrogate', note: tag,
   }
-  const ds = await api('POST', '/api/workshop/aml/datasets', { token, body: dsSpec })
-  const rowCount = ds.json?.data?.dataset?.rowCount ?? 0
-  check('数据集构建成功', ds.ok && rowCount > 0, `rows=${rowCount} runs=${ds.json?.data?.dataset?.runIds?.length} ${ds.json?.message ?? ''}`)
-  const datasetId: string = ds.json?.data?.dataset?.id
-  const dsList = await api('GET', `/api/workshop/aml/datasets?recipeId=${recipeId}`, { token })
-  check('数据集列表可见', dsList.ok && (dsList.json?.data?.datasets?.length ?? 0) >= 1)
+  const ds = await api('POST', '/api/workshop/aml/datasets', dsSpec, 60_000)
+  const dataset = ds.data?.dataset
+  const datasetId = dataset?.id
+  check('dataset built from exactly the collected runs', ds.ok && isId(datasetId)
+  && dataset.lineId === lineId && dataset.productId === productId && dataset.recipeId === recipeId
+  && sameIds(dataset.runIds, runIds) && Number.isInteger(dataset.rowCount) && dataset.rowCount >= 500, statusOf(ds))
+  const list = await api('GET', `/api/workshop/aml/datasets?recipeId=${recipeId}`)
+  check('exact dataset is listed', list.ok && Array.isArray(list.data?.datasets)
+  && list.data.datasets.some((d: any) => d.id === datasetId && d.recipeId === recipeId), statusOf(list))
+  const badNode = await api('POST', '/api/workshop/aml/datasets', { ...dsSpec, nodes: [{ nodeId: foreignNode, role: 'control' }, dsSpec.nodes[1]] })
+  check('cross-line source node rejected', badNode.status === 403 && badNode.code === 'AML_NODE_LINE_MISMATCH', statusOf(badNode))
+  const badProduct = await api('POST', '/api/workshop/aml/datasets', { ...dsSpec, productId: `missing-${tag}` })
+  check('wrong product for the same batches rejected', badProduct.status === 422 && badProduct.code === 'AML_RUN_MISMATCH', statusOf(badProduct))
 
-  section('隔离硬约束')
-  const badLine = await api('POST', '/api/workshop/aml/datasets', { token, body: { ...dsSpec, lineId: 'ln-not-exist' } })
-  check('节点产线不一致被拒', !badLine.ok && String(badLine.json?.code ?? '').startsWith('AML_'), `code=${badLine.json?.code}`)
-  const badProduct = await api('POST', '/api/workshop/aml/datasets', { token, body: { ...dsSpec, productId: 'pd-not-exist' } })
-  check('批次归属不一致被拒', !badProduct.ok, `code=${badProduct.json?.code}`)
-
-  section('训练作业(提交 → 终态)')
   const code = REAL
-    ? readFileSync(join(process.cwd(), 'server', 'services', 'workshop', 'aml', 'python', 'train-example.py'), 'utf8')
+    ? readFileSync(new URL('../server/services/workshop/aml/python/train-example.py', import.meta.url), 'utf8')
     : STUB_TRAIN_PY
-  const job = await api('POST', '/api/workshop/aml/jobs', {
-    token,
-    body: { datasetId, code, changeNote: 'e2e 基线', seed: 42, params: REAL ? { epochs: 30 } : {} },
+  const submit = await api('POST', '/api/workshop/aml/jobs', {
+    datasetId, code, changeNote: tag, seed: 42, params: REAL ? { epochs: 80 } : {},
   })
-  const jobId: string = job.json?.data?.job?.id
-  check('作业提交成功', job.ok, jobId ?? job.json?.message)
-  let finalJob: any = null
-  const budgetMs = REAL ? 15 * 60_000 : 4 * 60_000
-  const t0 = Date.now()
-  while (Date.now() - t0 < budgetMs) {
-    await sleep(2000)
-    const r = await api('GET', `/api/workshop/aml/jobs/${jobId}`, { token })
-    finalJob = r.json?.data?.job
-    if (finalJob && ['done', 'failed', 'timeout', 'cancelled'].includes(finalJob.status)) break
-  }
-  check('作业终态到达', !!finalJob, `status=${finalJob?.status} err=${String(finalJob?.error ?? '').slice(0, 140)}`)
-  const stubDone = finalJob?.status === 'done'
-  if (finalJob) {
-    const detail = await api('GET', `/api/workshop/aml/jobs/${jobId}`, { token })
-    check('门禁报告产出(逐项可读)', Array.isArray(detail.json?.data?.gates?.checks),
-      `passed=${detail.json?.data?.gates?.passed} checks=${detail.json?.data?.gates?.checks?.length}`)
-  }
+  const jobId = submit.data?.job?.id
+  check('new training job submitted for the dataset', submit.ok && isId(jobId) && submit.data.job.datasetId === datasetId, statusOf(submit))
+  let lastStatus = 'not observed'
+  const terminal = await poll(REAL ? 15 * 60_000 : 4 * 60_000, 1500, async (remaining) => {
+    const r = await api('GET', `/api/workshop/aml/jobs/${jobId}`, undefined, Math.min(REQUEST_MS, remaining))
+    const job = r.data?.job
+    if (!r.ok || job?.id !== jobId || job?.datasetId !== datasetId) throw new Error(`job detail missing or mismatched (${statusOf(r)})`)
+    if (!JOB_TERMINAL.has(job.status) && !JOB_ACTIVE.has(job.status)) throw new Error('Unrecognized AML job status')
+    lastStatus = job.status
+    return JOB_TERMINAL.has(job.status) ? r.data : undefined
+  })
+  check('job reached a terminal state within the budget', terminal, `job=${jobId}; last=${lastStatus}`)
+  const finalJob = terminal.job
+  const modelId = finalJob.modelId
+  check('this job completed successfully and registered a model', finalJob.status === 'done' && finalJob.progress === 100
+  && Number.isFinite(Date.parse(finalJob.endedAt)) && isId(modelId) && typeof finalJob.artifactsPath === 'string'
+  && finalJob.artifactsPath.length > 0, `job=${jobId}; status=${lastStatus}`)
+  const gates = terminal.gates
+  check('platform passed all gates, including the expected artifact type', gates?.passed === true
+  && Array.isArray(gates.checks) && gates.checks.every((g: any) => g.pass === true)
+  && gates.checks.some((g: any) => g.id === 'G5' && typeof g.detail === 'string'
+    && g.detail.startsWith(REAL ? 'model.onnx(' : 'STUB ')))
+  check('finite metrics for independent validation and test windows', [terminal.metrics?.oneStepVal, terminal.metrics?.oneStepTest, terminal.metrics?.rolloutTest]
+    .every(m => Number.isInteger(m?.windows) && m.windows > 0 && Number.isFinite(m.nrmse) && m.nrmse >= 0))
 
-  section('排行榜与实验谱系')
-  const lb = await api('GET', `/api/workshop/aml/experiments?datasetId=${datasetId}`, { token })
-  check('实验行已登记', lb.ok && (lb.json?.data?.experiments?.length ?? 0) >= 1, `n=${lb.json?.data?.experiments?.length}`)
-  const expRow = lb.json?.data?.experiments?.[0]
-  check('谱系/改动声明落库', !!expRow && Array.isArray(expRow.gates?.checks) && typeof expRow.changeNote === 'string', `status=${expRow?.status}`)
+  const leaderboard = await api('GET', `/api/workshop/aml/experiments?datasetId=${datasetId}`)
+  const exp = leaderboard.data?.experiments?.find((row: any) => row.jobId === jobId && row.datasetId === datasetId)
+  check('exact experiment records the successful lineage', leaderboard.ok && isId(exp?.id) && exp.status === 'gates_passed'
+  && exp.changeNote === tag && exp.seed === 42 && exp.gates?.passed === true, statusOf(leaderboard))
 
-  section('模型注册与晋升守卫')
-  const models = await api('GET', `/api/workshop/aml/models?recipeId=${recipeId}`, { token })
-  const cand = models.json?.data?.models?.find((m: any) => m.stage === 'candidate')
-  if (stubDone && cand) {
-    check('候选模型已登记(门禁通过)', true, cand.id)
-    const promote = await api('POST', `/api/workshop/aml/models/${cand.id}/promote`, { token, body: { toStage: 'production' } })
-    if (REAL) {
-      // 真实工件:深检(onnxruntime 试推理)应通过 → 晋升成功 → production 在册
-      check('真实工件通过深检并晋升 production', promote.ok && promote.json?.data?.ok === true,
-        `status=${promote.status} code=${promote.json?.code} ${promote.json?.message ?? ''}`)
-      const prods = await api('GET', `/api/workshop/aml/models?recipeId=${recipeId}&stage=production`, { token })
-      check('production 模型在册(唯一)', (prods.json?.data?.models?.length ?? 0) === 1,
-        `n=${prods.json?.data?.models?.length}`)
-    }
-    else {
-      // 存根工件(STUB 标记/无真实 onnx)必须被深检拦下 —— 这是守卫,不是缺陷
-      check('无效工件被生产晋升深检拦截', promote.status === 422 && String(promote.json?.code ?? '').includes('ARTIFACT'),
-        `status=${promote.status} code=${promote.json?.code}`)
-    }
+  const modelPath = `/api/workshop/aml/models/${modelId}`
+  const registered = await api('GET', modelPath)
+  const model = registered.data?.model
+  check('exact candidate links model, experiment and fixture', registered.ok && model?.id === modelId && model.stage === 'candidate'
+  && model.datasetId === datasetId && model.experimentId === exp.id && model.recipeId === recipeId && model.productId === productId
+  && model.artifactsPruned === 0 && model.artifactKind === 'onnx_one_step@1', statusOf(registered))
+  if (REAL) check('registered ONNX artifact has a SHA-256 digest', typeof model.artifactHash === 'string' && /^[a-f0-9]{64}$/.test(model.artifactHash))
+
+  const promote = await api('POST', `${modelPath}/promote`, { toStage: 'production' }, 60_000)
+  const prods = await api('GET', `/api/workshop/aml/models?recipeId=${recipeId}&stage=production`)
+  const prodRows = prods.data?.models
+  const input = { history: Array.from({ length: HISTORY_STEPS }, () => [168, 0.82]), steps: HORIZON_STEPS }
+  if (REAL) {
+    check('ONNX passed deep validation and promotion', promote.ok && promote.data?.ok === true && promote.data.from === 'candidate', statusOf(promote))
+    check('only the current model is production for the recipe', prods.ok && Array.isArray(prodRows) && prodRows.length === 1
+    && prodRows[0].id === modelId && prodRows[0].stage === 'production', statusOf(prods))
+    const r = await api('POST', `${modelPath}/predict`, input, 60_000)
+    const p = r.data?.prediction
+    check('real prediction from this production model has finite forecasts', r.ok && p?.modelId === modelId && p.stage === 'production'
+    && p.beatMs === BEAT_MS && sameIds(p.targetNodes, [targetId]) && Array.isArray(p.forecast) && p.forecast.length === HORIZON_STEPS
+    && p.forecast.every((row: unknown) => Array.isArray(row) && row.length === 1 && Number.isFinite(row[0])), statusOf(r))
   }
   else {
-    check('门禁未过 → 注册表无候选模型(干净)', !cand, `models=${models.json?.data?.models?.length}`)
+    check('stub rejected by the production artifact guard', promote.status === 422 && promote.code === 'AML_ARTIFACT_INVALID'
+    && prods.ok && Array.isArray(prodRows) && prodRows.length === 0, statusOf(promote))
+    const r = await api('POST', `${modelPath}/predict`, input)
+    check('stub model cannot predict', r.status === 409 && r.code === 'AML_STUB_MODEL', statusOf(r))
   }
+  const absent = await api('POST', `/api/workshop/aml/models/missing-${tag}/predict`, input)
+  check('unknown model prediction guard', absent.status === 404 && absent.code === 'AML_MODEL_MISSING', statusOf(absent))
 
-  section('预测守卫(未知模型)')
-  const noProd = await api('POST', '/api/workshop/aml/models/mdl-not-exist/predict', { token, body: { history: [[0]] } })
-  check('未知模型预测 404', noProd.status === 404, `status=${noProd.status}`)
-
-  section('审计归属(ops_log)')
-  const ops = await api('GET', '/api/workshop/ops-logs?limit=300', { token })
-  const opsRows: any[] = ops.json?.data?.logs ?? []
-  const amlOps = opsRows.filter(r => String(r.action ?? '').startsWith('aml.'))
-  check('aml.* 操作已入审计', amlOps.length >= 1, `n=${amlOps.length} actions=${[...new Set(amlOps.map(r => r.action))].slice(0, 5).join(',')}`)
-
-  console.log(`\n━━━ 结果:${passed} PASS / ${failures} FAIL ━━━`)
-  await restoreSettings()
-  process.exit(failures > 0 ? 1 : 0)
+  const ops = await api('GET', `/api/workshop/ops-logs?scope=line&lineId=${lineId}&recipeId=${recipeId}&limit=100`)
+  const logs = ops.data?.logs
+  check('dataset/job audit entries belong to this caller and fixture', ops.ok && Array.isArray(logs)
+  && [['aml.dataset.build', datasetId], ['aml.job.submit', jobId], ['aml.job.finish', jobId]].every(([action, id]) => logs.some((r: any) =>
+    r.action === action && r.targetId === id && r.actor === userId && r.actorKind === 'user'
+    && r.lineId === lineId && r.productId === productId && r.recipeId === recipeId)), statusOf(ops))
 }
 
-main().catch(async (err) => {
-  console.error(err)
-  process.exit(1)
+main().then(() => {
+  console.log(`RESULT ${passed} PASS / 0 FAIL (${REAL ? 'real' : 'stub'})`)
+}).catch((err: unknown) => {
+  console.error('FAIL', err instanceof Error ? err.message : 'acceptance aborted')
+  console.log(`RESULT ${passed} PASS / 1 FAIL (${REAL ? 'real' : 'stub'})`)
+  process.exitCode = 1
 })

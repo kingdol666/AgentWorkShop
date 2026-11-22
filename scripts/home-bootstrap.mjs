@@ -59,9 +59,9 @@ plugins/
 
 /**
  * 执行引导。返回 { home, created: string[], seeds: string[] }。
- * @param {{ quiet?: boolean, env?: NodeJS.ProcessEnv }} opts
+ * @param {{ quiet?: boolean, env?: NodeJS.ProcessEnv, seedSessionSecret?: boolean }} opts
  */
-export function runBootstrap({ quiet = false, env = process.env } = {}) {
+export function runBootstrap({ quiet = false, env = process.env, seedSessionSecret = true } = {}) {
   const log = (...a) => {
     if (!quiet) console.log(...a)
   }
@@ -93,7 +93,7 @@ export function runBootstrap({ quiet = false, env = process.env } = {}) {
 
   // 4. 密钥 .env（随机 session 密钥;已存在绝不覆盖）+ .env.example
   const envDest = join(home, '.env')
-  if (!existsSync(envDest)) {
+  if (seedSessionSecret && !existsSync(envDest)) {
     writeFileSync(envDest, envTemplate(), 'utf8')
     seeds.push('.env(含随机 NUXT_SESSION_PASSWORD)')
   }
@@ -173,7 +173,7 @@ export function runBootstrap({ quiet = false, env = process.env } = {}) {
 const thisEntry = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (thisEntry) {
   try {
-    runBootstrap()
+    runBootstrap({ seedSessionSecret: !process.argv.includes('--no-session-secret') })
   }
   catch (err) {
     // 引导失败不阻断 npm 安装（只影响 home 目录未就绪,首次 aw start 会重试）

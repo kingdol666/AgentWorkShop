@@ -7,13 +7,13 @@
  *  - 复用 AML 共享 .venv(不建第二套环境),线程预算显式注入,不继承 secrets。
  */
 /* eslint-disable @stylistic/max-statements-per-line */
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ChildProcess } from 'node:child_process'
 import { createInterface } from 'node:readline'
 import { AppError } from '../../../utils/errors'
 import { getAmlRuntime } from '../aml/runtime'
-import { ensureVenv, jobEnv, platformPythonDir } from '../aml/python-runtime'
+import { ensureVenv, jobEnv, platformPythonDir, venvMarkerPath } from '../aml/python-runtime'
 import { acquireEnvReadLease } from '../aml/env-lease'
 import { killHarnessProcess } from '../agents/harness-process'
 import { spawnLineProcess } from '../agents/adapters/line-spawn'
@@ -26,15 +26,18 @@ const PROTOCOL_VERSION = 1
 const KILL_CONFIRM_MS = 5000
 
 export function optimizerPythonDir(): string {
-  const candidates = [
-    process.env.AW_OPTIMIZER_PYHOME,
-    join(process.cwd(), 'server/services/workshop/optimization/python'),
-    join(process.cwd(), '.output/.AgentWorkShop/optimizer-python'),
-  ].filter((p): p is string => Boolean(p))
+  const override = process.env.AW_OPTIMIZER_PYHOME
+  const packageRoot = process.env.AW_PACKAGE_ROOT ?? process.cwd()
+  const candidates = override
+    ? [override]
+    : [
+        join(packageRoot, '.output', '.AgentWorkShop', 'optimizer-python'),
+        join(packageRoot, 'server', 'services', 'workshop', 'optimization', 'python'),
+      ]
   for (const candidate of candidates) {
-    if (existsSync(join(candidate, 'worker.py'))) return candidate
+    if (['worker.py', 'problems.py', 'probe.py'].every(file => existsSync(join(candidate, file)))) return candidate
   }
-  return join(process.cwd(), 'server/services/workshop/optimization/python')
+  throw new AppError(503, 'OPTIMIZER_PYTHON_ASSETS_MISSING', `Optimizer Python 资产不完整;检查 AW_PACKAGE_ROOT 或 AW_OPTIMIZER_PYHOME(${candidates.join(', ')})`)
 }
 
 /** 求解进程环境:jobEnv 白名单 + 线程预算;不继承 process.env。 */
@@ -175,8 +178,11 @@ class WorkerProc {
   }
 }
 
+type DependencyProbe = { ok: boolean, osqp: boolean, scipy: boolean, pythonPath: string }
+
 export class SolverWorkerPool {
   private readonly workers: WorkerProc[]
+  private dependencyProbe: { identity: string, result: Promise<DependencyProbe> } | null = null
   private pythonPath: string | null = null
   private readonly pythonDir = optimizerPythonDir()
   private consecutiveFailures = 0
@@ -214,9 +220,39 @@ export class SolverWorkerPool {
     return this.pythonPath
   }
 
-  /** 能力探针:缺依赖返回 ENV_MISSING_DEP(不要等请求崩)。 */
-  async probe(): Promise<{ ok: boolean, osqp: boolean, scipy: boolean, pythonPath: string }> {
+  /** Coalesce probes for the same interpreter and AML environment generation. */
+  async probe(): Promise<DependencyProbe> {
     const pythonPath = await this.ensureReady()
+    const lease = acquireEnvReadLease('optimizer-probe')
+    try {
+      const rt = getAmlRuntime()
+      const interpreter = statSync(pythonPath, { throwIfNoEntry: false })
+      const marker = statSync(venvMarkerPath(rt), { throwIfNoEntry: false })
+      if (!interpreter?.isFile() || !marker?.isFile()) {
+        this.dependencyProbe = null
+        this.pythonPath = null
+        return { ok: false, osqp: false, scipy: false, pythonPath }
+      }
+      const identity = JSON.stringify([pythonPath, interpreter.ctimeMs, interpreter.mtimeMs, marker.ctimeMs, marker.mtimeMs])
+      if (this.dependencyProbe?.identity === identity) return await this.dependencyProbe.result
+      const probe = { identity, result: this.probeDependencies(pythonPath) }
+      this.dependencyProbe = probe
+      try {
+        const result = await probe.result
+        if (!result.ok && this.dependencyProbe === probe) this.dependencyProbe = null
+        return result
+      }
+      catch (err) {
+        if (this.dependencyProbe === probe) this.dependencyProbe = null
+        throw err
+      }
+    }
+    finally {
+      lease.release()
+    }
+  }
+
+  private async probeDependencies(pythonPath: string): Promise<DependencyProbe> {
     // 固定脚本文件(不使用 -c 内联代码,零拼接);子进程统一走 line-spawn 包装
     const child = spawnLineProcess(pythonPath, [join(this.pythonDir, 'probe.py')], {
       cwd: this.pythonDir, env: solverEnv(getAmlRuntime().root, this.pythonDir, this.options.threads), cleanEnv: true,
@@ -228,12 +264,15 @@ export class SolverWorkerPool {
         if (child.pid) killHarnessProcess(child.pid)
         resolve(-1)
       }, 30_000)
-      child.once('exit', (exitCode) => { clearTimeout(timer); resolve(exitCode ?? -1) })
+      child.once('error', () => { clearTimeout(timer); resolve(-1) })
+      child.once('close', (exitCode) => { clearTimeout(timer); resolve(exitCode ?? -1) })
     })
     let parsed: { osqp?: string | null, scipy?: string | null } = {}
     try { parsed = JSON.parse(chunks.join('').trim() || '{}') as typeof parsed }
     catch { /* 保持空 */ }
-    return { ok: code === 0, osqp: Boolean(parsed.osqp), scipy: Boolean(parsed.scipy), pythonPath }
+    const osqp = Boolean(parsed.osqp)
+    const scipy = Boolean(parsed.scipy)
+    return { ok: code === 0 && osqp && scipy, osqp, scipy, pythonPath }
   }
 
   async solve(ir: ProblemIR, opts: { timeoutMs?: number, requestId?: string } = {}): Promise<{ result: unknown, workerPid: number, elapsedMs: number }> {

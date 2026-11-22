@@ -1,0 +1,20 @@
+{
+  "name": "agentworkshop-desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "description": "AgentWorkShop desktop shell for Windows",
+  "author": "AgentWorkShop",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0"
+  }
+}

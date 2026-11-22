@@ -23,6 +23,7 @@ export async function run(argv) {
     if (value === true) legacy.push(`--${key}`)
     else if (value !== undefined && value !== false) legacy.push(`--${key}`, String(value))
   }
-  await main(legacy)
+  const { closed } = await main(legacy)
+  await closed
   return 0
 }

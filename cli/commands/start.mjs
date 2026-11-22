@@ -20,7 +20,7 @@ import { postBuildArtifacts, outputAssetsReady } from '../core/post-build.mjs'
 
 export const meta = {
   name: 'start',
-  aliases: ['s', 'prod', 'preview'],
+  aliases: ['s', 'prod', 'preview', 'web'],
   group: '运行',
   summary: '一键启动生产服务（配置驱动端口,项目检出内外皆可）',
   usage: 'aw start [--port <n>] [--host <h>] [--skip-infra]',

@@ -37,6 +37,19 @@ const { openWorkshopDb } = await import('../server/services/workshop/db/database
 const { configureAmlRuntime, getAmlRuntime } = await import('../server/services/workshop/aml/runtime')
 const { registerBuiltinOptimizerAdapters } = await import('../server/services/workshop/process-model/trainers')
 const db = openWorkshopDb(join(home, 'accept.sqlite'))
+// Use production member/mode lookups without starting the manager or any services.
+const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
+const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
+const { ManagerAdminAgents } = await import('../server/services/workshop/runtime/manager/admin-agents')
+const channels = createChannelRepo(db)
+const channelAgents = createChannelAgentRepo(db)
+const globals = globalThis as unknown as { __workshopManager?: unknown }
+const previousManager = globals.__workshopManager
+Object.assign(globals, { __workshopManager: {
+  deps: { db, repos: { channels, channelAgents } },
+  channelModeOf: ManagerAdminAgents.prototype.channelModeOf,
+  channelModeForAgent: ManagerAdminAgents.prototype.channelModeForAgent,
+} })
 configureAmlRuntime(db)
 const rt = getAmlRuntime()
 // 复用真实 AML venv(只写 marker);否则每次验收都会重装 torch
@@ -256,8 +269,9 @@ section('A1/A15/A16 data')
   record('A1', 'manifest v2 sidecar 篡改使 hash 失败', h1 !== h2 && h1.length === 64, `${h1.slice(0, 10)} ≠ ${h2.slice(0, 10)}`)
 
   try {
+    const url = process.env.ACCEPT_TSDB_URL
+    if (!url) throw new Error('未配置隔离 Timescale 测试库(ACCEPT_TSDB_URL)')
     const { TimescaleAdapter } = await import('../server/services/workshop/daq/storage/timescale.adapter')
-    const url = process.env.ACCEPT_TSDB_URL ?? 'postgres://postgres:awshop@127.0.0.1:5432/awshop'
     const ts = new TimescaleAdapter(url)
     await ts.init()
     const node = `acc-ts-${Date.now().toString(36)}`
@@ -393,7 +407,7 @@ section('A6/A17 binding')
 {
   const nowIso = new Date().toISOString()
   db.prepare(`INSERT INTO workspaces (id, owner_user_id, name, created_at) VALUES ('ws-acc','u-acc','ws',?)`).run(nowIso)
-  db.prepare(`INSERT INTO channels (id, name, description, enabled, created_at, updated_at) VALUES ('ch-acc','ch','',1,?,?)`).run(nowIso, nowIso)
+  db.prepare(`INSERT INTO channels (id, name, description, enabled, channel_mode, created_at, updated_at) VALUES ('ch-acc','ch','',1,'production_line_integrated',?,?)`).run(nowIso, nowIso)
   db.prepare(`INSERT INTO workspace_channels (workspace_id, channel_id, created_at) VALUES ('ws-acc','ch-acc',?)`).run(nowIso)
   db.prepare(`INSERT INTO agents (id, name, harness, created_at, updated_at) VALUES ('tpl-acc','tpl','mock',?,?)`).run(nowIso, nowIso)
   db.prepare(`INSERT INTO channel_agents (id, channel_id, template_id, name, harness, token, created_at, updated_at) VALUES ('ca-acc','ch-acc','tpl-acc','a','mock','tok-acc',?,?), ('ca-acc2','ch-acc','tpl-acc','a2','mock','tok-acc2',?,?)`).run(nowIso, nowIso, nowIso, nowIso)
@@ -662,10 +676,11 @@ section('A9/A13/A14')
     channelId: 'ch-acc', profile: 'aml_optimization', optimizationMode: 'aml',
     boundModelId: unqualifiedModelId, capability: {}, controlPolicy: 'bounded_auto', createdBy: 'acc',
   })
+  const noBindingMember = channelAgents.create({ channelId: 'ch-acc', templateId: 'tpl-acc', name: 'a4', harness: 'mock', role: 'worker' })
   const legacyDispatch = await dispatchHostTool(
     {
-      identity: { agentId: 'ca-acc-nobind', channelId: 'ch-acc', role: 'worker', name: 'a4' },
-      state: { currentTaskId: null, sourceChatMessageId: null, sourceChatDeliveryId: null, replyContext: null },
+      identity: { agentId: noBindingMember.id, channelId: noBindingMember.channelId, role: 'worker', name: noBindingMember.name },
+      state: { currentTaskId: null, sessionId: null, sourceChatMessageId: null, sourceChatDeliveryId: null, replyContext: null },
       getWorkspace: () => null,
     },
     { toolName: 'mpc_optimize', arguments: {} },
@@ -729,7 +744,7 @@ section('A18/A21 tools')
 
   setHybridChannelProfile({ channelId: 'ch-acc', profile: 'aml_optimization', capability: {}, controlPolicy: 'bounded_auto', createdBy: 'acc' })
   const nowIso = new Date().toISOString()
-  db.prepare(`INSERT INTO channels (id, name, description, enabled, created_at, updated_at) VALUES ('ch-legacy','l','',1,?,?)`).run(nowIso, nowIso)
+  db.prepare(`INSERT INTO channels (id, name, description, enabled, channel_mode, created_at, updated_at) VALUES ('ch-legacy','l','',1,'production_line_integrated',?,?)`).run(nowIso, nowIso)
   setHybridChannelProfile({ channelId: 'ch-legacy', profile: 'legacy', capability: {}, controlPolicy: 'manual', createdBy: 'acc' })
   const opt = hostToolsForRole('worker', 'ch-acc').map(t => t.name)
   const legacy = hostToolsForRole('worker', 'ch-legacy').map(t => t.name)
@@ -860,4 +875,5 @@ const evidence = {
 writeFileSync(join(evidenceDir, 'acceptance.json'), JSON.stringify(evidence, null, 2))
 console.log(`\n${passed}/${results.length} 通过;证据:${join(evidenceDir, 'acceptance.json')}`)
 await pool.shutdown()
+globals.__workshopManager = previousManager
 if (failed > 0) process.exitCode = 1

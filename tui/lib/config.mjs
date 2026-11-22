@@ -4,30 +4,12 @@
 // 找不到(全局安装任意 cwd)→ ~/.AgentWorkShop。
 // ============================================================
 import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join, resolve, dirname } from 'node:path'
+import { dirname, join } from 'node:path'
+import { resolveRunMode } from '../../shared/config/home.mjs'
 
-/** 向上查找文件(repo 模式判定) */
-function findUp(startDir, filename) {
-  let dir = resolve(startDir)
-  for (;;) {
-    const candidate = join(dir, filename)
-    if (existsSync(candidate)) return candidate
-    const parent = dirname(dir)
-    if (parent === dir) return null
-    dir = parent
-  }
-}
-
-/** 配置根(与服务端同策略):仅当用户自建了 <检出根>/.AgentWorkShop 时优先使用;
- *  否则一律回落 ~/.AgentWorkShop(绝不在 pwd 下自动创建)。 */
-export function configRoot(cwd = process.cwd()) {
-  const marker = findUp(cwd, 'config.yml')
-  if (marker) {
-    const candidate = join(dirname(marker), '.AgentWorkShop')
-    if (existsSync(candidate)) return candidate
-  }
-  return join(homedir(), '.AgentWorkShop')
+/** 使用与 CLI/服务端相同的配置根；显式 home 模式不会落到源码工作区。 */
+export function configRoot(cwd = process.cwd(), env = process.env) {
+  return resolveRunMode({ cwd, env }).configRoot
 }
 
 const authPath = cwd => join(configRoot(cwd), 'tui-auth.json')
