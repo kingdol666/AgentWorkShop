@@ -124,13 +124,16 @@ export function parseRelease(json, { repo = UPDATE_REPO } = {}) {
     ?? assets.find(a => /sha256sums.*\.txt$/i.test(a.name ?? ''))
   if (!installer || !sums) throw new Error('release is missing the installer or SHA256SUMS.txt')
   const htmlUrl = typeof json.html_url === 'string' ? validateUpdateUrl(json.html_url, { allowQuery: false }).toString() : `https://github.com/${repo}/releases`
+  // Prefer the API asset endpoint: `browser_download_url` starts on github.com,
+  // which is blocked in some restricted networks while api.github.com works.
+  const assetUrl = asset => (typeof asset.url === 'string' && asset.url) || asset.browser_download_url
   return {
     version,
     tag: String(json.tag_name),
     notes: String(json.body ?? '').trim().slice(0, 2_000),
     htmlUrl,
-    installer: { name: String(installer.name), url: String(installer.browser_download_url), size: Number(installer.size) || 0 },
-    sums: { name: String(sums.name), url: String(sums.browser_download_url), size: Number(sums.size) || 0 },
+    installer: { name: String(installer.name), url: String(assetUrl(installer)), size: Number(installer.size) || 0 },
+    sums: { name: String(sums.name), url: String(assetUrl(sums)), size: Number(sums.size) || 0 },
   }
 }
 
@@ -165,8 +168,8 @@ export async function checkForUpdate({ currentVersion, repo = UPDATE_REPO, fetch
   }
 }
 
-async function download(rawUrl, dest, { fetchImpl = fetch, timeoutMs, maxBytes, onProgress, lookupImpl }) {
-  const res = await request(rawUrl, { fetchImpl, timeoutMs, lookupImpl })
+async function download(rawUrl, dest, { fetchImpl = fetch, timeoutMs, maxBytes, onProgress, lookupImpl, headers }) {
+  const res = await request(rawUrl, { fetchImpl, timeoutMs, lookupImpl, headers })
   if (!res.ok) throw new Error(`download failed: HTTP ${res.status}`)
   const total = Number(res.headers.get('content-length') ?? 0) || maxBytes
   if (total > maxBytes) throw new Error('download exceeded the size limit')
@@ -191,10 +194,12 @@ async function download(rawUrl, dest, { fetchImpl = fetch, timeoutMs, maxBytes, 
   return { bytes: received, sha256: hash.digest('hex') }
 }
 
-/** Download the installer next to its SHA256SUMS.txt, verify the exact filename, and return the path. */
-export async function downloadUpdate(release, { dir, fetchImpl = fetch, timeoutMs = 60_000, onProgress, lookupImpl } = {}) {
+/** Download the installer next to its SHA256SUMS.txt, verify the exact filename, and return the path.
+ *  A full installer is ~500 MB; the request budget must cover the whole body at slow links. */
+export async function downloadUpdate(release, { dir, fetchImpl = fetch, timeoutMs = 30 * 60_000, onProgress, lookupImpl } = {}) {
   if (!dir) throw new Error('download directory is required')
-  const sumsRes = await request(release.sums.url, { fetchImpl, timeoutMs, lookupImpl })
+  const assetHeaders = { accept: 'application/octet-stream' }
+  const sumsRes = await request(release.sums.url, { fetchImpl, timeoutMs, lookupImpl, headers: assetHeaders })
   const sumsText = await readText(sumsRes, MAX_SUMS_BYTES)
   const expected = parseSums(sumsText, release.installer.name)
   if (!expected) throw new Error('SHA256SUMS.txt does not list the installer')
@@ -205,6 +210,7 @@ export async function downloadUpdate(release, { dir, fetchImpl = fetch, timeoutM
     maxBytes: MAX_INSTALLER_BYTES,
     onProgress,
     lookupImpl,
+    headers: assetHeaders,
   })
   if (sha256 !== expected) {
     await unlink(dest).catch(() => {})

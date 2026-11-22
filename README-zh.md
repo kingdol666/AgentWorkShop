@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.0)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.1)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.17.0（2026-11-22 发布）</b> · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.17.1（2026-11-22 发布）</b> · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-17-0) · [0.17.0 发布说明](#whats-new-in-0170) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-17-1) · [0.17.1 发布说明](#whats-new-in-0171) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,11 +49,17 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 当前源码 v0.17.0
+## 当前源码 v0.17.1
 
-当前源码版本为 **0.17.0**（npm + GitHub Release，2026-11-22）。本版新增一体化桌面壳（40px 标题导轨 + 原样网页内容视图）、桌面/Web/CLI 共用 `~/.AgentWorkShop` 数据目录，以及基于 GitHub Releases 的应用内更新（SHA-256 校验、静默安装并重启）。同时保留 0.16.x 全部内容——0.15.x 的「AgentPrefab 能力装配」计划（#252–#258）加上 **Leader 自主管理 Worker 的 AgentPrefab 能力**（合并 PR #262/#264/#265）：Channel Leader 创建 Worker 时可携带已发布 revision 选择器并原子固定 `(prefabId, revision, slotValues, contentHash)`；名册带 `manageable`/`protected` 标记；可按 revision 切换/解绑绑定；且只能移除自己创建的 Worker。Worker 创建来源持久化（`created_by_kind`/`created_by_id`/`created_via`/`created_reason`）；人类绑定 Worker、其他 Leader 的 Worker、Lead、Project Leader 与未关闭 Session 克隆均受删除保护，移除时回收任务、同事务取消待投递并清理实例节点绑定，不动全局模板与不可变 revision。native/REST/MCP/Project 各路径 dispatch 对损坏/哈希不匹配绑定、停用成员、角色/版本不匹配与模板可见性越界一律 fail-closed；Project 任务实例重试复用首次固定的快照并做 CAS/哈希校验。已发布 Prefab profile 按字段应用到受支持 harness（OMP thinking level 走 RPC）；唯一 Skill 别名解析为 canonical revision id。数据库契约 **v10** 新增来源列（存量行保守迁移为 `system`/`protected`）。
+当前源码版本为 **0.17.1**（npm + GitHub Release，2026-11-22）。本版新增一体化桌面壳（40px 标题导轨 + 原样网页内容视图）、桌面/Web/CLI 共用 `~/.AgentWorkShop` 数据目录，以及基于 GitHub Releases 的应用内更新（SHA-256 校验、静默安装并重启）。0.17.1 将更新下载改为 GitHub API 资产端点，并把安装包传输预算提升到 30 分钟，使受限网络与慢速链路也能完成更新。同时保留 0.16.x 全部内容——0.15.x 的「AgentPrefab 能力装配」计划（#252–#258）加上 **Leader 自主管理 Worker 的 AgentPrefab 能力**（合并 PR #262/#264/#265）：Channel Leader 创建 Worker 时可携带已发布 revision 选择器并原子固定 `(prefabId, revision, slotValues, contentHash)`；名册带 `manageable`/`protected` 标记；可按 revision 切换/解绑绑定；且只能移除自己创建的 Worker。Worker 创建来源持久化（`created_by_kind`/`created_by_id`/`created_via`/`created_reason`）；人类绑定 Worker、其他 Leader 的 Worker、Lead、Project Leader 与未关闭 Session 克隆均受删除保护，移除时回收任务、同事务取消待投递并清理实例节点绑定，不动全局模板与不可变 revision。native/REST/MCP/Project 各路径 dispatch 对损坏/哈希不匹配绑定、停用成员、角色/版本不匹配与模板可见性越界一律 fail-closed；Project 任务实例重试复用首次固定的快照并做 CAS/哈希校验。已发布 Prefab profile 按字段应用到受支持 harness（OMP thinking level 走 RPC）；唯一 Skill 别名解析为 canonical revision id。数据库契约 **v10** 新增来源列（存量行保守迁移为 `system`/`protected`）。
 
 v0.16.0 验证：#262/#264/#265/#263/#266 PR quick-gate 全绿；focused 套件 **38/38**、合并后 **22/22** 与 **13/13**、Project/Prefab/Session 回归集 **235/235**；发布构建实机隔离验收——Leader/Prefab 全链 **30/30 ×2**（创建带 Prefab 的 Worker → SQLite 来源核验 → 名册标记 → 目录收窄 → dispatch 放行/拒绝 → 用户路径 Worker 保护 → lead 自改拒绝 → revision 切换即收窄 → 解绑 → 移除保留模板与 revision → REST 删 lead 409），官方 L10 全新实例 **21/21**，AgentTeam CRUD/部署/派发 **25/25**，前端 SSR 路由 200。Mimosa 深扫有封印（`sha256:a91957e0…`，54 findings，依赖风险 0）——findings 如实呈报，不作安全通过声明。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
+
+## What's new in 0.17.1
+
+- **更新端点加固**：下载改用 GitHub API 资产端点（`/releases/assets/:id` + `Accept: application/octet-stream`），不再从 `github.com` 的 `browser_download_url` 起步；重定向仍只允许固定 `release-assets.githubusercontent.com`，SHA-256 校验不变。受限网络下 `github.com` 不可达而 `api.github.com` 可用时仍可更新。
+- **传输预算**：安装包下载预算从 60 秒提升到 30 分钟，约 500 MB 的资产在慢速链路也能完成；校验文件仍限长。
+- **验证**：真实 0.17.0 资产经 API 端点下载并通过 `SHA256SUMS.txt` 校验；0.17.1 安装器与在线更新流程见发布证据。
 
 ## What's new in 0.17.0
 
@@ -477,7 +483,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.17.0（已发布 2026-11-22）** —— [最新版本 v0.17.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.0) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.17.1（已发布 2026-11-22）** —— [最新版本 v0.17.1](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.1) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />
