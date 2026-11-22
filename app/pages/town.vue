@@ -131,6 +131,12 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
 
 <template>
   <div class="town-page">
+    <!-- 未进入 3D 场景(加载/无频道空态)时没有 TownTopNav:单独提供返回主界面入口,
+         否则桌面端会停在全屏空态里无路可回。 -->
+    <AppBackToMain
+      v-if="!authReady || !hasChannels || !focusedChannelId"
+      class="town-state-back"
+    />
     <!-- 无频道:诚实空态 -->
     <div
       v-if="authReady && !hasChannels"
@@ -165,12 +171,21 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
 <style scoped>
 .town-page {
   /* 独立全屏布局(town.vue):占据整个视口,无侧栏/顶栏/页脚的穿插 */
+  position: relative;
   width: 100vw;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
   /* 赛博小镇背景贴图(3D 场景地面同源;低对比,不影响前景) */
   background: var(--paper) url('/scene/background/cyber-town-background.svg') center / cover no-repeat fixed;
+}
+/* 空态/加载态下的返回入口:位于全屏面板之上;3D 场景态由 TownTopNav 承担 */
+.town-state-back {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 30;
+  color: var(--ink);
 }
 .pane-empty {
   display: flex;
