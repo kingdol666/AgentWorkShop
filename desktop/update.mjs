@@ -5,7 +5,7 @@ import { createWriteStream } from 'node:fs'
 import { unlink } from 'node:fs/promises'
 import { lookup as dnsLookup } from 'node:dns/promises'
 import { once } from 'node:events'
-import { join } from 'node:path'
+import { join, win32 } from 'node:path'
 
 export const UPDATE_REPO = 'kingdol666/AgentWorkShop'
 export const UPDATE_HOSTS = Object.freeze([
@@ -235,7 +235,8 @@ export function buildInstallHelper({ installer, executable, env = process.env } 
   if (typeof executable !== 'string' || !executable) throw new Error('executable path is required')
   const root = env.SystemRoot || env.SYSTEMROOT || 'C:\\Windows'
   return {
-    file: join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+    // Windows executable path: keep win32 separators even when tests run on another OS.
+    file: win32.join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
     args: ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', INSTALL_HELPER_SCRIPT],
     env: { ...env, AW_UPDATE_INSTALLER: installer, AW_UPDATE_EXE: executable },
   }
