@@ -220,24 +220,29 @@ export async function downloadUpdate(release, { dir, fetchImpl = fetch, timeoutM
 }
 
 // The installer must run after this process exits (its files are locked while we
-// live), so a detached helper waits, installs silently, then restarts the app.
-// Paths travel through the environment: cmd.exe does not understand the \" escapes
-// Node applies to quoted arguments, and PowerShell resolves $env: values itself.
-const INSTALL_HELPER_SCRIPT = [
-  'Start-Sleep -Seconds 6',
-  'Start-Process -FilePath $env:AW_UPDATE_INSTALLER -ArgumentList \'/S\' -Wait',
-  'Start-Process -FilePath $env:AW_UPDATE_EXE -WorkingDirectory (Split-Path -Parent $env:AW_UPDATE_EXE)',
-].join('; ')
+// live), so a detached console-free WSH helper waits, installs silently, then
+// restarts the app. Paths travel through the environment: cmd.exe mangles Node's
+// \" quoting, and Windows PowerShell exits immediately when spawned with
+// DETACHED_PROCESS (verified on Windows 11). wscript.exe needs no console.
+export const INSTALL_HELPER_SCRIPT = [
+  'Set sh = CreateObject("WScript.Shell")',
+  'Set env = sh.Environment("PROCESS")',
+  'WScript.Sleep 6000',
+  'sh.Run """" & env("AW_UPDATE_INSTALLER") & """ /S", 0, True',
+  'sh.Run """" & env("AW_UPDATE_EXE") & """", 1, False',
+  '',
+].join('\r\n')
 
 /** Fixed helper invocation for the silent install + relaunch step. */
-export function buildInstallHelper({ installer, executable, env = process.env } = {}) {
+export function buildInstallHelper({ installer, executable, scriptPath, env = process.env } = {}) {
   if (typeof installer !== 'string' || !installer) throw new Error('installer path is required')
   if (typeof executable !== 'string' || !executable) throw new Error('executable path is required')
+  if (typeof scriptPath !== 'string' || !scriptPath) throw new Error('helper script path is required')
   const root = env.SystemRoot || env.SYSTEMROOT || 'C:\\Windows'
   return {
     // Windows executable path: keep win32 separators even when tests run on another OS.
-    file: win32.join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
-    args: ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', INSTALL_HELPER_SCRIPT],
+    file: win32.join(root, 'System32', 'wscript.exe'),
+    args: ['//B', '//NoLogo', scriptPath],
     env: { ...env, AW_UPDATE_INSTALLER: installer, AW_UPDATE_EXE: executable },
   }
 }

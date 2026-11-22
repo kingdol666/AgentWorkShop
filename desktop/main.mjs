@@ -1,11 +1,11 @@
 import { app, BrowserWindow, WebContentsView, dialog, ipcMain, Menu, session } from 'electron'
 import { spawn } from 'node:child_process'
-import { createWriteStream, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isAppUrl, startSidecar } from './sidecar.mjs'
-import { checkForUpdate, downloadUpdate, buildInstallHelper, UPDATE_REPO } from './update.mjs'
+import { checkForUpdate, downloadUpdate, buildInstallHelper, INSTALL_HELPER_SCRIPT, UPDATE_REPO } from './update.mjs'
 import {
   CHROME_CHANNELS,
   TITLEBAR_HEIGHT,
@@ -212,21 +212,25 @@ async function installUpdate() {
     setUpdateState({ status: 'error', error: '更新包不存在，请重新下载' })
     return
   }
-  const choice = await dialog.showMessageBox(shell, {
-    type: 'question',
-    title: '安装更新',
-    message: `安装 AgentWorkShop v${updateRelease.version} 并重启？`,
-    detail: (updateRelease.notes || '更新完成后应用会自动重启。').slice(0, 1_200),
-    buttons: ['重启并安装', '稍后'],
-    defaultId: 0,
-    cancelId: 1,
-  })
+  const choice = process.env.AW_UPDATE_AUTOINSTALL === '1'
+    ? { response: 0 }
+    : await dialog.showMessageBox(shell, {
+        type: 'question',
+        title: '安装更新',
+        message: `安装 AgentWorkShop v${updateRelease.version} 并重启？`,
+        detail: (updateRelease.notes || '更新完成后应用会自动重启。').slice(0, 1_200),
+        buttons: ['重启并安装', '稍后'],
+        defaultId: 0,
+        cancelId: 1,
+      })
   if (choice.response !== 0) return
   const installer = updateInstaller
   const exe = process.execPath
   // The app stops its sidecar first; the detached helper waits for our files to
   // unlock, runs the NSIS installer silently, then starts the updated executable.
-  const helper = buildInstallHelper({ installer, executable: exe, env: process.env })
+  const helperScript = join(tmpdir(), 'agentworkshop-update-helper.vbs')
+  writeFileSync(helperScript, INSTALL_HELPER_SCRIPT, 'ascii')
+  const helper = buildInstallHelper({ installer, executable: exe, scriptPath: helperScript, env: process.env })
   spawn(helper.file, helper.args, { detached: true, stdio: 'ignore', windowsHide: true, env: helper.env }).unref()
   quit()
 }

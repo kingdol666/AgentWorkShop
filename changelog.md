@@ -1,8 +1,15 @@
+## v0.17.3 — Desktop update install helper via WSH（2026-11-23）
+
+- The silent install + relaunch step now runs through a detached, console-free WSH helper: `wscript.exe //B //NoLogo <fixed VBS>` with `AW_UPDATE_INSTALLER`/`AW_UPDATE_EXE` in the environment. The VBS waits 6 seconds, runs the NSIS installer with `/S` and waits for it, then restarts the executable from the install directory. 更新安装改由独立无控制台 WSH 助手执行（路径走环境变量）：等待 6 秒 → `/S` 静默安装 → 重启当前安装目录中的程序。
+- Root cause of the two earlier failures (both reproduced on Windows 11): (1) `cmd.exe` does not understand the `\"` quoting Node applies to quoted argv, so the installer path never resolved; (2) Windows PowerShell exits immediately when spawned with `DETACHED_PROCESS`, so the 0.17.2 helper never ran. `wscript.exe` is a GUI-subsystem host and survives the parent's exit. 两条旧路径均实测不可用：`cmd.exe` 引号转义破坏路径；分离式 PowerShell 立即退出。
+- Added `AW_UPDATE_AUTOINSTALL=1` (acceptance-only) to skip the confirmation dialog for automated end-to-end runs; unit tests pin the helper host/args and reject missing installer/executable/script paths. 新增验收钩子与回归断言。
+- Verification: 0.17.3 acceptance run — installed build checks the release, downloads the installer through the API endpoint, verifies SHA-256, then the helper installs over the current install directory and relaunches the app. 安装版实测：检查 → 下载 → SHA-256 → 就地安装 → 重启。
+
 ## v0.17.2 — Desktop update install helper fix（2026-11-22）
 
 - The silent install + relaunch step now runs through a detached PowerShell helper (`buildInstallHelper`) that receives the installer and executable paths through `AW_UPDATE_INSTALLER`/`AW_UPDATE_EXE`. The previous `cmd.exe` command string embedded quoted paths, and Node on Windows escapes those quotes as `\"`, which `cmd.exe` does not understand: the update reached “重启安装” but the installer never started after the app exited. PowerShell is invoked with plain argv, waits 6 seconds, runs the NSIS installer with `/S`, then restarts the executable from the install directory. 更新安装改由独立 PowerShell 助手执行（路径走环境变量），修复 `cmd.exe` 引号转义导致安装包未启动的问题。
 - Added regression tests: the helper command line must not contain drive-letter paths, and a missing installer/executable path must be rejected. 新增回归测试。
-- Verification: an installed 0.17.1 build checked the release, downloaded the 0.17.1 installer through the API endpoint (416,549,162 bytes; SHA-256 matched `SHA256SUMS.txt`), reached 「重启安装」, and exposed the broken `cmd.exe` helper (no installer process, install directory untouched). 0.17.2 re-runs the full update flow end to end. 安装版实测暴露旧助手缺陷；0.17.2 完整复测由下载到安装重启。
+- Verification: an installed 0.17.1 build checked the release, downloaded the 0.17.1 installer through the API endpoint (416,549,162 bytes; SHA-256 matched `SHA256SUMS.txt`), reached 「重启安装」, and exposed the broken `cmd.exe` helper (no installer process, install directory untouched). The PowerShell helper shipped here was then reproduced as a silent no-op (detached PowerShell exits immediately) and replaced in 0.17.3. 安装版实测暴露旧助手缺陷；本版 PowerShell 助手在分离启动时立即退出，0.17.3 已改用 WSH 助手。
 
 ## v0.17.1 — Update channel endpoint and transfer budget fix（2026-11-22）
 
