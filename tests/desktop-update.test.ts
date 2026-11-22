@@ -10,6 +10,7 @@ import {
   checkForUpdate,
   compareVersions,
   downloadUpdate,
+  INSTALL_HELPER_SCRIPT,
   isPublicAddress,
   normalizeVersion,
   parseRelease,
@@ -155,26 +156,28 @@ test('downloadUpdate deletes a hash-mismatched installer', async () => {
 test('install helper passes paths through the environment, not the command line', () => {
   const installer = 'C:\\Temp\\ai build\\AgentWorkShop-Setup-9.9.9-win-x64.exe'
   const executable = 'C:\\Program Files\\AgentWorkShop\\AgentWorkShop.exe'
+  const scriptPath = 'C:\\Users\\u\\AppData\\Local\\Temp\\agentworkshop-update-helper.vbs'
   const helper = buildInstallHelper({
     installer,
     executable,
+    scriptPath,
     env: { SystemRoot: 'C:\\Windows', PATH: 'C:\\Windows' },
   })
-  assert.equal(helper.file, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
-  assert.equal(helper.args[0], '-NoProfile')
-  assert.ok(helper.args.includes('-NonInteractive'))
-  const script = helper.args[helper.args.length - 1]
-  assert.match(script, /Start-Sleep -Seconds 6/)
-  assert.match(script, /Start-Process -FilePath \$env:AW_UPDATE_INSTALLER -ArgumentList '\/S' -Wait/)
-  assert.match(script, /Start-Process -FilePath \$env:AW_UPDATE_EXE -WorkingDirectory/)
+  assert.equal(helper.file, 'C:\\Windows\\System32\\wscript.exe')
+  assert.deepEqual(helper.args, ['//B', '//NoLogo', scriptPath])
+  assert.match(INSTALL_HELPER_SCRIPT, /WScript\.Sleep 6000/)
+  assert.match(INSTALL_HELPER_SCRIPT, /env\("AW_UPDATE_INSTALLER"\) & """ \/S", 0, True/)
+  assert.match(INSTALL_HELPER_SCRIPT, /env\("AW_UPDATE_EXE"\) & """", 1, False/)
   assert.equal(helper.env.AW_UPDATE_INSTALLER, installer)
   assert.equal(helper.env.AW_UPDATE_EXE, executable)
-  // Paths must never enter the command string: cmd.exe mangles Node's \" escaping
-  // and an install could silently never start.
-  for (const arg of helper.args) assert.doesNotMatch(arg, /[A-Za-z]:\\/)
+  // Paths must never enter a command string: cmd.exe mangles Node's \" escaping and
+  // PowerShell exits immediately when detached, so both would silently never install.
+  assert.doesNotMatch(INSTALL_HELPER_SCRIPT, /[A-Za-z]:\\/)
 })
 
 test('install helper rejects missing paths', () => {
-  assert.throws(() => buildInstallHelper({ executable: 'C:\\app.exe' }), /installer path/)
-  assert.throws(() => buildInstallHelper({ installer: 'C:\\setup.exe' }), /executable path/)
+  const base = { installer: 'C:\\setup.exe', executable: 'C:\\app.exe', scriptPath: 'C:\\h.vbs' }
+  assert.throws(() => buildInstallHelper({ ...base, installer: '' }), /installer path/)
+  assert.throws(() => buildInstallHelper({ ...base, executable: '' }), /executable path/)
+  assert.throws(() => buildInstallHelper({ ...base, scriptPath: '' }), /helper script path/)
 })
