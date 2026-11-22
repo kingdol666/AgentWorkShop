@@ -375,7 +375,7 @@
         <svg class="glyph-max" viewBox="0 0 10 10" aria-hidden="true"><rect x="1.1" y="1.1" width="7.8" height="7.8" rx="1.2" /></svg>
         <svg class="glyph-restore" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.4 2.2h4.4a.9.9 0 0 1 .9.9v4.4" /><rect x="1.3" y="3.3" width="5.4" height="5.4" rx="1" /></svg>
       </button>
-      <button class="ctl ctl-close" type="button" data-action="close" aria-label="关闭" title="关闭">
+      <button class="ctl ctl-close" type="button" data-action="close" aria-label="关闭到托盘" title="关闭到托盘">
         <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.6 1.6l6.8 6.8M8.4 1.6l-6.8 6.8" /></svg>
       </button>
     </div>
@@ -390,6 +390,7 @@
       const updateLabel = document.getElementById('update-label')
       const status = document.getElementById('status')
       const statusText = document.getElementById('status-text')
+      const close = document.querySelector('[data-action="close"]')
       const labels = { online: '已连接', connecting: '连接中', offline: '已断开' }
       if (!api) {
         root.dataset.ready = 'missing'
@@ -438,6 +439,12 @@
       })
       api.onTheme((value) => {
         root.dataset.theme = value === 'light' ? 'light' : 'dark'
+      })
+      api.onPrefs((prefs) => {
+        const toTray = !prefs || prefs.closeToTray !== false
+        if (!close) return
+        close.title = toTray ? '关闭到托盘' : '关闭'
+        close.setAttribute('aria-label', close.title)
       })
       api.onTitle((value) => {
         const text = typeof value === 'string' ? value.trim() : ''

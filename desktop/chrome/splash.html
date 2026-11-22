@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="zh-CN" data-phase="prepare" data-leaving="false">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgentWorkShop · 初始化</title>
+  <style>
+    :root {
+      --bg: #070c14;
+      --top: #0a1322;
+      --line: #1d2a3d;
+      --line-strong: #2c405b;
+      --ink: #e9eff8;
+      --soft: #b6c3d5;
+      --faint: #93a3b8;
+      --dim: #6f8199;
+      --mint: #3fe4ab;
+      --mint-deep: #2fd79e;
+      --cyan: #2bb9e8;
+      --danger: #ff8b8b;
+      --panel: #0a1220;
+    }
+
+    * { box-sizing: border-box; }
+
+    [hidden] { display: none !important; }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    body {
+      color: var(--ink);
+      font-family: 'Geist', 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans SC', system-ui, sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .frame {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 0 26px 42px;
+      background:
+        radial-gradient(520px 260px at 14% -12%, rgb(63 228 171 / 12%), transparent 68%),
+        radial-gradient(420px 300px at 108% 112%, rgb(43 185 232 / 7%), transparent 72%),
+        linear-gradient(180deg, var(--top), var(--bg) 46%);
+      transition: opacity 260ms ease, transform 260ms ease;
+    }
+
+    /* Honest instrument texture: a faint dot grid, not a decorative gradient wash. */
+    .frame::before {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      content: '';
+      background-image: radial-gradient(rgb(233 239 248 / 5%) 1px, transparent 1px);
+      background-size: 18px 18px;
+      mask-image: linear-gradient(180deg, rgb(0 0 0 / 55%), transparent 72%);
+      pointer-events: none;
+    }
+
+    /* Signal rule: mint segment first, then hairline, matching the title rail. */
+    .frame::after {
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      z-index: 2;
+      height: 1px;
+      content: '';
+      background: linear-gradient(90deg, var(--mint) 0 64px, var(--line) 64px, var(--line) 100%);
+    }
+
+    html[data-leaving='true'] .frame {
+      opacity: 0;
+      transform: scale(.992);
+    }
+
+    .head {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex: none;
+      align-items: center;
+      gap: 10px;
+      height: 56px;
+      -webkit-app-region: drag;
+      app-region: drag;
+    }
+
+    .mark {
+      flex: none;
+      width: 30px;
+      height: 30px;
+      filter: drop-shadow(0 1px 2px rgb(0 0 0 / 30%));
+    }
+
+    .wordmark {
+      font-size: 13px;
+      line-height: 1;
+      letter-spacing: .015em;
+      white-space: nowrap;
+    }
+
+    .wordmark .agent {
+      font-weight: 500;
+      color: var(--soft);
+    }
+
+    .wordmark .shop {
+      font-weight: 650;
+      color: var(--ink);
+    }
+
+    .drag {
+      flex: 1 1 auto;
+      align-self: stretch;
+    }
+
+    .version {
+      flex: none;
+      padding: 3px 8px;
+      font-size: 9.5px;
+      font-weight: 600;
+      color: var(--dim);
+      letter-spacing: .09em;
+      background: rgb(13 21 33 / 80%);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+    }
+
+    .stage {
+      position: relative;
+      z-index: 1;
+      flex: none;
+      padding-top: 4px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0 0 10px;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--mint);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .pulse {
+      width: 6px;
+      height: 6px;
+      background: var(--mint);
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px rgb(63 228 171 / 12%);
+      animation: pulse 1.7s ease-in-out infinite;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 650;
+      line-height: 1.15;
+      color: var(--ink);
+      letter-spacing: -.015em;
+      text-wrap: pretty;
+    }
+
+    .detail {
+      min-height: 20px;
+      margin: 8px 0 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--faint);
+      text-wrap: pretty;
+    }
+
+    .meter {
+      position: relative;
+      height: 6px;
+      margin-top: 20px;
+      overflow: hidden;
+      background: #111c2c;
+      border: 1px solid #182538;
+      border-radius: 999px;
+    }
+
+    .meter-fill {
+      display: block;
+      width: 10%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--mint-deep), #63ebbc 58%, #7ce0ff);
+      border-radius: 999px;
+      transition: width 420ms cubic-bezier(.22, .7, .18, 1);
+    }
+
+    .meter-scan {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 34%;
+      background: linear-gradient(90deg, transparent, rgb(255 255 255 / 18%), transparent);
+      opacity: .45;
+      animation: scan 2.4s linear infinite;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .steps li {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-size: 11px;
+      color: var(--dim);
+      letter-spacing: .02em;
+    }
+
+    .steps li::before {
+      position: absolute;
+      top: 4px;
+      right: 0;
+      left: 14px;
+      height: 1px;
+      content: '';
+      background: var(--line);
+    }
+
+    .steps li:last-child::before { display: none; }
+
+    .tick {
+      position: relative;
+      z-index: 1;
+      width: 9px;
+      height: 9px;
+      background: var(--bg);
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
+      transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .steps li.done .tick {
+      background: var(--mint);
+      border-color: var(--mint);
+      box-shadow: 0 0 0 3px rgb(63 228 171 / 10%);
+    }
+
+    .steps li.active .tick {
+      background: #0d1b22;
+      border-color: var(--mint);
+      box-shadow: 0 0 0 3px rgb(63 228 171 / 14%);
+    }
+
+    .steps li.active .tick::after {
+      position: absolute;
+      inset: 2px;
+      content: '';
+      background: var(--mint);
+      border-radius: 50%;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    .steps li.done { color: var(--soft); }
+
+    .steps li.active {
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .trace {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      min-height: 0;
+      margin-top: 18px;
+      padding: 10px 12px;
+      background: rgb(6 12 20 / 66%);
+      border: 1px solid #152133;
+      border-radius: 10px;
+    }
+
+    .trace-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9.5px;
+      color: var(--dim);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .lines {
+      margin-top: 7px;
+      overflow: hidden;
+      font: 10.5px/1.55 ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+    }
+
+    .line {
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+      color: #7d8fa8;
+      white-space: nowrap;
+    }
+
+    .line .at {
+      flex: none;
+      color: #4f627a;
+    }
+
+    .line:last-child { color: var(--soft); }
+
+    .foot {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 26px;
+      font-size: 10.5px;
+      color: var(--faint);
+      background: rgb(7 12 20 / 64%);
+      border-top: 1px solid #132033;
+    }
+
+    .foot-dot {
+      width: 5px;
+      height: 5px;
+      background: var(--mint);
+      border-radius: 50%;
+      animation: pulse 1.7s ease-in-out infinite;
+    }
+
+    .foot-path {
+      margin-left: auto;
+      color: var(--dim);
+      letter-spacing: .05em;
+    }
+
+    .failure {
+      position: absolute;
+      inset: 56px 26px 42px;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 26px 30px;
+      background: rgb(7 12 20 / 94%);
+      border: 1px solid #3a2230;
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
+    }
+
+    .failure-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 650;
+      color: var(--danger);
+      letter-spacing: -.01em;
+    }
+
+    .failure-text {
+      max-height: 88px;
+      margin: 10px 0 0;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      word-break: break-word;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .btn {
+      height: 30px;
+      padding: 0 14px;
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--soft);
+      cursor: pointer;
+      background: #101a28;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out;
+    }
+
+    .btn:hover {
+      color: var(--ink);
+      border-color: var(--mint);
+    }
+
+    .btn.primary {
+      color: #08130d;
+      background: var(--mint);
+      border-color: transparent;
+    }
+
+    .btn.ghost {
+      color: var(--faint);
+      background: transparent;
+      border-color: var(--line);
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid #6fb3ff;
+      outline-offset: 2px;
+    }
+
+    html[data-phase='error'] .eyebrow { color: var(--danger); }
+    html[data-phase='error'] .pulse,
+    html[data-phase='error'] .foot-dot { background: var(--danger); box-shadow: none; animation: none; }
+    html[data-phase='ready'] .meter-scan,
+    html[data-phase='ready'] .pulse,
+    html[data-phase='ready'] .foot-dot { animation: none; }
+    html[data-phase='ready'] .tick { border-color: var(--mint); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .38; }
+    }
+
+    @keyframes scan {
+      from { left: -34%; }
+      to { left: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .frame,
+      .meter-fill,
+      .tick,
+      .btn { transition: none; }
+
+      .pulse,
+      .meter-scan,
+      .foot-dot,
+      .steps li.active .tick::after { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="frame" id="frame">
+    <header class="head">
+      <svg class="mark" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="badge" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#142339" />
+            <stop offset=".58" stop-color="#0b1422" />
+            <stop offset="1" stop-color="#070c14" />
+          </linearGradient>
+          <linearGradient id="mint" x1="15" y1="51" x2="49" y2="11" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#2fd79e" />
+            <stop offset="1" stop-color="#63ebbc" />
+          </linearGradient>
+          <linearGradient id="cyan" x1="23" y1="37" x2="41" y2="37" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#2bb9e8" />
+            <stop offset="1" stop-color="#7ce0ff" />
+          </linearGradient>
+        </defs>
+        <rect width="512" height="512" rx="120" fill="url(#badge)" />
+        <rect x="2.5" y="2.5" width="507" height="507" rx="118" fill="none" stroke="#3fe4ab" stroke-opacity=".2" stroke-width="3" />
+        <g transform="translate(256 256) scale(8.2) translate(-32 -31.5)" fill="none" stroke-linecap="round">
+          <path d="M32 12 15.5 51" stroke="url(#mint)" stroke-width="6.4" />
+          <path d="M32 12 48.5 51" stroke="url(#mint)" stroke-width="6.4" />
+          <path d="M23.4 37h17.2" stroke="url(#cyan)" stroke-width="5.2" />
+        </g>
+      </svg>
+      <div class="wordmark"><span class="agent">Agent</span><span class="shop">WorkShop</span></div>
+      <span class="drag" aria-hidden="true"></span>
+      <span class="version" id="version"></span>
+    </header>
+
+    <section class="stage">
+      <p class="eyebrow"><span class="pulse" aria-hidden="true"></span><span id="phase-label">正在初始化</span></p>
+      <h1 id="title" role="status" aria-live="polite">准备运行环境</h1>
+      <p class="detail" id="detail" aria-live="polite">校验安装载荷与用户数据目录</p>
+      <div class="meter" id="meter" role="progressbar" aria-label="初始化进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="10">
+        <span class="meter-fill" id="fill"></span>
+        <span class="meter-scan" aria-hidden="true"></span>
+      </div>
+      <ol class="steps" id="steps">
+        <li data-step="prepare"><span class="tick" aria-hidden="true"></span><span>环境</span></li>
+        <li data-step="data"><span class="tick" aria-hidden="true"></span><span>数据</span></li>
+        <li data-step="service"><span class="tick" aria-hidden="true"></span><span>服务</span></li>
+        <li data-step="workshop"><span class="tick" aria-hidden="true"></span><span>工作台</span></li>
+      </ol>
+    </section>
+
+    <section class="trace" aria-label="启动记录">
+      <div class="trace-head"><span>启动记录</span><span id="elapsed">0.0s</span></div>
+      <div class="lines" id="lines"></div>
+    </section>
+
+    <footer class="foot">
+      <span class="foot-dot" aria-hidden="true"></span>
+      <span id="foot-text">服务就绪后自动进入工作台</span>
+      <span class="foot-path">本机服务 · 127.0.0.1</span>
+    </footer>
+
+    <section class="failure" id="failure" role="alert" hidden>
+      <p class="failure-title">启动失败</p>
+      <p class="failure-text" id="failure-text"></p>
+      <div class="actions">
+        <button type="button" class="btn primary" data-action="retry">重试</button>
+        <button type="button" class="btn" data-action="open-logs">打开日志</button>
+        <button type="button" class="btn ghost" data-action="quit">退出</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const api = window.awSplash
+      const root = document.documentElement
+      const byId = id => document.getElementById(id)
+      const elements = {
+        title: byId('title'),
+        detail: byId('detail'),
+        phase: byId('phase-label'),
+        fill: byId('fill'),
+        meter: byId('meter'),
+        steps: byId('steps'),
+        lines: byId('lines'),
+        elapsed: byId('elapsed'),
+        version: byId('version'),
+        failure: byId('failure'),
+        failureText: byId('failure-text'),
+        foot: byId('foot-text'),
+      }
+      const phaseText = {
+        prepare: '正在初始化',
+        data: '正在初始化',
+        service: '正在启动服务',
+        workshop: '正在装配工作台',
+        ready: '已就绪',
+        error: '启动中断',
+      }
+      const order = ['prepare', 'data', 'service', 'workshop']
+      let startedAt = Date.now()
+
+      const elapsedText = (ms) => {
+        const seconds = Math.max(0, ms) / 1000
+        return seconds < 60 ? `${seconds.toFixed(1)}s` : `${Math.floor(seconds / 60)}m ${(seconds % 60).toFixed(0)}s`
+      }
+      const traceAt = (ms) => `+${(Math.max(0, ms) / 1000).toFixed(2).padStart(5, '0')}`
+
+      function render(state) {
+        if (!state) return
+        startedAt = Number(state.startedAt) || startedAt
+        root.dataset.phase = state.phase || 'prepare'
+        root.dataset.leaving = state.leaving ? 'true' : 'false'
+        elements.title.textContent = state.title || ''
+        elements.detail.textContent = state.detail || ''
+        elements.phase.textContent = phaseText[state.phase] || '正在初始化'
+        const progress = Math.max(0, Math.min(100, Number(state.progress) || 0))
+        elements.fill.style.width = `${progress}%`
+        elements.meter.setAttribute('aria-valuenow', String(Math.round(progress)))
+        elements.meter.setAttribute('aria-label', state.title || '初始化进度')
+        const index = order.indexOf(state.phase)
+        for (const item of elements.steps.querySelectorAll('[data-step]')) {
+          const at = order.indexOf(item.dataset.step)
+          item.classList.toggle('done', state.phase === 'ready' || (index >= 0 && at < index))
+          item.classList.toggle('active', at === index)
+        }
+        const trace = Array.isArray(state.trace) ? state.trace.slice(-4) : []
+        elements.lines.replaceChildren(...trace.map((entry) => {
+          const line = document.createElement('div')
+          line.className = 'line'
+          const at = document.createElement('span')
+          at.className = 'at'
+          at.textContent = traceAt(entry.at)
+          const text = document.createElement('span')
+          text.textContent = String(entry.text || '')
+          line.append(at, text)
+          return line
+        }))
+        elements.version.textContent = state.version ? `v${state.version}` : ''
+        const failed = state.phase === 'error'
+        elements.failure.hidden = !failed
+        if (failed) {
+          elements.failureText.textContent = `${state.error || '本机服务未能启动。'}\n日志：${state.logPath || ''}`
+          elements.phase.textContent = phaseText.error
+        }
+        elements.foot.textContent = failed
+          ? '可以重试，或打开日志查看原因'
+          : state.phase === 'ready' ? '工作台已就绪，正在进入' : '服务就绪后自动进入工作台'
+      }
+
+      setInterval(() => { elements.elapsed.textContent = elapsedText(Date.now() - startedAt) }, 100)
+      document.querySelectorAll('[data-action]').forEach((button) => {
+        button.addEventListener('click', () => api?.action(button.dataset.action))
+      })
+      if (api) {
+        api.onState(render)
+        api.hello()
+      }
+      else {
+        root.dataset.ready = 'missing'
+      }
+    })()
+  </script>
+</body>
+</html>

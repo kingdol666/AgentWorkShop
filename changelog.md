@@ -1,3 +1,12 @@
+## v0.17.5 — Desktop tray, close-to-tray and boot splash（2026-11-23）
+
+- Closing the desktop window now hides it to the system tray instead of stopping the local backend. The titlebar close button is labelled 「关闭到托盘」; the tray icon restores the window on click/double-click, and the same menu can switch to close-to-exit. 关闭窗口默认最小化到托盘，本机服务与正在运行的任务继续工作；托盘图标可恢复窗口。
+- Native tray menu: live service state and `127.0.0.1:<port>`, reload UI, restart local service, check updates, open data/log directories, diagnostics, and a 设置 submenu with five persisted toggles — close to tray, launch at login, start hidden, tray notifications and automatic update checks. Settings live in `<home>/electron/settings.json`; `launchAtLogin` uses the Windows login item only in the packaged app. 托盘菜单提供服务状态、重启服务、检查更新、数据/日志入口、诊断与 5 项设置。
+- New boot splash: a frameless 660×440 initialization window appears immediately and reports the real stages (environment → data → service → workshop), a timestamped trace, elapsed time and progress. The main window is revealed only after `/api/health` reports `status=ok` / `workshop=ready` and the page has loaded; failures show retry, open logs and quit. 启动动画显示真实初始化阶段；后端就绪后才进入主界面，失败可重试。
+- The tray is created before the backend starts, and `desktop-status.json` records `phase`, `bootStage`, `port`, `trayCreated`, `windowVisible`, `settings` and `lastError` for diagnostics and acceptance. 启动即创建托盘；状态文件便于诊断与验收。
+- The splash follows the existing mint/graphite instrument language (dot grid, signal rule, staged checklist, `prefers-reduced-motion` support) and is CSP-locked to inline local assets. 设计与现有桌面品牌一致。
+- Verification: focused desktop suite 33/33; source-mode Electron E2E — splash → ready, close → hidden with a healthy backend, second instance re-shows the window, start-hidden, close-to-exit, clean autoquit with no orphan backend; installer and in-app update evidence recorded in `docs/design/desktop-chrome/acceptance.md`. 本轮实机证据见验收文档。
+
 ## v0.17.4 — Back to main from standalone full-screen pages（2026-11-23）
 
 - `/town` (digital twin, `town` layout) and `/workshop/w/:id` (bare `console` layout) now render a localized `AppBackToMain` control — a `NuxtLink` to the dashboard `/`, which uses the default layout with the navigation sidebar. Before this, the desktop window had no way back from the full-screen twin scene. 数字孪生与裸控制台新增「返回主界面」入口，回到带导航栏的仪表盘；桌面端不再被困在全屏页面。

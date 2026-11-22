@@ -8,7 +8,7 @@
 - Web：`aw web` 是 `aw start` 的别名。只在本机使用时可加 `--host 127.0.0.1`。npm 发行包要求机器上的 Node 符合 `package.json`。
 - TUI：服务启动后用 `aw tui --url <baseUrl>`，或省略地址让 TUI 优先查看当前配置根的实例锁，再查看桌面数据目录（显式 `AW_HOME` 时只查询指定配置根）。若实例仍在启动，TUI 会有限等待，不会改连其他端口。没有运行中的本机实例时才尝试保存的连接或默认 Web 端口。TUI 是频道协作/监控客户端，不覆盖所有 Web 管理面板。
 
-桌面默认与 Web/CLI 共用 `~/.AgentWorkShop`（`AW_DESKTOP_HOME` 或 `AW_HOME` 可重定向），配置、插件、SQLite、日志和 `aml/` 都落在这个目录，因此桌面和 Web 读写同一份数据。两者不能同时写同一个 home：先停止其中一个实例，再启动另一个；桌面检测到已有写入者会拒绝启动第二个。`electron/` 是 Chromium 的用户数据。桌面后端只监听 `127.0.0.1`；Electron 不向网页开放 Node 或特权 IPC。退出先调后端优雅停机，再关闭桌面。桌面会话密钥默认只在进程环境中存在，重启后浏览器可能需重新登录。需要持续会话时可通过私有环境提供 `NUXT_SESSION_PASSWORD`。
+桌面默认与 Web/CLI 共用 `~/.AgentWorkShop`（`AW_DESKTOP_HOME` 或 `AW_HOME` 可重定向），配置、插件、SQLite、日志和 `aml/` 都落在这个目录，因此桌面和 Web 读写同一份数据。两者不能同时写同一个 home：先停止其中一个实例，再启动另一个；桌面检测到已有写入者会拒绝启动第二个。`electron/` 是 Chromium 的用户数据。桌面后端只监听 `127.0.0.1`；Electron 不向网页开放 Node 或特权 IPC。真正退出（托盘「退出」或关闭到托盘关闭后的关闭按钮）会先调后端优雅停机，再关闭桌面；默认的关闭按钮只隐藏窗口，后端继续运行。桌面会话密钥默认只在进程环境中存在，重启后浏览器可能需重新登录。需要持续会话时可通过私有环境提供 `NUXT_SESSION_PASSWORD`。
 
 ## 桌面外观与品牌
 
@@ -16,7 +16,25 @@
 
 品牌图标源文件是 `desktop/brand/icon.svg`（绿/青「A + 信号总线」标记）；`desktop/build/icon.png` 与 `desktop/build/icon.ico` 由它生成，供安装器、可执行文件和标题栏共用。设计原型与状态板见 `docs/design/desktop-chrome/prototype.html`（截图 `prototype.png`）。图标是从 SVG 渲染的 512px 圆角方形（四角透明），改动图标时同时更新 PNG/ICO。
 
-标题栏与桌面入口回归测试：`node --import tsx --test tests/desktop-chrome.test.ts tests/desktop-terminal-entry.test.ts`。
+标题栏与桌面入口回归测试：`node --import tsx --test tests/desktop-chrome.test.ts tests/desktop-tray-splash.test.ts tests/desktop-terminal-entry.test.ts`。
+
+## 托盘、设置与启动动画
+
+桌面默认把标题栏的关闭按钮理解为「关闭到托盘」：窗口隐藏，Electron 主进程、本机 Nitro 服务、SQLite、Channel/Session 与正在执行的任务都继续运行。单击或双击托盘图标恢复窗口；需要真正退出时用托盘菜单的「退出 AgentWorkShop」，或在托盘「设置」中关闭「关闭时最小化到托盘」，此后关闭按钮直接退出并优雅停止后端。第二次启动可执行文件不会启动第二套后端，而是把已有窗口恢复并聚焦（单实例锁）。
+
+托盘菜单包含：本机服务状态与 `127.0.0.1:<port>`、重新加载界面、重启本地服务（先确认）、检查更新、打开数据目录、打开日志目录、诊断信息，以及「设置」子菜单。设置均为持久化开关，保存在 `<home>/electron/settings.json`：
+
+| 设置 | 默认 | 作用 |
+| --- | --- | --- |
+| 关闭时最小化到托盘 | 开 | 关闭按钮隐藏窗口而不是退出 |
+| 开机自动启动 | 关 | 安装版写入 Windows 登录项；源码模式不写系统 |
+| 启动后最小化到托盘 | 关 | 后端就绪后不显示主窗口，留在托盘 |
+| 托盘通知 | 开 | 隐藏、重启服务、设置变更等提示 |
+| 自动检查更新 | 开 | 启动 4 秒后与每 30 分钟检查；手动检查不受影响 |
+
+启动时 Electron 立即创建托盘并显示 660×440 的无边框初始化窗口（`desktop/chrome/splash.html`），按真实阶段展示：准备运行环境 → 初始化工作区 → 启动本机服务 → 装配智能体工作台 → 就绪。窗口同时显示带时间戳的启动记录、实时耗时与进度条；只有 `/api/health` 返回 `status=ok` 且 `workshop=ready`、并且主页面加载完成后才显示主窗口。最小展示时间为 2 秒，避免界面闪烁；失败时显示错误、日志路径与「重试 / 打开日志 / 退出」，不会静默退出。动画支持 `prefers-reduced-motion`，文档 CSP 为 `default-src 'none'` 且只使用内联本地资源。
+
+主进程会把 `phase`、`bootStage`、`port`、`trayCreated`、`windowVisible`、设置与 `lastError` 写入 `<home>/electron/desktop-status.json`，便于诊断与验收；「诊断信息」对话框展示同一组状态并提供数据/日志目录入口。`AW_DESKTOP_TEST_AUTOQUIT_MS` 与 `AW_DESKTOP_TEST_TRAY_MENU_MS` 仅用于自动化验收。
 
 ## 更新通道
 
@@ -40,7 +58,7 @@ Node/TypeScript 负责数据集、作业与评估调度、门禁和模型注册�
 pnpm install --frozen-lockfile
 pnpm build
 npm pack --ignore-scripts --pack-destination D:\aw-artifacts
-npm install -g --ignore-scripts --prefix D:\aw-artifacts\prefix D:\aw-artifacts\agentworkshop-0.17.4.tgz
+npm install -g --ignore-scripts --prefix D:\aw-artifacts\prefix D:\aw-artifacts\agentworkshop-0.17.5.tgz
 npm --prefix desktop ci
 npm --prefix desktop run build -- --backend D:\aw-artifacts\prefix\node_modules\agentworkshop --out D:\aw-artifacts\desktop
 ```

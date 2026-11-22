@@ -10,6 +10,7 @@ const CHANNELS = {
   status: 'aw-chrome:status',
   theme: 'aw-chrome:theme',
   title: 'aw-chrome:title',
+  prefs: 'aw-chrome:prefs',
   update: 'aw-chrome:update',
   updateState: 'aw-chrome:update-state',
 }
@@ -36,5 +37,6 @@ contextBridge.exposeInMainWorld('awChrome', {
   onStatus: callback => subscribe(CHANNELS.status, callback),
   onTheme: callback => subscribe(CHANNELS.theme, callback),
   onTitle: callback => subscribe(CHANNELS.title, callback),
+  onPrefs: callback => subscribe(CHANNELS.prefs, callback),
   onUpdate: callback => subscribe(CHANNELS.updateState, callback),
 })
