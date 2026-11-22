@@ -14,6 +14,10 @@ function fixture() {
   mkdirSync(join(root, '.AgentWorkShop', 'prompts'), { recursive: true })
   mkdirSync(join(root, 'shared', 'config'), { recursive: true })
   mkdirSync(join(root, 'server', 'services', 'workshop', 'aml', 'python'), { recursive: true })
+  mkdirSync(join(root, 'server', 'services', 'workshop', 'optimization', 'python'), { recursive: true })
+  for (const name of ['worker.py', 'problems.py', 'probe.py']) {
+    writeFileSync(join(root, 'server', 'services', 'workshop', 'optimization', 'python', name), `# ${name}`)
+  }
   mkdirSync(join(root, 'skills', 'demo-skill'), { recursive: true })
   writeFileSync(join(root, 'skills', 'demo-skill', 'SKILL.md'), '---\nname: demo-skill\ndescription: demo\n---\n')
   mkdirSync(join(root, 'node_modules', 'zod'), { recursive: true })
@@ -23,7 +27,9 @@ function fixture() {
   for (const p of [join(output, 'server', 'chunks', '_', 'nitro.mjs'), join(output, 'server', 'chunks', 'virtual', 'entry.mjs')]) writeFileSync(p, 'export const url = import.meta.url')
   writeFileSync(join(root, '.AgentWorkShop', 'prompts', 'host-tools.json'), '{}')
   writeFileSync(join(root, 'shared', 'config', 'schema.json'), '{}')
-  writeFileSync(join(root, 'server', 'services', 'workshop', 'aml', 'python', 'requirements.txt'), '')
+  for (const name of ['amlkit.py', 'aml_eval.py', 'requirements.txt', 'train-example.py', 'train-hybrid-example.py']) {
+    writeFileSync(join(root, 'server', 'services', 'workshop', 'aml', 'python', name), '')
+  }
   return root
 }
 
@@ -34,7 +40,9 @@ test('postBuildArtifacts copies and validates all runtime assets', () => {
     assert.ok(result.assets.includes('prompts'))
     assert.ok(result.assets.includes('schema.json'))
     assert.ok(result.assets.includes('aml-python'))
+    assert.ok(result.assets.includes('optimizer-python'))
     assert.ok(result.assets.includes('skills'))
+    assert.ok(existsSync(join(root, '.output', '.AgentWorkShop', 'optimizer-python', 'worker.py')))
     assert.ok(existsSync(join(root, '.output', 'skills', 'demo-skill', 'SKILL.md')))
     assert.ok(result.assets.includes('zod-direct'))
     assert.match(readFileSync(join(root, '.output', 'server', 'node_modules', 'zod', 'index.js'), 'utf8'), /direct-zod/)
@@ -49,6 +57,7 @@ test('postBuildArtifacts fails when required runtime assets are missing', () => 
     ['prompts', '.AgentWorkShop/prompts'],
     ['schema', 'shared/config/schema.json'],
     ['aml-python', 'server/services/workshop/aml/python'],
+    ['optimizer-python', 'server/services/workshop/optimization/python'],
     ['skills', 'skills'],
   ]) {
     const root = fixture()
@@ -68,8 +77,12 @@ test('outputAssetsReady requires the server entry plus every runtime asset', () 
     assert.equal(outputAssetsReady(root), false)
     postBuildArtifacts(root)
     assert.equal(outputAssetsReady(root), true)
-    rmSync(join(root, '.output', '.AgentWorkShop', 'schema.json'))
-    assert.equal(outputAssetsReady(root), false)
+    rmSync(join(root, '.output', '.AgentWorkShop', 'optimizer-python', 'probe.py'))
+    assert.equal(outputAssetsReady(root), false, 'a missing worker file must invalidate the build')
+    postBuildArtifacts(root)
+    assert.equal(outputAssetsReady(root), true)
+    rmSync(join(root, '.output', '.AgentWorkShop', 'aml-python', 'aml_eval.py'))
+    assert.equal(outputAssetsReady(root), false, 'a missing evaluator must invalidate the build')
   }
   finally { rmSync(root, { recursive: true, force: true }) }
 })

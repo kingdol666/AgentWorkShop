@@ -11,15 +11,15 @@
  *   跨配方谱系拒绝。
  *
  * 运行:npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-aml-hybrid-e2e.ts
- * 依赖:./aml/.venv(真实训练环境,torch + onnx)。AW_AML_DIR 指向临时目录。
+ * 依赖:由平台在隔离的 AW_AML_DIR 中供给真实训练环境(torch + onnx)。
  */
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, copyFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { runPythonJob } from './_lib-aml-python-run.mjs'
 import { openWorkshopDb } from '../server/services/workshop/db/database/open'
 import { configureAmlRuntime } from '../server/services/workshop/aml/runtime'
+import { ensureVenv, jobEnv, platformPythonDir } from '../server/services/workshop/aml/python-runtime'
 import { hashDatasetDir, loadManifest } from '../server/services/workshop/aml/dataset-builder'
 import { evaluateGates } from '../server/services/workshop/aml/gates'
 import { registerModelFromJob, transitionModel } from '../server/services/workshop/aml/model-registry'
@@ -33,7 +33,6 @@ import { evaluateHybridGates, DEFAULT_ACCEPTANCE_PROFILE } from '../server/servi
 import { ModelBackedHybridProvider, assertModelSceneLineage } from '../server/services/workshop/aml/twin/model-backed-provider'
 import { createTwinRepo } from '../server/services/workshop/aml/twin/repo'
 
-const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const fail = (msg: string): never => {
   console.error(`FAIL ${msg}`)
   process.exit(1)
@@ -178,15 +177,14 @@ check('骨架 PhysicsSpec 自校验通过且含可校准参数',
   `params=${spec.parameters.length}`)
 
 // ---- Part A: 真实 venv 训练 + 平台权威评估 ----
-const venvPython = join(repoRoot, 'aml', '.venv', process.platform === 'win32' ? 'Scripts\\python.exe' : 'bin/python')
-if (!existsSync(venvPython)) fail(`真实训练环境缺失:${venvPython}(先在仓库跑一次 AML 训练以供给 ./aml/.venv)`)
+const venvPython = await ensureVenv(rt)
 const jobId = 'job-e2e-hybrid-1'
 const jobDir = join(root, 'job-e2e')
 const workspace = join(jobDir, 'workspace')
 const artifacts = join(jobDir, 'artifacts')
 mkdirSync(workspace, { recursive: true })
 mkdirSync(artifacts, { recursive: true })
-const platformPy = join(repoRoot, 'server', 'services', 'workshop', 'aml', 'python')
+const platformPy = platformPythonDir()
 copyFileSync(join(platformPy, 'amlkit.py'), join(workspace, 'amlkit.py'))
 copyFileSync(join(platformPy, 'train-hybrid-example.py'), join(workspace, 'train-hybrid-example.py'))
 writeFileSync(join(jobDir, 'physics_spec.json'), JSON.stringify(spec))
@@ -198,7 +196,7 @@ writeFileSync(join(jobDir, 'job.json'), JSON.stringify({
   providerId: 'declarative-e2e', providerVersion: '0.1.0-skeleton', providerHash: sha256(spec), providerGeneration: 0,
 }))
 
-const trainRun = runPythonJob(venvPython, [join(workspace, 'train-hybrid-example.py')], workspace, { AML_JOB_DIR: jobDir })
+const trainRun = runPythonJob(venvPython, [join(workspace, 'train-hybrid-example.py')], workspace, jobEnv(rt, jobDir))
 check('Part A: 参考训练器真实运行成功(stage A 校准+B 集成+D 覆盖率)', trainRun.code === 0, trainRun.tail)
 for (const file of ['model.onnx', 'model-2.onnx', 'model-3.onnx', 'hybrid_manifest.json', 'physics_parameters.json']) {
   check(`Part A: 工件 ${file} 存在`, existsSync(join(artifacts, file)))
@@ -228,7 +226,7 @@ check('Part A: stage A 参数校准有效(拟合误差下降)且 θ 朝真值方
   && gainVal > 0.3 && gainVal < 8 && offsetVal > 24 && offsetVal < 44 && tauVal >= 0.4 && tauVal <= 40,
   `gain=${gainVal.toFixed(3)}/真值${TRUE_GAIN} offset=${offsetVal.toFixed(2)}/真值${TRUE_OFFSET} tau=${tauVal.toFixed(3)}/真值${TRUE_TAU} errBefore=${trainedMetrics.physics?.calibrationErrorBefore?.toFixed(4)} errAfter=${trainedMetrics.physics?.calibrationErrorAfter?.toFixed(4)}`)
 
-const evalRun = runPythonJob(venvPython, [join(platformPy, 'aml_eval.py'), '--job', join(jobDir, 'job.json')], jobDir, { AML_JOB_DIR: jobDir })
+const evalRun = runPythonJob(venvPython, [join(platformPy, 'aml_eval.py'), '--job', join(jobDir, 'job.json')], jobDir, jobEnv(rt, jobDir))
 check('Part A: 平台权威评估器 aml_eval 完成(物理+残差同口径)', evalRun.code === 0, evalRun.tail)
 const metricsRaw = JSON.parse(readFileSync(join(artifacts, 'metrics.json'), 'utf8')) as { platform?: { modelType?: string } & Record<string, unknown> } & Record<string, unknown>
 check('Part A: 评估器产出 hybrid modelType + platform 权威段',

@@ -1,6 +1,6 @@
 /**
  * AML Python 运行时:探测 uv / python → 一键安装 uv → 用 uv 供给 <amlRoot>/.venv
- * → 给作业运行器提供受控子进程(复用 line-spawn 的 Windows 引号纪律与杀树)。
+ * → 给作业运行器提供受控子进程与杀树。
  *
  * uv 优先(与平台的设计前提一致):
  *  - uv 存在 → `uv venv <amlRoot>/.venv` + `uv pip install --python <venv> -r requirements.txt`;
@@ -8,26 +8,69 @@
  *  - 一键安装把 uv 落到 <amlRoot>/tools/ 并写 <amlRoot>/runtime/uv.json ——
  *    **不写系统 PATH、不需要管理员**;整份 ./aml 可删可搬。
  *
- * 供给纪律:仅 venv 创建阶段联网(pip/uv install,依赖锁定在 requirements.txt,
- * 可配镜像);训练/评估进程不联网。
+ * 供给纪律:环境供给阶段可联网;项目本地 uv 从固定的官方发布资产安装,先验哈希再解包。
  */
+import { execFile, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { createReadStream, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { devNull } from 'node:os'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { promisify } from 'node:util'
 import { AppError } from '../../../utils/errors'
 import { resolveOnPath, spawnLineProcess } from '../agents/adapters/line-spawn'
 import { killHarnessProcess } from '../agents/harness-process'
 import { createLogger } from '../logger'
+import { fetchPublicBuffer, validatePublicUrl } from '../net/public-egress'
 import { amlSettings } from '../settings'
 import { assertEnvIdleForMaintenance } from './env-lease'
 import type { AmlRuntime } from './runtime'
 
 const log = createLogger('aml.py')
 
-/** uv 安装/venv 供给的硬超时(下载 40MB 二进制 + 装依赖,给足但必须有上限) */
-const UV_INSTALL_TIMEOUT_MS = 10 * 60_000
+const UV_PYTHON_TIMEOUT_MS = 10 * 60_000
 const VENV_CREATE_TIMEOUT_MS = 300_000
 const PIP_INSTALL_TIMEOUT_MS = 600_000
+const UV_RELEASE_VERSION = '0.11.29'
+const UV_RELEASE_HOSTS = new Set(['github.com', 'release-assets.githubusercontent.com'])
+const execFileAsync = promisify(execFile)
+
+// Archive sizes and SHA-256 from `gh api repos/astral-sh/uv/releases/tags/0.11.29`.
+// Executable hashes are from the exact member in each archive, after verifying its archive hash.
+const UV_RELEASE_ASSETS = {
+  'aarch64-apple-darwin': [22496145, '61c04acc52a33ef0f331e494bdfbedcdb6c26c6970c022ed3699e5860f8930e3', '3ac242bb6bca0841cad65b877e21a3e9f65c97141712b5c8438cc8a8c89ead54'],
+  'aarch64-pc-windows-msvc': [23766948, '55b597ae81bc29531a7c352a1431a8a73cc2755d7a5b9ec454580cbe02e5154f', 'bbafdd69166bdc7038b7362c0aacd44fc5a25a5e505bb7a86bdde388590197b2'],
+  'aarch64-unknown-linux-gnu': [24438519, '94500fb064ae3c971a873cba64d94694c50677e0a4dbf78735c80509e7429919', '40de8760ec3d368ae7a19d06392a071b761dddbe1b926d23f736ce65befe131c'],
+  'aarch64-unknown-linux-musl': [24292339, '593d79a797ece3f1dfaaf3e0a973263422a135d9262c7dbc6cd75d9c11acc0b4', '1d2c8d3736513607b3a5ae47861cb507827dc1ff1e6909e342c9e23302398472'],
+  'x86_64-apple-darwin': [24120839, 'c4c4de482da9ccdd076dc4fb5cfe7b740609029385c72f58606be3153602387d', '3fcfeb23eb951da9c2db2ebdde52b7f83cafe3bf90f1d6225519b6d0db43c04b'],
+  'x86_64-pc-windows-msvc': [25534683, 'a047d55651bc3e0ca24595b25ec4cfcb10f9dca9fb56514e661269b37d4fae68', '6d40479cd1d0d5db7fc0fe68ad703fc8acbd84bba50d864bb97461f6af9d9561'],
+  'x86_64-unknown-linux-gnu': [26200011, '04f8b82f5d47f0512dcd32c67a4a6f16a0ea27c81537c338fd0ad6b23cebe829', '4f26786f798cce6e9f467fe917d4305b9600ef8bf14994aa016fbb32523e5ca5'],
+  'x86_64-unknown-linux-musl': [26396567, '46711858adb2a3acaa9cee00f9060688ad1fd5706aecc005b96a6a7f285a00b7', 'aa58db25cf3ea824b7d0d694df313ff769282f2c5acb48084a831d40258fa98c'],
+} as const
+
+function uvReleaseAsset() {
+  const cpu = process.arch === 'x64' ? 'x86_64' : process.arch === 'arm64' ? 'aarch64' : null
+  if (!cpu) return null
+  let target: keyof typeof UV_RELEASE_ASSETS
+  if (process.platform === 'win32') target = `${cpu}-pc-windows-msvc`
+  else if (process.platform === 'darwin') target = `${cpu}-apple-darwin`
+  else if (process.platform === 'linux') {
+    // Node's report identifies glibc; absence on Linux selects the official musl build.
+    const report = process.report.getReport() as { header?: { glibcVersionRuntime?: string } }
+    target = `${cpu}-unknown-linux-${report.header?.glibcVersionRuntime ? 'gnu' : 'musl'}`
+  }
+  else return null
+  const [size, archiveSha256, binSha256] = UV_RELEASE_ASSETS[target]
+  const stem = `uv-${target}`
+  const windows = process.platform === 'win32'
+  return {
+    target,
+    filename: `${stem}.${windows ? 'zip' : 'tar.gz'}`,
+    member: windows ? 'uv.exe' : `${stem}/uv`,
+    size,
+    archiveSha256,
+    binSha256,
+  }
+}
 
 const g = globalThis as typeof globalThis & {
   __amlPyProbe?: PythonProbe
@@ -48,7 +91,7 @@ export interface UvProbe {
   ok: boolean
   path?: string
   version?: string
-  source?: 'config' | 'project' | 'state' | 'path'
+  source?: 'config' | 'project' | 'path'
   reason?: string
 }
 
@@ -68,9 +111,12 @@ function runCapture(
   args: string[],
   timeoutMs: number,
   onData?: ProgressFn,
+  env?: Record<string, string>,
 ): Promise<{ code: number, out: string, err: string }> {
   return new Promise((resolve) => {
-    const child = spawnLineProcess(cmd, args)
+    const child = env
+      ? spawn(cmd, args, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, shell: false })
+      : spawnLineProcess(cmd, args)
     let out = ''
     let err = ''
     const timer = setTimeout(() => {
@@ -124,82 +170,64 @@ export function readUvRecord(rt: AmlRuntime): UvInstallRecord | null {
 }
 
 function writeUvRecord(rt: AmlRuntime, rec: UvInstallRecord): void {
+  let stage: string | undefined
   try {
     mkdirSync(rt.runtimeDir, { recursive: true })
-    writeFileSync(join(rt.runtimeDir, 'uv.json'), JSON.stringify(rec, null, 2))
-  }
-  catch (err) {
-    log.warn('[aml-uv] 安装记录落盘失败:', (err as Error)?.message)
-  }
-}
-
-/** 在目录里递归找 uv 可执行(一键安装产物定位;深度受限防误扫) */
-function findUvInDir(dir: string, depth = 3): string | null {
-  if (depth < 0 || !existsSync(dir)) return null
-  let entries: string[]
-  try {
-    entries = readdirSync(dir)
+    stage = mkdtempSync(join(rt.runtimeDir, '.uv-record-'))
+    const record = join(stage, 'uv.json')
+    writeFileSync(record, JSON.stringify(rec, null, 2), { flag: 'wx', mode: 0o600 })
+    renameSync(record, join(rt.runtimeDir, 'uv.json'))
   }
   catch {
-    return null
+    log.warn('[aml-uv] 安装记录落盘失败')
   }
-  const want = uvBinName()
-  // 先扫当前层的直接命中(`<dir>/uv.exe`、`<dir>/bin/uv`)
-  for (const e of entries) {
-    if (e === want) {
-      const p = join(dir, e)
-      try {
-        if (statSync(p).isFile()) return p
-      }
-      catch { /* 忽略 */ }
-    }
+  finally {
+    if (stage) cleanupUvStage(stage)
   }
-  for (const e of entries) {
-    if (e === 'bin' || e === 'Scripts' || e === 'tools') {
-      const p = join(dir, e, want)
-      try {
-        if (existsSync(p) && statSync(p).isFile()) return p
-      }
-      catch { /* 忽略 */ }
-    }
-  }
-  for (const e of entries) {
-    const p = join(dir, e)
-    try {
-      if (!statSync(p).isDirectory()) continue
-    }
-    catch {
-      continue
-    }
-    const hit = findUvInDir(p, depth - 1)
-    if (hit) return hit
-  }
-  return null
 }
 
-/**
- * 平台 python 资产目录解析(amlkit.py/aml_eval.py/requirements.txt 所在)。
- *
- * 这些是**运行时经 fs 读取**的资产(requirementsHash 读 requirements.txt、jobEnv 把
- * 本目录塞进 PYTHONPATH),nitro 不会打包它们,所以发布产物必须自带一份:
- * 构建期由 nuxt.config.ts 复制到 .output/.AgentWorkShop/aml-python。
- * 解析顺序:AML_PYHOME 覆盖 > cwd 源码树 > 产物自带副本 > AW_PACKAGE_ROOT 包根。
- * 缺了它们的后果不是启动失败,而是训练作业在供给 venv 时才炸(且报错指向空摘要)。
- */
-export function platformPythonDir(): string {
-  const rel = join('server', 'services', 'workshop', 'aml', 'python')
-  const fallback = join(process.cwd(), rel)
-  const candidates = [
-    process.env.AML_PYHOME ?? '',
-    fallback,
-    join(process.cwd(), '.output', '.AgentWorkShop', 'aml-python'),
-    join(process.env.AW_PACKAGE_ROOT ?? process.cwd(), rel),
-    join(process.env.AW_PACKAGE_ROOT ?? process.cwd(), '.output', '.AgentWorkShop', 'aml-python'),
-  ]
-  for (const c of candidates) {
-    if (c && existsSync(join(c, 'amlkit.py'))) return c
+function uvInstallPath(rt: AmlRuntime, asset: NonNullable<ReturnType<typeof uvReleaseAsset>>): string {
+  return resolve(rt.toolsDir, `uv-${UV_RELEASE_VERSION}-${asset.target}`, uvBinName())
+}
+
+async function isVerifiedUv(path: string, sha256: string): Promise<boolean> {
+  try {
+    if (!lstatSync(dirname(path)).isDirectory()) return false
+    const file = lstatSync(path)
+    if (!file.isFile() || file.size > 128 * 1024 * 1024) return false
+    const hash = createHash('sha256')
+    for await (const chunk of createReadStream(path)) hash.update(chunk)
+    return hash.digest('hex') === sha256
   }
-  return fallback
+  catch {
+    return false
+  }
+}
+
+function cleanupUvStage(stage: string): void {
+  try {
+    rmSync(stage, { recursive: true, force: true, maxRetries: 2 })
+  }
+  catch {
+    log.warn('[aml-uv] 无法清理安装暂存目录')
+  }
+}
+
+/** Resolve complete AML assets from the application payload, not the writable home. */
+export function platformPythonDir(): string {
+  const root = process.env.AW_PACKAGE_ROOT || process.cwd()
+  const override = process.env.AML_PYHOME
+  const candidates = override
+    ? [override]
+    : [
+        join(root, '.output', '.AgentWorkShop', 'aml-python'),
+        join(root, 'server', 'services', 'workshop', 'aml', 'python'),
+      ]
+  const required = ['amlkit.py', 'aml_eval.py', 'requirements.txt', 'train-example.py', 'train-hybrid-example.py']
+  for (const dir of candidates) {
+    if (required.every(file => existsSync(join(dir, file)))) return dir
+  }
+  throw new AppError(503, 'AML_PYTHON_ASSETS_MISSING', 'AML Python 资产不完整;请重新构建/安装应用或检查 AML_PYHOME')
 }
 
 /** venv 落点:<amlRoot>/.venv(与数据集/模型同级,整份 ./aml 可整体删除重建) */
@@ -223,11 +251,11 @@ export function resetProbeCache(): void {
 }
 
 async function probeUvBinary(candidate: string, source: UvProbe['source']): Promise<UvProbe | null> {
-  const resolved = resolveOnPath(candidate)
-    ?? (looksLikePath(candidate) || existsSync(candidate) ? candidate : undefined)
-  if (!resolved) return null
-  if (!existsSync(resolved)) return null
-  const r = await runCapture(resolved, ['--version'], 15_000)
+  const resolved = source === 'project'
+    ? candidate
+    : resolveOnPath(candidate) ?? (looksLikePath(candidate) || existsSync(candidate) ? candidate : undefined)
+  if (!resolved || !existsSync(resolved)) return null
+  const r = await runCapture(resolved, ['--version'], 15_000, undefined, provisionSystemEnv())
   if (r.code !== 0) return null
   return { ok: true, path: resolved, version: (r.out || r.err).trim().split('\n')[0], source }
 }
@@ -235,21 +263,20 @@ async function probeUvBinary(candidate: string, source: UvProbe['source']): Prom
 /**
  * 探测 uv。优先级:
  *   ① aml.python.uvBin 配置(显式指定)
- *   ② <amlRoot>/tools/**(一键安装的产物)
- *   ③ <amlRoot>/runtime/uv.json 记录路径(用户搬过目录时容错)
- *   ④ 系统 PATH
+ *   ② 固定路径且哈希匹配的项目本地官方 uv
+ *   ③ 系统 PATH
+ * uv.json 仅用于状态记录,不作为可执行文件来源。
  */
 export async function probeUv(rt?: AmlRuntime): Promise<UvProbe> {
   if (g.__amlUvProbe) return g.__amlUvProbe
   const s = amlSettings()
   const attempts: Array<[string, UvProbe['source']]> = []
   if (s.python.uvBin) attempts.push([s.python.uvBin, 'config'])
-  const record = rt ? readUvRecord(rt) : null
-  if (rt) {
-    const projectHit = findUvInDir(rt.toolsDir)
-    if (projectHit) attempts.push([projectHit, 'project'])
+  const asset = uvReleaseAsset()
+  if (rt && asset) {
+    const path = uvInstallPath(rt, asset)
+    if (await isVerifiedUv(path, asset.binSha256)) attempts.push([path, 'project'])
   }
-  if (record?.uvPath) attempts.push([record.uvPath, 'state'])
   if (!s.python.uvBin) attempts.push(['uv', 'path'])
 
   for (const [candidate, source] of attempts) {
@@ -313,7 +340,7 @@ export async function probePython(): Promise<PythonProbe> {
   // 用 uv python find 解析托管解释器路径 —— 它不在系统 PATH 上,常规候选探测不到
   if (uv?.ok && uv.path) {
     const ver = process.env.AML_UV_PYTHON || '3.11'
-    const find = await runCapture(uv.path, ['python', 'find', ver], 30_000)
+    const find = await runCapture(uv.path, ['--no-config', '--no-python-downloads', 'python', 'find', '--', ver], 30_000, undefined, rt ? provisionEnv(rt) : provisionSystemEnv())
     const managed = find.code === 0 ? find.out.trim().split(/\r?\n/).pop()?.trim() : ''
     if (find.code === 0 && managed && existsSync(managed)) {
       const probe2 = await runCapture(managed, ['--version'], 10_000)
@@ -349,10 +376,11 @@ export async function probePython(): Promise<PythonProbe> {
  */
 export async function ensurePythonViaUv(rt: AmlRuntime, uvPath: string, onLog?: ProgressFn): Promise<string> {
   const ver = process.env.AML_UV_PYTHON || '3.11'
+  const env = provisionEnv(rt)
   emitLog(onLog, `系统无 Python —— uv 优先自举:uv python install ${ver}(首次会下载托管解释器,数十秒到数分钟)…`)
-  const inst = await runCapture(uvPath, ['python', 'install', ver], UV_INSTALL_TIMEOUT_MS, onLog)
+  const inst = await runCapture(uvPath, ['--no-config', 'python', 'install', '--no-bin', '--no-registry', '--', ver], UV_PYTHON_TIMEOUT_MS, onLog, env)
   if (inst.code !== 0) throw new AppError(500, 'AML_UV_PYTHON_FAILED', `uv python install 失败:${(inst.err || inst.out).slice(-400)}`)
-  const find = await runCapture(uvPath, ['python', 'find', ver], 30_000, onLog)
+  const find = await runCapture(uvPath, ['--no-config', '--no-python-downloads', 'python', 'find', '--', ver], 30_000, undefined, env)
   if (find.code !== 0) throw new AppError(500, 'AML_UV_PYTHON_FAILED', `uv python find 失败:${(find.err || find.out).slice(-400)}`)
   const pyPath = find.out.trim().split(/\r?\n/).pop()?.trim() ?? ''
   if (!pyPath) throw new AppError(500, 'AML_UV_PYTHON_FAILED', 'uv python find 未返回解释器路径')
@@ -373,108 +401,134 @@ function safeRuntime(): AmlRuntime | null {
 
 // ---------- 一键安装 uv ----------
 
-/**
- * 一键安装 uv 到 <amlRoot>/tools(免管理员、不改系统 PATH)。
- *  - 首选官方安装脚本:UV_INSTALL_DIR 指向 tools 目录,UV_NO_MODIFY_PATH=1 禁止改 PATH;
- *  - 兜底 python -m pip install --target tools uv;
- *  - 安装后探测校验并写 <amlRoot>/runtime/uv.json。
- * 幂等:已装且可执行则直接返回现状。
- */
+/** Install only the pinned official asset. Never run an installer or search a staging tree for an executable. */
 export async function installUv(rt: AmlRuntime, onLog?: ProgressFn): Promise<{ ok: boolean, uvPath?: string, version?: string, method: string, log: string }> {
   const lines: string[] = []
-  const emit: ProgressFn = (s) => {
-    const t = s.trimEnd()
-    if (t) {
-      lines.push(t)
-      onLog?.(t)
+  const emit: ProgressFn = (line) => {
+    lines.push(line)
+    onLog?.(line)
+  }
+  let stage: string | undefined
+  try {
+    const asset = uvReleaseAsset()
+    if (!asset) throw new AppError(400, 'AML_UV_PLATFORM_UNSUPPORTED', `未提供此平台的 uv 发布资产(${process.platform}-${process.arch});请手动安装并设置 aml.python.uvBin`)
+    const uvPath = uvInstallPath(rt, asset)
+    const version = `uv ${UV_RELEASE_VERSION}`
+    if (await isVerifiedUv(uvPath, asset.binSha256)) {
+      emit(`已存在通过校验的 ${version} @ ${uvPath}`)
+      return { ok: true, uvPath, version, method: 'existing', log: lines.join('\n') }
     }
-  }
-  const existing = await probeUvBinary(findUvInDir(rt.toolsDir) ?? '', 'project')
-  if (existing?.ok && existing.path) {
-    emit(`已存在可用 uv:${existing.version} @ ${existing.path}`)
-    return { ok: true, uvPath: existing.path, version: existing.version, method: 'existing', log: lines.join('\n') }
-  }
-
-  mkdirSync(rt.toolsDir, { recursive: true })
-  const errors: string[] = []
-
-  // ① 官方安装脚本
-  emit(`[1/2] 使用官方安装脚本安装 uv 到 ${rt.toolsDir} …`)
-  const script = await runOfficialInstaller(rt, emit)
-  if (script.ok) {
-    const hit = findUvInDir(rt.toolsDir)
-    if (hit) {
-      const v = await runCapture(hit, ['--version'], 15_000)
-      // 运行时 `''.split('\n')[0] === ''`,首行恒存在;?? '' 只是 noUncheckedIndexedAccess 下的写法
-      const version = (v.out || v.err).trim().split('\n')[0] ?? ''
-      writeUvRecord(rt, { uvPath: hit, version, installedAt: new Date().toISOString(), installDir: rt.toolsDir, method: 'official-script' })
-      resetProbeCache()
-      emit(`安装成功:${version} @ ${hit}`)
-      return { ok: true, uvPath: hit, version, method: 'official-script', log: lines.join('\n') }
+    const installDir = dirname(uvPath)
+    if (lstatSync(installDir, { throwIfNoEntry: false })) {
+      throw new AppError(500, 'AML_UV_EXISTING_INVALID', `现有 uv 安装未通过完整性校验;请先移除 ${installDir},再重试`)
     }
-    errors.push('官方脚本执行完成但未在 tools 目录找到 uv 可执行文件')
-  }
-  else {
-    errors.push(script.err)
-  }
 
-  // ② pip --target 兜底
-  emit('[2/2] 回退方案:python -m pip install --target tools uv')
-  const probe = await probePython()
-  if (probe.ok && probe.pythonPath) {
-    const pipArgs = ['-m', 'pip', 'install', '--upgrade', '--target', rt.toolsDir, 'uv']
-    const idx = amlSettings().python.indexUrl
-    if (idx) pipArgs.push('--index-url', idx)
-    const r = await runCapture(probe.pythonPath, pipArgs, UV_INSTALL_TIMEOUT_MS, emit)
-    if (r.code === 0) {
-      const hit = findUvInDir(rt.toolsDir)
-      if (hit) {
-        try {
-          chmodSync(hit, 0o755)
-        }
-        catch { /* Windows 无 x 位 */ }
-        const v = await runCapture(hit, ['--version'], 15_000)
-        const version = (v.out || v.err).trim().split('\n')[0] ?? ''
-        writeUvRecord(rt, { uvPath: hit, version, installedAt: new Date().toISOString(), installDir: rt.toolsDir, method: 'pip-target' })
-        resetProbeCache()
-        emit(`安装成功:${version} @ ${hit}`)
-        return { ok: true, uvPath: hit, version, method: 'pip-target', log: lines.join('\n') }
-      }
-      errors.push('pip 安装成功但未找到 uv 可执行文件')
+    emit(`正在下载官方 ${version} (${asset.filename})…`)
+    const url = `https://github.com/astral-sh/uv/releases/download/${UV_RELEASE_VERSION}/${asset.filename}`
+    const archive = await fetchPublicBuffer(url, { allowedHosts: UV_RELEASE_HOSTS, maxBytes: asset.size, label: 'uv 发布资产' })
+    if (archive.length !== asset.size || createHash('sha256').update(archive).digest('hex') !== asset.archiveSha256) {
+      throw new AppError(502, 'AML_UV_ARCHIVE_INVALID', 'uv 发布资产大小或 SHA-256 不匹配;未解包')
     }
-    else {
-      errors.push(`pip 安装失败:${(r.err || r.out).slice(-400)}`)
-    }
-  }
-  else {
-    errors.push(`无可用 Python 解释器:${probe.reason}`)
-  }
 
-  emit('安装失败。')
-  return { ok: false, method: 'none', log: `${lines.join('\n')}\n\n--- 失败原因 ---\n${errors.join('\n')}` }
+    mkdirSync(rt.toolsDir, { recursive: true })
+    if (!lstatSync(rt.toolsDir).isDirectory()) throw new AppError(500, 'AML_UV_TOOLS_INVALID', 'AML tools 必须是真实目录')
+    stage = mkdtempSync(join(rt.toolsDir, '.uv-stage-'))
+    const archivePath = join(stage, asset.filename)
+    writeFileSync(archivePath, archive, { flag: 'wx', mode: 0o600 })
+    const bin = await extractUvMember(archivePath, asset.member)
+    if (createHash('sha256').update(bin).digest('hex') !== asset.binSha256) {
+      throw new AppError(502, 'AML_UV_BINARY_INVALID', '解包的 uv 二进制 SHA-256 不匹配;未安装')
+    }
+    const publishDir = join(stage, 'install')
+    mkdirSync(publishDir, { mode: 0o700 })
+    writeFileSync(join(publishDir, uvBinName()), bin, { flag: 'wx', mode: 0o700 })
+    renameSync(publishDir, installDir)
+
+    const method = 'official-release'
+    writeUvRecord(rt, { uvPath, version, installedAt: new Date().toISOString(), installDir, method })
+    resetProbeCache()
+    emit(`安装成功:${version} @ ${uvPath}`)
+    return { ok: true, uvPath, version, method, log: lines.join('\n') }
+  }
+  catch (err) {
+    // Never expose upstream redirect URLs, extractor commands, or raw response content.
+    emit(err instanceof AppError ? err.message : 'uv 安装失败;请检查 AML tools 目录权限和磁盘空间')
+    return { ok: false, method: 'none', log: lines.join('\n') }
+  }
+  finally {
+    if (stage) cleanupUvStage(stage)
+  }
 }
 
-/** 调用官方安装脚本(逐平台);成功判据 = 进程退出码 0 */
-/** PowerShell 单引号字面量转义:字面量内的单引号写成两个单引号 */
-const PS_QUOTE_ESC = '\'\''
-
-/** 调用官方安装脚本(逐平台);成功判据 = 进程退出码 0 */
-async function runOfficialInstaller(rt: AmlRuntime, emit: ProgressFn): Promise<{ ok: boolean, err: string }> {
-  if (process.platform === 'win32') {
-    const ps = [
-      `$env:UV_INSTALL_DIR='${rt.toolsDir.replace(/'/g, PS_QUOTE_ESC)}'`,
-      `$env:UV_NO_MODIFY_PATH='1'`,
-      'irm https://astral.sh/uv/install.ps1 | iex',
-    ].join('; ')
-    const r = await runCapture('powershell', ['-ExecutionPolicy', 'Bypass', '-NoProfile', '-NonInteractive', '-Command', ps], UV_INSTALL_TIMEOUT_MS, emit)
-    return { ok: r.code === 0, err: `官方脚本失败(exit=${r.code}):${(r.err || r.out).slice(-400)}` }
+async function extractUvMember(archive: string, member: string): Promise<Buffer> {
+  const systemRoot = process.env.SystemRoot ?? ''
+  const candidates = process.platform === 'win32'
+    ? isAbsolute(systemRoot) ? [join(systemRoot, 'System32', 'tar.exe')] : []
+    : ['/usr/bin/tar', '/bin/tar']
+  const tar = candidates.find(existsSync)
+  if (!tar) throw new AppError(503, 'AML_UV_EXTRACTOR_MISSING', '未找到系统 tar;请安装系统解包工具或手动配置 aml.python.uvBin')
+  try {
+    // stdout only: the archive never controls the written path, mode, links or metadata.
+    const { stdout } = await execFileAsync(tar, ['-xOf', archive, '--', member], {
+      encoding: 'buffer',
+      maxBuffer: 128 * 1024 * 1024,
+      timeout: 60_000,
+      cwd: dirname(tar),
+      windowsHide: true,
+      env: provisionSystemEnv(), // no TAR_OPTIONS, proxy settings, or credentials
+    })
+    return stdout
   }
-  const sh = `curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR='${rt.toolsDir.replace(/'/g, `'\\''`)}' UV_NO_MODIFY_PATH=1 sh`
-  const r = await runCapture('sh', ['-c', sh], UV_INSTALL_TIMEOUT_MS, emit)
-  return { ok: r.code === 0, err: `官方脚本失败(exit=${r.code}):${(r.err || r.out).slice(-400)}` }
+  catch {
+    throw new AppError(500, 'AML_UV_EXTRACT_FAILED', '无法使用系统 tar 解包已验证的 uv 资产')
+  }
 }
 
 // ---------- venv 供给 ----------
+
+const PYPI_INDEX = 'https://pypi.org/simple/'
+
+/** The package manager owns its own DNS and redirects. Use only explicitly trusted starting endpoints. */
+export async function validateAmlIndex(raw: string): Promise<string> {
+  const candidate = raw || PYPI_INDEX
+  const allowed = new Set([PYPI_INDEX, PYPI_INDEX.slice(0, -1),
+    ...(process.env.AML_PYTHON_INDEX_ALLOWLIST ?? '').split(',').map(url => url.trim()).filter(Boolean)])
+  if (!allowed.has(candidate)) {
+    throw new AppError(400, 'AML_PYTHON_INDEX_DENIED', 'aml.python.indexUrl 默认仅允许 PyPI;公开镜像须在 AML_PYTHON_INDEX_ALLOWLIST 中显式批准')
+  }
+  // No credentials (including empty URL userinfo), query/fragment or parser-ambiguous spelling.
+  if (!/^https:\/\/[a-z\d.-]+(?:\/[a-z\d._~/-]*)?$/i.test(candidate) || candidate !== candidate.trim()) {
+    throw new AppError(400, 'AML_PYTHON_INDEX_DENIED', 'Python 索引必须为不含凭据、端口、查询或片段的 HTTPS URL')
+  }
+  const checked = await validatePublicUrl(candidate, { timeoutMs: 10_000, label: 'Python 软件包索引' })
+  return checked.href
+}
+
+function provisionSystemEnv(): Record<string, string> {
+  const names = ['PATH', 'PATHEXT', 'SYSTEMROOT', 'SYSTEMDRIVE', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL']
+  const values = new Map(Object.entries(process.env).map(([key, value]) => [process.platform === 'win32' ? key.toUpperCase() : key, value]))
+  const env: Record<string, string> = {}
+  for (const name of names) {
+    const value = values.get(name)
+    if (value) env[name] = value
+  }
+  return env
+}
+
+function provisionEnv(rt: AmlRuntime): Record<string, string> {
+  // Explicitly disable credential discovery and inherited proxy/config settings.
+  return {
+    ...provisionSystemEnv(),
+    NO_PROXY: '*',
+    NETRC: devNull,
+    PIP_CONFIG_FILE: process.platform === 'win32' ? 'nul' : devNull,
+    UV_CREDENTIALS_DIR: devNull,
+    UV_PYTHON_INSTALL_DIR: resolve(rt.toolsDir, 'python'),
+    UV_CACHE_DIR: resolve(rt.toolsDir, 'uv-cache'),
+    UV_KEYRING_PROVIDER: 'disabled',
+    PYTHONNOUSERSITE: '1',
+  }
+}
 
 export function requirementsHash(): string {
   const reqPath = join(platformPythonDir(), 'requirements.txt')
@@ -524,8 +578,12 @@ export function venvIdentity(rt: AmlRuntime): {
  * 返回 venv 内 python 绝对路径。force=true 时删掉旧 venv 重建(UI「重建环境」)。
  */
 export async function ensureVenv(rt: AmlRuntime, opts: { force?: boolean, onLog?: ProgressFn, leaseHolder?: string } = {}): Promise<string> {
+  let indexUrl: string | undefined
   if (opts.force) {
     // 重建必须独占:有训练/求解读者时拒绝(不 rmSync 他们正在用的目录)
+    assertEnvIdleForMaintenance(opts.leaseHolder ?? 'ensure-venv-force')
+    // Refuse unsafe configuration without deleting a working environment.
+    indexUrl = await validateAmlIndex(amlSettings().python.indexUrl)
     assertEnvIdleForMaintenance(opts.leaseHolder ?? 'ensure-venv-force')
     try {
       rmSync(venvDir(rt), { recursive: true, force: true })
@@ -546,6 +604,9 @@ export async function ensureVenv(rt: AmlRuntime, opts: { force?: boolean, onLog?
       emitLog(opts.onLog, `环境已就绪(标记 ${requirementsHash()}):${vdir}`)
       return vpy
     }
+    indexUrl ??= await validateAmlIndex(amlSettings().python.indexUrl)
+    const idxArgs = ['--index-url', indexUrl, '--only-binary', ':all:']
+    const env = provisionEnv(rt)
     const probe = await probePython()
     let basePython = probe.ok ? probe.pythonPath : undefined
     // uv 优先自举(2026-10-05 用户需求):系统无 Python 但有 uv → uv 安装托管解释器,
@@ -556,28 +617,27 @@ export async function ensureVenv(rt: AmlRuntime, opts: { force?: boolean, onLog?
     if (!basePython) {
       throw new AppError(503, 'AML_PYTHON_MISSING', `训练运行时不可用:${probe.reason ?? '未检测到 uv 且无系统 Python;推荐安装 uv'}`)
     }
-    const s = amlSettings()
-    const idxArgs = s.python.indexUrl ? ['--index-url', s.python.indexUrl] : []
     const reqPath = join(platformPythonDir(), 'requirements.txt')
     mkdirSync(rt.root, { recursive: true })
     emitLog(opts.onLog, `开始供给 Python 环境(首次可能需数分钟下载依赖)…`)
 
     if (probe.uvPath) {
       // 目录已存在时不要重复 `uv venv`(uv 会以 "already exists" 失败):只补依赖。
+      const uvFlags = ['--no-config', '--no-python-downloads']
       if (!existsSync(vpy)) {
         emitLog(opts.onLog, `uv venv ${vdir} --python ${basePython}`)
-        const mk = await runCapture(probe.uvPath, ['venv', vdir, '--python', basePython], VENV_CREATE_TIMEOUT_MS, opts.onLog)
+        const mk = await runCapture(probe.uvPath, [...uvFlags, 'venv', vdir, '--python', basePython], VENV_CREATE_TIMEOUT_MS, opts.onLog, env)
         if (mk.code !== 0) throw new AppError(500, 'AML_VENV_FAILED', `uv venv 失败:${mk.err.slice(-400)}`)
       }
       emitLog(opts.onLog, `uv pip install -r requirements.txt`)
-      const inst = await runCapture(probe.uvPath, ['pip', 'install', '--python', vpy, '-r', reqPath, ...idxArgs], PIP_INSTALL_TIMEOUT_MS, opts.onLog)
+      const inst = await runCapture(probe.uvPath, [...uvFlags, 'pip', 'install', '--python', vpy, '-r', reqPath, ...idxArgs], PIP_INSTALL_TIMEOUT_MS, opts.onLog, env)
       if (inst.code !== 0) throw new AppError(500, 'AML_VENV_FAILED', `依赖安装失败:${(inst.err || inst.out).slice(-400)}`)
     }
     else {
       emitLog(opts.onLog, `未检测到 uv,回退 python -m venv(较慢)`)
-      const mk = await runCapture(basePython, ['-m', 'venv', vdir], VENV_CREATE_TIMEOUT_MS, opts.onLog)
+      const mk = await runCapture(basePython, ['-I', '-m', 'venv', vdir], VENV_CREATE_TIMEOUT_MS, opts.onLog, env)
       if (mk.code !== 0) throw new AppError(500, 'AML_VENV_FAILED', `python -m venv 失败:${mk.err.slice(-400)}`)
-      const inst = await runCapture(vpy, ['-m', 'pip', 'install', '-r', reqPath, ...idxArgs], PIP_INSTALL_TIMEOUT_MS, opts.onLog)
+      const inst = await runCapture(vpy, ['-I', '-m', 'pip', '--isolated', '--disable-pip-version-check', '--no-input', 'install', '--keyring-provider', 'disabled', '-r', reqPath, ...idxArgs], PIP_INSTALL_TIMEOUT_MS, opts.onLog, env)
       if (inst.code !== 0) throw new AppError(500, 'AML_VENV_FAILED', `pip install 失败:${(inst.err || inst.out).slice(-400)}`)
     }
     writeFileSync(venvMarkerPath(rt), new Date().toISOString())

@@ -29,17 +29,25 @@ const PATCH_TARGETS = [
   ['virtual', 'entry.mjs'],
 ]
 
+const AML_PY_FILES = ['amlkit.py', 'aml_eval.py', 'requirements.txt', 'train-example.py', 'train-hybrid-example.py']
+const OPTIMIZER_PY_FILES = ['worker.py', 'problems.py', 'probe.py']
+
+/** Worker 源码/产物均必须含有完整协议实现,不能只依赖目录存在。 */
+function optimizerAssetsReady(dir) {
+  return OPTIMIZER_PY_FILES.every(file => existsSync(join(dir, file)))
+}
+
 /**
  * 产物完整性:入口 + 全部外置运行时资产都在。
- * `aw start` 用它判断能否跳过构建 —— 只看 index.mjs 会在"上次构建失败留下半产物"时
- * 直接启动一个缺 prompts/schema/aml-python 的实例(运行期才炸)。
+ * `aw start` 用它判断能否跳过构建 —— 缺少 Python worker 时必须在启动前失败。
  */
 export function outputAssetsReady(root) {
   const asDir = join(root, '.output', '.AgentWorkShop')
   return existsSync(join(root, '.output', 'server', 'index.mjs'))
-    && existsSync(join(asDir, 'prompts'))
+    && existsSync(join(asDir, 'prompts', 'host-tools.json'))
     && existsSync(join(asDir, 'schema.json'))
-    && existsSync(join(asDir, 'aml-python'))
+    && AML_PY_FILES.every(file => existsSync(join(asDir, 'aml-python', file)))
+    && optimizerAssetsReady(join(asDir, 'optimizer-python'))
     && existsSync(join(root, '.output', 'skills'))
 }
 
@@ -79,9 +87,9 @@ export function postBuildArtifacts(root) {
 
   // 外置资产随产物分发(运行时 fs 读取;缺了它们不是启动失败而是运行期才炸)
   const assets = []
-  const ship = (src, dest, label, { recursive = false } = {}) => {
+  const ship = (src, dest, label, { recursive = false, filter = undefined } = {}) => {
     if (!existsSync(src)) throw new Error(`[build] 必需运行时资产缺失:${label}(${src})`)
-    if (recursive) cpSync(src, dest, { recursive: true, force: true })
+    if (recursive) cpSync(src, dest, { recursive: true, force: true, filter })
     else {
       mkdirSync(join(dest, '..'), { recursive: true })
       copyFileSync(src, dest)
@@ -93,12 +101,19 @@ export function postBuildArtifacts(root) {
   mkdirSync(asDir, { recursive: true })
   ship(join(root, '.AgentWorkShop', 'prompts'), join(asDir, 'prompts'), 'prompts', { recursive: true })
   ship(join(root, 'shared', 'config', 'schema.json'), join(asDir, 'schema.json'), 'schema.json')
-  ship(
-    join(root, 'server', 'services', 'workshop', 'aml', 'python'),
-    join(asDir, 'aml-python'),
-    'aml-python',
-    { recursive: true },
-  )
+  const copyPythonAssets = (sourceParts, name, required) => {
+    const src = join(root, 'server', 'services', 'workshop', ...sourceParts, 'python')
+    const dest = join(asDir, name)
+    for (const file of required) {
+      if (!existsSync(join(src, file))) throw new Error(`[build] ${name} 资产缺少 ${file}`)
+    }
+    ship(src, dest, name, {
+      recursive: true,
+      filter: entry => !entry.includes('__pycache__') && !entry.includes('.mimosa'),
+    })
+  }
+  copyPythonAssets(['aml'], 'aml-python', AML_PY_FILES)
+  copyPythonAssets(['optimization'], 'optimizer-python', OPTIMIZER_PY_FILES)
   // 内置 Agent Skills：源码/安装包根目录与 standalone .output 都可发现
   ship(join(root, 'skills'), join(outputRoot, 'skills'), 'skills', { recursive: true })
   // Nitro 在混合依赖(zod 3 直依赖 + 传递 zod 4)时可能把传递版本复制到产物根，

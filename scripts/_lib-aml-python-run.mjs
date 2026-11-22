@@ -4,10 +4,10 @@
  */
 import { spawnSync } from 'node:child_process'
 
-export function runPythonJob(pythonBin, args, cwd, envExtra) {
+export function runPythonJob(pythonBin, args, cwd, env) {
   const r = spawnSync(pythonBin, args, {
     cwd,
-    env: { ...process.env, ...envExtra },
+    env,
     encoding: 'utf8',
     timeout: 300000,
     windowsHide: true,
