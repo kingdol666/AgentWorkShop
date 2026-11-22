@@ -1,3 +1,11 @@
+## v0.17.4 — Back to main from standalone full-screen pages（2026-11-23）
+
+- `/town` (digital twin, `town` layout) and `/workshop/w/:id` (bare `console` layout) now render a localized `AppBackToMain` control — a `NuxtLink` to the dashboard `/`, which uses the default layout with the navigation sidebar. Before this, the desktop window had no way back from the full-screen twin scene. 数字孪生与裸控制台新增「返回主界面」入口，回到带导航栏的仪表盘；桌面端不再被困在全屏页面。
+- The control shows its label on desktop and collapses to an arrow below 640px while keeping `aria-label`/`title`; it derives colors from `currentColor`, so it works on both the dark HUD and the light/dark console. 控件自适应：窄屏只留箭头，亮暗主题通用。
+- `/projects/:id` keeps its own “返回项目中心” (`/projects`) and “返回 Agent 工作台” (`/workshop`) entries — both nav pages. 项目页保留两条返回导航页的入口。
+- Added a static contract test (`tests/standalone-return.test.ts`, 4/4): the control targets `/`, TownTopNav and the console Topbar render it, both locales define the labels, and the project page keeps its return links. 新增静态契约测试。
+- Verification: focused test 4/4; i18n parity (3441/3441, 0 unresolved), CSS variables (161 refs), frontend lifecycle contract, ESLint and typecheck green; the production build serves `/town` with the control, and the installed 0.17.4 desktop navigates back to the dashboard. 生产构建与安装版实测。
+
 ## v0.17.3 — Desktop update install helper via WSH（2026-11-23）
 
 - The silent install + relaunch step now runs through a detached, console-free WSH helper: `wscript.exe //B //NoLogo <fixed VBS>` with `AW_UPDATE_INSTALLER`/`AW_UPDATE_EXE` in the environment. The VBS waits 6 seconds, runs the NSIS installer with `/S` and waits for it, then restarts the executable from the install directory. 更新安装改由独立无控制台 WSH 助手执行（路径走环境变量）：等待 6 秒 → `/S` 静默安装 → 重启当前安装目录中的程序。

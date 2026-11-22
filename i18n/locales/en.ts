@@ -1,5 +1,7 @@
 export default {
   common: {
+    backToMain: 'Back to main',
+    backToMainTip: 'Back to the main interface with navigation (dashboard)',
     stop: 'Stop',
     stopLine: 'Stop line',
     add: 'Add',

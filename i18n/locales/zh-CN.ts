@@ -1,5 +1,7 @@
 export default {
   common: {
+    backToMain: '返回主界面',
+    backToMainTip: '返回带导航栏的主界面(仪表盘)',
     stop: '停止',
     stopLine: '停线',
     add: '添加',

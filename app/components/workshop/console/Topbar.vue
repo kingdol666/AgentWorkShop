@@ -54,6 +54,8 @@ const toggleRight = (): void => {
       tabindex="-1"
       @keydown="emit('viewKey', $event)"
     >
+      <!-- 裸控制台布局没有全局侧栏:固定提供返回主界面(仪表盘)的入口 -->
+      <AppBackToMain />
       <span
         v-if="channelId"
         class="chan-title"

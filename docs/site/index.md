@@ -73,7 +73,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.17.3 · 已发布</i></span>
+        <span>版本 <i>v0.17.4 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -90,11 +90,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.17.3 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.17.4 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.17.3 版本（含 0.17.0/0.17.1/0.17.2 全部内容）。本版新增一体化桌面壳、桌面/Web 共用 <code>~/.AgentWorkShop</code> 与基于 GitHub Releases 的应用内更新；更新安装改由独立无控制台 WSH 助手执行（`wscript.exe` + 固定 VBS，路径走环境变量），修复 `cmd.exe` 引号与分离式 PowerShell 均无法启动安装包的问题；下载走 GitHub API 资产端点、传输预算 30 分钟；同时保留「AgentPrefab 能力装配」计划（#252–#258）的端到端能力：
+      当前为 v0.17.4 版本：数字孪生（/town）与裸控制台页面新增「返回主界面」入口，点击回到带导航栏的仪表盘；桌面端不再被困在全屏场景里。此前版本已提供一体化桌面壳、桌面/Web 共用 <code>~/.AgentWorkShop</code>、基于 GitHub Releases 的应用内更新与 WSH 静默安装助手：
       系统设置新增技能管理（标准 SKILL.md 发现 → 不可变受管导入 → 显式启用，覆盖
       内置、<code>&lt;configRoot&gt;/skills</code>、<code>~/.agent/skills</code> 等全局根，全程不执行
       Skill 脚本）、外部 MCP（HTTPS 清单 + <code>AW_MCP_*</code> 凭据引用 + 评审制

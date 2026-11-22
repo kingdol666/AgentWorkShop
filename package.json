@@ -1,6 +1,6 @@
 {
   "name": "agentworkshop",
-  "version": "0.17.3",
+  "version": "0.17.4",
   "type": "module",
   "description": "AgentWorkShop — a configuration-driven industrial agent runtime: agent teams, Channel sessions, Project delivery and governed plant writes",
   "license": "Apache-2.0",
