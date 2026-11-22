@@ -1,8 +1,7 @@
 import { app, BrowserWindow, dialog } from 'electron'
 import { createWriteStream, mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { homedir } from 'node:os'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isAppUrl, startSidecar } from './sidecar.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -10,7 +9,8 @@ const backend = app.isPackaged ? join(process.resourcesPath, 'backend') : resolv
 const node = app.isPackaged
   ? join(process.resourcesPath, 'node', process.platform === 'win32' ? 'node.exe' : 'node')
   : process.env.AW_DESKTOP_NODE_BIN || 'node'
-const home = resolve(process.env.AW_DESKTOP_HOME || join(homedir(), '.AgentWorkShop-desktop'))
+const { desktopHome } = await import(pathToFileURL(join(backend, 'shared', 'config', 'home.mjs')).href)
+const home = desktopHome()
 const profile = join(home, 'electron')
 mkdirSync(profile, { recursive: true })
 app.setPath('userData', profile)

@@ -9,12 +9,12 @@
 // 命令系统(/help)+ 监控面板(终端 WS)+ HITL 统一作答(/hitl)。
 // --headless:VirtualTerminal 驱动(无 TTY;scripts/tui-smoke.mjs 用)。
 // ============================================================
-import { join, resolve } from 'node:path'
-import { readLock, probeHealth } from '../mcp/discovery.mjs'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { TuiMainScreen, Editor, CombinedAutocompleteProvider, ProcessTerminal, truncateToWidth } from '@earendil-works/pi-tui'
 import { theme } from './theme.mjs'
 import { loadAuth, saveAuth, configRoot } from './lib/config.mjs'
+import { resolveTuiUrl } from './lib/discovery.mjs'
 import { createApi } from './lib/api.mjs'
 import { connectAep, connectTerm } from './lib/ws.mjs'
 import { createState, pushLog, withLog } from './lib/state.mjs'
@@ -43,11 +43,7 @@ function parseArgs(argv) {
 /** 认证:已存凭据 → --token → 环境变量 → 交互登录 */
 async function ensureAuth(opts) {
   const saved = loadAuth()
-  const locked = readLock(join(configRoot(), '.runtime', 'aw.lock'))
-  const local = locked ? `http://127.0.0.1:${locked.port}` : undefined
-  const configured = opts.url ?? process.env.AW_TUI_URL ?? saved?.baseUrl
-  const discovered = configured || !local ? null : await probeHealth(local)
-  const baseUrl = configured ?? (discovered?.workshop === 'ready' ? local : 'http://127.0.0.1:3001')
+  const baseUrl = await resolveTuiUrl({ url: opts.url, savedUrl: saved?.baseUrl })
   if (opts.token) return { baseUrl, token: opts.token }
   if (saved?.token && saved.baseUrl === baseUrl) return { baseUrl, token: saved.token }
 

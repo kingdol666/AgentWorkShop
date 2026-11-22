@@ -8,8 +8,8 @@ import { dirname, join } from 'node:path'
 import { resolveRunMode } from '../../shared/config/home.mjs'
 
 /** 使用与 CLI/服务端相同的配置根；显式 home 模式不会落到源码工作区。 */
-export function configRoot(cwd = process.cwd()) {
-  return resolveRunMode({ cwd }).configRoot
+export function configRoot(cwd = process.cwd(), env = process.env) {
+  return resolveRunMode({ cwd, env }).configRoot
 }
 
 const authPath = cwd => join(configRoot(cwd), 'tui-auth.json')

@@ -6,7 +6,7 @@
 
 - 桌面：运行 Windows NSIS 安装程序，从开始菜单启动。也可从 npm CLI 输入 `aw desktop`（默认安装路径可以自动发现，或用 `--executable <path>` 指定）。仅有 npm 包时，该命令使用可选的 Electron 依赖；第一次启动可能下载对应 Electron 二进制。
 - Web：`aw web` 是 `aw start` 的别名。只在本机使用时可加 `--host 127.0.0.1`。npm 发行包要求机器上的 Node 符合 `package.json`。
-- TUI：服务启动后用 `aw tui --url <baseUrl>`。未指定地址时优先使用保存的连接，或从当前配置根的实例锁发现端口。桌面实例地址可在桌面数据目录的 `.runtime/aw.lock` 中找到。TUI 是频道协作/监控客户端，不覆盖所有 Web 管理面板。
+- TUI：服务启动后用 `aw tui --url <baseUrl>`，或省略地址让 TUI 优先查看当前配置根的实例锁，再查看桌面数据目录（显式 `AW_HOME` 时只查询指定配置根）。若实例仍在启动，TUI 会有限等待，不会改连其他端口。没有运行中的本机实例时才尝试保存的连接或默认 Web 端口。TUI 是频道协作/监控客户端，不覆盖所有 Web 管理面板。
 
 桌面默认用独立的 `~/.AgentWorkShop-desktop`（`AW_DESKTOP_HOME` 可重定向），其中的配置、插件、SQLite、日志和 `aml/` 不属于安装目录。`electron/` 是 Chromium 的用户数据。桌面后端只监听 `127.0.0.1`；Electron 不向网页开放 Node 或特权 IPC。退出先调后端优雅停机，再关闭桌面。桌面会话密钥默认只在进程环境中存在，重启后浏览器可能需重新登录。需要持续会话时可通过私有环境提供 `NUXT_SESSION_PASSWORD`。
 
