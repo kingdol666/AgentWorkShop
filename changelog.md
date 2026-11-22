@@ -1,3 +1,12 @@
+## v0.17.0 — Integrated desktop chrome, shared home, and in-app updates（2026-11-22）
+
+- Desktop chrome: a frameless `BrowserWindow` with a 40px product title rail (brand mark, live page title, local service status, custom minimize/maximize/close), while the content area remains a separate `WebContentsView` loading the unchanged Nitro page. The rail follows the app's light/dark theme and hides the page label when the document title is only the product name. 桌面壳：40px 一体化标题导轨 + 独立内容视图，不改写网页内容；亮暗主题同步。
+- Brand: new `A + channel bus` mark (`desktop/brand/icon.svg`) rendered to a transparent-corner PNG/ICO; used by the installer, executable, window and the rail's top-left logo. 新品牌图标统一用于安装器、可执行文件、窗口和左上角 Logo。
+- Shared data home: desktop now defaults to the same `~/.AgentWorkShop` as Web/CLI (`AW_DESKTOP_HOME`/`AW_HOME` override), so both front ends read the same SQLite, plugins, config and AML state. The single-writer lock still prevents two backends writing one home at once. 桌面与 Web 默认共用 `~/.AgentWorkShop`，数据互通；单写者锁仍防止并发写入。
+- In-app updates: the desktop checks GitHub Releases shortly after startup and every 30 minutes; a mint “更新 vX.Y.Z” pill appears when a newer release exists. Click downloads the installer, verifies `SHA256SUMS.txt`, and after confirmation runs the NSIS installer silently and restarts. Downloads are HTTPS-only, restricted to four GitHub hosts, reject credentials/non-443 ports/non-public DNS and validate every redirect. 内置更新：启动后与每 30 分钟检查 GitHub Releases；标题栏更新按钮 → 下载 → SHA-256 校验 → 静默安装并重启。仅允许四个 GitHub HTTPS 主机与公网地址。
+- Supervisor health probe: fresh socket per probe and a 10s budget (was a 3s shared fetch) so a busy-but-alive dataset/plugin phase is not mistaken for a dead server. 健康探针改为独立短连接 + 10s 预算，降低重负载误重启。
+- Verification: full unit suite re-run on the final tree; shared-home Web↔Desktop interop (both directions); real `omp` Channel job completed with artifact `端到端演示成功` on the real `~/.AgentWorkShop`; NSIS installer install/launch and the live update flow against the published release. 验证见 `docs/design/desktop-chrome/acceptance.md` 与本轮发布证据。
+
 ## v0.16.0 — Leader-managed worker AgentPrefabs and governed runtime boundaries（2026-11-21）
 
 - Channel Leaders can create workers with a published AgentPrefab selector, atomically pinning `(prefabId, revision, slotValues, contentHash)` while keeping authoring and publishing restricted to the existing Prefab owner/admin surface. Leader updates support explicit revision replacement or `null` detach; omission preserves the current binding.

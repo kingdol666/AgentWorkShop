@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark" data-platform="win32" data-maximized="false" data-focused="true">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; font-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgentWorkShop</title>
+  <style>
+    :root {
+      --rail-height: 40px;
+      --rail-top: #0b1322;
+      --rail-bg: #070c14;
+      --rail-line: #1d2a3d;
+      --rail-line-strong: #2c405b;
+      --rail-ink: #e9eff8;
+      --rail-ink-soft: #b6c3d5;
+      --rail-ink-faint: #93a3b8;
+      --rail-accent: #3fe4ab;
+      --rail-accent-glow: rgb(63 228 171 / 10%);
+      --rail-chip: #0d1521;
+      --rail-hover: rgb(233 239 248 / 7%);
+      --rail-press: rgb(233 239 248 / 11%);
+      --rail-focus: #6fb3ff;
+      --rail-close: #d93a3f;
+    }
+
+    html[data-theme='light'] {
+      --rail-top: #ffffff;
+      --rail-bg: #f6f5f2;
+      --rail-line: #e4e1dc;
+      --rail-line-strong: #d6d2cc;
+      --rail-ink: #0c0a09;
+      --rail-ink-soft: #57534e;
+      --rail-ink-faint: #6b665d;
+      --rail-accent: #1f8f66;
+      --rail-accent-glow: rgb(31 143 102 / 8%);
+      --rail-chip: #ffffff;
+      --rail-hover: rgb(12 10 9 / 6%);
+      --rail-press: rgb(12 10 9 / 10%);
+      --rail-focus: #2563eb;
+      --rail-close: #cf3036;
+    }
+
+    * { box-sizing: border-box; }
+
+    [hidden] { display: none !important; }
+
+    html {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--rail-bg);
+    }
+
+    body {
+      height: var(--rail-height);
+      margin: 0;
+      overflow: hidden;
+      color: var(--rail-ink);
+      font-family: 'Geist', 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans SC', system-ui, sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+      background: var(--rail-bg);
+    }
+
+    .rail {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: var(--rail-height);
+      padding: 0 6px 0 10px;
+      background:
+        radial-gradient(160px 44px at 24px 0%, var(--rail-accent-glow), transparent 72%),
+        linear-gradient(180deg, var(--rail-top), var(--rail-bg));
+      -webkit-app-region: drag;
+      app-region: drag;
+    }
+
+    /* Instrument rule: a 22px brand tick, then hairline to the end. */
+    .rail::after {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 1px;
+      content: '';
+      background: linear-gradient(90deg, var(--rail-accent) 0 22px, var(--rail-line) 22px, var(--rail-line) 100%);
+    }
+
+    .brand {
+      display: flex;
+      flex: none;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 24px;
+      height: 24px;
+      filter: drop-shadow(0 1px 2px rgb(0 0 0 / 28%));
+    }
+
+    .wordmark {
+      font-size: 12.5px;
+      line-height: 1;
+      letter-spacing: .015em;
+      white-space: nowrap;
+    }
+
+    .wordmark .agent {
+      font-weight: 500;
+      color: var(--rail-ink-soft);
+    }
+
+    .wordmark .shop {
+      font-weight: 650;
+      color: var(--rail-ink);
+    }
+
+    .split {
+      flex: none;
+      width: 1px;
+      height: 14px;
+      background: var(--rail-line-strong);
+      opacity: .8;
+    }
+
+    .page {
+      flex: 0 1 auto;
+      max-width: 420px;
+      overflow: hidden;
+      font-size: 11.5px;
+      font-weight: 500;
+      line-height: 1;
+      color: var(--rail-ink-faint);
+      letter-spacing: .02em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .drag {
+      flex: 1 1 auto;
+      align-self: stretch;
+      -webkit-app-region: drag;
+      app-region: drag;
+    }
+
+    .status {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      gap: 6px;
+      height: 23px;
+      padding: 0 9px;
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--rail-ink-soft);
+      letter-spacing: .02em;
+      white-space: nowrap;
+      background: var(--rail-chip);
+      border: 1px solid var(--rail-line);
+      border-radius: 999px;
+    }
+
+    .update {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      gap: 6px;
+      height: 23px;
+      padding: 0 10px;
+      font: inherit;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--rail-accent);
+      letter-spacing: .02em;
+      white-space: nowrap;
+      cursor: pointer;
+      background: color-mix(in srgb, var(--rail-accent) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--rail-accent) 34%, transparent);
+      border-radius: 999px;
+      transition: background-color 120ms ease-out, color 120ms ease-out;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+    }
+
+    .update:hover {
+      background: color-mix(in srgb, var(--rail-accent) 18%, transparent);
+    }
+
+    .update:focus-visible {
+      outline: 2px solid var(--rail-focus);
+      outline-offset: 2px;
+    }
+
+    .update[data-state='ready'] {
+      color: #08130d;
+      background: var(--rail-accent);
+      border-color: transparent;
+    }
+
+    .update[data-state='error'] {
+      color: #ff8080;
+      background: rgb(255 128 128 / 10%);
+      border-color: rgb(255 128 128 / 35%);
+    }
+
+    .update-dot {
+      width: 5px;
+      height: 5px;
+      background: currentColor;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent);
+    }
+
+    .update[data-state='downloading'] .update-dot {
+      animation: breathe 1.2s ease-in-out infinite;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--rail-ink-faint);
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px transparent;
+      transition: background 160ms ease-out, box-shadow 160ms ease-out;
+    }
+
+    .status[data-state='online'] .status-dot {
+      background: var(--rail-accent);
+      box-shadow: 0 0 0 3px var(--rail-accent-glow);
+    }
+
+    .status[data-state='connecting'] .status-dot {
+      background: #f6c453;
+      box-shadow: 0 0 0 3px rgb(246 196 83 / 12%);
+      animation: breathe 1.6s ease-in-out infinite;
+    }
+
+    .status[data-state='offline'] .status-dot {
+      background: #ff8080;
+      box-shadow: 0 0 0 3px rgb(255 128 128 / 12%);
+    }
+
+    @keyframes breathe {
+      50% { opacity: .45; }
+    }
+
+    .controls {
+      display: flex;
+      flex: none;
+      gap: 2px;
+      align-items: center;
+      -webkit-app-region: no-drag;
+      app-region: no-drag;
+    }
+
+    .ctl {
+      display: grid;
+      width: 44px;
+      height: 28px;
+      padding: 0;
+      color: var(--rail-ink-soft);
+      cursor: default;
+      background: transparent;
+      border: 0;
+      border-radius: 7px;
+      place-items: center;
+      transition: color 120ms ease-out, background-color 120ms ease-out;
+    }
+
+    .ctl:hover {
+      color: var(--rail-ink);
+      background: var(--rail-hover);
+    }
+
+    .ctl:active {
+      background: var(--rail-press);
+    }
+
+    .ctl:focus-visible {
+      outline: 2px solid var(--rail-focus);
+      outline-offset: -2px;
+    }
+
+    .ctl-close:hover {
+      color: #fff;
+      background: var(--rail-close);
+    }
+
+    .ctl-close:active {
+      background: #b92b30;
+    }
+
+    .ctl svg {
+      width: 10px;
+      height: 10px;
+      overflow: visible;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.25;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .glyph-restore { display: none; }
+
+    html[data-maximized='true'] .glyph-max { display: none; }
+    html[data-maximized='true'] .glyph-restore { display: block; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ctl,
+      .status-dot,
+      .update,
+      .update-dot { transition: none; }
+
+      .status[data-state='connecting'] .status-dot,
+      .update[data-state='downloading'] .update-dot { animation: none; }
+    }
+
+    @media (max-width: 720px) {
+      .page { display: none; }
+
+      .split { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="rail" role="banner">
+    <div class="brand" aria-label="AgentWorkShop">
+      <svg class="mark" viewBox="0 0 512 512" aria-hidden="true">
+        <defs>
+          <linearGradient id="badge" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#142339" />
+            <stop offset=".58" stop-color="#0b1422" />
+            <stop offset="1" stop-color="#070c14" />
+          </linearGradient>
+          <linearGradient id="mint" x1="15" y1="51" x2="49" y2="11" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#2fd79e" />
+            <stop offset="1" stop-color="#63ebbc" />
+          </linearGradient>
+          <linearGradient id="cyan" x1="23" y1="37" x2="41" y2="37" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#2bb9e8" />
+            <stop offset="1" stop-color="#7ce0ff" />
+          </linearGradient>
+        </defs>
+        <rect width="512" height="512" rx="120" fill="url(#badge)" />
+        <rect x="2.5" y="2.5" width="507" height="507" rx="118" fill="none" stroke="#3fe4ab" stroke-opacity=".2" stroke-width="3" />
+        <g transform="translate(256 256) scale(8.2) translate(-32 -31.5)" fill="none" stroke-linecap="round">
+          <path d="M32 12 15.5 51" stroke="url(#mint)" stroke-width="6.4" />
+          <path d="M32 12 48.5 51" stroke="url(#mint)" stroke-width="6.4" />
+          <path d="M23.4 37h17.2" stroke="url(#cyan)" stroke-width="5.2" />
+        </g>
+      </svg>
+      <span class="wordmark"><span class="agent">Agent</span><span class="shop">WorkShop</span></span>
+    </div>
+    <span class="split" id="page-split" aria-hidden="true" hidden></span>
+    <span class="page" id="page-title" hidden></span>
+    <span class="drag" aria-hidden="true"></span>
+    <button class="update" id="update" type="button" hidden>
+      <span class="update-dot" aria-hidden="true"></span>
+      <span id="update-label">更新</span>
+    </button>
+    <span class="status" id="status" data-state="connecting" title="正在连接本机服务">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span class="status-text" id="status-text">连接中</span>
+    </span>
+    <div class="controls" role="group" aria-label="窗口控制">
+      <button class="ctl" type="button" data-action="minimize" aria-label="最小化" title="最小化">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.2 5h7.6" /></svg>
+      </button>
+      <button class="ctl" type="button" data-action="toggle-maximize" aria-label="最大化" title="最大化">
+        <svg class="glyph-max" viewBox="0 0 10 10" aria-hidden="true"><rect x="1.1" y="1.1" width="7.8" height="7.8" rx="1.2" /></svg>
+        <svg class="glyph-restore" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.4 2.2h4.4a.9.9 0 0 1 .9.9v4.4" /><rect x="1.3" y="3.3" width="5.4" height="5.4" rx="1" /></svg>
+      </button>
+      <button class="ctl ctl-close" type="button" data-action="close" aria-label="关闭" title="关闭">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.6 1.6l6.8 6.8M8.4 1.6l-6.8 6.8" /></svg>
+      </button>
+    </div>
+  </header>
+  <script>
+    (() => {
+      const api = window.awChrome
+      const root = document.documentElement
+      const page = document.getElementById('page-title')
+      const split = document.getElementById('page-split')
+      const update = document.getElementById('update')
+      const updateLabel = document.getElementById('update-label')
+      const status = document.getElementById('status')
+      const statusText = document.getElementById('status-text')
+      const labels = { online: '已连接', connecting: '连接中', offline: '已断开' }
+      if (!api) {
+        root.dataset.ready = 'missing'
+        return
+      }
+      root.dataset.ready = 'true'
+      root.dataset.platform = api.platform || 'win32'
+      document.querySelectorAll('[data-action]').forEach((button) => {
+        button.addEventListener('click', () => api.action(button.dataset.action))
+      })
+      if (update) {
+        update.addEventListener('click', () => api.updateAction('activate'))
+      }
+      api.onUpdate((state) => {
+        const status = state && state.status
+        if (!['available', 'downloading', 'ready', 'error'].includes(status)) {
+          update.hidden = true
+          return
+        }
+        update.hidden = false
+        update.dataset.state = status
+        updateLabel.textContent = status === 'available'
+          ? `更新 v${state.version}`
+          : status === 'downloading'
+            ? `下载 ${Math.max(0, Math.min(100, Number(state.progress) || 0))}%`
+            : status === 'ready' ? '重启安装' : '更新失败'
+        update.title = status === 'error'
+          ? (state.error || '更新失败，点击重试')
+          : status === 'ready' ? `已下载 v${state.version}，点击安装并重启` : `发现新版本 v${state.version}`
+        update.setAttribute('aria-label', updateLabel.textContent)
+      })
+      api.onState((state) => {
+        root.dataset.maximized = state && state.maximized ? 'true' : 'false'
+        root.dataset.focused = state && state.focused ? 'true' : 'false'
+        const maximize = document.querySelector('[data-action="toggle-maximize"]')
+        if (!maximize) return
+        const label = state && state.maximized ? '还原' : '最大化'
+        maximize.title = label
+        maximize.setAttribute('aria-label', label)
+      })
+      api.onStatus((value) => {
+        if (!labels[value]) return
+        status.dataset.state = value
+        statusText.textContent = labels[value]
+        status.title = value === 'online' ? '本机服务运行中' : value === 'connecting' ? '正在连接本机服务' : '本机服务已断开'
+      })
+      api.onTheme((value) => {
+        root.dataset.theme = value === 'light' ? 'light' : 'dark'
+      })
+      api.onTitle((value) => {
+        const text = typeof value === 'string' ? value.trim() : ''
+        page.textContent = text
+        page.title = text
+        page.hidden = !text
+        if (split) split.hidden = !text
+      })
+      api.hello()
+    })()
+  </script>
+</body>
+</html>

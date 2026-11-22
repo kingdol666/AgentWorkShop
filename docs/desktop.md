@@ -8,7 +8,21 @@
 - Web：`aw web` 是 `aw start` 的别名。只在本机使用时可加 `--host 127.0.0.1`。npm 发行包要求机器上的 Node 符合 `package.json`。
 - TUI：服务启动后用 `aw tui --url <baseUrl>`，或省略地址让 TUI 优先查看当前配置根的实例锁，再查看桌面数据目录（显式 `AW_HOME` 时只查询指定配置根）。若实例仍在启动，TUI 会有限等待，不会改连其他端口。没有运行中的本机实例时才尝试保存的连接或默认 Web 端口。TUI 是频道协作/监控客户端，不覆盖所有 Web 管理面板。
 
-桌面默认用独立的 `~/.AgentWorkShop-desktop`（`AW_DESKTOP_HOME` 可重定向），其中的配置、插件、SQLite、日志和 `aml/` 不属于安装目录。`electron/` 是 Chromium 的用户数据。桌面后端只监听 `127.0.0.1`；Electron 不向网页开放 Node 或特权 IPC。退出先调后端优雅停机，再关闭桌面。桌面会话密钥默认只在进程环境中存在，重启后浏览器可能需重新登录。需要持续会话时可通过私有环境提供 `NUXT_SESSION_PASSWORD`。
+桌面默认与 Web/CLI 共用 `~/.AgentWorkShop`（`AW_DESKTOP_HOME` 或 `AW_HOME` 可重定向），配置、插件、SQLite、日志和 `aml/` 都落在这个目录，因此桌面和 Web 读写同一份数据。两者不能同时写同一个 home：先停止其中一个实例，再启动另一个；桌面检测到已有写入者会拒绝启动第二个。`electron/` 是 Chromium 的用户数据。桌面后端只监听 `127.0.0.1`；Electron 不向网页开放 Node 或特权 IPC。退出先调后端优雅停机，再关闭桌面。桌面会话密钥默认只在进程环境中存在，重启后浏览器可能需重新登录。需要持续会话时可通过私有环境提供 `NUXT_SESSION_PASSWORD`。
+
+## 桌面外观与品牌
+
+桌面窗口使用无边框 `BrowserWindow`：顶部 40px 是随应用分发的标题栏文档（`desktop/chrome/titlebar.html`），下方内容区是独立 `WebContentsView`，加载与 Web 端完全相同的 Nitro 页面，不做 DOM 注入或布局改写。标题栏提供品牌标识、当前页面标题、本机服务状态和自绘的最小化/最大化/关闭按钮；窗口按钮经 `desktop/chrome/preload.cjs` 的白名单 IPC 触达主进程。标题栏跟随应用的 `html.dark` 主题切换，在亮色下使用暖纸白，在暗色下使用深海军蓝与信号绿。
+
+品牌图标源文件是 `desktop/brand/icon.svg`（绿/青「A + 信号总线」标记）；`desktop/build/icon.png` 与 `desktop/build/icon.ico` 由它生成，供安装器、可执行文件和标题栏共用。设计原型与状态板见 `docs/design/desktop-chrome/prototype.html`（截图 `prototype.png`）。图标是从 SVG 渲染的 512px 圆角方形（四角透明），改动图标时同时更新 PNG/ICO。
+
+标题栏与桌面入口回归测试：`node --import tsx --test tests/desktop-chrome.test.ts tests/desktop-terminal-entry.test.ts`。
+
+## 更新通道
+
+桌面版启动 4 秒后检查 GitHub Releases 最新版本，此后每 30 分钟检查一次；发现比当前版本更新的 release 时，标题栏出现「更新 vX.Y.Z」。点击后把安装包下载到系统临时目录，并用 release 附带的 `SHA256SUMS.txt` 校验 SHA-256；再次确认后退出应用、静默运行 NSIS 安装包并重启。下载只允许 `api.github.com`、`github.com`、`objects.githubusercontent.com`、`release-assets.githubusercontent.com` 四个 HTTPS 主机，逐跳校验重定向、拒绝凭据/非常规端口/非公网 DNS，校验失败不会执行安装包。`AW_UPDATE_CHECK=0` 可关闭检查；`AW_UPDATE_TEST_VERSION` 只用于验收测试。安装包当前未签名，信任锚是 HTTPS + 固定仓库 + SHA-256，不是 Authenticode。
+
+发布 release 时需上传安装器 `AgentWorkShop-Setup-<version>-win-x64.exe`、`SHA256SUMS.txt` 和 npm tarball。
 
 ## AML 运行环境
 
@@ -26,7 +40,7 @@ Node/TypeScript 负责数据集、作业与评估调度、门禁和模型注册�
 pnpm install --frozen-lockfile
 pnpm build
 npm pack --ignore-scripts --pack-destination D:\aw-artifacts
-npm install -g --ignore-scripts --prefix D:\aw-artifacts\prefix D:\aw-artifacts\agentworkshop-0.16.0.tgz
+npm install -g --ignore-scripts --prefix D:\aw-artifacts\prefix D:\aw-artifacts\agentworkshop-0.17.0.tgz
 npm --prefix desktop ci
 npm --prefix desktop run build -- --backend D:\aw-artifacts\prefix\node_modules\agentworkshop --out D:\aw-artifacts\desktop
 ```
