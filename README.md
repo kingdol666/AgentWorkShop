@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.1)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.2)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>source v0.17.1 (released 2026-11-22)</b> · integrated desktop shell with in-app updates · shared <code>~/.AgentWorkShop</code> home · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
+<sub><b>source v0.17.2 (released 2026-11-22)</b> · integrated desktop shell with in-app updates · shared <code>~/.AgentWorkShop</code> home · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[Quick start](#quick-start) · [Current source](#current-source-v0-17-1) · [0.17.1 release notes](#whats-new-in-0171) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [Current source](#current-source-v0-17-2) · [0.17.2 release notes](#whats-new-in-0172) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,17 +49,23 @@ A configuration-driven platform where **AI agent teams** and industrial systems 
 - **Delivery is a first-class concept**: **Project mode** turns a blueprint into a plan, a WBS with dependencies, L1 technical review, L2 owner acceptance and real deliverables — the project closes only when the deliverables pass;
 - **The loop is implemented in governed stages**: read → analyze → propose → policy-controlled approval where required → write → readback/audit; the scope of each test and whether it used a simulator or physical equipment are stated with its evidence.
 
-## Current source: v0.17.1
+## Current source: v0.17.2
 
-The source version is **0.17.1** (npm + GitHub Release, 2026-11-22). It adds the integrated desktop shell (40px title rail with the unchanged web content in a separate view), the shared `~/.AgentWorkShop` data home for Web/CLI/desktop, and an in-app GitHub-release update channel with SHA-256 verification. 0.17.1 routes update downloads through the GitHub API asset endpoint and raises the installer transfer budget to 30 minutes, so updates work where `github.com` web is blocked and on slow links. It retains the 0.16.x baseline — everything in 0.15.x — the AgentPrefab capability-assembly plan (#252–#258) plus **Leader-managed worker Prefabs** (merged PRs #262/#264/#265): a Channel Leader can create workers with a published AgentPrefab selector atomically pinned to `(prefabId, revision, slotValues, contentHash)`, inspect the roster with `manageable`/`protected` flags, switch or detach bindings per revision, and remove only the workers it created. Worker creation provenance is durable (`created_by_kind`/`created_by_id`/`created_via`/`created_reason`); human-bound workers, other leaders' workers, leads, Project Leaders and open Session clones are protected from removal, and removal recycles tasks, cancels pending chat deliveries and clears instance node bindings without touching global templates or immutable revisions. Dispatch (native/REST/MCP/Project) fails closed on malformed or hash-mismatched bindings, disabled members, role/version mismatches and template visibility crossings; Project task-instance retries reuse the originally pinned snapshot with CAS/hash validation. Published Prefab profiles apply to supported harness fields (OMP thinking level via RPC); unique Skill aliases resolve to canonical revision ids. Database schema contract v10 adds the provenance columns (existing rows migrate conservatively as `system`/`protected`).
+The source version is **0.17.2** (npm + GitHub Release, 2026-11-22). It adds the integrated desktop shell (40px title rail with the unchanged web content in a separate view), the shared `~/.AgentWorkShop` data home for Web/CLI/desktop, and an in-app GitHub-release update channel with SHA-256 verification. 0.17.2 fixes the install step: a detached PowerShell helper now runs the downloaded NSIS installer and relaunches the app, because the previous `cmd.exe` command string was mangled by Windows quoting and the installer never started. 0.17.1 routes update downloads through the GitHub API asset endpoint and raises the installer transfer budget to 30 minutes, so updates work where `github.com` web is blocked and on slow links. It retains the 0.16.x baseline — everything in 0.15.x — the AgentPrefab capability-assembly plan (#252–#258) plus **Leader-managed worker Prefabs** (merged PRs #262/#264/#265): a Channel Leader can create workers with a published AgentPrefab selector atomically pinned to `(prefabId, revision, slotValues, contentHash)`, inspect the roster with `manageable`/`protected` flags, switch or detach bindings per revision, and remove only the workers it created. Worker creation provenance is durable (`created_by_kind`/`created_by_id`/`created_via`/`created_reason`); human-bound workers, other leaders' workers, leads, Project Leaders and open Session clones are protected from removal, and removal recycles tasks, cancels pending chat deliveries and clears instance node bindings without touching global templates or immutable revisions. Dispatch (native/REST/MCP/Project) fails closed on malformed or hash-mismatched bindings, disabled members, role/version mismatches and template visibility crossings; Project task-instance retries reuse the originally pinned snapshot with CAS/hash validation. Published Prefab profiles apply to supported harness fields (OMP thinking level via RPC); unique Skill aliases resolve to canonical revision ids. Database schema contract v10 adds the provenance columns (existing rows migrate conservatively as `system`/`protected`).
 
 v0.16.0 verification: PR quick-gates green on #262/#264/#265/#263/#266; focused suites **38/38**, post-merge **22/22** and **13/13**, Project/Prefab/Session regression set **235/235**; live isolated-instance acceptance on the release build — Leader/Prefab full chain **30/30 ×2** (create-with-prefab → provenance in SQLite → roster flags → catalog narrowing → dispatch allow/deny → user-worker protection → lead self-op denial → revision switch drops capability → unbind → remove preserves template+revisions → REST lead-delete 409), official L10 **21/21** on a fresh instance, AgentTeam CRUD/deploy/dispatch **25/25**, frontend SSR routes 200. Mimosa deep scan sealed (`sha256:a91957e0…`, 54 findings, dependency risk 0) — findings reported, not a security pass. Boundaries: external MCP positive live trace, real-OMP-model work under a prefab, and browser UI click-through remain NOT_RUN. See the [full-flow acceptance report](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md) and the [Prefab/Skills/MCP live report](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md).
+
+## What's new in 0.17.2
+
+- **Update install helper**: the silent install + relaunch step now runs through a detached PowerShell helper that receives the installer and executable paths through environment variables. The previous `cmd.exe` command string embedded quoted paths, and Node's `\"` escaping is not understood by `cmd.exe`, so after the app exited the installer never started — the update reached “重启安装” without installing anything. 更新安装改由独立 PowerShell 助手执行，修复 Windows 引号转义导致安装包未启动的问题。
+- **Regression test**: the helper command line must not contain drive-letter paths, and missing installer/executable paths are rejected.
+- **Verification**: an installed 0.17.1 build checked the release, downloaded the 0.17.1 installer through the API endpoint (416,549,162 bytes, SHA-256 matched `SHA256SUMS.txt`) and reached 「重启安装」; that run reproduced the broken helper (no installer process, install directory untouched). The fixed flow is exercised end to end in the 0.17.2 acceptance run. 安装版实测：检查 → 下载 → SHA-256 → 安装 → 重启。
 
 ## What's new in 0.17.1
 
 - **Update endpoint robustness**: downloads use the GitHub API asset endpoint (`/releases/assets/:id` + `Accept: application/octet-stream`) rather than `browser_download_url` on `github.com`; redirects still validate to the fixed `release-assets.githubusercontent.com` host. 更新下载改走 API 资产端点，避免受限网络下 `github.com` 不可达。
 - **Transfer budget**: the installer download budget is 30 minutes (was 60 seconds), so ~500 MB assets can finish on slow links; the checksum file remains bounded. 安装包下载预算 30 分钟，慢速链路不再中途中止。
-- **Verification**: a real 0.17.0 asset downloaded through the API endpoint and matched `SHA256SUMS.txt`; the 0.17.1 installer and live update flow are covered by the release evidence. 实网资产经 API 端点下载并通过 SHA-256 校验。
+- **Verification**: a real 0.17.0 asset downloaded through the API endpoint and matched `SHA256SUMS.txt`; the 0.17.1 download-to-ready flow was covered by the release evidence, while the install step itself was fixed in 0.17.2. 实网资产经 API 端点下载并通过 SHA-256 校验。
 
 ## What's new in 0.17.0
 
@@ -479,7 +485,7 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current source version: **v0.17.1 (released 2026-11-22)** — [Latest release v0.17.1](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.1) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current source version: **v0.17.2 (released 2026-11-22)** — [Latest release v0.17.2](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.2) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

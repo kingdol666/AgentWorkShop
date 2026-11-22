@@ -20,7 +20,7 @@
 
 ## 更新通道
 
-桌面版启动 4 秒后检查 GitHub Releases 最新版本，此后每 30 分钟检查一次；发现比当前版本更新的 release 时，标题栏出现「更新 vX.Y.Z」。点击后把安装包下载到系统临时目录，并用 release 附带的 `SHA256SUMS.txt` 校验 SHA-256；再次确认后退出应用、静默运行 NSIS 安装包并重启。下载只允许 `api.github.com`、`github.com`、`objects.githubusercontent.com`、`release-assets.githubusercontent.com` 四个 HTTPS 主机，逐跳校验重定向、拒绝凭据/非常规端口/非公网 DNS，校验失败不会执行安装包。`AW_UPDATE_CHECK=0` 可关闭检查；`AW_UPDATE_TEST_VERSION` 只用于验收测试。安装包当前未签名，信任锚是 HTTPS + 固定仓库 + SHA-256，不是 Authenticode。
+桌面版启动 4 秒后检查 GitHub Releases 最新版本，此后每 30 分钟检查一次；发现比当前版本更新的 release 时，标题栏出现「更新 vX.Y.Z」。点击后把安装包下载到系统临时目录，并用 release 附带的 `SHA256SUMS.txt` 校验 SHA-256；再次确认后退出应用、静默运行 NSIS 安装包并重启。安装/重启由一个独立的 PowerShell 助手执行（路径经环境变量传入，不拼进命令行），应用先退出以释放被占用的文件，助手等待 6 秒后以 `/S` 安装并重新启动当前安装目录中的可执行文件。下载只允许 `api.github.com`、`github.com`、`objects.githubusercontent.com`、`release-assets.githubusercontent.com` 四个 HTTPS 主机，逐跳校验重定向、拒绝凭据/非常规端口/非公网 DNS，校验失败不会执行安装包。`AW_UPDATE_CHECK=0` 可关闭检查；`AW_UPDATE_TEST_VERSION` 只用于验收测试。安装包当前未签名，信任锚是 HTTPS + 固定仓库 + SHA-256，不是 Authenticode。
 
 发布 release 时需上传安装器 `AgentWorkShop-Setup-<version>-win-x64.exe`、`SHA256SUMS.txt` 和 npm tarball。
 
@@ -40,7 +40,7 @@ Node/TypeScript 负责数据集、作业与评估调度、门禁和模型注册�
 pnpm install --frozen-lockfile
 pnpm build
 npm pack --ignore-scripts --pack-destination D:\aw-artifacts
-npm install -g --ignore-scripts --prefix D:\aw-artifacts\prefix D:\aw-artifacts\agentworkshop-0.17.1.tgz
+npm install -g --ignore-scripts --prefix D:\aw-artifacts\prefix D:\aw-artifacts\agentworkshop-0.17.2.tgz
 npm --prefix desktop ci
 npm --prefix desktop run build -- --backend D:\aw-artifacts\prefix\node_modules\agentworkshop --out D:\aw-artifacts\desktop
 ```

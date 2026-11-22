@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import {
   assertPublicHost,
+  buildInstallHelper,
   checkForUpdate,
   compareVersions,
   downloadUpdate,
@@ -149,4 +150,31 @@ test('downloadUpdate deletes a hash-mismatched installer', async () => {
   finally {
     rmSync(dir, { recursive: true, force: true })
   }
+})
+
+test('install helper passes paths through the environment, not the command line', () => {
+  const installer = 'C:\\Temp\\ai build\\AgentWorkShop-Setup-9.9.9-win-x64.exe'
+  const executable = 'C:\\Program Files\\AgentWorkShop\\AgentWorkShop.exe'
+  const helper = buildInstallHelper({
+    installer,
+    executable,
+    env: { SystemRoot: 'C:\\Windows', PATH: 'C:\\Windows' },
+  })
+  assert.equal(helper.file, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
+  assert.equal(helper.args[0], '-NoProfile')
+  assert.ok(helper.args.includes('-NonInteractive'))
+  const script = helper.args[helper.args.length - 1]
+  assert.match(script, /Start-Sleep -Seconds 6/)
+  assert.match(script, /Start-Process -FilePath \$env:AW_UPDATE_INSTALLER -ArgumentList '\/S' -Wait/)
+  assert.match(script, /Start-Process -FilePath \$env:AW_UPDATE_EXE -WorkingDirectory/)
+  assert.equal(helper.env.AW_UPDATE_INSTALLER, installer)
+  assert.equal(helper.env.AW_UPDATE_EXE, executable)
+  // Paths must never enter the command string: cmd.exe mangles Node's \" escaping
+  // and an install could silently never start.
+  for (const arg of helper.args) assert.doesNotMatch(arg, /[A-Za-z]:\\/)
+})
+
+test('install helper rejects missing paths', () => {
+  assert.throws(() => buildInstallHelper({ executable: 'C:\\app.exe' }), /installer path/)
+  assert.throws(() => buildInstallHelper({ installer: 'C:\\setup.exe' }), /executable path/)
 })

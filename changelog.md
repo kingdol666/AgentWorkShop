@@ -1,3 +1,9 @@
+## v0.17.2 — Desktop update install helper fix（2026-11-22）
+
+- The silent install + relaunch step now runs through a detached PowerShell helper (`buildInstallHelper`) that receives the installer and executable paths through `AW_UPDATE_INSTALLER`/`AW_UPDATE_EXE`. The previous `cmd.exe` command string embedded quoted paths, and Node on Windows escapes those quotes as `\"`, which `cmd.exe` does not understand: the update reached “重启安装” but the installer never started after the app exited. PowerShell is invoked with plain argv, waits 6 seconds, runs the NSIS installer with `/S`, then restarts the executable from the install directory. 更新安装改由独立 PowerShell 助手执行（路径走环境变量），修复 `cmd.exe` 引号转义导致安装包未启动的问题。
+- Added regression tests: the helper command line must not contain drive-letter paths, and a missing installer/executable path must be rejected. 新增回归测试。
+- Verification: an installed 0.17.1 build checked the release, downloaded the 0.17.1 installer through the API endpoint (416,549,162 bytes; SHA-256 matched `SHA256SUMS.txt`), reached 「重启安装」, and exposed the broken `cmd.exe` helper (no installer process, install directory untouched). 0.17.2 re-runs the full update flow end to end. 安装版实测暴露旧助手缺陷；0.17.2 完整复测由下载到安装重启。
+
 ## v0.17.1 — Update channel endpoint and transfer budget fix（2026-11-22）
 
 - Update downloads now use the GitHub API asset endpoint (`/releases/assets/:id` with `Accept: application/octet-stream`) instead of `browser_download_url` (which starts on `github.com`). The API endpoint works where `github.com` web is blocked but `api.github.com` is available; redirects still validate to the fixed `release-assets.githubusercontent.com` host and SHA-256 verification is unchanged. 更新下载改走 GitHub API 资产端点，避免受限网络下 `github.com` 不可达；重定向与 SHA-256 校验不变。
