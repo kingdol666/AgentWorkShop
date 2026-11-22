@@ -59,3 +59,17 @@ The in-app update flow was exercised on installed builds. The 0.17.0–0.17.2 he
 | Release integrity | GitHub asset digests: installer `a1575a63…`, tarball `58d6706c28333a736e5e75bfca099f3b40eaa275b7bddca9cd65d8fc7945d721`; npm tarball HTTP 200 with the same bytes |
 
 Not covered here: Authenticode signing (installer is unsigned), physical HIL, external MCP positive traces, and long real-model runs.
+
+## Back-to-main acceptance — 2026-11-23 (v0.17.4)
+
+| Check | Result |
+| --- | --- |
+| Contract test | `tests/standalone-return.test.ts` 4/4: control targets `/`; town page, `TownTopNav` and console `Topbar` render it; zh/en labels exist; project page keeps `/projects` + `/workshop` links |
+| Static gates | i18n parity 3441/3441 with 0 unresolved keys; CSS variables 161 refs; docs consistency 101/0; ESLint and typecheck exit 0; PR #277 quick-gate success |
+| SSR `/town` | Production build served on a temp home: HTML contains `data-testid="back-to-main"` (the loading/empty state renders the control) |
+| Browser (Chrome + puppeteer-core) | Logged in on the temp home, opened `/town` (no-channel empty state): control visible with text `返回主界面`, `href="/"`, `title`/`aria-label` set; click → `path=/`, `.home` dashboard and `.app-sider` sidebar rendered; screenshots `D:/tmp/aw-0174-town-back.png` and `D:/tmp/aw-0174-town-after-back.png` |
+| Desktop, updated build | Installed 0.17.4, CDP-driven: `/town` shows the same control, click → `/` with dashboard + sidebar (`.app-sider`), control disappears on the dashboard |
+| Real in-app update 0.17.3 → 0.17.4 | Installed 0.17.3 (no `AW_UPDATE_TEST_VERSION`) showed `更新 v0.17.4`; download 416,552,815 bytes with SHA-256 `03e863b334b39e673496417db27ce86669bf255a279b7856247e08386061ad11` equal to `SHA256SUMS.txt`; `重启安装` → Electron exit 0 → `wscript.exe` helper → NSIS `/S`; `resources/backend/README.md` tampered to 61,307 bytes came back as the 0.17.4 payload (62,360 bytes, `5b9cc47318abc062d7559dfc6c11856f867811710a16b606417556fa01585832`); app relaunched at 04:12 with version `0.17.4`, supervisor port 60642, `/api/health` `ok/ready` on the same home |
+| Release integrity | GitHub asset digests: installer `03e863b3…`, tarball `87119a27b4c6ff7553ba9efd9698777d69a1e4ba5ea42c283843389b4a39fa3d`; npm 0.17.4 published (registry tarball propagation was still pending at report time) |
+
+Not covered here: Authenticode signing (installer is unsigned), physical HIL, external MCP positive traces, and long real-model runs.
