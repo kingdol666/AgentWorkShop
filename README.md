@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.16.0)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.0)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>source v0.16.0 (released 2026-11-21)</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
+<sub><b>source v0.17.0 (released 2026-11-22)</b> · integrated desktop shell with in-app updates · shared <code>~/.AgentWorkShop</code> home · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[Quick start](#quick-start) · [Current source](#current-source-v0-16-0) · [0.16.0 release notes](#whats-new-in-0160) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [Current source](#current-source-v0-17-0) · [0.17.0 release notes](#whats-new-in-0170) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,11 +49,18 @@ A configuration-driven platform where **AI agent teams** and industrial systems 
 - **Delivery is a first-class concept**: **Project mode** turns a blueprint into a plan, a WBS with dependencies, L1 technical review, L2 owner acceptance and real deliverables — the project closes only when the deliverables pass;
 - **The loop is implemented in governed stages**: read → analyze → propose → policy-controlled approval where required → write → readback/audit; the scope of each test and whether it used a simulator or physical equipment are stated with its evidence.
 
-## Current source: v0.16.0
+## Current source: v0.17.0
 
-The source version is **0.16.0** (npm + GitHub Release, 2026-11-21). It contains everything in 0.15.x — the AgentPrefab capability-assembly plan (#252–#258) plus **Leader-managed worker Prefabs** (merged PRs #262/#264/#265): a Channel Leader can create workers with a published AgentPrefab selector atomically pinned to `(prefabId, revision, slotValues, contentHash)`, inspect the roster with `manageable`/`protected` flags, switch or detach bindings per revision, and remove only the workers it created. Worker creation provenance is durable (`created_by_kind`/`created_by_id`/`created_via`/`created_reason`); human-bound workers, other leaders' workers, leads, Project Leaders and open Session clones are protected from removal, and removal recycles tasks, cancels pending chat deliveries and clears instance node bindings without touching global templates or immutable revisions. Dispatch (native/REST/MCP/Project) fails closed on malformed or hash-mismatched bindings, disabled members, role/version mismatches and template visibility crossings; Project task-instance retries reuse the originally pinned snapshot with CAS/hash validation. Published Prefab profiles apply to supported harness fields (OMP thinking level via RPC); unique Skill aliases resolve to canonical revision ids. Database schema contract v10 adds the provenance columns (existing rows migrate conservatively as `system`/`protected`).
+The source version is **0.17.0** (npm + GitHub Release, 2026-11-22). It adds the integrated desktop shell (40px title rail with the unchanged web content in a separate view), the shared `~/.AgentWorkShop` data home for Web/CLI/desktop, and an in-app GitHub-release update channel with SHA-256 verification. It retains the 0.16.x baseline — everything in 0.15.x — the AgentPrefab capability-assembly plan (#252–#258) plus **Leader-managed worker Prefabs** (merged PRs #262/#264/#265): a Channel Leader can create workers with a published AgentPrefab selector atomically pinned to `(prefabId, revision, slotValues, contentHash)`, inspect the roster with `manageable`/`protected` flags, switch or detach bindings per revision, and remove only the workers it created. Worker creation provenance is durable (`created_by_kind`/`created_by_id`/`created_via`/`created_reason`); human-bound workers, other leaders' workers, leads, Project Leaders and open Session clones are protected from removal, and removal recycles tasks, cancels pending chat deliveries and clears instance node bindings without touching global templates or immutable revisions. Dispatch (native/REST/MCP/Project) fails closed on malformed or hash-mismatched bindings, disabled members, role/version mismatches and template visibility crossings; Project task-instance retries reuse the originally pinned snapshot with CAS/hash validation. Published Prefab profiles apply to supported harness fields (OMP thinking level via RPC); unique Skill aliases resolve to canonical revision ids. Database schema contract v10 adds the provenance columns (existing rows migrate conservatively as `system`/`protected`).
 
 v0.16.0 verification: PR quick-gates green on #262/#264/#265/#263/#266; focused suites **38/38**, post-merge **22/22** and **13/13**, Project/Prefab/Session regression set **235/235**; live isolated-instance acceptance on the release build — Leader/Prefab full chain **30/30 ×2** (create-with-prefab → provenance in SQLite → roster flags → catalog narrowing → dispatch allow/deny → user-worker protection → lead self-op denial → revision switch drops capability → unbind → remove preserves template+revisions → REST lead-delete 409), official L10 **21/21** on a fresh instance, AgentTeam CRUD/deploy/dispatch **25/25**, frontend SSR routes 200. Mimosa deep scan sealed (`sha256:a91957e0…`, 54 findings, dependency risk 0) — findings reported, not a security pass. Boundaries: external MCP positive live trace, real-OMP-model work under a prefab, and browser UI click-through remain NOT_RUN. See the [full-flow acceptance report](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md) and the [Prefab/Skills/MCP live report](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md).
+
+## What's new in 0.17.0
+
+- **Integrated desktop shell**: a frameless Electron window with a 40px product title rail (logo, live page title, service status, custom minimize/maximize/close) and a separate content view that loads the unchanged Nuxt/Nitro page. Light/dark theme sync, native double-click maximize, graceful sidecar shutdown, and no Node/IPC exposure to the renderer. 一体化桌面壳：40px 标题导轨 + 原样内容视图；主题同步、原生双击最大化、优雅停机。
+- **One data home**: desktop, Web and CLI default to `~/.AgentWorkShop`, so users, Channels, Sessions, tasks, memories, plugins and AML state are read by both front ends. The single-writer lock refuses a second backend on the same home. 桌面/Web/CLI 共用 `~/.AgentWorkShop`，数据互通。
+- **In-app update channel**: startup and 30-minute GitHub Releases checks surface a “更新 vX.Y.Z” pill in the rail. Download is HTTPS-only over four GitHub hosts with per-hop redirect validation, public-DNS checks, bounded size and `SHA256SUMS.txt` verification; the NSIS installer runs silently and the app restarts. 应用内更新：定时检查、更新按钮、哈希校验、静默安装并重启。
+- **Verification in this round**: full unit suite **2,267 pass / 0 fail / 1 skip** (2,268 tests, 1 conditional skip); focused desktop/update suite **20/20**; shared-home Web↔Desktop interop both directions; a real `omp` Channel job completed with artifact `端到端演示成功` on the real `~/.AgentWorkShop`; installer install/launch and live update are covered by the release evidence. 本轮验证：单测、共享 home 双向互通、真实 `omp` 作业产物、安装器与在线更新（以发布证据为准）。
 
 ## What's new in 0.16.0
 
@@ -466,7 +473,7 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current source version: **v0.16.0 (released 2026-11-21)** — [Latest release v0.16.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.16.0) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current source version: **v0.17.0 (released 2026-11-22)** — [Latest release v0.17.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.0) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

@@ -16,9 +16,11 @@ import { dirname, join, resolve } from 'node:path'
 
 export const HOME_DIRNAME = '.AgentWorkShop'
 
-/** Desktop uses a separate per-user profile from Web/CLI home mode. */
+/** Desktop shares the Web/CLI home by default so both front ends read the same
+ *  config, SQLite, plugins and AML state. AW_DESKTOP_HOME or AW_HOME override it.
+ *  Only one backend may write a given home at a time (single-writer lock). */
 export function desktopHome(env = process.env) {
-  return resolve(env.AW_DESKTOP_HOME?.trim() || join(homedir(), '.AgentWorkShop-desktop'))
+  return resolve(env.AW_DESKTOP_HOME?.trim() || env.AW_HOME?.trim() || join(homedir(), HOME_DIRNAME))
 }
 
 /** 配置根：AW_HOME 环境变量 > ~/.AgentWorkShop */

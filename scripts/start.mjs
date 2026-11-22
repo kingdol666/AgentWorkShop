@@ -10,6 +10,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
+import { request } from 'node:http'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveRunMode } from '../shared/config/home.mjs'
@@ -250,18 +251,40 @@ function spawnServiceChild() {
 }
 
 async function probeHealth() {
-  try {
-    const ac = new AbortController()
-    const t = setTimeout(() => ac.abort(), 3000)
-    const res = await fetch(HEALTH_URL, { signal: ac.signal })
-    clearTimeout(t)
-    if (!res.ok) return null
-    const body = await res.json().catch(() => null)
-    return body?.data?.memory ?? body?.memory ?? null
-  }
-  catch {
-    return null
-  }
+  // A busy but alive service can miss a short fetch window while a batch query
+  // or dataset build occupies the DB pool. Use a fresh socket per probe (no
+  // keep-alive reuse) and a 10s budget so only a real hang reaches the streak.
+  return new Promise((resolve) => {
+    const req = request(HEALTH_URL, {
+      method: 'GET',
+      agent: false,
+      timeout: 10_000,
+      headers: { connection: 'close' },
+    }, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume()
+        resolve(null)
+        return
+      }
+      let body = ''
+      res.setEncoding('utf8')
+      res.on('data', (chunk) => {
+        if (body.length < 1_000_000) body += chunk
+      })
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(body)
+          resolve(parsed?.data?.memory ?? parsed?.memory ?? null)
+        }
+        catch {
+          resolve(null)
+        }
+      })
+    })
+    req.on('timeout', () => req.destroy(new Error('health probe timeout')))
+    req.on('error', () => resolve(null))
+    req.end()
+  })
 }
 
 const healthTimer = setInterval(async () => {

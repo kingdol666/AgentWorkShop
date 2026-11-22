@@ -65,7 +65,7 @@ async function copyTree(source, target, backendRoot = source) {
     // The app has its own Electron distribution; a previous npm launch may have expanded this one.
     if (electronPackage && (entry.name === 'dist' || entry.name === 'path.txt')) return false
     if ((fromRoot === '' && !backendEntries.has(entry.name))
-      || (desktopShell && !['package.json', 'main.mjs', 'sidecar.mjs'].includes(entry.name))) {
+      || (desktopShell && !['package.json', 'main.mjs', 'sidecar.mjs', 'update.mjs', 'chrome', 'build'].includes(entry.name))) {
       throw new Error(`Unexpected entry in installed backend: ${from}`)
     }
     return true
@@ -210,13 +210,15 @@ async function run() {
         // One-click NSIS uses the package name for the per-user install folder.
         extraMetadata: { name: 'agentworkshop', version },
         directories: { output: out },
-        files: ['main.mjs', 'sidecar.mjs'],
+        files: ['main.mjs', 'sidecar.mjs', 'update.mjs', 'chrome/**/*', 'build/icon.png'],
         asar: true,
         npmRebuild: false,
         publish: null,
-        win: { executableName: 'AgentWorkShop', signExecutable: false },
+        win: { executableName: 'AgentWorkShop', icon: 'build/icon.ico', signExecutable: false },
         nsis: {
           artifactName: 'AgentWorkShop-Setup-${version}-win-${arch}.${ext}',
+          installerIcon: 'build/icon.ico',
+          uninstallerIcon: 'build/icon.ico',
           oneClick: true,
           perMachine: false,
           packElevateHelper: false,

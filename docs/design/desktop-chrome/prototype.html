@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgentWorkShop · Desktop Chrome</title>
+  <style>
+    :root {
+      --page: #05080c;
+      --panel: #0b1420;
+      --line: #1d2a3d;
+      --line-strong: #2c405b;
+      --ink: #e9eff8;
+      --ink-soft: #b6c3d5;
+      --ink-faint: #93a3b8;
+      --mint: #3fe4ab;
+      --cyan: #41c8f4;
+      --amber: #f6c453;
+      --danger: #ff8080;
+      --mono: 'Geist Mono', 'Cascadia Mono', 'IBM Plex Mono', ui-monospace, monospace;
+      --sans: 'Geist', 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; }
+
+    body {
+      width: 1600px;
+      min-height: 1300px;
+      padding: 56px 64px 64px;
+      color: var(--ink);
+      font-family: var(--sans);
+      background:
+        radial-gradient(760px 420px at 16% -6%, rgb(63 228 171 / 7%), transparent 70%),
+        radial-gradient(680px 380px at 92% 4%, rgb(65 200 244 / 5%), transparent 72%),
+        var(--page);
+    }
+
+    body::before {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      content: '';
+      background:
+        repeating-linear-gradient(90deg, rgb(233 239 248 / 2.2%) 0 1px, transparent 1px 96px),
+        repeating-linear-gradient(0deg, rgb(233 239 248 / 2.2%) 0 1px, transparent 1px 96px);
+      mask-image: radial-gradient(1000px 700px at 30% 0%, #000 30%, transparent 100%);
+    }
+
+    .sheet { position: relative; z-index: 1; }
+
+    .masthead {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 40px;
+      margin-bottom: 34px;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--mint);
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 22px;
+      height: 1px;
+      content: '';
+      background: var(--mint);
+      box-shadow: 0 0 12px rgb(63 228 171 / 55%);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      font-weight: 600;
+      line-height: 1.14;
+      letter-spacing: -.025em;
+    }
+
+    .lede {
+      max-width: 620px;
+      margin: 12px 0 0;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--ink-soft);
+    }
+
+    .meta {
+      display: flex;
+      flex: none;
+      gap: 8px;
+      padding-bottom: 4px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 28px;
+      padding: 0 11px;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      color: var(--ink-soft);
+      letter-spacing: .06em;
+      background: rgb(13 21 33 / 80%);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+    }
+
+    .chip i {
+      width: 5px;
+      height: 5px;
+      background: var(--mint);
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgb(63 228 171 / 10%);
+    }
+
+    /* ── desktop window mock ─────────────────────────────────── */
+
+    .window {
+      overflow: hidden;
+      background: #070c14;
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      box-shadow:
+        0 1px 0 rgb(255 255 255 / 4%) inset,
+        0 44px 120px rgb(0 0 0 / 62%),
+        0 0 0 1px rgb(0 0 0 / 40%);
+    }
+
+    /* The rail below is a 1:1 copy of desktop/chrome/titlebar.html. */
+    .rail {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 40px;
+      padding: 0 6px 0 10px;
+      background:
+        radial-gradient(160px 44px at 24px 0%, rgb(63 228 171 / 10%), transparent 72%),
+        linear-gradient(180deg, #0b1322, #070c14);
+    }
+
+    .rail::after {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 1px;
+      content: '';
+      background: linear-gradient(90deg, var(--mint) 0 22px, var(--line) 22px, var(--line) 100%);
+    }
+
+    .brand { display: flex; flex: none; align-items: center; gap: 8px; }
+
+    .brand svg {
+      width: 24px;
+      height: 24px;
+      filter: drop-shadow(0 1px 2px rgb(0 0 0 / 28%));
+    }
+
+    .wordmark { font-size: 12.5px; line-height: 1; letter-spacing: .015em; }
+    .wordmark .agent { font-weight: 500; color: var(--ink-soft); }
+    .wordmark .shop { font-weight: 650; color: var(--ink); }
+
+    .split { flex: none; width: 1px; height: 14px; background: var(--line-strong); opacity: .8; }
+
+    .rail-page {
+      max-width: 420px;
+      overflow: hidden;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--ink-faint);
+      letter-spacing: .02em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rail-drag { flex: 1 1 auto; align-self: stretch; }
+
+    .rail-status {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      gap: 6px;
+      height: 23px;
+      padding: 0 9px;
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      letter-spacing: .02em;
+      background: #0d1521;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+    }
+
+    .rail-update {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      gap: 6px;
+      height: 23px;
+      padding: 0 10px;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--mint);
+      letter-spacing: .02em;
+      background: rgb(63 228 171 / 10%);
+      border: 1px solid rgb(63 228 171 / 34%);
+      border-radius: 999px;
+    }
+
+    .rail-update i {
+      width: 5px;
+      height: 5px;
+      background: currentColor;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgb(63 228 171 / 12%);
+    }
+
+    .rail-status i {
+      width: 6px;
+      height: 6px;
+      background: var(--mint);
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgb(63 228 171 / 10%);
+    }
+
+    .rail-controls { display: flex; flex: none; gap: 2px; align-items: center; }
+
+    .rail-btn {
+      display: grid;
+      width: 44px;
+      height: 28px;
+      padding: 0;
+      color: var(--ink-soft);
+      background: transparent;
+      border: 0;
+      border-radius: 7px;
+      place-items: center;
+    }
+
+    .rail-btn svg {
+      width: 10px;
+      height: 10px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.25;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .rail-btn.hover { color: var(--ink); background: rgb(233 239 248 / 7%); }
+    .rail-btn.close-hover { color: #fff; background: #d93a3f; }
+
+    /* ── app content mock (content viewport = ordinary web page) ── */
+
+    .app {
+      display: flex;
+      height: 660px;
+      background: #070c14;
+    }
+
+    .side {
+      display: flex;
+      flex: none;
+      flex-direction: column;
+      width: 252px;
+      padding: 18px 14px 14px;
+      background: linear-gradient(180deg, #0a111b, #080e17);
+      border-right: 1px solid var(--line);
+    }
+
+    .side-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .01em;
+    }
+
+    .side-brand b {
+      display: grid;
+      width: 22px;
+      height: 22px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      color: #08130d;
+      background: var(--mint);
+      border-radius: 6px;
+      place-items: center;
+    }
+
+    .nav-label {
+      padding: 0 8px 8px;
+      font-family: var(--mono);
+      font-size: 9.5px;
+      color: var(--ink-faint);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .nav { display: grid; gap: 2px; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 34px;
+      padding: 0 9px;
+      font-size: 12.5px;
+      color: var(--ink-soft);
+      border: 1px solid transparent;
+      border-radius: 8px;
+    }
+
+    .nav-item svg {
+      width: 15px;
+      height: 15px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.35;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: .85;
+    }
+
+    .nav-item.active {
+      color: var(--ink);
+      background: rgb(63 228 171 / 8%);
+      border-color: rgb(63 228 171 / 16%);
+    }
+
+    .nav-item.active svg { color: var(--mint); opacity: 1; }
+
+    .nav-item .count {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: 9.5px;
+      color: var(--ink-faint);
+    }
+
+    .side-foot {
+      margin-top: auto;
+      padding: 12px 8px 2px;
+      border-top: 1px solid var(--line);
+    }
+
+    .side-foot .who { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-soft); }
+
+    .side-foot .who span.dot { width: 6px; height: 6px; background: var(--mint); border-radius: 50%; }
+
+    .side-foot .hint { margin-top: 6px; font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); }
+
+    .main {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 24px 30px 26px;
+      overflow: hidden;
+    }
+
+    .page-head {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      padding-bottom: 15px;
+      margin-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .page-head::after {
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 6px;
+      content: '';
+      background:
+        repeating-linear-gradient(90deg, rgb(233 239 248 / 30%) 0 1px, transparent 1px 88px),
+        repeating-linear-gradient(90deg, rgb(233 239 248 / 13%) 0 1px, transparent 1px 11px);
+      mask-image: linear-gradient(90deg, #000 45%, transparent 100%);
+    }
+
+    .page-eyebrow {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      color: var(--mint);
+      letter-spacing: .16em;
+    }
+
+    .page-head h2 {
+      margin: 8px 0 0;
+      font-size: 28px;
+      font-weight: 600;
+      line-height: 1.16;
+      letter-spacing: -.022em;
+    }
+
+    .page-head p { margin: 7px 0 0; font-size: 12px; color: var(--ink-faint); }
+
+    .badges { display: flex; gap: 7px; padding-bottom: 2px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 24px;
+      padding: 0 9px;
+      font-family: var(--mono);
+      font-size: 9.5px;
+      color: var(--ink-soft);
+      letter-spacing: .04em;
+      background: #0d1521;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .badge i { width: 5px; height: 5px; background: var(--mint); border-radius: 50%; }
+    .badge.cyan i { background: var(--cyan); }
+    .badge.amber i { background: var(--amber); }
+
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+
+    .card {
+      padding: 15px 16px 14px;
+      background: linear-gradient(180deg, #0d1521, #0b121d);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .card .label {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      color: var(--ink-faint);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .card .value {
+      margin-top: 9px;
+      font-family: var(--mono);
+      font-size: 27px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -.02em;
+    }
+
+    .card .note { margin-top: 5px; font-size: 10.5px; color: var(--ink-faint); }
+
+    .card .note b { font-weight: 500; color: var(--mint); }
+
+    .columns { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 12px; }
+
+    .panel {
+      overflow: hidden;
+      background: #0b121d;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-head span { font-size: 11.5px; font-weight: 500; color: var(--ink-soft); }
+
+    .panel-head .mono { font-family: var(--mono); font-size: 9px; color: var(--mint); letter-spacing: .14em; }
+
+    .row {
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr) 74px 52px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 15px;
+      font-size: 11px;
+      color: var(--ink-soft);
+      border-bottom: 1px solid rgb(29 42 61 / 55%);
+    }
+
+    .row:last-child { border-bottom: 0; }
+
+    .row .id { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); }
+
+    .row .state {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--ink-faint);
+      letter-spacing: .04em;
+    }
+
+    .row .state i { width: 4px; height: 4px; background: var(--mint); border-radius: 50%; }
+    .row .state.run i { background: var(--cyan); }
+    .row .state.wait i { background: var(--amber); }
+
+    .row .time { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); text-align: right; }
+
+    .feed { display: grid; gap: 0; }
+
+    .feed-item {
+      display: flex;
+      gap: 10px;
+      padding: 11px 15px;
+      border-bottom: 1px solid rgb(29 42 61 / 55%);
+    }
+
+    .feed-item:last-child { border-bottom: 0; }
+
+    .feed-mark {
+      flex: none;
+      width: 2px;
+      height: 26px;
+      margin-top: 1px;
+      background: var(--mint);
+      border-radius: 2px;
+      box-shadow: 0 0 10px rgb(63 228 171 / 35%);
+    }
+
+    .feed-item.cyan .feed-mark { background: var(--cyan); box-shadow: 0 0 10px rgb(65 200 244 / 30%); }
+    .feed-item.amber .feed-mark { background: var(--amber); box-shadow: 0 0 10px rgb(246 196 83 / 30%); }
+
+    .feed-item b { display: block; margin-bottom: 3px; font-size: 10.5px; font-weight: 500; color: var(--ink-soft); }
+
+    .feed-item span { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); }
+
+    .content-note {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 10px 4px 0;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: #6b7b90;
+      letter-spacing: .04em;
+    }
+
+    /* ── spec strip ─────────────────────────────────────────── */
+
+    .specs {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr 1fr;
+      gap: 14px;
+      margin-top: 30px;
+    }
+
+    .spec {
+      padding: 18px 20px 20px;
+      background: linear-gradient(180deg, rgb(13 21 33 / 82%), rgb(9 15 24 / 82%));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .spec h3 {
+      margin: 0 0 4px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--mint);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .spec p { margin: 0 0 18px; font-size: 11.5px; line-height: 1.6; color: var(--ink-faint); }
+
+    .states { display: flex; gap: 12px; align-items: center; }
+
+    .state-demo { display: grid; gap: 8px; justify-items: center; }
+
+    .state-demo small { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); letter-spacing: .08em; }
+
+    .control-cluster {
+      display: flex;
+      gap: 2px;
+      padding: 5px;
+      background: #070c14;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .control-cluster .rail-btn { width: 40px; height: 26px; }
+
+    .lockups { display: flex; gap: 18px; align-items: flex-end; }
+
+    .lockup { display: grid; gap: 8px; justify-items: center; }
+
+    .lockup small { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); }
+
+    .light-strip {
+      overflow: hidden;
+      border: 1px solid #ddd8d0;
+      border-radius: 10px;
+      box-shadow: 0 18px 40px rgb(0 0 0 / 35%);
+    }
+
+    .rail.light {
+      background:
+        radial-gradient(160px 44px at 24px 0%, rgb(31 143 102 / 8%), transparent 72%),
+        linear-gradient(180deg, #ffffff, #f6f5f2);
+      color: #0c0a09;
+    }
+
+    .rail.light::after { background: linear-gradient(90deg, #1f8f66 0 22px, #e4e1dc 22px, #e4e1dc 100%); }
+    .rail.light .wordmark .agent { color: #57534e; }
+    .rail.light .wordmark .shop { color: #0c0a09; }
+    .rail.light .split { background: #d6d2cc; }
+    .rail.light .rail-page { color: #6b665d; }
+    .rail.light .rail-status { color: #57534e; background: #fff; border-color: #e4e1dc; }
+    .rail.light .rail-update { color: #1f8f66; background: rgb(31 143 102 / 9%); border-color: rgb(31 143 102 / 30%); }
+    .rail.light .rail-update i { box-shadow: 0 0 0 3px rgb(31 143 102 / 10%); }
+    .rail.light .rail-btn { color: #57534e; }
+    .rail.light .rail-btn.hover { color: #0c0a09; background: rgb(12 10 9 / 6%); }
+    .rail.light .rail-btn.close-hover { color: #fff; background: #cf3036; }
+
+    .footnote {
+      display: flex;
+      gap: 14px;
+      align-items: baseline;
+      margin-top: 26px;
+      font-size: 11px;
+      line-height: 1.7;
+      color: #6b7b90;
+    }
+
+    .footnote b { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); letter-spacing: .12em; }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <header class="masthead">
+      <div>
+        <div class="eyebrow">Desktop chrome · 01</div>
+        <h1>一体化桌面导航条</h1>
+        <p class="lede">把系统标题栏与三个窗口按钮收进产品自己的视觉语言：40px 控制室导轨、品牌刻度线、真实页面标题与后端连接状态。内容视口仍是原封不动的 Web 页面。</p>
+      </div>
+      <div class="meta">
+        <span class="chip"><i></i>Electron 45</span>
+        <span class="chip">40 px rail</span>
+        <span class="chip">Dark / Light</span>
+      </div>
+    </header>
+
+    <section class="window" aria-label="Desktop window preview">
+      <div class="rail">
+        <div class="brand">
+          <svg viewBox="0 0 512 512" aria-hidden="true">
+            <defs>
+              <linearGradient id="badge-p" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#142339" /><stop offset=".58" stop-color="#0b1422" /><stop offset="1" stop-color="#070c14" />
+              </linearGradient>
+              <linearGradient id="mint-p" x1="15" y1="51" x2="49" y2="11" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#2fd79e" /><stop offset="1" stop-color="#63ebbc" />
+              </linearGradient>
+              <linearGradient id="cyan-p" x1="23" y1="37" x2="41" y2="37" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#2bb9e8" /><stop offset="1" stop-color="#7ce0ff" />
+              </linearGradient>
+            </defs>
+            <rect width="512" height="512" rx="120" fill="url(#badge-p)" />
+            <rect x="2.5" y="2.5" width="507" height="507" rx="118" fill="none" stroke="#3fe4ab" stroke-opacity=".2" stroke-width="3" />
+            <g transform="translate(256 256) scale(8.2) translate(-32 -31.5)" fill="none" stroke-linecap="round">
+              <path d="M32 12 15.5 51" stroke="url(#mint-p)" stroke-width="6.4" />
+              <path d="M32 12 48.5 51" stroke="url(#mint-p)" stroke-width="6.4" />
+              <path d="M23.4 37h17.2" stroke="url(#cyan-p)" stroke-width="5.2" />
+            </g>
+          </svg>
+          <span class="wordmark"><span class="agent">Agent</span><span class="shop">WorkShop</span></span>
+        </div>
+        <span class="split"></span>
+        <span class="rail-page">仪表盘</span>
+        <span class="rail-drag"></span>
+        <span class="rail-update"><i></i>更新 v0.17.0</span>
+        <span class="rail-status"><i></i>已连接</span>
+        <div class="rail-controls">
+          <button class="rail-btn" type="button" aria-label="最小化"><svg viewBox="0 0 10 10"><path d="M1.2 5h7.6"/></svg></button>
+          <button class="rail-btn" type="button" aria-label="最大化"><svg viewBox="0 0 10 10"><rect x="1.1" y="1.1" width="7.8" height="7.8" rx="1.2"/></svg></button>
+          <button class="rail-btn" type="button" aria-label="关闭"><svg viewBox="0 0 10 10"><path d="M1.6 1.6l6.8 6.8M8.4 1.6l-6.8 6.8"/></svg></button>
+        </div>
+      </div>
+
+      <div class="app">
+        <aside class="side">
+          <div class="side-brand"><b>AW</b>AgentWorkShop</div>
+          <div class="nav-label">Workspace</div>
+          <nav class="nav">
+            <div class="nav-item active">
+              <svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+              仪表盘
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 16 16"><path d="M3 4h10M3 8h10M3 12h6"/><circle cx="12.5" cy="12" r="1.4"/></svg>
+              工坊频道 <span class="count">6</span>
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 16 16"><path d="M2.5 4.5h4l1.2 1.6h5.8v6.4h-11z"/></svg>
+              项目
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 16 16"><path d="M6 2h4M7 2v4l-3.4 6a1.4 1.4 0 0 0 1.2 2h6.4a1.4 1.4 0 0 0 1.2-2L9 6V2"/></svg>
+              AML 与孪生
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 16 16"><ellipse cx="8" cy="4" rx="4.6" ry="2"/><path d="M3.4 4v8c0 1.1 2 2 4.6 2s4.6-.9 4.6-2V4M3.4 8c0 1.1 2 2 4.6 2s4.6-.9 4.6-2"/></svg>
+              数据采集
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6 11 5M5 11l-1.4 1.4"/></svg>
+              设置
+            </div>
+          </nav>
+          <div class="side-foot">
+            <div class="who"><span class="dot"></span>本机 · 127.0.0.1</div>
+            <div class="hint">SESSION PASSWORD · RUNTIME</div>
+          </div>
+        </aside>
+
+        <main class="main">
+          <header class="page-head">
+            <div>
+              <div class="page-eyebrow">WORKSHOP / OVERVIEW</div>
+              <h2>仪表盘</h2>
+              <p>产线、频道与作业的实时姿态</p>
+            </div>
+            <div class="badges">
+              <span class="badge"><i></i>本机服务</span>
+              <span class="badge cyan"><i></i>DAQ 在线</span>
+              <span class="badge amber"><i></i>2 项待处理</span>
+            </div>
+          </header>
+
+          <section class="grid">
+            <article class="card">
+              <div class="label">Active channels</div>
+              <div class="value">06</div>
+              <div class="note"><b>2 个</b>会话正在运行</div>
+            </article>
+            <article class="card">
+              <div class="label">Open tasks</div>
+              <div class="value">12</div>
+              <div class="note">3 项等待 Owner 验收</div>
+            </article>
+            <article class="card">
+              <div class="label">Signal quality</div>
+              <div class="value">98.4<span style="font-size:13px;color:var(--ink-faint)">%</span></div>
+              <div class="note">采样窗口 5 min</div>
+            </article>
+          </section>
+
+          <section class="columns">
+            <div class="panel">
+              <div class="panel-head"><span>最近作业</span><span class="mono">LIVE FEED</span></div>
+              <div class="row"><span class="id">ts-8f2c</span><span>批次 20261122-A · 产线 L-03</span><span class="state"><i></i>COMPLETED</span><span class="time">12:04</span></div>
+              <div class="row"><span class="id">ts-91de</span><span>channel-dispatch · 会话克隆</span><span class="state run"><i></i>RUNNING</span><span class="time">12:03</span></div>
+              <div class="row"><span class="id">ts-4a77</span><span>AML 数据集 / 清洗与打标</span><span class="state wait"><i></i>WAITING</span><span class="time">11:58</span></div>
+              <div class="row"><span class="id">ts-23b0</span><span>配方提案 · 等待 HITL 审批</span><span class="state wait"><i></i>HITL</span><span class="time">11:52</span></div>
+              <div class="row"><span class="id">ts-0c51</span><span>孪生残差评估 · MPC 预演</span><span class="state"><i></i>COMPLETED</span><span class="time">11:41</span></div>
+              <div class="row"><span class="id">ts-77a2</span><span>批次 20261122-B · 产线 L-03</span><span class="state run"><i></i>RUNNING</span><span class="time">11:33</span></div>
+              <div class="row"><span class="id">ts-5be1</span><span>孪生训练 · 数据供给 154/154</span><span class="state"><i></i>COMPLETED</span><span class="time">11:20</span></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><span>事件流</span><span class="mono">WS</span></div>
+              <div class="feed">
+                <div class="feed-item"><span class="feed-mark"></span><div><b>ChannelRuntime 已激活</b><span>ws/channel · 12:04:08</span></div></div>
+                <div class="feed-item cyan"><span class="feed-mark"></span><div><b>AgentRuntime 回合开始</b><span>session/clone · 12:04:02</span></div></div>
+                <div class="feed-item amber"><span class="feed-mark"></span><div><b>治理写等待审批</b><span>gate/hitl · 12:03:47</span></div></div>
+                <div class="feed-item"><span class="feed-mark"></span><div><b>记忆写入完成</b><span>memory/episodic · 12:03:31</span></div></div>
+                <div class="feed-item cyan"><span class="feed-mark"></span><div><b>任务派发完成</b><span>task/assign · 12:03:12</span></div></div>
+                <div class="feed-item"><span class="feed-mark"></span><div><b>事件流已刷盘</b><span>event/record · 12:02:58</span></div></div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <div class="content-note">
+      <span>CONTENT VIEWPORT — UNCHANGED WEB BUILD</span>
+      <span>示意内容仅用于版式；实际页面与 Web 端一致</span>
+    </div>
+
+    <section class="specs">
+      <article class="spec">
+        <h3>Window controls</h3>
+        <p>三个按钮改为产品内控件：28px 高、7px 圆角、1.25px 线性图标；关闭按钮悬停转为危险色。</p>
+        <div class="states">
+          <div class="state-demo">
+            <div class="control-cluster">
+              <button class="rail-btn" type="button" aria-label="最小化示例"><svg viewBox="0 0 10 10"><path d="M1.2 5h7.6"/></svg></button>
+              <button class="rail-btn hover" type="button" aria-label="最大化悬停示例"><svg viewBox="0 0 10 10"><rect x="1.1" y="1.1" width="7.8" height="7.8" rx="1.2"/></svg></button>
+              <button class="rail-btn close-hover" type="button" aria-label="关闭悬停示例"><svg viewBox="0 0 10 10"><path d="M1.6 1.6l6.8 6.8M8.4 1.6l-6.8 6.8"/></svg></button>
+            </div>
+            <small>NORMAL · HOVER · CLOSE HOVER</small>
+          </div>
+        </div>
+      </article>
+
+      <article class="spec">
+        <h3>Brand lockup</h3>
+        <p>「A + 信号节点」标记：双腿为智能体，横杆为频道总线，青色节点代表数据侧。</p>
+        <div class="lockups">
+          <div class="lockup">
+            <svg width="96" height="96" viewBox="0 0 512 512" aria-hidden="true">
+              <defs>
+                <linearGradient id="badge-l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#142339"/><stop offset=".58" stop-color="#0b1422"/><stop offset="1" stop-color="#070c14"/></linearGradient>
+                <linearGradient id="mint-l" x1="15" y1="51" x2="49" y2="11" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2fd79e"/><stop offset="1" stop-color="#63ebbc"/></linearGradient>
+                <linearGradient id="cyan-l" x1="23" y1="37" x2="41" y2="37" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2bb9e8"/><stop offset="1" stop-color="#7ce0ff"/></linearGradient>
+              </defs>
+              <rect width="512" height="512" rx="120" fill="url(#badge-l)"/>
+              <rect x="2.5" y="2.5" width="507" height="507" rx="118" fill="none" stroke="#3fe4ab" stroke-opacity=".2" stroke-width="3"/>
+              <g transform="translate(256 256) scale(8.2) translate(-32 -31.5)" fill="none" stroke-linecap="round">
+                <path d="M32 12 15.5 51" stroke="url(#mint-l)" stroke-width="6.4"/>
+                <path d="M32 12 48.5 51" stroke="url(#mint-l)" stroke-width="6.4"/>
+                <path d="M23.4 37h17.2" stroke="url(#cyan-l)" stroke-width="5.2"/>
+              </g>
+            </svg>
+            <small>512 / 256</small>
+          </div>
+          <div class="lockup">
+            <svg width="48" height="48" viewBox="0 0 512 512" aria-hidden="true">
+              <rect width="512" height="512" rx="120" fill="#0b1422"/>
+              <g transform="translate(256 256) scale(8.2) translate(-32 -31.5)" fill="none" stroke-linecap="round">
+                <path d="M32 12 15.5 51" stroke="#3fe4ab" stroke-width="6.4"/>
+                <path d="M32 12 48.5 51" stroke="#3fe4ab" stroke-width="6.4"/>
+                <path d="M23.4 37h17.2" stroke="#41c8f4" stroke-width="5.2"/>
+              </g>
+            </svg>
+            <small>48 / 32</small>
+          </div>
+          <div class="lockup">
+            <svg width="24" height="24" viewBox="0 0 512 512" aria-hidden="true">
+              <rect width="512" height="512" rx="120" fill="#0b1422"/>
+              <g transform="translate(256 256) scale(8.2) translate(-32 -31.5)" fill="none" stroke-linecap="round">
+                <path d="M32 12 15.5 51" stroke="#3fe4ab" stroke-width="6.4"/>
+                <path d="M32 12 48.5 51" stroke="#3fe4ab" stroke-width="6.4"/>
+                <path d="M23.4 37h17.2" stroke="#41c8f4" stroke-width="5.2"/>
+              </g>
+            </svg>
+            <small>24 / 16</small>
+          </div>
+        </div>
+      </article>
+
+      <article class="spec">
+        <h3>Light theme</h3>
+        <p>标题栏读取应用主题 cookie：亮色下切到暖纸白，品牌刻度与状态点同步换色，不打断内容页。</p>
+        <div class="light-strip">
+          <div class="rail light">
+            <div class="brand">
+              <svg viewBox="0 0 512 512" aria-hidden="true">
+                <rect width="512" height="512" rx="120" fill="#0b1422" />
+                <g transform="translate(256 256) scale(8.2) translate(-32 -31.5)" fill="none" stroke-linecap="round">
+                  <path d="M32 12 15.5 51" stroke="#3fe4ab" stroke-width="6.4" />
+                  <path d="M32 12 48.5 51" stroke="#3fe4ab" stroke-width="6.4" />
+                  <path d="M23.4 37h17.2" stroke="#41c8f4" stroke-width="5.2" />
+                </g>
+              </svg>
+              <span class="wordmark"><span class="agent">Agent</span><span class="shop">WorkShop</span></span>
+            </div>
+            <span class="split"></span>
+            <span class="rail-page">仪表盘</span>
+            <span class="rail-drag"></span>
+            <span class="rail-update"><i></i>更新 v0.17.0</span>
+            <span class="rail-status"><i></i>已连接</span>
+            <div class="rail-controls">
+              <button class="rail-btn" type="button" aria-label="最小化"><svg viewBox="0 0 10 10"><path d="M1.2 5h7.6"/></svg></button>
+              <button class="rail-btn" type="button" aria-label="最大化"><svg viewBox="0 0 10 10"><rect x="1.1" y="1.1" width="7.8" height="7.8" rx="1.2"/></svg></button>
+              <button class="rail-btn" type="button" aria-label="关闭"><svg viewBox="0 0 10 10"><path d="M1.6 1.6l6.8 6.8M8.4 1.6l-6.8 6.8"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <footer class="footnote">
+      <b>IMPLEMENTATION</b>
+      <span>Electron BaseWindow（frameless）+ 独立 WebContentsView 标题栏 + 内容 WebContentsView 加载原始 Nitro 页面；窗口控制经 preload 白名单 IPC。标题栏高度 40px，内容区坐标 y=40，不做 DOM 注入。</span>
+    </footer>
+  </div>
+</body>
+</html>
