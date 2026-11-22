@@ -1,3 +1,9 @@
+## v0.17.1 — Update channel endpoint and transfer budget fix（2026-11-22）
+
+- Update downloads now use the GitHub API asset endpoint (`/releases/assets/:id` with `Accept: application/octet-stream`) instead of `browser_download_url` (which starts on `github.com`). The API endpoint works where `github.com` web is blocked but `api.github.com` is available; redirects still validate to the fixed `release-assets.githubusercontent.com` host and SHA-256 verification is unchanged. 更新下载改走 GitHub API 资产端点，避免受限网络下 `github.com` 不可达；重定向与 SHA-256 校验不变。
+- The installer transfer budget is now 30 minutes (was 60 seconds) so a ~500 MB asset can finish on slow links; the checksum file stays bounded. 安装包下载预算从 60s 提升到 30min，慢速链路不再中途中止；校验文件仍限长。
+- Verification: the real 0.17.0 asset was downloaded through the API endpoint and matched `SHA256SUMS.txt`; 0.17.1 installer/update flow re-verified below. 实网资产经 API 端点下载并通过 SHA-256 校验。
+
 ## v0.17.0 — Integrated desktop chrome, shared home, and in-app updates（2026-11-22）
 
 - Desktop chrome: a frameless `BrowserWindow` with a 40px product title rail (brand mark, live page title, local service status, custom minimize/maximize/close), while the content area remains a separate `WebContentsView` loading the unchanged Nitro page. The rail follows the app's light/dark theme and hides the page label when the document title is only the product name. 桌面壳：40px 一体化标题导轨 + 独立内容视图，不改写网页内容；亮暗主题同步。

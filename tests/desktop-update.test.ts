@@ -27,8 +27,18 @@ function releaseFixture(overrides = {}) {
     html_url: 'https://github.com/kingdol666/AgentWorkShop/releases/tag/v9.9.9',
     body: 'Desktop chrome and update channel.',
     assets: [
-      { name: installerName, browser_download_url: `https://github.com/kingdol666/AgentWorkShop/releases/download/v9.9.9/${installerName}`, size: installerBytes.length },
-      { name: 'SHA256SUMS.txt', browser_download_url: 'https://github.com/kingdol666/AgentWorkShop/releases/download/v9.9.9/SHA256SUMS.txt', size: 200 },
+      {
+        name: installerName,
+        url: 'https://api.github.com/repos/kingdol666/AgentWorkShop/releases/assets/102',
+        browser_download_url: `https://github.com/kingdol666/AgentWorkShop/releases/download/v9.9.9/${installerName}`,
+        size: installerBytes.length,
+      },
+      {
+        name: 'SHA256SUMS.txt',
+        url: 'https://api.github.com/repos/kingdol666/AgentWorkShop/releases/assets/101',
+        browser_download_url: 'https://github.com/kingdol666/AgentWorkShop/releases/download/v9.9.9/SHA256SUMS.txt',
+        size: 200,
+      },
     ],
     ...overrides,
   }
@@ -70,6 +80,8 @@ test('release assets select the exact installer and checksum file', () => {
   assert.equal(release.version, '9.9.9')
   assert.equal(release.installer.name, installerName)
   assert.equal(release.sums.name, 'SHA256SUMS.txt')
+  assert.match(release.installer.url, /\/releases\/assets\/102$/)
+  assert.match(release.sums.url, /\/releases\/assets\/101$/)
   assert.throws(() => parseRelease(releaseFixture({ assets: [] })), /missing/)
 })
 
@@ -96,7 +108,7 @@ test('downloadUpdate verifies SHA-256 and streams progress', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'aw-update-test-'))
   try {
     const fetchImpl = async (url) => {
-      if (String(url).endsWith('SHA256SUMS.txt')) {
+      if (String(url).endsWith('/101')) {
         return new Response(`${installerSha}  ${installerName}\n`, { status: 200 })
       }
       return new Response(installerBytes, {
@@ -125,7 +137,7 @@ test('downloadUpdate deletes a hash-mismatched installer', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'aw-update-test-'))
   try {
     const fetchImpl = async (url) => {
-      if (String(url).endsWith('SHA256SUMS.txt')) {
+      if (String(url).endsWith('/101')) {
         return new Response(`${'0'.repeat(64)}  ${installerName}\n`, { status: 200 })
       }
       return new Response(installerBytes, { status: 200 })
