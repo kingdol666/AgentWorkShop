@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isAppUrl, startSidecar } from './sidecar.mjs'
-import { checkForUpdate, downloadUpdate, UPDATE_REPO } from './update.mjs'
+import { checkForUpdate, downloadUpdate, buildInstallHelper, UPDATE_REPO } from './update.mjs'
 import {
   CHROME_CHANNELS,
   TITLEBAR_HEIGHT,
@@ -224,10 +224,10 @@ async function installUpdate() {
   if (choice.response !== 0) return
   const installer = updateInstaller
   const exe = process.execPath
-  // The app stops its sidecar first; the helper waits, runs the NSIS installer
-  // silently, then starts the updated executable.
-  const command = `timeout /t 6 /nobreak >nul & "${installer}" /S & start "" "${exe}"`
-  spawn('cmd.exe', ['/d', '/s', '/c', command], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
+  // The app stops its sidecar first; the detached helper waits for our files to
+  // unlock, runs the NSIS installer silently, then starts the updated executable.
+  const helper = buildInstallHelper({ installer, executable: exe, env: process.env })
+  spawn(helper.file, helper.args, { detached: true, stdio: 'ignore', windowsHide: true, env: helper.env }).unref()
   quit()
 }
 

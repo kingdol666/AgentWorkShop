@@ -218,3 +218,25 @@ export async function downloadUpdate(release, { dir, fetchImpl = fetch, timeoutM
   }
   return { path: dest, sha256, bytes }
 }
+
+// The installer must run after this process exits (its files are locked while we
+// live), so a detached helper waits, installs silently, then restarts the app.
+// Paths travel through the environment: cmd.exe does not understand the \" escapes
+// Node applies to quoted arguments, and PowerShell resolves $env: values itself.
+const INSTALL_HELPER_SCRIPT = [
+  'Start-Sleep -Seconds 6',
+  'Start-Process -FilePath $env:AW_UPDATE_INSTALLER -ArgumentList \'/S\' -Wait',
+  'Start-Process -FilePath $env:AW_UPDATE_EXE -WorkingDirectory (Split-Path -Parent $env:AW_UPDATE_EXE)',
+].join('; ')
+
+/** Fixed helper invocation for the silent install + relaunch step. */
+export function buildInstallHelper({ installer, executable, env = process.env } = {}) {
+  if (typeof installer !== 'string' || !installer) throw new Error('installer path is required')
+  if (typeof executable !== 'string' || !executable) throw new Error('executable path is required')
+  const root = env.SystemRoot || env.SYSTEMROOT || 'C:\\Windows'
+  return {
+    file: join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+    args: ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', INSTALL_HELPER_SCRIPT],
+    env: { ...env, AW_UPDATE_INSTALLER: installer, AW_UPDATE_EXE: executable },
+  }
+}
