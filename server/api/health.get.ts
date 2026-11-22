@@ -5,12 +5,20 @@
  * 不抛错——就绪探针可按该字段判断,而探活端点本身不被组件状态拖垮。
  */
 import v8 from 'node:v8'
+import { createHmac } from 'node:crypto'
+import { getRequestHeader, setResponseHeader } from 'h3'
 import { useServerConfig } from '../utils/config'
 import { defineApiHandler } from '../utils/response'
 import { getWorkshopManager } from '../plugins/workshop'
 import { daqInfraStatus } from '../services/workshop/daq/infra'
 
-export default defineApiHandler(async () => {
+export default defineApiHandler(async (event) => {
+  const challenge = getRequestHeader(event, 'x-aw-desktop-challenge') ?? ''
+  const instance = process.env.AW_DESKTOP_INSTANCE ?? ''
+  const desktopProof = /^[a-f0-9]{64}$/.test(instance) && /^[a-f0-9]{32}$/.test(challenge)
+    ? createHmac('sha256', instance).update(challenge).digest('hex')
+    : undefined
+  if (desktopProof) setResponseHeader(event, 'Cache-Control', 'no-store')
   const cfg = useServerConfig()
   let workshop: 'ready' | 'not_ready' = 'ready'
   let summary: { wiredAgents: number, activeChannels: number } | null = null
@@ -41,6 +49,7 @@ export default defineApiHandler(async () => {
     timestamp: new Date().toISOString(),
     workshop,
     ...summary,
+    ...(desktopProof ? { desktopProof } : {}),
     daq,
     memory: {
       heapUsedMb: Math.round(mu.heapUsed / 1048576),

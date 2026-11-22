@@ -13,10 +13,15 @@ const base = (() => {
   return i > 0 ? process.argv[i + 1] : 'http://127.0.0.1:3000'
 })()
 
-// 种子 admin(dev 环境默认);生产勿用
 const api = createApi({ baseUrl: base })
-const login = await api.login(process.env.AW_TUI_EMAIL ?? 'zhangwei@awshop.io', process.env.AW_TUI_PASSWORD ?? 'Awshop@123')
-const token = login.token
+let token = process.env.AW_E2E_TOKEN
+if (!token) {
+  const { AW_TUI_EMAIL: email, AW_TUI_PASSWORD: password } = process.env
+  if (!email || !password) throw new Error('Supply AW_E2E_TOKEN or AW_TUI_EMAIL and AW_TUI_PASSWORD for the isolated instance')
+  token = (await api.login(email, password)).token
+}
+if (!token) throw new Error('TUI smoke authentication failed')
+api.setToken(token)
 
 let failures = 0
 const check = (name, cond) => {
@@ -26,7 +31,7 @@ const check = (name, cond) => {
 
 // ── 启动 TUI(headless;--token 免交互;--channel 空 = 自动选第一个频道) ──
 const { main } = await import('../tui/aw-tui.mjs')
-await main(['--headless', '--url', base, '--token', token, '--channel', ''])
+const { closed } = await main(['--headless', '--url', base, '--token', token, '--channel', ''])
 const vt = globalThis.__tuiSmokeTerminal
 check('虚拟终端句柄就绪', Boolean(vt))
 
@@ -81,7 +86,7 @@ check('/monitor 右侧面板渲染', await waitText('┌─ 监控 smoke-调度�
 await type('/monitor off')
 check('/monitor off 关闭回执', await waitText('监控面板已关闭'))
 
-// 清理 smoke 频道与 lead 模板(先于 /quit —— /quit 会 process.exit)
+// 清理 smoke 频道与 lead 模板。
 try {
   const ch = (await api.listChannels()).find(c => c.name === name)
   if (ch) await api.request(`/api/workshop/channels/${ch.id}?purge=1`, { method: 'DELETE' })
@@ -90,11 +95,17 @@ try {
 }
 catch { /* 清理失败不判失败 */ }
 
-// 退出码必须反映断言结果:失败时直接非零退出(不走 /quit 的 process.exit(0))
-const ok = failures === 0
-console.log(ok ? '\n[tui-smoke] 全部通过,/quit 退出' : `\n[tui-smoke] ${failures} 项失败,直接退出`)
-if (!ok) process.exit(1)
+// 等待真实关闭；不让强制 process.exit 掩盖退出回归。
 await type('/quit')
-// /quit 内部 process.exit(0);若未退出(异常)则在此兜底收口
-console.log('[tui-smoke] /quit 未按预期退出进程(异常),兜底退出')
-process.exit(0)
+let quitTimer
+try {
+  const timeout = new Promise((resolve) => {
+    quitTimer = setTimeout(resolve, 5000, 'timeout')
+  })
+  check('/quit 关闭终端', await Promise.race([closed, timeout]) !== 'timeout')
+}
+finally {
+  clearTimeout(quitTimer)
+}
+console.log(`[tui-smoke] ${failures} 项失败`)
+if (failures > 0) process.exit(1)

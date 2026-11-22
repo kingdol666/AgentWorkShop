@@ -78,7 +78,12 @@ if (!Number.isInteger(requestedPort) || requestedPort < 1 || requestedPort > 655
   console.error(`✖ 无效端口:${argPort ?? requestedPort}(须为 1-65535 的整数)`)
   process.exit(1)
 }
+const desktop = typeof process.send === 'function' && /^[a-f0-9]{64}$/.test(process.env.AW_DESKTOP_INSTANCE ?? '')
 let lock = acquireLock(rm.configRoot, { mode: `prod:${rm.mode}`, port: requestedPort })
+if (!lock.ok && desktop) {
+  console.error('该桌面数据目录已有服务运行，拒绝启动第二个写入者。')
+  process.exit(2)
+}
 if (!lock.ok) {
   const h = lock.holder
   console.log(`› 发现已运行实例(pid=${h.pid}${h.port ? `,端口=${h.port}` : ''},启动于 ${h.startedAt ?? '未知'})— 自动停止后重启 ...`)
@@ -121,8 +126,9 @@ if (bumped > 0) {
   catch { /* 锁自清/被接管等场景:展示值回退为配置端口,可接受 */ }
 }
 
-process.env.HOST = process.env.HOST || process.env.NITRO_HOST || String(host)
-process.env.PORT = process.env.PORT || process.env.NITRO_PORT || String(port)
+// 下发探测后的实际端口；不能让旧 PORT 覆盖 CLI 参数或顺延结果。
+process.env.HOST = String(host)
+process.env.PORT = String(port)
 process.env.NITRO_HOST = process.env.HOST
 process.env.NITRO_PORT = process.env.PORT
 
@@ -155,7 +161,10 @@ catch (err) {
 // 清掉上次运行残留的停机意图标记:陈旧标记不得影响本次的"崩溃即重启"判定
 clearStopIntent(rm.configRoot)
 
+if (desktop) process.send({ type: 'aw.desktop.binding', port, stopToken })
+
 const childEnv = { ...process.env, AW_PARENT_PID: String(process.pid), AW_STOP_TOKEN: stopToken }
+if (!desktop) delete childEnv.AW_DESKTOP_INSTANCE
 // 堆限额固化:父进程未带 --max-old-space-size 时给子进程补默认 4096MB(3GB 事故线以上)
 if (!/max-old-space-size/.test(String(childEnv.NODE_OPTIONS ?? ''))) {
   const cfg = Number(childEnv.AW_HEAP_LIMIT_MB ?? 4096)
@@ -205,6 +214,11 @@ function spawnServiceChild() {
   const c = spawn(process.execPath, [outputEntry], { stdio: 'inherit', env: childEnv })
   c.spawnTime = Date.now()
   serviceChild = c
+  c.once('error', (err) => {
+    console.error('[start] 无法启动服务:', err.message)
+    givingUp = true
+    process.exit(1)
+  })
   c.on('exit', (code, signal) => {
     if (givingUp || serviceChild !== c) return
     // 意图停机握手:退出码 0 + 标记与本次启动令牌一致 → 不重启,监管进程退出。

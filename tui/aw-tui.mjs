@@ -9,6 +9,9 @@
 // 命令系统(/help)+ 监控面板(终端 WS)+ HITL 统一作答(/hitl)。
 // --headless:VirtualTerminal 驱动(无 TTY;scripts/tui-smoke.mjs 用)。
 // ============================================================
+import { join, resolve } from 'node:path'
+import { readLock, probeHealth } from '../mcp/discovery.mjs'
+import { fileURLToPath } from 'node:url'
 import { TuiMainScreen, Editor, CombinedAutocompleteProvider, ProcessTerminal, truncateToWidth } from '@earendil-works/pi-tui'
 import { theme } from './theme.mjs'
 import { loadAuth, saveAuth, configRoot } from './lib/config.mjs'
@@ -40,7 +43,11 @@ function parseArgs(argv) {
 /** 认证:已存凭据 → --token → 环境变量 → 交互登录 */
 async function ensureAuth(opts) {
   const saved = loadAuth()
-  const baseUrl = opts.url ?? process.env.AW_TUI_URL ?? saved?.baseUrl ?? 'http://127.0.0.1:3000'
+  const locked = readLock(join(configRoot(), '.runtime', 'aw.lock'))
+  const local = locked ? `http://127.0.0.1:${locked.port}` : undefined
+  const configured = opts.url ?? process.env.AW_TUI_URL ?? saved?.baseUrl
+  const discovered = configured || !local ? null : await probeHealth(local)
+  const baseUrl = configured ?? (discovered?.workshop === 'ready' ? local : 'http://127.0.0.1:3001')
   if (opts.token) return { baseUrl, token: opts.token }
   if (saved?.token && saved.baseUrl === baseUrl) return { baseUrl, token: saved.token }
 
@@ -101,6 +108,10 @@ export async function main(argv = process.argv.slice(2)) {
 
   // ── 装配动作(命令系统/提交路由的副作用入口) ──
   let termConn = null
+  let finish
+  const closed = new Promise((resolveClosed) => {
+    finish = resolveClosed
+  })
   const actions = {
     async switchChannel(channelId) {
       if (state.activeChannelId && state.activeChannelId !== channelId) aep.unsubscribe(state.activeChannelId)
@@ -256,10 +267,12 @@ export async function main(argv = process.argv.slice(2)) {
       return true
     },
     quit() {
+      unsubscribeRender()
+      process.off('unhandledRejection', reportAsyncError)
       aep.close()
       termConn?.close()
       tui.stop()
-      process.exit(0)
+      finish()
     },
     /** 交互式频道选择(启动/`/channel use` 无参) */
     pickChannel() {
@@ -375,13 +388,11 @@ export async function main(argv = process.argv.slice(2)) {
     },
   })
 
-  store.onChange(() => tui.requestRender())
+  const unsubscribeRender = store.onChange(() => tui.requestRender())
 
-  // 兜底:未处理的 rejection 只记日志,不让 TUI 进程静默死亡(重连窗口内
-  // ws.send 之类的瞬态异常不应终止整个工作台)。
-  process.on('unhandledRejection', (err) => {
-    push('error', `未处理的异步错误:${err?.message ?? err}`)
-  })
+  // 仅在当前 TUI 运行期间接收异步异常，退出时摘除监听器。
+  const reportAsyncError = err => push('error', `未处理的异步错误:${err?.message ?? err}`)
+  process.on('unhandledRejection', reportAsyncError)
 
   // ── 组装视图 ──
   // 出口统一按终端宽度夹断:pi-tui 对超宽行直接 stop()+throw(进程崩溃),
@@ -405,7 +416,7 @@ export async function main(argv = process.argv.slice(2)) {
     }
     else if (channels.length > 0) needPick = true
     else push('warn', '尚无频道:/channel new <名称> 创建一个。')
-    const me = await api.get('/api/workshop/users/me').catch(() => null)
+    const me = await api.get('/api/users/me').catch(() => null)
     state.userName = me?.user?.name ?? me?.name ?? '用户'
   }
   catch (err) {
@@ -417,7 +428,7 @@ export async function main(argv = process.argv.slice(2)) {
     push('system', '↑↓ 选择要进入的频道,Enter 确认(Esc 自动进入第一个)。')
     actions.pickChannel()
   }
-  return tui
+  return { tui, closed }
 }
 
 function upsertHitlLocal(state, item) {
@@ -437,7 +448,7 @@ function reduceTermFrameSafe(frame) {
 }
 
 // 直接运行入口(aw tui / pnpm tui 均落到这里)
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replaceAll('\\', '/').split('/').pop())) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((err) => {
     console.error('[tui] 启动失败:', err.message)
     process.exit(1)
