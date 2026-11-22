@@ -53,7 +53,7 @@ test('theme normalization defaults to dark', () => {
 test('titlebar markup exposes accessible, bounded window controls', () => {
   const html = read('desktop/chrome/titlebar.html')
   for (const action of CHROME_ACTIONS) assert.match(html, new RegExp(`data-action="${action}"`))
-  for (const label of ['最小化', '最大化', '关闭']) assert.match(html, new RegExp(`aria-label="${label}"`))
+  for (const label of ['最小化', '最大化', '关闭到托盘']) assert.match(html, new RegExp(`aria-label="${label}"`))
   assert.match(html, /Content-Security-Policy[^>]+default-src 'none'/)
   assert.match(html, /-webkit-app-region: drag/)
   assert.match(html, /-webkit-app-region: no-drag/)

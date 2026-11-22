@@ -73,3 +73,21 @@ Not covered here: Authenticode signing (installer is unsigned), physical HIL, ex
 | Release integrity | GitHub asset digests: installer `03e863b3…`, tarball `87119a27b4c6ff7553ba9efd9698777d69a1e4ba5ea42c283843389b4a39fa3d`; npm 0.17.4 published (registry tarball propagation was still pending at report time) |
 
 Not covered here: Authenticode signing (installer is unsigned), physical HIL, external MCP positive traces, and long real-model runs.
+
+## Tray, settings and boot splash acceptance — 2026-11-23 (v0.17.5)
+
+| Check | Result |
+| --- | --- |
+| Desktop contract tests | `desktop-chrome` + `desktop-tray-splash` + `desktop-update` + `desktop-terminal-entry` **33/33**; after the final startHidden status fix, the three touched suites re-ran **29/29**. Settings normalize/round-trip/corrupt-fallback, tray model, splash actions, CSP/aria/static checks and the close-to-tray guards are covered |
+| Static gates | Typecheck exit 0; full ESLint exit 0; i18n parity **3441/3441**, 0 unresolved; CSS variables **161** refs; docs consistency **101/0**; frontend lifecycle contract **3/3** |
+| Full unit suite | **2,285 tests / 2,284 pass / 1 skip / 0 fail** (`TSX_TSCONFIG_PATH=.nuxt/tsconfig.server.json node --import tsx --test --test-concurrency=4 --test-force-exit 'tests/*.test.ts'`) |
+| npm tarball | `agentworkshop-0.17.5.tgz` **45,370,812 bytes**, SHA-256 `257852a89d987589536efdb370d94dc68f47060536bc4770804e6d8558292afd`, npm shasum `820318038c8910abec0115a56a5fd5aef89e064a`; contains `desktop/chrome/{splash.html,preload-splash.cjs,settings.mjs,tray-menu.mjs}` |
+| Isolated npm install | `npm install -g --prefix D:/tmp/aw-install-0175 <tarball>` → `aw --version` **agentworkshop 0.17.5**; `aw start --port 3815` on a fresh home → `/api/health` `status=ok / workshop=ready / version=0.17.5`, SSR `/` HTTP 200 (32,673 bytes); `aw stop` graceful, health unreachable afterwards |
+| Installer | `AgentWorkShop-Setup-0.17.5-win-x64.exe` **416,560,375 bytes**, SHA-256 `d68864a0937d349eecfc7ddd98bbc262017f1a429165dd8295e822bb74b7d17a`; silent `/S /D=D:\tmp\aw-desktop-install-v0175` exit 0; installed `AgentWorkShop.exe` FileVersion **0.17.5**, backend `package.json` **0.17.5**, `.output/server/index.mjs` present, `app.asar` contains the splash/tray modules |
+| Source-mode Electron E2E | Fresh home, debug port 9344: splash target appeared (`file:///…/desktop/chrome/splash.html`) and a screenshot was captured; status phases `booting → ready`; `/api/health` `ok/ready` version 0.17.5. Clicking the real titlebar close button produced `phase=hidden`, `windowVisible=false`, `trayCreated=true`; the owner process stayed alive and `/api/health` still returned `ok/ready`. A second launch exited 0 and re-showed the window; the test auto-quit exited 0 and the backend was unreachable afterwards (no orphan). Screenshot `D:/tmp/aw-desktop-tray-artifacts-3/splash-boot.png` |
+| Settings modes | A fresh home with `{"startHidden":true}` reached `phase=hidden / service=online / trayCreated=true / windowVisible=false`, and a second launch re-showed it; a home with `{"closeToTray":false}` exited 0 on the titlebar close and its backend became unreachable; both runs quit cleanly (ports 9341/9342) |
+| Installed-app E2E | Installed 0.17.5 launched at debug port 9350: splash target `file:///D:/tmp/aw-desktop-install-v0175/resources/app.asar/chrome/splash.html`, status `booting/prepare` → `ready`, health `ok/ready` version 0.17.5; close → `hidden`, `trayCreated=true`, backend still `ok/ready`; second launch exited 0 and re-showed; auto-quit exited 0, backend unreachable, and no `AgentWorkShop` process matched the install directory |
+| Real in-app update 0.17.4 → 0.17.5 | Recorded in the follow-up acceptance commit after the GitHub Release and npm publish |
+
+Not covered here: Authenticode signing (installer is unsigned), physical HIL, external MCP positive traces, and long real-model runs.
+

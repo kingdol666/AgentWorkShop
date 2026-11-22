@@ -77,7 +77,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.17.4 · released</i></span>
+        <span>Version <i>v0.17.5 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -94,11 +94,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.17.4 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.17.5 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      v0.17.4 adds a “Back to main” entry to the full-screen digital twin (/town) and the bare console pages, returning to the dashboard where the navigation sidebar is available — the desktop app can no longer strand users inside a full-screen scene. Earlier releases provide the integrated desktop shell, the shared <code>~/.AgentWorkShop</code> home, GitHub-release in-app updates and the WSH silent-install helper:
+      v0.17.5 treats the desktop app as a resident tool: closing the window hides it to the system tray, whose menu exposes service state, restart, update checks, data/log directories, diagnostics and five settings; startup shows a staged boot splash and enters the main window only after the backend is ready. Earlier releases provide the integrated desktop shell, the shared <code>~/.AgentWorkShop</code> home, GitHub-release in-app updates and the WSH silent-install helper:
       System Settings gains Skills (standard SKILL.md discovery → immutable managed import →
       explicit enable, covering built-in, <code>&lt;configRoot&gt;/skills</code> and
       <code>~/.agent/skills</code> global roots with zero script execution), external MCP

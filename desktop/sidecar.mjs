@@ -27,17 +27,26 @@ export function isAppUrl(raw, origin) {
   }
 }
 
-export async function startSidecar({ node, backend, home, log, env = process.env }) {
+export async function startSidecar({ node, backend, home, log, env = process.env, onStage = () => {} }) {
   const port = await allocatePort()
   const secret = randomBytes(32).toString('hex')
   const sessionPassword = env.NUXT_SESSION_PASSWORD || randomBytes(32).toString('hex')
   const launcher = join(backend, 'scripts', 'start.mjs')
   const baseEnv = { ...env }
   for (const key of ['AW_DATA_DIR', 'AW_PACKAGE_ROOT', 'AW_STOP_TOKEN', 'AW_PARENT_PID', 'NODE_OPTIONS', 'NODE_PATH', 'NODE_USE_ENV_PROXY', 'ELECTRON_RUN_AS_NODE']) delete baseEnv[key]
+  const stage = (name) => {
+    try {
+      onStage(name)
+    }
+    catch {
+      // A splash callback must never break the backend lifecycle.
+    }
+  }
   const init = spawnSync(node, [join(backend, 'scripts', 'home-bootstrap.mjs'), '--no-session-secret'], {
     cwd: backend, env: { ...baseEnv, AW_HOME: home }, windowsHide: true, timeout: 20_000,
   })
   if (init.error || init.status !== 0) throw new Error('Could not initialize the desktop data directory', { cause: init.error })
+  stage('data')
 
   const childEnv = {
     ...baseEnv,
@@ -49,6 +58,7 @@ export async function startSidecar({ node, backend, home, log, env = process.env
   const child = spawn(node, [launcher, '--port', String(port)], {
     cwd: home, env: childEnv, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], windowsHide: true,
   })
+  stage('service')
   child.stdout.pipe(log, { end: false })
   child.stderr.pipe(log, { end: false })
   let failure
@@ -108,7 +118,7 @@ export async function startSidecar({ node, backend, home, log, env = process.env
     const until = Date.now() + 90_000
     while (Date.now() < until) {
       if (failure || child.exitCode !== null || child.signalCode) throw new Error('Desktop server exited before becoming ready', { cause: failure })
-      if (await ready()) return { origin: `http://${HOST}:${binding.port}`, ready, stop, closed }
+      if (await ready()) return { origin: `http://${HOST}:${binding.port}`, port: binding.port, pid: child.pid, ready, stop, closed }
       await wait(250)
     }
     throw new Error('Desktop server did not become ready')
