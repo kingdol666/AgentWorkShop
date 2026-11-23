@@ -1,0 +1,248 @@
+{
+ "before": {
+  "wiredAgents": [
+   "9678a01f-8569-4a02-af01-868406a412d5",
+   "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c"
+  ],
+  "activeChannels": [
+   "c1217149-574c-474f-b6de-f1a5dd4f54ba"
+  ]
+ },
+ "after": {
+  "wiredAgents": [
+   "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c"
+  ],
+  "activeChannels": [
+   "c1217149-574c-474f-b6de-f1a5dd4f54ba"
+  ]
+ },
+ "detail": {
+  "id": "cs-d2ccfa91",
+  "channelId": "c1217149-574c-474f-b6de-f1a5dd4f54ba",
+  "title": "会话S1-暗号",
+  "status": "closed",
+  "memberMap": {
+   "7b7916f9-1079-4015-bbb1-5ecbb3d82db2": "9678a01f-8569-4a02-af01-868406a412d5",
+   "e4c899b3-c949-470e-a1a2-9489e97a9057": "e0a679b4-6e28-4f19-b501-c04af4d377b5"
+  },
+  "createdBy": "904488cd-e2df-4086-a074-c82db1deeb4c",
+  "createdAt": "2026-11-23T23:41:20.087+08:00",
+  "closedAt": "2026-11-23T23:43:01.412+08:00",
+  "projectId": null,
+  "projectWorkItemId": null,
+  "createdByKind": "user",
+  "instanceKind": "manual",
+  "summary": "manual session cs-d2ccfa91（closed）；下一步：会话进行中（12 条消息）；等待成员回复或下一指令",
+  "lastActiveAt": "2026-11-23T23:42:43.802+08:00",
+  "generation": 0,
+  "channelMode": "generic",
+  "productId": null,
+  "lineId": null,
+  "bindingSnapshotHash": "",
+  "bindingSnapshotRevision": 0,
+  "brief": {
+   "sessionId": "cs-d2ccfa91",
+   "kind": "manual",
+   "title": "会话S1-暗号",
+   "status": "closed",
+   "channelId": "c1217149-574c-474f-b6de-f1a5dd4f54ba",
+   "channelName": "E2E SessionRuntime mwtfo1j4",
+   "projectId": null,
+   "projectName": null,
+   "workItemId": null,
+   "workItemTitle": null,
+   "objective": "会话S1-暗号",
+   "rootTaskId": null,
+   "currentTask": null,
+   "tasks": [],
+   "deliverables": [],
+   "recentMessages": [
+    {
+     "role": "agent",
+     "name": "系统",
+     "text": "把我们刚才约定的暗号再告诉我，只回复暗号本身，不要调用工具。",
+     "at": "2026-11-23T23:41:23.620+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「把我们刚才约定的暗号再告诉我，只回复暗号本身，不要调用工具。」;source= <ctx brief=1 recent=1 earlier=0 gen=0>",
+     "at": "2026-11-23T23:41:23.683+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "系统",
+     "text": "不要调用任何工具。请从 1 数到 40，用逗号分隔，只输出数字。",
+     "at": "2026-11-23T23:41:25.203+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「不要调用任何工具。请从 1 数到 40，用逗号分隔，只输出数字。」;source= <ctx brief=1 recent=1 earlier=0 gen=0>",
+     "at": "2026-11-23T23:41:25.275+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "E2E 同会话投递测试：不要调用工具，只回复“收到同会话消息 KODA-0E033270”。",
+     "at": "2026-11-23T23:41:27.007+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "@E2E Admin mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「[群聊] E2E Admin 提问:@E2E Lead 请只回复你这轮对话开始前系统给你的 session id。不要调用工具。 (请回复内容;系统会把你的回复」;source=0c62dcc3 <ctx brief=1 recent=1 earlier=0 gen=0>",
+     "at": "2026-11-23T23:41:27.269+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "系统",
+     "text": "我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。",
+     "at": "2026-11-23T23:42:12.602+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=1>",
+     "at": "2026-11-23T23:42:12.666+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "系统",
+     "text": "我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。",
+     "at": "2026-11-23T23:42:22.188+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=3>",
+     "at": "2026-11-23T23:42:22.246+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "系统",
+     "text": "我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。",
+     "at": "2026-11-23T23:42:43.727+08:00"
+    },
+    {
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=5>",
+     "at": "2026-11-23T23:42:43.802+08:00"
+    }
+   ],
+   "recentTurns": [
+    {
+     "id": "5f5f4de0-66c5-4a38-a0b3-e9b1eac3eaf8",
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "E2E 同会话投递测试：不要调用工具，只回复“收到同会话消息 KODA-0E033270”。",
+     "at": "2026-11-23T23:41:27.007+08:00"
+    },
+    {
+     "id": "948e125e-951a-4395-a6c4-94c28a1fab34",
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "@E2E Admin mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「[群聊] E2E Admin 提问:@E2E Lead 请只回复你这轮对话开始前系统给你的 session id。不要调用工具。 (请回复内容;系统会把你的回复」;source=0c62dcc3 <ctx brief=1 recent=1 earlier=0 gen=0>",
+     "at": "2026-11-23T23:41:27.269+08:00"
+    },
+    {
+     "id": "dedd4d06-e8e2-4a83-8cda-fd0fc2d93b9e",
+     "role": "agent",
+     "name": "系统",
+     "text": "我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。",
+     "at": "2026-11-23T23:42:12.602+08:00"
+    },
+    {
+     "id": "4dea0c83-2b9d-4cbe-9214-0604b41ebdf8",
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=1>",
+     "at": "2026-11-23T23:42:12.666+08:00"
+    },
+    {
+     "id": "62b25cf4-58af-4571-ac61-794220e2ec22",
+     "role": "agent",
+     "name": "系统",
+     "text": "我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。",
+     "at": "2026-11-23T23:42:22.188+08:00"
+    },
+    {
+     "id": "4091de3b-d359-4e01-81e9-9f35d079d933",
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=3>",
+     "at": "2026-11-23T23:42:22.246+08:00"
+    },
+    {
+     "id": "f9f9bbd0-4183-4975-832e-905bc29ea9bf",
+     "role": "agent",
+     "name": "系统",
+     "text": "我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。",
+     "at": "2026-11-23T23:42:43.727+08:00"
+    },
+    {
+     "id": "16452a84-0476-4a2e-962e-a46ad44aded9",
+     "role": "agent",
+     "name": "9678a01f-8569-4a02-af01-868406a412d5",
+     "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=5>",
+     "at": "2026-11-23T23:42:43.802+08:00"
+    }
+   ],
+   "compressed": {
+    "uptoSeq": 58,
+    "uptoCreatedAt": "2026-11-23T23:41:25.275+08:00",
+    "uptoMessageId": "bd9e31d3-5c04-4bd3-9d75-bda3b2544a98",
+    "generation": 6,
+    "lines": [
+     "· 系统: 请记住这个暗号：KODA-0E033270。不要调用任何工具，只回复一行…",
+     "· 9678a01f-8569-4a02-af01-868406a412d5: @owner:904488cd-e2df-4086-a074-c82db…",
+     "· 系统: 把我们刚才约定的暗号再告诉我，只回复暗号本身，不要调用工具。",
+     "· 系统: 不要调用任何工具。请从 1 数到 40，用逗号分隔，只输出数字。"
+    ]
+   },
+   "decisions": [],
+   "openQuestions": [],
+   "nextStep": "会话进行中（12 条消息）；等待成员回复或下一指令",
+   "lastActiveAt": "2026-11-23T23:42:43.802+08:00",
+   "updatedAt": "2026-11-23T23:43:01.413+08:00"
+  }
+ },
+ "agents": [
+  {
+   "id": "7b7916f9-1079-4015-bbb1-5ecbb3d82db2",
+   "name": "E2E Lead",
+   "role": "lead",
+   "enabled": 1
+  },
+  {
+   "id": "e4c899b3-c949-470e-a1a2-9489e97a9057",
+   "name": "E2E Worker",
+   "role": "worker",
+   "enabled": 1
+  },
+  {
+   "id": "9678a01f-8569-4a02-af01-868406a412d5",
+   "name": "E2E Lead·session·1",
+   "role": "worker",
+   "enabled": 0
+  },
+  {
+   "id": "e0a679b4-6e28-4f19-b501-c04af4d377b5",
+   "name": "E2E Worker·session·2",
+   "role": "worker",
+   "enabled": 0
+  },
+  {
+   "id": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "name": "E2E Lead·session·2",
+   "role": "worker",
+   "enabled": 1
+  },
+  {
+   "id": "f3e1cb72-3cb4-4f79-b80f-a3bd87349aa2",
+   "name": "E2E Worker·session·3",
+   "role": "worker",
+   "enabled": 1
+  }
+ ]
+}

@@ -1,0 +1,60 @@
+[
+ {
+  "id": "cs-47b3670f",
+  "title": "会话S2-追问",
+  "status": "active",
+  "memberMap": {
+   "7b7916f9-1079-4015-bbb1-5ecbb3d82db2": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "e4c899b3-c949-470e-a1a2-9489e97a9057": "f3e1cb72-3cb4-4f79-b80f-a3bd87349aa2"
+  },
+  "createdAt": "2026-11-23T23:41:20.102+08:00",
+  "closedAt": null,
+  "channelMode": "generic",
+  "productId": null,
+  "lineId": null,
+  "bindingSnapshotHash": "",
+  "bindingSnapshotRevision": 0,
+  "projectId": null,
+  "projectWorkItemId": null,
+  "createdByKind": "user",
+  "instanceKind": "manual",
+  "summary": "manual session cs-47b3670f（active）；下一步：会话进行中（7 条消息）；等待成员回复或下一指令",
+  "lastActiveAt": "2026-11-23T23:42:23.798+08:00",
+  "kind": "manual",
+  "brief": {
+   "currentTask": null,
+   "nextStep": "会话进行中（8 条消息）；等待成员回复或下一指令",
+   "openQuestions": [],
+   "deliverables": []
+  }
+ },
+ {
+  "id": "cs-d2ccfa91",
+  "title": "会话S1-暗号",
+  "status": "active",
+  "memberMap": {
+   "7b7916f9-1079-4015-bbb1-5ecbb3d82db2": "9678a01f-8569-4a02-af01-868406a412d5",
+   "e4c899b3-c949-470e-a1a2-9489e97a9057": "e0a679b4-6e28-4f19-b501-c04af4d377b5"
+  },
+  "createdAt": "2026-11-23T23:41:20.087+08:00",
+  "closedAt": null,
+  "channelMode": "generic",
+  "productId": null,
+  "lineId": null,
+  "bindingSnapshotHash": "",
+  "bindingSnapshotRevision": 0,
+  "projectId": null,
+  "projectWorkItemId": null,
+  "createdByKind": "user",
+  "instanceKind": "manual",
+  "summary": "manual session cs-d2ccfa91（active）；下一步：会话进行中（11 条消息）；等待成员回复或下一指令",
+  "lastActiveAt": "2026-11-23T23:42:22.188+08:00",
+  "kind": "manual",
+  "brief": {
+   "currentTask": null,
+   "nextStep": "会话进行中（12 条消息）；等待成员回复或下一指令",
+   "openQuestions": [],
+   "deliverables": []
+  }
+ }
+]

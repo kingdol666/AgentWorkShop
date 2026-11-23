@@ -1,0 +1,164 @@
+{
+ "phase": "run",
+ "at": "2026-11-23T15:41:36.250Z",
+ "model": "openai/gpt-oss-20b",
+ "results": [
+  {
+   "id": "R01",
+   "name": "S1 turn 1: the reply echoes the codeword",
+   "pass": "PASS",
+   "detail": "rep=@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「请记住这个暗号：KODA-0E033270。不要调用任何工具，只回复一行：“收到 KODA-0E033270”。」;source= <ctx brief=1 recent=1 earlier=0 gen=0> ms=1545"
+  },
+  {
+   "id": "R02",
+   "name": "after the S1 message only the S1 target clone is wired (lazy, per session)",
+   "pass": "PASS",
+   "detail": "wired=?,?,?,?,E2E Lead·session·1"
+  },
+  {
+   "id": "R04",
+   "name": "S2 turn 1: a separate session does not know the codeword",
+   "pass": "PASS",
+   "detail": "rep=@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(7fb61d5f-6b20-4db5-b76d-81b6bfb1617c):已处理「我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用任何工具。」;source= <ctx brief=1 recent=1 earlier=0 gen=0> ms=1547"
+  },
+  {
+   "id": "R03",
+   "name": "each session clone runs in its own AgentRuntime instance (distinct runtime lease per clone)",
+   "pass": "PASS",
+   "detail": "S1 lease=062b169d pid=null continuity=persistent | S2 lease=91693215 pid=null continuity=persistent"
+  },
+  {
+   "id": "R03b",
+   "name": "the channel has exactly one ChannelRuntime holding both sessions",
+   "pass": "PASS",
+   "detail": "activeChannels=[\"edb82823-bf40-4b45-a2fb-2c1591020a7a\",\"c1217149-574c-474f-b6de-f1a5dd4f54ba\"] wired=6"
+  },
+  {
+   "id": "R06",
+   "name": "S1 turn 2 runs on the same runtime lease (session continuity, no re-wiring)",
+   "pass": "PASS",
+   "detail": "lease 062b169d->062b169d reuse 0->0"
+  },
+  {
+   "id": "R07",
+   "name": "two sessions each complete their own turn (independent runtimes, no cross-session lock)",
+   "pass": "PASS",
+   "detail": "bothBusyObserved=true S1=busy S2=busy aMs=23 bMs=1537"
+  },
+  {
+   "id": "R07b",
+   "name": "observation: both clones were seen busy in the same queue snapshot",
+   "pass": "OBSERVED",
+   "detail": "bothBusy=true afterMs=7 S1=busy S2=busy"
+  },
+  {
+   "id": "R08a",
+   "name": "S2 history never contains the S1 codeword",
+   "pass": "PASS",
+   "detail": "items=4 roles=ROLE_AGENT"
+  },
+  {
+   "id": "R08b",
+   "name": "S1 history never contains the S2 prompt",
+   "pass": "PASS",
+   "detail": "items=6"
+  },
+  {
+   "id": "R09a",
+   "name": "a cross-session agent message is refused (403 SESSION_MEMBER_SCOPE_MISMATCH)",
+   "pass": "PASS",
+   "detail": "status=403 code=SESSION_MEMBER_SCOPE_MISMATCH"
+  },
+  {
+   "id": "R10",
+   "name": "save_memory through the S1 clone runtime stores a row owned by that clone and stamped with the S1 session",
+   "pass": "PASS",
+   "detail": "via=tool-invoke row=agent=9678a01f-8 session=cs-d2ccfa91 scope=session rows=1 tool={\"status\":200,\"json\":{\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"已沉淀到本人私有记忆: \\\"E2E校验码 KODA-0E033270\\\"(dedupKey=agent-save:982f63d4);已标注会话作用域(cs-d2ccf…,sc"
+  },
+  {
+   "id": "R11a",
+   "name": "the S2 clone cannot recall the S1 memory through its own search_memory tool",
+   "pass": "PASS",
+   "detail": "via=tool-invoke rep={\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"记忆检索无命中(query=\\\"E2E校验码\\\", scope=auto)。可尝试更换关键词或放宽 scope。\"}}}"
+  },
+  {
+   "id": "R11b",
+   "name": "the S1 clone recalls its own session memory through search_memory",
+   "pass": "PASS",
+   "detail": "via=tool-invoke rep={\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"记忆检索结果(1 条, scope=auto;召回度量 hits=7/misses=7/命中率=50%):\\n  [private · semantic · score=1 · private · channel=c1217149 · session=cs-d2ccf · 2026-11-23 2"
+  },
+  {
+   "id": "R12a",
+   "name": "memory search with the S2 clone token returns no S1 row",
+   "pass": "PASS",
+   "detail": "status=200 {\"code\":0,\"message\":\"ok\",\"data\":[]}"
+  },
+  {
+   "id": "R12b",
+   "name": "scope=session search with the S1 clone token returns the stamped row",
+   "pass": "PASS",
+   "detail": "status=200 {\"code\":0,\"message\":\"ok\",\"data\":[{\"id\":\"c25ca1ce-8f06-4945-8326-4b2ca6a1010c\",\"kind\":\"semantic\",\"title\":\"E2E校验码 KODA-0E033270\",\"content\":\"本会话的校验码是 KODA-0E033270\",\"importance\":0.9,\"createdAt\":\"2026-11-"
+  },
+  {
+   "id": "R12c",
+   "name": "an S2 clone cannot search the S1 session scope (403 SESSION_SCOPE_FORBIDDEN)",
+   "pass": "PASS",
+   "detail": "status=403 code=SESSION_SCOPE_FORBIDDEN"
+  },
+  {
+   "id": "R09b",
+   "name": "a same-session agent message is delivered and the server stamps it with the session id",
+   "pass": "PASS",
+   "detail": "status=200 stamped=1 sessionIds=cs-d2ccfa91 {\"code\":0,\"message\":\"ok\",\"data\":{\"messageId\":\"5f5f4de0-66c5-4a38-a0b3-e9b1eac3eaf8\",\"contextId\":\"c1217149-574c-474f-b6de-f1a5dd4f54ba\",\"role\":\"ROLE_AGENT\",\"part"
+  },
+  {
+   "id": "R12d",
+   "name": "the runtime tool surface is bound to the runtime identity: S2 search_memory sees no S1 memory, S1 sees its own",
+   "pass": "PASS",
+   "detail": "tools=4 [report_progress,complete_task,search_memory,save_memory] S2={\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"记忆检索无命中(query=\\\"E2E校验码\\\", scope=auto)。可尝试更换关键词或放宽 scope。\"}}} S1hit=true"
+  },
+  {
+   "id": "R13a",
+   "name": "persisted metadata: one channel_sessions row per session with its own base→clone member map",
+   "pass": "PASS",
+   "detail": "rows=cs-d2ccfa91:active:map=2:gen=0 | cs-47b3670f:active:map=2:gen=0 db=D:\\tmp\\aw-desktop-e2e-20261123\\home\\data\\workshop.sqlite"
+  },
+  {
+   "id": "R13b",
+   "name": "persisted metadata: every clone is its own channel_agents row, mapped by exactly one session",
+   "pass": "PASS",
+   "detail": "clones=E2E Lead·session·1(1),E2E Worker·session·2(1),E2E Lead·session·2(1),E2E Worker·session·3(1)"
+  },
+  {
+   "id": "R13c",
+   "name": "persisted conversation: every session message row is stamped with session + from/to agent",
+   "pass": "PASS",
+   "detail": "stamped=11/11 s1=7 s2=4"
+  },
+  {
+   "id": "R13d",
+   "name": "persisted memory: the agent_memories row carries agent id + session id + scope_kind=session",
+   "pass": "PASS",
+   "detail": "rows=9678a01f-8/cs-d2ccfa91/session/semantic"
+  },
+  {
+   "id": "R14",
+   "name": "the injected Session Context block is session-specific (S1 carries the codeword, S2 does not, both carry the boundary rule)",
+   "pass": "PASS",
+   "detail": "S1len=1091 S2len=791"
+  },
+  {
+   "id": "R15",
+   "name": "group chat can @ a session clone; the clone answers in the group from its session context (design: sessions are visible to channel members)",
+   "pass": "OBSERVED",
+   "detail": "post=200 reply=@E2E Admin mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「[群聊] E2E Admin 提问:@E2E Lead 请只回复你这轮对话开始前系统给你的 session id。不要调用工具。\n(请回复内容;系统会把你的回复」;source=0c62dcc3 <ctx brief=1 recent=1 earlier=0 gen=0>"
+  },
+  {
+   "id": "R15b",
+   "name": "observation: the group-chat exchange also lands in the S1 session history (the clone identity fixes the session)",
+   "pass": "OBSERVED",
+   "detail": "inSessionHistory=true items=8"
+  }
+ ],
+ "failed": 0
+}

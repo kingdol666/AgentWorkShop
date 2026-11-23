@@ -1,0 +1,20 @@
+{
+ "rep": null,
+ "viaTool": {
+  "status": 200,
+  "json": {
+   "code": 0,
+   "message": "ok",
+   "data": {
+    "result": {
+     "text": "记忆检索结果(1 条, scope=auto;召回度量 hits=7/misses=7/命中率=50%):\n  [private · semantic · score=1 · private · channel=c1217149 · session=cs-d2ccf · 2026-11-23 23:41] E2E校验码 KODA-0E033270\n    本会话的校验码是 KODA-0E033270"
+    }
+   }
+  },
+  "data": {
+   "result": {
+    "text": "记忆检索结果(1 条, scope=auto;召回度量 hits=7/misses=7/命中率=50%):\n  [private · semantic · score=1 · private · channel=c1217149 · session=cs-d2ccf · 2026-11-23 23:41] E2E校验码 KODA-0E033270\n    本会话的校验码是 KODA-0E033270"
+   }
+  }
+ }
+}

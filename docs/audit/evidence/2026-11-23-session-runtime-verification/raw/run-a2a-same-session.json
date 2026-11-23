@@ -1,0 +1,37 @@
+{
+ "status": 200,
+ "json": {
+  "code": 0,
+  "message": "ok",
+  "data": {
+   "messageId": "5f5f4de0-66c5-4a38-a0b3-e9b1eac3eaf8",
+   "contextId": "c1217149-574c-474f-b6de-f1a5dd4f54ba",
+   "role": "ROLE_AGENT",
+   "parts": [
+    {
+     "text": "E2E 同会话投递测试：不要调用工具，只回复“收到同会话消息 KODA-0E033270”。"
+    }
+   ],
+   "metadata": {
+    "x-aw-session-id": "cs-d2ccfa91",
+    "x-aw-target-agent": "e0a679b4-6e28-4f19-b501-c04af4d377b5",
+    "x-aw-from-agent": "9678a01f-8569-4a02-af01-868406a412d5"
+   }
+  }
+ },
+ "data": {
+  "messageId": "5f5f4de0-66c5-4a38-a0b3-e9b1eac3eaf8",
+  "contextId": "c1217149-574c-474f-b6de-f1a5dd4f54ba",
+  "role": "ROLE_AGENT",
+  "parts": [
+   {
+    "text": "E2E 同会话投递测试：不要调用工具，只回复“收到同会话消息 KODA-0E033270”。"
+   }
+  ],
+  "metadata": {
+   "x-aw-session-id": "cs-d2ccfa91",
+   "x-aw-target-agent": "e0a679b4-6e28-4f19-b501-c04af4d377b5",
+   "x-aw-from-agent": "9678a01f-8569-4a02-af01-868406a412d5"
+  }
+ }
+}

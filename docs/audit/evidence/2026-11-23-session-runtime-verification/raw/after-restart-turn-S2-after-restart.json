@@ -1,0 +1,109 @@
+{
+ "sent": {
+  "status": 200,
+  "json": {
+   "code": 0,
+   "message": "ok",
+   "data": {
+    "messageId": "31a54ad4-02e7-4bf9-bb9b-832be85a100d",
+    "toAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c"
+   }
+  },
+  "data": {
+   "messageId": "31a54ad4-02e7-4bf9-bb9b-832be85a100d",
+   "toAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c"
+  }
+ },
+ "rep": {
+  "type": "message",
+  "id": "c9ae7a6a-1c5e-493a-839d-6babf3e0587f",
+  "at": "2026-11-23T23:42:45.423+08:00",
+  "role": "ROLE_AGENT",
+  "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+  "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(7fb61d5f-6b20-4db5-b76d-81b6bfb1617c):已处理「我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=1>"
+ },
+ "list": [
+  {
+   "type": "message",
+   "id": "832871be-1811-412a-af9b-2451d96b125e",
+   "at": "2026-11-23T23:41:21.976+08:00",
+   "role": "ROLE_AGENT",
+   "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "text": "我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用任何工具。"
+  },
+  {
+   "type": "message",
+   "id": "c94f097b-a94c-4996-9a9d-549bc06eb207",
+   "at": "2026-11-23T23:41:22.063+08:00",
+   "role": "ROLE_AGENT",
+   "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(7fb61d5f-6b20-4db5-b76d-81b6bfb1617c):已处理「我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用任何工具。」;source= <ctx brief=1 recent=1 earlier=0 gen=0>"
+  },
+  {
+   "type": "message",
+   "id": "b5ee3f27-0b35-4f56-ae6a-25a288a6220f",
+   "at": "2026-11-23T23:41:25.245+08:00",
+   "role": "ROLE_AGENT",
+   "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "text": "不要调用任何工具。请从 1 数到 40，用逗号分隔，只输出数字。"
+  },
+  {
+   "type": "message",
+   "id": "b85ee790-a18b-4d51-b165-41949c9248a0",
+   "at": "2026-11-23T23:41:25.310+08:00",
+   "role": "ROLE_AGENT",
+   "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(7fb61d5f-6b20-4db5-b76d-81b6bfb1617c):已处理「不要调用任何工具。请从 1 数到 40，用逗号分隔，只输出数字。」;source= <ctx brief=1 recent=1 earlier=0 gen=0>"
+  },
+  {
+   "type": "message",
+   "id": "7813aea5-66d2-4520-978b-93a57d689d0a",
+   "at": "2026-11-23T23:42:14.231+08:00",
+   "role": "ROLE_AGENT",
+   "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "text": "我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用工具。"
+  },
+  {
+   "type": "message",
+   "id": "eba1cdfb-dc13-4cf4-98de-44e0a1a45e7e",
+   "at": "2026-11-23T23:42:14.289+08:00",
+   "role": "ROLE_AGENT",
+   "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(7fb61d5f-6b20-4db5-b76d-81b6bfb1617c):已处理「我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用工具。」;source= <ctx brief=1 recent=1 earlier=0 gen=0>"
+  },
+  {
+   "type": "message",
+   "id": "45d0480a-24c0-4349-8d9a-a7b1bfed5758",
+   "at": "2026-11-23T23:42:23.798+08:00",
+   "role": "ROLE_AGENT",
+   "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "text": "我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用工具。"
+  },
+  {
+   "type": "message",
+   "id": "68a07496-83af-4250-ba4f-994148b1aeb6",
+   "at": "2026-11-23T23:42:23.859+08:00",
+   "role": "ROLE_AGENT",
+   "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(7fb61d5f-6b20-4db5-b76d-81b6bfb1617c):已处理「我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用工具。」;source= <ctx brief=1 recent=1 earlier=0 gen=0>"
+  },
+  {
+   "type": "message",
+   "id": "31a54ad4-02e7-4bf9-bb9b-832be85a100d",
+   "at": "2026-11-23T23:42:45.365+08:00",
+   "role": "ROLE_AGENT",
+   "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "text": "我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用工具。"
+  },
+  {
+   "type": "message",
+   "id": "c9ae7a6a-1c5e-493a-839d-6babf3e0587f",
+   "at": "2026-11-23T23:42:45.423+08:00",
+   "role": "ROLE_AGENT",
+   "name": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(7fb61d5f-6b20-4db5-b76d-81b6bfb1617c):已处理「我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=1>"
+  }
+ ],
+ "ms": 1524,
+ "timeout": false
+}

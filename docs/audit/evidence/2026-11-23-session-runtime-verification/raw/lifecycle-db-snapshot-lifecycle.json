@@ -1,0 +1,369 @@
+{
+ "files": [
+  "D:\\tmp\\aw-desktop-e2e-20261123\\home\\data\\daq-timeseries.sqlite",
+  "D:\\tmp\\aw-desktop-e2e-20261123\\home\\data\\users.sqlite",
+  "D:\\tmp\\aw-desktop-e2e-20261123\\home\\data\\workshop.sqlite"
+ ],
+ "dbFile": "D:\\tmp\\aw-desktop-e2e-20261123\\home\\data\\workshop.sqlite",
+ "channel_sessions": [
+  {
+   "id": "cs-47b3670f",
+   "title": "会话S2-追问",
+   "status": "active",
+   "memoryPolicy": "session",
+   "memberMap": "{\"7b7916f9-1079-4015-bbb1-5ecbb3d82db2\":\"7fb61d5f-6b20-4db5-b76d-81b6bfb1617c\",\"e4c899b3-c949-470e-a1a2-9489e97a9057\":\"f3e1cb72-3cb4-4f79-b80f-a3bd87349aa2\"}",
+   "instanceKind": "manual",
+   "generation": 0,
+   "channelMode": "generic",
+   "lastActiveAt": "2026-11-23T23:43:04.499+08:00",
+   "summaryLen": 64,
+   "briefLen": 4933,
+   "bindingRevision": 0,
+   "createdAt": "2026-11-23T23:41:20.102+08:00"
+  },
+  {
+   "id": "cs-d2ccfa91",
+   "title": "会话S1-暗号",
+   "status": "closed",
+   "memoryPolicy": "session",
+   "memberMap": "{\"7b7916f9-1079-4015-bbb1-5ecbb3d82db2\":\"9678a01f-8569-4a02-af01-868406a412d5\",\"e4c899b3-c949-470e-a1a2-9489e97a9057\":\"e0a679b4-6e28-4f19-b501-c04af4d377b5\"}",
+   "instanceKind": "manual",
+   "generation": 0,
+   "channelMode": "generic",
+   "lastActiveAt": "2026-11-23T23:42:43.802+08:00",
+   "summaryLen": 64,
+   "briefLen": 5280,
+   "bindingRevision": 0,
+   "createdAt": "2026-11-23T23:41:20.087+08:00"
+  }
+ ],
+ "channel_agents": [
+  {
+   "id": "7b7916f9-1079-4015-bbb1-5ecbb3d82db2",
+   "name": "E2E Lead",
+   "role": "lead",
+   "harness": "mock",
+   "enabled": 1,
+   "templateId": "6a697749-395d-4c2e-a5d9-cf9ef16fea3e",
+   "createdVia": "protected"
+  },
+  {
+   "id": "e4c899b3-c949-470e-a1a2-9489e97a9057",
+   "name": "E2E Worker",
+   "role": "worker",
+   "harness": "mock",
+   "enabled": 1,
+   "templateId": "2b0e1b78-d0ea-43c5-bd47-45fe7abae821",
+   "createdVia": "protected"
+  },
+  {
+   "id": "9678a01f-8569-4a02-af01-868406a412d5",
+   "name": "E2E Lead·session·1",
+   "role": "worker",
+   "harness": "mock",
+   "enabled": 0,
+   "templateId": null,
+   "createdVia": "protected"
+  },
+  {
+   "id": "e0a679b4-6e28-4f19-b501-c04af4d377b5",
+   "name": "E2E Worker·session·2",
+   "role": "worker",
+   "harness": "mock",
+   "enabled": 0,
+   "templateId": null,
+   "createdVia": "protected"
+  },
+  {
+   "id": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "name": "E2E Lead·session·2",
+   "role": "worker",
+   "harness": "mock",
+   "enabled": 1,
+   "templateId": null,
+   "createdVia": "protected"
+  },
+  {
+   "id": "f3e1cb72-3cb4-4f79-b80f-a3bd87349aa2",
+   "name": "E2E Worker·session·3",
+   "role": "worker",
+   "harness": "mock",
+   "enabled": 1,
+   "templateId": null,
+   "createdVia": "protected"
+  }
+ ],
+ "messages": [
+  {
+   "id": "e3f75353-073b-4ae0-b469-b16bdcfa175d",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": null,
+   "toAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:41:20.384+08:00"
+  },
+  {
+   "id": "a969fdde-0352-45fb-aabb-9cc2b5d1feac",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:41:20.464+08:00"
+  },
+  {
+   "id": "832871be-1811-412a-af9b-2451d96b125e",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": null,
+   "toAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:41:21.976+08:00"
+  },
+  {
+   "id": "c94f097b-a94c-4996-9a9d-549bc06eb207",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:41:22.063+08:00"
+  },
+  {
+   "id": "8badab79-4ff4-4fe8-b235-5f3d5a2b74fb",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": null,
+   "toAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:41:23.620+08:00"
+  },
+  {
+   "id": "7e8be878-8fda-4e4a-bf79-4e752c2d6627",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:41:23.683+08:00"
+  },
+  {
+   "id": "1e0c235a-7738-42c6-9d54-4de133390b80",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": null,
+   "toAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:41:25.203+08:00"
+  },
+  {
+   "id": "b5ee3f27-0b35-4f56-ae6a-25a288a6220f",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": null,
+   "toAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:41:25.245+08:00"
+  },
+  {
+   "id": "bd9e31d3-5c04-4bd3-9d75-bda3b2544a98",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:41:25.275+08:00"
+  },
+  {
+   "id": "b85ee790-a18b-4d51-b165-41949c9248a0",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:41:25.310+08:00"
+  },
+  {
+   "id": "5f5f4de0-66c5-4a38-a0b3-e9b1eac3eaf8",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "toAgentId": "e0a679b4-6e28-4f19-b501-c04af4d377b5",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:41:27.007+08:00"
+  },
+  {
+   "id": "4dc65688-ec74-4f04-9acc-5363a4ef6610",
+   "sessionId": null,
+   "fromAgentId": null,
+   "toAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "role": "ROLE_USER",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:41:27.192+08:00"
+  },
+  {
+   "id": "948e125e-951a-4395-a6c4-94c28a1fab34",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:41:27.269+08:00"
+  },
+  {
+   "id": "dedd4d06-e8e2-4a83-8cda-fd0fc2d93b9e",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": null,
+   "toAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:42:12.602+08:00"
+  },
+  {
+   "id": "4dea0c83-2b9d-4cbe-9214-0604b41ebdf8",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:42:12.666+08:00"
+  },
+  {
+   "id": "7813aea5-66d2-4520-978b-93a57d689d0a",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": null,
+   "toAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:42:14.231+08:00"
+  },
+  {
+   "id": "eba1cdfb-dc13-4cf4-98de-44e0a1a45e7e",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:42:14.289+08:00"
+  },
+  {
+   "id": "62b25cf4-58af-4571-ac61-794220e2ec22",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": null,
+   "toAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:42:22.188+08:00"
+  },
+  {
+   "id": "4091de3b-d359-4e01-81e9-9f35d079d933",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:42:22.246+08:00"
+  },
+  {
+   "id": "45d0480a-24c0-4349-8d9a-a7b1bfed5758",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": null,
+   "toAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:42:23.798+08:00"
+  },
+  {
+   "id": "68a07496-83af-4250-ba4f-994148b1aeb6",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:42:23.859+08:00"
+  },
+  {
+   "id": "f9f9bbd0-4183-4975-832e-905bc29ea9bf",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": null,
+   "toAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:42:43.727+08:00"
+  },
+  {
+   "id": "16452a84-0476-4a2e-962e-a46ad44aded9",
+   "sessionId": "cs-d2ccfa91",
+   "fromAgentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:42:43.802+08:00"
+  },
+  {
+   "id": "31a54ad4-02e7-4bf9-bb9b-832be85a100d",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": null,
+   "toAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:42:45.365+08:00"
+  },
+  {
+   "id": "c9ae7a6a-1c5e-493a-839d-6babf3e0587f",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:42:45.423+08:00"
+  },
+  {
+   "id": "a39b81cc-2703-497e-8b82-0f7dba3e3bda",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": null,
+   "toAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "role": "ROLE_AGENT",
+   "state": "consumed",
+   "createdAt": "2026-11-23T23:43:04.499+08:00"
+  },
+  {
+   "id": "e4c62ce7-82cf-4a1f-980e-95f0298c463d",
+   "sessionId": "cs-47b3670f",
+   "fromAgentId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "state": "pending",
+   "createdAt": "2026-11-23T23:43:04.572+08:00"
+  }
+ ],
+ "agent_memories": [
+  {
+   "id": "c25ca1ce-8f06-4945-8326-4b2ca6a1010c",
+   "agentId": "9678a01f-8569-4a02-af01-868406a412d5",
+   "kind": "semantic",
+   "title": "E2E校验码 KODA-0E033270",
+   "sessionId": "cs-d2ccfa91",
+   "scopeKind": "session",
+   "scopeKey": "",
+   "status": "active",
+   "importance": 0.9,
+   "createdAt": "2026-11-23T23:41:26.905+08:00"
+  },
+  {
+   "id": "acf97e0d-3955-40b2-b4ff-27d8f5e288a7",
+   "agentId": "e0a679b4-6e28-4f19-b501-c04af4d377b5",
+   "kind": "episodic-peer",
+   "title": "来自 9678a01f-8569-4a02-af01-868406a412d5 的消息",
+   "sessionId": "cs-d2ccfa91",
+   "scopeKind": "session",
+   "scopeKey": "",
+   "status": "active",
+   "importance": 0.4,
+   "createdAt": "2026-11-23T23:41:27.021+08:00"
+  }
+ ],
+ "experience_versions": [],
+ "tasks": []
+}

@@ -1,0 +1,30 @@
+Mimosa deep scan — receipts (2026-11-23, AgentWorkShop working tree D:\codes\ABO\AgentWorkShop)
+
+#1 baseline (before fixes)
+scanId  scan-2026-11-23T13-55-55.627Z-4ffeba9be91d
+seal    sha256:9009ecfa5c06f364b9c84cd2d6507efe1b64d6c95aac075a1960a44bff9045f1
+count   49 (39 high / 10 medium)
+coverage completeness=partial runStatus=inconclusive files=2011/2011 truncated=false
+
+#2 after fixing the test credential literal and the candidate-store sink name
+scanId  scan-2026-11-23T14-31-46.874Z-c56524032193
+seal    sha256:17b9bdac66cc3f154f17bd0701e11c2a66933bdd7ce4b007f406a9c77a9a0f17
+count   47 (37 high / 10 medium)
+coverage completeness=partial runStatus=inconclusive files=2011/2011 truncated=false
+
+#3 final (after all code and doc changes in this round)
+scanId  scan-2026-11-23T15-56-02.703Z-06f5da6fd9b9
+seal    sha256:8f0b36f1a8ecea27a0a0fd237d5b6fbab49946ee6e57ef83d5f87fb4e28e636a
+count   47 (37 high / 10 medium)
+coverage completeness=partial runStatus=inconclusive files=2012/2012 truncated=false
+
+Dependency summary (identical in all three): packagesScanned=303, matchedAdvisories=0, unknown=0.
+
+Split of the 47 findings in #3:
+  data/workspaces/<uuid>/*.py (git-ignored local runtime data)   16
+  paper/tii/** untracked paper WIP scripts                        9
+  tracked product code                                           22  -> triaged in MIMOSA-TRIAGE.md, all static false positives
+
+Verdict: this is NOT a "security pass". Coverage is partial and runStatus is inconclusive; the
+scanner's own evidence boundary is "static_only_no_runtime_execution", and its threat-model and
+finding-discovery phases reported partial with zero business-logic candidates and zero traces.
