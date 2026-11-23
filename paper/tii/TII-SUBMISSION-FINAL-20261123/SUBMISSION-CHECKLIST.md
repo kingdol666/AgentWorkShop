@@ -6,7 +6,7 @@
 
 | 文件（位于 `initial-package/`） | 本次初投处理 |
 |---|---|
-| `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | **上传至审稿稿件栏。** 本地核验：IEEEtran 双栏、Letter、10 页、约 2.84 MB、字体嵌入、作者元数据为空；摘要为单段且无引文、脚注和公式。页数和文件大小上限仍须以提交时的 Author Portal 为准。 |
+| `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | **上传至审稿稿件栏。** 本地核验：IEEEtran 双栏、Letter、10 页、约 2.61 MB、字体全部嵌入（26/26）、作者元数据为空；摘要为单段且无引文、脚注和公式。页数和文件大小上限仍须以提交时的 Author Portal 为准。 |
 | `TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | 源码留存，可导入 Overleaf；官方清单未列为初投必传。 |
 | `Supplementary-File-S7-20261117.pdf` | 作者备查；不要把这份 9 页叙述 PDF 当作常规补充件上传。正文已保留主要选样依据与排除理由，不依赖 S7 叙述附件。`supplementary-source/` 为其 LaTeX 源码（可复编译），同样仅作者备查。 |
 | `Supporting-Evidence-S7.zip`（本地） | 作者备查；含脱敏记录、README 和校验清单，不是默认上传项。若编辑部要求数据，应先确认允许的类型、格式、大小和匿名方式；不要用补充材料规避页数限制。 |

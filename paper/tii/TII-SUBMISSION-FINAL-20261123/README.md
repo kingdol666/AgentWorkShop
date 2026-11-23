@@ -10,7 +10,7 @@
 
 | 文件 | 上传位置 | 说明 |
 |---|---|---|
-| [`manuscript/TII-SUBMISSION-PACKAGE-FINAL-latex.pdf`](manuscript/TII-SUBMISSION-PACKAGE-FINAL-latex.pdf) | **匿名审稿稿件栏** | IEEEtran 双栏、Letter、10 页、2.84 MB、作者元数据为空、26 个字体全部嵌入；第 1 页含图 1 的 2560×562 位图 |
+| [`manuscript/TII-SUBMISSION-PACKAGE-FINAL-latex.pdf`](manuscript/TII-SUBMISSION-PACKAGE-FINAL-latex.pdf) | **匿名审稿稿件栏** | IEEEtran 双栏、Letter、10 页、2.61 MB、作者元数据为空、26 个字体全部嵌入；第 1 页含图 1 的 2560×562 位图 |
 | [`Cover-Letter-IEEE-TII.md`](Cover-Letter-IEEE-TII.md) | 门户投稿信字段（如要求） | 编辑可见草稿；作者、ORCID、基金、利益冲突与既往公开传播需作者填写确认，**不并入匿名稿** |
 
 常规初投**只需上传正文 PDF**。源码 ZIP 与编辑源码供 Overleaf 复编译和作者留存。
@@ -20,7 +20,7 @@
 - [`source/TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip`](source/TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip)：可直接导入 Overleaf，`main.tex` 在压缩包根目录。
 - [`source/overleaf/`](source/overleaf/)：同一份编辑源码的文件夹形式，17 个文件。
 
-编译方式：pdfLaTeX + BibTeX（`latexmk -pdf main.tex`）。已验证：解包重编译得到的 10 页与交付 PDF **文本一致、144 dpi 逐页像素一致**，且与你 11-21 凌晨验收的成稿（`build/main.pdf`，2 841 577 字节）逐页相同。
+编译方式：pdfLaTeX + BibTeX（`latexmk -pdf main.tex`）。已验证：解包重编译得到的 10 页与交付 PDF **文本一致、144 dpi 逐页像素一致**。相对 11-21 凌晨的成稿，本版只改了两处——移除图 1/图 4 中不绘字的 Helvetica 空文本块（图形零变化），以及把第 IV 节的观测窗口锚点 $t_0$ 由"写入时刻"改为"预读与审批等待之前的操作时间戳"，与实现一致。
 
 ## 补充材料（作者备查，不作常规初投附件）
 
@@ -37,9 +37,9 @@
 
 | 文件 | SHA-256 |
 |---|---|
-| `manuscript/TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | `69bf0830eb3648d21a428c8e2eadb447b35d879ad6fed46f3159a79630bc505a` |
-| `source/TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | `d77dae4fae0ece489f535f326408e118cea05af683deaa6a0cdfffc77e9f08cc` |
+| `manuscript/TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | `24d6819bd72c4b53399bd04f364c5249e30ac06f280b2eaf1a5b8f68a4d6d116` |
+| `source/TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | `0dfe153ea28d16561718ef1774d5f899512e559b29591e261d89ee31b7e119e5` |
 | `supplementary/Supplementary-File-S7-20261117.pdf` | `f7de9f604c38c5826f2eaee164ca02d604e1eafbe1666cf3fe404b1d607f0cb3` |
 | `supplementary/Supporting-Evidence-S7.zip`（本地） | `42f23ccbf6f22bfa02b56ca593e72bff88f66758b907040de40f8b912150f5a0` |
 
-本版实测：10 页、摘要单段 216 词、6 个关键词、24 条参考文献、26 个字体全部嵌入；第 1 页图 1 位图为 2560×562。文本与格式验收不预判期刊接收。
+本版实测：10 页、2.61 MB、摘要单段 216 词、6 个关键词、24 条参考文献、26 个字体全部嵌入（无未嵌入字体）；第 1 页图 1 位图为 2560×562。图 1 与图 4 仅移除了 PDF 内一个不绘字的空文本块，300 dpi 渲染与原图逐字节相同，图形本身未改动。文本与格式验收不预判期刊接收。

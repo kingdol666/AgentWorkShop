@@ -23,7 +23,7 @@ The operation resolves the DAQ target and checks visibility before the intent en
 
 A valid candidate enters the governed single-node write path in Algorithm~1: a pre-dispatch denial stops the request before any driver call, whereas a driver-stage error may occur after dispatch has begun, so status alone cannot establish whether the device changed and state must be reconciled before retrying.
 
-After a successful write, the operation waits 10--300~s (45~s default) and attempts a post-write DAQ read before returning the exploration result. The observation windows are $[t_0-\tau,t_0]$ and $[t_0,t_1]$, where $t_0$ is the write time, $\tau$ the pre-write window length, and $t_1$ the post-write read time; approval may include pre-dispatch samples, so the resulting mean is not causal. The earlier implementation used trailing 45-s windows.
+After a successful write, the operation waits 10--300~s (45~s default) and attempts a post-write DAQ read before returning the exploration result. The observation windows are $[t_0-\tau,t_0]$ and $[t_0,t_1]$, where $t_0$ is an operation timestamp taken before the pre-write read and any approval wait, $\tau$ the pre-write window length, and $t_1$ the post-write read time. Because dispatch can occur after $t_0$, the second window may include pre-dispatch samples, so the resulting mean is not causal. The earlier implementation used trailing 45-s windows.
 
 The exploration record stores the target, step, available DAQ means, and write status; the shared path separately records the command outcome and any available readback. The operation then returns an exploration summary. On a later turn, the agent can inspect the returned evidence, choose another step, or stop; iteration always requires a subsequent agent decision.
 
