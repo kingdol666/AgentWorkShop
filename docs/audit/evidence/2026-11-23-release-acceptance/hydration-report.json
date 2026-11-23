@@ -1,0 +1,124 @@
+[
+  {
+    "path": "/",
+    "dark": true,
+    "hydrationMismatch": false,
+    "msgs": [],
+    "ssr": "0:32200",
+    "client": "desktop:136602"
+  },
+  {
+    "path": "/workshop",
+    "dark": true,
+    "hydrationMismatch": false,
+    "msgs": [
+      "probe-error: fetch failed"
+    ],
+    "ssr": "",
+    "client": ""
+  },
+  {
+    "path": "/workshop/w/b0dfe181-89b2-4da5-acf0-9dc9470fdcfc",
+    "dark": true,
+    "hydrationMismatch": true,
+    "msgs": [
+      "error: Hydration completed but contains mismatches."
+    ],
+    "ssr": "0:23463",
+    "client": "desktop:104096"
+  },
+  {
+    "path": "/projects",
+    "dark": true,
+    "hydrationMismatch": false,
+    "msgs": [],
+    "ssr": "0:29935",
+    "client": "desktop:132076"
+  },
+  {
+    "path": "/settings",
+    "dark": true,
+    "hydrationMismatch": false,
+    "msgs": [],
+    "ssr": "0:34714",
+    "client": "desktop:145186"
+  },
+  {
+    "path": "/daq",
+    "dark": true,
+    "hydrationMismatch": false,
+    "msgs": [],
+    "ssr": "0:32226",
+    "client": "desktop:157252"
+  },
+  {
+    "path": "/dcw",
+    "dark": true,
+    "hydrationMismatch": false,
+    "msgs": [],
+    "ssr": "0:27243",
+    "client": "desktop:130093"
+  },
+  {
+    "path": "/",
+    "dark": false,
+    "hydrationMismatch": false,
+    "msgs": [],
+    "ssr": "0:32200",
+    "client": "desktop:140570"
+  },
+  {
+    "path": "/workshop",
+    "dark": false,
+    "hydrationMismatch": true,
+    "msgs": [
+      "error: Hydration completed but contains mismatches."
+    ],
+    "ssr": "0:30687",
+    "client": "desktop:140969"
+  },
+  {
+    "path": "/workshop/w/b0dfe181-89b2-4da5-acf0-9dc9470fdcfc",
+    "dark": false,
+    "hydrationMismatch": true,
+    "msgs": [
+      "error: Hydration completed but contains mismatches."
+    ],
+    "ssr": "0:23463",
+    "client": "desktop:103413"
+  },
+  {
+    "path": "/projects",
+    "dark": false,
+    "hydrationMismatch": false,
+    "msgs": [],
+    "ssr": "0:29935",
+    "client": "desktop:131929"
+  },
+  {
+    "path": "/settings",
+    "dark": false,
+    "hydrationMismatch": false,
+    "msgs": [],
+    "ssr": "0:34714",
+    "client": "desktop:144500"
+  },
+  {
+    "path": "/daq",
+    "dark": false,
+    "hydrationMismatch": false,
+    "msgs": [],
+    "ssr": "0:32226",
+    "client": "desktop:156004"
+  },
+  {
+    "path": "/dcw",
+    "dark": false,
+    "hydrationMismatch": true,
+    "msgs": [
+      "error: Hydration completed but contains mismatches."
+    ],
+    "ssr": "0:27280",
+    "client": "desktop:129070"
+  }
+]

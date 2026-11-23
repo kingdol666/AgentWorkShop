@@ -1,0 +1,29 @@
+{
+  "capturedAt": "2026-11-23T07:59:27.961Z",
+  "createStatus": 200,
+  "mountStatus": 200,
+  "channelId": "eda206ab-70c1-4391-9b61-3d46a2f701f1",
+  "createResponseWorkspace": "示范产线",
+  "workspaces": [
+    {
+      "name": "示范产线",
+      "channelIds": [
+        "5c17ef61-c4fb-412c-b299-d4e9e455b076",
+        "4f13c0c1-d475-4f87-908c-6b073c8865f3",
+        "af35e8f5-825e-46b5-a0f3-51c0e22e2646",
+        "eda206ab-70c1-4391-9b61-3d46a2f701f1"
+      ]
+    },
+    {
+      "name": "Release Second Workspace",
+      "channelIds": [
+        "eda206ab-70c1-4391-9b61-3d46a2f701f1"
+      ]
+    }
+  ],
+  "channelVisibleInWorkspaces": [
+    "示范产线",
+    "Release Second Workspace"
+  ],
+  "leaked": true
+}

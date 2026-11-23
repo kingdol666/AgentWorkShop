@@ -1,0 +1,668 @@
+[
+ {
+  "p": "/api/health",
+  "status": 200,
+  "ms": 88,
+  "len": 372
+ },
+ {
+  "p": "/api/mcp/workshop",
+  "status": 401,
+  "ms": 4703,
+  "len": 70
+ },
+ {
+  "p": "/api/metrics",
+  "status": 200,
+  "ms": 27,
+  "len": 2794
+ },
+ {
+  "p": "/api/plugins/i18n",
+  "status": 200,
+  "ms": 28,
+  "len": 8448
+ },
+ {
+  "p": "/api/plugins/manifest",
+  "status": 200,
+  "ms": 26,
+  "len": 3351
+ },
+ {
+  "p": "/api/system/backup/list",
+  "status": 200,
+  "ms": 27,
+  "len": 123
+ },
+ {
+  "p": "/api/system/config-groups",
+  "status": 200,
+  "ms": 32,
+  "len": 4546
+ },
+ {
+  "p": "/api/system/config",
+  "status": 200,
+  "ms": 39,
+  "len": 377
+ },
+ {
+  "p": "/api/system/mcp-servers",
+  "status": 200,
+  "ms": 22,
+  "len": 47
+ },
+ {
+  "p": "/api/system/monitor/terminal/ws",
+  "status": 426,
+  "ms": 38,
+  "stream": true
+ },
+ {
+  "p": "/api/system/monitor",
+  "status": 200,
+  "ms": 34,
+  "len": 571
+ },
+ {
+  "p": "/api/system/settings/events",
+  "status": 0,
+  "ms": 30017,
+  "err": "The operation was aborted due to timeout"
+ },
+ {
+  "p": "/api/system/settings",
+  "status": 200,
+  "ms": 11,
+  "len": 56494
+ },
+ {
+  "p": "/api/system/skills/discover",
+  "status": 200,
+  "ms": 675,
+  "len": 119791
+ },
+ {
+  "p": "/api/system/skills",
+  "status": 200,
+  "ms": 37,
+  "len": 570
+ },
+ {
+  "p": "/api/system/timezone",
+  "status": 200,
+  "ms": 71,
+  "len": 7770
+ },
+ {
+  "p": "/api/users",
+  "status": 200,
+  "ms": 22,
+  "len": 273
+ },
+ {
+  "p": "/api/users/me",
+  "status": 200,
+  "ms": 31,
+  "len": 259
+ },
+ {
+  "p": "/api/users/session",
+  "status": 200,
+  "ms": 32,
+  "len": 46
+ },
+ {
+  "p": "/api/users/setup-status",
+  "status": 200,
+  "ms": 28,
+  "len": 78
+ },
+ {
+  "p": "/api/users/tokens",
+  "status": 200,
+  "ms": 32,
+  "len": 255
+ },
+ {
+  "p": "/api/workshop/agent-prefabs/catalog",
+  "status": 200,
+  "ms": 32,
+  "len": 15803
+ },
+ {
+  "p": "/api/workshop/agent-prefabs",
+  "status": 200,
+  "ms": 23,
+  "len": 47
+ },
+ {
+  "p": "/api/workshop/agent-tools/approvals",
+  "status": 200,
+  "ms": 41,
+  "len": 49
+ },
+ {
+  "p": "/api/workshop/agent-tools/bindings",
+  "status": 200,
+  "ms": 46,
+  "len": 48
+ },
+ {
+  "p": "/api/workshop/agent-tools/list",
+  "status": 400,
+  "ms": 30,
+  "len": 63
+ },
+ {
+  "p": "/api/workshop/agents",
+  "status": 200,
+  "ms": 13,
+  "len": 9111
+ },
+ {
+  "p": "/api/workshop/aml/datasets",
+  "status": 200,
+  "ms": 35,
+  "len": 48
+ },
+ {
+  "p": "/api/workshop/aml/entities",
+  "status": 200,
+  "ms": 44,
+  "len": 197
+ },
+ {
+  "p": "/api/workshop/aml/env",
+  "status": 200,
+  "ms": 799,
+  "len": 2813
+ },
+ {
+  "p": "/api/workshop/aml/experiments",
+  "status": 422,
+  "ms": 24,
+  "len": 64
+ },
+ {
+  "p": "/api/workshop/aml",
+  "status": 200,
+  "ms": 540,
+  "len": 953
+ },
+ {
+  "p": "/api/workshop/aml/jobs",
+  "status": 200,
+  "ms": 55,
+  "len": 44
+ },
+ {
+  "p": "/api/workshop/aml/models",
+  "status": 200,
+  "ms": 37,
+  "len": 46
+ },
+ {
+  "p": "/api/workshop/aml/training-plans",
+  "status": 200,
+  "ms": 19,
+  "len": 45
+ },
+ {
+  "p": "/api/workshop/aml/twin/providers",
+  "status": 200,
+  "ms": 36,
+  "len": 2555
+ },
+ {
+  "p": "/api/workshop/analysis",
+  "status": 200,
+  "ms": 30,
+  "len": 57
+ },
+ {
+  "p": "/api/workshop/approvals",
+  "status": 200,
+  "ms": 19,
+  "len": 48
+ },
+ {
+  "p": "/api/workshop/assets/character",
+  "status": 200,
+  "ms": 43,
+  "len": 46
+ },
+ {
+  "p": "/api/workshop/assets/devices",
+  "status": 200,
+  "ms": 31,
+  "len": 63
+ },
+ {
+  "p": "/api/workshop/audit",
+  "status": 200,
+  "ms": 32,
+  "len": 262
+ },
+ {
+  "p": "/api/workshop/channel-templates",
+  "status": 200,
+  "ms": 30,
+  "len": 15960
+ },
+ {
+  "p": "/api/workshop/channels",
+  "status": 200,
+  "ms": 17,
+  "len": 3351
+ },
+ {
+  "p": "/api/workshop/daq/alarms",
+  "status": 200,
+  "ms": 13,
+  "len": 46
+ },
+ {
+  "p": "/api/workshop/daq/export",
+  "status": 200,
+  "ms": 15,
+  "len": 54
+ },
+ {
+  "p": "/api/workshop/daq/export-file",
+  "status": 404,
+  "ms": 33,
+  "len": 171
+ },
+ {
+  "p": "/api/workshop/daq",
+  "status": 200,
+  "ms": 15,
+  "len": 22255
+ },
+ {
+  "p": "/api/workshop/daq/infra",
+  "status": 200,
+  "ms": 14,
+  "len": 202
+ },
+ {
+  "p": "/api/workshop/daq/query",
+  "status": 400,
+  "ms": 16,
+  "len": 78
+ },
+ {
+  "p": "/api/workshop/daq/storage",
+  "status": 200,
+  "ms": 52,
+  "len": 223340
+ },
+ {
+  "p": "/api/workshop/dcw",
+  "status": 200,
+  "ms": 10,
+  "len": 13841
+ },
+ {
+  "p": "/api/workshop/dcw/journal",
+  "status": 200,
+  "ms": 23,
+  "len": 47
+ },
+ {
+  "p": "/api/workshop/dcw/line/query",
+  "status": 200,
+  "ms": 11748,
+  "len": 81
+ },
+ {
+  "p": "/api/workshop/dcw/lines",
+  "status": 200,
+  "ms": 6,
+  "len": 57
+ },
+ {
+  "p": "/api/workshop/dcw/mes-artifacts/file",
+  "status": 400,
+  "ms": 36,
+  "len": 184
+ },
+ {
+  "p": "/api/workshop/dcw/mes-artifacts",
+  "status": 200,
+  "ms": 14,
+  "len": 72
+ },
+ {
+  "p": "/api/workshop/dcw/optimizations",
+  "status": 200,
+  "ms": 30,
+  "len": 47
+ },
+ {
+  "p": "/api/workshop/dcw/params",
+  "status": 200,
+  "ms": 29,
+  "len": 46
+ },
+ {
+  "p": "/api/workshop/dcw/recipes",
+  "status": 200,
+  "ms": 33,
+  "len": 57
+ },
+ {
+  "p": "/api/workshop/dcw/runs",
+  "status": 200,
+  "ms": 27,
+  "len": 44
+ },
+ {
+  "p": "/api/workshop/device-twins",
+  "status": 200,
+  "ms": 33,
+  "len": 45
+ },
+ {
+  "p": "/api/workshop/eda/charts",
+  "status": 200,
+  "ms": 49,
+  "len": 56
+ },
+ {
+  "p": "/api/workshop/eda/commonality",
+  "status": 400,
+  "ms": 28,
+  "len": 63
+ },
+ {
+  "p": "/api/workshop/eda/dashboards",
+  "status": 200,
+  "ms": 53,
+  "len": 50
+ },
+ {
+  "p": "/api/workshop/eda/features",
+  "status": 200,
+  "ms": 43,
+  "len": 58
+ },
+ {
+  "p": "/api/workshop/eda/features/jobs",
+  "status": 200,
+  "ms": 29,
+  "len": 44
+ },
+ {
+  "p": "/api/workshop/eda/golden/deviation",
+  "status": 404,
+  "ms": 42,
+  "len": 52
+ },
+ {
+  "p": "/api/workshop/eda/golden",
+  "status": 200,
+  "ms": 63,
+  "len": 56
+ },
+ {
+  "p": "/api/workshop/eda/golden/single",
+  "status": 404,
+  "ms": 24,
+  "len": 66
+ },
+ {
+  "p": "/api/workshop/eda/ocap",
+  "status": 200,
+  "ms": 51,
+  "len": 47
+ },
+ {
+  "p": "/api/workshop/eda/run-segments",
+  "status": 200,
+  "ms": 24,
+  "len": 48
+ },
+ {
+  "p": "/api/workshop/eda/runs",
+  "status": 200,
+  "ms": 37,
+  "len": 54
+ },
+ {
+  "p": "/api/workshop/eda/spc",
+  "status": 200,
+  "ms": 44,
+  "len": 56
+ },
+ {
+  "p": "/api/workshop/eda/templates",
+  "status": 200,
+  "ms": 26,
+  "len": 49
+ },
+ {
+  "p": "/api/workshop/exp/confirmations",
+  "status": 200,
+  "ms": 21,
+  "len": 53
+ },
+ {
+  "p": "/api/workshop/fs/dirs",
+  "status": 200,
+  "ms": 12,
+  "len": 764
+ },
+ {
+  "p": "/api/workshop/harnesses",
+  "status": 200,
+  "ms": 253,
+  "len": 7139
+ },
+ {
+  "p": "/api/workshop/hitl/history",
+  "status": 200,
+  "ms": 26,
+  "len": 58
+ },
+ {
+  "p": "/api/workshop/hitl/pending",
+  "status": 200,
+  "ms": 9,
+  "len": 45
+ },
+ {
+  "p": "/api/workshop/mailbox/all",
+  "status": 401,
+  "ms": 28,
+  "len": 96
+ },
+ {
+  "p": "/api/workshop/mailbox",
+  "status": 401,
+  "ms": 13,
+  "len": 96
+ },
+ {
+  "p": "/api/workshop/mes/datasets",
+  "status": 200,
+  "ms": 17,
+  "len": 58
+ },
+ {
+  "p": "/api/workshop/mes/points",
+  "status": 200,
+  "ms": 21,
+  "len": 56
+ },
+ {
+  "p": "/api/workshop/mes/secrets",
+  "status": 200,
+  "ms": 18,
+  "len": 54
+ },
+ {
+  "p": "/api/workshop/mes/templates",
+  "status": 200,
+  "ms": 17,
+  "len": 4579
+ },
+ {
+  "p": "/api/workshop/notifications",
+  "status": 200,
+  "ms": 36,
+  "len": 101
+ },
+ {
+  "p": "/api/workshop/ontology/drafts",
+  "status": 200,
+  "ms": 23,
+  "len": 46
+ },
+ {
+  "p": "/api/workshop/ontology",
+  "status": 200,
+  "ms": 78,
+  "len": 62
+ },
+ {
+  "p": "/api/workshop/ontology/scene",
+  "status": 422,
+  "ms": 13,
+  "len": 58
+ },
+ {
+  "p": "/api/workshop/ops-logs",
+  "status": 200,
+  "ms": 13,
+  "len": 69
+ },
+ {
+  "p": "/api/workshop/optimization/bindings",
+  "status": 200,
+  "ms": 29,
+  "len": 48
+ },
+ {
+  "p": "/api/workshop/optimization/capabilities",
+  "status": 422,
+  "ms": 18,
+  "len": 68
+ },
+ {
+  "p": "/api/workshop/optimization/profiles",
+  "status": 200,
+  "ms": 29,
+  "len": 48
+ },
+ {
+  "p": "/api/workshop/optimization/runs",
+  "status": 200,
+  "ms": 34,
+  "len": 44
+ },
+ {
+  "p": "/api/workshop/permissions",
+  "status": 200,
+  "ms": 15,
+  "len": 708
+ },
+ {
+  "p": "/api/workshop/plugins",
+  "status": 200,
+  "ms": 18,
+  "len": 4405
+ },
+ {
+  "p": "/api/workshop/process-model/eligibility",
+  "status": 400,
+  "ms": 13,
+  "len": 64
+ },
+ {
+  "p": "/api/workshop/process-model/experiments",
+  "status": 200,
+  "ms": 15,
+  "len": 45
+ },
+ {
+  "p": "/api/workshop/process-model/specs",
+  "status": 200,
+  "ms": 22,
+  "len": 45
+ },
+ {
+  "p": "/api/workshop/project-blueprints",
+  "status": 200,
+  "ms": 31,
+  "len": 35
+ },
+ {
+  "p": "/api/workshop/projects",
+  "status": 200,
+  "ms": 38,
+  "len": 35
+ },
+ {
+  "p": "/api/workshop/runtime",
+  "status": 200,
+  "ms": 13,
+  "len": 71
+ },
+ {
+  "p": "/api/workshop/scene/layouts",
+  "status": 200,
+  "ms": 23,
+  "len": 47
+ },
+ {
+  "p": "/api/workshop/schedules",
+  "status": 200,
+  "ms": 12,
+  "len": 35
+ },
+ {
+  "p": "/api/workshop/tasks/recovery-holds",
+  "status": 200,
+  "ms": 30,
+  "len": 45
+ },
+ {
+  "p": "/api/workshop/tasks",
+  "status": 401,
+  "ms": 15,
+  "len": 96
+ },
+ {
+  "p": "/api/workshop/teams",
+  "status": 200,
+  "ms": 32,
+  "len": 2112
+ },
+ {
+  "p": "/api/workshop/tools",
+  "status": 200,
+  "ms": 64,
+  "len": 143939
+ },
+ {
+  "p": "/api/workshop/users/me",
+  "status": 200,
+  "ms": 12,
+  "len": 212
+ },
+ {
+  "p": "/api/workshop/workspaces",
+  "status": 200,
+  "ms": 13,
+  "len": 593
+ },
+ {
+  "p": "/api/workshop/ws/handlers",
+  "status": 426,
+  "ms": 16,
+  "len": 171
+ }
+]

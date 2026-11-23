@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.17.5（2026-11-23 发布）</b> · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.18.0（2026-11-23 发布）</b> · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-17-5) · [0.17.5 发布说明](#whats-new-in-0175) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-18-0) · [0.18.0 发布说明](#whats-new-in-0180) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,11 +49,19 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 当前源码 v0.17.5
+## 当前源码 v0.18.0
 
-当前源码版本为 **0.17.5**（npm + GitHub Release，2026-11-23）。桌面壳现在按常驻应用工作：关闭窗口默认收进系统托盘，托盘原生菜单提供服务状态与端口、重新加载界面、重启本地服务、检查更新、数据/日志目录、诊断信息，以及 5 项持久化设置（关闭到托盘、开机自启、启动后最小化、托盘通知、自动检查更新）；窗口隐藏时后端继续服务同一份共享 home。启动时立即显示 660×440 的初始化动画，按真实阶段（环境 → 数据 → 服务 → 工作台）展示带时间戳的启动日志、耗时与进度；只有 `/api/health` 返回 `status=ok` / `workshop=ready` 且页面加载完成后才进入主界面，失败时提供重试、打开日志与退出。本版保留 0.17.4 的 `/town` 与 `/workshop/w/:id` 「返回主界面」入口、40px 标题导轨、桌面/Web/CLI 共用 `~/.AgentWorkShop` 与 0.17.3 的 WSH 静默安装助手。同时保留 0.16.x 全部内容——0.15.x 的「AgentPrefab 能力装配」计划（#252–#258）加上 **Leader 自主管理 Worker 的 AgentPrefab 能力**（合并 PR #262/#264/#265）：Channel Leader 创建 Worker 时可携带已发布 revision 选择器并原子固定 `(prefabId, revision, slotValues, contentHash)`；名册带 `manageable`/`protected` 标记；可按 revision 切换/解绑绑定；且只能移除自己创建的 Worker。Worker 创建来源持久化（`created_by_kind`/`created_by_id`/`created_via`/`created_reason`）；人类绑定 Worker、其他 Leader 的 Worker、Lead、Project Leader 与未关闭 Session 克隆均受删除保护，移除时回收任务、同事务取消待投递并清理实例节点绑定，不动全局模板与不可变 revision。native/REST/MCP/Project 各路径 dispatch 对损坏/哈希不匹配绑定、停用成员、角色/版本不匹配与模板可见性越界一律 fail-closed；Project 任务实例重试复用首次固定的快照并做 CAS/哈希校验。已发布 Prefab profile 按字段应用到受支持 harness（OMP thinking level 走 RPC）；唯一 Skill 别名解析为 canonical revision id。数据库契约 **v10** 新增来源列（存量行保守迁移为 `system`/`protected`）。
+当前源码版本为 **0.18.0**（npm + GitHub Release，2026-11-23）。本版修复发版审查发现的 console 与 API 作用域缺陷，并刷新共享视觉层。REST 建的频道会挂到 owner 的默认工作区（或显式指定、且在建频道前校验归属的工作区），因此在按工作区作用域读取的 console 里可见；console 自身的「新建频道」弹窗把当前 workspace id 随创建请求提交，在一个工作区里建的频道不会再漏进另一个。详情与任务类 REST handler、DAQ 外部推送和 A2A JSON-RPC 方法都改为先解析调用者身份再查资源，未鉴权调用者不能再借 404/401 的差异枚举 ID；A2A AgentCard 的公开开关同时覆盖 JSON-RPC 的 `agent/getCard`。`GET /api/workshop/dcw/line/query` 省略时间窗时按最近 24h 查询，不再对时序历史做无界聚合。共享主题、设置页签、侧栏抽屉焦点、头部控件、HITL 浮层、页面族与桌面启动动画按键盘与读屏语义、令牌化颜色和减少动态效果重新整理。保留 0.17.5 桌面基线（关闭到托盘、托盘 5 项设置、分阶段启动动画、共享 home、应用内更新）与 0.16.x 的 AgentPrefab 能力基线。
 
 v0.16.0 验证：#262/#264/#265/#263/#266 PR quick-gate 全绿；focused 套件 **38/38**、合并后 **22/22** 与 **13/13**、Project/Prefab/Session 回归集 **235/235**；发布构建实机隔离验收——Leader/Prefab 全链 **30/30 ×2**（创建带 Prefab 的 Worker → SQLite 来源核验 → 名册标记 → 目录收窄 → dispatch 放行/拒绝 → 用户路径 Worker 保护 → lead 自改拒绝 → revision 切换即收窄 → 解绑 → 移除保留模板与 revision → REST 删 lead 409），官方 L10 全新实例 **21/21**，AgentTeam CRUD/部署/派发 **25/25**，前端 SSR 路由 200。Mimosa 深扫有封印（`sha256:a91957e0…`，54 findings，依赖风险 0）——findings 如实呈报，不作安全通过声明。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
+
+## What's new in 0.18.0
+
+- **Console 建频道按工作区归属**：`POST /api/workshop/channels` 把新频道挂到 owner 的默认工作区（按需创建，或使用显式 `workspaceId` 并在建频道前校验归属），REST 建的频道因此在按工作区作用域读取的 console 里可见。console 的「新建频道」弹窗改为把当前 workspace id 随创建请求提交，不再创建后补挂，因此在一个工作区里建的频道不会同时出现在另一个工作区。
+- **API 先验身份后查资源**：Agent、Team、Channel 模板与任务的详情/动作路由，DAQ 外部推送与 A2A `message/send` 都先解析调用者，关闭了未鉴权调用者借 404/401 差异枚举 ID 的通道；`security.a2aCardPublic` 开关同时覆盖 JSON-RPC 的 `agent/getCard`。
+- **产线查询有界**：`GET /api/workshop/dcw/line/query` 在省略 `from`/`to` 时按最近 24 小时查询；此前无窗口查询对共享 Timescale 聚合耗时 10–15 秒且随时长增长。
+- **共享视觉层刷新**：刷新页面的颜色全部走令牌；设置页签键盘完整、侧栏抽屉焦点陷阱与焦点归还、头部控件可访问名称、HITL 浮层语义、窄视口 ≥44px 触摸目标，并重做启动动画（进度跟随真实阶段、支持减少动态效果）。
+- **文档对齐**：MCP 指南补全 38 个工具（含 3 个配方工具）、9 个内置 skill 与 14 组 MCP 单测；README 项目页布局描述改为实际的 1180px 列表与两列详情。
 
 ## What's new in 0.17.5
 
@@ -212,8 +220,8 @@ Channel 控制台与 Project 详情按 ChatGPT 式 harness 布局重排——**8
 </p>
 
 - **Channel**：Agent 通栏阅读块、用户右侧浅泡、harness / 角色 / 时间元信息、中性 Composer、hover 显影的频道操作；
-- **Project**：面包屑头部、中列 880px、右栏 312px 项目快照、频道名替代 UUID 墙、Leader 输入框 2 行；
-- **入口页**：项目列表 1080px + 三列新建表单，Workspace 列表 1240px；
+- **Project**：面包屑头部、工作区 + 快照栏两列布局、频道名替代 UUID 墙、Leader 输入框 2 行；
+- **入口页**：项目列表 1180px + 三列新建表单，Workspace 列表 1240px；
 - **行为零删除**：全部 `data-testid`、快捷键、@ 提及、HITL 语义与 API 原样保留——由 12/12 UI 交互套件验证。
 
 → [Harness UI 指南](https://kingdol666.github.io/AgentWorkShop/guide/harness-ui) · [设计画布与前后对比](docs/design/2026-11-08-harness-ui/README.md)
@@ -510,7 +518,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.17.5（已发布 2026-11-23）** —— [最新版本 v0.17.5](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.5) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.18.0（已发布 2026-11-23）** —— [最新版本 v0.18.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.18.0) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

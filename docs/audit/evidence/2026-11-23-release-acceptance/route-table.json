@@ -1,0 +1,2527 @@
+[
+ {
+  "method": "GET",
+  "path": "/health",
+  "rel": "server/api/health.get.ts"
+ },
+ {
+  "method": "*",
+  "path": "/mcp/workshop",
+  "rel": "server/api/mcp/workshop.ts"
+ },
+ {
+  "method": "*",
+  "path": "/metrics",
+  "rel": "server/api/metrics.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/plugins/client/[name]",
+  "rel": "server/api/plugins/client/[name].get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/plugins/i18n",
+  "rel": "server/api/plugins/i18n.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/plugins/manifest",
+  "rel": "server/api/plugins/manifest.get.ts"
+ },
+ {
+  "method": "*",
+  "path": "/plugins/[name]/[...path]",
+  "rel": "server/api/plugins/[name]/[...path].ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/backup/list",
+  "rel": "server/api/system/backup/list.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/system/backup/restore",
+  "rel": "server/api/system/backup/restore.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/system/backup/run",
+  "rel": "server/api/system/backup/run.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/config-groups",
+  "rel": "server/api/system/config-groups/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/system/config-groups",
+  "rel": "server/api/system/config-groups/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/system/config-groups/[id]",
+  "rel": "server/api/system/config-groups/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/system/config-groups/[id]",
+  "rel": "server/api/system/config-groups/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/config",
+  "rel": "server/api/system/config.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/mcp-servers",
+  "rel": "server/api/system/mcp-servers/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/system/mcp-servers",
+  "rel": "server/api/system/mcp-servers/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/system/mcp-servers/[id]/discover",
+  "rel": "server/api/system/mcp-servers/[id]/discover.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/system/mcp-servers/[id]/review",
+  "rel": "server/api/system/mcp-servers/[id]/review.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/system/mcp-servers/[id]",
+  "rel": "server/api/system/mcp-servers/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/mcp-servers/[id]",
+  "rel": "server/api/system/mcp-servers/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/system/mcp-servers/[id]",
+  "rel": "server/api/system/mcp-servers/[id].patch.ts"
+ },
+ {
+  "method": "*",
+  "path": "/system/monitor/terminal/ws",
+  "rel": "server/api/system/monitor/terminal/ws.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/system/monitor/terminate",
+  "rel": "server/api/system/monitor/terminate.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/monitor",
+  "rel": "server/api/system/monitor.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/settings/events",
+  "rel": "server/api/system/settings/events.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/settings",
+  "rel": "server/api/system/settings/index.get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/system/settings",
+  "rel": "server/api/system/settings/index.patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/system/settings/reset",
+  "rel": "server/api/system/settings/reset.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/system/shutdown",
+  "rel": "server/api/system/shutdown.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/skills/discover",
+  "rel": "server/api/system/skills/discover.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/system/skills/import",
+  "rel": "server/api/system/skills/import.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/skills",
+  "rel": "server/api/system/skills/index.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/skills/[id]/file",
+  "rel": "server/api/system/skills/[id]/file.get.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/system/skills/[id]",
+  "rel": "server/api/system/skills/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/system/skills/[id]",
+  "rel": "server/api/system/skills/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/system/timezone",
+  "rel": "server/api/system/timezone.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/users/change-password",
+  "rel": "server/api/users/change-password.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/users",
+  "rel": "server/api/users/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/users",
+  "rel": "server/api/users/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/users/login",
+  "rel": "server/api/users/login.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/users/logout",
+  "rel": "server/api/users/logout.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/users/me",
+  "rel": "server/api/users/me.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/users/register",
+  "rel": "server/api/users/register.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/users/session",
+  "rel": "server/api/users/session.delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/users/session",
+  "rel": "server/api/users/session.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/users/session",
+  "rel": "server/api/users/session.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/users/setup-status",
+  "rel": "server/api/users/setup-status.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/users/tokens",
+  "rel": "server/api/users/tokens/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/users/tokens",
+  "rel": "server/api/users/tokens/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/users/tokens/[id]/token",
+  "rel": "server/api/users/tokens/[id]/token.get.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/users/tokens/[id]",
+  "rel": "server/api/users/tokens/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/users/tokens/[id]",
+  "rel": "server/api/users/tokens/[id].patch.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/users/[id]",
+  "rel": "server/api/users/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/users/[id]",
+  "rel": "server/api/users/[id].get.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/users/[id]",
+  "rel": "server/api/users/[id].put.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/a2a/send",
+  "rel": "server/api/workshop/a2a/send.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/a2a/[agentId]/card",
+  "rel": "server/api/workshop/a2a/[agentId]/card/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/a2a/[agentId]/rpc",
+  "rel": "server/api/workshop/a2a/[agentId]/rpc/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/agent-prefabs/catalog",
+  "rel": "server/api/workshop/agent-prefabs/catalog.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/agent-prefabs",
+  "rel": "server/api/workshop/agent-prefabs/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/agent-prefabs",
+  "rel": "server/api/workshop/agent-prefabs/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/agent-prefabs/[id]/publish",
+  "rel": "server/api/workshop/agent-prefabs/[id]/publish.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/agent-prefabs/[id]/revisions/[revision]",
+  "rel": "server/api/workshop/agent-prefabs/[id]/revisions/[revision].get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/agent-prefabs/[id]",
+  "rel": "server/api/workshop/agent-prefabs/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/agent-prefabs/[id]",
+  "rel": "server/api/workshop/agent-prefabs/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/agent-tools/approvals",
+  "rel": "server/api/workshop/agent-tools/approvals/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/agent-tools/approvals/[id]/decide",
+  "rel": "server/api/workshop/agent-tools/approvals/[id]/decide.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/agent-tools/bindings/grant",
+  "rel": "server/api/workshop/agent-tools/bindings/grant.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/agent-tools/bindings",
+  "rel": "server/api/workshop/agent-tools/bindings/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/agent-tools/bindings",
+  "rel": "server/api/workshop/agent-tools/bindings/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/agent-tools/bindings/revoke",
+  "rel": "server/api/workshop/agent-tools/bindings/revoke.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/agent-tools/bindings/[id]",
+  "rel": "server/api/workshop/agent-tools/bindings/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/agent-tools/bindings/[id]",
+  "rel": "server/api/workshop/agent-tools/bindings/[id].patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/agent-tools/invoke",
+  "rel": "server/api/workshop/agent-tools/invoke.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/agent-tools/list",
+  "rel": "server/api/workshop/agent-tools/list.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/agents",
+  "rel": "server/api/workshop/agents/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/agents",
+  "rel": "server/api/workshop/agents/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/agents/subscribe",
+  "rel": "server/api/workshop/agents/subscribe.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/agents/[id]",
+  "rel": "server/api/workshop/agents/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/agents/[id]",
+  "rel": "server/api/workshop/agents/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/agents/[id]",
+  "rel": "server/api/workshop/agents/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/datasets",
+  "rel": "server/api/workshop/aml/datasets/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/datasets",
+  "rel": "server/api/workshop/aml/datasets/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/datasets/[id]/preview",
+  "rel": "server/api/workshop/aml/datasets/[id]/preview.get.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/aml/datasets/[id]",
+  "rel": "server/api/workshop/aml/datasets/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/datasets/[id]",
+  "rel": "server/api/workshop/aml/datasets/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/aml/datasets/[id]",
+  "rel": "server/api/workshop/aml/datasets/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/entities",
+  "rel": "server/api/workshop/aml/entities/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/entities/prune",
+  "rel": "server/api/workshop/aml/entities/prune.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/env",
+  "rel": "server/api/workshop/aml/env/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/env/recheck",
+  "rel": "server/api/workshop/aml/env/recheck.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/env/uv",
+  "rel": "server/api/workshop/aml/env/uv.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/env/venv",
+  "rel": "server/api/workshop/aml/env/venv.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/experiments",
+  "rel": "server/api/workshop/aml/experiments/index.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml",
+  "rel": "server/api/workshop/aml/index.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/jobs",
+  "rel": "server/api/workshop/aml/jobs/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/jobs",
+  "rel": "server/api/workshop/aml/jobs/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/jobs/[id]/cancel",
+  "rel": "server/api/workshop/aml/jobs/[id]/cancel.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/jobs/[id]/logs",
+  "rel": "server/api/workshop/aml/jobs/[id]/logs.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/jobs/[id]/retry",
+  "rel": "server/api/workshop/aml/jobs/[id]/retry.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/aml/jobs/[id]",
+  "rel": "server/api/workshop/aml/jobs/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/jobs/[id]",
+  "rel": "server/api/workshop/aml/jobs/[id].get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/models",
+  "rel": "server/api/workshop/aml/models/index.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/models/[id]",
+  "rel": "server/api/workshop/aml/models/[id]/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/models/[id]/predict",
+  "rel": "server/api/workshop/aml/models/[id]/predict.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/models/[id]/promote",
+  "rel": "server/api/workshop/aml/models/[id]/promote.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/aml/models/[id]",
+  "rel": "server/api/workshop/aml/models/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/aml/models/[id]",
+  "rel": "server/api/workshop/aml/models/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/training-plans",
+  "rel": "server/api/workshop/aml/training-plans/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/training-plans",
+  "rel": "server/api/workshop/aml/training-plans/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/training-plans/[id]",
+  "rel": "server/api/workshop/aml/training-plans/[id]/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/aml/training-plans/[id]/train",
+  "rel": "server/api/workshop/aml/training-plans/[id]/train.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/aml/training-plans/[id]",
+  "rel": "server/api/workshop/aml/training-plans/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/aml/training-plans/[id]",
+  "rel": "server/api/workshop/aml/training-plans/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/aml/twin/providers",
+  "rel": "server/api/workshop/aml/twin/providers.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/analysis",
+  "rel": "server/api/workshop/analysis/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/analysis",
+  "rel": "server/api/workshop/analysis/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/analysis/[id]",
+  "rel": "server/api/workshop/analysis/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/analysis/[id]",
+  "rel": "server/api/workshop/analysis/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/analysis/[id]",
+  "rel": "server/api/workshop/analysis/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/approvals",
+  "rel": "server/api/workshop/approvals/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/approvals/[id]/decide",
+  "rel": "server/api/workshop/approvals/[id]/decide.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/assets/character",
+  "rel": "server/api/workshop/assets/character/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/assets/character",
+  "rel": "server/api/workshop/assets/character/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/assets/character/[id]",
+  "rel": "server/api/workshop/assets/character/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/assets/devices",
+  "rel": "server/api/workshop/assets/devices/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/assets/devices",
+  "rel": "server/api/workshop/assets/devices/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/assets/devices/[id]",
+  "rel": "server/api/workshop/assets/devices/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/audit",
+  "rel": "server/api/workshop/audit.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channel-templates/from-channel",
+  "rel": "server/api/workshop/channel-templates/from-channel.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channel-templates",
+  "rel": "server/api/workshop/channel-templates/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channel-templates",
+  "rel": "server/api/workshop/channel-templates/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channel-templates/[id]/instantiate",
+  "rel": "server/api/workshop/channel-templates/[id]/instantiate.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/channel-templates/[id]",
+  "rel": "server/api/workshop/channel-templates/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channel-templates/[id]",
+  "rel": "server/api/workshop/channel-templates/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/channel-templates/[id]",
+  "rel": "server/api/workshop/channel-templates/[id].patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/activate",
+  "rel": "server/api/workshop/channels/[id]/activate.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/agents",
+  "rel": "server/api/workshop/channels/[id]/agents/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/agents",
+  "rel": "server/api/workshop/channels/[id]/agents/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/agents/[agentId]/memories",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId]/memories/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/agents/[agentId]/memories",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId]/memories/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/agents/[agentId]/memories/search",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId]/memories/search.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/channels/[id]/agents/[agentId]/memories/[memoryId]",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId]/memories/[memoryId].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/channels/[id]/agents/[agentId]/model",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId]/model.patch.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/channels/[id]/agents/[agentId]/position",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId]/position.patch.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/channels/[id]/agents/[agentId]/prefab",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId]/prefab.patch.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/channels/[id]/agents/[agentId]/range",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId]/range.patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/agents/[agentId]/rotate-token",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId]/rotate-token.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/agents/[agentId]/stop",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId]/stop.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/channels/[id]/agents/[agentId]",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/channels/[id]/agents/[agentId]",
+  "rel": "server/api/workshop/channels/[id]/agents/[agentId].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/chat/messages",
+  "rel": "server/api/workshop/channels/[id]/chat/messages/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/chat/messages",
+  "rel": "server/api/workshop/channels/[id]/chat/messages/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/chat/messages/[messageId]/read",
+  "rel": "server/api/workshop/channels/[id]/chat/messages/[messageId]/read.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/chat/permissions",
+  "rel": "server/api/workshop/channels/[id]/chat/permissions.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/events",
+  "rel": "server/api/workshop/channels/[id]/events.get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/channels/[id]/execution-mode",
+  "rel": "server/api/workshop/channels/[id]/execution-mode.patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/harness-bench-runs",
+  "rel": "server/api/workshop/channels/[id]/harness-bench-runs/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/harness-profiles",
+  "rel": "server/api/workshop/channels/[id]/harness-profiles/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/harness-profiles",
+  "rel": "server/api/workshop/channels/[id]/harness-profiles/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/harness-profiles/promote",
+  "rel": "server/api/workshop/channels/[id]/harness-profiles/promote.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/improvement-proposals/decide",
+  "rel": "server/api/workshop/channels/[id]/improvement-proposals/decide.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/improvement-proposals",
+  "rel": "server/api/workshop/channels/[id]/improvement-proposals/index.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/improvement-stats",
+  "rel": "server/api/workshop/channels/[id]/improvement-stats.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]",
+  "rel": "server/api/workshop/channels/[id]/index.get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/channels/[id]",
+  "rel": "server/api/workshop/channels/[id]/index.patch.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/channels/[id]/line",
+  "rel": "server/api/workshop/channels/[id]/line.put.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/members",
+  "rel": "server/api/workshop/channels/[id]/members/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/members/join",
+  "rel": "server/api/workshop/channels/[id]/members/join.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/members/leave",
+  "rel": "server/api/workshop/channels/[id]/members/leave.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/members/[userId]/approve",
+  "rel": "server/api/workshop/channels/[id]/members/[userId]/approve.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/channels/[id]/members/[userId]",
+  "rel": "server/api/workshop/channels/[id]/members/[userId].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/memories/experience-stats",
+  "rel": "server/api/workshop/channels/[id]/memories/experience-stats.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/memories",
+  "rel": "server/api/workshop/channels/[id]/memories/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/memories",
+  "rel": "server/api/workshop/channels/[id]/memories/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/memories/merge",
+  "rel": "server/api/workshop/channels/[id]/memories/merge.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/memories/[memoryId]/experience",
+  "rel": "server/api/workshop/channels/[id]/memories/[memoryId]/experience.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/memories/[memoryId]/promote",
+  "rel": "server/api/workshop/channels/[id]/memories/[memoryId]/promote.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/channels/[id]/memories/[memoryId]",
+  "rel": "server/api/workshop/channels/[id]/memories/[memoryId].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/messages",
+  "rel": "server/api/workshop/channels/[id]/messages/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/messages",
+  "rel": "server/api/workshop/channels/[id]/messages/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/plugins",
+  "rel": "server/api/workshop/channels/[id]/plugins/index.get.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/channels/[id]/plugins",
+  "rel": "server/api/workshop/channels/[id]/plugins/index.put.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/products",
+  "rel": "server/api/workshop/channels/[id]/products.get.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/channels/[id]/products",
+  "rel": "server/api/workshop/channels/[id]/products.put.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/queue",
+  "rel": "server/api/workshop/channels/[id]/queue.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/rescue",
+  "rel": "server/api/workshop/channels/[id]/rescue.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/sessions",
+  "rel": "server/api/workshop/channels/[id]/sessions/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/sessions",
+  "rel": "server/api/workshop/channels/[id]/sessions/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/sessions/[sid]/brief",
+  "rel": "server/api/workshop/channels/[id]/sessions/[sid]/brief.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/sessions/[sid]/close",
+  "rel": "server/api/workshop/channels/[id]/sessions/[sid]/close.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/sessions/[sid]/history",
+  "rel": "server/api/workshop/channels/[id]/sessions/[sid]/history.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/sessions/[sid]",
+  "rel": "server/api/workshop/channels/[id]/sessions/[sid]/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/sessions/[sid]/messages",
+  "rel": "server/api/workshop/channels/[id]/sessions/[sid]/messages.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/tasks",
+  "rel": "server/api/workshop/channels/[id]/tasks/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/tasks",
+  "rel": "server/api/workshop/channels/[id]/tasks/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/terminals",
+  "rel": "server/api/workshop/channels/[id]/terminals.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/tool-usage",
+  "rel": "server/api/workshop/channels/[id]/tool-usage.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/tools",
+  "rel": "server/api/workshop/channels/[id]/tools/index.get.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/channels/[id]/tools",
+  "rel": "server/api/workshop/channels/[id]/tools/index.put.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels/[id]/tools/reset",
+  "rel": "server/api/workshop/channels/[id]/tools/reset.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/twin-profile",
+  "rel": "server/api/workshop/channels/[id]/twin-profile.get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/channels/[id]/twin-profile",
+  "rel": "server/api/workshop/channels/[id]/twin-profile.patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels/[id]/verifications",
+  "rel": "server/api/workshop/channels/[id]/verifications/index.get.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/channels/[id]",
+  "rel": "server/api/workshop/channels/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/channels",
+  "rel": "server/api/workshop/channels.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/channels",
+  "rel": "server/api/workshop/channels.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq/alarms/[id]/ack",
+  "rel": "server/api/workshop/daq/alarms/[id]/ack.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/alarms",
+  "rel": "server/api/workshop/daq/alarms.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq/controller",
+  "rel": "server/api/workshop/daq/controller.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/export",
+  "rel": "server/api/workshop/daq/export/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq/export",
+  "rel": "server/api/workshop/daq/export/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/export/[id]",
+  "rel": "server/api/workshop/daq/export/[id].get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/export-file",
+  "rel": "server/api/workshop/daq/export-file.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq",
+  "rel": "server/api/workshop/daq/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq",
+  "rel": "server/api/workshop/daq/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq/infra/reconnect",
+  "rel": "server/api/workshop/daq/infra/reconnect.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/infra",
+  "rel": "server/api/workshop/daq/infra.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/query",
+  "rel": "server/api/workshop/daq/query.get.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/daq/storage/retention",
+  "rel": "server/api/workshop/daq/storage/retention.put.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq/storage/rollup",
+  "rel": "server/api/workshop/daq/storage/rollup.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/storage",
+  "rel": "server/api/workshop/daq/storage.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq/templates",
+  "rel": "server/api/workshop/daq/templates/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/daq/templates/[key]",
+  "rel": "server/api/workshop/daq/templates/[key].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/daq/templates/[key]",
+  "rel": "server/api/workshop/daq/templates/[key].patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq/test-driver",
+  "rel": "server/api/workshop/daq/test-driver.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq/[id]/bind",
+  "rel": "server/api/workshop/daq/[id]/bind.post.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/daq/[id]/bindings",
+  "rel": "server/api/workshop/daq/[id]/bindings.put.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/[id]/frames/content",
+  "rel": "server/api/workshop/daq/[id]/frames/content.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/[id]/frames",
+  "rel": "server/api/workshop/daq/[id]/frames.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/[id]",
+  "rel": "server/api/workshop/daq/[id]/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq/[id]/ingest",
+  "rel": "server/api/workshop/daq/[id]/ingest.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/daq/[id]/samples",
+  "rel": "server/api/workshop/daq/[id]/samples.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/daq/[id]/test",
+  "rel": "server/api/workshop/daq/[id]/test.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/daq/[id]",
+  "rel": "server/api/workshop/daq/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/daq/[id]",
+  "rel": "server/api/workshop/daq/[id].patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/controller",
+  "rel": "server/api/workshop/dcw/controller.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw",
+  "rel": "server/api/workshop/dcw/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw",
+  "rel": "server/api/workshop/dcw/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/journal",
+  "rel": "server/api/workshop/dcw/journal/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/journal/node/[nodeId]/rollback",
+  "rel": "server/api/workshop/dcw/journal/node/[nodeId]/rollback.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/line/query",
+  "rel": "server/api/workshop/dcw/line/query.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/lines",
+  "rel": "server/api/workshop/dcw/lines/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/lines",
+  "rel": "server/api/workshop/dcw/lines/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/lines/[id]",
+  "rel": "server/api/workshop/dcw/lines/[id]/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/lines/[id]/start",
+  "rel": "server/api/workshop/dcw/lines/[id]/start.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/lines/[id]/stop",
+  "rel": "server/api/workshop/dcw/lines/[id]/stop.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/dcw/lines/[id]",
+  "rel": "server/api/workshop/dcw/lines/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/dcw/lines/[id]",
+  "rel": "server/api/workshop/dcw/lines/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/mes-artifacts/file",
+  "rel": "server/api/workshop/dcw/mes-artifacts/file.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/mes-artifacts",
+  "rel": "server/api/workshop/dcw/mes-artifacts/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/mes-hook-test",
+  "rel": "server/api/workshop/dcw/mes-hook-test.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/mes-test-read",
+  "rel": "server/api/workshop/dcw/mes-test-read.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/optimizations",
+  "rel": "server/api/workshop/dcw/optimizations/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/optimizations/[id]/judge",
+  "rel": "server/api/workshop/dcw/optimizations/[id]/judge.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/optimizations/[id]/rollback",
+  "rel": "server/api/workshop/dcw/optimizations/[id]/rollback.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/optimizations/[id]/series",
+  "rel": "server/api/workshop/dcw/optimizations/[id]/series.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/optimizations/[id]",
+  "rel": "server/api/workshop/dcw/optimizations/[id].get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/params",
+  "rel": "server/api/workshop/dcw/params/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/params",
+  "rel": "server/api/workshop/dcw/params/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/params/[id]/read",
+  "rel": "server/api/workshop/dcw/params/[id]/read.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/params/[id]/write",
+  "rel": "server/api/workshop/dcw/params/[id]/write.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/dcw/params/[id]",
+  "rel": "server/api/workshop/dcw/params/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/dcw/params/[id]",
+  "rel": "server/api/workshop/dcw/params/[id].patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/products",
+  "rel": "server/api/workshop/dcw/products/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/dcw/products/[id]",
+  "rel": "server/api/workshop/dcw/products/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/dcw/products/[id]",
+  "rel": "server/api/workshop/dcw/products/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/recipes",
+  "rel": "server/api/workshop/dcw/recipes/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/recipes",
+  "rel": "server/api/workshop/dcw/recipes/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/recipes/[id]/apply",
+  "rel": "server/api/workshop/dcw/recipes/[id]/apply.post.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/dcw/recipes/[id]",
+  "rel": "server/api/workshop/dcw/recipes/[id]/index.patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/recipes/[id]/mark-good",
+  "rel": "server/api/workshop/dcw/recipes/[id]/mark-good.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/recipes/[id]/revert",
+  "rel": "server/api/workshop/dcw/recipes/[id]/revert.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/recipes/[id]/rollback-good",
+  "rel": "server/api/workshop/dcw/recipes/[id]/rollback-good.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/recipes/[id]/versions",
+  "rel": "server/api/workshop/dcw/recipes/[id]/versions.get.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/dcw/recipes/[id]",
+  "rel": "server/api/workshop/dcw/recipes/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/runs",
+  "rel": "server/api/workshop/dcw/runs/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/runs/[id]/close",
+  "rel": "server/api/workshop/dcw/runs/[id]/close.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/runs/[id]/data",
+  "rel": "server/api/workshop/dcw/runs/[id]/data.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/runs/[id]/rollback",
+  "rel": "server/api/workshop/dcw/runs/[id]/rollback.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/templates",
+  "rel": "server/api/workshop/dcw/templates/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/dcw/templates/[key]",
+  "rel": "server/api/workshop/dcw/templates/[key].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/dcw/templates/[key]",
+  "rel": "server/api/workshop/dcw/templates/[key].patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/test-driver",
+  "rel": "server/api/workshop/dcw/test-driver.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/[id]/bind",
+  "rel": "server/api/workshop/dcw/[id]/bind.post.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/dcw/[id]/bindings",
+  "rel": "server/api/workshop/dcw/[id]/bindings.put.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/[id]",
+  "rel": "server/api/workshop/dcw/[id]/index.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/dcw/[id]/param-ledger",
+  "rel": "server/api/workshop/dcw/[id]/param-ledger.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/[id]/read",
+  "rel": "server/api/workshop/dcw/[id]/read.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/[id]/test",
+  "rel": "server/api/workshop/dcw/[id]/test.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/dcw/[id]/write",
+  "rel": "server/api/workshop/dcw/[id]/write.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/dcw/[id]",
+  "rel": "server/api/workshop/dcw/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/dcw/[id]",
+  "rel": "server/api/workshop/dcw/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/device-twins",
+  "rel": "server/api/workshop/device-twins/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/device-twins",
+  "rel": "server/api/workshop/device-twins/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/device-twins/[id]/control",
+  "rel": "server/api/workshop/device-twins/[id]/control.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/device-twins/[id]/telemetry",
+  "rel": "server/api/workshop/device-twins/[id]/telemetry.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/device-twins/[id]",
+  "rel": "server/api/workshop/device-twins/[id].delete.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/device-twins/[id]",
+  "rel": "server/api/workshop/device-twins/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/charts",
+  "rel": "server/api/workshop/eda/charts/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/charts",
+  "rel": "server/api/workshop/eda/charts/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/eda/charts/[id]",
+  "rel": "server/api/workshop/eda/charts/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/charts/[id]",
+  "rel": "server/api/workshop/eda/charts/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/eda/charts/[id]",
+  "rel": "server/api/workshop/eda/charts/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/commonality",
+  "rel": "server/api/workshop/eda/commonality.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/dashboards",
+  "rel": "server/api/workshop/eda/dashboards/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/dashboards",
+  "rel": "server/api/workshop/eda/dashboards/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/eda/dashboards/[id]",
+  "rel": "server/api/workshop/eda/dashboards/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/dashboards/[id]",
+  "rel": "server/api/workshop/eda/dashboards/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/eda/dashboards/[id]",
+  "rel": "server/api/workshop/eda/dashboards/[id].patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/derived",
+  "rel": "server/api/workshop/eda/derived/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/features",
+  "rel": "server/api/workshop/eda/features/index.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/features/jobs",
+  "rel": "server/api/workshop/eda/features/jobs.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/features/run",
+  "rel": "server/api/workshop/eda/features/run.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/golden/deviation",
+  "rel": "server/api/workshop/eda/golden/deviation.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/golden",
+  "rel": "server/api/workshop/eda/golden/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/golden",
+  "rel": "server/api/workshop/eda/golden/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/golden/single",
+  "rel": "server/api/workshop/eda/golden/single.get.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/eda/golden/[id]",
+  "rel": "server/api/workshop/eda/golden/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/ocap",
+  "rel": "server/api/workshop/eda/ocap/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/ocap",
+  "rel": "server/api/workshop/eda/ocap/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/ocap/[id]",
+  "rel": "server/api/workshop/eda/ocap/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/eda/ocap/[id]",
+  "rel": "server/api/workshop/eda/ocap/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/run-segments",
+  "rel": "server/api/workshop/eda/run-segments/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/run-segments",
+  "rel": "server/api/workshop/eda/run-segments/index.post.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/eda/runs/[id]/labels",
+  "rel": "server/api/workshop/eda/runs/[id]/labels.patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/runs",
+  "rel": "server/api/workshop/eda/runs.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/spc",
+  "rel": "server/api/workshop/eda/spc/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/spc",
+  "rel": "server/api/workshop/eda/spc/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/spc/[id]/recompute",
+  "rel": "server/api/workshop/eda/spc/[id]/recompute.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/eda/spc/[id]",
+  "rel": "server/api/workshop/eda/spc/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/spc/[id]",
+  "rel": "server/api/workshop/eda/spc/[id].get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/templates",
+  "rel": "server/api/workshop/eda/templates/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/templates",
+  "rel": "server/api/workshop/eda/templates/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/eda/templates/[id]",
+  "rel": "server/api/workshop/eda/templates/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/eda/templates/[id]",
+  "rel": "server/api/workshop/eda/templates/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/eda/templates/[id]",
+  "rel": "server/api/workshop/eda/templates/[id].patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/eda/vm/predict",
+  "rel": "server/api/workshop/eda/vm/predict.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/exp/confirmations",
+  "rel": "server/api/workshop/exp/confirmations/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/exp/confirmations/[id]/decide",
+  "rel": "server/api/workshop/exp/confirmations/[id]/decide.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/fs/dirs",
+  "rel": "server/api/workshop/fs/dirs.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/harnesses/[id]/providers",
+  "rel": "server/api/workshop/harnesses/[id]/providers.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/harnesses",
+  "rel": "server/api/workshop/harnesses.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/hitl/history",
+  "rel": "server/api/workshop/hitl/history.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/hitl/pending",
+  "rel": "server/api/workshop/hitl/pending.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/hitl/respond",
+  "rel": "server/api/workshop/hitl/respond.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/mailbox/all",
+  "rel": "server/api/workshop/mailbox/all.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/mailbox",
+  "rel": "server/api/workshop/mailbox.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/memories/maintenance",
+  "rel": "server/api/workshop/memories/maintenance.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/mes/bridge",
+  "rel": "server/api/workshop/mes/bridge.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/mes/datasets",
+  "rel": "server/api/workshop/mes/datasets.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/mes/points",
+  "rel": "server/api/workshop/mes/points.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/mes/preview",
+  "rel": "server/api/workshop/mes/preview.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/mes/secrets",
+  "rel": "server/api/workshop/mes/secrets/index.get.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/mes/secrets",
+  "rel": "server/api/workshop/mes/secrets/index.put.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/mes/secrets/[ref]",
+  "rel": "server/api/workshop/mes/secrets/[ref].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/mes/templates",
+  "rel": "server/api/workshop/mes/templates.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/mes/templates",
+  "rel": "server/api/workshop/mes/templates.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/notifications",
+  "rel": "server/api/workshop/notifications/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/notifications/read",
+  "rel": "server/api/workshop/notifications/read.post.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts",
+  "rel": "server/api/workshop/ontology/drafts/index.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts/[draftId]/autofix",
+  "rel": "server/api/workshop/ontology/drafts/[draftId]/autofix.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts/[draftId]/compile",
+  "rel": "server/api/workshop/ontology/drafts/[draftId]/compile.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts/[draftId]/evidence",
+  "rel": "server/api/workshop/ontology/drafts/[draftId]/evidence.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts/[draftId]/publish",
+  "rel": "server/api/workshop/ontology/drafts/[draftId]/publish.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts/[draftId]/rules/[ruleId]/approval-decision",
+  "rel": "server/api/workshop/ontology/drafts/[draftId]/rules/[ruleId]/approval-decision.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts/[draftId]/rules/[ruleId]/approval",
+  "rel": "server/api/workshop/ontology/drafts/[draftId]/rules/[ruleId]/approval.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts/[draftId]/rules/[ruleId]/transition",
+  "rel": "server/api/workshop/ontology/drafts/[draftId]/rules/[ruleId]/transition.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts/[draftId]/subgraph",
+  "rel": "server/api/workshop/ontology/drafts/[draftId]/subgraph.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts/[draftId]/validate",
+  "rel": "server/api/workshop/ontology/drafts/[draftId]/validate.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/drafts/[draftId]",
+  "rel": "server/api/workshop/ontology/drafts/[draftId].ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/export/[ontologyId]",
+  "rel": "server/api/workshop/ontology/export/[ontologyId].ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology",
+  "rel": "server/api/workshop/ontology/index.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/scene",
+  "rel": "server/api/workshop/ontology/scene.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/traces/[ontologyId]",
+  "rel": "server/api/workshop/ontology/traces/[ontologyId].ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/versions/[ontologyId]/compare",
+  "rel": "server/api/workshop/ontology/versions/[ontologyId]/compare.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ontology/versions/[ontologyId]",
+  "rel": "server/api/workshop/ontology/versions/[ontologyId].ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/ops-logs",
+  "rel": "server/api/workshop/ops-logs/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/ops-logs",
+  "rel": "server/api/workshop/ops-logs/index.post.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/optimization/bindings",
+  "rel": "server/api/workshop/optimization/bindings/index.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/optimization/bindings/[id]",
+  "rel": "server/api/workshop/optimization/bindings/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/optimization/capabilities",
+  "rel": "server/api/workshop/optimization/capabilities.get.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/optimization/profiles",
+  "rel": "server/api/workshop/optimization/profiles/index.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/optimization/profiles/[id]/publish",
+  "rel": "server/api/workshop/optimization/profiles/[id]/publish.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/optimization/recommendations/[id]/crosscheck",
+  "rel": "server/api/workshop/optimization/recommendations/[id]/crosscheck.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/optimization/recommendations/[id]/dispatch",
+  "rel": "server/api/workshop/optimization/recommendations/[id]/dispatch.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/optimization/runs",
+  "rel": "server/api/workshop/optimization/runs/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/optimization/solve",
+  "rel": "server/api/workshop/optimization/solve.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/permissions",
+  "rel": "server/api/workshop/permissions/index.get.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/permissions",
+  "rel": "server/api/workshop/permissions/index.put.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/plugins",
+  "rel": "server/api/workshop/plugins/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/plugins/[name]/disable",
+  "rel": "server/api/workshop/plugins/[name]/disable.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/plugins/[name]/enable",
+  "rel": "server/api/workshop/plugins/[name]/enable.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/plugins/[name]",
+  "rel": "server/api/workshop/plugins/[name]/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/process-model/datasets",
+  "rel": "server/api/workshop/process-model/datasets.post.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/process-model/eligibility",
+  "rel": "server/api/workshop/process-model/eligibility.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/process-model/experiments",
+  "rel": "server/api/workshop/process-model/experiments.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/process-model/specs",
+  "rel": "server/api/workshop/process-model/specs/index.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/process-model/specs/[id]/publish",
+  "rel": "server/api/workshop/process-model/specs/[id]/publish.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/process-model/train",
+  "rel": "server/api/workshop/process-model/train.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/project-blueprints",
+  "rel": "server/api/workshop/project-blueprints/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/project-blueprints",
+  "rel": "server/api/workshop/project-blueprints/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects",
+  "rel": "server/api/workshop/projects/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects",
+  "rel": "server/api/workshop/projects/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/instantiate",
+  "rel": "server/api/workshop/projects/instantiate.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/activate",
+  "rel": "server/api/workshop/projects/[id]/activate.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/approvals",
+  "rel": "server/api/workshop/projects/[id]/approvals/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/approvals/[aid]/decide",
+  "rel": "server/api/workshop/projects/[id]/approvals/[aid]/decide.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/archive",
+  "rel": "server/api/workshop/projects/[id]/archive.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/channels",
+  "rel": "server/api/workshop/projects/[id]/channels/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/channels",
+  "rel": "server/api/workshop/projects/[id]/channels/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/projects/[id]/channels/[channelId]",
+  "rel": "server/api/workshop/projects/[id]/channels/[channelId].delete.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/complete",
+  "rel": "server/api/workshop/projects/[id]/complete.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/continue",
+  "rel": "server/api/workshop/projects/[id]/continue.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/decisions",
+  "rel": "server/api/workshop/projects/[id]/decisions/index.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/deliverables",
+  "rel": "server/api/workshop/projects/[id]/deliverables/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/deliverables",
+  "rel": "server/api/workshop/projects/[id]/deliverables/index.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/deliverables/[did]",
+  "rel": "server/api/workshop/projects/[id]/deliverables/[did]/index.get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/projects/[id]/deliverables/[did]",
+  "rel": "server/api/workshop/projects/[id]/deliverables/[did]/index.patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/deliverables/[did]/waive",
+  "rel": "server/api/workshop/projects/[id]/deliverables/[did]/waive.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/events",
+  "rel": "server/api/workshop/projects/[id]/events/index.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/health",
+  "rel": "server/api/workshop/projects/[id]/health.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/kernel/tick",
+  "rel": "server/api/workshop/projects/[id]/kernel/tick.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/ledger",
+  "rel": "server/api/workshop/projects/[id]/ledger.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/members",
+  "rel": "server/api/workshop/projects/[id]/members/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/members",
+  "rel": "server/api/workshop/projects/[id]/members/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/projects/[id]/members/[userId]",
+  "rel": "server/api/workshop/projects/[id]/members/[userId].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/observability/activity",
+  "rel": "server/api/workshop/projects/[id]/observability/activity.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/observability/route",
+  "rel": "server/api/workshop/projects/[id]/observability/route.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/observability/work-items/[wid]",
+  "rel": "server/api/workshop/projects/[id]/observability/work-items/[wid].get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/observability",
+  "rel": "server/api/workshop/projects/[id]/observability.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/pause",
+  "rel": "server/api/workshop/projects/[id]/pause.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/plan/request-approval",
+  "rel": "server/api/workshop/projects/[id]/plan/request-approval.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/proposals/[decisionId]/apply",
+  "rel": "server/api/workshop/projects/[id]/proposals/[decisionId]/apply.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/reconcile",
+  "rel": "server/api/workshop/projects/[id]/reconcile.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/report",
+  "rel": "server/api/workshop/projects/[id]/report.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/results",
+  "rel": "server/api/workshop/projects/[id]/results/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/results/[rid]/request-acceptance",
+  "rel": "server/api/workshop/projects/[id]/results/[rid]/request-acceptance.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/results/[rid]/review",
+  "rel": "server/api/workshop/projects/[id]/results/[rid]/review.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/results/[rid]/submit",
+  "rel": "server/api/workshop/projects/[id]/results/[rid]/submit.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/results/[rid]/supersede",
+  "rel": "server/api/workshop/projects/[id]/results/[rid]/supersede.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/resume",
+  "rel": "server/api/workshop/projects/[id]/resume.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/sessions",
+  "rel": "server/api/workshop/projects/[id]/sessions.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/snapshot",
+  "rel": "server/api/workshop/projects/[id]/snapshot.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/terminate",
+  "rel": "server/api/workshop/projects/[id]/terminate.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/trace/[traceId]",
+  "rel": "server/api/workshop/projects/[id]/trace/[traceId].get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/work-items",
+  "rel": "server/api/workshop/projects/[id]/work-items/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/work-items",
+  "rel": "server/api/workshop/projects/[id]/work-items/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/work-items/[wid]/cancel",
+  "rel": "server/api/workshop/projects/[id]/work-items/[wid]/cancel.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/work-items/[wid]/dispatch",
+  "rel": "server/api/workshop/projects/[id]/work-items/[wid]/dispatch.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]/work-items/[wid]",
+  "rel": "server/api/workshop/projects/[id]/work-items/[wid]/index.get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/projects/[id]/work-items/[wid]",
+  "rel": "server/api/workshop/projects/[id]/work-items/[wid]/index.patch.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/projects/[id]/work-items/[wid]/retry",
+  "rel": "server/api/workshop/projects/[id]/work-items/[wid]/retry.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/projects/[id]",
+  "rel": "server/api/workshop/projects/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/projects/[id]",
+  "rel": "server/api/workshop/projects/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/runtime",
+  "rel": "server/api/workshop/runtime.get.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/scene/layouts/[channelId]",
+  "rel": "server/api/workshop/scene/layouts/[channelId].delete.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/scene/layouts/[channelId]",
+  "rel": "server/api/workshop/scene/layouts/[channelId].put.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/scene/layouts",
+  "rel": "server/api/workshop/scene/layouts.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/schedules",
+  "rel": "server/api/workshop/schedules/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/schedules",
+  "rel": "server/api/workshop/schedules/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/schedules/[id]/run",
+  "rel": "server/api/workshop/schedules/[id]/run.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/schedules/[id]/runs",
+  "rel": "server/api/workshop/schedules/[id]/runs.get.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/schedules/[id]",
+  "rel": "server/api/workshop/schedules/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/schedules/[id]",
+  "rel": "server/api/workshop/schedules/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/schedules/[id]",
+  "rel": "server/api/workshop/schedules/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/tasks/recovery-holds",
+  "rel": "server/api/workshop/tasks/recovery-holds.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tasks/[id]/cancel",
+  "rel": "server/api/workshop/tasks/[id]/cancel/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tasks/[id]/complete",
+  "rel": "server/api/workshop/tasks/[id]/complete.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tasks/[id]/dispatch",
+  "rel": "server/api/workshop/tasks/[id]/dispatch.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tasks/[id]/reassign",
+  "rel": "server/api/workshop/tasks/[id]/reassign.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tasks/[id]/recovery-disposition",
+  "rel": "server/api/workshop/tasks/[id]/recovery-disposition.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tasks/[id]/reopen",
+  "rel": "server/api/workshop/tasks/[id]/reopen.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tasks/[id]/report",
+  "rel": "server/api/workshop/tasks/[id]/report.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tasks/[id]/retry",
+  "rel": "server/api/workshop/tasks/[id]/retry.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tasks/[id]/supersede",
+  "rel": "server/api/workshop/tasks/[id]/supersede.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tasks/[id]/update",
+  "rel": "server/api/workshop/tasks/[id]/update.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/tasks/[id]",
+  "rel": "server/api/workshop/tasks/[id].get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/tasks",
+  "rel": "server/api/workshop/tasks.get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/teams",
+  "rel": "server/api/workshop/teams/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/teams",
+  "rel": "server/api/workshop/teams/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/teams/[id]/deploy",
+  "rel": "server/api/workshop/teams/[id]/deploy.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/teams/[id]/members",
+  "rel": "server/api/workshop/teams/[id]/members/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/teams/[id]/members",
+  "rel": "server/api/workshop/teams/[id]/members/index.post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/teams/[id]/members/[agentId]",
+  "rel": "server/api/workshop/teams/[id]/members/[agentId].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/teams/[id]/plugins",
+  "rel": "server/api/workshop/teams/[id]/plugins/index.get.ts"
+ },
+ {
+  "method": "PUT",
+  "path": "/workshop/teams/[id]/plugins",
+  "rel": "server/api/workshop/teams/[id]/plugins/index.put.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/teams/[id]",
+  "rel": "server/api/workshop/teams/[id].delete.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/teams/[id]",
+  "rel": "server/api/workshop/teams/[id].get.ts"
+ },
+ {
+  "method": "PATCH",
+  "path": "/workshop/teams/[id]",
+  "rel": "server/api/workshop/teams/[id].patch.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/tools",
+  "rel": "server/api/workshop/tools/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/tools/sync",
+  "rel": "server/api/workshop/tools/sync.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/tools/[name]",
+  "rel": "server/api/workshop/tools/[name].get.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/users/me",
+  "rel": "server/api/workshop/users/me.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/users/register",
+  "rel": "server/api/workshop/users/register.post.ts"
+ },
+ {
+  "method": "GET",
+  "path": "/workshop/workspaces",
+  "rel": "server/api/workshop/workspaces/index.get.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/workspaces",
+  "rel": "server/api/workshop/workspaces/index.post.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/workspaces/[id]/channel-templates/[tplId]",
+  "rel": "server/api/workshop/workspaces/[id]/channel-templates/[tplId].post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/workspaces/[id]/channels/[channelId]",
+  "rel": "server/api/workshop/workspaces/[id]/channels/[channelId].delete.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/workspaces/[id]/channels/[channelId]",
+  "rel": "server/api/workshop/workspaces/[id]/channels/[channelId].post.ts"
+ },
+ {
+  "method": "DELETE",
+  "path": "/workshop/workspaces/[id]",
+  "rel": "server/api/workshop/workspaces/[id]/index.delete.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/ws/handlers",
+  "rel": "server/api/workshop/ws/handlers.ts"
+ },
+ {
+  "method": "POST",
+  "path": "/workshop/ws/ticket",
+  "rel": "server/api/workshop/ws/ticket.post.ts"
+ },
+ {
+  "method": "*",
+  "path": "/workshop/[...path]",
+  "rel": "server/api/workshop/[...path].ts"
+ }
+]
