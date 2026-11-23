@@ -45,7 +45,7 @@ Selected simulator records and run summaries are available on reasonable request
 
 与稿件 Declarations 逐字一致（作者核对属实后再使用）：
 
-> Generative AI via ZCode assisted with language editing, the abstract, LaTeX organization, and figure preparation; the cast-film machine row in Fig. 1 is a text-to-image illustration composited with vector annotations. The authors remain responsible for the manuscript.
+> Generative AI via Codex (GPT-6) assisted with language polishing and LaTeX typesetting; the cast-film machine row in Fig. 1 is a text-to-image illustration composited with vector annotations. The authors remain responsible for the manuscript.
 
 - [IEEE 政策](https://journals.ieeeauthorcenter.ieee.org/become-an-ieee-journal-author/publishing-ethics/guidelines-and-policies/submission-and-peer-review-policies/)要求 AI 生成内容在 Acknowledgments 中披露，并指明具体章节和使用程度。TII 双盲要求匿名稿不含致谢，因此初投稿把这条放在不含身份信息的 Declarations 中。
 - 录用后的终稿：把这条披露移到 Acknowledgments，届时一并补入基金和作者贡献。
