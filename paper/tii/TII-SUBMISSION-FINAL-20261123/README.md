@@ -31,14 +31,16 @@
 
 pdfLaTeX + BibTeX：`latexmk -pdf main.tex`。已验证：把压缩包解到空目录重新编译，得到的 10 页与交付 PDF **文本一致、逐页像素一致**。
 
-## 相对上一版（2026-11-23 早些时候的 `208bdf14`）的变化
+## 修订记录（2026-11-23）
 
-只改了两处，图未动，实验数字未动：
+图未动，实验数字未动。按时间顺序：
 
-1. 第 VI-C 节第一句：原文 “In a separate follow-up batch, all 110 tested values … were rejected” 与原始证据不符——这 110 条 `RECIPE_LIMIT_EXCEEDED` 记录与 220/219/216 那组数字出自**同一个**场景–协议矩阵运行（`runId 20261106180144`）。改为 “In the same scene--protocol matrix run, all 110 tested values … were rejected”。
-2. `main.tex` 中 `pdfkeywords` 元数据与正文关键词对齐（此前是旧的 5 个词）。只影响 PDF 元数据，不影响版面。
+1. **移除未嵌入字体**：图 1、图 4 的 PDF 中有一个不绘字的 Helvetica 资源，改为只保留已嵌入字体；300 dpi 渲染与原图逐字节相同。同时把第 IV 节观测窗口锚点 $t_0$ 改为“预读与审批等待之前的操作时间戳”，与实现一致。
+2. **修正证据归属**：第 VI-C 节原写 “In a separate follow-up batch, all 110 tested values … were rejected”，与原始证据不符——这 110 条 `RECIPE_LIMIT_EXCEEDED` 记录与 220/219/216 那组数字出自**同一个**场景–协议矩阵运行（`runId 20261106180144`）。改为 “In the same scene--protocol matrix run, …”。同时把 `pdfkeywords` 元数据对齐正文关键词（只影响元数据）。
+3. **补充实验设置**：第 VI 节首段写明三个 LLM 驱动回合跑在 **OMP agent harness** 上（`the episodes ran on the OMP agent harness with the deepseek-flash model endpoint`），与 S7 记录一致。
+4. **更新 AI 披露**：Declarations 改为 `Generative AI via Codex (GPT-6) assisted with language polishing and LaTeX typesetting`；图 1 合成插画的说明保留。
 
-其余 9 页与上一版逐字节相同，只有第 8 页因这句话局部重排。
+当前版相对上一版（`3d716146`）只有第 6、10 页变化，其余 8 页逐字节相同。
 
 ## 核验记录（2026-11-23）
 
@@ -51,14 +53,15 @@ pdfLaTeX + BibTeX：`latexmk -pdf main.tex`。已验证：把压缩包解到空�
 | 匿名性 | 作者元数据为空；关键词扫描未见邮箱、网址、单位名、致谢段 |
 | 参考文献 | 24 条，全部在正文引用；17 个 DOI 可解析并与 Crossref 登记信息一致，4 条 arXiv 与 arXiv API 一致 |
 | 源码包重编译 | 与交付 PDF 文本一致、10/10 页像素一致 |
+| 改动页视觉验收 | 第 6、10 页通过；其余 8 页与已验收版逐字节相同 |
 | S7 补充材料 | 用其源码重编译，文本与 PDF 逐页一致；数字与正文全部对应 |
 
 ## 校验值（SHA-256）
 
 | 文件 | SHA-256 |
 |---|---|
-| `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | `9da94e62edb963728ee0e6bfc8389f4663e7a38496f0eca3ca4364b128833018` |
-| `TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | `3e921d63861a3291804f2b4308b52665f40718fad0781c7db575a682ace3ad30` |
+| `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | `b4445420eadd9aa047dfb130383aa1d60f63c3a73c3ac7aa7ce37fc85f38144b` |
+| `TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | `a95f4c47c658326f704b0e3a9960b101348cee848220d75b202cdfed329d45c7` |
 | `supplementary/Supplementary-File-S7-20261117.pdf` | `f7de9f604c38c5826f2eaee164ca02d604e1eafbe1666cf3fe404b1d607f0cb3` |
 | `supplementary/Supporting-Evidence-S7.zip`（本地） | `42f23ccbf6f22bfa02b56ca593e72bff88f66758b907040de40f8b912150f5a0` |
 
