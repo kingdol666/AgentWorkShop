@@ -81,9 +81,9 @@ function buildIco(entries) {
   return Buffer.concat([header, directory, ...entries.map(entry => entry.data)])
 }
 
-/** 在渲染页里把 SVG 按目标尺寸画进 canvas,返回 PNG 字节与原始 RGBA。 */
-async function rasterize(page, markup, sizes) {
-  return page.evaluate(async (svg, list) => {
+/** 在渲染页里把 SVG 按目标尺寸画进 canvas,返回 PNG 字节与原始 RGBA(base64)。 */
+async function rasterize(page, markup, sizes, bmpMax = BMP_MAX_SIZE) {
+  return page.evaluate(async (svg, list, bmpMax) => {
     const bytes = new TextEncoder().encode(svg)
     let binary = ''
     for (let i = 0; i < bytes.length; i += 8192) {
@@ -99,18 +99,21 @@ async function rasterize(page, markup, sizes) {
       canvas.height = size
       const context = canvas.getContext('2d', { willReadFrequently: true })
       context.drawImage(image, 0, 0, size, size)
-      const pixels = context.getImageData(0, 0, size, size).data
-      let raw = ''
-      for (let i = 0; i < pixels.length; i += 8192) {
-        raw += String.fromCharCode(...pixels.subarray(i, i + 8192))
-      }
-      result[size] = {
-        png: canvas.toDataURL('image/png').split(',')[1],
-        rgba: raw,
+      result[size] = { png: canvas.toDataURL('image/png').split(',')[1] }
+      // 只有小尺寸走 BMP 条目;把原始像素转成 base64 文本再回传,
+      // 否则 Node 侧 Buffer.from(raw,'base64') 会把**二进制字符串**当 base64 解,
+      // 解出来是噪声(实测:exe 的 16–64px 图标全是花屏)。
+      if (size <= bmpMax) {
+        const pixels = context.getImageData(0, 0, size, size).data
+        let raw = ''
+        for (let i = 0; i < pixels.length; i += 8192) {
+          raw += String.fromCharCode(...pixels.subarray(i, i + 8192))
+        }
+        result[size].rgba = btoa(raw)
       }
     }
     return result
-  }, markup, sizes)
+  }, markup, sizes, bmpMax)
 }
 
 async function writePng(source, size, target) {
