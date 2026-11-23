@@ -175,6 +175,51 @@ test('foreign or unknown workspaces and foreign channels are rejected before mou
   assert.deepEqual(f.manager.listWorkspaces('user-1'), [], 'failed mounts must not create a workspace')
 })
 
+test('createChannel mounts into the given workspace and reports it in the response', async (t) => {
+  const f = fixture()
+  t.after(async () => {
+    await f.manager.shutdown()
+    f.db.close()
+  })
+  const target = f.repos.users.createWorkspace('user-5', 'Target')
+  const created = await f.manager.createChannel({
+    name: 'rest-channel',
+    ownerUserId: 'user-5',
+    mountToDefaultWorkspace: true,
+    workspaceId: target.id,
+  })
+  assert.equal(created.workspaceId, target.id)
+  assert.equal(created.workspaceName, 'Target')
+  assert.deepEqual(f.repos.users.listMountedChannels(target.id), [created.channelId])
+})
+
+test('createChannel rejects a foreign workspace BEFORE creating the channel', async (t) => {
+  const f = fixture()
+  t.after(async () => {
+    await f.manager.shutdown()
+    f.db.close()
+  })
+  const foreign = f.repos.users.createWorkspace('user-9', 'Foreign')
+  await assert.rejects(
+    f.manager.createChannel({ name: 'orphan-probe', ownerUserId: 'user-5', mountToDefaultWorkspace: true, workspaceId: foreign.id }),
+    /不属于当前用户/,
+  )
+  const owned = (await f.manager.listChannels()).filter(c => c.name === 'orphan-probe')
+  assert.equal(owned.length, 0, '被拒的创建请求不得留下孤儿频道')
+  assert.deepEqual(f.manager.listWorkspaces('user-5'), [], '被拒的创建请求不得创建默认工作区')
+})
+
+test('createChannel without the mount flag never mounts the channel', async (t) => {
+  const f = fixture()
+  t.after(async () => {
+    await f.manager.shutdown()
+    f.db.close()
+  })
+  const created = await f.manager.createChannel({ name: 'internal-channel', ownerUserId: 'user-6' })
+  assert.equal(created.workspaceId, undefined)
+  assert.deepEqual(f.manager.listWorkspaces('user-6'), [])
+})
+
 test('pure selection prefers the named default and falls back to the oldest workspace', () => {
   const make = (id: string, name: string) => ({ id, ownerUserId: 'u', name, createdAt: id })
   assert.equal(chooseWorkspaceForNewChannel([]), null)

@@ -48,6 +48,19 @@ export default defineApiHandler(async (event) => {
   // 启动面收权(2026-10-28):lead harness 的 command/args/cwd/env 只有 admin 能指定
   if (body.leadAgent) assertSpawnConfigAllowed(body.leadAgent.harness, body.leadAgent.config, user)
   const manager = getWorkshopManager()
+  // 权限模型 v3:创建时绑线的前置校验必须在建频道**之前** —— 否则 404/403 已经抛出,
+  // 频道却已落库、挂进工作区可见,重试只会堆积孤儿频道(2026-11-23 发版审查)。
+  if (body.lineId) {
+    const [{ requireLineMode }, { getDcwLineRepo }] = await Promise.all([
+      import('../../services/workshop/permissions'),
+      import('../../services/workshop/dcw/dcw-line.repo'),
+    ])
+    if (!getDcwLineRepo().byId(body.lineId)) {
+      const { AppError, ErrorCodes } = await import('../../utils/errors')
+      throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${body.lineId}`)
+    }
+    requireLineMode(user, body.lineId, 'readonly')
+  }
   const result = await manager.createChannel({
     name: body.name,
     // 绑线频道默认 integrated:工业工具/四层限界/产线上下文按生产模式装配;
@@ -73,15 +86,8 @@ export default defineApiHandler(async (event) => {
       body.plugins.filter(p => p && typeof p.name === 'string' && registered.has(p.name)),
     )
   }
-  // 权限模型 v3:创建时绑线(可选)——须对该产线有 grant 且产线存在(与 line.put 同口径)
+  // 权限模型 v3:创建时绑线(可选)——授权已在建频道前校验,这里只做实际绑定
   if (body.lineId) {
-    const { requireLineMode } = await import('@/server/services/workshop/permissions')
-    const { getDcwLineRepo } = await import('@/server/services/workshop/dcw/dcw-line.repo')
-    if (!getDcwLineRepo().byId(body.lineId)) {
-      const { AppError, ErrorCodes } = await import('@/server/utils/errors')
-      throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${body.lineId}`)
-    }
-    requireLineMode(user, body.lineId, 'readonly')
     await manager.bindChannelLine(result.channelId, body.lineId)
   }
   // 全时事件录制:新 channel 即时建立常驻流(server 驱动落库,与订阅者无关)

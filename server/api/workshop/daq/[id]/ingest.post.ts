@@ -77,36 +77,35 @@ function metricsOf(raw: unknown): Record<string, number> {
 
 export default defineApiHandler(async (event) => {
   const id = getRouterParam(event, 'id') ?? ''
-  const node = getDaqController().byId(id)
-  if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
 
   // ── 鉴权(WP2)────────────────────────────────────────────────────────────
   // token 路径:边缘系统全局凭据(AW_DAQ_INGEST_TOKEN),语义不变;
   // 兜底会话路径:必须对该节点所属产线有 operate 权限 —— 此前仅 resolveUser,
   // 任意注册用户可向任意节点注入(含回填)伪造样本污染训练链。
-  {
-    const mode = ingestAuthMode({
-      configuredToken: process.env.AW_DAQ_INGEST_TOKEN,
-      providedToken: String(getHeader(event, 'x-aw-daq-token') ?? ''),
+  // 身份校验先于节点查找:未鉴权调用者不得借 404 探测数采节点是否存在。
+  const mode = ingestAuthMode({
+    configuredToken: process.env.AW_DAQ_INGEST_TOKEN,
+    providedToken: String(getHeader(event, 'x-aw-daq-token') ?? ''),
+  })
+  if (mode === 'token-mismatch') {
+    throw new AppError(401, 'UNAUTHORIZED', '数采推送鉴权失败:请提供正确的 x-aw-daq-token(AW_DAQ_INGEST_TOKEN)。')
+  }
+  const sessionUser = mode === 'session' ? resolveUser(event) : null
+  const node = getDaqController().byId(id)
+  if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
+  if (sessionUser) {
+    const { requireLineMode } = await import('@/server/services/workshop/permissions')
+    requireLineMode(sessionUser, node.lineId, 'operate')
+  }
+  if (isWideBackfillWindow() && !wideWindowWarned) {
+    wideWindowWarned = true
+    console.warn(`[daq.ingest] AW_DAQ_INGEST_BACKFILL_MS=${ingestBackfillWindowMs()} 超过默认 1h 安全窗(回填投毒面扩大)`)
+    recordOps({
+      actor: 'system', actorName: 'daq.ingest', actorKind: 'system',
+      action: 'policy.degrade.warn', kind: 'system', level: 'warn',
+      targetKind: 'system', targetId: 'daq.ingest.backfill',
+      summary: `数采推送回填窗被配置为 ${Math.round(ingestBackfillWindowMs() / 3600_000)}h(默认 1h,上限 7d)`,
     })
-    if (mode === 'token-mismatch') {
-      throw new AppError(401, 'UNAUTHORIZED', '数采推送鉴权失败:请提供正确的 x-aw-daq-token(AW_DAQ_INGEST_TOKEN)。')
-    }
-    if (mode === 'session') {
-      const user = resolveUser(event)
-      const { requireLineMode } = await import('@/server/services/workshop/permissions')
-      requireLineMode(user, node.lineId, 'operate')
-    }
-    if (isWideBackfillWindow() && !wideWindowWarned) {
-      wideWindowWarned = true
-      console.warn(`[daq.ingest] AW_DAQ_INGEST_BACKFILL_MS=${ingestBackfillWindowMs()} 超过默认 1h 安全窗(回填投毒面扩大)`)
-      recordOps({
-        actor: 'system', actorName: 'daq.ingest', actorKind: 'system',
-        action: 'policy.degrade.warn', kind: 'system', level: 'warn',
-        targetKind: 'system', targetId: 'daq.ingest.backfill',
-        summary: `数采推送回填窗被配置为 ${Math.round(ingestBackfillWindowMs() / 3600_000)}h(默认 1h,上限 7d)`,
-      })
-    }
   }
 
   if (!node.enabled) throw new AppError(409, 'CONFLICT', `数采节点「${node.name}」已停用,不接受推送。`)

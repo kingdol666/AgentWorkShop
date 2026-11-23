@@ -15,10 +15,11 @@ import { getWorkshopManager } from '../../../../plugins/workshop'
 
 export default defineApiHandler(async (event) => {
   const taskId = getRouterParam(event, 'id')!
+  // 先验身份再查任务:未鉴权调用者不得借 404 探测任务是否存在
+  const user = resolveUser(event)
   const manager = getWorkshopManager()
   const task = (manager as unknown as { getTaskEngine(): { get(id: string): { channelId: string } | undefined } }).getTaskEngine().get(taskId)
   if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
-  const user = resolveUser(event)
   const ch = manager.getChannelForUser(task.channelId, user.id)
   manager.requireOwned(ch.ownerUserId, user.id, 'channel')
   const body = await readBody(event) as { title?: string, description?: string } | undefined

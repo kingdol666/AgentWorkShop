@@ -29,13 +29,13 @@ export default defineApiHandler(async (event) => {
     // Agent 路径:作用域校验(同 channel 可见,跨 channel 抛 SCOPE_VIOLATION)
     return manager.getTask(caller.channelId, caller.id, taskId)
   }
+  // 用户路径:先验身份再查任务(未鉴权不得借 404 探测任务是否存在),再做 channel 读取守卫(本人/遗留公共)
+  const user = resolveUser(event)
   const task = taskEngineOf(manager).get(taskId)
   if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
   if (expectChannelId && task.channelId !== expectChannelId) {
     throw new AppError(404, 'NOT_FOUND', `任务 ${taskId} 不属于 channel ${expectChannelId}`)
   }
-  // 用户路径:channel 读取守卫(本人/遗留公共)
-  const user = resolveUser(event)
   manager.getChannelForUser(task.channelId, user.id)
   return task
 })

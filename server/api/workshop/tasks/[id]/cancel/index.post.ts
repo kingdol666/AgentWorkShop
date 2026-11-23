@@ -5,7 +5,7 @@
  * - 任务不存在 → 404 NOT_FOUND
  * - channel 无 lead → 400 NO_LEAD_AGENT(无法以系统身份取消)
  */
-import { getRouterParam } from 'h3'
+import { getRouterParam } from 'h3'
 import { resolveUser } from '../../../caller'
 import { AppError } from '../../../../../utils/errors'
 import { defineApiHandler } from '../../../../../utils/response'
@@ -19,11 +19,11 @@ function taskEngineOf(manager: AgentChannelManager): TaskEngine {
 
 export default defineApiHandler(async (event) => {
   const taskId = getRouterParam(event, 'id')!
+  // 用户 owner 守卫:取消 = 写操作,先验身份再查任务(未鉴权不得借 404 探测任务是否存在)
+  const user = resolveUser(event)
   const manager = getWorkshopManager()
   const task = taskEngineOf(manager).get(taskId)
   if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
-  // 用户 owner 守卫:取消 = 写操作
-  const user = resolveUser(event)
   const ch = manager.getChannelForUser(task.channelId, user.id)
   manager.requireOwned(ch.ownerUserId, user.id, 'channel')
   // 系统身份:任务所在 channel 的 lead
