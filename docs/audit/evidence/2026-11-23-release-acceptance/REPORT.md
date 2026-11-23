@@ -5,10 +5,13 @@
 
 ## 0. 结论
 
-- **修复 3 个真实缺陷**：console「新建频道」跨工作区串区（P1）、11 个 REST handler + 数采推送 + A2A 方法的「先查资源后验身份」（P2，未鉴权 ID 枚举 oracle）、`dcw/line/query` 无窗口时对时序超表全表聚合（P2，共享 Timescale 实测 10–15 s）。
-- **API 面全量探测**：构建产物注册的 **503 个 handler** 经 **1060 次探测**（含 35 个带真实 ID 的详情读），**0 个 5xx、0 个连接错误**；10 个「管理员无效请求被接受」逐条定性（§5.3），其中 2 个静默成功列为 P3。
-- **界面级证明**：串区缺陷在真实 console 弹窗上被端到端证实已修（8 项断言中 7 项通过，1 项为既有水合警告，见 §8）。
-- **需求追溯**：README 40 条产品声明 33 条实现+测试互证；Project 层计划（192 项）与上下文学习框架（46 项）、RSI 证据晋升计划（40 项）**并未全部落地**，逐项状态见 §7——计划文本的复选框全未回填，不能当作完成度证据。
+- **发布完成**：PR #283 合并到 `main`（`e8063553`，CI quick-gate 通过；合并后 main 的 CI 与文档站部署均成功）；tag/Release `v0.18.0`（latest）；npm `agentworkshop@0.18.0`；安装版桌面端已就地更新到 0.18.0。详见 §10。
+- **修复 6 个 P1/P2 缺陷**（均有回归测试）：console「新建频道」跨工作区串区（P1）、11 个 REST handler + 数采推送 + A2A 方法的「先查资源后验身份」（P2，未鉴权 ID 枚举 oracle）、`dcw/line/query` 无窗口时对时序超表全表聚合（P2，共享 Timescale 实测 10–15 s）、已验证经验被同键重放改写正文（P2）、建频道时绑线授权校验晚于落库（P2）、A2A AgentCard 开关可被 RPC 旁路（P3 但属授权面）；另修 2 项 P3 界面可访问性/可读性、1 处套件漂移与文档漂移。
+- **认证门禁**：unit **2306 / 2305 通过 / 0 失败 / 1 跳过**；lint、typecheck、cssvars、i18n、docs:check、readme、生命周期契约、skills、MCP、plugin-lifecycle、SDK、twin-provider 全绿。
+- **API 面全量探测**：构建产物注册的 **503 个 handler** 经 **1060 次探测**（含 35 个带真实 ID 的详情读），**0 个 5xx、0 个连接错误**；10 个「管理员无效请求被接受」逐条定性（§5.3）。
+- **实机演示**：串区修复在真实 console 弹窗上端到端证实；产线治理 **44/44**（HITL + 设备回读 + 回合来源门）；UI 走查 **54/54**（27 路由 × 明暗主题，0 错误 0 溢出）。
+- **需求追溯**：README 40 条产品声明 33 条实现+测试互证；**三份计划都没有全部落地**——Project 层计划 192 项中完全验证 56 项（29%），上下文学习框架 46 项中完全验证 5 项，RSI 证据晋升计划 40 项中 0 项；逐项状态见 §7——计划文本的复选框全未回填，不能当作完成度证据。
+- **安全扫描**：Mimosa 深扫有封印（29 项发现，覆盖状态 partial/inconclusive），**不构成安全通过**（§7.5）。
 
 ## 1. 基线与环境纪律
 
@@ -21,7 +24,7 @@
 | 会话密钥 | 每次启动运行时生成，不落盘、不回显 |
 | 凭据 | 只存 `D:/tmp/aw-release-acceptance/private/admin-credential.json`（私有目录） |
 | 共享服务 | MQTT 1883 / Timescale 5432 / 对象存储 9000 仅复用读取，未重启；未对真实设备写入 |
-| 已安装桌面 | 0.17.5 运行中（pid 65456，真实 home），本轮审查阶段未触碰，update 在 §6.4 单独执行 |
+| 已安装桌面 | 审查阶段为 0.17.5（pid 65456，真实 home，未触碰）；发版后更新到 0.18.0，过程与证据见 §6.5 |
 
 第一轮扫描曾触发产品自身防护并被 429/403 拦截（`IP temporarily blocked (scanning)`、`Too many requests`），说明限流与 404 扫描封锁按设计工作；随后扫描器改为**顺序 + 滚动窗口预算**（≤45 个 404/min、≤480 次 /api/min，均低于产品默认阈值 60 与 600）重跑，未再触发。
 
@@ -76,6 +79,8 @@
 ### 4.2 发布产物冒烟（T5）
 
 - `npm pack --dry-run --ignore-scripts`：`agentworkshop@0.18.0`，5838 个文件、45.4 MB；`.output/server/index.mjs`、`desktop/*`、`chrome/splash.html`、`skills/**`、`sdk/**`、`mcp/**` 均在清单内；无 `docs/audit/evidence`、`paper/`、`bench/`、`.mimosa/` 泄漏。
+- **正式发布包**（从注册中心下载，sha1 `c57ea85b…` 与 `npm view` 一致）装入全新隔离前缀后：`GET /` → 200（32,200 B）；`GET /api/workshop/aml`、`/api/workshop/workspaces` 未鉴权 → 401；`/api/health` → `ok / 0.18.0 / workshop ready`。
+- **会话密钥口径（更正文档表述）**：验收手册写「缺 `NUXT_SESSION_PASSWORD` 时拒绝启动」，实测 `aw start`（home 模式）在**不提供该环境变量**时照常启动——因为 `runBootstrap` 在首启时生成随机密钥写入 `<home>/.env` 并由 `preloadDotEnv` 注入；`server/plugins/security.ts` 的拒绝只在 `NODE_ENV=production` 且密钥为空/仓库默认值时触发。浏览器会话是服务端存储的不透明随机凭据（`randomBytes(32)`，库内只存哈希，可过期与吊销），不依赖该密钥；`server/` 业务代码没有 `seal`/`unseal` 调用。结论：**默认路径安全（靠生成随机密钥，而非拒绝）**，属文档不精确，不是漏洞。另：全局安装里直接 `node .output/server/index.mjs` 会找不到 `schema.json`，必须走 `aw start`。
 
 ## 5. 后端 API 全量探测
 
@@ -135,9 +140,33 @@
 
 隔离实例：8 个插件装载、`failures=[]`；工具注册表 142 项（builtin 127 / plugin 15）。
 
-### 6.5 桌面安装版 update
+### 6.5 桌面安装版 update（0.17.5 → 0.18.0）
 
-**TBD-DESKTOP**
+**产物一致性**：`npm publish` 的 `prepublishOnly` 会重新构建，所以「先本地 `npm pack` 再打安装包」得到的两份 tarball 字节不同（本地 `4a82fb4e…` vs 注册中心 `c57ea85b…`）。为让 **npm 包 = Release 附件 = 安装包内后端** 三者同源，安装包是用注册中心下载的正式 tarball 装入隔离前缀后重新构建的；第一版安装包作废未发布。
+
+**路径一：应用内更新（真实用户路径，本网络下未能完成）**
+
+| 步骤 | 结果 |
+|---|---|
+| 应用自身的周期检查 | Release 发布后，运行中的 0.17.5 在下一次 30 分钟检查时亮出标题栏「更新 v0.18.0」 |
+| 触发 | 通过 Windows UI Automation 按可访问名称定位该按钮并触发（不依赖调试端口、不重启应用）；下载开始 |
+| 下载 | 更新器按设计**直连** GitHub 资产 CDN（`assertPublicHost` 拒绝非公网地址，不走本地代理）。本机直连实测 60–120 KB/s 且间歇停滞，20 分钟约 104 MB（≈25%）；更新器预算为 30 分钟，按此速度必然超时。同一资产经本机系统代理（127.0.0.1:7890）curl 实测 5.4 MB/s |
+| 进度显示 | 标题栏显示 10% 时真实已 24%：CDN 重定向响应不带 `Content-Length`，进度按大小上限而非真实文件大小计算（显示问题） |
+| 结论 | 在「直连 GitHub CDN 很慢、依赖系统代理」的网络下，应用内更新路径不可用。**这是既有限制，非本轮回归**；改进方向见 §8 |
+
+**路径二：应用自身优雅退出 + 已校验安装包就地静默安装（已完成）**
+
+| 步骤 | 结果 |
+|---|---|
+| 空闲确认 | 退出前 health：`activeChannels=0`、`wiredAgents=0` |
+| 优雅退出 | 通过托盘菜单「退出 AgentWorkShop 0.17.5」（UI Automation，仅操作名称以 `AgentWorkShop` 开头的托盘图标）；状态文件先变 `phase: quitting`（后端服务先行停止），2 秒内进程自行退出；**全程未强杀任何进程** |
+| 安装包校验 | sha256 `ee2c59ce…` = Release 资产 `SHA256SUMS.txt` |
+| 残留检查 | 安装目录下无任何运行中的进程 |
+| 静默安装 | `/S /D=<原安装目录>`，13 分 11 秒，退出码 0 |
+| 重新启动 | 24 秒就绪：`version=0.18.0 pid=88792 service=online`，托盘已创建，用户设置原样保留（关闭到托盘等 5 项），`lastError=null` |
+| 独立复核 | `/api/health` → `ok / 0.18.0 / workshop ready`，DAQ 链路在线；`resources/backend/package.json` = 0.18.0，exe 产品版本 0.18.0.0；未鉴权 `GET /api/workshop/agents/<不存在>` → **401**（本轮「先验身份」修复已在安装版生效） |
+
+收尾：清除了被中断的应用内下载留下的 104 MB 不完整临时文件（我触发的下载；应用已是 0.18.0 不会再下载同版本）。
 
 ## 7. 需求追溯（文档声明的真实需求 vs 实现）
 
@@ -151,7 +180,13 @@ D–F 段（47 项）：**VERIFIED 16 / PARTIAL 17 / SUPERSEDED 5 / IMPL_NO_TEST
 
 J–M 段（55 项）：**VERIFIED 14 / PARTIAL 36 / NOT_FOUND 3 / IMPL_NO_TEST 1 / SUPERSEDED 1**。未找到：性能 fixture（J8）、observe 影子运行报告（K15）、重复/双批准 SQL 断言（M3）。
 
-A–C 段（45 项）与 G–I 段（45 项）本轮**未完成逐项核对**：执行核对的子任务在 4 小时内达到账号用量上限（2026-11-23 17:16 中断，限额当日 20:19 重置），不是代码问题。本报告对这些段不作完成度判定，也不以计划复选框代替实现证据；下轮可从未核对段继续。
+A–C 段（45 项）：**VERIFIED 17 / PARTIAL 13 / NOT_FOUND 6 / IMPL_NO_TEST 6 / SUPERSEDED 3**。未找到：项目数据保留期清理（A8）、`db/schema.sql` 文档同步（A10）、Mandate 列 `mandate_json`/`mandate_digest`/`revalidated_at`（A15）、P0 后零回归的过程性证明（B6）、控制频道唯一 project_leader 的 409 守卫（C2）、`allow_leader_manage` 开关（C15）。部分实现的要点：`project_usage` 表未建（A1）、没有项目删除/purge（A9）、非 admin spawn 策略只有纯函数单测、入口接线未测（B1/B3）、绑定产线频道没有 grant 校验（C13）。
+
+**已核对 147 项（A–C、D–F、J–M）小计**：VERIFIED 47 / PARTIAL 66 / NOT_FOUND 13 / IMPL_NO_TEST 12 / SUPERSEDED 9。所有 `tests/project-*.test.ts` 都把 `manager.submitProjectRoot` 打桩，且没有测试经过 `dispatchHostTool`——真实 manager 侧派发与工具分派路径未被测试直接覆盖。逐项明细见 `trace-project-AC.md`、`trace-project-DF.md`、`trace-project-JM.md`。
+
+G–I 段（45 项）：**VERIFIED 9 / PARTIAL 22 / IMPL_NO_TEST 7 / SUPERSEDED 4 / NOT_FOUND 3**。未找到：人工接管/暂停 leader 的 override API（G17）、项目级 SSE 实时更新（I10，页面靠 `setInterval` 轮询）、项目中英文案一致（I12——`projects/index.vue` 与 `[id].vue` 没有任何 `$t(`，文案为硬编码中文）。值得注意的部分实现：`project_leader` 运行时从未获得 SchedulerLoop（G1，无测试）；pause/archive 不会卸载 leader（G3）；没有项目级截止期与预算/频道数上限、`project_usage` 表未建（G13/G14）；五个计划内提示词文件缺三个（H1）；19 个 `project_*` 工具中 14 个没有英文工具定义（H8）；决策/事件/成果列表没有分页或过滤（I3）；Trace 只有 API、页面不调用（I16）。该段所有 UI 项都没有自动化测试，只有 Puppeteer 实机脚本触及页面。
+
+**192 项合计：VERIFIED 56（29%）/ PARTIAL 88 / NOT_FOUND 16 / IMPL_NO_TEST 19 / SUPERSEDED 13。**
 
 ### 7.3 上下文学习框架（`docs/plans/2026-11-13-…`，46 项）
 
@@ -166,12 +201,11 @@ A–C 段（45 项）与 G–I 段（45 项）本轮**未完成逐项核对**：
 | 缺口 | 本轮状态 |
 |---|---|
 | 物理 HIL | 从未测试；本轮产线治理 44/44 使用 `simulated=true` 影子/模拟驱动，不是物理证据 |
-| Mimosa 安全扫描 | 历轮 inconclusive，本轮提交时钩子亦报 `scanner_enobufs`；**不宣称安全通过** |
+| Mimosa 安全扫描 | 本轮对发布树（与合并后 main 逐文件一致）执行深度扫描：封印 `sha256:db9489b2d49483a3559047881c3daec500ea230adc751ac7303ac098fcbd765b`，29 项发现（high 16 / medium 13，分布在 14 个文件），依赖核查完成（扫描 303 个包，命中 0 / 未知 0）；覆盖状态 `partial`、运行状态 `inconclusive`（调用图部分不完整）；证据边界为静态扫描。29 项里 1 项落在本轮改动过的文件（`a2a/[agentId]/rpc/index.post.ts:434`，「dispatch 经 1 跳到达 path-traversal」），该行不是本轮新增或修改的行。提交/推送钩子每次仍报 `scanner_enobufs`。**只报封印与计数，不构成安全通过** |
 | 外部 IDD / RAG / MES 真机 | 本机未运行这些服务，相关套件 NOT_RUN；IDD/RAG 插件仅静态与单测覆盖 |
 | UI 全量交互回归 | 本轮补 27 路由 × 双主题渲染走查（0 错误/0 溢出）与 console 建频道交互；完整点击/键盘回归仍未覆盖 |
 | 容量与并发 | 容量闸可配，单实例串行执行锁是显式设计；大规模并发未测 |
 | 计划签署 | Project 层 M10 要求 Owner/Security/QA/Ops 四角色签字，当前只有 AI 签署，人工 Owner 仍「待签署」 |
-| Project 计划 A–I 段 | 本轮未逐项核对（见 §7.2） |
 
 ## 8. 已知限制与未覆盖面
 
@@ -181,16 +215,34 @@ A–C 段（45 项）与 G–I 段（45 项）本轮**未完成逐项核对**：
 | 物理 HIL | 未测试；全部产线为 `simulated=true` 或 mock 驱动 |
 | 外部 IDD / RAG / MES | 本轮本机未运行这些服务，相关套件未执行，不作通过声明 |
 | 真实 LLM 作业 | 本轮未跑真实模型回合；频道/任务链以 mock harness 验证 |
-| Mimosa 安全扫描 | 本轮未执行；不宣称安全通过 |
+| Mimosa 安全扫描 | 已执行深度扫描并取得封印，但覆盖为 partial/inconclusive（§7.5）；**不宣称安全通过** |
+| 应用内更新（桌面） | 更新器直连 GitHub 资产 CDN、不支持系统代理、下载预算 30 分钟、不支持断点续传：在直连很慢的网络下 416 MB 安装包无法在预算内下完（本机实测 60–120 KB/s，经系统代理可到 5.4 MB/s）；CDN 不带 `Content-Length` 时进度百分比按大小上限计算而偏低；下载中途退出应用不会清理不完整临时文件。本轮桌面更新因此改走「托盘优雅退出 + 已校验安装包静默安装」。这些是待改进项，未在本轮修改 |
+| 模板实例化不挂载（既有） | `app/pages/workshop/channel-templates.vue:150` 从模板实例化频道后不挂到任何工作区，这些频道在按工作区作用域读取的 console 里不可见；本轮只修了 console「新建频道」弹窗与 REST 缺省路径，模板路径未改（独立审查 P3，留待下轮） |
+| 项目页未国际化（既有） | `app/pages/projects/index.vue` 与 `[id].vue` 没有任何 `$t(`，文案为硬编码中文（计划核对 I12）；本轮未改 |
 | 签名/HIL 认证 | 安装器未签名；软件 PASS 不等于安全认证 |
 | 计划签署 | Project 层计划 M10 要求的 Owner/Security/QA/Ops 四角色签字仍缺人工 Owner 签署 |
 
 ## 9. 证据索引
 
-- 门禁：`logs/gates-summary.txt`、`logs/gates-summary-2.txt`、`logs/*.log`
-- API 探测：`evidence/route-table.json`、`evidence/api-sweep-run3.json`、`evidence/get-latency-profile.json`
-- 串区复现与修复后 UI：`evidence/regression-default-workspace-leak.json`、`evidence/console-mount/`
-- UI 走查：`evidence/ui-walk/`
-- 水合探针：`evidence/hydration/`
-- 需求追溯：`evidence/trace-project-JM.md`、`evidence/trace-*.md`
-- 本轮私有目录（不入库）：`D:/tmp/aw-release-acceptance/`
+- 门禁：`logs/gates-summary.txt`、`logs/gates-summary-2.txt`、`logs/gates-summary-4.txt`、`logs/*.log`（本机 `D:/tmp/aw-release-acceptance/`）
+- API 探测：`route-table.json`、`api-sweep-run3.json`、`get-latency-profile.json`（本目录）
+- 串区复现与修复后 UI：`regression-default-workspace-leak.json`、`console-mount-results.json`、截图 `01`–`04`（本目录）
+- UI 走查：`ui-walk-index.txt`（54 张截图在本机 `evidence/ui-walk/`）
+- 水合探针：`hydration-report.json`
+- 产线治理：`e2e-line-governance.log`
+- 需求追溯明细（本目录）：`trace-readme-claims.md`、`trace-project-AC.md`、`trace-project-DF.md`、`trace-project-GI.md`、`trace-project-JM.md`、`trace-context-framework.md`、`trace-rsi-plan.md`；独立代码审查 `trace-code-review.md`
+- 遗留证据入库清单：`evidence-intake-manifest.json`（脱敏 14 处、剔除 4 个工具目录）
+- 桌面更新：`logs/desktop-inapp-update.log`、`logs/desktop-install-local.log`（本机）
+- Mimosa：本机 `D:/tmp/aw-release-acceptance/mimosa-scans/scan-2026-11-23T12-11-23.891Z-0e926c016af7/`（`findings.json`、`coverage.json`、`seal.json`、`report.md`）
+
+## 10. 发布记录
+
+| 项 | 值 |
+|---|---|
+| 合并 | PR #283（9 个提交）→ `main` `e8063553`；PR CI quick-gate 通过（4m43s）；合并后 main 的 CI 与 Deploy Docs 均 success |
+| 标签 | `v0.18.0` → `e8063553` |
+| npm | `agentworkshop@0.18.0`，shasum `c57ea85b904520aec5adea506f5c8cd42a21cb5e`，`npm view` 与注册中心 tarball（HTTP 200）一致 |
+| GitHub Release | `v0.18.0`（latest，非草稿/非预发布），发布于 2026-11-23T11:59:02Z |
+| 附件 | `agentworkshop-0.18.0.tgz` 45,437,926 B，sha256 `1cdaf2f2481dade4d0ac9abdaedc524e4cd0d4de06efeb5345d8006c0d5ded37`（= 注册中心 tarball）；`AgentWorkShop-Setup-0.18.0-win-x64.exe` 416,654,810 B，sha256 `ee2c59ce0f4324571c6efa8a208ea37ac8dec8c2abf32091e2a422d099024196`；`SHA256SUMS.txt`（远端与本地逐字节一致） |
+| 安装包来源 | 用注册中心正式 tarball 装入隔离前缀后构建，内嵌后端 0.18.0（`desktop/build.mjs --backend <prefix>/node_modules/agentworkshop`） |
+| 本地 `main` | 已快进到 `origin/main`（纯引用更新；主工作树当时在论文分支上，未触碰） |
