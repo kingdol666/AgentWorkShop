@@ -52,16 +52,28 @@ const wsLabel = computed(() => {
 
 const isFullscreen = ref(false)
 
-function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen()
-    isFullscreen.value = true
+function syncFullscreen() {
+  isFullscreen.value = Boolean(document.fullscreenElement)
+}
+
+async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen()
+    else await document.documentElement.requestFullscreen()
   }
-  else {
-    document.exitFullscreen()
-    isFullscreen.value = false
+  catch {
+    // Some environments deny fullscreen; keep the control in sync with the browser.
+    syncFullscreen()
   }
 }
+
+onMounted(() => {
+  syncFullscreen()
+  document.addEventListener('fullscreenchange', syncFullscreen)
+})
+onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFullscreen))
+
+const themeAction = computed(() => store.isDark ? t('common.light') : t('common.dark'))
 </script>
 
 <template>
@@ -74,20 +86,29 @@ function toggleFullscreen() {
   />
   <a-tooltip :title="t('header.fullscreen')">
     <button
+      type="button"
       class="icon-btn hdr-fullscreen"
+      :aria-label="t('header.fullscreen')"
+      :aria-pressed="isFullscreen"
       @click="toggleFullscreen"
     >
       <span
         class="i-tabler-arrows-maximize"
         :class="{ hidden: isFullscreen }"
+        aria-hidden="true"
       />
       <span
         class="i-tabler-arrows-minimize"
         :class="{ hidden: !isFullscreen }"
+        aria-hidden="true"
       />
     </button>
   </a-tooltip>
 
+  <label
+    class="sr-only"
+    for="hdr-locale"
+  >{{ t('header.language') }}</label>
   <a-select
     id="hdr-locale"
     :value="locale"
@@ -97,18 +118,22 @@ function toggleFullscreen() {
     @change="switchLocale"
   />
 
-  <a-tooltip :title="store.isDark ? t('common.light') : t('common.dark')">
+  <a-tooltip :title="themeAction">
     <button
+      type="button"
       class="icon-btn"
+      :aria-label="themeAction"
       @click="store.toggleDark()"
     >
       <span
         class="i-tabler-sun-high"
         :class="{ hidden: store.isDark }"
+        aria-hidden="true"
       />
       <span
         class="i-tabler-moon-stars"
         :class="{ hidden: !store.isDark }"
+        aria-hidden="true"
       />
     </button>
   </a-tooltip>

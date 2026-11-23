@@ -486,7 +486,7 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
     <section class="toolbar">
       <a-select
         :value="draftId"
-        style="min-width: 320px"
+        class="draft-select"
         :options="draftOptions"
         :placeholder="t('ontology.pickDraft')"
         show-search
@@ -518,11 +518,13 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
         :title="t('ontology.publishConfirm')"
         :ok-text="t('ontology.publish')"
         :cancel-text="t('common.cancel')"
+        :ok-button-props="{ class: 'ontology-publish' }"
         placement="bottomRight"
         @confirm="runPublish"
       >
         <a-button
           v-if="isAdmin"
+          class="ontology-publish"
           :disabled="!draftId || errors.length > 0 || bindingFailures.length > 0"
           type="primary"
           :loading="busy"
@@ -959,14 +961,14 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
         <a-select
           v-model:value="diffFrom"
           :options="versionOptions"
-          style="width: 140px"
+          class="version-select"
           :placeholder="t('ontology.from')"
         />
         <span>→</span>
         <a-select
           v-model:value="diffTo"
           :options="versionOptions"
-          style="width: 140px"
+          class="version-select"
           :placeholder="t('ontology.to')"
         />
         <a-button
@@ -1079,6 +1081,19 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
 .autofix-log h3 { margin: 0 0 6px; font-size: 13px; color: var(--ink-soft); }
 .head-actions { display: flex; gap: 8px; }
 .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.draft-select { min-width: min(320px, 100%); max-width: 100%; }
+/* The confirmation is teleported, so both publish buttons share a unique global class. */
+:global(.ant-btn.ant-btn-primary.ontology-publish:not(:disabled)) {
+  color: var(--on-accent);
+  background-color: var(--tone-success-dot);
+}
+:global(.ant-btn.ant-btn-primary.ontology-publish:not(:disabled):is(:hover, :active)) {
+  background-color: color-mix(in srgb, var(--tone-success-dot) 88%, var(--ink));
+}
+:global(.ant-btn.ant-btn-primary.ontology-publish:disabled) {
+  color: var(--ink-faint);
+  background-color: var(--paper-deep);
+}
 .hint { color: var(--ink-faint); font-size: 12px; }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .panel { display: flex; flex-direction: column; gap: 14px; }
@@ -1098,11 +1113,12 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
 .artifacts h3 { margin: 0 0 6px; font-size: 12px; color: var(--ink-faint); }
 .artifacts pre { margin: 0; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 11px; max-height: 260px; overflow: auto; }
 .compare { display: flex; gap: 8px; align-items: center; }
+.version-select { width: 140px; }
 .diff { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
 .chip { margin-right: 6px; }
 .retire { margin-left: 8px; }
 .graph-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.node-search { min-width: 300px; }
+.node-search { min-width: min(300px, 100%); max-width: 100%; }
 .node-detail { display: grid; grid-template-columns: 96px 1fr; gap: 6px 12px; margin: 0 0 14px; }
 .node-detail dt { color: var(--ink-faint); font-size: 12px; }
 .node-detail dd { margin: 0; font-size: 13px; }
@@ -1111,4 +1127,14 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
 /* 新建草稿表单(a-modal 内) */
 .draft-form { display: grid; gap: 10px; }
 .draft-form label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-soft); }
+
+@media (max-width: 420px) {
+  .compare {
+    display: grid;
+    grid-template-columns: minmax(0, 140px) auto minmax(0, 140px);
+    justify-content: start;
+  }
+  .version-select { width: 100%; min-width: 0; }
+  .compare > .ant-btn { grid-column: 1 / -1; justify-self: start; }
+}
 </style>

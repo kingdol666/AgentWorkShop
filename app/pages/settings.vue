@@ -9,23 +9,57 @@ import SystemPane from '~/components/settings/SystemPane.vue'
 const { t } = useI18n()
 const site = useSiteConfig()
 
-const activeTab = ref('appearance')
+const { isDrawer } = useResponsive()
+const horizontal = ref(false)
+onMounted(() => {
+  watchEffect(() => {
+    horizontal.value = isDrawer.value
+  })
+})
+
+type SettingsTab = 'appearance' | 'runtime' | 'skills' | 'mcp' | 'prefabs' | 'system'
+const activeTab = ref<SettingsTab>('appearance')
+const focusedTab = ref<SettingsTab>('appearance')
 
 const tabs = computed(() => [
-  { key: 'appearance', icon: 'i-tabler-palette', label: t('settings.theme') },
-  { key: 'runtime', icon: 'i-tabler-settings', label: t('settings.runtimeTab') },
-  { key: 'skills', icon: 'i-tabler-puzzle', label: t('settings.skillsTab') },
-  { key: 'mcp', icon: 'i-tabler-plug', label: t('settings.mcpTab') },
-  { key: 'prefabs', icon: 'i-tabler-box', label: t('settings.prefabsTab') },
-  { key: 'system', icon: 'i-tabler-server-2', label: t('settings.systemTab') },
-])
+  { key: 'appearance', icon: 'i-tabler-palette', label: t('settings.theme'), pane: AppearancePane },
+  { key: 'runtime', icon: 'i-tabler-settings', label: t('settings.runtimeTab'), pane: RuntimePane },
+  { key: 'skills', icon: 'i-tabler-puzzle', label: t('settings.skillsTab'), pane: SkillsPane },
+  { key: 'mcp', icon: 'i-tabler-plug', label: t('settings.mcpTab'), pane: McpServersPane },
+  { key: 'prefabs', icon: 'i-tabler-box', label: t('settings.prefabsTab'), pane: AgentPrefabsPane },
+  { key: 'system', icon: 'i-tabler-server-2', label: t('settings.systemTab'), pane: SystemPane },
+] as const)
 
-/** 懒挂载:隐藏 pane 此前也在跑请求(Runtime 98 项配置/系统参数);首次激活才挂载,挂后保留状态 */
-type SettingsTab = 'appearance' | 'runtime' | 'skills' | 'mcp' | 'prefabs' | 'system'
+/** 懒挂载:首次激活才挂载(键盘预览焦点不触发请求),挂后保留状态。 */
 const mountedPanes = reactive<Record<SettingsTab, boolean>>({ appearance: true, runtime: false, skills: false, mcp: false, prefabs: false, system: false })
-watch(activeTab, (k) => {
-  if (k === 'appearance' || k === 'runtime' || k === 'skills' || k === 'mcp' || k === 'prefabs' || k === 'system') mountedPanes[k] = true
-})
+function selectTab(key: SettingsTab) {
+  focusedTab.value = key
+  activeTab.value = key
+  mountedPanes[key] = true
+}
+
+function moveTabFocus(event: KeyboardEvent, index: number) {
+  const last = tabs.value.length - 1
+  const previous = horizontal.value ? 'ArrowLeft' : 'ArrowUp'
+  const next = horizontal.value ? 'ArrowRight' : 'ArrowDown'
+  let target: number
+  if (event.key === previous) target = index === 0 ? last : index - 1
+  else if (event.key === next) target = index === last ? 0 : index + 1
+  else if (event.key === 'Home') target = 0
+  else if (event.key === 'End') target = last
+  else return
+
+  const tab = tabs.value[target]
+  if (!tab) return
+  event.preventDefault()
+  document.getElementById(`settings-tab-${tab.key}`)?.focus()
+}
+
+function resetTabFocus(event: FocusEvent) {
+  if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) {
+    focusedTab.value = activeTab.value
+  }
+}
 </script>
 
 <template>
@@ -49,53 +83,50 @@ watch(activeTab, (k) => {
         <div
           class="settings-nav"
           role="tablist"
+          :aria-label="t('settings.title')"
+          :aria-orientation="horizontal ? 'horizontal' : 'vertical'"
+          @focusout="resetTabFocus"
         >
           <button
-            v-for="tab in tabs"
+            v-for="(tab, index) in tabs"
+            :id="`settings-tab-${tab.key}`"
             :key="tab.key"
+            type="button"
             role="tab"
-            :aria-selected="activeTab === tab.key ? 'true' : 'false'"
+            :aria-selected="activeTab === tab.key"
+            :aria-controls="`settings-panel-${tab.key}`"
+            :tabindex="focusedTab === tab.key ? 0 : -1"
             class="nav-item"
             :class="{ active: activeTab === tab.key }"
-            @click="activeTab = tab.key"
+            @focus="focusedTab = tab.key"
+            @keydown="moveTabFocus($event, index)"
+            @click="selectTab(tab.key)"
           >
-            <span :class="tab.icon" />
+            <span
+              :class="tab.icon"
+              aria-hidden="true"
+            />
             <span>{{ tab.label }}</span>
           </button>
         </div>
 
-        <!-- 右侧内容区(懒挂载:首次激活才挂,挂后保留) -->
+        <!-- 右侧内容区(保留 ARIA 目标，延迟挂载内容) -->
         <div class="settings-body">
-          <!-- 外观:主题色 / 深浅 / 语言(全部实时生效并持久化) -->
-          <AppearancePane
-            v-if="mountedPanes.appearance"
-            :active-tab="activeTab"
-          />
-          <!-- 运行配置:服务端持久化 + live 热重载/restart 重启生效 -->
-          <RuntimePane
-            v-if="mountedPanes.runtime"
-            :active-tab="activeTab"
-          />
-          <!-- 技能:发现/受管导入/启停(admin 写,admin/editor 读) -->
-          <SkillsPane
-            v-if="mountedPanes.skills"
-            :active-tab="activeTab"
-          />
-          <!-- 外部 MCP:登记/发现/审阅/启停(admin 写,admin/editor 读) -->
-          <McpServersPane
-            v-if="mountedPanes.mcp"
-            :active-tab="activeTab"
-          />
-          <!-- AgentPrefab:草稿/插槽/能力选择/发布/绑定 -->
-          <AgentPrefabsPane
-            v-if="mountedPanes.prefabs"
-            :active-tab="activeTab"
-          />
-          <!-- 系统:只读运行参数 -->
-          <SystemPane
-            v-if="mountedPanes.system"
-            :active-tab="activeTab"
-          />
+          <div
+            v-for="tab in tabs"
+            :id="`settings-panel-${tab.key}`"
+            :key="tab.key"
+            :hidden="activeTab !== tab.key"
+            role="tabpanel"
+            :aria-labelledby="`settings-tab-${tab.key}`"
+            tabindex="0"
+          >
+            <component
+              :is="tab.pane"
+              v-if="mountedPanes[tab.key]"
+              :active-tab="activeTab"
+            />
+          </div>
         </div>
       </div>
     </a-card>

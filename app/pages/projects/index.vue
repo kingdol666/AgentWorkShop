@@ -334,13 +334,29 @@ async function instantiate(): Promise<void> {
           {{ f.label }}<span class="seg-n">{{ f.n }}</span>
         </button>
       </div>
-      <span class="toolbar-count">显示 {{ filtered.length }} / {{ projects.length }}</span>
+      <span
+        class="toolbar-count"
+        :aria-live="loading ? 'polite' : undefined"
+      >
+        <span
+          v-if="loading && projects.length"
+          class="toolbar-sync"
+        >
+          <span
+            class="i-tabler-loader-2 spin"
+            aria-hidden="true"
+          />
+          同步中
+        </span>
+        <span>显示 {{ filtered.length }} / {{ projects.length }}</span>
+      </span>
     </div>
 
     <div
       v-if="error"
       class="error-bar"
       role="alert"
+      aria-live="assertive"
     >
       <span class="i-tabler-alert-triangle" />
       <span class="err-text">{{ error }}</span>
@@ -385,6 +401,11 @@ async function instantiate(): Promise<void> {
       >
         <header class="pc-head">
           <span
+            class="pc-status-line"
+            :class="p.status"
+            aria-hidden="true"
+          />
+          <span
             class="pc-icon i-tabler-target-arrow"
             aria-hidden="true"
           />
@@ -398,7 +419,10 @@ async function instantiate(): Promise<void> {
           >{{ statusLabel(p.status) }}</span>
         </header>
 
-        <p class="pc-objective">
+        <p
+          class="pc-objective"
+          :title="p.objective"
+        >
           {{ p.objective }}
         </p>
 
@@ -416,17 +440,22 @@ async function instantiate(): Promise<void> {
           <span
             class="chip"
             :class="{ warn: !p.summary?.channels }"
+            :title="`${p.summary?.channels ?? 0} 个执行频道`"
           >
             <span class="i-tabler-antenna" />
             {{ p.summary?.channels ?? 0 }} 频道
           </span>
-          <span class="chip">
+          <span
+            class="chip"
+            :title="`${p.summary?.approvedDeliverables ?? 0} / ${p.summary?.deliverables ?? 0} 个交付物已签核`"
+          >
             <span class="i-tabler-package" />
             {{ p.summary?.approvedDeliverables ?? 0 }}/{{ p.summary?.deliverables ?? 0 }} 交付物
           </span>
           <span
             v-if="p.summary?.pendingApprovals"
             class="chip warn"
+            :title="`${p.summary.pendingApprovals} 项审批待处理`"
           >
             <span class="i-tabler-gavel" />
             {{ p.summary.pendingApprovals }} 待审批
@@ -639,8 +668,21 @@ async function instantiate(): Promise<void> {
 <style scoped>
 .projects-page {
   max-width: 1180px;
-  padding: 4px 4px 40px;
+  padding: 8px 8px 48px;
   margin: 0 auto;
+}
+
+.projects-page > .aw-page-head {
+  margin-bottom: 20px;
+}
+
+.projects-page :where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--focus-ring, var(--accent));
+  outline-offset: 3px;
+}
+
+.projects-page :where(button, a):focus:not(:focus-visible) {
+  outline: none;
 }
 
 .head-acts {
@@ -685,15 +727,32 @@ async function instantiate(): Promise<void> {
   overflow: hidden;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--radius-shell, 14px);
+  box-shadow: var(--shadow-lift-1, none);
 }
 
 .stat {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 14px 18px;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px 18px 15px;
 }
+
+.stat::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  content: '';
+  background: var(--line-strong);
+}
+
+.stat:first-child::before { background: var(--accent); }
+.stat:nth-child(2)::before { background: var(--tone-info-dot); }
+.stat:nth-child(3)::before { background: var(--tone-warning-dot); }
+.stat:nth-child(4)::before { background: var(--tone-success-dot); }
+.stat:nth-child(5)::before { background: var(--ink-faint); }
 
 .stat + .stat { border-left: 1px solid var(--line); }
 .stat b {
@@ -703,8 +762,15 @@ async function instantiate(): Promise<void> {
   line-height: 1.1;
   color: var(--ink);
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
-.stat span { font-size: 11.5px; color: var(--ink-faint); }
+.stat span {
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .tone-live { color: var(--tone-info-dot) !important; }
 .tone-warn { color: var(--tone-warning-dot) !important; }
 .tone-ok { color: var(--tone-success-dot) !important; }
@@ -715,7 +781,16 @@ async function instantiate(): Promise<void> {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+  padding: 2px;
   margin-bottom: 14px;
+}
+
+.toolbar::before {
+  width: 3px;
+  height: 18px;
+  content: '';
+  background: var(--accent);
+  border-radius: 99px;
 }
 
 .search {
@@ -723,15 +798,21 @@ async function instantiate(): Promise<void> {
   flex: 1 1 260px;
   gap: 8px;
   align-items: center;
-  max-width: 380px;
+  max-width: 420px;
+  min-width: 0;
   padding: 0 12px;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  transition: border-color var(--transition-fast);
+  border-radius: var(--radius-control, 10px);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 35%);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.search:focus-within { border-color: var(--line-strong, var(--ink-fainter)); }
+.search:focus-within {
+  border-color: var(--focus-ring, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring, var(--accent)) 14%, transparent);
+}
+
 .search span { font-size: 15px; color: var(--ink-faint); }
 .search input {
   width: 100%;
@@ -748,13 +829,20 @@ async function instantiate(): Promise<void> {
 .seg {
   display: inline-flex;
   gap: 2px;
+  max-width: 100%;
   padding: 3px;
+  overflow-x: auto;
   background: var(--paper-deep);
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 10px);
+  scrollbar-width: none;
 }
+
+.seg::-webkit-scrollbar { display: none; }
 
 .seg-item {
   display: inline-flex;
+  flex: 0 0 auto;
   gap: 6px;
   align-items: center;
   padding: 6px 11px;
@@ -764,7 +852,7 @@ async function instantiate(): Promise<void> {
   cursor: pointer;
   background: transparent;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-panel-sm, 8px);
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
@@ -780,9 +868,20 @@ async function instantiate(): Promise<void> {
   color: var(--ink-faint);
 }
 .toolbar-count {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-width: max-content;
   margin-left: auto;
   font-size: 11.5px;
   color: var(--ink-faint);
+}
+
+.toolbar-sync {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--tone-info-dot);
 }
 
 .error-bar {
@@ -793,10 +892,17 @@ async function instantiate(): Promise<void> {
   margin-bottom: 14px;
   font-size: 12.5px;
   color: var(--tone-danger-dot);
-  background: var(--tone-danger-bg);
-  border-radius: 10px;
+  background: color-mix(in srgb, var(--tone-danger-bg) 78%, var(--paper-raised));
+  border: 1px solid color-mix(in srgb, var(--tone-danger-dot) 18%, var(--line));
+  border-radius: var(--radius-control, 10px);
 }
-.err-text { flex: 1 1 auto; }
+.err-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── 卡片栅格 ── */
 .grid {
@@ -806,34 +912,51 @@ async function instantiate(): Promise<void> {
 }
 
 .pcard {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 18px 14px;
+  gap: 13px;
+  min-width: 0;
+  padding: 17px 18px 15px;
+  overflow: hidden;
   color: inherit;
   text-decoration: none;
   cursor: pointer;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--radius-panel, 14px);
+  box-shadow: var(--shadow-lift-1, none);
   transition: border-color var(--transition-fast), box-shadow var(--transition-base), transform var(--transition-base);
 }
 
 .pcard:hover {
   border-color: var(--line-strong, var(--ink-fainter));
-  box-shadow: 0 12px 30px rgb(12 10 9 / 7%);
+  box-shadow: var(--shadow-lift-2, 0 12px 30px rgb(12 10 9 / 7%));
   transform: translateY(-1px);
 }
 .pcard:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  border-color: var(--focus-ring, var(--accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring, var(--accent)) 18%, transparent), var(--shadow-lift-1, none);
+  outline: none;
 }
 
 .pc-head {
   display: flex;
   gap: 10px;
   align-items: center;
+  min-width: 0;
 }
+
+.pc-status-line {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--tone-neutral-dot);
+}
+.pc-status-line.active { background: var(--tone-info-dot); }
+.pc-status-line.draft, .pc-status-line.paused { background: var(--tone-warning-dot); }
+.pc-status-line.completed { background: var(--tone-success-dot); }
+
 .pc-icon {
   display: inline-flex;
   flex: 0 0 auto;
@@ -861,7 +984,13 @@ async function instantiate(): Promise<void> {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.pc-id { font-size: 10.5px; color: var(--ink-faint); }
+.pc-id {
+  overflow: hidden;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .pill {
   flex: 0 0 auto;
@@ -871,7 +1000,8 @@ async function instantiate(): Promise<void> {
   line-height: 15px;
   color: var(--tone-neutral-dot);
   background: var(--tone-neutral-bg);
-  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--tone-neutral-dot) 12%, transparent);
+  border-radius: var(--radius-pill, 999px);
 }
 .pill.active { color: var(--tone-info-dot); background: var(--tone-info-bg); }
 .pill.draft { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
@@ -885,20 +1015,41 @@ async function instantiate(): Promise<void> {
   margin: 0;
   overflow: hidden;
   font-size: 12.5px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--ink-soft);
+  text-overflow: ellipsis;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-.pc-progress { display: flex; flex-direction: column; gap: 6px; }
+.pc-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 11px;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel-sm, 8px);
+}
 .pc-progress-row {
   display: flex;
+  gap: 10px;
   justify-content: space-between;
+  min-width: 0;
   font-size: 11.5px;
   color: var(--ink-faint);
 }
-.pc-progress-row b { font-family: var(--font-mono, monospace); color: var(--ink-soft); }
+.pc-progress-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-progress-row b {
+  flex: 0 0 auto;
+  font-family: var(--font-mono, monospace);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
 .bar {
   height: 4px;
   overflow: hidden;
@@ -913,16 +1064,28 @@ async function instantiate(): Promise<void> {
   transition: width var(--transition-base);
 }
 
-.pc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pcard:has(.pill.completed) .bar i { background: var(--tone-success-dot); }
+
+.pc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
 .chip {
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  padding: 3px 8px;
+  max-width: 100%;
+  padding: 4px 8px;
+  overflow: hidden;
   font-size: 11px;
   color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   background: var(--paper-deep);
-  border-radius: 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-chip, 7px);
 }
 .chip span[class^='i-tabler'] { font-size: 12px; color: var(--ink-faint); }
 .chip.warn { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
@@ -930,6 +1093,7 @@ async function instantiate(): Promise<void> {
 
 .pc-foot {
   display: flex;
+  gap: 10px;
   justify-content: space-between;
   padding-top: 10px;
   margin-top: auto;
@@ -937,17 +1101,29 @@ async function instantiate(): Promise<void> {
   color: var(--ink-faint);
   border-top: 1px solid var(--line);
 }
+.pc-foot > .mono {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pc-time {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
 .mono { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); }
 
 /* ── 骨架屏 ── */
 .skeleton-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  min-height: 210px;
   padding: 18px;
   background: var(--paper-raised);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--radius-panel, 14px);
+  box-shadow: var(--shadow-lift-1, none);
 }
 .sk-line, .sk-bar {
   height: 10px;
@@ -971,13 +1147,21 @@ async function instantiate(): Promise<void> {
   flex-direction: column;
   gap: 10px;
   align-items: center;
-  padding: 44px 20px 38px;
+  min-height: 220px;
+  padding: 48px 20px 42px;
   text-align: center;
-  background: var(--paper-raised);
+  background: linear-gradient(180deg, var(--paper-raised), var(--paper-deep));
   border: 1px dashed var(--line-strong, var(--line));
-  border-radius: 16px;
+  border-radius: var(--radius-panel, 16px);
 }
-.empty-icon { font-size: 30px; color: var(--ink-fainter); }
+.empty-icon {
+  padding: 10px;
+  font-size: 30px;
+  color: var(--ink-faint);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel-sm, 8px);
+}
 .empty h2 { margin: 0; font-size: 16px; font-weight: 650; color: var(--ink); }
 .empty p { max-width: 460px; margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--ink-faint); }
 
@@ -1090,9 +1274,45 @@ async function instantiate(): Promise<void> {
   .form-grid { grid-template-columns: 1fr; }
 }
 
+@media (max-width: 620px) {
+  .projects-page { padding: 4px 0 32px; }
+  .projects-page > .aw-page-head { margin-bottom: 16px; }
+  .pc-id,
+  .pc-foot,
+  .pc-time { font-size: 11.5px !important; }
+  .head-acts { width: 100%; }
+  .head-acts .btn, .head-acts .aw-pill { flex: 1 1 0; }
+  .stat-band {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 14px;
+  }
+  .stat { padding: 13px 14px 12px; }
+  .stat:nth-child(3) { border-left: 0; }
+  .stat:nth-child(5) { grid-column: 1 / -1; }
+  .toolbar { align-items: stretch; }
+  .toolbar::before { display: none; }
+  .search { flex-basis: 100%; max-width: none; }
+  .seg { flex: 1 1 100%; }
+  .pcard { padding: 15px 15px 13px; }
+  .pc-head { gap: 8px; }
+  .pc-icon { width: 28px; height: 28px; }
+  .pc-title strong { font-size: 13.5px; }
+  .pill { padding-inline: 7px; }
+  .pc-foot { align-items: flex-start; }
+}
+
+@media (max-width: 380px) {
+  .stat-band { grid-template-columns: 1fr 1fr; }
+  .stat b { font-size: 21px; }
+  .stat span { font-size: 11px; }
+  .pc-head { align-items: flex-start; }
+  .pill { margin-left: auto; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sk-line, .sk-bar { animation: none; }
   .spin { animation: none; }
-  .pcard:hover { transform: none; }
+  .pcard, .pcard:hover { transform: none; transition: none; }
+  .bar i { transition: none; }
 }
 </style>
