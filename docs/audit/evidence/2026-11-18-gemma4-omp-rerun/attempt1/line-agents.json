@@ -1,0 +1,17 @@
+[
+ {
+  "id": "12984bcc-469d-4266-8605-d5ec621ed92f",
+  "channelId": "90bf677d-76d3-4804-9108-b643dbcffe10",
+  "name": "Gemma Line Lead",
+  "harness": "omp",
+  "role": "lead",
+  "agentKind": "channel_agent",
+  "enabled": 1,
+  "templateId": "8119896f-36bf-4e46-a770-398e0e93f101",
+  "config": {
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "rpcMode": "rpc"
+  }
+ }
+]

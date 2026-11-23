@@ -1,0 +1,832 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": [
+  {
+   "id": "3f8f9807-9cc6-4ab8-8d03-e9beb1b6f9ea",
+   "channelId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+   "rootQueueSeq": 1,
+   "assigneeId": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+   "creatorId": "",
+   "title": "产线经验样本A:温度整定",
+   "description": "[mode:goal][policy:no-deliverable] 产线经验样本A:温度整定:记录一条受治理的产线作业经验。",
+   "state": "COMPLETED",
+   "progress": 100,
+   "retryCount": 0,
+   "artifacts": [
+    {
+     "artifactId": "86eafaf8-cb4e-4f2e-a362-6c013455ab21",
+     "name": "deliverable",
+     "parts": [
+      {
+       "text": "经验A:冷却温度 SP 从 150°C 分步下调至 144°C,PV 稳定在 138–142°C 窗口。"
+      }
+     ]
+    },
+    {
+     "artifactId": "54cdc8bb-7763-43d2-97bd-3c6704eba166",
+     "name": "goal-summary",
+     "parts": [
+      {
+       "text": "【目标完成总结】\n目标: 产线经验样本A:温度整定\n判定标准: 任务描述中的需求已全部完成\n完成过程: (单任务达成) 全部完成\n最终成果: (交付物见任务 artifacts)\n结论: 目标已达成,全部任务完成。"
+      },
+      {
+       "text": "标准:任务描述中的需求已全部完成"
+      },
+      {
+       "text": "子任务:产线经验样本A:温度整定"
+      }
+     ]
+    }
+   ],
+   "history": [
+    {
+     "messageId": "dc65a1b5-848c-41f6-a2e2-4daae598eeaf",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "2ccfdab7-de8f-49cf-8bc7-19dd816c91aa",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"content is required for xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog.\"}],\"details\":{}}"
+      }
+     ]
+    },
+    {
+     "messageId": "7b0858be-42a8-4e0c-96dd-1e8bcdc2522c",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=0)"
+      }
+     ]
+    },
+    {
+     "messageId": "5ff06c2e-100d-4947-a68e-4a98a68559e2",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "11f2fe84-4154-47db-b24d-454f69c7d452",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 0%"
+      }
+     ]
+    },
+    {
+     "messageId": "c22cadd3-2de3-435b-83e5-a6eaa6130bae",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 0%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":0},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "f4f5d42d-63a5-4901-b9b6-59f18d528c6a",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=10)"
+      }
+     ]
+    },
+    {
+     "messageId": "692146f8-5274-432a-a44c-a9c746e6b57b",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "a48b486e-720d-4f6e-bc0d-e3758be384c2",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 10%"
+      }
+     ]
+    },
+    {
+     "messageId": "be99107c-76ef-41a8-9633-6d8c97ed4ad4",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 10%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":10},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "2878037f-3a3a-47e6-b3f9-65ed032ce126",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=20)"
+      }
+     ]
+    },
+    {
+     "messageId": "c72b7019-4ffa-4097-b977-190989bd37fd",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "b4337d36-c275-41ef-9bd3-d5425244d325",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 20%"
+      }
+     ]
+    },
+    {
+     "messageId": "cea4940c-06b7-4a9e-a9a5-cd37f3365e17",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 20%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":20},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "8024c48e-e4c3-494a-a62a-5d6c95a11077",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=30)"
+      }
+     ]
+    },
+    {
+     "messageId": "4960f939-9e52-4efa-8512-004573faca7d",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "132b3280-7431-4251-9bb9-7e9b53f5ab8f",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 30%"
+      }
+     ]
+    },
+    {
+     "messageId": "b2656311-5c2e-4850-9c89-1bda7e76094a",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 30%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":30},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "52bdc7c5-1d78-4441-94a1-a330ab551584",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=40)"
+      }
+     ]
+    },
+    {
+     "messageId": "7f2deb6f-f0d0-4220-9719-8bfe2647cde8",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "bfea020c-28fb-40ae-b37f-a31c55ea38c5",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 40%"
+      }
+     ]
+    },
+    {
+     "messageId": "2e186a19-29fa-4ab1-9bd0-a189aa8a13be",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 40%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":40},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "fdc30dfe-0665-483b-a406-d103602b9863",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=50)"
+      }
+     ]
+    },
+    {
+     "messageId": "a277d07f-eb9f-4c11-a47e-02c279dd4142",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "4de065f7-9b79-413f-a60f-2cb8eabadbe5",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 50%"
+      }
+     ]
+    },
+    {
+     "messageId": "668a00cf-a8bd-4530-8dbf-10230d131072",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 50%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":50},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "c52dd3b7-177d-4f70-a12b-60941827fbdf",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=60)"
+      }
+     ]
+    },
+    {
+     "messageId": "08e676e2-4096-4b77-b7cf-4482a45e96fa",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "d78671a4-d944-4a27-a151-9be2dc47c8b9",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 60%"
+      }
+     ]
+    },
+    {
+     "messageId": "f42d0fe5-75c6-41c6-93bf-49e0fcb64ddb",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 60%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":60},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "dc4dbe43-3652-4a6e-8c5a-2926c338d289",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=70)"
+      }
+     ]
+    },
+    {
+     "messageId": "32b6f3e3-4100-47a9-9a59-6d5cfb8cb5da",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "3dccad0b-ba31-4684-957c-cc536199bff7",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 70%"
+      }
+     ]
+    },
+    {
+     "messageId": "e8fbbfcb-e81a-4225-bbd4-409eb2355d7d",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 70%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":70},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "5800f832-d694-48d0-a31e-4e7ff280413a",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=80)"
+      }
+     ]
+    },
+    {
+     "messageId": "ef846105-e5ed-4b8e-aae2-03fe0f61b914",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "180a8959-aa8b-498b-9f80-1fe0c0501eb9",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 80%"
+      }
+     ]
+    },
+    {
+     "messageId": "73c3bdd7-9a3f-4c01-a379-56e9d314e861",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 80%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":80},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "2cc059b4-d1c4-4fd2-9f19-e2a56b543e57",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=90)"
+      }
+     ]
+    },
+    {
+     "messageId": "372b008f-b764-490e-8ee6-d0ee684e6690",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "5bb54642-3c10-44fd-bd61-af18950cfd90",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 90%"
+      }
+     ]
+    },
+    {
+     "messageId": "85eef7d7-b0b4-47a9-a72e-d22a84daa5b3",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 90%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":90},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "4adc8d49-857e-4b3c-ab2f-120a97776aa4",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "c36e1c52-ef60-42c7-9c2b-1a35006c6146",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"No such tool: xd://aw_b660531891fd650fcbe8ea7a21f9035e_c55dec5b12b44b7c_report_prog. Mounted devices: ast_edit, debug, lsp, mcp__kb_mcp_backend_status, mcp__kb_mcp_experience_apply, mcp__kb_mcp_experience_apply_decay, mcp__kb_mcp_experience_check_stale, mcp__kb_mcp"
+      }
+     ]
+    },
+    {
+     "messageId": "56106c44-3062-4224-9d29-d90d9cf97bfe",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=15)"
+      }
+     ]
+    },
+    {
+     "messageId": "945d4262-9914-4b48-986c-4df306d29ea4",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "8be3e941-acba-4d04-bdcf-0d6fed632b82",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 15%"
+      }
+     ]
+    },
+    {
+     "messageId": "69958df5-940f-40ff-9498-b7cea95f7924",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 15%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":15},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "0b438962-7ae9-4d25-8141-cef203363a5a",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=20)"
+      }
+     ]
+    },
+    {
+     "messageId": "990f288c-3987-4f43-a2a8-09a9edcd255e",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 20%"
+      }
+     ]
+    },
+    {
+     "messageId": "320ecec9-fd44-422f-ba59-961044117fa1",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "b1a1ceac-916b-4716-bfd9-d5f7dbb888d9",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 20%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":20},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "71b0beba-747e-4d9a-8c3e-ad52b1e1c30d",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=25)"
+      }
+     ]
+    },
+    {
+     "messageId": "3ed7b074-838d-41e2-bb6b-4c2535399900",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 25%"
+      }
+     ]
+    },
+    {
+     "messageId": "4076b63e-21ad-4485-8cb9-ccad466b7fdf",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "cdfe35c4-240b-4e7c-a17d-3f2a10fdf550",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 25%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":25},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "77649fc6-b2f1-4b3d-adbf-00a6979e1b9b",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=30)"
+      }
+     ]
+    },
+    {
+     "messageId": "ca55d8a4-bf0d-409b-aa1f-ca161a9ebd56",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "cefea9be-6b01-41a5-a1ce-97ded7799d83",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 30%"
+      }
+     ]
+    },
+    {
+     "messageId": "459ea42b-c2d3-4246-ac8e-bcb2af2dd446",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 30%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":30},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "d43ac421-4b89-4c36-846b-0ffa9145a88a",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=35)"
+      }
+     ]
+    },
+    {
+     "messageId": "9e3989d3-2578-4943-87a6-d2f999c0b635",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "6771c45c-e034-4ded-a96e-cbb0d4f92d59",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 35%"
+      }
+     ]
+    },
+    {
+     "messageId": "2e32beed-21ac-4e4a-9691-eee3c45004c6",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 35%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":35},\"tier\":\"exec\"}}}"
+      }
+     ]
+    },
+    {
+     "messageId": "94e2d0d2-d51e-41f7-9ba9-3049f0cc6282",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress(progress=40)"
+      }
+     ]
+    },
+    {
+     "messageId": "178abacf-6a8f-4c4d-bc79-46ce453ae415",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write(xd://aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report…)"
+      }
+     ]
+    },
+    {
+     "messageId": "d3ccc459-5b5a-41c3-ba97-3ceafa7d0dc1",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 report_progress ✅ 完成: 进度已上报: 40%"
+      }
+     ]
+    },
+    {
+     "messageId": "5c9c435e-614f-4eeb-b258-7820b79f5e79",
+     "contextId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+     "role": "ROLE_AGENT",
+     "parts": [
+      {
+       "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"进度已上报: 40%\"}],\"details\":{\"xdev\":{\"tool\":\"aw_8caf6941fbdeefd09866a87132d58782_c55dec5b12b44b7c_report_prog\",\"mode\":\"execute\",\"args\":{\"progress\":40},\"tier\":\"exec\"}}}"
+      }
+     ]
+    }
+   ],
+   "source": "channel",
+   "assignmentGeneration": 0,
+   "executionLeaseId": "ca3f5438-7c05-4c09-b146-7cabeeac648b",
+   "executionLeaseAgentId": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+   "executionLeaseStartedAt": "2026-11-18T18:18:14.456+08:00",
+   "executionLeaseRevokedAt": "2026-11-18T18:26:39.847+08:00",
+   "createdAt": "2026-11-18T18:18:14.456+08:00",
+   "updatedAt": "2026-11-18T18:26:39.847+08:00",
+   "progressDerived": null
+  },
+  {
+   "id": "ed99e8d6-0cd7-43a4-be08-f35f52b6ced4",
+   "channelId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+   "rootQueueSeq": 2,
+   "assigneeId": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+   "creatorId": "",
+   "title": "产线经验样本B:温度整定复现",
+   "description": "[mode:goal][policy:no-deliverable] 产线经验样本B:温度整定复现:记录一条受治理的产线作业经验。",
+   "state": "COMPLETED",
+   "progress": 100,
+   "retryCount": 0,
+   "artifacts": [
+    {
+     "artifactId": "a639316d-6147-4ac5-9d93-0b5782887c17",
+     "name": "deliverable",
+     "parts": [
+      {
+       "text": "经验B:同样分两步调整(150→147→144)可在 5 分钟内进入窗口,单步 ≤3°C 更稳。"
+      }
+     ]
+    },
+    {
+     "artifactId": "56b1bca6-bb65-4351-a4c1-4a2b1351d7fb",
+     "name": "goal-summary",
+     "parts": [
+      {
+       "text": "【目标完成总结】\n目标: 产线经验样本B:温度整定复现\n判定标准: 任务描述中的需求已全部完成\n完成过程: (单任务达成) 全部完成\n最终成果: (交付物见任务 artifacts)\n结论: 目标已达成,全部任务完成。"
+      },
+      {
+       "text": "标准:任务描述中的需求已全部完成"
+      },
+      {
+       "text": "子任务:产线经验样本B:温度整定复现"
+      }
+     ]
+    }
+   ],
+   "history": [],
+   "source": "channel",
+   "assignmentGeneration": 0,
+   "executionLeaseId": "224b6d8d-b770-4230-a35c-1f1e646c8d3b",
+   "executionLeaseAgentId": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+   "executionLeaseStartedAt": "2026-11-18T18:20:16.862+08:00",
+   "executionLeaseRevokedAt": "2026-11-18T18:26:46.109+08:00",
+   "createdAt": "2026-11-18T18:20:16.862+08:00",
+   "updatedAt": "2026-11-18T18:26:46.109+08:00",
+   "progressDerived": null
+  },
+  {
+   "id": "6c7b5ca2-887d-48a0-8d13-9078373a187e",
+   "channelId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+   "rootQueueSeq": 3,
+   "assigneeId": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+   "creatorId": "",
+   "title": "产线经验样本C:温度整定复现",
+   "description": "[mode:goal][policy:no-deliverable] 记录第二条产线整定经验。",
+   "state": "COMPLETED",
+   "progress": 100,
+   "retryCount": 0,
+   "artifacts": [
+    {
+     "artifactId": "d6425acb-5e42-401a-ab8f-f5868486f2af",
+     "name": "deliverable",
+     "parts": [
+      {
+       "text": "经验C:两步调整 150→147→144,5 分钟内进入 138–142°C 窗口。"
+      }
+     ]
+    },
+    {
+     "artifactId": "1e813efa-f0bf-4336-85a1-7a0ec74d3c32",
+     "name": "goal-summary",
+     "parts": [
+      {
+       "text": "【目标完成总结】\n目标: 产线经验样本C:温度整定复现\n判定标准: 任务描述中的需求已全部完成\n完成过程: (单任务达成) 全部完成\n最终成果: (交付物见任务 artifacts)\n结论: 目标已达成,全部任务完成。"
+      },
+      {
+       "text": "标准:任务描述中的需求已全部完成"
+      },
+      {
+       "text": "子任务:产线经验样本C:温度整定复现"
+      }
+     ]
+    }
+   ],
+   "history": [],
+   "source": "channel",
+   "assignmentGeneration": 0,
+   "executionLeaseId": "ca060c93-7529-4a9b-a870-eac02e1f54ab",
+   "executionLeaseAgentId": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+   "executionLeaseStartedAt": "2026-11-18T18:27:25.122+08:00",
+   "executionLeaseRevokedAt": "2026-11-18T18:27:25.177+08:00",
+   "createdAt": "2026-11-18T18:27:25.122+08:00",
+   "updatedAt": "2026-11-18T18:27:25.177+08:00",
+   "progressDerived": null
+  }
+ ],
+ "httpStatus": 200
+}

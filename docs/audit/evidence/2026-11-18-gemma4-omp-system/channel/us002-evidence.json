@@ -1,0 +1,41 @@
+{
+ "at": "2026-11-18T09:46:32.353Z",
+ "steps": [
+  {
+   "id": "C8",
+   "name": "会话A 真实回合回复(收到 ALPHA-7)",
+   "pass": true,
+   "detail": "请记住这个暗号:ALPHA-7。只回复\"收到 ALPHA-7\"。\n收到 ALPHA-7"
+  },
+  {
+   "id": "C9",
+   "name": "会话B 真实回合回复(不知道)",
+   "pass": true,
+   "detail": "我们之前约定的暗号是什么?如果不知道请只回答\"不知道\"。\n不知道"
+  },
+  {
+   "id": "C10",
+   "name": "Session 隔离:B 的回答/上下文均无 ALPHA-7",
+   "pass": true,
+   "detail": "B_text=我们之前约定的暗号是什么?如果不知道请只回答\"不知道\"。\n不知道"
+  },
+  {
+   "id": "C11",
+   "name": "A 的上下文包含自己的暗号,B 不包含",
+   "pass": true,
+   "detail": "A_block=566B B_block=555B"
+  },
+  {
+   "id": "C12",
+   "name": "Session 历史不串扰(A 无 B 的追问 / B 无 A 的暗号)",
+   "pass": true,
+   "detail": "A=2 B=2"
+  },
+  {
+   "id": "C13",
+   "name": "Session 回合由 local/gemma-4-12b-qat 产生",
+   "pass": true,
+   "detail": "[{\"file\":\"2026-11-18T09-45-21-883Z_01a1ee0b-eeda-7000-9c15-6d33dc01d896.jsonl\",\"models\":[\"ustc/deepseek-flash\",\"local/google/gemma-4-12b-qat\"]},{\"file\":\"2026-11-18T09-45-19-548Z_01a1ee0b-e5b8-7000-85dc-d3c2e03e1fdd.jsonl\",\"models\":[\"ustc/deepseek-flash\",\"local/google/gemma-4-12b-qat\"]}]"
+  }
+ ]
+}

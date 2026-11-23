@@ -1,0 +1,18 @@
+{
+ "kind": "dcw-approval",
+ "id": "ap-5ab7b308",
+ "channelId": "9f9d67a1-ce59-49f4-99a1-d9189fa3282d",
+ "agentId": "a6c5379a-806c-4896-bd46-56ea93da5762",
+ "agentName": "Gemma Line Lead",
+ "title": "配方试验(整批候选)下发审批",
+ "detail": "配方试验候选(整批 1 参数):冷却温度设定SP 150→190°C | 假设:负例:验证单步上限在派发门的拦截 | 批准=整批下发试验(不写版本);拒绝可附指导",
+ "createdAt": "2026-11-18T23:11:57.086+08:00",
+ "expiresAt": "2026-11-18T23:41:57.086+08:00",
+ "requestType": "approval",
+ "harness": "dcw",
+ "nodeId": "recipe:rc-15664061",
+ "status": "pending",
+ "policy": "owner_only",
+ "approvalPolicyVersion": 1,
+ "channelVersion": 1
+}

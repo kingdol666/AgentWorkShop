@@ -1,0 +1,41 @@
+{
+ "attempt": 2,
+ "result": {
+  "code": 0,
+  "message": "ok",
+  "data": {
+   "id": "00364454-f976-4c25-8242-ee987659aa9e",
+   "projectId": "4076e037-f98e-4a1a-a760-c23f7acfd9d2",
+   "deliverableId": "08a22cfe-8235-4ce9-8937-e2fdd50a78ed",
+   "channelId": "8709a0e9-3aca-4dad-b339-6f0b14719eec",
+   "title": "数据分析:克重漂移与本步实效判读",
+   "brief": "只读分析,零工业写(dcw_*/recipe_*/line_start/line_stop 一律不得调用);预算 30min,一次性成型提交,不分段提交草稿。只读取证已完成,直接复用,禁止重新采数:①阶跃对齐 11:50→12:00 桶克重 31.46→31.54g、熔体压力 51.80→52.70MPa,12:05–12:45 九桶零斜率(31.54g、52.69–52.71MPa);②11:57:30 保压 52→53MPa(ap-2a5f372c,ACK 1/1,回读 53MPa)增益 +0.083~+0.091g ⇒ 0.08–0.09 g/MPa,判 keep、不固化(距 32.15g 差 0.61g);③快筛 diag b237bab2(142 alerts/18 events)三条 high:2 条确认漂移=11:03:14 五参数步进与 11:57:30 压力步进的阶跃响应(冷启动 self 基线),dn-c39123fe 死通道=vector 节点被按标量路径读取的假警(daq_frames 12:40:59–12:41:03 五帧 64 点 avg 0.5182–0.5222mm);④12:05–12:48 稳态:克重 31.54g、压力 52.70MPa(SP 53,跟随 −0.30MPa)、飞边 0.196%、缺陷 0.402%、模温 57.5℃、节拍 21.70s。硬性写作要求(缺项即 L1 打回):a) Δg 按实测 ΔP 归一(0.084/0.90=0.0933),写明按设定 1MPa 归在不成立、基线段位于 11:03:14 之后且已稳定;b) 可达性算术 6.54MPa/10.29MPa,副口径 6.03–6.86MPa;ΔSP≈+7.3MPa 标推断并声明增益比 0.90 仅 ±1MPa 邻域成立、越界只作量级判据;c) 双上限对照并原文引用 dw-25e7dde7:硬上限 2MPa→3.27 取整 4 步,11:53 人工获批步幅 1MPa→6.54 取整 7 步;d) 杠杆排序:①保压时间 3.5→4.0s(节拍按 1:1 保守规划上界 22.20s/余量 7.8s,标注非实测;归因句「本批保压时间单独节拍效应不可辨识:与压力/料温/冷却/复检同期步进,且 3.0s 窗口仅 114s,不足一个 5-min 桶」;飞边方向写机理推断未实测;增益无实测须 trial 单步首测且不得线性外推),②料温 208→211℃(热惯性 ≥15min 复测、窗口内不叠加第二杠杆),③模温/冷却流量不作主杠杆(57.5℃ 距 60℃ 仅 2.5℃),④本线配方仅 5 参数无位置项,若需位置切换另开工作项;e) 稳健性与护栏:节拍非否决项(余量 ≥7.8s),真约束=缺陷率余量 0.098pp 与飞边余量 0.204pp,中止规则预登记(缺陷 >0.45% 或 飞边 >0.30% 或 克重超 32.50±0.35g 持续 ≥3 桶 → 回退上一组),后续试验 write_intent 前置;f) 溯源只引用 dedup_key=ln74799404-diag-confound-20261119、ln74799404-cycle-transmission-hold(已更正版)、本地报告路径,不得声称入 aw-docs,实测/推断分列。验收清单全文见项目消息 1747219e-d28a-4ff2-b803-0267e9b0be43 之 C1–C9。",
+   "state": "DISPATCHED",
+   "stateReason": null,
+   "priority": 0,
+   "weight": 1,
+   "dependsOnJson": "[]",
+   "acceptanceJson": "[\"artifact.present\",\"min_bytes:3000\",\"text.contains:0.0933\",\"text.contains:6.54\"]",
+   "resultKey": "main",
+   "currentAttemptId": "281b250b-998d-4b0f-8327-91cd0bf643a8",
+   "planVersion": 1,
+   "contractJson": "{}",
+   "execBudgetMinutes": 30,
+   "traceId": "plan:4076e037-f98e-4a1a-a760-c23f7acfd9d2:1:w1",
+   "dedupeKey": "w1-drift-analysis-20261119",
+   "deadlineAt": null,
+   "reworkCount": 0,
+   "acceptedResultId": null,
+   "lastResultStatus": "",
+   "attemptCount": 2,
+   "maxAttempts": 3,
+   "deferredUntil": null,
+   "createdBy": "project_leader",
+   "instanceChannelId": "d23a1618-21c3-4b56-b897-f1fb66db91f7",
+   "createdAt": "2026-11-19T13:16:41.970+08:00",
+   "updatedAt": "2026-11-19T14:16:24.497+08:00",
+   "closedAt": "2026-11-19T14:06:20.419+08:00",
+   "closeReason": "ROOT_TIMEOUT"
+  }
+ }
+}

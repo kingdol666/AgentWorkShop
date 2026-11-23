@@ -1,0 +1,9 @@
+[
+ {
+  "file": "2026-11-18T16-10-48-698Z_01a1ef6c-d1f8-7000-9a9d-dab11408e909.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-ce1bfe22-91d8-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ }
+]

@@ -1,0 +1,21 @@
+{
+ "status": 200,
+ "body": {
+  "profile": {
+   "id": "hp-b32b227f6059",
+   "channelId": "4bbf5d97-b677-499f-abaf-9698ac76a234",
+   "version": 4,
+   "status": "candidate",
+   "layers": {
+    "overlay": "",
+    "pins": []
+   },
+   "origin": {
+    "source": "rest"
+   },
+   "createdBy": "94d1be64-11dd-47b8-a2aa-8a102c94b021",
+   "createdAt": "2026-11-21T15:15:05.758+08:00",
+   "updatedAt": "2026-11-21T15:15:05.758+08:00"
+  }
+ }
+}

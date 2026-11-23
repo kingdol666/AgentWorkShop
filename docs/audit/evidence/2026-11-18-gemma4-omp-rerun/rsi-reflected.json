@@ -1,0 +1,16 @@
+[
+ {
+  "id": "668f64b2-fc16-4c9c-93bf-97800421f8de",
+  "status": "candidate",
+  "scopeKind": "line",
+  "title": "完成：产线经验样本A:温度整定",
+  "taskId": "39e2879e-da58-45f7-a805-cbf30aa584ea"
+ },
+ {
+  "id": "39b52115-3919-4246-af86-bc469ea4ad71",
+  "status": "candidate",
+  "scopeKind": "line",
+  "title": "完成：产线经验样本B:温度整定复现",
+  "taskId": "beb86b7d-d994-4e8e-8bd7-3709ba89f949"
+ }
+]

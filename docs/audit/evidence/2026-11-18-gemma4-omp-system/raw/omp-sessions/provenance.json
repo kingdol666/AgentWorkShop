@@ -1,0 +1,628 @@
+{
+ "a2a-retry.jsonl": {
+  "modelChanges": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ],
+  "assistantModels": [
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 27181
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 27267
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 38719
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 49855
+   }
+  ],
+  "assistantModelSet": [
+   "local/google/gemma-4-12b-qat"
+  ],
+  "lastTexts": [
+   "OK-A2A-9.",
+   "19",
+   "Acknowledged. Communication path verified. Ready for next task."
+  ]
+ },
+ "channel-lead-water-boiling.jsonl": {
+  "modelChanges": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ],
+  "assistantModels": [
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 30456
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 43811
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 39655
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 51947
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 38488
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 38832
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 39703
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 39857
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 52712
+   }
+  ],
+  "assistantModelSet": [
+   "local/google/gemma-4-12b-qat"
+  ],
+  "lastTexts": [
+   "在标准大气压（1 atm）下，水的沸点为 100°C（212°F）。\n\n【目标完成总结】\n目标: 常识问答:水沸点\n判定标准: 任务描述中的需求已全部完成\n完成过程: Lead 直接作答 全部完成\n最终成果: 在标准大气压（1 atm）下，水的沸点为 100°C（212°F）。\n结论: 目标已达成,全部任务完成。",
+   "【目标完成总结】\n目标: 常识问答:水沸点\n判定标准: 任务描述中的需求已全部完成\n完成过程: Lead 直接作答 全部完成\n最终成果: 在标准大气压（1 atm）下，水的沸点为 100°C（212°F）。\n结论: 目标已达成,全部任务完成。",
+   "【目标完成总结】\n目标: 常识问答:水沸点\n判定标准: 任务描述中的需求已全部完成\n完成过程: Lead 直接作答 全部完成\n最终成果: 在标准大气压（1 atm）下，水的沸点为 100°C（212°F）。\n结论: 目标已达成,全部任务完成。",
+   "收到。我是 Gemma Lead，已准备就绪。当前所有任务均已完成，请提供新的任务或指令。"
+  ]
+ },
+ "channel-worker-chat-4x6.jsonl": {
+  "modelChanges": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ],
+  "assistantModels": [
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 25527
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 34887
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 34843
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 35100
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 35905
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 36170
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 36338
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 46287
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 46249
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 46418
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 46588
+   }
+  ],
+  "assistantModelSet": [
+   "local/google/gemma-4-12b-qat"
+  ],
+  "lastTexts": [
+   "24",
+   "The tool `xd://aw_516e54ad4d5de0a00ffb31521b7ac5f9_422252ea917fdb3b_send_messag` expects the message content to be passed in a specific way. Based on the instructions, I should use the `write` tool to",
+   "Since the tool `xd://aw_516e54ad4d5de0a00ffb31521b7ac5f9_422252ea917fdb3b_send_messag` continues to report \"content is required\" despite multiple JSON formats, and I am instructed to be concise and di",
+   "The tool `xd://aw_838da01364d94607a0fcf215725af6b7_d0701b5fe1990cb1_search_memo` is rejecting the inputs provided via the `write` tool. Given the system instructions, I will proceed with the task dire"
+  ]
+ },
+ "fallback-ustc-deepseek.jsonl": {
+  "modelChanges": [
+   "ustc/deepseek-flash"
+  ],
+  "assistantModels": [
+   {
+    "provider": "ustc",
+    "model": "deepseek-flash",
+    "usage": 26916
+   },
+   {
+    "provider": "ustc",
+    "model": "deepseek-flash",
+    "usage": 27539
+   },
+   {
+    "provider": "ustc",
+    "model": "deepseek-flash",
+    "usage": 27641
+   },
+   {
+    "provider": "ustc",
+    "model": "deepseek-flash",
+    "usage": 38257
+   }
+  ],
+  "assistantModelSet": [
+   "ustc/deepseek-flash"
+  ],
+  "lastTexts": [
+   "**2 + 3 = 5**\n\n根任务 `6dfd714a`（简单算术:2+3）已完成。直接作答，未派发子任务。",
+   "待命中。队列为空,根任务 `6dfd714a`（2+3=5）已 COMPLETED,无待处理邮件或子任务。"
+  ]
+ },
+ "line-task-length-loop.jsonl": {
+  "modelChanges": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ],
+  "assistantModels": [
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40497
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40113
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40231
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40350
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40469
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40588
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40707
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40826
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40949
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 41064
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 41183
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 41478
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 47859
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 54552
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 25685
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 25801
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 34011
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 26384
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 34214
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 26380
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 26357
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 0
+   }
+  ],
+  "assistantModelSet": [
+   "local/google/gemma-4-12b-qat"
+  ],
+  "lastTexts": [
+   "I have initialized the task and reported the progress. I am now ready to proceed with the plan for the root task: \"产线经验样本A:温度整定\".\n\n**Current Status:**\n- **Root Task:** 3f8f9807-9cc6-4ab8-8d03-e9beb1b6",
+   "The `report_progress` tool is currently unmounted in the environment (it appears in the \"Unmounted\" list), so I will proceed with the primary actions using the correctly mounted tools.\n\n**Next Steps E"
+  ]
+ },
+ "project-instance-write-fail.jsonl": {
+  "modelChanges": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ],
+  "assistantModels": [
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 32325
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 31506
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 31692
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 32157
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 32498
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 51347
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 36855
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40937
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 55155
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 37844
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 39404
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 40386
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 41412
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 41528
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 42671
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 43690
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 44819
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 45757
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 46879
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 47972
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 48917
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 0
+   }
+  ],
+  "assistantModelSet": [
+   "local/google/gemma-4-12b-qat"
+  ],
+  "lastTexts": [
+   "The task is to calculate $7 \\times 8$ and provide a comprehensive explanation of the calculation process. As the Lead, I will handle this directly as it is a simple, bounded task.\n\n**Calculation Proce",
+   "I have completed the calculation and prepared the detailed explanation.\n\n**Calculation Explanation:**\n\n# Calculation Result for 7 × 8\n\n## 1. Problem Statement\nThe objective of this task is to perform ",
+   "# Calculation Result: 7 × 8\n\n## 1. Objective\nThe objective of this task is to perform a fundamental arithmetic multiplication operation: $7 \\times 8$. This requires providing the correct product and a"
+  ]
+ },
+ "project-leader-plan.jsonl": {
+  "modelChanges": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ],
+  "assistantModels": [
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 24191
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 24486
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 24630
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 24909
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 26556
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 27695
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 28151
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 36784
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 37581
+   }
+  ],
+  "assistantModelSet": [
+   "local/google/gemma-4-12b-qat"
+  ],
+  "lastTexts": [
+   "Gemma Admin 提问：\n[群聊] Gemma Admin 提问:����� project_propose_plan �ύ V1 �ƻ�:�����7��8 ����ɹ���;��������� 7��8 ���ύ�ɹ���(ֱ�����,����Ҫ������);Ƶ����������ɷ����顣�mini��ȴ�owner ��׼,��Ҫ���и���Ŀ״̬��\n(请回复内容;系统",
+   "[群聊] Gemma Admin 提问:����� project_propose_plan �ύ V1 �ƻ�:�����7��8 ����ɹ���;��������� 7��8 ���ύ�ɹ���(ֱ�����,����Ҫ������);Ƶ����������ɷ����顣�mini��ȴ�owner ��׼,��Ҫ���и���Ŀ״̬��\n(请回复内容;系统会把你的回复作为群聊消息发出并自",
+   "[项目内核] 事件批次摘要（1 条，按类型聚合；需要细节请用 project_get_status）：\n- result.submitted ×1（最新 @ 2026-11-18T18:03:13.364+08:00）{\"resultId\":\"bdcb3e9a-fd85-48ea-9c8b-3417295a438b\"}\n\n**回复内容：**\n\n收到。已确认结果已提交（ID: bdcb3e9a-fd"
+  ]
+ },
+ "session-A-alpha7.jsonl": {
+  "modelChanges": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ],
+  "assistantModels": [
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 25893
+   }
+  ],
+  "assistantModelSet": [
+   "local/google/gemma-4-12b-qat"
+  ],
+  "lastTexts": [
+   "收到 ALPHA-7"
+  ]
+ },
+ "session-B-unknown.jsonl": {
+  "modelChanges": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ],
+  "assistantModels": [
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 26394
+   }
+  ],
+  "assistantModelSet": [
+   "local/google/gemma-4-12b-qat"
+  ],
+  "lastTexts": [
+   "不知道"
+  ]
+ },
+ "worker-task-retry.jsonl": {
+  "modelChanges": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ],
+  "assistantModels": [
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 33477
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 33046
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 33740
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 33888
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 34328
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 34504
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 49538
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 35656
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 35740
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 55088
+   },
+   {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "usage": 61978
+   }
+  ],
+  "assistantModelSet": [
+   "local/google/gemma-4-12b-qat"
+  ],
+  "lastTexts": [
+   "I have checked the channel tasks and the project messages.\n\n**Channel Tasks:**\n- All four existing tasks in the channel are [COMPLETED].\n\n**Project Messages:**\n- The message log is currently empty.\n\n*",
+   "OK-A2A-9.",
+   "A2A handshake complete. Communication path verified. Standing by for project-dispatched root tasks or human instructions.",
+   "确认收到项目背景与团队配置。我是 Gemma Lead，目前处于待命状态。\n\n当前状态：\n- **项目**：Gemma4 项目协作验收\n- **任务状态**：当前无活跃 Root 任务，所有现有任务已处理或取消。\n- **团队状态**：全员在线，通信路径已验证。\n\n我将持续监控项目派发的 root 任务或 mailbox 中的人类指令。一旦收到任务，我将按照执行纪律进行拆解与派发。"
+  ]
+ }
+}

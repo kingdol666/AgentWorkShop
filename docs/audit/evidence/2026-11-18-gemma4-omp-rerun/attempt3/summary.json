@@ -1,0 +1,260 @@
+{
+ "generatedAt": "2026-11-18T15:12:05.658Z",
+ "pipeline": "gemma4-pipeline",
+ "model": "google/gemma-4-12b-qat",
+ "provider": "local",
+ "port": 3073,
+ "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-gemma4-pipeline\\home",
+ "evidence": "D:\\codes\\ABO\\AgentWorkShop\\docs\\audit\\evidence\\2026-11-18-gemma4-omp-rerun",
+ "steps": [
+  {
+   "id": "C1",
+   "name": "创建非产线 Channel(omp+gemma lead)",
+   "pass": true,
+   "detail": "channel=3b8dc6b1-fc57-4a09-a3bc-772f720c4b17"
+  },
+  {
+   "id": "C2",
+   "name": "lead+worker 绑定 local/gemma(rpc)",
+   "pass": true,
+   "detail": "[{\"n\":\"Gemma Lead\",\"m\":\"google/gemma-4-12b-qat\"},{\"n\":\"Gemma Worker\",\"m\":\"google/gemma-4-12b-qat\"}]"
+  },
+  {
+   "id": "C3",
+   "name": "lead 真实回合完成(水沸点=100°C)",
+   "pass": true,
+   "detail": "state=COMPLETED artifacts=[{\"artifactId\":\"22f06a16-e6fc-4134-9d4d-19849d4a12ea\",\"name\":\"deliverable\",\"parts\":[{\"text\":\"在标准大气压下，水的沸点是 100°C (212°F)。\"}]},{\"artifactId\":\"c178e52c-3880-42d8-8c6b-ab94de1fe87a\",\""
+  },
+  {
+   "id": "C4",
+   "name": "worker 群聊真实回合(4×6=24)",
+   "pass": true,
+   "detail": "reply=24"
+  },
+  {
+   "id": "C5",
+   "name": "A2A requireReply 回执(OK-A2A-9)",
+   "pass": true,
+   "detail": "OK-A2A-9"
+  },
+  {
+   "id": "C6",
+   "name": "SessionA 真实回合(收到 ALPHA-7)",
+   "pass": true,
+   "detail": "reply=收到 ALPHA-7"
+  },
+  {
+   "id": "C7",
+   "name": "Session 隔离(B 不知道暗号,brief 无泄漏)",
+   "pass": true,
+   "detail": "reply=不知道 A块含=true B块含=false"
+  },
+  {
+   "id": "P1",
+   "name": "Project 创建(omp leader+gemma)",
+   "pass": true,
+   "detail": "project=f660ceee-da12-44a8-a3ce-ea62ef77d6f6"
+  },
+  {
+   "id": "P2",
+   "name": "交付物创建+频道绑定",
+   "pass": true,
+   "detail": "deliverable=ea622f6b-c5fe-468b-8b40-aa10f39c7aab"
+  },
+  {
+   "id": "P3",
+   "name": "真实 leader 提出 V1 计划",
+   "pass": true,
+   "detail": "approval=61eae228-fea1-4e01-a4d5-fabf446ee0fc"
+  },
+  {
+   "id": "P4",
+   "name": "计划批准并物化工作项",
+   "pass": true,
+   "detail": "workItem=8ee357e3-029d-4f8f-8c9d-d684b9fea186 state=DRAFT"
+  },
+  {
+   "id": "P5",
+   "name": "工作项派发",
+   "pass": true,
+   "detail": "state=DISPATCHED"
+  },
+  {
+   "id": "P6",
+   "name": "项目实例任务生成",
+   "pass": true,
+   "detail": "instance=71a72974-68d8-4f3a-b2f4-764793b18ab0 task=9c6af178-c1cc-48ef-afce-76ae62126767"
+  },
+  {
+   "id": "P7",
+   "name": "实例任务完成(REST 收口,已披露)",
+   "pass": true,
+   "detail": "0 COMPLETED ok"
+  },
+  {
+   "id": "P8",
+   "name": "结果 draft 生成",
+   "pass": true,
+   "detail": "result=160616a6-f8a3-4eb5-b5a8-d7af5cd87e51"
+  },
+  {
+   "id": "P9",
+   "name": "L1 技术复核(reviewed)",
+   "pass": true,
+   "detail": "status=reviewed"
+  },
+  {
+   "id": "P10",
+   "name": "自批被拒(SELF_APPROVAL_FORBIDDEN)",
+   "pass": true,
+   "detail": "code=SELF_APPROVAL_FORBIDDEN"
+  },
+  {
+   "id": "P11",
+   "name": "L2 成果验收(approver 批准)",
+   "pass": true,
+   "detail": "status=approved"
+  },
+  {
+   "id": "P12",
+   "name": "交付物 approved(全工作项终态)",
+   "pass": true,
+   "detail": "[\"approved\"]"
+  },
+  {
+   "id": "P13",
+   "name": "Project completed",
+   "pass": true,
+   "detail": "status=completed completeDec=approved"
+  },
+  {
+   "id": "P14",
+   "name": "项目报告可查",
+   "pass": true,
+   "detail": "{\"ratio\":1,\"completedWorkItems\":1,\"scoreableWorkItems\":1}"
+  },
+  {
+   "id": "L1",
+   "name": "创建隔离模拟产线",
+   "pass": true,
+   "detail": "line=ln-95ec3dc6"
+  },
+  {
+   "id": "L2",
+   "name": "模板/节点/配方供给",
+   "pass": true,
+   "detail": "sp=dw-dc44f4de daq=dn-0ebcdfae recipe=rc-15664061"
+  },
+  {
+   "id": "L3",
+   "name": "产线开跑(首批 150)",
+   "pass": true,
+   "detail": "run=rr-d9424b4b"
+  },
+  {
+   "id": "L4",
+   "name": "绑线频道+绑定面(line-recipe/recipe/daq)",
+   "pass": true,
+   "detail": "channel=9f9d67a1-ce59-49f4-99a1-d9189fa3282d binds=0,0,0"
+  },
+  {
+   "id": "L5",
+   "name": "Agent DAQ 查询(实采样本)",
+   "pass": true,
+   "detail": "数采数据查询结果(1 个节点):\n\n■ 主轴实测温度PV[id=dn-0ebcdfae](主轴温度模板-pp-mwm95cc1)单位 °C,正常量程 20~200°C,当前状态 ok,时间窗 2026-11-18T22:54 ~ 2026-11-18T23:04(降采样 15000ms,聚合 avg)\n  当前活动批次 run=rr-d9424b4b 配方「Gemma4-基线配方-pp-mwm95cc1」(rc-15664061)(可直接把 run_id/recipe_id 回传给 daq_qu"
+  },
+  {
+   "id": "L6",
+   "name": "recipe_propose 生成 HITL 审批卡",
+   "pass": true,
+   "detail": "{\"kind\":\"dcw-approval\",\"id\":\"ap-65e9af7e\",\"channelId\":\"9f9d67a1-ce59-49f4-99a1-d9189fa3282d\",\"agentId\":\"a6c5379a-806c-4896-bd46-56ea93da5762\",\"agentName\":\"Gemma Line Lead\",\"title\":\"整包方案审批:Gemma4-基线配方-pp-mwm95cc1\",\"detail\":\"整包方案审批:配方「Gemma4-基线配方-pp-mw"
+  },
+  {
+   "id": "L7",
+   "name": "人工批准(choice=0)",
+   "pass": true,
+   "detail": "status=approved"
+  },
+  {
+   "id": "L8",
+   "name": "整批下发回执(设备证实)",
+   "pass": true,
+   "detail": "方案「递减 6°C 至 144」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-a92e8)。runId:rr-a92e88c5(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-a92e88c5（2026-11-18 23:06）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · 冷却温度设定SP 150→144 回读"
+  },
+  {
+   "id": "L9",
+   "name": "设备回读一致(SP=144)",
+   "pass": true,
+   "detail": "value=144 readValue=144"
+  },
+  {
+   "id": "L10",
+   "name": "journal 留痕(带审批锚)",
+   "pass": true,
+   "detail": "{\"lineId\":\"ln-95ec3dc6\",\"nodeId\":\"dw-dc44f4de\",\"prevValue\":150,\"newValue\":144,\"source\":\"agent\",\"actor\":\"a6c5379a-806c-4896-bd46-56ea93da5762\",\"approvalId\":\"ap-65e9af7e\",\"recipeRunId\":\"rr-a92e88c5\",\"id\":\"anc-08ed5d63\",\"at"
+  },
+  {
+   "id": "L11",
+   "name": "越量程提案被预检拒绝(负例)",
+   "pass": true,
+   "detail": "预检失败:全部候选方案无一参数通过限界校验,未提交审批、产线无任何变更。「批准必被拒包」的方案不得入审:\n- 方案「越量程包」冷却温度设定SP:设定值 999°C 超出上限 节点工艺安全量程 的 200°C —— 约束层:节点安全量程(当前有效写入区间 60~200°C;各层限界按安全规约取交集,越界写入已拒绝)(已剔除)\n请按各条失败原因修订(越界值改到「节点量程∩参数基准∩产品限界」交集内;失效参数剔除或先恢复节点),再重新提交。"
+  },
+  {
+   "id": "L12",
+   "name": "超单步试验审批卡生成",
+   "pass": true,
+   "detail": "{\"kind\":\"dcw-approval\",\"id\":\"ap-5ab7b308\",\"channelId\":\"9f9d67a1-ce59-49f4-99a1-d9189fa3282d\",\"agentId\":\"a6c5379a-806c-4896-bd46-56ea93da5762\",\"agentName\":\"Gemma Line Lead\",\"title\":\"配方试验(整批候选)下发审批\",\"detail\":\"配方试验候选(整批 1 参"
+  },
+  {
+   "id": "L13",
+   "name": "派发门拒绝超单步(设备无写入)",
+   "pass": true,
+   "detail": "试验下发 ACK 鉴定未全绿(证实 0/1,未证实 0,失败 1,批次 rr-a5b97):冷却温度设定SP→190°C 被拒(节点「冷却温度设定SP」本次变化 46°C 超过单步限制 6°C（来源:param）)。假设:负例:验证单步上限在派发门的拦截。\n人工附言:负例:批准以验证派发门拦截\n「未证实」=命令已发到链路但设备侧未确认生效;请用 daq_query 复测这些参数的真实状态后再判读试验效果,必要时对未证实参数单独重发或 recipe_rollback 统一回退,并写入汇报提醒人类。"
+  },
+  {
+   "id": "L14",
+   "name": "停线收窗",
+   "pass": true,
+   "detail": "code=0"
+  },
+  {
+   "id": "R1",
+   "name": "任务完成反射 candidate 经验(≥2)",
+   "pass": true,
+   "detail": "[{\"s\":\"candidate\",\"t\":\"e0758bab\"},{\"s\":\"candidate\",\"t\":\"1e01615f\"}]"
+  },
+  {
+   "id": "R2",
+   "name": "单任务 candidate 晋级被拒(1/2)",
+   "pass": true,
+   "detail": "[\"独立任务样本不足：1/2\"]"
+  },
+  {
+   "id": "R3",
+   "name": "合并 candidate(taskIds=2)",
+   "pass": true,
+   "detail": "{\"ok\":true,\"memoryId\":\"afe18da1-0e5c-4837-8743-e34d261dc07b\",\"taskIds\":[\"e0758bab-baa9-4f86-891d-d0202eef1e3c\",\"1e01615f-fabd-4f8d-a488-5040c63ae001\"],\"reasons\":[\"已合并 2 条经验的证据锚点\"]}"
+  },
+  {
+   "id": "R4",
+   "name": "人工晋升 candidate→validated",
+   "pass": true,
+   "detail": "{\"ok\":true,\"next\":\"validated\",\"reasons\":[\"证据充分（2 任务 / 0 锚点）\"]}"
+  },
+  {
+   "id": "R5",
+   "name": "Agent token 越权晋升被拒(401)",
+   "pass": true,
+   "detail": "http=undefined code=USER_UNAUTHORIZED"
+  },
+  {
+   "id": "X1",
+   "name": "全部真实回合模型来源=local/gemma",
+   "pass": true,
+   "detail": "[{\"f\":\"2026-11-18T14-35-20-721Z_01a1ef15-6b\",\"m\":[\"local/google/gemma-4-12b-qat\"]},{\"f\":\"2026-11-18T14-37-35-231Z_01a1ef17-78\",\"m\":[\"local/google/gemma-4-12b-qat\"]},{\"f\":\"2026-11-18T14-43-25-747Z_01a1ef1c-d1\",\"m\":[\"local/google/gemma-4-12b-qat\"]},{\"f\":\"2026-11-18T14-44-05-831Z_01a1ef1d-6e\",\"m\":[\"local/google/gemma-4-12b-qat\"]},{\"f\":\"2026-11-18T14-44-35-976Z_01a1ef1d-e4\",\"m\":[\"local/google/gemma-4-12b-qat\"]}]"
+  }
+ ],
+ "pass": 41,
+ "fail": 0,
+ "total": 41
+}

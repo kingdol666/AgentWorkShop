@@ -1,0 +1,21 @@
+{
+ "id": "c7628598-f1c1-4e72-947c-d14c645a1176",
+ "projectId": "8c385dd0-06f5-4773-b2ed-6fab27ed02fa",
+ "kind": "plan_approval",
+ "subjectType": "plan",
+ "subjectId": "plan:8c385dd0-06f5-4773-b2ed-6fab27ed02fa:1",
+ "subjectVersion": 1,
+ "status": "pending",
+ "requestedByAgentId": "0ae1af24-6e6d-46e9-a8db-ee4a12ef9ed4",
+ "requestedByUserId": null,
+ "payloadJson": "{\"deliverables\":[{\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:56\"],\"channelId\":\"53019ea5-dd1b-4ca8-a042-aeb8713270ba\",\"description\":\"计算 7×8 的结果并提供可复核的成果说明\",\"key\":\"d1\",\"name\":\"7×8 计算成果\",\"required\":true}],\"work_items\":[{\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:56\"],\"brief\":\"计算 7 乘以 8 的结果，并给出可复核的成果说明。由于要求直接完成，请确保计算过程清晰。\",\"channelId\":\"53019ea5-dd1b-4ca8-a042-aeb8713270ba\",\"dedupeKey\":\"v1-calculation\",\"deliverableKey\":\"d1\",\"dependsOn\":[],\"execBudgetMinutes\":60,\"key\":\"w1\",\"title\":\"执行 7×8 计算任务\"}]}",
+ "argsDigest": "",
+ "reason": "project plan proposal",
+ "decisionReason": "",
+ "decidedByUserId": null,
+ "consumedAt": null,
+ "traceId": "plan:8c385dd0-06f5-4773-b2ed-6fab27ed02fa:1",
+ "expiresAt": "2026-11-19T22:24:19.709+08:00",
+ "createdAt": "2026-11-18T22:24:19.709+08:00",
+ "decidedAt": null
+}

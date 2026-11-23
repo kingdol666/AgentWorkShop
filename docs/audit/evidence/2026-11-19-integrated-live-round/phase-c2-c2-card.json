@@ -1,0 +1,18 @@
+{
+ "kind": "dcw-approval",
+ "id": "ap-a4b70de1",
+ "channelId": "830b81f3-5359-463d-b998-4ac99f360ca2",
+ "agentId": "b4ca6f54-dc6b-4439-be4a-f51ddeb42eba",
+ "agentName": "工艺工程师",
+ "title": "整包方案审批:注塑克重基线配方",
+ "detail": "整包方案审批:配方「注塑克重基线配方」v1(产线 精密注塑克重闭环验证线-20261119-LIV2),1 套候选方案。请在产线页结构化审批卡选择方案批准(或拒绝并附指导);未携带方案序号的批准按拒绝收敛。\n方案「R1-保压压力SP +1MPa(54→55)」:把保压压力SP 由 54MPa 上调至 55MPa,单向小步逼近克重 LSL;预期克重 +0.1~0.15g(参照 52→54 步 +0.15g),飞边/缺陷率有足够余量。\n  · 保压压力SP 54→55MPa | 依据:克重 31.618g 低于 LSL 32.15 约 0.53g(18:23–18:33 实测, n=41);保压是主杠杆,历史 52→54 步实测 +0.15g;55MPa 在窗口 45~85 内,步幅 1≤2MPa,飞边 0.196%/缺陷率 0.398% 仍有裕度 | 引用:daq_query 制品克重PV/飞边PV/缺陷率PV 18:23–18:33;干预台账 17:43:43 52→54 增益 +0.15g",
+ "createdAt": "2026-11-19T18:36:18.064+08:00",
+ "expiresAt": "2026-11-19T19:06:18.064+08:00",
+ "requestType": "approval",
+ "harness": "dcw",
+ "nodeId": "recipe-propose:rc-ef8e2b37",
+ "status": "pending",
+ "policy": "owner_only",
+ "approvalPolicyVersion": 1,
+ "channelVersion": 1
+}

@@ -1,0 +1,60 @@
+{
+ "id": "05128312-50f2-4825-864d-3a3af08973a9",
+ "channelId": "ce1bfe22-91d8-4f44-ac66-24bb1f1acbda",
+ "rootQueueSeq": 2,
+ "assigneeId": "62bc2b12-25bf-46de-a7ef-9d00e32e41f0",
+ "creatorId": "",
+ "title": "worker 直派:5+7",
+ "description": "[mode:goal][policy:no-deliverable] 只输出数字:5 + 7 等于多少?不要调用任何工具,直接给出答案。",
+ "state": "COMPLETED",
+ "progress": 100,
+ "retryCount": 0,
+ "artifacts": [
+  {
+   "artifactId": "f25a7eff-51f7-4b8c-a038-5a76d67876c4",
+   "name": "output",
+   "parts": [
+    {
+     "text": "The answer is 12."
+    }
+   ]
+  },
+  {
+   "artifactId": "93fea657-3075-409a-a952-a713fdf83df8",
+   "name": "goal-summary",
+   "parts": [
+    {
+     "text": "【目标完成总结】\n目标: worker 直派:5+7\n判定标准: 任务描述中的需求已全部完成\n完成过程: (单任务达成) 全部完成\n最终成果: (交付物见任务 artifacts)\n结论: 目标已达成,全部任务完成。"
+    },
+    {
+     "text": "标准:任务描述中的需求已全部完成"
+    },
+    {
+     "text": "子任务:worker 直派:5+7"
+    }
+   ]
+  }
+ ],
+ "history": [
+  {
+   "messageId": "3825f049-26e9-4084-83a2-d0afb1a04f6c",
+   "contextId": "ce1bfe22-91d8-4f44-ac66-24bb1f1acbda",
+   "role": "ROLE_AGENT",
+   "parts": [
+    {
+     "text": "The answer is 12."
+    }
+   ]
+  }
+ ],
+ "deadlineAt": "2026-11-19T00:25:46.769+08:00",
+ "source": "channel",
+ "assignmentGeneration": 0,
+ "executionLeaseId": "7652fa24-dd2d-4569-9e02-229f8e9c8252",
+ "executionLeaseAgentId": "62bc2b12-25bf-46de-a7ef-9d00e32e41f0",
+ "executionLeaseStartedAt": "2026-11-19T00:10:46.739+08:00",
+ "executionLeaseRevokedAt": "2026-11-19T00:10:56.038+08:00",
+ "createdAt": "2026-11-19T00:10:46.739+08:00",
+ "updatedAt": "2026-11-19T00:10:56.038+08:00",
+ "progressDerived": null
+}

@@ -1,0 +1,15 @@
+{
+ "verifiedAt": "2026-11-18T14:02:28.130Z",
+ "sessionA": {
+  "id": "cs-a225e8bd",
+  "prompt": "请记住这个暗号:ALPHA-7。只回复\"收到 ALPHA-7\"。不要调用工具。",
+  "reply": "收到 ALPHA-7"
+ },
+ "sessionB": {
+  "id": "cs-d7218810",
+  "prompt": "我们之前约定的暗号是什么?如果不知道请只回答\"不知道\"。不要调用工具。",
+  "reply": "不知道"
+ },
+ "blockA_hasSecret": true,
+ "blockB_hasSecret": false
+}

@@ -1,0 +1,8 @@
+{
+ "httpStatus": 401,
+ "body": {
+  "code": "USER_UNAUTHORIZED",
+  "message": "需要有效的用户会话或 Bearer token",
+  "data": null
+ }
+}

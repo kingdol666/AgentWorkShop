@@ -1,0 +1,123 @@
+{
+ "done": true,
+ "task": {
+  "id": "96b36fd6-8b10-47cf-a24b-de38fc82f07a",
+  "channelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+  "rootQueueSeq": 2,
+  "assigneeId": "7aaeffe0-93f0-4823-8adf-0405d02aeb0c",
+  "creatorId": "",
+  "title": "常识问答:水沸点",
+  "description": "[mode:goal][policy:no-deliverable] 请用一句话回答:标准大气压下水的沸点是多少摄氏度?只回答数字和单位。",
+  "state": "COMPLETED",
+  "progress": 100,
+  "retryCount": 0,
+  "artifacts": [
+   {
+    "artifactId": "2fe95481-a7df-4274-96e8-dd05343f03bc",
+    "name": "deliverable",
+    "parts": [
+     {
+      "text": "在标准大气压（1 atm）下，水的沸点为 100°C（212°F）。"
+     }
+    ]
+   },
+   {
+    "artifactId": "5b3259d5-9783-49a1-9e79-cc0ce9003b71",
+    "name": "goal-summary",
+    "parts": [
+     {
+      "text": "【目标完成总结】\n目标: 常识问答:水沸点\n判定标准: 任务描述中的需求已全部完成\n完成过程: (单任务达成) 全部完成\n最终成果: (交付物见任务 artifacts)\n结论: 目标已达成,全部任务完成。"
+     },
+     {
+      "text": "标准:任务描述中的需求已全部完成"
+     },
+     {
+      "text": "子任务:常识问答:水沸点"
+     }
+    ]
+   }
+  ],
+  "history": [
+   {
+    "messageId": "54809d2d-bd40-46d3-9843-249a8b606c25",
+    "contextId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+    "role": "ROLE_AGENT",
+    "parts": [
+     {
+      "text": "🔧 edit(input=aw_a78176afabf438992ebf0363abaaddcc_75c77375d86d8d49_compl…)"
+     }
+    ]
+   },
+   {
+    "messageId": "aea02be1-fd68-4d07-aa1c-6a8ad6e950e1",
+    "contextId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+    "role": "ROLE_AGENT",
+    "parts": [
+     {
+      "text": "🔧 edit ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"input must begin with \\\"[PATH#HASH]\\\" on the first non-blank line for anchored edits; got: \\\"aw_a78176afabf438992ebf0363abaaddcc_75c77375d86d8d49_complete_ta(task_id=\\\\\\\"96b36fd6-8b10-47cf-a24b-de38fc82f07a\\\\\\\", deliver\\\". Example: \\\"[src/foo.ts#1A2B]\\\" then edit o"
+     }
+    ]
+   },
+   {
+    "messageId": "9f8dbfb9-b020-4e95-ab18-d98578fa6ce2",
+    "contextId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+    "role": "ROLE_AGENT",
+    "parts": [
+     {
+      "text": "🔧 write(xd://aw_a78176afabf438992ebf0363abaaddcc_75c77375d86d8d49_comple…)"
+     }
+    ]
+   },
+   {
+    "messageId": "dca05ecf-29b8-4478-953d-dc5fa6ce718a",
+    "contextId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+    "role": "ROLE_AGENT",
+    "parts": [
+     {
+      "text": "🔧 write ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"xd://aw_a78176afabf438992ebf0363abaaddcc_75c77375d86d8d49_complete_ta expects a JSON args object as content (JSON Parse error: Unexpected identifier \\\"aw_a78176afabf438992ebf0363abaaddcc_75c77375d86d8d49_complete_ta\\\"). Write `?` for docs.\"}],\"details\":{\"xdev\":{\"to"
+     }
+    ]
+   },
+   {
+    "messageId": "d36a2c05-bd83-4e78-9950-9b84eb6274c4",
+    "contextId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+    "role": "ROLE_AGENT",
+    "parts": [
+     {
+      "text": "🔧 write(xd://aw_a78176afabf438992ebf0363abaaddcc_75c77375d86d8d49_comple…)"
+     }
+    ]
+   },
+   {
+    "messageId": "d4f45606-fda0-4eb3-9a03-416b4b733ec5",
+    "contextId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+    "role": "ROLE_AGENT",
+    "parts": [
+     {
+      "text": "🔧 write ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"Invalid args for xd://aw_a78176afabf438992ebf0363abaaddcc_75c77375d86d8d49_complete_ta: Validation failed for tool \\\"aw_a78176afabf438992ebf0363abaaddcc_75c77375d86d8d49_complete_ta\\\":\\n  - summary: is required\\n\\nReceived arguments:\\n{\\n  \\\"task_id\\\": \\\"96b36fd6-8"
+     }
+    ]
+   },
+   {
+    "messageId": "817a52f4-505f-46f6-bef2-ca8f24273423",
+    "contextId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+    "role": "ROLE_AGENT",
+    "parts": [
+     {
+      "text": "🔧 complete_task(96b36fd6-8b10-47cf-a24b-de38fc82f07a)"
+     }
+    ]
+   }
+  ],
+  "source": "channel",
+  "assignmentGeneration": 0,
+  "executionLeaseId": "8d6a8085-77b2-4f3e-8bc2-f37a2a7c9dda",
+  "executionLeaseAgentId": "7aaeffe0-93f0-4823-8adf-0405d02aeb0c",
+  "executionLeaseStartedAt": "2026-11-18T17:35:43.866+08:00",
+  "executionLeaseRevokedAt": "2026-11-18T17:39:09.179+08:00",
+  "createdAt": "2026-11-18T17:35:43.866+08:00",
+  "updatedAt": "2026-11-18T17:39:09.179+08:00",
+  "progressDerived": null
+ },
+ "status": "COMPLETED"
+}

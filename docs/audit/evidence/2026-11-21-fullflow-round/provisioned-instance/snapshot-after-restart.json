@@ -1,0 +1,276 @@
+{
+  "at": "2026-11-21T07:16:10.996Z",
+  "base": "http://127.0.0.1:3021",
+  "health": {
+    "status": "ok",
+    "version": "0.14.0"
+  },
+  "plugins": {
+    "count": 9,
+    "entries": [
+      {
+        "name": "aw-matrix-plugin",
+        "enabled": true,
+        "toolCount": 1
+      },
+      {
+        "name": "daq-sink-verify",
+        "enabled": true,
+        "toolCount": 1
+      },
+      {
+        "name": "daq-vector-demo",
+        "enabled": true,
+        "toolCount": 0
+      },
+      {
+        "name": "idd-closedloop-bridge",
+        "enabled": true,
+        "toolCount": 10
+      },
+      {
+        "name": "omp-sensor-tools",
+        "enabled": true,
+        "toolCount": 1
+      },
+      {
+        "name": "rsi-interface-beta",
+        "enabled": true,
+        "toolCount": 0
+      },
+      {
+        "name": "twin-castfilm",
+        "enabled": true,
+        "toolCount": 0
+      },
+      {
+        "name": "twin-thermal-demo",
+        "enabled": true,
+        "toolCount": 0
+      },
+      {
+        "name": "diag-bridge",
+        "enabled": true,
+        "toolCount": 8
+      }
+    ],
+    "failures": []
+  },
+  "tools": {
+    "total": 157,
+    "names": [
+      "aml_activity",
+      "aml_dataset_build",
+      "aml_dataset_stats",
+      "aml_job_cancel",
+      "aml_job_logs",
+      "aml_job_status",
+      "aml_job_submit",
+      "aml_leaderboard",
+      "aml_model_annotate",
+      "aml_model_find",
+      "aml_model_promote",
+      "aml_model_reference",
+      "aml_node_catalog",
+      "aml_training_plan_create",
+      "aml_training_plan_list",
+      "aml_training_plan_train",
+      "analysis_query",
+      "analysis_save",
+      "broadcast_message",
+      "cancel_task",
+      "complete_task",
+      "create_team_agent",
+      "daq_export",
+      "daq_frames",
+      "daq_identifiability",
+      "daq_query",
+      "dcw_journal",
+      "dcw_judge",
+      "diag_chat",
+      "diag_deposit",
+      "diag_result_annotate",
+      "diag_result_get",
+      "diag_results",
+      "diag_run",
+      "diag_status",
+      "diag_stop",
+      "dispatch_task",
+      "exp_collect",
+      "experience_feedback",
+      "experience_log",
+      "experience_recommend",
+      "get_my_task_queue",
+      "get_queue_overview",
+      "get_task_details",
+      "improvement_list",
+      "industrial_resources",
+      "intervention_history",
+      "kb_agent",
+      "kb_agent_status",
+      "kb_catalog",
+      "kb_doc_create",
+      "kb_doc_read",
+      "kb_doc_search",
+      "line_context",
+      "line_log",
+      "line_start",
+      "line_status",
+      "line_stop",
+      "list_channel_tasks",
+      "list_other_teams",
+      "list_team_agents",
+      "matrix_pipeline_probe",
+      "mes_bridge",
+      "mes_catalog",
+      "mes_dataset_read",
+      "mes_datasets",
+      "mes_export",
+      "mes_fetch",
+      "mes_order_status",
+      "mes_quality_report",
+      "mpc_optimize",
+      "my_industrial_nodes",
+      "ontology_compile_preview",
+      "ontology_draft_autofix",
+      "ontology_draft_create",
+      "ontology_draft_update",
+      "ontology_draft_validate",
+      "ontology_node_neighbors",
+      "ontology_publish_propose",
+      "ontology_rule_explain",
+      "ontology_scene_inspect",
+      "ontology_version_compare",
+      "ops_log",
+      "optimization_explore",
+      "optimizer_campaign",
+      "optimizer_cancel",
+      "optimizer_capabilities",
+      "optimizer_plan_get",
+      "optimizer_profile_propose",
+      "optimizer_round",
+      "optimizer_solve",
+      "optimizer_state",
+      "optimizer_status",
+      "poll_messages",
+      "project_escalate",
+      "project_get_status",
+      "project_list_channels",
+      "project_propose_channel",
+      "project_propose_dispatch",
+      "project_propose_plan",
+      "project_propose_replan",
+      "project_propose_route",
+      "project_read_deliverables",
+      "project_read_messages",
+      "project_read_results",
+      "project_read_work_items",
+      "project_request_approval",
+      "project_request_write_intent",
+      "project_review_result",
+      "project_send_message",
+      "project_submit_result",
+      "project_submit_technical_review",
+      "read_channel_mail",
+      "reassign_task",
+      "recipe_apply",
+      "recipe_catalog",
+      "recipe_create",
+      "recipe_log",
+      "recipe_propose",
+      "recipe_rollback",
+      "recipe_trial",
+      "recipe_update",
+      "recipe_versions",
+      "refuse_task",
+      "remove_team_agent",
+      "report_progress",
+      "save_memory",
+      "search_memory",
+      "search_other_teams_memory",
+      "send_cross_channel_message",
+      "send_message_to_agent",
+      "sensor_calibration_log",
+      "sentinel_baseline",
+      "sentinel_screen",
+      "sentinel_status",
+      "sentinel_watch",
+      "serial_ports",
+      "submit_task",
+      "supersede_task",
+      "team_grant_nodes",
+      "team_revoke_nodes",
+      "twin_bayes_optimize",
+      "twin_calibration_request",
+      "twin_gate_evaluate",
+      "twin_physics_spec_compile",
+      "twin_physics_spec_draft",
+      "twin_physics_spec_validate",
+      "twin_provider_catalog",
+      "twin_scene_compile",
+      "twin_scene_discover",
+      "twin_scene_freeze",
+      "twin_scene_read",
+      "twin_snapshot_create",
+      "twin_trial_run",
+      "update_task",
+      "update_team_agent",
+      "verify_pipeline_probe"
+    ]
+  },
+  "experience": {
+    "status": 200,
+    "total": 5
+  },
+  "db": {
+    "counts": {
+      "channels": 27,
+      "channel_agents": 77,
+      "channel_sessions": 23,
+      "tasks": 54,
+      "messages": 745,
+      "agent_prefabs": 0,
+      "agent_prefab_revisions": 0,
+      "channel_harness_profiles": 4,
+      "harness_bench_runs": 3,
+      "experience_versions": 61
+    },
+    "benchProfiles": [
+      {
+        "id": "hp-60effdc423e1",
+        "status": "shadow"
+      },
+      {
+        "id": "hp-714103220db4",
+        "status": "shadow"
+      },
+      {
+        "id": "hp-b32b227f6059",
+        "status": "shadow"
+      },
+      {
+        "id": "hp-bdb91e463a10",
+        "status": "candidate"
+      }
+    ],
+    "ledger": [
+      {
+        "version": 3,
+        "name": "schema-contract"
+      },
+      {
+        "version": 7,
+        "name": "schema-contract"
+      },
+      {
+        "version": 8,
+        "name": "schema-contract"
+      },
+      {
+        "version": 9002,
+        "name": "experience-version-store"
+      }
+    ],
+    "experienceVersions": 61
+  }
+}

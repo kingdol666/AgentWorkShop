@@ -1,0 +1,66 @@
+{
+ "round": "2026-11-19 TSA",
+ "blueprint": {
+  "source": "docs/audit/evidence/2026-11-15-doc-to-simulated-plc/blueprint.json",
+  "simPort": 4054,
+  "shadow": "D:/tmp/aw-tsa-1119/shadow",
+  "attestation": "shadow/attestation.json (nonce链成立 pid=175996)"
+ },
+ "twin": {
+  "endpoints": {
+   "api": 4054,
+   "mqtt": 62830,
+   "modbusTcp": [
+    "37542 inj-main",
+    "37544 inj-main-b"
+   ],
+   "modbusRtu": 37546,
+   "opcua": 37548
+  },
+  "creationChecks": "6 PASS / 4 FAIL",
+  "failures": [
+   "follows[].sp 可解析性×3 (vision-gate/surface-scan/quality-gate 跨设备引用 inj-main SP — blueprint 原有写法,新检查器(2026-11-18)如实上报;质量 PV 退化为噪声动力学)",
+   "孪生 tick 活性 4/6 (首tick初始化瞬态)"
+  ],
+  "postVerify": "5s 后复测 6/6 设备 PV 全部在动 (inj-main 49.97→49.94, cool-unit 58→58.2 等)"
+ },
+ "onboard": {
+  "config": "D:/tmp/aw-tsa-1119/onboard-tsa.json (11-15 版 + simulated=true + 端口替换 4050→4054/58830→62830 + 线名-20261119-TSA)",
+  "run1": "供给20/20 锻造15/15 验收FAIL: line simulated=false (onboard.json 未显式声明,provision-line C9 语义)",
+  "run2": "供给33/33 锻造15/15 验收24/0 (V6 SKIP:受保护线夹具不在隔离环境,不计入) 一键4/0"
+ },
+ "entities": {
+  "lineId": "ln-74799404",
+  "recipeId": "rc-23a5f77a",
+  "channelId": "8709a0e9-3aca-4dad-b339-6f0b14719eec",
+  "dcw": {
+   "保压压力SP": "dw-25e7dde7",
+   "保压时间SP": "dw-ff8df9d6",
+   "料温SP": "dw-a3bea8ef",
+   "冷却流量SP": "dw-590169e5",
+   "保压压力SP（复检）": "dw-9b1c71a3"
+  },
+  "daq": {
+   "熔体压力PV": "dn-8c29fab7",
+   "制品克重PV": "dn-8f8a6094",
+   "模具温度PV": "dn-0d6ee979",
+   "缺陷率PV": "dn-339db9d4",
+   "视觉置信度PV": "dn-d55cf861",
+   "平均壁厚PV": "dn-b7d0fa6a",
+   "飞边PV": "dn-38e86e48",
+   "节拍PV": "dn-3bf5bf03",
+   "厚度轮廓PV": "dn-c39123fe"
+  },
+  "run": "rr-86122ebb",
+  "seedTask": "5aa4f6d1-a3f9-4260-a16f-bfb2b368777d (SUBMITTED 滞留,omp冷启动已知;派发早于llm切换)"
+ },
+ "agents": {
+  "lead": "生产主管",
+  "workers": [
+   "数据分析师",
+   "知识调优工程师",
+   "工艺工程师"
+  ],
+  "llm": "全部 PATCH 为 ustc/deepseek-flash rpcMode=rpc;频道 llm={provider:ustc,model:deepseek-flash,effort:max} PATCH code=0"
+ }
+}

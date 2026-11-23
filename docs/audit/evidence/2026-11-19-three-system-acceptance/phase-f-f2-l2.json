@@ -1,0 +1,25 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "id": "f68257b9-f261-4b78-9e8f-e01cc402d30b",
+  "projectId": "4076e037-f98e-4a1a-a760-c23f7acfd9d2",
+  "kind": "deliverable_acceptance",
+  "subjectType": "result",
+  "subjectId": "6082cd75-01da-4055-85d4-f86360201d9d",
+  "subjectVersion": 1,
+  "status": "approved",
+  "requestedByAgentId": "8bf74a24-a2f6-41be-be07-deed59569c00",
+  "requestedByUserId": null,
+  "payloadJson": "{\"resultId\":\"6082cd75-01da-4055-85d4-f86360201d9d\",\"version\":1}",
+  "argsDigest": "",
+  "reason": "deliverable acceptance",
+  "decisionReason": "L1 技术评审通过,交付物齐全,验收批准(第二账号)",
+  "decidedByUserId": "b1dfb137-100f-4e88-afc1-cc8c89809ba6",
+  "consumedAt": null,
+  "traceId": "plan:4076e037-f98e-4a1a-a760-c23f7acfd9d2:1:w1",
+  "expiresAt": "2026-11-20T15:19:30.578+08:00",
+  "createdAt": "2026-11-19T15:19:30.578+08:00",
+  "decidedAt": "2026-11-19T15:26:16.464+08:00"
+ }
+}

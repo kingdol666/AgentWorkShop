@@ -1,0 +1,96 @@
+{
+ "done": true,
+ "reply": {
+  "id": "90198b7f-913b-4dd8-90c2-a859fad49867",
+  "channelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+  "taskId": null,
+  "fromAgentId": "eeddbc4c-568f-493f-8c37-2c711e932b73",
+  "toAgentId": null,
+  "role": "ROLE_AGENT",
+  "parts": [
+   {
+    "text": "OK-A2A-9."
+   }
+  ],
+  "metadata": {
+   "x-aw-from-agent": "eeddbc4c-568f-493f-8c37-2c711e932b73",
+   "x-aw-in-reply-to": "9a32cbbe-21da-4996-9b20-65a81631ea42",
+   "x-aw-to-label": "Gemma Admin",
+   "x-aw-relayed": "true"
+  },
+  "state": "pending",
+  "createdAt": "2026-11-18T18:05:10.262+08:00",
+  "consumedAt": null
+ },
+ "fresh": [
+  {
+   "id": "90198b7f-913b-4dd8-90c2-a859fad49867",
+   "channelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+   "taskId": null,
+   "fromAgentId": "eeddbc4c-568f-493f-8c37-2c711e932b73",
+   "toAgentId": null,
+   "role": "ROLE_AGENT",
+   "parts": [
+    {
+     "text": "OK-A2A-9."
+    }
+   ],
+   "metadata": {
+    "x-aw-from-agent": "eeddbc4c-568f-493f-8c37-2c711e932b73",
+    "x-aw-in-reply-to": "9a32cbbe-21da-4996-9b20-65a81631ea42",
+    "x-aw-to-label": "Gemma Admin",
+    "x-aw-relayed": "true"
+   },
+   "state": "pending",
+   "createdAt": "2026-11-18T18:05:10.262+08:00",
+   "consumedAt": null
+  },
+  {
+   "id": "a7ce105d-12a9-4a82-992b-50c81fab2328",
+   "channelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+   "taskId": null,
+   "fromAgentId": "eeddbc4c-568f-493f-8c37-2c711e932b73",
+   "toAgentId": "7aaeffe0-93f0-4823-8adf-0405d02aeb0c",
+   "role": "ROLE_AGENT",
+   "parts": [
+    {
+     "text": "OK-A2A-9."
+    }
+   ],
+   "metadata": {
+    "x-aw-require-reply": "true",
+    "x-aw-in-reply-to": "9a32cbbe-21da-4996-9b20-65a81631ea42",
+    "x-aw-thread-root": "9a32cbbe-21da-4996-9b20-65a81631ea42",
+    "x-aw-msg-priority": "immediate",
+    "x-aw-target-agent": "7aaeffe0-93f0-4823-8adf-0405d02aeb0c",
+    "x-aw-from-agent": "eeddbc4c-568f-493f-8c37-2c711e932b73"
+   },
+   "state": "consuming",
+   "createdAt": "2026-11-18T18:05:09.554+08:00",
+   "consumedAt": null
+  },
+  {
+   "id": "9a32cbbe-21da-4996-9b20-65a81631ea42",
+   "channelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+   "taskId": null,
+   "fromAgentId": "7aaeffe0-93f0-4823-8adf-0405d02aeb0c",
+   "toAgentId": "eeddbc4c-568f-493f-8c37-2c711e932b73",
+   "role": "ROLE_AGENT",
+   "parts": [
+    {
+     "text": "A2A 回执测试。请不要调用任何工具,只输出一行纯文本:OK-A2A-9。"
+    }
+   ],
+   "metadata": {
+    "x-aw-target-agent": "eeddbc4c-568f-493f-8c37-2c711e932b73",
+    "x-aw-msg-priority": "immediate",
+    "x-aw-from-agent": "7aaeffe0-93f0-4823-8adf-0405d02aeb0c",
+    "x-aw-from-label": "Gemma Admin",
+    "x-aw-require-reply": "true"
+   },
+   "state": "consumed",
+   "createdAt": "2026-11-18T18:05:00.804+08:00",
+   "consumedAt": "2026-11-18T18:05:10.273+08:00"
+  }
+ ]
+}

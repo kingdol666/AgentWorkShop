@@ -1,0 +1,4 @@
+{
+ "text": "status=ok doc_path=aw-docs/ln-74799404_quick-screen_b237bab2.md kb=aw-docs run_id=b237bab2 chars=8197 index=ok tags=ok search=hit hits=10 mode=two-stage\n✅ 报告已入库 aw-docs(评分=- 结论=alert · 142 alerts)。\n检索自查通过:two-stage 命中 doc_path(共 10 条候选)。\n下一步:kb_doc_read(doc_path) 核对正文;需要结构化经验沉淀时用 kb_agent(action=ingest 入 aw-industrial)。",
+ "isError": false
+}

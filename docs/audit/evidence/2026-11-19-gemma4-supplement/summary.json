@@ -1,0 +1,100 @@
+{
+ "generatedAt": "2026-11-18T16:11:14.522Z",
+ "phase": "supplement-2026-11-19",
+ "port": 3073,
+ "steps": [
+  {
+   "id": "A1",
+   "name": "worker 直派任务 COMPLETED 且产物=12(非工具报错)",
+   "pass": true,
+   "detail": "state=COMPLETED artifacts=[{\"artifactId\":\"f25a7eff-51f7-4b8c-a038-5a76d67876c4\",\"name\":\"output\",\"parts\":[{\"text\":\"The answer is 12.\"}]},{\"artifactId\":\"93fea657-3075-409a-a952-a713fdf83df"
+  },
+  {
+   "id": "B1",
+   "name": "产线重启(拒绝路径前置)",
+   "pass": true,
+   "detail": "run=rr-eb9c8426"
+  },
+  {
+   "id": "B2",
+   "name": "审批卡生成(待拒绝)",
+   "pass": true,
+   "detail": "{\"kind\":\"dcw-approval\",\"id\":\"ap-1aca0cc6\",\"channelId\":\"09868f2a-6efb-4e41-90cc-22f912610798\",\"agentId\":\"7adf3442-5937-4c9e-9712-39a6dfface2f\",\"agentName\":\"Gemma Line Lead\",\"title\":\"整包方案审批:Gemma4-基线配方-"
+  },
+  {
+   "id": "B3",
+   "name": "HITL 拒绝(附指导)",
+   "pass": true,
+   "detail": "status=rejected"
+  },
+  {
+   "id": "B4",
+   "name": "Agent 收到拒绝回执(方案未下发)",
+   "pass": true,
+   "detail": "方案未获批准(超时未批或人工拒绝),未做任何下发。人工意见:验收负例:拒绝本方案(理由:保持 144 已达标,无需再调);请勿重复提交同方向提案。\n请逐字吸收人工意见修订方案(每参数仍须带 basis 与 exp_ref;人类拒绝过的方案不得原样重提),然后重新提交 recipe_propose。"
+  },
+  {
+   "id": "B5",
+   "name": "产线零写入(节点值不变,journal 无新 agent 锚)",
+   "pass": false,
+   "detail": "value=150 journal_agent=1→1"
+  },
+  {
+   "id": "B6",
+   "name": "停线收窗",
+   "pass": true,
+   "detail": "code=0"
+  },
+  {
+   "id": "C1x",
+   "name": "跨频道直投成功(lead-only)",
+   "pass": true,
+   "detail": "{\"code\":0,\"msg\":\"ok\"}"
+  },
+  {
+   "id": "C2x",
+   "name": "跨频道 requireReply 回执(CROSS-OK-7)",
+   "pass": true,
+   "detail": "跨频道协同测试:请只回复一行纯文本 CROSS-OK-7。不要调用工具。"
+  },
+  {
+   "id": "D1",
+   "name": "validated line 经验被召回(含整定/144 与 scope 标识)",
+   "pass": true,
+   "detail": "记忆检索结果(8 条, scope=auto;召回度量 hits=1/misses=0/命中率=100%):\n  [private · experience · score=1 · private · scope=line:ln-68b4a946 · outcome=positive · status=validated · channel=09868f2a · task=39e2879e · root=39e2879e · 2026-11-18 23:55] 完成：产线经验样本A:温度整定\n    [anecdotal]  任务 「 产线经验样本 A:温度整定 」 终态 COMPLETED；"
+  },
+  {
+   "id": "E1",
+   "name": "任务取消 → CANCELED",
+   "pass": true,
+   "detail": "code=0 state=CANCELED msg=ok"
+  },
+  {
+   "id": "E2",
+   "name": "取消后任务终态稳定(CANCELED 不再执行)",
+   "pass": true,
+   "detail": "state=CANCELED"
+  },
+  {
+   "id": "F1",
+   "name": "recipe_update 固化新版本",
+   "pass": false,
+   "detail": "配方「Gemma4-基线配方-pp-mwmaovrs」当前未在执行(产线上没有本配方的活动批次),按运行门约束参数写入被拒。请先由用户在产线开跑本配方,再进行参数写入/下发。"
+  },
+  {
+   "id": "F2",
+   "name": "versions 可查(v1/v2 历史)",
+   "pass": true,
+   "detail": "配方「Gemma4-基线配方-pp-mwmaovrs」版本史(当前 v1,共 1 条,旧→新):\n- v1 [2026-11-18 23:47:37] 来源=— 操作者=— | 当前版本\n    初始版本\n\n回退用 recipe_rollback(recipe_id + version 或 to_last_good=true);保存新参数用 recipe_update。"
+  },
+  {
+   "id": "X1",
+   "name": "补测回合模型来源全部=local/gemma",
+   "pass": true,
+   "detail": "[{\"f\":\"2026-11-18T16-10-48-698Z_01a1ef6c-d1\",\"m\":[\"local/google/gemma-4-12b-qat\"]}]"
+  }
+ ],
+ "pass": 13,
+ "fail": 2,
+ "total": 15
+}

@@ -1,0 +1,18 @@
+{
+ "kind": "dcw-approval",
+ "id": "ap-35f6f4db",
+ "channelId": "09868f2a-6efb-4e41-90cc-22f912610798",
+ "agentId": "7adf3442-5937-4c9e-9712-39a6dfface2f",
+ "agentName": "Gemma Line Lead",
+ "title": "整包方案审批:Gemma4-基线配方-pp-mwmaovrs",
+ "detail": "整包方案审批:配方「Gemma4-基线配方-pp-mwmaovrs」v1(产线 Gemma4-复现模拟线-pp-mwmaovrs),1 套候选方案。请在产线页结构化审批卡选择方案批准(或拒绝并附指导);未携带方案序号的批准按拒绝收敛。\n方案「递减 6°C 至 144」:基线 150°C,向下取告警带上沿 144;单步 ≤6 合规\n  · 冷却温度设定SP 150→144°C | 依据:PV 告警带上沿 144°C | 引用:经验:pp-mwmaovrs 基线整定",
+ "createdAt": "2026-11-18T23:47:46.652+08:00",
+ "expiresAt": "2026-11-19T00:17:46.652+08:00",
+ "requestType": "approval",
+ "harness": "dcw",
+ "nodeId": "recipe-propose:rc-2670c8cb",
+ "status": "pending",
+ "policy": "owner_only",
+ "approvalPolicyVersion": 1,
+ "channelVersion": 1
+}

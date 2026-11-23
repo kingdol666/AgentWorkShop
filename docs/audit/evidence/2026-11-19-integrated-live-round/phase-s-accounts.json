@@ -1,0 +1,12 @@
+{
+ "admin": {
+  "id": "94d1be64-11dd-47b8-a2aa-8a102c94b021",
+  "role": "admin",
+  "email": "liv-admin-mwncrs6m@aw.local"
+ },
+ "second": {
+  "id": "9c106c07-0583-4c46-9bf1-bc939fe43bc7",
+  "role": "user",
+  "email": "liv-reviewer-mwncrs6m@aw.local"
+ }
+}

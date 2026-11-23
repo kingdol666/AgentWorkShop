@@ -1,0 +1,17 @@
+{
+ "label": "L11",
+ "tool": "recipe_propose",
+ "text": "方案「递减 6°C 至 144」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-8880f)。runId:rr-8880f76c(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-8880f76c（2026-11-18 17:52）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · 冷却温度设定SP 150→144 回读=? ACK=transport-ack 判定=unassessed\n- 批次 rr-3321be5b（2026-11-18 17:51）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · 冷却温度设定SP ?→150 回读=? ACK=transport-ack 判定=unassessed\n[人工反馈] accept-line-test-choice-0\n- 冷却温度设定SP 150→144°C [设备证实✓]\n请等待工艺惯性后 daq_query 复测判读:有进步 → 效果回访时回写经验到知识库;劣化 → 立即 recipe_rollback(recipe_id, dispatch=true) 统一回退并通报。",
+ "isError": false,
+ "ms": 98596,
+ "raw": {
+  "code": 0,
+  "message": "ok",
+  "data": {
+   "result": {
+    "text": "方案「递减 6°C 至 144」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-8880f)。runId:rr-8880f76c(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-8880f76c（2026-11-18 17:52）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · 冷却温度设定SP 150→144 回读=? ACK=transport-ack 判定=unassessed\n- 批次 rr-3321be5b（2026-11-18 17:51）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · 冷却温度设定SP ?→150 回读=? ACK=transport-ack 判定=unassessed\n[人工反馈] accept-line-test-choice-0\n- 冷却温度设定SP 150→144°C [设备证实✓]\n请等待工艺惯性后 daq_query 复测判读:有进步 → 效果回访时回写经验到知识库;劣化 → 立即 recipe_rollback(recipe_id, dispatch=true) 统一回退并通报。"
+   }
+  },
+  "httpStatus": 200
+ }
+}

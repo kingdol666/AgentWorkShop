@@ -1,0 +1,47 @@
+{
+ "ok": true,
+ "kind": "dcw-approval",
+ "id": "ap-eb16b815",
+ "status": "approved",
+ "nativeConfirmed": true,
+ "decisionId": "c33cdb95-bfd1-4086-bb50-565c2416a96b",
+ "approval": {
+  "id": "ap-eb16b815",
+  "agentId": "7adf3442-5937-4c9e-9712-39a6dfface2f",
+  "nodeId": "recipe:rc-2670c8cb",
+  "kind": "dcw",
+  "detail": "配方试验候选(整批 1 参数):冷却温度设定SP 150→190°C | 假设:负例:验证单步上限在派发门的拦截 | 批准=整批下发试验(不写版本);拒绝可附指导",
+  "payload": {
+   "schemaVersion": 1,
+   "kind": "recipe-gate",
+   "op": "trial",
+   "recipeId": "rc-2670c8cb",
+   "recipeName": "Gemma4-基线配方-pp-mwmaovrs",
+   "reason": "负例:验证单步上限在派发门的拦截",
+   "params": [
+    {
+     "nodeId": "dw-cd91eb21",
+     "name": "冷却温度设定SP",
+     "from": 150,
+     "to": 190,
+     "unit": "°C"
+    }
+   ],
+   "context": {
+    "lineId": "ln-68b4a946",
+    "runId": "rr-5e14bece",
+    "recipeId": "rc-2670c8cb",
+    "productId": "pd-26d06fc5"
+   },
+   "runId": "rr-5e14bece"
+  },
+  "createdAt": "2026-11-18T23:55:08.304+08:00",
+  "expiresAt": "2026-11-19T00:25:08.304+08:00",
+  "status": "approved",
+  "comment": "负例:批准以验证派发门拦截",
+  "choice": null,
+  "decidedAt": "2026-11-18T23:55:11.310+08:00",
+  "decidedBy": "f72dd89c-94a2-4cab-bd66-06bd7bb510a4",
+  "decidedName": "Gemma Admin"
+ }
+}

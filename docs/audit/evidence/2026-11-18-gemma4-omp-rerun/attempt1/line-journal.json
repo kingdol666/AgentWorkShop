@@ -1,0 +1,15 @@
+{
+ "anchors": [
+  {
+   "lineId": "ln-75cf7025",
+   "nodeId": "dw-cb209c87",
+   "prevValue": null,
+   "newValue": 150,
+   "source": "recipe",
+   "actor": "recipe",
+   "recipeRunId": "rr-4b920cc9",
+   "id": "anc-c9963867",
+   "at": "2026-11-18T21:58:55.463+08:00"
+  }
+ ]
+}

@@ -1,0 +1,40 @@
+{
+ "onboard": "7/7",
+ "provision": "20/0",
+ "forge": "15/0",
+ "verify": "24/0(V6 SKIP)",
+ "smoke": "approved+dispatched+verified 1/1 rr-75fb1979",
+ "entities": {
+  "lineId": "ln-db7a857c",
+  "recipeId": "rc-ef8e2b37",
+  "channelId": "830b81f3-5359-463d-b998-4ac99f360ca2",
+  "smokeRunId": "rr-75fb1979",
+  "seedTaskId": "a42f555c-3cfb-4df8-b324-61a3647ebc2f",
+  "agents": [
+   {
+    "id": "9e77484b-2eb4-4eac-b854-331b28de9a44",
+    "role": "lead",
+    "name": "生产主管",
+    "harness": "omp"
+   },
+   {
+    "id": "22c4bfbf-96ca-4574-82cf-4d4557c6d44d",
+    "role": "worker",
+    "name": "数据分析师",
+    "harness": "omp"
+   },
+   {
+    "id": "18544cac-3b46-408c-811a-8c210198cd9c",
+    "role": "worker",
+    "name": "知识调优工程师",
+    "harness": "omp"
+   },
+   {
+    "id": "b4ca6f54-dc6b-4439-be4a-f51ddeb42eba",
+    "role": "worker",
+    "name": "工艺工程师",
+    "harness": "omp"
+   }
+  ]
+ }
+}

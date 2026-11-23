@@ -1,0 +1,23 @@
+{
+ "error": "RSI candidate 不足(=0)",
+ "at": "2026-11-19T11:21:56.213Z",
+ "state": {
+  "c0": {
+   "plugins": 200,
+   "agentToken": true
+  },
+  "c1": {
+   "replied": true
+  },
+  "c2": {
+   "card": "ap-a4b70de1",
+   "replied": true,
+   "decide": 200
+  },
+  "c3": {
+   "card": "ap-ac9341ce",
+   "decide": 200,
+   "replied": true
+  }
+ }
+}

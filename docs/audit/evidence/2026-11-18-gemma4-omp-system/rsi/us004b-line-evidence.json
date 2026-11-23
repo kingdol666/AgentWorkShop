@@ -1,0 +1,17 @@
+{
+ "at": "2026-11-18T10:18:14.383Z",
+ "steps": [
+  {
+   "id": "R1c",
+   "name": "绑线频道捕获 candidate 经验(>=2)",
+   "pass": false,
+   "detail": "candidates=0 statuses="
+  },
+  {
+   "id": "R8c",
+   "name": "Agent token 不能走人工晋升面(401)",
+   "pass": true,
+   "detail": "http=401 code=USER_UNAUTHORIZED"
+  }
+ ]
+}

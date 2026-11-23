@@ -1,0 +1,95 @@
+{
+ "at": "2026-11-18T10:04:46.708Z",
+ "steps": [
+  {
+   "id": "R1",
+   "name": "重派工作项(COMPLETED → 新 attempt)",
+   "pass": true,
+   "detail": "\"DISPATCHED\""
+  },
+  {
+   "id": "R2",
+   "name": "工作项重新派发",
+   "pass": false,
+   "detail": "\"工作项已有在飞 attempt\""
+  },
+  {
+   "id": "R3",
+   "name": "新 attempt 任务生成",
+   "pass": true,
+   "detail": "{\"channelId\":\"b4a03a39-8700-4bc7-a9ce-68669ad0c33f\",\"taskId\":\"073c9ef3-771d-40fd-8a24-abbc027f4729\",\"n\":2}"
+  },
+  {
+   "id": "R4",
+   "name": "实例 lead token 取得",
+   "pass": true,
+   "detail": "agent=2432243f-0714-49aa-b81b-a75bbe4a068c"
+  },
+  {
+   "id": "R5",
+   "name": "实例任务完成(REST,含完整交付)",
+   "pass": true,
+   "detail": "0 ok"
+  },
+  {
+   "id": "R6",
+   "name": "新结果 draft(v2)",
+   "pass": true,
+   "detail": "result=036b1db3-20d7-40f2-a1c7-fae23218b5be v=2"
+  },
+  {
+   "id": "R7",
+   "name": "成果 submit(v2)",
+   "pass": true,
+   "detail": "status=submitted"
+  },
+  {
+   "id": "R8",
+   "name": "L1 技术复核 reviewed",
+   "pass": true,
+   "detail": "status=reviewed"
+  },
+  {
+   "id": "R9",
+   "name": "L2 验收审批卡",
+   "pass": true,
+   "detail": "approval=f4cdd6f2-e46e-4d3f-a857-f9e59e091758"
+  },
+  {
+   "id": "R10",
+   "name": "L2 验收批准(approver)",
+   "pass": true,
+   "detail": "0 approved"
+  },
+  {
+   "id": "R11",
+   "name": "交付物状态 approved(全部工作项终态后重算)",
+   "pass": true,
+   "detail": "status=approved"
+  },
+  {
+   "id": "R12",
+   "name": "项目完成审批卡",
+   "pass": true,
+   "detail": "approval=4792ecae-e8d8-43ef-8d2f-311e21f5da73 ok"
+  },
+  {
+   "id": "R13",
+   "name": "项目完成审批批准",
+   "pass": true,
+   "detail": "status=approved ok"
+  },
+  {
+   "id": "R14",
+   "name": "Project 最终 completed",
+   "pass": true,
+   "detail": "status=completed"
+  },
+  {
+   "id": "R15",
+   "name": "项目报告(进度/计数)可查",
+   "pass": true,
+   "detail": "{\"ratio\":1,\"completedWorkItems\":1,\"scoreableWorkItems\":1}"
+  }
+ ]
+}

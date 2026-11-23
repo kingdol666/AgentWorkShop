@@ -1,0 +1,138 @@
+{
+ "projectId": "f660ceee-da12-44a8-a3ce-ea62ef77d6f6",
+ "name": "Gemma4 复现验收项目",
+ "status": "completed",
+ "planVersion": 1,
+ "generatedAt": "2026-11-18T23:04:26.543+08:00",
+ "week": {
+  "from": "2026-11-11T23:04:26.543+08:00",
+  "to": "2026-11-18T23:04:26.543+08:00"
+ },
+ "deliverables": {
+  "total": 1,
+  "requiredTotal": 1,
+  "requiredApproved": 1,
+  "byStatus": {
+   "approved": 1
+  }
+ },
+ "workItems": {
+  "total": 1,
+  "completed": 1,
+  "blocked": 0,
+  "byState": {
+   "COMPLETED": 1
+  }
+ },
+ "results": {
+  "total": 1,
+  "byStatus": {
+   "approved": 1
+  }
+ },
+ "approvals": {
+  "pending": 0,
+  "items": []
+ },
+ "progress": {
+  "ratio": 1,
+  "completedWorkItems": 1,
+  "scoreableWorkItems": 1
+ },
+ "blockedItems": [],
+ "recentEvents": {
+  "count": 15,
+  "items": [
+   {
+    "seq": 1,
+    "type": "project.followup_requested",
+    "at": "2026-11-18T22:44:34.826+08:00",
+    "traceId": "followup:a62ccf05-54a4-4d23-b6c9-83eb7ff5af3e"
+   },
+   {
+    "seq": 2,
+    "type": "project.followup_requested",
+    "at": "2026-11-18T23:02:37.011+08:00",
+    "traceId": "followup:ae783324-bbf9-4f37-8800-c1c16d2b10a0"
+   },
+   {
+    "seq": 3,
+    "type": "plan.proposed",
+    "at": "2026-11-18T23:04:23.452+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1"
+   },
+   {
+    "seq": 4,
+    "type": "plan.applied",
+    "at": "2026-11-18T23:04:26.064+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1"
+   },
+   {
+    "seq": 5,
+    "type": "approval.approved",
+    "at": "2026-11-18T23:04:26.064+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1"
+   },
+   {
+    "seq": 6,
+    "type": "work.instance_created",
+    "at": "2026-11-18T23:04:26.114+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1:w1"
+   },
+   {
+    "seq": 7,
+    "type": "work.dispatched",
+    "at": "2026-11-18T23:04:26.146+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1:w1"
+   },
+   {
+    "seq": 8,
+    "type": "result.draft",
+    "at": "2026-11-18T23:04:26.227+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1:w1"
+   },
+   {
+    "seq": 9,
+    "type": "work.completed",
+    "at": "2026-11-18T23:04:26.227+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1:w1"
+   },
+   {
+    "seq": 10,
+    "type": "result.submitted",
+    "at": "2026-11-18T23:04:26.295+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1:w1"
+   },
+   {
+    "seq": 11,
+    "type": "result.reviewed",
+    "at": "2026-11-18T23:04:26.310+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1:w1"
+   },
+   {
+    "seq": 12,
+    "type": "approval.requested",
+    "at": "2026-11-18T23:04:26.320+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1:w1"
+   },
+   {
+    "seq": 13,
+    "type": "approval.approved",
+    "at": "2026-11-18T23:04:26.462+08:00",
+    "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1:w1"
+   },
+   {
+    "seq": 14,
+    "type": "project.complete_requested",
+    "at": "2026-11-18T23:04:26.496+08:00",
+    "traceId": "project:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:complete"
+   },
+   {
+    "seq": 15,
+    "type": "approval.approved",
+    "at": "2026-11-18T23:04:26.509+08:00",
+    "traceId": "project:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:complete"
+   }
+  ]
+ }
+}

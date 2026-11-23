@@ -1,0 +1,37 @@
+{
+  "at": "2026-11-21T07:17:01.243Z",
+  "base": "http://127.0.0.1:3021",
+  "marker": "FULLFLOW-mwq2rsba",
+  "srcChannel": "4bbf5d97-b677-499f-abaf-9698ac76a234",
+  "dstChannel": "830b81f3-5359-463d-b998-4ac99f360ca2",
+  "checks": [
+    {
+      "id": "save_memory_accepted",
+      "status": "PASS",
+      "detail": "status=200 text=已沉淀到本人私有记忆: \"fullflow memory FULLFLOW-mwq2rsba\"(dedupKey=age"
+    },
+    {
+      "id": "search_memory_hits_own_write",
+      "status": "PASS",
+      "detail": "hits=条"
+    },
+    {
+      "id": "cross_channel_send_accepted",
+      "status": "PASS",
+      "detail": "status=200 text=跨 Channel 消息 16786166… 已送达 channel「精密注塑克重闭环频道-20261119-LIV2」的 Leader(9e77484b…)。"
+    },
+    {
+      "id": "cross_channel_message_arrived",
+      "status": "PASS",
+      "detail": "createdAt=2026-11-21T15:17:01.180+08:00"
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "pass": 4,
+    "fail": 0,
+    "notRun": [
+      "cross_channel_reply_generation (needs live model)"
+    ]
+  }
+}

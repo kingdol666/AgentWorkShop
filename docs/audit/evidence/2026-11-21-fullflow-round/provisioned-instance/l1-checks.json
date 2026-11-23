@@ -1,0 +1,116 @@
+{
+  "at": "2026-11-21T07:16:12.209Z",
+  "base": "http://127.0.0.1:3021",
+  "checks": [
+    {
+      "id": "health_ok",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "version_matches_built_main",
+      "status": "PASS",
+      "detail": "version=0.14.0"
+    },
+    {
+      "id": "plugins_manifest_authorized",
+      "status": "PASS",
+      "detail": "status=200 plugins=13"
+    },
+    {
+      "id": "plugins_no_load_failures",
+      "status": "PASS",
+      "detail": "failures=[]"
+    },
+    {
+      "id": "mes_plugin_persisted_enabled",
+      "status": "PASS",
+      "detail": "scope=user tools=2"
+    },
+    {
+      "id": "tool_registry_authorized",
+      "status": "PASS",
+      "detail": "status=200 tools=157"
+    },
+    {
+      "id": "plugin_tools_registered",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "comm_and_memory_tools_present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "experience_stats_authorized",
+      "status": "PASS",
+      "detail": "status=200 total=5"
+    },
+    {
+      "id": "experience_stats_anonymous_denied",
+      "status": "PASS",
+      "detail": "status=401"
+    },
+    {
+      "id": "schema_contract_v8_recorded",
+      "status": "PASS",
+      "detail": "schema-contract max=8"
+    },
+    {
+      "id": "agent_prefab_tables_exist",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "channel_agents_prefab_binding_column",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "channel_sessions_prefab_snapshot_columns",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "project_work_items_prefab_snapshot_columns",
+      "status": "PASS",
+      "detail": ""
+    }
+  ],
+  "notRun": [
+    {
+      "id": "idd_shared_service",
+      "url": "http://127.0.0.1:3210/",
+      "reachable": false,
+      "status": null,
+      "error": "ECONNREFUSED"
+    },
+    {
+      "id": "rag_backend_shared_service",
+      "url": "http://127.0.0.1:8770/",
+      "reachable": false,
+      "status": null,
+      "error": "ECONNREFUSED"
+    },
+    {
+      "id": "rag_web_shared_service",
+      "url": "http://127.0.0.1:6789/",
+      "reachable": false,
+      "status": null,
+      "error": "ECONNREFUSED"
+    },
+    {
+      "id": "plc_sim_twin",
+      "url": "http://127.0.0.1:4056/",
+      "reachable": false,
+      "status": null,
+      "error": "ECONNREFUSED"
+    }
+  ],
+  "summary": {
+    "total": 15,
+    "pass": 15,
+    "fail": 0
+  }
+}

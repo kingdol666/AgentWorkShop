@@ -1,0 +1,30 @@
+[
+ {
+  "id": "70f097d9-9c19-4623-b234-4de842131e63",
+  "title": "R1 当前工况基线与克重稳定性读数（只读）",
+  "state": "FAILED",
+  "channelId": "830b81f3-5359-463d-b998-4ac99f360ca2",
+  "dependsOn": null
+ },
+ {
+  "id": "ae654001-e46c-42d6-bc75-39fc15a705cb",
+  "title": "R2 目标带差距量化与归因候选（只读）",
+  "state": "FAILED",
+  "channelId": "830b81f3-5359-463d-b998-4ac99f360ca2",
+  "dependsOn": null
+ },
+ {
+  "id": "3467e854-32a3-4de8-8a7a-05d43b652bd5",
+  "title": "班次中期结论汇总",
+  "state": "DRAFT",
+  "channelId": "830b81f3-5359-463d-b998-4ac99f360ca2",
+  "dependsOn": null
+ },
+ {
+  "id": "a3d05337-71ea-45fb-b707-8d66da03fdca",
+  "title": "R1s 简化基线:三指标最近30分钟读数(只读,快速收口)",
+  "state": "COMPLETED",
+  "channelId": "830b81f3-5359-463d-b998-4ac99f360ca2",
+  "dependsOn": null
+ }
+]

@@ -1,0 +1,12 @@
+{
+ "admin": {
+  "id": "d17b7ab2-9657-4653-a684-8eac7e0b0d4f",
+  "role": "admin",
+  "email": "tsa-admin-mwmyb0ar@aw.local"
+ },
+ "second": {
+  "id": "b1dfb137-100f-4e88-afc1-cc8c89809ba6",
+  "role": "user",
+  "email": "tsa-reviewer-mwmyb0ar@aw.local"
+ }
+}

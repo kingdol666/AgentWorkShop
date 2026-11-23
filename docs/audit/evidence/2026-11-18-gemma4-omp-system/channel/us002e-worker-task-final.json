@@ -1,0 +1,64 @@
+{
+ "done": true,
+ "task": {
+  "id": "ba54e424-4b26-474c-9905-2beb528d320e",
+  "channelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+  "rootQueueSeq": 4,
+  "assigneeId": "eeddbc4c-568f-493f-8c37-2c711e932b73",
+  "creatorId": "",
+  "title": "worker 直派:9+10(纯文本)",
+  "description": "[mode:goal][policy:no-deliverable] 只输出数字:9+10 的结果。不要调用任何工具,直接给出答案。",
+  "state": "COMPLETED",
+  "progress": 100,
+  "retryCount": 0,
+  "artifacts": [
+   {
+    "artifactId": "b74fcb61-94e6-4f46-9fe7-8c510a9569e0",
+    "name": "output",
+    "parts": [
+     {
+      "text": "19"
+     }
+    ]
+   },
+   {
+    "artifactId": "113e958e-abd2-4032-8237-cc4cf1696e94",
+    "name": "goal-summary",
+    "parts": [
+     {
+      "text": "【目标完成总结】\n目标: worker 直派:9+10(纯文本)\n判定标准: 任务描述中的需求已全部完成\n完成过程: (单任务达成) 全部完成\n最终成果: (交付物见任务 artifacts)\n结论: 目标已达成,全部任务完成。"
+     },
+     {
+      "text": "标准:任务描述中的需求已全部完成"
+     },
+     {
+      "text": "子任务:worker 直派:9+10(纯文本)"
+     }
+    ]
+   }
+  ],
+  "history": [
+   {
+    "messageId": "3501ee2b-84ca-4d55-8f13-bc47c2f225bc",
+    "contextId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+    "role": "ROLE_AGENT",
+    "parts": [
+     {
+      "text": "19"
+     }
+    ]
+   }
+  ],
+  "deadlineAt": "2026-11-18T18:20:10.875+08:00",
+  "source": "channel",
+  "assignmentGeneration": 0,
+  "executionLeaseId": "f1c23113-8bc4-42a1-8309-b6ad00a41762",
+  "executionLeaseAgentId": "eeddbc4c-568f-493f-8c37-2c711e932b73",
+  "executionLeaseStartedAt": "2026-11-18T18:05:10.858+08:00",
+  "executionLeaseRevokedAt": "2026-11-18T18:05:18.218+08:00",
+  "createdAt": "2026-11-18T18:05:10.858+08:00",
+  "updatedAt": "2026-11-18T18:05:18.218+08:00",
+  "progressDerived": null
+ },
+ "state": "COMPLETED"
+}

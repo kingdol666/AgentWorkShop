@@ -1,0 +1,13 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "read": {
+   "ok": true,
+   "value": 53,
+   "raw": 53,
+   "message": "读回 raw 53 → eng 53",
+   "at": "2026-11-19T11:59:10.971+08:00"
+  }
+ }
+}

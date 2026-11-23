@@ -1,0 +1,20 @@
+{
+ "total": 155,
+ "bridgeToolCount": 14,
+ "bridgeTools": [
+  "kb_doc_create",
+  "kb_doc_search",
+  "kb_doc_read",
+  "kb_catalog",
+  "kb_agent",
+  "kb_agent_status",
+  "diag_run",
+  "diag_status",
+  "diag_chat",
+  "diag_stop",
+  "diag_deposit",
+  "diag_results",
+  "diag_result_get",
+  "diag_result_annotate"
+ ]
+}

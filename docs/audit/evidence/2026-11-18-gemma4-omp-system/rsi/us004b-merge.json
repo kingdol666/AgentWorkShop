@@ -1,0 +1,16 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "ok": true,
+  "memoryId": "ad0fd397-d1c2-4c18-8437-ac3aee639e14",
+  "taskIds": [
+   "96b36fd6-8b10-47cf-a24b-de38fc82f07a",
+   "6dfd714a-3bdd-40da-bea5-dbfd20f6194e"
+  ],
+  "reasons": [
+   "已合并 2 条经验的证据锚点"
+  ]
+ },
+ "httpStatus": 200
+}

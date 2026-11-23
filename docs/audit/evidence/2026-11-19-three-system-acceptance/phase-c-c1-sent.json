@@ -1,0 +1,24 @@
+{
+ "status": 200,
+ "body": {
+  "code": 0,
+  "message": "ok",
+  "data": {
+   "messageId": "faac4e1a-c76c-437f-8341-db6585d85a40",
+   "contextId": "8709a0e9-3aca-4dad-b339-6f0b14719eec",
+   "role": "ROLE_AGENT",
+   "parts": [
+    {
+     "text": "【早班巡检】请读取「制品克重PV」「熔体压力PV」「飞边PV」最近5分钟的采样数据(均值/最小/最大/样本数),对照目标克重 32.50±0.35g 判断当前工况是否达标;若偏离,给出第一步调参方向的建议。本次只做巡检判断,先不要写入任何参数。"
+    }
+   ],
+   "metadata": {
+    "x-aw-target-agent": "d86801c7-04cd-41cb-85fd-f5afe3f8f7c1",
+    "x-aw-msg-priority": "immediate",
+    "x-aw-from-label": "TSA Admin",
+    "x-aw-require-reply": "true"
+   }
+  }
+ },
+ "sentAt": "2026-11-19T03:08:14.427Z"
+}

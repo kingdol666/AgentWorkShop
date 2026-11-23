@@ -1,0 +1,10 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "result": {
+   "text": "记忆检索结果(5 条, scope=auto;召回度量 hits=1/misses=0/命中率=100%):\n  [shared · episodic-team-task · score=0.982 · channel-shared · channel=7c53dbf4 · task=96b36fd6 · root=96b36fd6 · 2026-11-18 17:39] 常识问答:水沸点\n    在标准大气压 （1 atm） 下，水的沸点为 100°C（212°F）。\n  [private · experience · score=0.96 · private · scope=channel · outcome=positive · status=active · channel=7c53dbf4 · task=96b36fd6 · root=96b36fd6 · 2026-11-18 17:39] 完成：常识问答:水沸点\n    [anecdotal]  任务 「 常识问答:水沸点 」 终态 COMPLETED；结论：在标准大气压 （1 atm） 下，水的沸点为 100°C（212°F）。\n  [shared · episodic-team-task · score=0.954 · channel-shared · channel=7c53dbf4 · task=96b36fd6 · root=96b36fd6 · 2026-11-18 17:39] 根任务完成 · 常识问答:水沸点\n    任务：常识问答:水沸点；根任务：常识问答:水沸点 (96b36fd6)；层级：根任务；事件：根任务完成 (root.completed)；状态：COMPLETED；执行者：7aaeffe0；进度：100%；结论：在标准大气压 （1 atm） 下，水的沸点为 100°C（212°F）。；时间：2026-11-18T17:39:09.181+08:00\n  [shared · chronicle · score=0.949 · channel-shared · channel=7c53dbf4 · 2026-11-18 17:45] 团队编年史\n    11-18 17:45 [ 完成 ] worker 直派:9+10 — eeddbc4c(The tool `xd://aw_838da01364d94607a0fcf215725af6b7_d0701b5fe)\n11-18 17:39 [ 完成 ]  常识问答:水沸点  — 7aaeffe0( 在标准大气压 （1 atm） 下，水的沸点为 100°C（212°F）。 【 目标完成总结 】  目标:常识问答:水沸点判定标 )\n11-18 17:30 [ 完成 ]  简单算术:2+3 — 7aaeffe0(【 目标完成总结 】  目标:简单算术:2+3 判定标准:任务描述中的需求已全部完成完成过程: Lead 直接作答,无需 )\n  [shared · episodic-team-task · score=0.935 · channel-shared · channel=7c53dbf4 · task=6dfd714a · root=6dfd714a · 2026-11-18 17:30] 简单算术:2+3\n    【 目标完成总结 】\n 目标:简单算术:2+3 判定标准:任务描述中的需求已全部完成完成过程: Lead 直接作答,无需子任务  (2 + 3 = 5)  全部完成最终成果:算术结果 2 + 3 = 5 结论:目标已达成,全部任务完成。"
+  }
+ },
+ "httpStatus": 200
+}

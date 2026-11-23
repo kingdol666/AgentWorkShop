@@ -1,0 +1,58 @@
+[
+ {
+  "file": "2026-11-18T13-39-54-694Z_01a1eee2-aac5-7000-9fde-4c52712fc693.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-3d17fbf2-f56a-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T13-45-53-712Z_01a1eee8-252e-7000-ad1a-d598d17a55f4.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-3d17fbf2-f56a-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T13-53-55-287Z_01a1eeef-7e55-7000-85f6-cd80c8c27b24.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-3d17fbf2-f56a-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T13-53-55-287Z_01a1eeef-7e55-7000-bb2e-de83073759fa.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-3d17fbf2-f56a-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T13-54-45-084Z_01a1eef0-40dc-7000-bffd-12771f8c099d.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-3d17fbf2-f56a-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T13-54-45-091Z_01a1eef0-40e3-7000-9b18-2c2fec8b23f2.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-3d17fbf2-f56a-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T13-54-45-278Z_01a1eef0-419e-7000-9f75-4946b571b3f4.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-d5e07837-acff-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T13-41-21-110Z_01a1eee3-fc55-7000-9bf6-26eec5f39b17.jsonl",
+  "dir": "--D--tmp-aw-demo-1117-home-data-workspaces-068bf4fa-71a7-4c6",
+  "models": [
+   "ustc/deepseek-flash"
+  ]
+ }
+]

@@ -1,0 +1,19 @@
+{
+ "error": "P2 W2 未完成: {\"id\":\"26537cc8-f8dc-41d1-a1a8-a20946e61afe\",\"projectId\":\"26389929-f571-4670-b235-d04445764e60\",\"deliverableId\":\"83804bbc-127c-4efa-a381-d0cee9d3477d\",\"channelId\":\"2525e717-ec94-4a7e-88f9-f01df99bd53c",
+ "at": "2026-11-20T04:19:07.801Z",
+ "state": {
+  "p2": {
+   "chA": "46a82c21-6072-4b4b-94d1-c10a6ffd4109",
+   "chB": "2525e717-ec94-4a7e-88f9-f01df99bd53c",
+   "pid": "26389929-f571-4670-b235-d04445764e60",
+   "d1": "5f086c0d-5a25-4ec8-8d7c-134a40c8d9e5",
+   "d2": "83804bbc-127c-4efa-a381-d0cee9d3477d"
+  },
+  "p1": {
+   "pid": "87407519-2508-4f40-82a6-e729fc6ce9c0",
+   "done": "COMPLETED",
+   "final": "COMPLETED",
+   "note": "G4 由主会话在旧项目上手动续作;phase-p.mjs 跳过 P1 直接跑 P2 落地页"
+  }
+ }
+}

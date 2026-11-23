@@ -1,0 +1,176 @@
+{
+ "project": {
+  "id": "4076e037-f98e-4a1a-a760-c23f7acfd9d2",
+  "name": "注塑克重闭环班次优化-20261119",
+  "description": "",
+  "objective": "制品克重回稳定成 32.50±0.35g 目标带:完成漂移分析,确认治理小步实效,产出班次结论",
+  "successCriteria": [],
+  "status": "active",
+  "mode": "supervised",
+  "ownerUserId": "d17b7ab2-9657-4653-a684-8eac7e0b0d4f",
+  "leadAgentId": "8bf74a24-a2f6-41be-be07-deed59569c00",
+  "officeChannelId": "fcfe6f54-6d72-4838-8f37-7f293b2d63fd",
+  "planVersion": 0,
+  "autoDispatch": false,
+  "routingPolicy": "technical",
+  "createdAt": "2026-11-19T12:40:46.178+08:00",
+  "updatedAt": "2026-11-19T12:40:46.252+08:00"
+ },
+ "access": {
+  "role": "admin",
+  "canManage": true,
+  "canDecide": true
+ },
+ "dispatchLimits": {
+  "perChannel": 1,
+  "perProject": 4,
+  "perTick": 2
+ },
+ "summary": {
+  "deliverables": 1,
+  "requiredDeliverables": 1,
+  "approvedDeliverables": 0,
+  "workItems": 1,
+  "byState": {
+   "DRAFT": 1
+  },
+  "ready": 1,
+  "inFlight": 0,
+  "waiting": 0,
+  "blocked": 0,
+  "results": 0,
+  "pendingApprovals": 0,
+  "progress": 0,
+  "acceptanceProgress": 0
+ },
+ "channels": [
+  {
+   "channelId": "8709a0e9-3aca-4dad-b339-6f0b14719eec",
+   "name": "精密注塑克重闭环频道-20261119-TSA",
+   "enabled": 1,
+   "leadAgentId": "d86801c7-04cd-41cb-85fd-f5afe3f8f7c1",
+   "status": "enabled",
+   "workItems": 1,
+   "inFlight": 0,
+   "rootTasks": [],
+   "sessions": [
+    {
+     "workItemId": "0fe4f409-c0da-42a1-8253-913fa8076be8",
+     "workItemTitle": "数据分析:克重漂移与本步实效判读",
+     "workItemState": "DRAFT",
+     "sessionId": null,
+     "sessionTitle": null,
+     "sessionStatus": null,
+     "sessionKind": null,
+     "instanceChannelId": null,
+     "instanceEnabled": false
+    }
+   ],
+   "ready": 1,
+   "blocked": 0
+  }
+ ],
+ "deliverables": [
+  {
+   "id": "08a22cfe-8235-4ce9-8937-e2fdd50a78ed",
+   "name": "drift-analysis",
+   "description": "",
+   "status": "planned",
+   "required": true,
+   "ownerChannelId": "8709a0e9-3aca-4dad-b339-6f0b14719eec",
+   "dependsOn": [],
+   "acceptanceCriteria": [
+    "artifact_present"
+   ],
+   "contentReady": false,
+   "technicalAccepted": false,
+   "businessApproved": false,
+   "resultCount": 0,
+   "currentResultId": null
+  }
+ ],
+ "workItems": [
+  {
+   "id": "0fe4f409-c0da-42a1-8253-913fa8076be8",
+   "title": "数据分析:克重漂移与本步实效判读",
+   "brief": "读取本线最近30分钟 DAQ(克重/熔体压力/飞边),结合 12:01–12:11 复测窗口,判定 +1MPa 小步后的克重趋势与增益,输出带数据证据的分析结论(只读,不写入)。",
+   "channelId": "8709a0e9-3aca-4dad-b339-6f0b14719eec",
+   "deliverableId": "08a22cfe-8235-4ce9-8937-e2fdd50a78ed",
+   "state": "DRAFT",
+   "stage": "ready",
+   "instanceChannelId": null,
+   "sessionId": null,
+   "sessionStatus": null,
+   "waitingOn": "READY",
+   "waitingReason": "",
+   "priority": 0,
+   "resultKey": "main",
+   "attemptCount": 0,
+   "maxAttempts": 3,
+   "reworkCount": 0,
+   "deferredUntil": null,
+   "stateReason": null,
+   "acceptedResultId": null,
+   "lastResultStatus": "",
+   "currentAttempt": null,
+   "dependsOn": [],
+   "contract": {}
+  }
+ ],
+ "route": {
+  "autoDispatch": false,
+  "routingPolicy": "technical",
+  "mode": "supervised",
+  "planVersion": 0,
+  "routeGate": "none",
+  "ready": [
+   {
+    "id": "0fe4f409-c0da-42a1-8253-913fa8076be8",
+    "title": "数据分析:克重漂移与本步实效判读",
+    "channelId": "8709a0e9-3aca-4dad-b339-6f0b14719eec"
+   }
+  ],
+  "waiting": [],
+  "blocked": []
+ },
+ "kernel": {
+  "health": [
+   {
+    "projectId": "4076e037-f98e-4a1a-a760-c23f7acfd9d2",
+    "component": "effects",
+    "status": "ok",
+    "lastError": "",
+    "consecutiveFailures": 0,
+    "lastHeartbeatAt": "2026-11-19T12:55:26.114+08:00",
+    "updatedAt": "2026-11-19T12:55:26.114+08:00"
+   },
+   {
+    "projectId": "4076e037-f98e-4a1a-a760-c23f7acfd9d2",
+    "component": "ingress",
+    "status": "ok",
+    "lastError": "",
+    "consecutiveFailures": 0,
+    "lastHeartbeatAt": "2026-11-19T12:55:26.111+08:00",
+    "updatedAt": "2026-11-19T12:55:26.111+08:00"
+   },
+   {
+    "projectId": "4076e037-f98e-4a1a-a760-c23f7acfd9d2",
+    "component": "watchdog",
+    "status": "degraded",
+    "lastError": "repeated_decision",
+    "consecutiveFailures": 1,
+    "lastHeartbeatAt": "2026-11-19T12:55:16.114+08:00",
+    "updatedAt": "2026-11-19T12:55:16.114+08:00"
+   }
+  ],
+  "effects": {
+   "done": 1
+  },
+  "planApprovedVersion": null,
+  "ledger": {
+   "count": 1,
+   "lastAt": "2026-11-19T12:55:16.113+08:00"
+  }
+ },
+ "generatedAt": "2026-11-19T12:55:26.805+08:00"
+}

@@ -1,0 +1,53 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "id": "073c9ef3-771d-40fd-8a24-abbc027f4729",
+  "channelId": "b4a03a39-8700-4bc7-a9ce-68669ad0c33f",
+  "rootQueueSeq": 1,
+  "assigneeId": "2432243f-0714-49aa-b81b-a75bbe4a068c",
+  "creatorId": "project:a54c9da3-53fa-4f06-b95c-d3e808c4feeb",
+  "title": "计算 7×8 并给出完整说明",
+  "description": "计算 7*8。请把完整的计算过程说明写进 complete_task 的 deliverable:正文不少于 1000 字节,且必须包含字符串 7*8=56。不要调用联网/知识库/产线工具。",
+  "state": "COMPLETED",
+  "progress": 100,
+  "retryCount": 0,
+  "artifacts": [
+   {
+    "artifactId": "76e95565-bcac-43c7-91af-42c497829315",
+    "name": "input",
+    "parts": [
+     {
+      "text": "[项目任务]\n项目：Gemma4 项目协作验收\n项目目标：在非产线协作频道内完成一次简单的交付:计算 7×8 并给出可复核的成果说明\n交付物：7×8 计算成果\n交付物验收标准：artifact.present\n工作项：计算 7×8 并给出完整说明\n执行要求：计算 7*8。请把完整的计算过程说明写进 complete_task 的 deliverable:正文不少于 1000 字节,且必须包含字符串 7*8=56。不要调用联网/知识库/产线工具。\n成果槽：resultKey=main；attempt=2\n本工作项没有上游交付数据，请直接按执行要求产出。"
+     }
+    ]
+   },
+   {
+    "artifactId": "f0e7554d-f5ba-4dfc-844a-c572653fa6b2",
+    "name": "deliverable",
+    "parts": [
+     {
+      "text": "7 × 8 的计算过程与说明(终版)\n\n一、问题\n计算十进制整数 7 与 8 的乘积,并给出可复核的过程说明。\n\n二、计算过程\n1. 乘法的定义:7 × 8 表示把数字 7 连续相加 8 次,即 7+7+7+7+7+7+7+7。\n2. 逐步相加:7+7=14;14+7=21;21+7=28;28+7=35;35+7=42;42+7=49;49+7=56。\n3. 因此 7*8=56。\n\n三、交叉校验\n1. 交换律:8 × 7 = 8+8+8+8+8+8+8 = 56,与 7 × 8 相同。\n2. 分解法:7 × 8 = 7 × (10 − 2) = 70 − 14 = 56。\n3. 平方差:7 × 8 = (7.5 − 0.5)(7.5 + 0.5) = 7.5² − 0.5² = 56.25 − 0.25 = 56。\n三种方法互相印证,结果一致。\n\n四、结论\n7*8=56。该结果由三种独立方法复核,可作为本次任务的最终交付。\n\n五、边界与说明\n本任务为纯算术推理,不依赖外部数据源、知识库或产线设备;执行期间未进行任何工业写入。\n本说明由验收方在 Project 工作项执行回合因本地模型 write 工具参数协议失败而人工收口时写入,用于继续验证 Project 的 reconcile → L1 → L2 → completed 链路。"
+     }
+    ]
+   }
+  ],
+  "history": [],
+  "sourceChatMessageId": "pw:47a6b420-cbf9-4b2a-be92-9066928d4e35:2",
+  "deadlineAt": "2026-11-18T18:49:46.786+08:00",
+  "source": "project",
+  "projectId": "a54c9da3-53fa-4f06-b95c-d3e808c4feeb",
+  "projectWorkItemId": "47a6b420-cbf9-4b2a-be92-9066928d4e35",
+  "projectAttemptNo": 2,
+  "sessionId": "cs-dde7c0ed",
+  "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明",
+  "assignmentGeneration": 0,
+  "executionLeaseId": "8b8d1a67-84fa-4d17-9b6e-c568966dd23b",
+  "executionLeaseAgentId": "2432243f-0714-49aa-b81b-a75bbe4a068c",
+  "executionLeaseStartedAt": "2026-11-18T18:04:46.787+08:00",
+  "executionLeaseRevokedAt": "2026-11-18T18:04:46.853+08:00",
+  "createdAt": "2026-11-18T18:04:46.787+08:00",
+  "updatedAt": "2026-11-18T18:04:46.853+08:00",
+  "progressDerived": null
+ }
+}

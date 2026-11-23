@@ -1,0 +1,13 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "id": "7995dc19-3588-46b0-be38-cc995cca6e38",
+    "name": "Gemma Admin",
+    "email": "gemma@aw.local",
+    "role": "admin",
+    "createdAt": "2026-11-18 17:29:24",
+    "mustChangePassword": false,
+    "tokenId": "<redacted>"
+  }
+}

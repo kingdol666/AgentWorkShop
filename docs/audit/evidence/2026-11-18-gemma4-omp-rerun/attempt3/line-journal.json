@@ -1,0 +1,28 @@
+{
+ "anchors": [
+  {
+   "lineId": "ln-95ec3dc6",
+   "nodeId": "dw-dc44f4de",
+   "prevValue": 150,
+   "newValue": 144,
+   "source": "agent",
+   "actor": "a6c5379a-806c-4896-bd46-56ea93da5762",
+   "approvalId": "ap-65e9af7e",
+   "recipeRunId": "rr-a92e88c5",
+   "id": "anc-08ed5d63",
+   "at": "2026-11-18T23:06:37.037+08:00",
+   "recordId": "opt-29b8f8d2"
+  },
+  {
+   "lineId": "ln-95ec3dc6",
+   "nodeId": "dw-dc44f4de",
+   "prevValue": null,
+   "newValue": 150,
+   "source": "recipe",
+   "actor": "recipe",
+   "recipeRunId": "rr-d9424b4b",
+   "id": "anc-2ee35d03",
+   "at": "2026-11-18T23:04:26.845+08:00"
+  }
+ ]
+}

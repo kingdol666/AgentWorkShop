@@ -1,0 +1,24 @@
+{
+ "id": "0d74879b-0553-4c3b-b405-cd64d9053597",
+ "channelId": "3d17fbf2-f56a-4a86-8635-fc6e97e3e6e7",
+ "taskId": null,
+ "fromAgentId": "45aaf157-2621-41c6-a5c3-ba0d105f09c9",
+ "toAgentId": "e5508367-58bd-42a7-8daf-a762ced934a6",
+ "role": "ROLE_AGENT",
+ "parts": [
+  {
+   "text": "OK-A2A-9"
+  }
+ ],
+ "metadata": {
+  "x-aw-require-reply": "true",
+  "x-aw-in-reply-to": "e9dc05c6-7882-4f17-961f-36639c54f4db",
+  "x-aw-thread-root": "e9dc05c6-7882-4f17-961f-36639c54f4db",
+  "x-aw-msg-priority": "immediate",
+  "x-aw-target-agent": "e5508367-58bd-42a7-8daf-a762ced934a6",
+  "x-aw-from-agent": "45aaf157-2621-41c6-a5c3-ba0d105f09c9"
+ },
+ "state": "consuming",
+ "createdAt": "2026-11-18T21:54:37.387+08:00",
+ "consumedAt": null
+}

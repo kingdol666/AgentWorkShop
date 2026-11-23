@@ -1,0 +1,21 @@
+{
+ "id": "8c385dd0-06f5-4773-b2ed-6fab27ed02fa",
+ "name": "Gemma4 复现验收项目",
+ "description": "",
+ "objective": "在非产线协作频道内完成一次简单的交付:计算 7×8 并给出可复核的成果说明",
+ "successCriteriaJson": "[\"deliverable.submitted\",\"project.completed\"]",
+ "status": "completed",
+ "mode": "supervised",
+ "ownerUserId": "43b35019-be25-47a6-ae0d-31cd99dea5c3",
+ "officeChannelId": "b2bd7fba-4f70-4515-b673-8d8e21eeb4e5",
+ "leadAgentId": "0ae1af24-6e6d-46e9-a8db-ee4a12ef9ed4",
+ "planVersion": 1,
+ "planJson": "{\"deliverables\":[{\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:56\"],\"channelId\":\"53019ea5-dd1b-4ca8-a042-aeb8713270ba\",\"description\":\"计算 7×8 的结果并提供可复核的成果说明\",\"key\":\"d1\",\"name\":\"7×8 计算成果\",\"required\":true}],\"work_items\":[{\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:56\"],\"brief\":\"计算 7 乘以 8 的结果，并给出可复核的成果说明。由于要求直接完成，请确保计算过程清晰。\",\"channelId\":\"53019ea5-dd1b-4ca8-a042-aeb8713270ba\",\"dedupeKey\":\"v1-calculation\",\"deliverableKey\":\"d1\",\"dependsOn\":[],\"execBudgetMinutes\":60,\"key\":\"w1\",\"title\":\"执行 7×8 计算任务\"}]}",
+ "planApprovalRequired": 1,
+ "autoDispatch": 0,
+ "routingPolicy": "technical",
+ "configJson": "{\"leaderHarness\":\"omp\",\"routeGate\":\"none\"}",
+ "deadlineAt": null,
+ "createdAt": "2026-11-18T22:21:27.415+08:00",
+ "updatedAt": "2026-11-18T22:24:28.368+08:00"
+}

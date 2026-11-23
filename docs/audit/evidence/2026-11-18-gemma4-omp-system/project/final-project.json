@@ -1,0 +1,26 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "id": "a54c9da3-53fa-4f06-b95c-d3e808c4feeb",
+  "name": "Gemma4 项目协作验收",
+  "description": "",
+  "objective": "在非产线协作频道内完成一次简单的交付:计算 7×8 并给出可复核的成果说明",
+  "successCriteriaJson": "[\"deliverable.submitted\",\"project.completed\"]",
+  "status": "completed",
+  "mode": "supervised",
+  "ownerUserId": "7995dc19-3588-46b0-be38-cc995cca6e38",
+  "officeChannelId": "11849e6b-e7d0-4f1a-a235-36f2421c3e1c",
+  "leadAgentId": "f1c87959-08c1-4b00-8f6c-c04631cd678d",
+  "planVersion": 1,
+  "planJson": "{\"deliverables\":[{\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:56\",\"text.contains:7*8\"],\"channelId\":\"7c53dbf4-3aa2-426f-9e58-4185f32dce18\",\"description\":\"包含 7×8 的计算结果及其详细的核对说明\",\"key\":\"d1\",\"name\":\"7×8 计算成果\",\"required\":true}],\"work_items\":[{\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:800\",\"text.contains:56\"],\"brief\":\"执行 7*8 的乘法运算，并按照要求提供详细的步骤说明及最终结果。\",\"channelId\":\"7c53dbf4-3aa2-426f-9e58-4185f32dce18\",\"dedupeKey\":\"v1-calc-7x8\",\"deliverableKey\":\"d1\",\"dependsOn\":[],\"execBudgetMinutes\":30,\"key\":\"w1\",\"title\":\"计算 7×8 并提交成果\"}]}",
+  "planApprovalRequired": 1,
+  "autoDispatch": 0,
+  "routingPolicy": "technical",
+  "configJson": "{\"leaderHarness\":\"omp\",\"routeGate\":\"none\"}",
+  "deadlineAt": null,
+  "createdAt": "2026-11-18T17:46:37.130+08:00",
+  "updatedAt": "2026-11-18T18:04:48.023+08:00"
+ },
+ "httpStatus": 200
+}

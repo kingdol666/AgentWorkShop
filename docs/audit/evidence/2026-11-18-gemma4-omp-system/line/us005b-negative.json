@@ -1,0 +1,18 @@
+{
+ "label": "L16",
+ "tool": "recipe_trial",
+ "text": "hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯与人工审批判断。",
+ "isError": true,
+ "ms": 19,
+ "raw": {
+  "code": 0,
+  "message": "ok",
+  "data": {
+   "result": {
+    "text": "hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯与人工审批判断。",
+    "isError": true
+   }
+  },
+  "httpStatus": 200
+ }
+}

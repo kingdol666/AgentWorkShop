@@ -1,0 +1,19 @@
+{
+ "error": "训练频道创建失败: {\"code\":\"VALIDATION_ERROR\",\"message\":\"channelMode: Invalid enum value. Expected 'generic' | 'production_line_integrated', received 'industrial'\",\"data\":null}",
+ "at": "2026-11-19T04:55:46.830Z",
+ "state": {
+  "f1": {
+   "chId": "d5a72a2d-b5bf-4cc1-b0fc-d6c5c6589137",
+   "members": [
+    "lead:文档撰写",
+    "worker:测试工程师"
+   ],
+   "replied": true
+  },
+  "f2": {
+   "pid": "4076e037-f98e-4a1a-a760-c23f7acfd9d2",
+   "w1": "0fe4f409-c0da-42a1-8253-913fa8076be8",
+   "planApproved": false
+  }
+ }
+}

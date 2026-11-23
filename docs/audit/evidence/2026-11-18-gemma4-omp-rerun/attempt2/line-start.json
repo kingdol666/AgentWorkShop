@@ -1,0 +1,50 @@
+{
+ "run": {
+  "id": "rr-28f106d4",
+  "recipeId": "rc-f0ca13e5",
+  "recipeName": "Gemma4-基线配方-pp-mwm7pxx0",
+  "productId": "pd-32415ba1",
+  "lineId": "ln-1ff7cafd",
+  "recipeVersion": 1,
+  "startedAt": "2026-11-18T22:24:28.560+08:00",
+  "endedAt": null,
+  "results": [
+   {
+    "templateRef": "cw-709e1272",
+    "nodeId": "dw-3d822ee7",
+    "ok": true,
+    "message": "Mock PLC 写入成功:150 → raw 150,待写后验证(标定后物理值 150)",
+    "value": 150,
+    "ack": "readback-verified",
+    "verify": {
+     "verdict": "verified",
+     "attempts": 1
+    }
+   }
+  ],
+  "paramsSnapshot": [
+   {
+    "nodeId": "dw-3d822ee7",
+    "templateRef": "cw-709e1272",
+    "value": 150
+   }
+  ],
+  "ackSummary": {
+   "verified": 1,
+   "unverified": 0,
+   "failed": 0,
+   "total": 1
+  }
+ },
+ "line": {
+  "lineId": "ln-1ff7cafd",
+  "active": true,
+  "runId": "rr-28f106d4",
+  "recipeId": "rc-f0ca13e5",
+  "recipeName": "Gemma4-基线配方-pp-mwm7pxx0",
+  "productId": "pd-32415ba1",
+  "productName": "Gemma4-复现产品-pp-mwm7pxx0",
+  "startedAt": "2026-11-18T22:24:28.560+08:00",
+  "taggedSamples": 0
+ }
+}

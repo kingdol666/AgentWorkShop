@@ -1,0 +1,28 @@
+{
+ "pid": "180032",
+ "port": 3021,
+ "home": "D:/tmp/aw-liv2-1119/home",
+ "health": {
+  "status": "ok",
+  "app": "AgentWorkShop",
+  "version": "0.13.0",
+  "mode": "dev",
+  "uptimeMs": 1051,
+  "timestamp": "2026-11-19T17:33:38.541+08:00",
+  "workshop": "ready",
+  "wiredAgents": 0,
+  "activeChannels": 0,
+  "daq": {
+   "degraded": false,
+   "mqttOnline": true,
+   "tsdbOnline": true
+  },
+  "memory": {
+   "heapUsedMb": 22,
+   "heapLimitMb": 4288,
+   "rssMb": 117,
+   "externalMb": 13,
+   "heapRatio": 0.0051
+  }
+ }
+}

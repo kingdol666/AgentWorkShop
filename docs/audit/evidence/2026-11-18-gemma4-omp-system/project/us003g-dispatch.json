@@ -1,0 +1,6 @@
+{
+ "code": "WORK_ITEM_IN_FLIGHT",
+ "message": "工作项已有在飞 attempt",
+ "data": null,
+ "httpStatus": 409
+}

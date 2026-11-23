@@ -1,0 +1,20 @@
+{
+ "id": "8eed6c25-f210-48cf-826d-b5ce3b3b4cf9",
+ "channelId": "3d17fbf2-f56a-4a86-8635-fc6e97e3e6e7",
+ "senderType": "agent",
+ "senderId": "45aaf157-2621-41c6-a5c3-ba0d105f09c9",
+ "senderName": "Gemma Worker",
+ "text": "24",
+ "mentions": [
+  {
+   "type": "user",
+   "id": "80e3a7a8-ca2b-4a42-9695-e1f246da96d0",
+   "label": "Gemma Admin"
+  }
+ ],
+ "replyToId": "48fc3411-7558-43f9-81db-bfe7b8c60425",
+ "requesterUserId": "80e3a7a8-ca2b-4a42-9695-e1f246da96d0",
+ "sourceChatMessageId": "48fc3411-7558-43f9-81db-bfe7b8c60425",
+ "clientMessageId": "agent-reply:45aaf157-2621-41c6-a5c3-ba0d105f09c9:48fc3411-7558-43f9-81db-bfe7b8c60425:1795010044065",
+ "createdAt": "2026-11-18T21:54:04.065+08:00"
+}

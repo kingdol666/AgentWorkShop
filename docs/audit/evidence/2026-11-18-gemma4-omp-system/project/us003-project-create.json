@@ -1,0 +1,26 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "id": "a54c9da3-53fa-4f06-b95c-d3e808c4feeb",
+  "name": "Gemma4 项目协作验收",
+  "description": "",
+  "objective": "在非产线协作频道内完成一次简单的交付:计算 7×8 并给出可复核的成果说明",
+  "successCriteriaJson": "[\"deliverable.submitted\",\"project.completed\"]",
+  "status": "draft",
+  "mode": "supervised",
+  "ownerUserId": "7995dc19-3588-46b0-be38-cc995cca6e38",
+  "officeChannelId": "11849e6b-e7d0-4f1a-a235-36f2421c3e1c",
+  "leadAgentId": "f1c87959-08c1-4b00-8f6c-c04631cd678d",
+  "planVersion": 0,
+  "planJson": "{}",
+  "planApprovalRequired": 1,
+  "autoDispatch": 0,
+  "routingPolicy": "technical",
+  "configJson": "{\"leaderHarness\":\"omp\",\"routeGate\":\"none\"}",
+  "deadlineAt": null,
+  "createdAt": "2026-11-18T17:46:37.130+08:00",
+  "updatedAt": "2026-11-18T17:46:37.132+08:00"
+ },
+ "httpStatus": 200
+}

@@ -1,0 +1,37 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": [
+  {
+   "id": "7aaeffe0-93f0-4823-8adf-0405d02aeb0c",
+   "channelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+   "name": "Gemma Lead",
+   "harness": "omp",
+   "role": "lead",
+   "agentKind": "channel_agent",
+   "enabled": 1,
+   "templateId": "1a501c56-7a8a-4e0b-900e-776564d0a692",
+   "config": {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "rpcMode": "rpc"
+   }
+  },
+  {
+   "id": "eeddbc4c-568f-493f-8c37-2c711e932b73",
+   "channelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+   "name": "Gemma Worker",
+   "harness": "omp",
+   "role": "worker",
+   "agentKind": "channel_agent",
+   "enabled": 1,
+   "templateId": "22f6db32-1215-4977-ab85-0a77039efad1",
+   "config": {
+    "provider": "local",
+    "model": "google/gemma-4-12b-qat",
+    "rpcMode": "rpc"
+   }
+  }
+ ],
+ "httpStatus": 200
+}

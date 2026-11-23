@@ -1,0 +1,13 @@
+{
+ "at": "2026-11-19T00:26+08:00",
+ "finding": "recipe_update 在 manual 绑定下挂「配方参数写入审批」卡并阻塞等待人工裁决(治理按设计工作);两次尝试各生成一张卡,fetch 客户端 300s headers 超时先断而服务端继续等",
+ "resolution": {
+  "ap-1b3dd976": "rejected(重复卡,以新卡为准)",
+  "ap-0d12f101": "approved → 配方 v2 固化(变更:SP 150→144),不下发产线"
+ },
+ "verified": {
+  "versions": "当前 v2,共 2 条(v1 初始 + v2 变更 150→144,来源 Agent/Gemma Line Lead)",
+  "deviceValue": "value=150 readValue=150(update 为定义面操作,不触发下发)",
+  "lineStopped": true
+ }
+}

@@ -1,0 +1,23 @@
+{
+ "all": [
+  {
+   "id": "342aec0b-e1b0-4a1f-afdb-1bab8603b71e",
+   "title": "完成：闭环调参 R2:保压时间SP +0.5s 受控方案审批与下发",
+   "status": "candidate",
+   "scope": "line"
+  },
+  {
+   "id": "9f311323-92ca-49fa-b7a7-1f02bef1c16e",
+   "title": "完成：闭环调参 R1:保压压力SP +1MPa 受控方案审批与下发",
+   "status": "candidate",
+   "scope": "line"
+  },
+  {
+   "id": "e2ead2ca-041a-4e0f-8ed4-86de26ce0dcc",
+   "title": "未完成：克重闭环首轮巡检",
+   "status": "candidate",
+   "scope": "line"
+  }
+ ],
+ "candidateCount": 3
+}

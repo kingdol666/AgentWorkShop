@@ -1,0 +1,116 @@
+{
+  "at": "2026-11-21T07:14:25.909Z",
+  "base": "http://127.0.0.1:3031",
+  "checks": [
+    {
+      "id": "admin_register",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "skill_discovered_from_user_agent_root",
+      "status": "PASS",
+      "detail": "status=200 source=global"
+    },
+    {
+      "id": "skill_imported_immutable_disabled",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "skill_enabled",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "prefab_draft_created",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "prefab_revision_published",
+      "status": "PASS",
+      "detail": "status=200 rev=1"
+    },
+    {
+      "id": "channel_with_mock_lead",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "member_bound_to_pinned_revision",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "catalog_exposes_activate_skill_only_for_assigned_skill",
+      "status": "PASS",
+      "detail": "tools=20"
+    },
+    {
+      "id": "catalog_narrows_unselected_tool",
+      "status": "PASS",
+      "detail": "dcw=false"
+    },
+    {
+      "id": "activate_skill_returns_low_trust_body",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "unselected_tool_denied_at_dispatch",
+      "status": "PASS",
+      "detail": "status=200 text=通用频道不开放产线工业工具。"
+    },
+    {
+      "id": "session_created",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "session_clone_copies_pinned_binding",
+      "status": "PASS",
+      "detail": "clone=5a6661ec-1f23-4374-9850-9c452f72f793"
+    },
+    {
+      "id": "session_snapshot_hash_matches",
+      "status": "PASS",
+      "detail": "hash=60a6793140dc"
+    },
+    {
+      "id": "revision2_published",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "existing_binding_not_auto_upgraded",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "revoked_skill_activation_denied",
+      "status": "PASS",
+      "detail": "text=FORBIDDEN: 工具 activate_skill 不在当前 AgentPrefab 能力范围"
+    },
+    {
+      "id": "mcp_rejects_non_https",
+      "status": "PASS",
+      "detail": "status=400"
+    },
+    {
+      "id": "mcp_manifest_registered_without_secret",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "mcp_discovery_failure_is_bounded",
+      "status": "PASS",
+      "detail": "status=502"
+    }
+  ],
+  "summary": {
+    "total": 21,
+    "pass": 21,
+    "fail": 0
+  }
+}

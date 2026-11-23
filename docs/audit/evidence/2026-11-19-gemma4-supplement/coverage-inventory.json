@@ -1,0 +1,42 @@
+{
+  "inventoryAt": "2026-11-19",
+  "question": "测试都做了什么?是否全部过程都测试完整?",
+  "rounds": [
+    { "round": "手工验收轮", "when": "2026-11-18 下午", "instance": ":3072 fresh home", "evidence": "docs/audit/evidence/2026-11-18-gemma4-omp-system/", "result": "手工逐步测试,补漏修复后全绿;独立复核 2 轮 APPROVED", "files": 122 },
+    { "round": "PIPELINE attempt1", "when": "2026-11-18 21:39", "instance": ":3073 fresh home", "result": "36/41(5 fail:保持窗节奏×3、试验节拍、取证范围)" },
+    { "round": "PIPELINE attempt2", "when": "2026-11-18 21:51→", "instance": ":3073(重跑)", "result": "40/41(1 fail:越量程负例撞 60s 下发间隔)" },
+    { "round": "PIPELINE attempt3", "when": "2026-11-18 22:35", "instance": ":3073(重跑)", "result": "41/41(leader 退化由手动补发指令抢救)" },
+    { "round": "PIPELINE attempt4 加固版(最终)", "when": "2026-11-18 23:39", "instance": ":3073(清理重启 pid 186184)", "result": "41/41 全绿,16 分钟;独立评审 APPROVED(0 P0,P1 加固全部落地)" },
+    { "round": "补测轮(本轮)", "when": "2026-11-19", "instance": ":3073(存活实例复用)", "result": "见 summary.json" }
+  ],
+  "covered": {
+    "channel": ["频道创建/成员绑定(omp+gamma)", "lead 真实回合(任务派发→COMPLETED+交付物)", "worker 群聊 @mention 真实回合", "A2A 即时消息 requireReply 回执", "双 Session 隔离(brief/history/omp 会话三证)", "消息持久化(chat_messages/messages)"],
+    "project": ["创建/绑定/交付物/激活", "真实 leader 规划(project_propose_plan)+计划审批", "物化/派发/实例执行", "REST 收口(披露)", "reconcile→draft→submit→L1", "自批负例(SELF_APPROVAL_FORBIDDEN)", "L2 approver 批准", "交付物 approved", "project_complete→completed", "report", "(手工轮)工作项取消/重派 v2 路径"],
+    "rsi": ["任务完成反射经验(channel+line)", "search_memory 召回(手工轮,channel scope)", "合并(证据并集 taskIds=2)", "单任务晋级负例(1/2)", "人工晋升 candidate→validated(line)", "Agent 越权晋升 401", "(手工轮)改进提案列表+404 负例"],
+    "line": ["线/产品/模板/DCW+DAQ 节点/配方供给", "开线(首批下发)", "Agent DAQ 查询", "recipe_propose→HITL 批准(choice=0)→整批下发设备证实", "设备回读一致(144/144)", "journal 带审批锚", "越量程负例(预检拒绝)", "超单步负例(批准后派发门拒绝,设备零写入)", "停线收窗", "DAQ 持续采样"],
+    "model": ["直连探针(非空 content)", "omp 会话 provenance(全部 local/gemma,按工作区过滤)", "显示名 vs 模型 id 回落坑(已修)"],
+    "pipeline_infra": ["归属三重核验清理", "home 轮换+新鲜度 marker", "pacing 节奏器(保持窗/节拍/间隔)", "失败路径 summary 落盘"]
+  },
+  "notCovered_inScope": [
+    { "item": "worker 直派任务(assigneeId=worker 独立派发路径)", "why": "仅手工轮测过,PIPELINE 未含", "action": "补测A(本轮)" },
+    { "item": "HITL 拒绝路径(拒绝+指导→零下发)", "why": "只测过批准分支", "action": "补测B(本轮)" },
+    { "item": "跨 Channel 通信(lead-only toChannelId)", "why": "从未测试", "action": "补测C(本轮)" },
+    { "item": "validated line 经验召回复用", "why": "召回只在手工轮测过 channel scope 晋升前", "action": "补测D(本轮)" },
+    { "item": "任务取消路径(CANCELED+无副作用)", "why": "从未测试", "action": "补测E(本轮)" },
+    { "item": "recipe_update 版本固化+versions", "why": "从未测试(governance 族缺口)", "action": "补测F(本轮)" }
+  ],
+  "notCovered_candidates": [
+    { "item": "recipe_rollback(dispatch=true 回退)", "why": "治理族;需活跃批次+版本,时间成本高", "risk": "低(回退走同一治理闸)" },
+    { "item": "经验 retire/contested 状态", "why": "生命周期尾部状态", "risk": "低" },
+    { "item": "改进提案 decide 接受路径", "why": "只测过列表+404 负例", "risk": "低(自动收口已验)" },
+    { "item": "Project replan/route gate/observe+auto 模式", "why": "V1 骨架已验,变体未展开", "risk": "中低" },
+    { "item": "harness profile 晋升(shadow→active)", "why": "RSI profile 面未展开", "risk": "低" }
+  ],
+  "outOfScope_by_design": [
+    "UI/WebSocket 事件流(headless 无订阅,已知口径)",
+    "物理 HIL(mock 模拟线)",
+    "IDD/RAG 集成(实验设定不集成)",
+    "优化器/AML 训练/本体/MES/科学探索全链(用户指定简单测试)",
+    "Mimosa 安全封印(不宣称安全)"
+  ]
+}

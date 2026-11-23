@@ -1,0 +1,51 @@
+{
+ "cutoff": "2026-11-19 10:40 +08:00",
+ "channels": {
+  "408c5ea6": {
+   "models": [
+    "ustc/deepseek-flash"
+   ],
+   "turns": 269,
+   "inputTokens": 828687,
+   "outputTokens": 260045
+  },
+  "8709a0e9": {
+   "models": [
+    "ustc/deepseek-flash"
+   ],
+   "turns": 270,
+   "inputTokens": 1445595,
+   "outputTokens": 275646
+  },
+  "bc07d23c": {
+   "models": [
+    "ustc/deepseek-flash"
+   ],
+   "turns": 99,
+   "inputTokens": 252984,
+   "outputTokens": 63963
+  },
+  "d23a1618": {
+   "models": [
+    "ustc/deepseek-flash"
+   ],
+   "turns": 44,
+   "inputTokens": 161883,
+   "outputTokens": 41249
+  },
+  "fcfe6f54": {
+   "models": [
+    "ustc/deepseek-flash"
+   ],
+   "turns": 79,
+   "inputTokens": 226675,
+   "outputTokens": 67404
+  }
+ },
+ "nonUstcTurns": [],
+ "totals": {
+  "turns": 761,
+  "input": 2915824,
+  "output": 708307
+ }
+}

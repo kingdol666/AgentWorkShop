@@ -1,0 +1,175 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "projectId": "a54c9da3-53fa-4f06-b95c-d3e808c4feeb",
+  "name": "Gemma4 项目协作验收",
+  "status": "completed",
+  "planVersion": 1,
+  "generatedAt": "2026-11-18T18:04:48.053+08:00",
+  "week": {
+   "from": "2026-11-11T18:04:48.053+08:00",
+   "to": "2026-11-18T18:04:48.053+08:00"
+  },
+  "deliverables": {
+   "total": 1,
+   "requiredTotal": 1,
+   "requiredApproved": 1,
+   "byStatus": {
+    "approved": 1
+   }
+  },
+  "workItems": {
+   "total": 3,
+   "completed": 1,
+   "blocked": 0,
+   "byState": {
+    "CANCELED": 2,
+    "COMPLETED": 1
+   }
+  },
+  "results": {
+   "total": 2,
+   "byStatus": {
+    "approved": 1,
+    "superseded": 1
+   }
+  },
+  "approvals": {
+   "pending": 0,
+   "items": []
+  },
+  "progress": {
+   "ratio": 1,
+   "completedWorkItems": 1,
+   "scoreableWorkItems": 1
+  },
+  "blockedItems": [],
+  "recentEvents": {
+   "count": 27,
+   "items": [
+    {
+     "seq": 8,
+     "type": "work.canceled",
+     "at": "2026-11-18T17:54:28.214+08:00",
+     "traceId": "plan:a54c9da3-53fa-4f06-b95c-d3e808c4feeb:1:w1"
+    },
+    {
+     "seq": 9,
+     "type": "work.instance_created",
+     "at": "2026-11-18T17:54:28.256+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 10,
+     "type": "work.dispatched",
+     "at": "2026-11-18T17:54:28.262+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 11,
+     "type": "result.draft",
+     "at": "2026-11-18T18:03:03.341+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 12,
+     "type": "work.completed",
+     "at": "2026-11-18T18:03:03.342+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 13,
+     "type": "result.submitted",
+     "at": "2026-11-18T18:03:13.364+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 14,
+     "type": "result.reviewed",
+     "at": "2026-11-18T18:03:13.389+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 15,
+     "type": "approval.requested",
+     "at": "2026-11-18T18:03:13.418+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 16,
+     "type": "approval.approved",
+     "at": "2026-11-18T18:03:43.512+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 17,
+     "type": "work.canceled",
+     "at": "2026-11-18T18:04:02.941+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并提交成果"
+    },
+    {
+     "seq": 18,
+     "type": "work.instance_created",
+     "at": "2026-11-18T18:04:46.757+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 19,
+     "type": "work.dispatched",
+     "at": "2026-11-18T18:04:46.791+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 20,
+     "type": "result.draft",
+     "at": "2026-11-18T18:04:46.862+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 21,
+     "type": "result.submitted",
+     "at": "2026-11-18T18:04:47.930+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 22,
+     "type": "result.reviewed",
+     "at": "2026-11-18T18:04:47.946+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 23,
+     "type": "approval.requested",
+     "at": "2026-11-18T18:04:47.960+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 24,
+     "type": "result.superseded",
+     "at": "2026-11-18T18:04:47.976+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 25,
+     "type": "approval.approved",
+     "at": "2026-11-18T18:04:47.977+08:00",
+     "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明"
+    },
+    {
+     "seq": 26,
+     "type": "project.complete_requested",
+     "at": "2026-11-18T18:04:48.007+08:00",
+     "traceId": "project:a54c9da3-53fa-4f06-b95c-d3e808c4feeb:complete"
+    },
+    {
+     "seq": 27,
+     "type": "approval.approved",
+     "at": "2026-11-18T18:04:48.023+08:00",
+     "traceId": "project:a54c9da3-53fa-4f06-b95c-d3e808c4feeb:complete"
+    }
+   ]
+  }
+ },
+ "httpStatus": 200
+}

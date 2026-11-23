@@ -1,0 +1,10 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "messageId": "3d451d46-8fff-4043-a09f-bde20eedf863",
+  "toChannelId": "ce5d9bfa-53b9-46ad-9e18-7ab45f2334b9",
+  "toChannelName": "Gemma4 跨频道协同频道",
+  "toLeadAgentId": "23963237-4617-4d8f-893b-7ff4f5dbc61e"
+ }
+}

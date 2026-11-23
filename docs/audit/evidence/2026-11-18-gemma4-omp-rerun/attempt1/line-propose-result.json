@@ -1,0 +1,4 @@
+{
+ "text": "整包下发失败:方案「递减 6°C 至 144」已获批准,但整批下发 0/1 参数成功(典型:节点写入保持窗/节流未放行)。runId:rr-614208a1(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-614208a1（2026-11-18 21:59）成效=unassessed · ACK verified=0 unverified=0 failed=1 total=1\n- 批次 rr-4b920cc9（2026-11-18 21:58）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · 冷却温度设定SP ?→150 回读=? ACK=transport-ack 判定=unassessed\n[人工反馈] 验收:方案 0 批准(单步 6°C 合规)\n产线仍在运行原参数 —— 请等待约 60s(节点写入保持窗/节拍窗放行)后重新调用 recipe_rollback(dispatch=true) 整批重下发目标版本(逐节点直发路径不存在),或用 recipe_rollback(recipe_id, to_last_good=true) 统一回退到已知良好版本;并把失败原因写入汇报提醒人类。",
+ "isError": true
+}

@@ -1,0 +1,29 @@
+{
+ "prompt": "我们之前约定的暗号是什么?如果不知道请只回答\"不知道\"。不要调用工具。",
+ "reply": {
+  "type": "message",
+  "id": "4c5500b9-5bf2-4f91-bd93-bf2b3bcdc966",
+  "at": "2026-11-18T22:44:25.327+08:00",
+  "role": "ROLE_AGENT",
+  "name": "addd1dc7-1107-4b2e-897a-38fd9c5a55c7",
+  "text": "不知道"
+ },
+ "history": [
+  {
+   "type": "message",
+   "id": "abe5566c-5641-4438-9806-1ae9f85b0048",
+   "at": "2026-11-18T22:44:04.659+08:00",
+   "role": "ROLE_AGENT",
+   "name": "addd1dc7-1107-4b2e-897a-38fd9c5a55c7",
+   "text": "我们之前约定的暗号是什么?如果不知道请只回答\"不知道\"。不要调用工具。"
+  },
+  {
+   "type": "message",
+   "id": "4c5500b9-5bf2-4f91-bd93-bf2b3bcdc966",
+   "at": "2026-11-18T22:44:25.327+08:00",
+   "role": "ROLE_AGENT",
+   "name": "addd1dc7-1107-4b2e-897a-38fd9c5a55c7",
+   "text": "不知道"
+  }
+ ]
+}

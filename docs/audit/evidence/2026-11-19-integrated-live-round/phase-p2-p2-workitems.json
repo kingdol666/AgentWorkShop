@@ -1,0 +1,16 @@
+[
+ {
+  "id": "a8524c45-46bc-4d3f-a910-7c2f1349eee0",
+  "title": "编写产品落地页设计简报 design-brief.md",
+  "deliverableId": "5f086c0d-5a25-4ec8-8d7c-134a40c8d9e5",
+  "channelId": "46a82c21-6072-4b4b-94d1-c10a6ffd4109",
+  "dependsOn": null
+ },
+ {
+  "id": "26537cc8-f8dc-41d1-a1a8-a20946e61afe",
+  "title": "按设计简报实现单文件落地页 landing-page.html",
+  "deliverableId": "83804bbc-127c-4efa-a381-d0cee9d3477d",
+  "channelId": "2525e717-ec94-4a7e-88f9-f01df99bd53c",
+  "dependsOn": null
+ }
+]

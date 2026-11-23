@@ -1,0 +1,23 @@
+{
+ "steps": [
+  {
+   "id": "B5c",
+   "name": "拒绝路径不变量:被拒方案 138 从未下发,agent 锚不含 138",
+   "pass": true,
+   "detail": "value=150(开线基线 150/被拒目标 138) anchors=[144]"
+  },
+  {
+   "id": "F0",
+   "name": "产线已活跃(复用遗留批次)",
+   "pass": true,
+   "detail": "run=rr-c21d39d5"
+  },
+  {
+   "id": "ABORT",
+   "name": "修正复验中止",
+   "pass": false,
+   "detail": "fetch failed"
+  }
+ ],
+ "aborted": true
+}
