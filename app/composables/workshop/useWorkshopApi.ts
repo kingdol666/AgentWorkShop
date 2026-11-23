@@ -241,8 +241,9 @@ export function useWorkshopApi() {
   return {
     // channels
     listChannels: () => http.get<{ data: ChannelDto[] }>('/workshop/channels'),
-    createChannel: (body: { name: string, channelMode?: ChannelMode, description?: string, scenarioPrompt?: string, workspace?: string, leadAgent?: { name: string, harness: string, config?: Record<string, unknown> } }) =>
-      http.post<{ data: { channelId: string, leadAgentId?: string, workspace: string } }>('/workshop/channels', body),
+    /** `workspaceId` 指定挂载目标;缺省时服务端挂到 owner 的默认工作区 */
+    createChannel: (body: { name: string, channelMode?: ChannelMode, description?: string, scenarioPrompt?: string, workspace?: string, workspaceId?: string, leadAgent?: { name: string, harness: string, config?: Record<string, unknown> } }) =>
+      http.post<{ data: { channelId: string, leadAgentId?: string, workspace: string, workspaceId?: string, workspaceName?: string } }>('/workshop/channels', body),
     deleteChannel: (id: string) => http.delete<{ data: unknown }>(`/workshop/channels/${id}`),
     /** 修改 Channel 实例设置(场景 prompt / 工作目录热更新;成员运行时自动回收重装配) */
     patchChannel: (id: string, body: { name?: string, channelMode?: ChannelMode, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null }) =>

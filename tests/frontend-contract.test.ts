@@ -82,3 +82,15 @@ test('H10/H9: agent.block 前端面与文本孪生同组可见 + 组件侧载荷
   assert.match(tool, /isAgentToolBlock\(/, '结构块渲染前必须过 isAgentToolBlock(回放路径载荷原样进组件)')
   assert.match(tool, /#shared\/agent-blocks/, '防御判别必须从 shared 协议模块导入(与服务端同源)')
 })
+
+test('W1: console「新建并挂载」把 workspaceId 随创建提交,不再二次挂载', () => {
+  // 服务端对缺省的 POST /api/workshop/channels 会把频道挂到 owner 的默认工作区;
+  // 前端若先建再补挂,频道会同时出现在默认区与目标区(多工作区用户必现串区)。
+  const modal = read('app/components/workshop/session-list/MountChannelModal.vue')
+  assert.match(modal, /workspaceId: props\.wsId/, '创建请求必须携带当前 workspaceId')
+  assert.ok(!/wsStore\.mountChannel\(/.test(modal), '创建后不得再发第二次挂载请求')
+  const store = read('app/stores/workshop/workspaces.ts')
+  assert.ok(!/async mountChannel\(/.test(store), '二次挂载入口必须移除(防止串区回归)')
+  const api = read('app/composables/workshop/useWorkshopApi.ts')
+  assert.match(api, /createChannel: \(body: \{[^}]*workspaceId\?: string/, 'createChannel 入参类型必须声明 workspaceId')
+})

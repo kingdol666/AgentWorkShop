@@ -124,16 +124,6 @@ export const useWorkspacesStore = defineStore('workshop.workspaces', {
       const ws = this.workspaces.find(w => w.id === id)
       if (ws) ws.name = name
     },
-    async mountChannel(id: string, channelId: string): Promise<void> {
-      const ws = this.workspaces.find(w => w.id === id)
-      if (!ws || ws.channelIds.includes(channelId)) return
-      await authFetch(`/api/workshop/workspaces/${id}/channels/${channelId}`, { method: 'POST' })
-      ws.channelIds.push(channelId)
-      if (!ws.activeChannelId) {
-        ws.activeChannelId = channelId
-        this.persistActive(ws)
-      }
-    },
     async unmountChannel(id: string, channelId: string): Promise<void> {
       const ws = this.workspaces.find(w => w.id === id)
       if (!ws) return

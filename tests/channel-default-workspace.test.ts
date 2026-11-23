@@ -140,6 +140,26 @@ test('an explicit workspaceId mounts there and never falls back', async (t) => {
   assert.equal(f.repos.users.listMountedChannels(other.id).includes(channel.id), false)
 })
 
+test('an explicit target never leaks the channel into the oldest workspace', async (t) => {
+  const f = fixture()
+  t.after(async () => {
+    await f.manager.shutdown()
+    f.db.close()
+  })
+  // console 的「新建并挂载」弹窗在第二个工作区里建频道:没有命名的默认区时,
+  // 缺省规则会选中最早的 workspace —— 显式目标必须完全绕开这条规则。
+  const oldest = f.repos.users.createWorkspace('user-4', 'Team Old')
+  const target = f.repos.users.createWorkspace('user-4', 'Team New')
+  const channel = ownedChannel(f.repos, 'user-4')
+  const mounted = f.manager.ensureChannelWorkspaceMount('user-4', channel.id, target.id)
+  assert.equal(mounted.id, target.id)
+  assert.notEqual(mounted.id, oldest.id)
+  assert.deepEqual(
+    f.manager.listWorkspaces('user-4').map(w => [w.name, [...w.channelIds].sort()]),
+    [['Team Old', []], ['Team New', [channel.id]]],
+  )
+})
+
 test('foreign or unknown workspaces and foreign channels are rejected before mounting', async (t) => {
   const f = fixture()
   t.after(async () => {
