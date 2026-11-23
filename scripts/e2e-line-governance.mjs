@@ -117,7 +117,9 @@ try {
   const product = (await api('POST', '/api/workshop/dcw/products', { lineId: lineA, name: `管理产品-${TAG}` }, H())).data?.product?.id
   const recipeA = (await api('POST', '/api/workshop/dcw/recipes', { productId: product, name: `管理配方-${TAG}`, params: [{ nodeId: nodeA, value: 100, min: 0, max: 200 }] }, H())).data?.recipe?.id
   const recipeBad = (await api('POST', '/api/workshop/dcw/recipes', { productId: product, name: `停用配方-${TAG}`, params: [{ nodeId: nodeBad, value: 120, min: 0, max: 200 }] }, H())).data?.recipe?.id
-  const ch = (await api('POST', '/api/workshop/channels', { name: `管理频道-${TAG}`, leadAgent: { name: `管理lead-${TAG}`, harness: 'omp' } }, H())).data
+  // 产线工业工具按频道模式门控(v17 起 generic 频道不开放 line/dcw/recipe 工具);
+  // 本套件验证的正是产线治理链,频道必须建为 production_line_integrated。
+  const ch = (await api('POST', '/api/workshop/channels', { name: `管理频道-${TAG}`, channelMode: 'production_line_integrated', leadAgent: { name: `管理lead-${TAG}`, harness: 'omp' } }, H())).data
   const channelId = ch?.channelId
   const lead = ch?.leadAgentId
   await api('PUT', `/api/workshop/channels/${channelId}/line`, { lineId: lineA }, H())
@@ -298,13 +300,15 @@ try {
       signal: AbortSignal.timeout(15_000),
     })
     ok('L11e', '错误 agent token 被拒(401/403)', badToken.status === 401 || badToken.status === 403, `status=${badToken.status}`)
+    // v17 起的回合来源门:agent token 只能标识 agent,不能证明调用来自可信回合。
+    // 因此「写类」工业工具必须 fail-closed 拒绝(读类 daq_query 已在 L11b 证明可用),
+    // 需要写时走用户会话或带回合来源的受控路径 —— 这正是治理链按设计收紧的一步。
     const known = await pendingIds()
     const p = callAsAgent('line_start', { recipe_id: recipeA, reason: 'L11 agent token 开线' })
+    const write = await withTimeout(p, 60_000, 'L11 line_start')
+    ok('L11c', 'agent token 调 line_start 被回合来源门拒绝(不挂审批)', invErr(write) && /缺少可信回合来源|turn provenance/.test(invText(write)), invText(write).slice(0, 240))
     const card = await waitCard(known, `line-start:${lineA}`)
-    ok('L11c', 'agent token 发起 line_start 并挂审批', Boolean(card), card?.id ?? '未出现')
-    if (card) await approve(card)
-    const start = await withTimeout(p, 60_000, 'L11 line_start')
-    ok('L11d', 'agent token 经治理链开线成功', !invErr(start) && /已开跑/.test(invText(start)), invText(start).slice(0, 220))
+    ok('L11d', '被拒的调用不产生审批卡(无副作用)', !card, card?.id ?? 'no card')
     await api('POST', `/api/workshop/dcw/lines/${lineA}/stop`, undefined, H())
   }
 
