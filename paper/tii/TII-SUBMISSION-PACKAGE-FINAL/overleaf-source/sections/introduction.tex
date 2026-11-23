@@ -15,7 +15,7 @@ The contributions are:
 \begin{figure}[!b]
 \centering
 \includegraphics[width=0.98\columnwidth]{resources/fig1-vectorized-20261109.pdf}
-\caption{Configured cast-film example: the line-speed control node (\texttt{linespeed-sp}) and the film-thickness acquisition node remain distinct even though both use MQTT. A setpoint write produces a command receipt and an optional setpoint readback, while later film-thickness values are recorded as separate DAQ observations.}
+\caption{Cast-film flow: extrusion (1), cast die (2), chill-roll casting (3), line-speed draw (4), thickness gauging (5), winding (6). The \texttt{linespeed-sp} control and \texttt{film-thickness} acquisition nodes stay distinct despite sharing MQTT; leaders mark draw rolls and gauge. Writes yield command receipts and optional readbacks; later thickness values are separate DAQ observations.}
 \label{fig:control-path}
 \end{figure}
 

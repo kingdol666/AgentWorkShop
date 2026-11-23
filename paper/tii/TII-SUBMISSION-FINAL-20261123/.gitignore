@@ -1,0 +1,18 @@
+# 父目录规则忽略 *.zip；此处显式放行交付用的 Overleaf 源码包
+!/TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip
+
+# 作者本地备查证据；不通过公开 Git 分发
+/supplementary/Supporting-Evidence-S7.zip
+
+# 安全钩子/评审状态（本机运行产物，不入库）
+.mimosa/
+
+# LaTeX 本地编译产物
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz

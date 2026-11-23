@@ -1,6 +1,8 @@
 # TII-SUBMISSION-PACKAGE-FINAL
 
-投稿文件集中在 [`submission/initial-package/`](submission/initial-package/)。对照 [IEEE TII 初投清单](https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics/new-submission?view=article&id=423:tii-checklist-for-manuscript-submissions&catid=17) 核对日期：2026-11-19。
+**交付包已合并到 [`../TII-SUBMISSION-FINAL-20261123/`](../TII-SUBMISSION-FINAL-20261123/)**：正文 PDF、源码、补充材料和 Cover Letter 集中在该目录。本目录保留为编辑源。
+
+投稿文件集中在 [`submission/initial-package/`](submission/initial-package/)。对照 [IEEE TII 初投清单](https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics/new-submission?view=article&id=423:tii-checklist-for-manuscript-submissions&catid=17) 核对日期：2026-11-23。
 
 - **常规初投上传**：`TII-SUBMISSION-PACKAGE-FINAL-latex.pdf`，IEEEtran 双栏 10 页，图 4 位于第 6 页左栏。通过 [IEEE Author Portal](https://ieee.atyponrex.com/journal/tii) 提交。
 - **源码留存**：`TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip`，`main.tex` 在 ZIP 根目录；包含论文引用的章节、六个图件和参考文献，可用 pdfLaTeX + BibTeX 编译。常规初投不需要上传源码。

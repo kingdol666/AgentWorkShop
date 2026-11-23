@@ -31,3 +31,6 @@ revision-2026-10-20-tenpage/
 
 # 投稿打包产物(可由 source 重建,从不入库)
 *.zip
+
+# 2026-11-23 润色尝试存档（仅本地留存）
+/TII-POLISH-ATTEMPT-20261123/
