@@ -1,0 +1,78 @@
+{
+ "status": 200,
+ "body": {
+  "code": 0,
+  "message": "ok",
+  "data": {
+   "ok": true,
+   "kind": "dcw-approval",
+   "id": "ap-a4b70de1",
+   "status": "approved",
+   "nativeConfirmed": true,
+   "decisionId": "172298d2-3ef3-4eb2-ae93-aea10dc7117a",
+   "approval": {
+    "id": "ap-a4b70de1",
+    "agentId": "b4ca6f54-dc6b-4439-be4a-f51ddeb42eba",
+    "nodeId": "recipe-propose:rc-ef8e2b37",
+    "kind": "dcw",
+    "detail": "整包方案审批:配方「注塑克重基线配方」v1(产线 精密注塑克重闭环验证线-20261119-LIV2),1 套候选方案。请在产线页结构化审批卡选择方案批准(或拒绝并附指导);未携带方案序号的批准按拒绝收敛。\n方案「R1-保压压力SP +1MPa(54→55)」:把保压压力SP 由 54MPa 上调至 55MPa,单向小步逼近克重 LSL;预期克重 +0.1~0.15g(参照 52→54 步 +0.15g),飞边/缺陷率有足够余量。\n  · 保压压力SP 54→55MPa | 依据:克重 31.618g 低于 LSL 32.15 约 0.53g(18:23–18:33 实测, n=41);保压是主杠杆,历史 52→54 步实测 +0.15g;55MPa 在窗口 45~85 内,步幅 1≤2MPa,飞边 0.196%/缺陷率 0.398% 仍有裕度 | 引用:daq_query 制品克重PV/飞边PV/缺陷率PV 18:23–18:33;干预台账 17:43:43 52→54 增益 +0.15g",
+    "payload": {
+     "schemaVersion": 1,
+     "recipeId": "rc-ef8e2b37",
+     "lineId": "ln-db7a857c",
+     "recipeVersion": 1,
+     "recipeParams": [
+      {
+       "nodeId": "dw-0363375c",
+       "value": 50
+      },
+      {
+       "nodeId": "dw-3ae9d55d",
+       "value": 3
+      },
+      {
+       "nodeId": "dw-0f9b44d7",
+       "value": 205
+      },
+      {
+       "nodeId": "dw-b4fd1365",
+       "value": 14
+      },
+      {
+       "nodeId": "dw-e01c1375",
+       "value": 35
+      }
+     ],
+     "packages": [
+      {
+       "name": "R1-保压压力SP +1MPa(54→55)",
+       "rationale": "把保压压力SP 由 54MPa 上调至 55MPa,单向小步逼近克重 LSL;预期克重 +0.1~0.15g(参照 52→54 步 +0.15g),飞边/缺陷率有足够余量。",
+       "params": [
+        {
+         "nodeId": "dw-0363375c",
+         "paramName": "保压压力SP",
+         "from": 54,
+         "to": 55,
+         "unit": "MPa",
+         "basis": "克重 31.618g 低于 LSL 32.15 约 0.53g(18:23–18:33 实测, n=41);保压是主杠杆,历史 52→54 步实测 +0.15g;55MPa 在窗口 45~85 内,步幅 1≤2MPa,飞边 0.196%/缺陷率 0.398% 仍有裕度",
+         "exp_ref": "daq_query 制品克重PV/飞边PV/缺陷率PV 18:23–18:33;干预台账 17:43:43 52→54 增益 +0.15g",
+         "preflight": {
+          "ok": true
+         }
+        }
+       ]
+      }
+     ]
+    },
+    "createdAt": "2026-11-19T18:36:18.064+08:00",
+    "expiresAt": "2026-11-19T19:06:18.064+08:00",
+    "status": "approved",
+    "comment": "巡检数据支持小步上调,批准执行",
+    "choice": 0,
+    "decidedAt": "2026-11-19T18:38:30.133+08:00",
+    "decidedBy": "94d1be64-11dd-47b8-a2aa-8a102c94b021",
+    "decidedName": "LIV Admin"
+   }
+  }
+ }
+}

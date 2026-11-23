@@ -1,0 +1,55 @@
+{
+ "ok": true,
+ "kind": "dcw-approval",
+ "id": "ap-d64f5c3d",
+ "status": "approved",
+ "nativeConfirmed": true,
+ "decisionId": "e5d2bdc9-feeb-46db-b3f8-60507d3785f0",
+ "approval": {
+  "id": "ap-d64f5c3d",
+  "agentId": "697d8a59-0c31-4bd5-b1aa-a0ec1ebcb72c",
+  "nodeId": "recipe-propose:rc-f0ca13e5",
+  "kind": "dcw",
+  "detail": "整包方案审批:配方「Gemma4-基线配方-pp-mwm7pxx0」v1(产线 Gemma4-复现模拟线-pp-mwm7pxx0),1 套候选方案。请在产线页结构化审批卡选择方案批准(或拒绝并附指导);未携带方案序号的批准按拒绝收敛。\n方案「递减 6°C 至 144」:基线 150°C,向下取告警带上沿 144;单步 ≤6 合规\n  · 冷却温度设定SP 150→144°C | 依据:PV 告警带上沿 144°C | 引用:经验:pp-mwm7pxx0 基线整定",
+  "payload": {
+   "schemaVersion": 1,
+   "recipeId": "rc-f0ca13e5",
+   "lineId": "ln-1ff7cafd",
+   "recipeVersion": 1,
+   "recipeParams": [
+    {
+     "nodeId": "dw-3d822ee7",
+     "value": 150
+    }
+   ],
+   "packages": [
+    {
+     "name": "递减 6°C 至 144",
+     "rationale": "基线 150°C,向下取告警带上沿 144;单步 ≤6 合规",
+     "params": [
+      {
+       "nodeId": "dw-3d822ee7",
+       "paramName": "冷却温度设定SP",
+       "from": 150,
+       "to": 144,
+       "unit": "°C",
+       "basis": "PV 告警带上沿 144°C",
+       "exp_ref": "经验:pp-mwm7pxx0 基线整定",
+       "preflight": {
+        "ok": true
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "createdAt": "2026-11-18T22:24:37.325+08:00",
+  "expiresAt": "2026-11-18T22:54:37.325+08:00",
+  "status": "approved",
+  "comment": "验收:方案 0 批准(单步 6°C 合规)",
+  "choice": 0,
+  "decidedAt": "2026-11-18T22:26:38.825+08:00",
+  "decidedBy": "43b35019-be25-47a6-ae0d-31cd99dea5c3",
+  "decidedName": "Gemma Admin"
+ }
+}

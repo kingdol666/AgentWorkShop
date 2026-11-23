@@ -1,0 +1,66 @@
+[
+ {
+  "check": "diag bridge token accepted + remote ok",
+  "pass": true
+ },
+ {
+  "check": "rag bridge backend+web ok",
+  "pass": true
+ },
+ {
+  "check": "plugins zero failures",
+  "pass": true
+ },
+ {
+  "check": "155 tools / 14 bridge tools",
+  "pass": true
+ },
+ {
+  "check": "onboarding evidence",
+  "pass": true
+ },
+ {
+  "check": "C2 readback 53==53",
+  "pass": true
+ },
+ {
+  "check": "journal anchor agent+approval join",
+  "pass": true
+ },
+ {
+  "check": "negatives 400/403",
+  "pass": true
+ },
+ {
+  "check": "agent promote 401",
+  "pass": true
+ },
+ {
+  "check": "merge+validated",
+  "pass": true
+ },
+ {
+  "check": "deposit search hit",
+  "pass": true
+ },
+ {
+  "check": "IDD completed",
+  "pass": true
+ },
+ {
+  "check": "L2 by second admin",
+  "pass": true
+ },
+ {
+  "check": "self-approval negative documented + guard in source",
+  "pass": true
+ },
+ {
+  "check": "project_complete approved",
+  "pass": true
+ },
+ {
+  "check": "provenance 761 all ustc zero exceptions",
+  "pass": true
+ }
+]

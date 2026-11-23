@@ -1,0 +1,116 @@
+{
+ "at": "2026-11-18T09:51:03.673Z",
+ "tag": "g5-mwlxyby1",
+ "steps": [
+  {
+   "id": "L1",
+   "name": "创建隔离模拟产线",
+   "pass": true,
+   "detail": "line=ln-61f4b69e simulated=true"
+  },
+  {
+   "id": "L2",
+   "name": "创建产线产品",
+   "pass": true,
+   "detail": "product=pd-57b3814b"
+  },
+  {
+   "id": "L3",
+   "name": "创建 DCW 写控节点(mock,60–200,单步 6)",
+   "pass": true,
+   "detail": "node=dw-932247e5 driver=mock stepLimit=6"
+  },
+  {
+   "id": "L4",
+   "name": "创建 DAQ 数采节点(mock,2s)",
+   "pass": true,
+   "detail": "node=dn-c3822c49 intervalMs=2000"
+  },
+  {
+   "id": "L5",
+   "name": "创建配方(SP=150)",
+   "pass": true,
+   "detail": "recipe=rc-00f1628e lineId=ln-61f4b69e"
+  },
+  {
+   "id": "L6",
+   "name": "产线开跑(首批次下发 150)",
+   "pass": true,
+   "detail": "{\"run\":{\"id\":\"rr-3321be5b\",\"recipeId\":\"rc-00f1628e\",\"recipeName\":\"Gemma4-基线配方-g5-mwlxyby1\",\"productId\":\"pd-57b3814b\",\"lineId\":\"ln-61f4b69e\",\"recipeVersion\":1,\"startedAt\":\"2026-11-18T17:51:03.787+08:00\",\"endedAt\":null,\"results\":[{\"templateRef\":\"cw-cf87b272\",\"nodeId\":\"dw-932247e5\",\"ok\":true,\"message\":"
+  },
+  {
+   "id": "L7",
+   "name": "创建绑线作业频道(omp + local gemma)",
+   "pass": true,
+   "detail": "channel=caf7976b-d61b-45f7-a56e-34afc4d008de"
+  },
+  {
+   "id": "L8",
+   "name": "频道成员就绪(lead+worker)",
+   "pass": true,
+   "detail": "lead=85f4eb0b-fa12-49e2-909c-07a07e64e62f worker=81f47963-10db-41aa-8c47-0844da24d464"
+  },
+  {
+   "id": "L9",
+   "name": "绑定面(配方管理权/单配方/DAQ 读)",
+   "pass": true,
+   "detail": "0,0,0,0,0"
+  },
+  {
+   "id": "L10",
+   "name": "Agent DAQ 查询返回实采样本",
+   "pass": true,
+   "detail": "数采数据查询结果(1 个节点):\n\n■ 主轴实测温度PV[id=dn-c3822c49](主轴温度模板-g5-mwlxyby1)单位 °C,正常量程 20~200°C,当前状态 ok,时间窗 2026-11-18T17:41 ~ 2026-11-18T17:51(降采样 15000ms,聚合 avg)\n  当前活动批次 run=rr-3321be5b 配方「Gemma4-基线配方-g5-mwlxyby1」(rc-00f1628e)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 1 点 | 最新 141.1°C | 均值 141.1 | 最小 141.1 | 最大 141.1\n  最近序列: 17:51:00=avg 141.1(n=5)\n  工况判读: 同产线数控设定: 冷却温度设定SP=150°C(判读时考虑设"
+  },
+  {
+   "id": "L11",
+   "name": "recipe_propose 生成待批配方方案",
+   "pass": false,
+   "detail": "方案「递减 6°C 至 144」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-8880f)。runId:rr-8880f76c(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-8880f76c（2026-11-18 17:52）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · 冷却温度设定SP 150→144 回读=? ACK=transport-ack 判定=unassessed\n- 批次 rr-3321be5b（2026-11-18 17:51）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · 冷却温度设定SP ?→150 回读=? ACK=transport-ack 判定=unassessed\n[人工反馈] accept-line-test-choice-0\n- 冷却温度设定SP 150→144°C [设备证实✓]\n"
+  },
+  {
+   "id": "L12",
+   "name": "HITL 待批卡(kind=dcw-approval)",
+   "pass": false,
+   "detail": "{}"
+  },
+  {
+   "id": "L14",
+   "name": "设备回读一致(SP=144)",
+   "pass": true,
+   "detail": "{\"id\":\"dw-932247e5\",\"templateRef\":\"cw-cf87b272\",\"name\":\"冷却温度设定SP\",\"driver\":\"mock\",\"enabled\":true,\"holdIntervalMs\":120000,\"holdBlocked\":true,\"holdObserve\":null,\"unit\":\"°C\",\"decimals\":1,\"min\":60,\"max\":200,\"deviceBindingId\":null,\"deviceIds\":[],\"driverConfig\":{\"key\":\"sp-g5-mwlxyby1\"},\"lineId\":\"ln-61f4b69e\",\"value\":144,\"readValue\":144,\"lastReadAt\":\"2026-11-18T17:54:48.797+08:00\",\"lastReadError\":null,\"r"
+  },
+  {
+   "id": "L15",
+   "name": "journal 留痕(下发记录可查)",
+   "pass": true,
+   "detail": "[{\"lineId\":\"ln-61f4b69e\",\"nodeId\":\"dw-932247e5\",\"prevValue\":150,\"newValue\":144,\"source\":\"agent\",\"actor\":\"85f4eb0b-fa12-49e2-909c-07a07e64e62f\",\"approvalId\":\"ap-3bd7d227\",\"recipeRunId\":\"rr-8880f76c\",\"id\":\"anc-41ac86b8\",\"at\":\"2026-11-18T17:52:52.228+08:00\",\"recordId\":\"opt-46dfbd7c\"},{\"lineId\":\"ln-61f4b69e\",\"nodeId\":\"dw-932247e5\",\"prevValue\":null,\"newValue\":150,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-3321be5b\",\"id\":\"anc-75d9bc8a\",\"at\":\"2026-11-18T17:51:03.879+08:00\"}]"
+  },
+  {
+   "id": "L16",
+   "name": "超单步写被治理拒绝(负例)",
+   "pass": false,
+   "detail": "hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯与人工审批判断。"
+  },
+  {
+   "id": "L17",
+   "name": "下发后 DAQ 仍持续采样",
+   "pass": true,
+   "detail": "数采数据查询结果(1 个节点):\n\n■ 主轴实测温度PV[id=dn-c3822c49](主轴温度模板-g5-mwlxyby1)单位 °C,正常量程 20~200°C,当前状态 ok,时间窗 2026-11-18T17:49 ~ 2026-11-18T17:54(降采样 15000ms,聚合 avg)\n  当前活动批次 run=rr-3321be5b 配方「Gemma4-基线配方-g5-mwlxyby1」(rc-00f1628e)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 16 点 | 最新 150.856666"
+  },
+  {
+   "id": "L18",
+   "name": "停线收窗",
+   "pass": true,
+   "detail": "{\"run\":{\"id\":\"rr-3321be5b\",\"recipeId\":\"rc-00f1628e\",\"recipeName\":\"Gemma4-基线配方-g5-mwlxyby1\",\"productId\":\"pd-57b3814b\",\"lineId\":\"ln-61f4b69e\",\"recipeVersion\":1,\"startedAt\":\"2026-11-18T17:51:03.787+08:00"
+  }
+ ],
+ "lineId": "ln-61f4b69e",
+ "productId": "pd-57b3814b",
+ "spId": "dw-932247e5",
+ "daqId": "dn-c3822c49",
+ "recipeId": "rc-00f1628e",
+ "channelId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+ "leadId": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+ "workerId": "81f47963-10db-41aa-8c47-0844da24d464"
+}

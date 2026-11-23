@@ -1,0 +1,4 @@
+
+IDENTIFIER                MODEL                     STATUS              SIZE       CONTEXT    PARALLEL    LOAD CONFIG    DEVICE    TTL
+google/gemma-4-12b-qat    google/gemma-4-12b-qat    PROCESSINGPROMPT    7.15 GB    65536      1           LM Studio      Local        
+

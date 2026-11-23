@@ -1,0 +1,32 @@
+[
+ {
+  "id": "f6b3393b-1d26-4217-89ed-a9c54d08051f",
+  "channelId": "53019ea5-dd1b-4ca8-a042-aeb8713270ba",
+  "name": "Gemma Lead",
+  "harness": "omp",
+  "role": "lead",
+  "agentKind": "channel_agent",
+  "enabled": 1,
+  "templateId": "f998f001-b46a-4f42-8e1f-aeed7ca068a3",
+  "config": {
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "rpcMode": "rpc"
+  }
+ },
+ {
+  "id": "90b2a95b-fc8b-4b1b-ac77-0adce2ad45ac",
+  "channelId": "53019ea5-dd1b-4ca8-a042-aeb8713270ba",
+  "name": "Gemma Worker",
+  "harness": "omp",
+  "role": "worker",
+  "agentKind": "channel_agent",
+  "enabled": 1,
+  "templateId": "f4736608-8d46-4fe3-9a79-39041f74c987",
+  "config": {
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "rpcMode": "rpc"
+  }
+ }
+]

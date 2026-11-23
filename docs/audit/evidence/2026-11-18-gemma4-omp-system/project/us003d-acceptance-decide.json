@@ -1,0 +1,6 @@
+{
+ "code": "SELF_APPROVAL_FORBIDDEN",
+ "message": "不能批准自己提交的成果",
+ "data": null,
+ "httpStatus": 403
+}

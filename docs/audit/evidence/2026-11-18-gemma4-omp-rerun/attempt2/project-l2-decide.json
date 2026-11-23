@@ -1,0 +1,25 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "id": "0b1795bd-3ad7-42a2-8720-d6a5d745a25c",
+  "projectId": "8c385dd0-06f5-4773-b2ed-6fab27ed02fa",
+  "kind": "deliverable_acceptance",
+  "subjectType": "result",
+  "subjectId": "7f2494ec-a939-4c38-b52e-e60467338b88",
+  "subjectVersion": 1,
+  "status": "approved",
+  "requestedByAgentId": null,
+  "requestedByUserId": "43b35019-be25-47a6-ae0d-31cd99dea5c3",
+  "payloadJson": "{\"resultId\":\"7f2494ec-a939-4c38-b52e-e60467338b88\",\"version\":1}",
+  "argsDigest": "",
+  "reason": "deliverable acceptance",
+  "decisionReason": "L2 成果验收通过(approver)",
+  "decidedByUserId": "e2f391e3-5d66-4ee9-8303-ca5bfc1cc5ac",
+  "consumedAt": null,
+  "traceId": "plan:8c385dd0-06f5-4773-b2ed-6fab27ed02fa:1:w1",
+  "expiresAt": "2026-11-19T22:24:28.170+08:00",
+  "createdAt": "2026-11-18T22:24:28.170+08:00",
+  "decidedAt": "2026-11-18T22:24:28.305+08:00"
+ }
+}

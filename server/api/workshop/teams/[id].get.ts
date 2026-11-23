@@ -10,10 +10,11 @@ import { getWorkshopManager } from '../../../plugins/workshop'
 
 export default defineApiHandler(async (event) => {
   const teamId = getRouterParam(event, 'id')!
+  // 先验身份再查资源:未鉴权调用者不得借 404 探测 AgentTeam 是否存在
+  const user = resolveUser(event)
   const manager = getWorkshopManager()
   const team = manager.getTeam(teamId)
   if (!team) throw new AppError(404, 'NOT_FOUND', `AgentTeam 不存在: ${teamId}`)
-  const user = resolveUser(event)
   manager.requireTemplateReadable(team, user, 'AgentTeam')
   return team
 })

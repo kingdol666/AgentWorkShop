@@ -1,0 +1,52 @@
+{
+  "base": "http://127.0.0.1:3080",
+  "suffix": "mwt0e8s4",
+  "oldest": "6d0abf6e-1bfb-4d38-a00f-93d255ed95ab",
+  "target": "f4d644cc-810f-46d4-b2ad-c1a247a6b908",
+  "channelId": "b08cd490-d0c0-4241-bd7d-023bb4fb0ed5",
+  "hosting": [
+    "E2E Target mwt0e8s4"
+  ],
+  "results": [
+    {
+      "name": "弹窗提交后关闭",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "频道已创建",
+      "ok": true,
+      "detail": "b08cd490-d0c0-4241-bd7d-023bb4fb0ed5"
+    },
+    {
+      "name": "只挂载在目标工作区",
+      "ok": true,
+      "detail": "hosting=[\"E2E Target mwt0e8s4\"]"
+    },
+    {
+      "name": "未漏进更早的工作区",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "未凭空创建「默认工作区」",
+      "ok": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "工作区总数未增加",
+      "ok": true,
+      "detail": "before=6 after=6"
+    },
+    {
+      "name": "页面无 JS 错误",
+      "ok": false,
+      "detail": "Hydration completed but contains mismatches."
+    },
+    {
+      "name": "重启后仍在目标工作区",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

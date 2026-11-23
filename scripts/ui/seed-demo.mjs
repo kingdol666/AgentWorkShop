@@ -58,6 +58,8 @@ for (const spec of CHANNELS) {
         name: spec.name,
         scenarioPrompt: spec.scenarioPrompt,
         leadAgent: { name: spec.lead, harness: 'mock', config: { delayMs: 260, streamDemo: true } },
+        // 挂载目标随创建提交,避免缺省挂进默认工作区后再补挂造成串区
+        workspaceId: wsId,
       },
       token,
     })

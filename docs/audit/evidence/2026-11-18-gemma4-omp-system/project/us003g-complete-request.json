@@ -1,0 +1,26 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "id": "4792ecae-e8d8-43ef-8d2f-311e21f5da73",
+  "projectId": "a54c9da3-53fa-4f06-b95c-d3e808c4feeb",
+  "kind": "project_complete",
+  "subjectType": "project",
+  "subjectId": "a54c9da3-53fa-4f06-b95c-d3e808c4feeb",
+  "subjectVersion": null,
+  "status": "pending",
+  "requestedByAgentId": null,
+  "requestedByUserId": "7995dc19-3588-46b0-be38-cc995cca6e38",
+  "payloadJson": "{\"deliverables\":[{\"id\":\"ee3ebeb8-99cc-4093-8ca3-5e88a51d667f\",\"status\":\"approved\"}],\"workItems\":3}",
+  "argsDigest": "",
+  "reason": "project completion acceptance",
+  "decisionReason": "",
+  "decidedByUserId": null,
+  "consumedAt": null,
+  "traceId": "project:a54c9da3-53fa-4f06-b95c-d3e808c4feeb:complete",
+  "expiresAt": "2026-11-19T18:04:48.007+08:00",
+  "createdAt": "2026-11-18T18:04:48.007+08:00",
+  "decidedAt": null
+ },
+ "httpStatus": 200
+}

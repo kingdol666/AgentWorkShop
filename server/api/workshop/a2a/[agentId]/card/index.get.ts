@@ -4,7 +4,7 @@
  * capabilities.streaming=true,skills 由 config.skills 声明(缺省 [])。
  * 按 A2A 规范直接返回 card 文档(不走 ApiEnvelope 信封);Agent 不存在 → 404。
  */
-import { defineEventHandler, getRequestHeader, getRouterParam, setResponseStatus } from 'h3'
+import { defineEventHandler, getRequestHeader, getRouterParam, setResponseStatus, type H3Event } from 'h3'
 import { settingOf } from '../../../../../services/workshop/settings'
 import { resolveUserByToken } from '../../../../../services/user.service'
 import { getWorkshopManager } from '../../../../../plugins/workshop'
@@ -66,15 +66,21 @@ export function buildAgentCard(agent: AgentInfo): AgentCard {
   }
 }
 
+/**
+ * AgentCard 读取守卫:A2A 规范里 AgentCard 是公开发现面(不含任何 token/凭据),但在
+ * 内网/敏感部署下实例与技能清单本身也是情报 → `security.a2aCardPublic` 关闭后要求认证。
+ * HTTP card 与 JSON-RPC `agent/getCard` 共用同一守卫,避免开关被 RPC 旁路。
+ */
+export function canReadAgentCard(event: H3Event): boolean {
+  if (settingOf('security.a2aCardPublic') !== false) return true
+  const token = getRequestHeader(event, 'authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
+  return Boolean(token && resolveUserByToken(token))
+}
+
 export default defineEventHandler((event) => {
-  // A2A 规范里 AgentCard 是公开发现面(不含任何 token/凭据);但在内网/敏感部署下
-  // 实例与技能清单本身也是情报 → 提供开关,关闭时要求认证。
-  if (settingOf('security.a2aCardPublic') === false) {
-    const token = getRequestHeader(event, 'authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
-    if (!token || !resolveUserByToken(token)) {
-      setResponseStatus(event, 401)
-      return { error: { code: 'UNAUTHORIZED', message: 'AgentCard 未公开:需有效用户 token' } }
-    }
+  if (!canReadAgentCard(event)) {
+    setResponseStatus(event, 401)
+    return { error: { code: 'UNAUTHORIZED', message: 'AgentCard 未公开:需有效用户 token' } }
   }
   const agentId = getRouterParam(event, 'agentId')!
   const agent = findAgent(getWorkshopManager(), agentId)

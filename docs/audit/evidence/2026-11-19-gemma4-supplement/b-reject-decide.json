@@ -1,0 +1,55 @@
+{
+ "ok": true,
+ "kind": "dcw-approval",
+ "id": "ap-1aca0cc6",
+ "status": "rejected",
+ "nativeConfirmed": true,
+ "decisionId": "89d5fd7b-0266-434c-93cd-bb5c0b92671b",
+ "approval": {
+  "id": "ap-1aca0cc6",
+  "agentId": "7adf3442-5937-4c9e-9712-39a6dfface2f",
+  "nodeId": "recipe-propose:rc-2670c8cb",
+  "kind": "dcw",
+  "detail": "整包方案审批:配方「Gemma4-基线配方-pp-mwmaovrs」v1(产线 Gemma4-复现模拟线-pp-mwmaovrs),1 套候选方案。请在产线页结构化审批卡选择方案批准(或拒绝并附指导);未携带方案序号的批准按拒绝收敛。\n方案「递减至 138(B 负例:将拒绝)」:窗口中值 138;本卡将被拒绝以验证拒绝路径\n  · 冷却温度设定SP 144→138°C | 依据:窗口中值(将拒绝) | 引用:负例:ln-68b4a946",
+  "payload": {
+   "schemaVersion": 1,
+   "recipeId": "rc-2670c8cb",
+   "lineId": "ln-68b4a946",
+   "recipeVersion": 1,
+   "recipeParams": [
+    {
+     "nodeId": "dw-cd91eb21",
+     "value": 150
+    }
+   ],
+   "packages": [
+    {
+     "name": "递减至 138(B 负例:将拒绝)",
+     "rationale": "窗口中值 138;本卡将被拒绝以验证拒绝路径",
+     "params": [
+      {
+       "nodeId": "dw-cd91eb21",
+       "paramName": "冷却温度设定SP",
+       "from": 144,
+       "to": 138,
+       "unit": "°C",
+       "basis": "窗口中值(将拒绝)",
+       "exp_ref": "负例:ln-68b4a946",
+       "preflight": {
+        "ok": true
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "createdAt": "2026-11-19T00:11:10.993+08:00",
+  "expiresAt": "2026-11-19T00:41:10.993+08:00",
+  "status": "denied",
+  "comment": "验收负例:拒绝本方案(理由:保持 144 已达标,无需再调);请勿重复提交同方向提案。",
+  "choice": null,
+  "decidedAt": "2026-11-19T00:11:13.998+08:00",
+  "decidedBy": "f72dd89c-94a2-4cab-bd66-06bd7bb510a4",
+  "decidedName": "Gemma Admin"
+ }
+}

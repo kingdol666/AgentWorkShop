@@ -1,0 +1,40 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "rows": [
+   {
+    "id": "ap-3bd7d227",
+    "kind": "dcw-approval",
+    "requestType": "approval",
+    "nativeRequestId": "",
+    "channelId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+    "agentId": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+    "agentName": "Gemma Line Lead",
+    "sessionId": "",
+    "harness": "dcw",
+    "mode": "approval",
+    "title": "整包方案审批:Gemma4-基线配方-g5-mwlxyby1",
+    "detail": "整包方案审批:配方「Gemma4-基线配方-g5-mwlxyby1」v1(产线 Gemma4-验收模拟线-g5-mwlxyby1),1 套候选方案。请在产线页结构化审批卡选择方案批准(或拒绝并附指导);未携带方案序号的批准按拒绝收敛。\n方案「递减 6°C 至 144」:基线 150°C,向下取告警带上沿 144;单步 ≤6 合规\n  · 冷却温度设定SP 150→144°C | 依据:PV 告警带上沿 144°C | 引用:经验:g5-mwlxyby1 基线整定",
+    "optionsJson": "[]",
+    "questionsJson": "[]",
+    "schemaJson": "{}",
+    "status": "approved",
+    "policy": "owner_only",
+    "policySnapshotJson": "{\"policy\":\"owner_only\",\"policyVersion\":1,\"eligibleUserIds\":[\"7995dc19-3588-46b0-be38-cc995cca6e38\"],\"memberGenerations\":{\"7995dc19-3588-46b0-be38-cc995cca6e38\":1},\"createdAt\":\"2026-11-18T17:51:13.673+08:00\"}",
+    "policyVersion": 1,
+    "decisionId": "e68cccb2-d26b-4169-b7f5-ea7439e41634",
+    "responderUserId": "7995dc19-3588-46b0-be38-cc995cca6e38",
+    "decisionJson": "{\"decisionId\":\"e68cccb2-d26b-4169-b7f5-ea7439e41634\",\"by\":\"7995dc19-3588-46b0-be38-cc995cca6e38\",\"byName\":\"Gemma Admin\",\"requestType\":\"approval\",\"confirmed\":true,\"cancelled\":false,\"answers\":[{\"id\":\"\",\"answer\":\"accept-line-test-choice-0\"}],\"comment\":\"accept-line-test-choice-0\"}",
+    "nativeConfirmed": 1,
+    "error": "",
+    "createdAt": "2026-11-18T17:51:13.673+08:00",
+    "updatedAt": "2026-11-18T17:52:52.089+08:00",
+    "resolvedAt": "2026-11-18T17:52:52.089+08:00",
+    "expiresAt": "2026-11-18T18:21:13.672+08:00"
+   }
+  ],
+  "scope": "channel"
+ },
+ "httpStatus": 200
+}

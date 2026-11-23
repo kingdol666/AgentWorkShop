@@ -1,0 +1,52 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "id": "ed99e8d6-0cd7-43a4-be08-f35f52b6ced4",
+  "channelId": "caf7976b-d61b-45f7-a56e-34afc4d008de",
+  "rootQueueSeq": 2,
+  "assigneeId": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+  "creatorId": "",
+  "title": "产线经验样本B:温度整定复现",
+  "description": "[mode:goal][policy:no-deliverable] 产线经验样本B:温度整定复现:记录一条受治理的产线作业经验。",
+  "state": "COMPLETED",
+  "progress": 100,
+  "retryCount": 0,
+  "artifacts": [
+   {
+    "artifactId": "a639316d-6147-4ac5-9d93-0b5782887c17",
+    "name": "deliverable",
+    "parts": [
+     {
+      "text": "经验B:同样分两步调整(150→147→144)可在 5 分钟内进入窗口,单步 ≤3°C 更稳。"
+     }
+    ]
+   },
+   {
+    "artifactId": "56b1bca6-bb65-4351-a4c1-4a2b1351d7fb",
+    "name": "goal-summary",
+    "parts": [
+     {
+      "text": "【目标完成总结】\n目标: 产线经验样本B:温度整定复现\n判定标准: 任务描述中的需求已全部完成\n完成过程: (单任务达成) 全部完成\n最终成果: (交付物见任务 artifacts)\n结论: 目标已达成,全部任务完成。"
+     },
+     {
+      "text": "标准:任务描述中的需求已全部完成"
+     },
+     {
+      "text": "子任务:产线经验样本B:温度整定复现"
+     }
+    ]
+   }
+  ],
+  "history": [],
+  "source": "channel",
+  "assignmentGeneration": 0,
+  "executionLeaseId": "224b6d8d-b770-4230-a35c-1f1e646c8d3b",
+  "executionLeaseAgentId": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+  "executionLeaseStartedAt": "2026-11-18T18:20:16.862+08:00",
+  "executionLeaseRevokedAt": "2026-11-18T18:26:46.109+08:00",
+  "createdAt": "2026-11-18T18:20:16.862+08:00",
+  "updatedAt": "2026-11-18T18:26:46.109+08:00",
+  "progressDerived": null
+ }
+}

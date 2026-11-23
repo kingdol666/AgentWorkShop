@@ -263,9 +263,12 @@ useHead({ title: () => tt('titles.ctpl') })
           <div
             v-if="t.scenarioPrompt"
             class="scenario"
-            :title="t.scenarioPrompt"
+            role="group"
+            tabindex="0"
+            :aria-label="$t('ctpl.k1q87yho008')"
+            :title="seedScenario(t)"
           >
-            {{ seedScenario(t).slice(0, 90) }}{{ seedScenario(t).length > 90 ? '…' : '' }}
+            {{ seedScenario(t) }}
           </div>
           <div class="card-foot">
             <span
@@ -474,14 +477,18 @@ h2 { margin: 0 0 4px; }
   color: var(--ink-faint);
 }
 .scenario {
-  display: -webkit-box;
-  overflow: hidden;
+  max-height: 4lh;
+  overflow: auto;
   font-family: var(--font-mono);
   font-size: 11.5px;
   line-height: 1.55;
   color: var(--ink-faint);
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.scenario:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 .card-foot {
   display: flex;
@@ -552,7 +559,7 @@ h2 { margin: 0 0 4px; }
     line-height: 1.5;
   }
 
-  .grid { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
   .card-head { flex-wrap: wrap; }
   .member-line { flex-wrap: wrap; }
   .card-foot { flex-wrap: wrap; }

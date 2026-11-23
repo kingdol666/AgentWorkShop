@@ -4,6 +4,63 @@ import { useHitlAnswer } from '@/app/composables/workshop/useHitlAnswer'
 
 const { t } = useI18n()
 const hitl = useHitlStore()
+const panelId = `hitl-panel-${useId()}`
+const open = ref(false)
+const bell = ref<HTMLButtonElement | null>(null)
+const panel = ref<HTMLElement | null>(null)
+let focusOnAlign = false
+
+function focusPanel() {
+  const first = panel.value?.querySelector<HTMLButtonElement>('.hitl-item-head')
+  if (!first?.getClientRects().length) return false
+  first.focus()
+  return true
+}
+
+function onOpenChange(next: boolean) {
+  // Keep hover behavior, but don't dismiss a panel while a user is working in it.
+  if (next || (!focusOnAlign && !panel.value?.contains(document.activeElement))) open.value = next
+}
+
+function openFromBell(event: MouseEvent) {
+  open.value = true
+  if (event.detail === 0) focusOnAlign = !focusPanel()
+}
+
+function onPopupAlign() {
+  if (open.value && focusOnAlign && focusPanel()) focusOnAlign = false
+}
+
+function closePanel(restoreFocus = false) {
+  if (restoreFocus) bell.value?.focus({ preventScroll: true })
+  focusOnAlign = false
+  open.value = false
+}
+
+function onEscape(event: KeyboardEvent) {
+  if (!open.value) return
+  event.preventDefault()
+  event.stopPropagation()
+  closePanel(true)
+}
+
+function onPanelFocusOut(event: FocusEvent) {
+  const next = event.relatedTarget
+  if (next instanceof Node) {
+    if (!panel.value?.contains(next)) closePanel()
+    return
+  }
+  // relatedTarget 为空:焦点落到 body 或离开文档(例如点击不可聚焦区域)。
+  // 下一轮按 activeElement 复核,否则面板会卡在「焦点已离开但仍打开、Esc 也到不了」的状态。
+  setTimeout(() => {
+    const active = document.activeElement
+    if (!active || active === document.body || !panel.value?.contains(active)) closePanel()
+  }, 0)
+}
+
+watch(() => hitl.count, (count) => {
+  if (!count) closePanel()
+})
 const {
   HITL_KINDS,
   hitlKindLabel,
@@ -29,18 +86,46 @@ const {
 <template>
   <a-dropdown
     v-if="hitl.count > 0"
+    :open="open"
     placement="bottomRight"
+    @open-change="onOpenChange"
+    @popup-align="onPopupAlign"
   >
     <button
+      ref="bell"
+      type="button"
       class="icon-btn hitl-bell"
       :title="t('appHeader.hitlBadge')"
+      :aria-label="`${t('appHeader.hitlBadge')} · ${hitl.count}`"
+      :aria-expanded="open"
+      :aria-controls="open ? panelId : undefined"
+      @click="openFromBell"
+      @keydown.esc="onEscape"
     >
-      <span class="i-tabler-bell-ringing" />
-      <span class="hitl-count">{{ hitl.count }}</span>
+      <span
+        class="i-tabler-bell-ringing"
+        aria-hidden="true"
+      />
+      <span
+        class="hitl-count"
+        aria-hidden="true"
+      >{{ hitl.count }}</span>
     </button>
     <template #overlay>
-      <div class="hitl-menu">
-        <div class="hitl-menu-title">
+      <div
+        :id="panelId"
+        ref="panel"
+        class="hitl-menu"
+        role="region"
+        :aria-labelledby="`${panelId}-title`"
+        :inert="!open"
+        @focusout="onPanelFocusOut"
+        @keydown.esc="onEscape"
+      >
+        <div
+          :id="`${panelId}-title`"
+          class="hitl-menu-title"
+        >
           {{ t('appHeader.hitlBadge') }} · {{ hitl.count }}
         </div>
         <div

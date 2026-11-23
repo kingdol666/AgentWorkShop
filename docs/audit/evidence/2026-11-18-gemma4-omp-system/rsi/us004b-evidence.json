@@ -1,0 +1,35 @@
+{
+ "at": "2026-11-18T09:47:22.190Z",
+ "steps": [
+  {
+   "id": "R1",
+   "name": "任务完成自动捕获经验(stats.total>=3)",
+   "pass": true,
+   "detail": "total=3 status={\"active\":3}"
+  },
+  {
+   "id": "R5",
+   "name": "两条经验合并(证据并集 taskIds=2)",
+   "pass": true,
+   "detail": "{\"ok\":true,\"memoryId\":\"ad0fd397-d1c2-4c18-8437-ac3aee639e14\",\"taskIds\":[\"96b36fd6-8b10-47cf-a24b-de38fc82f07a\",\"6dfd714a-3bdd-40da-bea5-dbfd20f6194e\"],\"reasons\":[\"已合并 2 条经验的证据锚点\"]}"
+  },
+  {
+   "id": "R6",
+   "name": "人工晋升 validated(证据充分)",
+   "pass": false,
+   "detail": "{\"ok\":false,\"reasons\":[\"仅 candidate 可晋级 validated（当前 active）\"]}"
+  },
+  {
+   "id": "R7",
+   "name": "单任务经验晋级被门拒绝(不足样本)",
+   "pass": true,
+   "detail": "{\"ok\":false,\"reasons\":[\"独立任务样本不足：1/2\"]}"
+  },
+  {
+   "id": "R8",
+   "name": "晋升后 validated 状态落库",
+   "pass": false,
+   "detail": "{\"active\":3}"
+  }
+ ]
+}

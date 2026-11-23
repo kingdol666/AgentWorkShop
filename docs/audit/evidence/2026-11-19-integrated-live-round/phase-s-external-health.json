@@ -1,0 +1,14 @@
+{
+ "idd": {
+  "status": 200,
+  "ok": true
+ },
+ "rag-backend": {
+  "status": 200,
+  "ok": true
+ },
+ "rag-web": {
+  "status": 200,
+  "ok": true
+ }
+}

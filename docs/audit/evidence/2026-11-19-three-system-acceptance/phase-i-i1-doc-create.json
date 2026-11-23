@@ -1,0 +1,5 @@
+{
+ "text": "status=created doc_path=aw-docs/注塑克重产线工况文档-WC-INJ-2026-1115.md kb=aw-docs chars=4434 index=ok tags=ok\n✅ 文档「注塑克重产线工况文档-WC-INJ-2026-1115.md」已写入 aw-docs。\n调用者=d86801c7-04cd-41cb-85fd-f5afe3f8f7c1 角色=lead\n下一步:kb_doc_search(query=标题或关键词) 验证可检索;kb_doc_read(doc_path) 核对正文。",
+ "isError": false,
+ "ms": 10773
+}

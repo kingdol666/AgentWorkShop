@@ -1,0 +1,45 @@
+{
+ "lineId": null,
+ "total": 3,
+ "byStatus": {
+  "active": 3
+ },
+ "byScope": {
+  "channel": 3
+ },
+ "byOutcome": {
+  "positive": 3
+ },
+ "recent": [
+  {
+   "id": "f70c4851-177f-4fbb-955b-a766f18d497d",
+   "title": "完成：worker 直派:9+10",
+   "outcome": "positive",
+   "status": "active",
+   "scopeKind": "channel",
+   "scopeKey": "",
+   "taskId": "c73221ee-6334-4cc1-a208-8fc6b99351fb",
+   "createdAt": "2026-11-18T17:45:17.923+08:00"
+  },
+  {
+   "id": "ad0fd397-d1c2-4c18-8437-ac3aee639e14",
+   "title": "完成：常识问答:水沸点",
+   "outcome": "positive",
+   "status": "active",
+   "scopeKind": "channel",
+   "scopeKey": "",
+   "taskId": "96b36fd6-8b10-47cf-a24b-de38fc82f07a",
+   "createdAt": "2026-11-18T17:39:09.180+08:00"
+  },
+  {
+   "id": "5be0e8c0-2f2c-4db1-bc94-52216b7a3a56",
+   "title": "完成：简单算术:2+3",
+   "outcome": "positive",
+   "status": "active",
+   "scopeKind": "channel",
+   "scopeKey": "",
+   "taskId": "6dfd714a-3bdd-40da-bea5-dbfd20f6194e",
+   "createdAt": "2026-11-18T17:30:56.651+08:00"
+  }
+ ]
+}

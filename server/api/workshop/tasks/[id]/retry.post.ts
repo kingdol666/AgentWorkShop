@@ -20,10 +20,11 @@ function taskEngineOf(manager: AgentChannelManager): TaskEngine {
 
 export default defineApiHandler(async (event) => {
   const taskId = getRouterParam(event, 'id')!
+  // 先验身份再查任务:未鉴权调用者不得借 404 探测任务是否存在
+  const user = resolveUser(event)
   const manager = getWorkshopManager()
   const task = taskEngineOf(manager).get(taskId)
   if (!task) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
-  const user = resolveUser(event)
   const ch = manager.getChannelForUser(task.channelId, user.id)
   manager.requireOwned(ch.ownerUserId, user.id, 'channel')
   const agents = await manager.listChannelAgents(task.channelId)

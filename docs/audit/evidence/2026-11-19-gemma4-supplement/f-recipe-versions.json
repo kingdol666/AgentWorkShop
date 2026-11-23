@@ -1,0 +1,4 @@
+{
+ "text": "配方「Gemma4-基线配方-pp-mwmaovrs」版本史(当前 v1,共 1 条,旧→新):\n- v1 [2026-11-18 23:47:37] 来源=— 操作者=— | 当前版本\n    初始版本\n\n回退用 recipe_rollback(recipe_id + version 或 to_last_good=true);保存新参数用 recipe_update。",
+ "isError": false
+}

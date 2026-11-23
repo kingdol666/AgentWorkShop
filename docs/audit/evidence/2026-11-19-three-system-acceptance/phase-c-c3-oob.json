@@ -1,0 +1,8 @@
+{
+ "status": 400,
+ "body": {
+  "code": "NODE_RANGE_EXCEEDED",
+  "message": "设定值 999MPa 超出上限 节点工艺安全量程 的 85MPa —— 约束层:节点安全量程(当前有效写入区间 45~85MPa;各层限界按安全规约取交集,越界写入已拒绝)",
+  "data": null
+ }
+}

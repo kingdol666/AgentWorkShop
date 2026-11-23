@@ -1,0 +1,19 @@
+{
+ "username": "tsamwmyi8sj",
+ "verifyStatus": 200,
+ "verifyBody": {
+  "success": true,
+  "data": {
+   "user": {
+    "id": 156,
+    "username": "tsamwmyi8sj",
+    "email": "tsamwmyi8sj@aw.local",
+    "role": "user",
+    "created_at": "2026-11-19 02:54:18",
+    "last_login_at": "2026-11-19 02:54:18"
+   },
+   "auth_type": "api_token",
+   "token_id": 133
+  }
+ }
+}

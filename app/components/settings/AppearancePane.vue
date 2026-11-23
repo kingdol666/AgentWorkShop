@@ -69,29 +69,43 @@ const switchLocale = (value: unknown) => {
         </div>
       </div>
     </div>
-    <div class="color-swatches">
+    <div
+      class="color-swatches"
+      role="group"
+      :aria-label="t('settings.primaryColor')"
+    >
       <button
         v-for="c in colorPresets"
         :key="c.value"
+        type="button"
         class="swatch"
         :class="{ on: currentAccent.toLowerCase() === c.value.toLowerCase() }"
+        :aria-pressed="currentAccent.toLowerCase() === c.value.toLowerCase()"
         :style="{ '--sw': c.value }"
         :title="c.label"
         @click="pickAccent(c.value)"
       >
-        <span class="swatch-dot" />
+        <span
+          class="swatch-dot"
+          aria-hidden="true"
+        />
         <span class="swatch-label">{{ c.label }}</span>
         <span
           v-if="currentAccent.toLowerCase() === c.value.toLowerCase()"
           class="i-tabler-check swatch-check"
+          aria-hidden="true"
         />
       </button>
     </div>
     <button
+      type="button"
       class="aw-pill outline reset-btn"
       @click="resetAccent"
     >
-      <span class="i-tabler-rotate" />
+      <span
+        class="i-tabler-rotate"
+        aria-hidden="true"
+      />
       {{ t('settings.accentResetAction') }}
     </button>
 
@@ -100,31 +114,44 @@ const switchLocale = (value: unknown) => {
         <div class="set-title">
           {{ store.isDark ? t('common.dark') : t('common.light') }}
         </div>
-        <div class="set-sub">
+        <div
+          id="settings-dark-description"
+          class="set-sub"
+        >
           {{ t('settings.darkDesc') }}
         </div>
       </div>
       <button
+        type="button"
         class="switch"
         :class="{ on: store.isDark }"
         role="switch"
+        :aria-label="t('common.dark')"
         :aria-checked="store.isDark"
+        aria-describedby="settings-dark-description"
         @click="store.toggleDark()"
       >
-        <span class="knob" />
+        <span
+          class="knob"
+          aria-hidden="true"
+        />
       </button>
     </div>
 
     <div class="toggle-row">
       <div class="set-text">
-        <div class="set-title">
+        <label
+          class="set-title"
+          for="settings-locale"
+        >
           {{ t('header.language') }}
-        </div>
+        </label>
         <div class="set-sub">
           {{ t('settings.languageDesc') }}
         </div>
       </div>
       <a-select
+        id="settings-locale"
         :value="locale"
         :options="localeOptions"
         style="width: 140px"

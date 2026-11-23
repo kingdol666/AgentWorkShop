@@ -190,20 +190,28 @@ export function createMemoryRepo(db: DatabaseSync) {
   // **状态单调性**(2026-11-10 审计):validated/retired 是人类策展结果,重放/重存不得把它
   // 打回 candidate,也不得覆盖其证据(旧实现无条件写 status/evidence_json ——
   // 任何一次反射器重放都会抹掉人工合并的成果)。
+  // **正文不漂移**(2026-11-23 发版审查):dedup_key 是 `exp:task:<id>` 这类来源键、不含内容哈希,
+  // 同一任务重跑会产出新正文;受保护行的正文/标题/结论/范围/权重一并不许被重放覆盖,
+  // 否则「已验证」名下会出现未经人工策展的新文本。
+  const protectedRow = `agent_memories.status IN ('validated', 'retired')`
   const upsertExperienceStmt = db.prepare(
     `INSERT INTO agent_memories
        (id, channel_id, agent_id, kind, title, title_fts, content, importance, task_id, session_id, dedup_key,
         access_count, last_accessed_at, created_at, outcome, evidence_json, scope_kind, scope_key, status, expires_at)
      VALUES (?, ?, ?, 'experience', ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(agent_id, dedup_key, channel_id) DO UPDATE SET
-      channel_id = excluded.channel_id, kind = 'experience', title = excluded.title, title_fts = excluded.title_fts,
-      content = excluded.content, importance = excluded.importance, task_id = excluded.task_id,
-      session_id = excluded.session_id, outcome = excluded.outcome,
-      evidence_json = CASE WHEN agent_memories.status IN ('validated', 'retired')
-        THEN agent_memories.evidence_json ELSE excluded.evidence_json END,
-      scope_kind = excluded.scope_kind, scope_key = excluded.scope_key,
-      status = CASE WHEN agent_memories.status IN ('validated', 'retired')
-        THEN agent_memories.status ELSE excluded.status END,
+      channel_id = excluded.channel_id, kind = 'experience',
+      title = CASE WHEN ${protectedRow} THEN agent_memories.title ELSE excluded.title END,
+      title_fts = CASE WHEN ${protectedRow} THEN agent_memories.title_fts ELSE excluded.title_fts END,
+      content = CASE WHEN ${protectedRow} THEN agent_memories.content ELSE excluded.content END,
+      importance = CASE WHEN ${protectedRow} THEN agent_memories.importance ELSE excluded.importance END,
+      task_id = excluded.task_id,
+      session_id = excluded.session_id,
+      outcome = CASE WHEN ${protectedRow} THEN agent_memories.outcome ELSE excluded.outcome END,
+      evidence_json = CASE WHEN ${protectedRow} THEN agent_memories.evidence_json ELSE excluded.evidence_json END,
+      scope_kind = CASE WHEN ${protectedRow} THEN agent_memories.scope_kind ELSE excluded.scope_kind END,
+      scope_key = CASE WHEN ${protectedRow} THEN agent_memories.scope_key ELSE excluded.scope_key END,
+      status = CASE WHEN ${protectedRow} THEN agent_memories.status ELSE excluded.status END,
       expires_at = excluded.expires_at, created_at = excluded.created_at`,
   )
   const markStatusStmt = db.prepare(`UPDATE agent_memories SET status = ? WHERE id = ? AND status = ?`)

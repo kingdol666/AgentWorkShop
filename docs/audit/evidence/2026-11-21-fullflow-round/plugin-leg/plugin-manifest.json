@@ -1,0 +1,29 @@
+[
+ {
+  "name": "mes-tool-bridge",
+  "version": "1.0.0",
+  "description": "MES/ERP 工具桥:把外接系统订单查询与质量报告推送暴露为 Agent 工具(参考实现)",
+  "scope": "user",
+  "builtin": false,
+  "enabled": true,
+  "hasClient": false,
+  "clientAvailable": false,
+  "hasI18n": false,
+  "settingsCount": 3,
+  "configGroups": [],
+  "routes": [],
+  "error": null,
+  "toolCount": 2,
+  "knownToolCount": 2,
+  "tools": [
+   {
+    "name": "mes_order_status",
+    "label": "MES 订单状态"
+   },
+   {
+    "name": "mes_quality_report",
+    "label": "MES 质量报告推送"
+   }
+  ]
+ }
+]

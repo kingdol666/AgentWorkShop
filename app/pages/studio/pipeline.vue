@@ -19,7 +19,7 @@
     <!-- Step 1 拉取数据 -->
     <section class="cardBlock">
       <h2><span class="stepNo">1</span>{{ $t('studio.pipeline.s1') }}</h2>
-      <div class="row">
+      <div class="row wrap">
         <select
           v-model="lineId"
           data-test="pipeline-lines"
@@ -813,4 +813,23 @@ onMounted(async () => {
 .viewerBar b { font-size: 13px }
 .viewerBar .unit { flex: 1 }
 .viewerChart { padding: 8px 12px 12px }
+
+@media (max-width: 640px) {
+  .aw-page-head { align-items: flex-start }
+  .field { min-width: min(170px, 100%); max-width: 100% }
+  .field.narrow { min-width: min(110px, 100%) }
+  .field.tiny { min-width: min(84px, 100%) }
+  .lbl,
+  .viewerBar { flex-wrap: wrap }
+  .lbl,
+  .chip,
+  .hint,
+  .err,
+  .viewerBar b { max-width: 100%; overflow-wrap: anywhere }
+  .importRow,
+  .codeRow { flex-direction: column; align-items: stretch }
+  .importRow .import { max-width: 100% }
+  .codeSide { max-width: none; align-items: flex-start }
+  .importRow > .pill-btn { align-self: flex-start }
+}
 </style>

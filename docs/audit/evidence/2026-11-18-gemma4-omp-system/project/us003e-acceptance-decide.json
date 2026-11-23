@@ -1,0 +1,25 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "id": "056503bd-e814-4230-8272-2325bea03452",
+  "projectId": "a54c9da3-53fa-4f06-b95c-d3e808c4feeb",
+  "kind": "deliverable_acceptance",
+  "subjectType": "result",
+  "subjectId": "bdcb3e9a-fd85-48ea-9c8b-3417295a438b",
+  "subjectVersion": 1,
+  "status": "approved",
+  "requestedByAgentId": null,
+  "requestedByUserId": "7995dc19-3588-46b0-be38-cc995cca6e38",
+  "payloadJson": "{\"resultId\":\"bdcb3e9a-fd85-48ea-9c8b-3417295a438b\",\"version\":1}",
+  "argsDigest": "",
+  "reason": "deliverable acceptance",
+  "decisionReason": "L2 acceptance by approver member",
+  "decidedByUserId": "249d2e39-943e-447b-9c8e-3b4673ccb312",
+  "consumedAt": null,
+  "traceId": "work:ee3ebeb8-99cc-4093-8ca3-5e88a51d667f:计算 7×8 并给出完整说明",
+  "expiresAt": "2026-11-19T18:03:13.418+08:00",
+  "createdAt": "2026-11-18T18:03:13.418+08:00",
+  "decidedAt": "2026-11-18T18:03:43.511+08:00"
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "username": "tsa_mwmyi8sj",
+ "attempts": [
+  {
+   "base": "http://127.0.0.1:8770",
+   "regStatus": 200,
+   "loginStatus": 200,
+   "hasSession": true
+  },
+  {
+   "base": "http://127.0.0.1:8770",
+   "tokenStatus": 200
+  }
+ ]
+}

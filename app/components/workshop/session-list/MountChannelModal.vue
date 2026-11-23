@@ -37,11 +37,20 @@ const createAndMount = async (): Promise<void> => {
       description: mountForm.description || undefined,
       scenarioPrompt: mountForm.scenarioPrompt.trim() || undefined,
       workspace: mountForm.workspace.trim() || undefined,
+      // 挂载目标随创建请求一起提交,由服务端原子校验并挂载。缺省时服务端会把频道
+      // 挂到 owner 的默认工作区,再补一次挂载就会让频道同时出现在两个工作区。
+      workspaceId: props.wsId,
     })
     const created = (res as unknown as { data?: { channelId?: string } })?.data
     const channelId = created?.channelId
     if (!channelId) throw new Error(t('channelSessionList.k1bg6shc027'))
-    await wsStore.mountChannel(props.wsId, channelId)
+    try {
+      await wsStore.load()
+    }
+    catch {
+      // 频道已创建并挂载,只是清单刷新失败;下次加载即与服务端一致
+    }
+    if (!wsStore.workspaces.find(w => w.id === props.wsId)?.activeChannelId) wsStore.setActiveChannel(props.wsId, channelId)
     open.value = false
     mountForm.name = ''
     mountForm.description = ''

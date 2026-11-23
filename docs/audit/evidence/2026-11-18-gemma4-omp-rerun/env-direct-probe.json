@@ -1,0 +1,29 @@
+{
+ "id": "chatcmpl-j8l60z2wn8mkr31ndfifs",
+ "object": "chat.completion",
+ "created": 1795016370,
+ "model": "google/gemma-4-12b-qat",
+ "choices": [
+  {
+   "index": 0,
+   "message": {
+    "role": "assistant",
+    "content": "GEMMA4_OK",
+    "reasoning_content": "The user wants me to reply with a specific string: \"GEMMA4_OK\".\nThe instruction is \"Reply with exactly: GEMMA4_OK\".\nI should follow this instruction exactly.",
+    "tool_calls": []
+   },
+   "logprobs": null,
+   "finish_reason": "stop"
+  }
+ ],
+ "usage": {
+  "prompt_tokens": 25,
+  "completion_tokens": 51,
+  "total_tokens": 76,
+  "completion_tokens_details": {
+   "reasoning_tokens": 41
+  }
+ },
+ "stats": {},
+ "system_fingerprint": "google/gemma-4-12b-qat"
+}

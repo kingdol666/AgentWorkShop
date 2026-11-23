@@ -500,32 +500,34 @@ onMounted(() => {
             {{ t('optimizer.spec.addVariable') }}
           </a-button>
         </div>
-        <table class="tbl">
-          <thead><tr><th>id</th><th>node</th><th>role</th><th>unit</th><th>delay</th><th>range</th><th /></tr></thead>
-          <tbody>
-            <tr
-              v-for="(v, i) in variables"
-              :key="`${v.id}-${i}`"
-            >
-              <td>{{ v.id }}</td><td class="mono">
-                {{ v.nodeId }}
-              </td><td>{{ v.role }}</td><td>{{ v.unit }}</td>
-              <td>{{ v.role === 'mv' ? `${v.delayMs}ms` : '—' }}</td><td class="mono">
-                {{ v.min }} … {{ v.max }}
-              </td>
-              <td>
-                <a-button
-                  size="small"
-                  danger
-                  type="text"
-                  @click="variables.splice(i, 1)"
-                >
-                  {{ t('optimizer.remove') }}
-                </a-button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>id</th><th>node</th><th>role</th><th>unit</th><th>delay</th><th>range</th><th /></tr></thead>
+            <tbody>
+              <tr
+                v-for="(v, i) in variables"
+                :key="`${v.id}-${i}`"
+              >
+                <td>{{ v.id }}</td><td class="mono">
+                  {{ v.nodeId }}
+                </td><td>{{ v.role }}</td><td>{{ v.unit }}</td>
+                <td>{{ v.role === 'mv' ? `${v.delayMs}ms` : '—' }}</td><td class="mono">
+                  {{ v.min }} … {{ v.max }}
+                </td>
+                <td>
+                  <a-button
+                    size="small"
+                    danger
+                    type="text"
+                    @click="variables.splice(i, 1)"
+                  >
+                    {{ t('optimizer.remove') }}
+                  </a-button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p
           v-if="pendingVars"
           class="hint warn-hint"
@@ -921,8 +923,9 @@ label.block { margin-top: 10px; }
 .json-input.invalid { border-color: var(--tone-danger-dot); }
 .field-error { color: var(--tone-danger-dot); font-size: 12px; margin: 6px 0 0; }
 .actions { display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap; }
-.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.tbl th, .tbl td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+.tbl-wrap { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.tbl { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tbl th, .tbl td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .tbl th { color: var(--ink-faint); font-weight: 500; }
 .list { list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
 .list .gap { color: var(--accent-amber); }

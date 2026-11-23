@@ -22,7 +22,7 @@ import { defineEventHandler, getRouterParam, readBody, createEventStream, type H
 import { z } from 'zod'
 import { AppError } from '../../../../../utils/errors'
 import { getWorkshopManager } from '../../../../../plugins/workshop'
-import { findAgent, buildAgentCard } from '../card/index.get'
+import { canReadAgentCard, findAgent, buildAgentCard } from '../card/index.get'
 import type { AgentChannelManager } from '../../../../../services/workshop/runtime/manager'
 import type { TaskEngine } from '../../../../../services/workshop/runtime/agent-runtime'
 import type { AgentInfo } from '../../../../../services/workshop/agents/agent-interface'
@@ -386,10 +386,11 @@ async function dispatch(
     }
     case 'message/send': {
       const p = parseParams(sendMessageParamsSchema, params)
-      if (!findAgent(manager, agentId)) fail(-32001, `Agent not found: ${agentId}`)
+      // 先验发送方身份再判目标是否存在:未鉴权调用者不得借 -32001 探测 Agent 是否存在
       const token = bearerTokenOf(event)
       const caller = token ? manager.findByToken(token) : undefined
       if (!caller) fail(-32005, 'Agent not authorized: message/send 需要有效 token 确定发送方')
+      if (!findAgent(manager, agentId)) fail(-32001, `Agent not found: ${agentId}`)
       const message = await manager.sendA2A(caller.channelId, caller.id, {
         toAgentId: agentId,
         parts: p.message.parts,
@@ -399,6 +400,8 @@ async function dispatch(
     }
     case 'agent/getCard': {
       parseParams(noopParamsSchema, params)
+      // 与 HTTP card 同一公开开关;关闭时先验身份,再判 Agent 是否存在
+      if (!canReadAgentCard(event)) fail(-32005, 'AgentCard 未公开:需有效用户 token')
       const agent = findAgent(manager, agentId) ?? fail(-32001, `Agent not found: ${agentId}`)
       return ok(id, buildAgentCard(agent))
     }

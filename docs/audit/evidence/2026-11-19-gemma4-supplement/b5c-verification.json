@@ -1,0 +1,13 @@
+{
+ "nodeValueNow": 150,
+ "rejectedProposalTarget": 138,
+ "baselineAfterLineStart": 150,
+ "journalAgentAnchors": [
+  {
+   "prev": 150,
+   "next": 144,
+   "approval": "ap-35f6f4db",
+   "run": "rr-4d15a61c"
+  }
+ ]
+}

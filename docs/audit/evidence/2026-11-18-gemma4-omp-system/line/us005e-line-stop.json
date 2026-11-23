@@ -1,0 +1,55 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "run": {
+   "id": "rr-13806e90",
+   "recipeId": "rc-00f1628e",
+   "recipeName": "Gemma4-基线配方-g5-mwlxyby1",
+   "productId": "pd-57b3814b",
+   "lineId": "ln-61f4b69e",
+   "recipeVersion": 1,
+   "startedAt": "2026-11-18T18:27:49.886+08:00",
+   "endedAt": "2026-11-18T18:30:03.064+08:00",
+   "results": [
+    {
+     "templateRef": "cw-cf87b272",
+     "nodeId": "dw-932247e5",
+     "ok": true,
+     "message": "Mock PLC 写入成功:150 → raw 150,待写后验证(标定后物理值 150)",
+     "value": 150,
+     "ack": "readback-verified",
+     "verify": {
+      "verdict": "verified",
+      "attempts": 1
+     }
+    }
+   ],
+   "paramsSnapshot": [
+    {
+     "nodeId": "dw-932247e5",
+     "templateRef": "cw-cf87b272",
+     "value": 150
+    }
+   ],
+   "ackSummary": {
+    "verified": 1,
+    "unverified": 0,
+    "failed": 0,
+    "total": 1
+   }
+  },
+  "line": {
+   "lineId": "ln-61f4b69e",
+   "active": false,
+   "runId": null,
+   "recipeId": null,
+   "recipeName": null,
+   "productId": null,
+   "productName": null,
+   "startedAt": null,
+   "taggedSamples": 0
+  }
+ },
+ "httpStatus": 200
+}

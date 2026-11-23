@@ -1,0 +1,16 @@
+[
+ {
+  "file": "2026-11-18T09-45-21-883Z_01a1ee0b-eeda-7000-9c15-6d33dc01d896.jsonl",
+  "models": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T09-45-19-548Z_01a1ee0b-e5b8-7000-85dc-d3c2e03e1fdd.jsonl",
+  "models": [
+   "ustc/deepseek-flash",
+   "local/google/gemma-4-12b-qat"
+  ]
+ }
+]

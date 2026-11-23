@@ -140,25 +140,86 @@ onBeforeUnmount(() => {
   document.body.classList.remove('nav-drawer', 'nav-drawer-open')
 })
 
-/** 抽屉展开时锁画布滚动(否则背景跟着手指跑,浮层失去"压在台面上"的物理感) */
-watch(drawerOpen, (open) => {
-  if (typeof document === 'undefined') return
-  document.body.style.overflow = open ? 'hidden' : ''
+/** 抽屉关闭时只还原自己的滚动锁，保留原有的轴向值和优先级。 */
+const nav = ref<HTMLElement | null>(null)
+let releaseScrollLock: (() => void) | undefined
+let returnFocus: HTMLElement | null = null
+let navToggle: HTMLButtonElement | null = null
+let addedControls = false
+
+function lockBodyScroll() {
+  const { style } = document.body
+  const overflow = ['overflow-x', 'overflow-y'].map(name => ({
+    name,
+    value: style.getPropertyValue(name),
+    priority: style.getPropertyPriority(name),
+  }))
+  style.setProperty('overflow', 'hidden')
+  return () => {
+    for (const { name, value, priority } of overflow) {
+      if (style.getPropertyValue(name) !== 'hidden' || style.getPropertyPriority(name)) continue
+      if (value) style.setProperty(name, value, priority)
+      else style.removeProperty(name)
+    }
+  }
+}
+
+watch([navHydrated, drawerOpen], async ([hydrated, open]) => {
+  if (!hydrated) return
+  if (open) {
+    const active = document.activeElement
+    returnFocus = active instanceof HTMLElement && active !== document.body && !nav.value?.contains(active)
+      ? active
+      : navToggle
+    releaseScrollLock = lockBodyScroll()
+    await nextTick()
+    if (drawerOpen.value) nav.value?.querySelector<HTMLElement>('.menu-item')?.focus()
+  }
+  else {
+    releaseScrollLock?.()
+    releaseScrollLock = undefined
+    if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true })
+    returnFocus = null
+  }
 })
 
-/** Esc 关闭:仅抽屉形态接管,桌面侧栏不受影响 */
-const onKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && drawerOpen.value) store.closeMobileNav()
+function onKeydown(e: KeyboardEvent) {
+  if (!drawerOpen.value || e.defaultPrevented) return
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    store.closeMobileNav()
+  }
+  else if (e.key === 'Tab') {
+    const buttons = nav.value?.querySelectorAll<HTMLElement>('.menu-item')
+    const first = buttons?.[0]
+    const last = buttons?.[buttons.length - 1]
+    const active = document.activeElement
+    if (!nav.value?.contains(active) || active === (e.shiftKey ? first : last)) {
+      e.preventDefault()
+      ;(e.shiftKey ? last : first)?.focus()
+    }
+  }
 }
-onMounted(() => window.addEventListener('keydown', onKeydown))
+
+onMounted(() => {
+  // The existing header trigger lives outside this component.
+  navToggle = nav.value?.closest('.app-layout')?.querySelector<HTMLButtonElement>('.app-header .collapse-btn') ?? null
+  if (navToggle && !navToggle.hasAttribute('aria-controls')) {
+    navToggle.setAttribute('aria-controls', 'app-sidebar')
+    addedControls = true
+  }
+  window.addEventListener('keydown', onKeydown)
+})
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
-  if (typeof document !== 'undefined') document.body.style.overflow = ''
+  releaseScrollLock?.()
+  if (addedControls) navToggle?.removeAttribute('aria-controls')
 })
 </script>
 
 <template>
   <a-layout-sider
+    id="app-sidebar"
     :collapsed="effectiveCollapsed"
     :trigger="null"
     collapsible
@@ -166,7 +227,8 @@ onBeforeUnmount(() => {
     :collapsed-width="64"
     class="app-sider"
     :data-nav-mode="navMode"
-    :aria-hidden="isDrawer && !drawerOpen ? 'true' : undefined"
+    :inert="navHydrated && isDrawer && !drawerOpen"
+    :aria-hidden="navHydrated && isDrawer && !drawerOpen ? 'true' : undefined"
   >
     <!-- 品牌区:AwLogo 六边形标志(绿→青渐变 + 孪生虚影 + 三节点互连,与 favicon 同源) -->
     <div class="logo">

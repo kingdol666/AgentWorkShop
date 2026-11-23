@@ -1,0 +1,129 @@
+{
+ "runId": "rr-86122ebb",
+ "result": {
+  "code": 0,
+  "message": "ok",
+  "data": {
+   "run": {
+    "id": "rr-86122ebb",
+    "recipeId": "rc-23a5f77a",
+    "recipeName": "注塑克重基线配方",
+    "productId": "pd-fac4723e",
+    "lineId": "ln-74799404",
+    "recipeVersion": 1,
+    "startedAt": "2026-11-19T11:01:20.051+08:00",
+    "endedAt": "2026-11-19T15:06:18.898+08:00",
+    "results": [
+     {
+      "templateRef": "dcw-pressure-sp",
+      "nodeId": "dw-25e7dde7",
+      "ok": true,
+      "message": "写入并回读一致:50 → raw 50,回读 50(标定后物理值 50)",
+      "value": 50,
+      "ack": "readback-verified",
+      "verify": {
+       "verdict": "verified",
+       "attempts": 0
+      }
+     },
+     {
+      "templateRef": "dcw-speed-sp",
+      "nodeId": "dw-ff8df9d6",
+      "ok": true,
+      "message": "写入并回读一致:3 → raw 3,回读 3(标定后物理值 3)",
+      "value": 3,
+      "ack": "readback-verified",
+      "verify": {
+       "verdict": "verified",
+       "attempts": 0
+      }
+     },
+     {
+      "templateRef": "dcw-temp-sp",
+      "nodeId": "dw-a3bea8ef",
+      "ok": true,
+      "message": "写入并回读一致:205 → raw 205,回读 205(标定后物理值 205)",
+      "value": 205,
+      "ack": "readback-verified",
+      "verify": {
+       "verdict": "verified",
+       "attempts": 0
+      }
+     },
+     {
+      "templateRef": "dcw-speed-sp",
+      "nodeId": "dw-590169e5",
+      "ok": true,
+      "message": "写入并回读一致:14 → raw 14,回读 14(标定后物理值 14)",
+      "value": 14,
+      "ack": "readback-verified",
+      "verify": {
+       "verdict": "verified",
+       "attempts": 0
+      }
+     },
+     {
+      "templateRef": "dcw-pressure-sp",
+      "nodeId": "dw-9b1c71a3",
+      "ok": true,
+      "message": "POST 成功(HTTP 200),写入并回读一致:35,回读 35(标定后物理值 35)",
+      "value": 35,
+      "ack": "readback-verified",
+      "verify": {
+       "verdict": "verified",
+       "attempts": 0
+      }
+     }
+    ],
+    "paramsSnapshot": [
+     {
+      "nodeId": "dw-25e7dde7",
+      "templateRef": "dcw-pressure-sp",
+      "value": 50,
+      "min": 45,
+      "max": 85,
+      "stepLimit": 2
+     },
+     {
+      "nodeId": "dw-ff8df9d6",
+      "templateRef": "dcw-speed-sp",
+      "value": 3,
+      "min": 2,
+      "max": 8,
+      "stepLimit": 0.5
+     },
+     {
+      "nodeId": "dw-a3bea8ef",
+      "templateRef": "dcw-temp-sp",
+      "value": 205,
+      "min": 180,
+      "max": 240,
+      "stepLimit": 3
+     },
+     {
+      "nodeId": "dw-590169e5",
+      "templateRef": "dcw-speed-sp",
+      "value": 14,
+      "min": 10,
+      "max": 30,
+      "stepLimit": 1
+     },
+     {
+      "nodeId": "dw-9b1c71a3",
+      "templateRef": "dcw-pressure-sp",
+      "value": 35,
+      "min": 20,
+      "max": 60,
+      "stepLimit": 2
+     }
+    ],
+    "ackSummary": {
+     "verified": 5,
+     "unverified": 0,
+     "failed": 0,
+     "total": 5
+    }
+   }
+  }
+ }
+}

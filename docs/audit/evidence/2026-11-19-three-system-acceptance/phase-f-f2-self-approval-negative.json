@@ -1,0 +1,12 @@
+{
+ "event": "L2 deliverable_acceptance 自批负例",
+ "observedAt": "2026-11-19 ~15:20 +08:00(本轮会话)",
+ "attempt": "owner(admin) 对 leader 提交的 deliverable_acceptance 审批卡(f68257b9)调用 decide",
+ "observedResult": {
+  "http": 403,
+  "code": "SELF_APPROVAL_FORBIDDEN",
+  "message": "不能批准自己提交的成果"
+ },
+ "evidenceIntegrityNote": "该次 403 原始 JSON 曾被写入 phase-f-f2-l2.json,随后成功裁决覆盖同名文件——证据管理失误,如实记录。持久证据=decide.post.ts:33-36 的 maker-checker 硬校验(申请人≠批核人,403 SELF_APPROVAL_FORBIDDEN),fail-closed 代码路径在仓;会话内实测输出与本记录互证。",
+ "guardSource": "server/api/workshop/projects/[id]/approvals/[aid]/decide.post.ts"
+}

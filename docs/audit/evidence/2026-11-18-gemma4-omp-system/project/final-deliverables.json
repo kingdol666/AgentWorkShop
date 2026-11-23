@@ -1,0 +1,23 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": [
+  {
+   "id": "ee3ebeb8-99cc-4093-8ca3-5e88a51d667f",
+   "projectId": "a54c9da3-53fa-4f06-b95c-d3e808c4feeb",
+   "name": "7×8 计算成果",
+   "description": "",
+   "ownerChannelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+   "required": 1,
+   "acceptanceCriteriaJson": "[\"artifact.present\"]",
+   "dueAt": null,
+   "dependsOnJson": "[]",
+   "status": "approved",
+   "waiverReason": null,
+   "createdBy": "7995dc19-3588-46b0-be38-cc995cca6e38",
+   "createdAt": "2026-11-18T17:46:37.174+08:00",
+   "updatedAt": "2026-11-18T18:04:47.977+08:00"
+  }
+ ],
+ "httpStatus": 200
+}

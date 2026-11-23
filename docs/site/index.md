@@ -73,7 +73,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.17.5 · 已发布</i></span>
+        <span>版本 <i>v0.18.0 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -90,11 +90,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.17.5 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.18.0 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.17.5 版本：桌面端关闭窗口默认收进系统托盘，托盘菜单提供服务状态、重启服务、更新检查、数据/日志目录、诊断与 5 项设置；启动时先显示带真实阶段的初始化动画，后端就绪后才进入主界面。此前版本已提供一体化桌面壳、桌面/Web 共用 <code>~/.AgentWorkShop</code>、基于 GitHub Releases 的应用内更新与 WSH 静默安装助手：
+      当前为 v0.18.0 版本：REST 建的频道按工作区归属（console 可见且不串区）；详情/任务类 API、DAQ 外部推送与 A2A 方法改为先验身份后查资源；产线查询省略时间窗时按最近 24h；共享主题、设置页签、导航抽屉焦点、头部控件与启动动画按键盘语义与减少动态效果整理。此前版本已提供一体化桌面壳、关闭到托盘、桌面/Web 共用 <code>~/.AgentWorkShop</code>、基于 GitHub Releases 的应用内更新与 WSH 静默安装助手：
       系统设置新增技能管理（标准 SKILL.md 发现 → 不可变受管导入 → 显式启用，覆盖
       内置、<code>&lt;configRoot&gt;/skills</code>、<code>~/.agent/skills</code> 等全局根，全程不执行
       Skill 脚本）、外部 MCP（HTTPS 清单 + <code>AW_MCP_*</code> 凭据引用 + 评审制

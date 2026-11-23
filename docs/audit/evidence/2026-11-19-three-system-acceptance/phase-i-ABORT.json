@@ -1,0 +1,19 @@
+{
+ "error": "The operation was aborted due to timeout",
+ "at": "2026-11-19T04:39:37.977Z",
+ "state": {
+  "i1": {
+   "createOk": true,
+   "searchOk": true,
+   "catalogOk": true
+  },
+  "i2": {
+   "runId": "b237bab2",
+   "terminal": "run_id=b237bab2\ncontract=v1\nname=\n产线=ln-74799404\n意图=quick-screen(快速筛查)\n状态=completed\n来源=agent\n窗口=2026-11-19T11:08:28.106+"
+  },
+  "i3": {
+   "ok": true,
+   "text": "status=ok doc_path=aw-docs/ln-74799404_quick-screen_b237bab2.md kb=aw-docs run_id=b237bab2 chars=8197 index=ok tags=ok search=hit hits=10 mode=two-stage\n✅ 报告已入库 aw-docs(评分=- 结论=alert · 142 alerts)。\n检索"
+  }
+ }
+}

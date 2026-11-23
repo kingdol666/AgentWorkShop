@@ -1,0 +1,7 @@
+{
+ "agentId": "22c4bfbf-96ca-4574-82cf-4d4557c6d44d",
+ "result": {
+  "http": 401,
+  "body": "{\"code\":\"USER_UNAUTHORIZED\",\"message\":\"需要有效的用户会话或 Bearer token\",\"data\":null}"
+ }
+}

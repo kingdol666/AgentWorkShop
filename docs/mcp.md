@@ -66,12 +66,12 @@ aw mcp                 # 启动 stdio 服务(由 MCP 客户端作为子进程拉
 - 注意:设置页出现「MCP 集成」分组需要实例运行带该描述符的构建(`shared/config/schema.json`,
   2026-09-27 加入);文件路径(写 `<configRoot>/runtime-settings.json`)与 env 路径不依赖构建。
 
-## 五、工具面(35 个)
+## 五、工具面(38 个)
 
 | 分组 | 工具 |
 | --- | --- |
 | 连接 | `aw_status`(发现+健康+鉴权状态)、`aw_login` |
-| 产线/产品/配方 | `aw_line_list/create/start/stop`、`aw_product_create`、`aw_recipe_create` |
+| 产线/产品/配方 | `aw_line_list/create/start/stop`、`aw_product_create`、`aw_recipe_create/list/update/mark_good` |
 | DCW 节点与参数映射 | `aw_dcw_snapshot/create/write/read`、`aw_param_list/write/read` |
 | DAQ 数采 | `aw_daq_create`、`aw_daq_controller`、`aw_daq_samples` |
 | 优化闭环频道 | `aw_channel_list/create`、`aw_channel_template_list/instantiate`、`aw_team_provision`(组合:建 agent→team→成员→deploy)、`aw_agent_tool_bind/invoke`、`aw_twin_profile_get/patch`、`aw_task_create/list`、`aw_model_list/promote`、`aw_optimization_judge` |
@@ -102,18 +102,24 @@ aw mcp                 # 启动 stdio 服务(由 MCP 客户端作为子进程拉
 
 ## 六、与 skills 的集成
 
-三个项目级 skill 以本服务为执行底座(`skills/` 目录):
+九个项目级 skill 以本服务为执行底座(`skills/` 目录):
 
 - `skills/aw-node-bind/` —— 真实场景节点参数绑定(建线→绑执行点→参数映射→配方开跑→回环验收)
 - `skills/aw-opt-channel/` —— 场景优化闭环频道(模板实例化→剧组→探索→AML 门禁→绑定→投用)
 - `skills/aw-plugin-dev/` —— 插件开发(脚手架→setup(ctx)→热重载验证→发布清单)
+- `skills/aw-line-onboarding/` —— 产线接入与作业频道锻造(建线/节点/上下限/连通性→配方绑定 Agent)
+- `skills/aw-protocol-onboarding/` —— 协议与异构数据接入(按厂家文档生成数采/写控节点→模拟端点跑通镜像采集→入库与导出验证)
+- `skills/aw-plc-sim-twin/` —— PLC 模拟器孪生生成(按既有节点或文档协议生成模拟生产数据)
+- `skills/aw-doc-to-project/` —— 工况文档→可作业 Project(影子模拟器→供给/锻造→蓝图审签→投用裁决)
+- `skills/aw-live-acceptance-round/` —— 实机集成验收轮(L1–L10:栈健康/产线治理/重启对账/治理评测/AML/Project/跨频道/缺陷探针/插件/Prefab)
+- `skills/aw-system-acceptance/` —— 全系统验收(T0–T5 六层:静态门禁→单元契约→实机闭环→回归面→插件工具面→发布产物冒烟)
 
 规范校验:`npm run test:skills`(含"skill 引用的工具必须真实存在于 MCP 工具面"的一致性检查)。
 
 ## 七、测试
 
 ```bash
-npm run test:mcp        # 单测(12 断言组):锁解析/发现优先级/RPC 面/懒登录/断线重发现/逃生舱守卫
+npm run test:mcp        # 单测(14 断言组):锁解析/发现优先级/RPC 面/懒登录/断线重发现/逃生舱守卫
 npm run test:mcp-live   # 真实实例 e2e(34 断言):隔离 home 实例 + 零端口提示自发现 + 全链业务
 ```
 

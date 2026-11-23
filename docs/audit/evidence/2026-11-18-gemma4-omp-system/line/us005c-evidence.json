@@ -1,0 +1,35 @@
+{
+ "at": "2026-11-18T09:56:00.236Z",
+ "steps": [
+  {
+   "id": "L12b",
+   "name": "HITL 历史:整包方案单已批准(choice=0)",
+   "pass": false,
+   "detail": "[]"
+  },
+  {
+   "id": "L16a",
+   "name": "越量程提案被预检拒绝(不建审批卡)",
+   "pass": false,
+   "detail": "配方「Gemma4-基线配方-g5-mwlxyby1」当前未在执行(产线上没有本配方的活动批次),按运行门约束下发被拒。请先由用户在产线开跑本配方,再进行参数写入/下发。"
+  },
+  {
+   "id": "L16b",
+   "name": "超单步试验被治理拒绝(单步/节拍)",
+   "pass": false,
+   "detail": "配方「Gemma4-基线配方-g5-mwlxyby1」当前未在执行(产线上没有本配方的活动批次),按运行门约束试验下发被拒。请先由用户在产线开跑本配方,再进行参数写入/下发。"
+  },
+  {
+   "id": "L15b",
+   "name": "agent 下发全部带审批锚(approvalId)",
+   "pass": true,
+   "detail": "[{\"lineId\":\"ln-61f4b69e\",\"nodeId\":\"dw-932247e5\",\"prevValue\":150,\"newValue\":144,\"source\":\"agent\",\"actor\":\"85f4eb0b-fa12-49e2-909c-07a07e64e62f\",\"approvalId\":\"ap-3bd7d227\",\"recipeRunId\":\"rr-8880f76c\",\"id\":\"anc-41ac86b8\",\"at\":\"2026-11-18T17:52:52.228+08:00\",\"recordId\":\"opt-46dfbd7c\"}]"
+  },
+  {
+   "id": "L14b",
+   "name": "节点 value/readValue 均为 144(独立回读)",
+   "pass": true,
+   "detail": "{\"value\":144,\"readValue\":144,\"holdBlocked\":true}"
+  }
+ ]
+}

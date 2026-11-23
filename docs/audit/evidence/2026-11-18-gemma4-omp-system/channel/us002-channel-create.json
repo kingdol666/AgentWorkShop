@@ -1,0 +1,10 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "channelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+  "leadAgentId": "7aaeffe0-93f0-4823-8adf-0405d02aeb0c",
+  "workspace": "D:\\codes\\ABO\\AgentWorkShop\\data\\workspaces\\7c53dbf4-3aa2-426f-9e58-4185f32dce18"
+ },
+ "httpStatus": 200
+}

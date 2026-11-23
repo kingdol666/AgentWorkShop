@@ -1,0 +1,11 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "ok": false,
+  "reasons": [
+   "独立任务样本不足：1/2"
+  ]
+ },
+ "httpStatus": 200
+}

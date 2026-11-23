@@ -1,0 +1,37 @@
+[
+ {
+  "file": "2026-11-18T14-13-33-761Z_01a1ef01-79c0-7000-935d-cff3c0d4a7a6.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-53019ea5-dd1b-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T14-17-48-502Z_01a1ef05-5cd6-7000-90b6-0ee7c327a354.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-53019ea5-dd1b-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T14-19-48-408Z_01a1ef07-3138-7000-8503-cb353a6bb5e3.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-53019ea5-dd1b-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T14-20-48-706Z_01a1ef08-1cc2-7000-9b0c-32e324715d98.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-53019ea5-dd1b-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ },
+ {
+  "file": "2026-11-18T14-21-28-723Z_01a1ef08-b912-7000-9b85-374e9035e36e.jsonl",
+  "dir": "--D--codes-ABO-AgentWorkShop-data-workspaces-b2bd7fba-4f70-4",
+  "models": [
+   "local/google/gemma-4-12b-qat"
+  ]
+ }
+]

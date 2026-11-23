@@ -1,0 +1,61 @@
+{
+ "file": "2026-11-18T09-35-44-989Z_01a1ee03-215c-7000-9e95-d62be6cad816.jsonl",
+ "models": [
+  {
+   "kind": "model_change",
+   "model": "ustc/deepseek-flash"
+  },
+  {
+   "kind": "model_change",
+   "model": "local/google/gemma-4-12b-qat"
+  },
+  {
+   "kind": "assistant",
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "usage": 30456
+  },
+  {
+   "kind": "assistant",
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "usage": 43811
+  },
+  {
+   "kind": "assistant",
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "usage": 39655
+  },
+  {
+   "kind": "assistant",
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "usage": 51947
+  },
+  {
+   "kind": "assistant",
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "usage": 38488
+  },
+  {
+   "kind": "assistant",
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "usage": 38832
+  },
+  {
+   "kind": "assistant",
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "usage": 39703
+  },
+  {
+   "kind": "assistant",
+   "provider": "local",
+   "model": "google/gemma-4-12b-qat",
+   "usage": 39857
+  }
+ ]
+}

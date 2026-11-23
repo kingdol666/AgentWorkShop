@@ -1,0 +1,25 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "id": "ee152d84-c9c1-43d6-acd9-a4750315d585",
+  "projectId": "4076e037-f98e-4a1a-a760-c23f7acfd9d2",
+  "kind": "project_complete",
+  "subjectType": "project",
+  "subjectId": "4076e037-f98e-4a1a-a760-c23f7acfd9d2",
+  "subjectVersion": null,
+  "status": "approved",
+  "requestedByAgentId": null,
+  "requestedByUserId": "d17b7ab2-9657-4653-a684-8eac7e0b0d4f",
+  "payloadJson": "{\"deliverables\":[{\"id\":\"08a22cfe-8235-4ce9-8937-e2fdd50a78ed\",\"status\":\"approved\"}],\"workItems\":2}",
+  "argsDigest": "",
+  "reason": "project completion acceptance",
+  "decisionReason": "完成审批:班次结论成立(第二账号裁决)",
+  "decidedByUserId": "b1dfb137-100f-4e88-afc1-cc8c89809ba6",
+  "consumedAt": null,
+  "traceId": "project:4076e037-f98e-4a1a-a760-c23f7acfd9d2:complete",
+  "expiresAt": "2026-11-20T15:26:16.474+08:00",
+  "createdAt": "2026-11-19T15:26:16.474+08:00",
+  "decidedAt": "2026-11-19T15:27:06.520+08:00"
+ }
+}

@@ -1,0 +1,51 @@
+{
+  "at": "2026-11-21T07:16:01.889Z",
+  "counts": {
+    "channels": 27,
+    "channel_agents": 77,
+    "channel_sessions": 23,
+    "tasks": 54,
+    "messages": 745,
+    "agent_prefabs": 0,
+    "agent_prefab_revisions": 0,
+    "channel_harness_profiles": 4,
+    "harness_bench_runs": 3,
+    "experience_versions": 61
+  },
+  "profiles": [
+    {
+      "id": "hp-60effdc423e1",
+      "status": "shadow"
+    },
+    {
+      "id": "hp-714103220db4",
+      "status": "shadow"
+    },
+    {
+      "id": "hp-b32b227f6059",
+      "status": "shadow"
+    },
+    {
+      "id": "hp-bdb91e463a10",
+      "status": "candidate"
+    }
+  ],
+  "ledger": [
+    {
+      "version": 3,
+      "name": "schema-contract"
+    },
+    {
+      "version": 7,
+      "name": "schema-contract"
+    },
+    {
+      "version": 8,
+      "name": "schema-contract"
+    },
+    {
+      "version": 9002,
+      "name": "experience-version-store"
+    }
+  ]
+}

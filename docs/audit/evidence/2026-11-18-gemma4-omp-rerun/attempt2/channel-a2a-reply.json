@@ -1,0 +1,23 @@
+{
+ "id": "3115238f-ee7d-46df-8925-740a3b0e4eb5",
+ "channelId": "53019ea5-dd1b-4ca8-a042-aeb8713270ba",
+ "taskId": null,
+ "fromAgentId": "90b2a95b-fc8b-4b1b-ac77-0adce2ad45ac",
+ "toAgentId": "f6b3393b-1d26-4217-89ed-a9c54d08051f",
+ "role": "ROLE_AGENT",
+ "parts": [
+  {
+   "text": "OK-A2A-9"
+  }
+ ],
+ "metadata": {
+  "x-aw-in-reply-to": "57f5f7d2-86e9-4866-856c-4f152bfe831c",
+  "x-aw-thread-root": "57f5f7d2-86e9-4866-856c-4f152bfe831c",
+  "x-aw-msg-priority": "immediate",
+  "x-aw-target-agent": "f6b3393b-1d26-4217-89ed-a9c54d08051f",
+  "x-aw-from-agent": "90b2a95b-fc8b-4b1b-ac77-0adce2ad45ac"
+ },
+ "state": "consuming",
+ "createdAt": "2026-11-18T22:19:43.351+08:00",
+ "consumedAt": null
+}

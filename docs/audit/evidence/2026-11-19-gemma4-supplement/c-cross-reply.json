@@ -1,0 +1,24 @@
+{
+ "id": "3d451d46-8fff-4043-a09f-bde20eedf863",
+ "channelId": "ce5d9bfa-53b9-46ad-9e18-7ab45f2334b9",
+ "taskId": null,
+ "fromAgentId": "dc44e810-580a-4ae7-8186-3b77d80d6aa4",
+ "toAgentId": "23963237-4617-4d8f-893b-7ff4f5dbc61e",
+ "role": "ROLE_AGENT",
+ "parts": [
+  {
+   "text": "跨频道协同测试:请只回复一行纯文本 CROSS-OK-7。不要调用工具。"
+  }
+ ],
+ "metadata": {
+  "x-aw-target-agent": "23963237-4617-4d8f-893b-7ff4f5dbc61e",
+  "x-aw-from-agent": "dc44e810-580a-4ae7-8186-3b77d80d6aa4",
+  "x-aw-from-channel": "ce1bfe22-91d8-4f44-ac66-24bb1f1acbda",
+  "x-aw-cross-channel": "true",
+  "x-aw-from-label": "跨Channel:Gemma4 复现验收频道 / Gemma Lead",
+  "x-aw-require-reply": "true"
+ },
+ "state": "consuming",
+ "createdAt": "2026-11-19T00:11:14.084+08:00",
+ "consumedAt": null
+}

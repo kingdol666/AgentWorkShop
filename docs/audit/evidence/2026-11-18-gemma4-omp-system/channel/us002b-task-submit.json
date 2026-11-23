@@ -1,0 +1,26 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "id": "96b36fd6-8b10-47cf-a24b-de38fc82f07a",
+  "channelId": "7c53dbf4-3aa2-426f-9e58-4185f32dce18",
+  "rootQueueSeq": 2,
+  "assigneeId": "7aaeffe0-93f0-4823-8adf-0405d02aeb0c",
+  "creatorId": "",
+  "title": "常识问答:水沸点",
+  "description": "[mode:goal][policy:no-deliverable] 请用一句话回答:标准大气压下水的沸点是多少摄氏度?只回答数字和单位。",
+  "state": "SUBMITTED",
+  "progress": 0,
+  "retryCount": 0,
+  "artifacts": [],
+  "history": [],
+  "source": "channel",
+  "assignmentGeneration": 0,
+  "executionLeaseId": "8d6a8085-77b2-4f3e-8bc2-f37a2a7c9dda",
+  "executionLeaseAgentId": "7aaeffe0-93f0-4823-8adf-0405d02aeb0c",
+  "executionLeaseStartedAt": "2026-11-18T17:35:43.866+08:00",
+  "createdAt": "2026-11-18T17:35:43.866+08:00",
+  "updatedAt": "2026-11-18T17:35:43.866+08:00"
+ },
+ "httpStatus": 200
+}

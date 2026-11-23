@@ -1,0 +1,21 @@
+{
+ "id": "61eae228-fea1-4e01-a4d5-fabf446ee0fc",
+ "projectId": "f660ceee-da12-44a8-a3ce-ea62ef77d6f6",
+ "kind": "plan_approval",
+ "subjectType": "plan",
+ "subjectId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1",
+ "subjectVersion": 1,
+ "status": "pending",
+ "requestedByAgentId": "46d40471-9db0-4b14-920c-9d21ae9098f4",
+ "requestedByUserId": null,
+ "payloadJson": "{\"deliverables\":[{\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:56\"],\"channelId\":\"3b8dc6b1-fc57-4a09-a3bc-772f720c4b17\",\"description\":\"计算 7×8 的准确结果并提供可复核的说明\",\"key\":\"d1\",\"name\":\"7×8 计算成果\",\"required\":true}],\"work_items\":[{\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:56\"],\"brief\":\"计算 7×8 的乘法结果，并编写包含结果及计算逻辑说明的文档，提交至项目交付物。\",\"channelId\":\"3b8dc6b1-fc57-4a09-a3bc-772f720c4b17\",\"dedupeKey\":\"v1-7x8-calc\",\"deliverableKey\":\"d1\",\"dependsOn\":[],\"execBudgetMinutes\":60,\"key\":\"w1\",\"title\":\"计算 7×8 并提交成果\"}]}",
+ "argsDigest": "",
+ "reason": "project plan proposal",
+ "decisionReason": "",
+ "decidedByUserId": null,
+ "consumedAt": null,
+ "traceId": "plan:f660ceee-da12-44a8-a3ce-ea62ef77d6f6:1",
+ "expiresAt": "2026-11-19T23:04:23.452+08:00",
+ "createdAt": "2026-11-18T23:04:23.452+08:00",
+ "decidedAt": null
+}

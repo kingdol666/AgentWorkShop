@@ -1,0 +1,80 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "lineId": null,
+  "total": 6,
+  "byStatus": {
+   "active": 6
+  },
+  "byScope": {
+   "channel": 6
+  },
+  "byOutcome": {
+   "positive": 6
+  },
+  "recent": [
+   {
+    "id": "13875f59-3c37-4062-8dbf-e1e23380774c",
+    "title": "完成：worker 直派:9+10(纯文本)",
+    "outcome": "positive",
+    "status": "active",
+    "scopeKind": "channel",
+    "scopeKey": "",
+    "taskId": "ba54e424-4b26-474c-9905-2beb528d320e",
+    "createdAt": "2026-11-18T18:05:18.219+08:00"
+   },
+   {
+    "id": "3b11c9d0-0eba-44e4-9048-8e1940d0a36b",
+    "title": "成果通过：7×8 计算成果(终版)",
+    "outcome": "positive",
+    "status": "active",
+    "scopeKind": "channel",
+    "scopeKey": "",
+    "taskId": "073c9ef3-771d-40fd-8a24-abbc027f4729",
+    "createdAt": "2026-11-18T18:04:47.979+08:00"
+   },
+   {
+    "id": "74e7789c-5e29-46d0-b2e1-080979727381",
+    "title": "成果通过：7×8 计算成果",
+    "outcome": "positive",
+    "status": "active",
+    "scopeKind": "channel",
+    "scopeKey": "",
+    "taskId": "a2437bd8-7565-4104-8143-e6792af8561d",
+    "createdAt": "2026-11-18T18:03:43.513+08:00"
+   },
+   {
+    "id": "ad0fd397-d1c2-4c18-8437-ac3aee639e14",
+    "title": "完成：常识问答:水沸点",
+    "outcome": "positive",
+    "status": "active",
+    "scopeKind": "channel",
+    "scopeKey": "",
+    "taskId": "96b36fd6-8b10-47cf-a24b-de38fc82f07a",
+    "createdAt": "2026-11-18T17:47:22.232+08:00"
+   },
+   {
+    "id": "f70c4851-177f-4fbb-955b-a766f18d497d",
+    "title": "完成：worker 直派:9+10",
+    "outcome": "positive",
+    "status": "active",
+    "scopeKind": "channel",
+    "scopeKey": "",
+    "taskId": "c73221ee-6334-4cc1-a208-8fc6b99351fb",
+    "createdAt": "2026-11-18T17:45:17.923+08:00"
+   },
+   {
+    "id": "5be0e8c0-2f2c-4db1-bc94-52216b7a3a56",
+    "title": "完成：简单算术:2+3",
+    "outcome": "positive",
+    "status": "active",
+    "scopeKind": "channel",
+    "scopeKey": "",
+    "taskId": "6dfd714a-3bdd-40da-bea5-dbfd20f6194e",
+    "createdAt": "2026-11-18T17:30:56.651+08:00"
+   }
+  ]
+ },
+ "httpStatus": 200
+}

@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>source v0.17.5 (released 2026-11-23)</b> · desktop tray + boot splash · integrated desktop shell with in-app updates · shared <code>~/.AgentWorkShop</code> home · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
+<sub><b>source v0.18.0 (released 2026-11-23)</b> · console workspace-scoped channel creation · API identity-before-lookup hardening · bounded line queries · shared theme and accessibility refresh · desktop tray + boot splash · integrated desktop shell with in-app updates · shared <code>~/.AgentWorkShop</code> home · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[Quick start](#quick-start) · [Current source](#current-source-v0-17-5) · [0.17.5 release notes](#whats-new-in-0175) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [Current source](#current-source-v0-18-0) · [0.18.0 release notes](#whats-new-in-0180) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,11 +49,19 @@ A configuration-driven platform where **AI agent teams** and industrial systems 
 - **Delivery is a first-class concept**: **Project mode** turns a blueprint into a plan, a WBS with dependencies, L1 technical review, L2 owner acceptance and real deliverables — the project closes only when the deliverables pass;
 - **The loop is implemented in governed stages**: read → analyze → propose → policy-controlled approval where required → write → readback/audit; the scope of each test and whether it used a simulator or physical equipment are stated with its evidence.
 
-## Current source: v0.17.5
+## Current source: v0.18.0
 
-The source version is **0.17.5** (npm + GitHub Release, 2026-11-23). The desktop shell now behaves like a resident application: closing the window hides it to the system tray, whose native menu exposes the local service state and port, reload, restart-service, update check, data/log directories, diagnostics and five persisted settings (close to tray, launch at login, start hidden, tray notifications, automatic update checks); the backend keeps serving the shared home while the window is hidden. Startup shows a dedicated 660×440 boot splash with the real stages (environment → data → service → workshop), a live trace and elapsed time; the main window is revealed only after `/api/health` reports `status=ok` / `workshop=ready` and the page has loaded, with retry / open logs / quit on failure. It retains 0.17.4's “返回主界面” entry on `/town` and `/workshop/w/:id`, the 40px title rail, the shared `~/.AgentWorkShop` data home and the 0.17.3 WSH silent-install update helper. It retains the 0.16.x baseline — everything in 0.15.x — the AgentPrefab capability-assembly plan (#252–#258) plus **Leader-managed worker Prefabs** (merged PRs #262/#264/#265): a Channel Leader can create workers with a published AgentPrefab selector atomically pinned to `(prefabId, revision, slotValues, contentHash)`, inspect the roster with `manageable`/`protected` flags, switch or detach bindings per revision, and remove only the workers it created. Worker creation provenance is durable (`created_by_kind`/`created_by_id`/`created_via`/`created_reason`); human-bound workers, other leaders' workers, leads, Project Leaders and open Session clones are protected from removal, and removal recycles tasks, cancels pending chat deliveries and clears instance node bindings without touching global templates or immutable revisions. Dispatch (native/REST/MCP/Project) fails closed on malformed or hash-mismatched bindings, disabled members, role/version mismatches and template visibility crossings; Project task-instance retries reuse the originally pinned snapshot with CAS/hash validation. Published Prefab profiles apply to supported harness fields (OMP thinking level via RPC); unique Skill aliases resolve to canonical revision ids. Database schema contract v10 adds the provenance columns (existing rows migrate conservatively as `system`/`protected`).
+The source version is **0.18.0** (npm + GitHub Release, 2026-11-23). This release closes console and API scoping defects found by the release review and refreshes the shared visual layer. Channels created over REST are mounted to the owner's default workspace (or an explicitly requested one, validated before creation), so they are discoverable in the workspace-scoped console; the console's own “new channel” dialog passes its workspace id with the create request, so a channel created inside one workspace never leaks into another. Detail and task REST handlers, DAQ ingest and the A2A JSON-RPC methods now resolve the caller's identity before looking up the resource, so an unauthenticated caller can no longer use 404-versus-401 to enumerate ids; the A2A AgentCard visibility switch also covers the JSON-RPC <code>agent/getCard</code> path. <code>GET /api/workshop/dcw/line/query</code> defaults to a 24-hour window instead of scanning the whole time-series history. The shared theme, settings tabs, sidebar drawer focus handling, header controls, HITL popover, page families and the desktop boot splash were refreshed with keyboard and screen-reader semantics, token-only colours and reduced-motion support. It retains the 0.17.5 desktop baseline (close to tray, tray menu with five settings, staged boot splash, shared home, in-app updates) and the 0.16.x AgentPrefab capability baseline.
 
 v0.16.0 verification: PR quick-gates green on #262/#264/#265/#263/#266; focused suites **38/38**, post-merge **22/22** and **13/13**, Project/Prefab/Session regression set **235/235**; live isolated-instance acceptance on the release build — Leader/Prefab full chain **30/30 ×2** (create-with-prefab → provenance in SQLite → roster flags → catalog narrowing → dispatch allow/deny → user-worker protection → lead self-op denial → revision switch drops capability → unbind → remove preserves template+revisions → REST lead-delete 409), official L10 **21/21** on a fresh instance, AgentTeam CRUD/deploy/dispatch **25/25**, frontend SSR routes 200. Mimosa deep scan sealed (`sha256:a91957e0…`, 54 findings, dependency risk 0) — findings reported, not a security pass. Boundaries: external MCP positive live trace, real-OMP-model work under a prefab, and browser UI click-through remain NOT_RUN. See the [full-flow acceptance report](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md) and the [Prefab/Skills/MCP live report](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md).
+
+## What's new in 0.18.0
+
+- **Console channel scoping**: `POST /api/workshop/channels` mounts a new channel to the owner's default workspace (created on demand, or an explicit `workspaceId` validated before the channel exists), so REST-created channels are visible in the workspace-scoped console. The console's “new channel” dialog now sends its workspace id with the create request instead of mounting afterwards, so a channel created inside one workspace is never also attached to another. 界面与 REST 建频道统一按工作区归属，不再串区。
+- **API identity before resource lookup**: agent, team, channel-template and task detail/action routes, DAQ external ingest and the A2A `message/send` method resolve the caller first, closing a 404-versus-401 id-enumeration oracle for anonymous callers. The `security.a2aCardPublic` switch now also covers JSON-RPC `agent/getCard`. 未鉴权调用者不再能借 404 探测 ID 是否存在。
+- **Bounded line queries**: `GET /api/workshop/dcw/line/query` applies a 24-hour default window when `from`/`to` are omitted; an unbounded query against a shared Timescale aggregate took 10–15 s and grew with history. 省略时间窗时按最近 24h 查询。
+- **Shared visual layer refresh**: token-only colours across the refreshed pages, keyboard-complete settings tabs, sidebar drawer focus trap and focus return, labelled header controls, HITL popover semantics, ≥44 px touch targets on narrow viewports, and a redesigned boot splash whose progress follows the real boot stages with `prefers-reduced-motion` support. 设置页签、导航抽屉、头部控件与启动动画的键盘与动效一致性修复。
+- **Docs alignment**: the MCP guide now lists all 38 tools (including the three recipe tools), the nine bundled skills, 14 MCP test groups; README layout claims match the shipped 1180 px project grid and two-column project detail. MCP 工具与 skill 清单、项目页布局描述与实现对齐。
 
 ## What's new in 0.17.5
 
@@ -210,8 +218,8 @@ The Channel console and Project detail were rebuilt around the ChatGPT harness p
 </p>
 
 - **Channel**: full-width agent blocks, user right bubble, harness / role / time metadata, neutral composer, hover-revealed channel ops;
-- **Project**: breadcrumb header, 880 px reading column, 312 px snapshot rail, channel names instead of UUID walls, 2-line leader composer;
-- **Entry pages**: 1080 px project grid with a 3-column create form, 1240 px workspace grid;
+- **Project**: breadcrumb header, two-column body (work area + snapshot rail), channel names instead of UUID walls, 2-line leader composer;
+- **Entry pages**: 1180 px project grid with a 3-column create form, 1240 px workspace grid;
 - **No behaviour removed**: every `data-testid`, keyboard shortcut, @-mention, HITL semantic and API is unchanged — verified by the 12/12 UI interaction suite.
 
 → [Harness UI guide](https://kingdol666.github.io/AgentWorkShop/guide/harness-ui) · [Design canvas & before/after](docs/design/2026-11-08-harness-ui/README.md)
@@ -506,7 +514,7 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current source version: **v0.17.5 (released 2026-11-23)** — [Latest release v0.17.5](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.5) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current source version: **v0.18.0 (released 2026-11-23)** — [Latest release v0.18.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.18.0) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

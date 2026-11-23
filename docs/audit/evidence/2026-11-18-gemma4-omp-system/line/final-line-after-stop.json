@@ -1,0 +1,27 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "line": {
+   "id": "ln-61f4b69e",
+   "name": "Gemma4-验收模拟线-g5-mwlxyby1",
+   "color": "#f4c542",
+   "description": "AW-G4 g5-mwlxyby1 隔离 mock 线(非物理 HIL)",
+   "controlMode": "manual",
+   "simulated": true,
+   "createdAt": "2026-11-18T17:51:03.704+08:00"
+  },
+  "state": {
+   "lineId": "ln-61f4b69e",
+   "active": false,
+   "runId": null,
+   "recipeId": null,
+   "recipeName": null,
+   "productId": null,
+   "productName": null,
+   "startedAt": null,
+   "taggedSamples": 0
+  }
+ },
+ "httpStatus": 200
+}

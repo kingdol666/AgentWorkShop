@@ -1,0 +1,10 @@
+{
+ "plugins": 200,
+ "agents": [
+  "lead",
+  "worker",
+  "worker",
+  "worker"
+ ],
+ "agentTokenMinted": true
+}

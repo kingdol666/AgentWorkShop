@@ -1,0 +1,29 @@
+{
+ "prompt": "请记住这个暗号:ALPHA-7。只回复\"收到 ALPHA-7\"。不要调用工具。",
+ "reply": {
+  "type": "message",
+  "id": "9f6c0eab-4057-4178-a75e-885be305eb29",
+  "at": "2026-11-18T22:20:43.932+08:00",
+  "role": "ROLE_AGENT",
+  "name": "c25918bc-956e-4b8a-bf02-1040767cff79",
+  "text": "收到 ALPHA-7"
+ },
+ "history": [
+  {
+   "type": "message",
+   "id": "b79956ea-625c-4d4e-a925-9f73662a10f4",
+   "at": "2026-11-18T22:19:47.182+08:00",
+   "role": "ROLE_AGENT",
+   "name": "c25918bc-956e-4b8a-bf02-1040767cff79",
+   "text": "请记住这个暗号:ALPHA-7。只回复\"收到 ALPHA-7\"。不要调用工具。"
+  },
+  {
+   "type": "message",
+   "id": "9f6c0eab-4057-4178-a75e-885be305eb29",
+   "at": "2026-11-18T22:20:43.932+08:00",
+   "role": "ROLE_AGENT",
+   "name": "c25918bc-956e-4b8a-bf02-1040767cff79",
+   "text": "收到 ALPHA-7"
+  }
+ ]
+}

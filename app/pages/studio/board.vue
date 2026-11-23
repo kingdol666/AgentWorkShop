@@ -386,7 +386,15 @@ watch(windowPreset, () => {
 .page { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; }
 .head { display: flex; justify-content: space-between; align-items: baseline; }
 .title { font-size: 18px; font-weight: 700; margin: 0; }
-.back { font-size: 12px; }
+.back {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control, 8px);
+}
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .row.end { justify-content: flex-end; }
 .grow { flex: 1; }

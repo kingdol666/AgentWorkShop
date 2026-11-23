@@ -1,0 +1,117 @@
+{
+  "round": "2026-11-21-fullflow-acceptance",
+  "at": "2026-11-21T07:18:25.465Z",
+  "testedSha": "87805eafbefe8cb43bb7cccb0c69a3649c44635d",
+  "instances": {
+    "clean": {
+      "base": "http://127.0.0.1:3031",
+      "freshHome": true,
+      "freshUserHome": true
+    },
+    "provisioned": {
+      "base": "http://127.0.0.1:3021",
+      "home": "D:/tmp/aw-liv2-1119/home"
+    }
+  },
+  "legs": {
+    "l10": {
+      "total": 21,
+      "pass": 21,
+      "fail": 0
+    },
+    "l1": {
+      "total": 15,
+      "pass": 15,
+      "fail": 0,
+      "notRun": [
+        "idd_shared_service",
+        "rag_backend_shared_service",
+        "rag_web_shared_service",
+        "plc_sim_twin"
+      ]
+    },
+    "l9": {
+      "persisted": true,
+      "registry": {
+        "order": true,
+        "report": true,
+        "total": 157
+      },
+      "failClosed": true,
+      "workerBoundaryOk": true
+    },
+    "l4": {
+      "falsifiedRejected": true,
+      "provenanceRequired": true,
+      "hostProvenanceRejected": true,
+      "shadowPromoted": true,
+      "decisionInBody": true
+    },
+    "l3": {
+      "before": 3277,
+      "after": 3277,
+      "identical": true
+    },
+    "l7": {
+      "total": 4,
+      "pass": 4,
+      "fail": 0,
+      "notRun": [
+        "cross_channel_reply_generation (needs live model)"
+      ]
+    },
+    "restart": {
+      "countsIdentical": true,
+      "profilesIdentical": true,
+      "before": {
+        "channels": 27,
+        "channel_agents": 77,
+        "channel_sessions": 23,
+        "tasks": 54,
+        "messages": 745,
+        "agent_prefabs": 0,
+        "agent_prefab_revisions": 0,
+        "channel_harness_profiles": 4,
+        "harness_bench_runs": 3,
+        "experience_versions": 61
+      },
+      "after": {
+        "channels": 27,
+        "channel_agents": 77,
+        "channel_sessions": 23,
+        "tasks": 54,
+        "messages": 745,
+        "agent_prefabs": 0,
+        "agent_prefab_revisions": 0,
+        "channel_harness_profiles": 4,
+        "harness_bench_runs": 3,
+        "experience_versions": 61
+      },
+      "schemaContract": 8
+    }
+  },
+  "notRun": [
+    "l2_line_daq_and_dcw (plc sim twin :4056 down)",
+    "l5_aml_training (plc sim twin :4056 down)",
+    "l1_idd_rag_bridges (shared services :3210/:8770/:6789 down)",
+    "l6_project_dispatch_real_model",
+    "l10_external_mcp_positive_live_trace",
+    "prefab_guided_real_omp_model_work",
+    "cross_channel_reply_generation",
+    "browser_ui_click_through",
+    "physical_hil_site_admission"
+  ],
+  "mimosa": {
+    "jobId": "scan-job-mwq23d6q-56730dc9caea80d9",
+    "scanId": "scan-2026-11-21T06-58-50.373Z-fb0e1048a970",
+    "seal": "sha256:9cfdb158b18d72396fdd651a05fa2aa9fb944e052606394ae5d86cfcc45d182d",
+    "runStatus": "inconclusive",
+    "completeness": "partial",
+    "findingCount": 54,
+    "businessLogicCandidates": 0,
+    "dependencyPackages": 65,
+    "dependencyAdvisories": 0,
+    "verdict": "no-security-pass-claimed"
+  },
+  "boundary": "Software/simulator evidence only; not physical HIL, site admission or production approval."
+}

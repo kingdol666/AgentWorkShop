@@ -27,7 +27,7 @@
           class="nodeList"
           data-test="studio-nodes"
         >
-          <button
+          <div
             v-for="n in nodes"
             :key="n.id"
             class="nodeRow"
@@ -41,12 +41,13 @@
             >{{ n.unit }}</span>
             <button
               v-if="!isY(n.id)"
+              type="button"
               class="miniAdd"
               @click.stop="addY(n)"
             >
               +Y
             </button>
-          </button>
+          </div>
           <p
             v-if="!nodes.length"
             class="empty"
@@ -59,15 +60,20 @@
         <h3 class="sec">
           {{ $t('studio.myCharts') }}
         </h3>
-        <button
+        <div
           v-for="ch in charts"
           :key="ch.id"
           class="chartRow"
-          data-test="studio-chart-row"
-          @click="loadChart(ch)"
         >
-          <span class="nName">{{ ch.title }}</span>
-          <span class="unit">{{ ch.vizType }} v{{ ch.version }}</span>
+          <button
+            type="button"
+            class="chartOpen"
+            data-test="studio-chart-row"
+            @click="loadChart(ch)"
+          >
+            <span class="nName">{{ ch.title }}</span>
+            <span class="unit">{{ ch.vizType }} v{{ ch.version }}</span>
+          </button>
           <!-- 删除已保存图表不可逆:二次确认(交互宪法 §2-1) -->
           <a-popconfirm
             :title="$t('studio.deleteChartConfirm', { name: ch.title })"
@@ -78,13 +84,15 @@
             @confirm.stop="removeChart(ch.id)"
           >
             <button
+              type="button"
               class="miniAdd danger"
+              :aria-label="`${$t('common.delete')}: ${ch.title}`"
               @click.stop
             >
               ✕
             </button>
           </a-popconfirm>
-        </button>
+        </div>
         <p
           v-if="!charts.length"
           class="empty"
@@ -105,8 +113,10 @@
             <button
               v-for="vt in VIZ_TYPES"
               :key="vt"
+              type="button"
               class="vizBtn"
               :class="{ on: vizType === vt, dim: !typeAvailable(vt) }"
+              :aria-pressed="vizType === vt"
               :disabled="Boolean(pipelineOption)"
               :title="pipelineOption ? $t('studio.pipelineSnapshot') : vizLabels[vt]"
               @click="vizType = vt"
@@ -819,7 +829,7 @@ watch(lineId, (v) => {
 </script>
 
 <style scoped>
-.studio { display: grid; grid-template-columns: 250px 1fr 300px; gap: 12px; padding: 16px 20px; height: calc(100vh - 56px); }
+.studio { display: grid; grid-template-columns: 250px minmax(0, 1fr) 300px; gap: 12px; padding: 16px 20px; height: calc(100vh - 56px); }
 .col { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 .card { background: var(--surface-card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
 .card.grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -831,16 +841,30 @@ watch(lineId, (v) => {
 .sel { max-width: 140px; }
 .numIn { width: 90px; }
 .nodeList { overflow: auto; flex: 1; min-height: 0; }
-.nodeRow, .chartRow { display: flex; gap: 6px; align-items: center; width: 100%; border: none; background: transparent; padding: 4px 4px; cursor: grab; border-radius: 6px; text-align: left; }
+.nodeRow, .chartRow, .chartOpen { display: flex; gap: 6px; align-items: center; }
+.nodeRow, .chartRow { width: 100%; border-radius: var(--radius-chip); }
+.nodeRow { padding: 4px; cursor: grab; }
+.chartRow { padding-inline-end: 4px; }
+.chartOpen { flex: 1; min-width: 0; align-self: stretch; border: 0; border-radius: inherit; background: transparent; padding: 4px 0 4px 4px; cursor: pointer; text-align: left; }
 .nodeRow:hover, .chartRow:hover { background: var(--hover-tint); }
-.nName { font-size: 12px; color: var(--ink, #222); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nName { font-size: 12px; color: var(--ink, #222); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .unit { font-size: 11px; color: var(--ink-faint, #999); }
-.miniAdd { border: 1px solid var(--line-strong); background: transparent; border-radius: 6px; font-size: 11px; padding: 0 6px; cursor: pointer; }
+.nodeRow .unit { max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chartOpen .unit { flex-shrink: 0; }
+.miniAdd { flex: 0 0 auto; border: 1px solid var(--line-strong); background: transparent; border-radius: var(--radius-chip); font-size: 11px; padding: 0 6px; cursor: pointer; }
 .miniAdd.danger { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 45%, transparent); }
 .gallery { display: flex; gap: 4px; flex-wrap: wrap; }
-.vizBtn { border: 1px solid var(--line-strong); background: transparent; border-radius: 999px; padding: 3px 12px; font-size: 12px; cursor: pointer; color: var(--ink-soft, #555); }
-.vizBtn.on { border-color: #4a6b57; color: #4a6b57; font-weight: 600; }
-.vizBtn.dim { opacity: 0.45; }
+.vizBtn { border: 1px solid var(--line-strong); background: transparent; border-radius: var(--radius-pill); padding: 3px 12px; font-size: 12px; cursor: pointer; color: var(--ink-soft); touch-action: manipulation; }
+.vizBtn.dim:not(.on) { color: var(--ink-faint); }
+.vizBtn.on { border-color: var(--ink); background: var(--paper-tint); color: var(--ink); font-weight: 600; }
+.vizBtn:disabled { cursor: not-allowed; }
+@media (hover: hover) {
+  .vizBtn:not(.on):not(:disabled):hover { background: var(--hover-tint); }
+}
+@media (max-width: 900px) {
+  .gallery { gap: 8px; }
+  .vizBtn { min-width: 44px; min-height: 44px; }
+}
 .canvasCard { position: relative; }
 .canvasCard > div:first-child { flex: 1; min-height: 220px; }
 .snapBadge { position: absolute; top: 10px; right: 14px; z-index: 2; font-size: 11px; color: var(--ink-soft, #666); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; background: rgba(255,255,255,.86); }
@@ -862,7 +886,7 @@ watch(lineId, (v) => {
 .tbl th, .tbl td { border-bottom: 1px solid var(--line); padding: 3px 8px; text-align: left; }
 .mono { font-variant-numeric: tabular-nums; }
 @media (max-width: 1100px) {
-  .studio { grid-template-columns: 1fr; height: auto; }
+  .studio { grid-template-columns: minmax(0, 1fr); height: auto; }
 }
 .boardLink { text-decoration: none; display: inline-flex; align-items: center; }
 .modalMask { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 60; }

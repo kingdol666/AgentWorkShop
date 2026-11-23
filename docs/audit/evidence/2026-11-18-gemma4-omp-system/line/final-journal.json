@@ -1,0 +1,44 @@
+{
+ "code": 0,
+ "message": "ok",
+ "data": {
+  "anchors": [
+   {
+    "lineId": "ln-61f4b69e",
+    "nodeId": "dw-932247e5",
+    "prevValue": 144,
+    "newValue": 150,
+    "source": "recipe",
+    "actor": "recipe",
+    "recipeRunId": "rr-a9ccde3c",
+    "id": "anc-01941cdc",
+    "at": "2026-11-18T17:56:16.629+08:00"
+   },
+   {
+    "lineId": "ln-61f4b69e",
+    "nodeId": "dw-932247e5",
+    "prevValue": 150,
+    "newValue": 144,
+    "source": "agent",
+    "actor": "85f4eb0b-fa12-49e2-909c-07a07e64e62f",
+    "approvalId": "ap-3bd7d227",
+    "recipeRunId": "rr-8880f76c",
+    "id": "anc-41ac86b8",
+    "at": "2026-11-18T17:52:52.228+08:00",
+    "recordId": "opt-46dfbd7c"
+   },
+   {
+    "lineId": "ln-61f4b69e",
+    "nodeId": "dw-932247e5",
+    "prevValue": null,
+    "newValue": 150,
+    "source": "recipe",
+    "actor": "recipe",
+    "recipeRunId": "rr-3321be5b",
+    "id": "anc-75d9bc8a",
+    "at": "2026-11-18T17:51:03.879+08:00"
+   }
+  ]
+ },
+ "httpStatus": 200
+}
