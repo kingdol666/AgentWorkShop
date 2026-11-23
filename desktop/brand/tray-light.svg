@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="AgentWorkShop">
+  <!-- Tray glyph for a light taskbar: deep jade (4.8:1 on #f3f3f3), same geometry as the
+       dark variant so the tray mark does not change shape when Windows flips theme. -->
+  <g transform="translate(256 256) scale(1.45) translate(-256 -256)">
+    <path
+      fill="#0e7a56"
+      fill-rule="evenodd"
+      d="M232 104H280L364 408H322L294 320H218L190 408H148ZM256 176 222 272H290Z"
+    />
+  </g>
+</svg>

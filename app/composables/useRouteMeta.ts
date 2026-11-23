@@ -34,6 +34,15 @@ export function useRouteMeta() {
     // ⚠️ 漏了这条时 /aml 会落到 slug 兜底,顶栏标题显示成「Aml」—— 实测破相。
     // 新增路由必须同时登记进这张表,否则标题就是"路径首字母大写"。
     '/aml': { key: 'menu.aml', icon: 'i-tabler-flask' },
+    // 2026-11-24 补齐:这 7 条漏登记时,顶栏航迹会把 /tools、/data、/studio…
+    // 显示成「Tools / Data / Studio」这类英文 slug,与中文界面和侧栏菜单不一致。
+    '/data': { key: 'menu.dataManagement', icon: 'i-tabler-database-export' },
+    '/studio': { key: 'menu.studio', icon: 'i-tabler-chart-dots' },
+    '/studio/board': { key: 'board.title', icon: 'i-tabler-layout-dashboard' },
+    '/studio/pipeline': { key: 'studio.pipeline.title', icon: 'i-tabler-route' },
+    '/optimizer': { key: 'menu.optimizer', icon: 'i-tabler-math-function' },
+    '/ontology': { key: 'menu.ontology', icon: 'i-tabler-sitemap' },
+    '/tools': { key: 'menu.tools', icon: 'i-tabler-tools' },
     '/logs': { key: 'menu.logs', icon: 'i-tabler-list-details' },
     '/analysis': { key: 'menu.analysis', icon: 'i-tabler-report-analytics' },
     '/permissions': { key: 'menu.permissions', icon: 'i-tabler-shield-lock' },

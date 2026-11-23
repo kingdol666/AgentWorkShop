@@ -1,75 +1,32 @@
 <script setup lang="ts">
 /**
  * AwLogo —— 项目标志。
- * 六边形品牌壳(绿→青渐变,与数据宪法主色同源)+ 内衬虚线六边形(数字孪生影子)
- * + 三节点互连三角(数采 · 数控 · 产线 三环互连)。
- * public/favicon.svg 与本组件同源;渐变 id 固定,多实例同屏渲染等价。
+ *
+ * 字形 = 工作台门架的 A:单一实心剪影(顶宽 104、基线 408、底宽 216)+ 三角字怀,
+ * 16 px 图标位仍能读出字母。颜色走 currentColor:亮底=墨色、暗底=纸白;
+ * 品牌绿只保留给状态与启动动画,不做渐变装饰。
+ *
+ * 同一 path 是唯一真源:desktop/brand/mark.svg、favicon.svg、启动页与标题栏逐字一致。
+ * `size` 是字形高度;宽度按字形的 216:304 比例推出,避免方形画布把 A 缩小。
  */
-withDefaults(defineProps<{ size?: number }>(), { size: 32 })
+const props = withDefaults(defineProps<{ size?: number }>(), { size: 32 })
+
+const height = computed(() => props.size)
+const width = computed(() => Math.round((props.size * 216) / 304))
 </script>
 
 <template>
   <svg
-    :width="size"
-    :height="size"
-    viewBox="0 0 64 64"
+    :width="width"
+    :height="height"
+    viewBox="148 104 216 304"
     fill="none"
     aria-hidden="true"
   >
-    <defs>
-      <linearGradient
-        id="aw-logo-gradient"
-        x1="0"
-        y1="0"
-        x2="1"
-        y2="1"
-      >
-        <stop
-          offset="0"
-          stop-color="#35e0a0"
-        />
-        <stop
-          offset="1"
-          stop-color="#41c8f4"
-        />
-      </linearGradient>
-    </defs>
     <path
-      d="M32 4 L56 18 V46 L32 60 L8 46 V18 Z"
-      stroke="url(#aw-logo-gradient)"
-      stroke-width="4"
-      stroke-linejoin="round"
-    />
-    <path
-      d="M32 15 L46.7 23.5 V40.5 L32 49 L17.3 40.5 V23.5 Z"
-      stroke="#41c8f4"
-      stroke-opacity="0.45"
-      stroke-width="1.8"
-      stroke-dasharray="4 3"
-    />
-    <path
-      d="M32 23 L25 38 M32 23 L39 38 M25 38 L39 38"
-      stroke="#35e0a0"
-      stroke-width="1.8"
-      stroke-opacity="0.75"
-    />
-    <circle
-      cx="32"
-      cy="23"
-      r="3.4"
-      fill="#35e0a0"
-    />
-    <circle
-      cx="25"
-      cy="38"
-      r="3.4"
-      fill="#41c8f4"
-    />
-    <circle
-      cx="39"
-      cy="38"
-      r="3.4"
-      fill="#41c8f4"
+      fill="currentColor"
+      fill-rule="evenodd"
+      d="M232 104H280L364 408H322L294 320H218L190 408H148ZM256 176 222 272H290Z"
     />
   </svg>
 </template>

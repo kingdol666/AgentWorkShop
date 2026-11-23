@@ -111,8 +111,10 @@ const switchLocale = (value: unknown) => {
 
     <div class="toggle-row">
       <div class="set-text">
+        <!-- 标题固定为开关的语义(暗色模式);此前按当前档位在「亮色/暗色」之间切换,
+             亮色下会出现「亮色 + 开关关」的读数,看起来像"亮色被关掉了"。 -->
         <div class="set-title">
-          {{ store.isDark ? t('common.dark') : t('common.light') }}
+          {{ t('common.dark') }}
         </div>
         <div
           id="settings-dark-description"

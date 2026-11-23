@@ -230,13 +230,13 @@ onBeforeUnmount(() => {
     :inert="navHydrated && isDrawer && !drawerOpen"
     :aria-hidden="navHydrated && isDrawer && !drawerOpen ? 'true' : undefined"
   >
-    <!-- 品牌区:AwLogo 六边形标志(绿→青渐变 + 孪生虚影 + 三节点互连,与 favicon 同源) -->
+    <!-- 品牌区:AwLogo 门架 A 字标(单一实心剪影,currentColor 随主题;与 favicon/桌面图标同源) -->
     <div class="logo">
       <div
         class="logo-mark"
         aria-hidden="true"
       >
-        <AwLogo :size="30" />
+        <AwLogo :size="26" />
       </div>
       <transition name="slide-fade">
         <div
@@ -363,15 +363,16 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid var(--line);
 }
 
-/* 品牌标志:AwLogo SVG 直渲染(渐变六边形自带描边),微辉光点缀 */
+/* 品牌标志:门架 A 字标直接以 currentColor 渲染(亮阶墨色/暗阶纸白),不加辉光——
+ * 品牌时刻靠字形与留白,不靠发光装饰。 */
 .logo-mark {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 32px;
-  height: 36px;
-  filter: drop-shadow(0 0 6px rgb(53 224 160 / 26%));
+  height: 32px;
+  color: var(--ink);
 }
 
 .logo-text {
@@ -383,9 +384,9 @@ onBeforeUnmount(() => {
 
 .logo-title {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.075em;
   text-transform: uppercase;
   color: var(--ink);
 }

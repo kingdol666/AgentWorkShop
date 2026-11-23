@@ -1,17 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="AgentWorkShop">
-  <defs>
-    <linearGradient id="mint" x1="15" y1="51" x2="49" y2="11" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2fd79e" />
-      <stop offset="1" stop-color="#63ebbc" />
-    </linearGradient>
-    <linearGradient id="cyan" x1="23" y1="37" x2="41" y2="37" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2bb9e8" />
-      <stop offset="1" stop-color="#7ce0ff" />
-    </linearGradient>
-  </defs>
-  <g fill="none" stroke-linecap="round">
-    <path d="M32 12 15.5 51" stroke="url(#mint)" stroke-width="6.4" />
-    <path d="M32 12 48.5 51" stroke="url(#mint)" stroke-width="6.4" />
-    <path d="M23.4 37h17.2" stroke="url(#cyan)" stroke-width="5.2" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="AgentWorkShop">
+  <!--
+    AgentWorkShop mark — the A of the workshop gantry.
+    One silhouette only: outer letter (apex 104 · baseline 408 · 216 wide) with a triangular
+    counter, so the form survives 16 px. Fill is currentColor: ink on paper, paper on ink.
+    Path is the single source of truth for the UI mark; keep it byte-identical in
+    AwLogo.vue, splash.html, titlebar.html and badge.svg.
+  -->
+  <path
+    fill="currentColor"
+    fill-rule="evenodd"
+    d="M232 104H280L364 408H322L294 320H218L190 408H148ZM256 176 222 272H290Z"
+  />
 </svg>
