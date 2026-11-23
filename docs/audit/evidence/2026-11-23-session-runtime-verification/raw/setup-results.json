@@ -1,0 +1,62 @@
+{
+ "phase": "setup",
+ "at": "2026-11-23T14:52:47.520Z",
+ "model": "openai/gpt-oss-20b",
+ "results": [
+  {
+   "id": "S01",
+   "name": "desktop backend health",
+   "pass": "PASS",
+   "detail": "status=ok workshop=ready version=0.18.0 origin=http://127.0.0.1:59190"
+  },
+  {
+   "id": "S02",
+   "name": "first user registers as admin (token kept in the private dir)",
+   "pass": "PASS",
+   "detail": "status=200 role=admin"
+  },
+  {
+   "id": "S03",
+   "name": "workspace created",
+   "pass": "PASS",
+   "detail": "id=d12772ed-fbd1-416d-9967-1bf434ec7fdd"
+  },
+  {
+   "id": "S04a",
+   "name": "channel created with an omp lead and mounted once to the workspace",
+   "pass": "PASS",
+   "detail": "status=200 channel=7dab3066-f117-45ba-a0bb-069f9364d70e mounted=d12772ed-fbd1-416d-9967-1bf434ec7fdd"
+  },
+  {
+   "id": "S04b",
+   "name": "worker member added",
+   "pass": "PASS",
+   "detail": "status=200 id=954b942c-6698-46dc-ae77-c56fac6c794d"
+  },
+  {
+   "id": "S05",
+   "name": "channel tool policy limited to memory + task tools",
+   "pass": "PASS",
+   "detail": "status=200 {\"code\":0,\"message\":\"ok\",\"data\":{\"channelId\":\"7dab3066-f117-45ba-a0bb-069f9364d70e\",\"mode\":\"selected\",\"source\":\"explicit\",\"updatedBy\":\"904488cd-e2df-4086-a074-c82db1deeb4c\",\"updatedAt\":\"2026-11-23T22:52:47.448+08:00\",\"st"
+  },
+  {
+   "id": "S06S1",
+   "name": "session S1 created as a clone group",
+   "pass": "PASS",
+   "detail": "status=200 id=cs-f9c69dd5 clones=E2E Lead·session·1,E2E Worker·session·2"
+  },
+  {
+   "id": "S06S2",
+   "name": "session S2 created as a clone group",
+   "pass": "PASS",
+   "detail": "status=200 id=cs-93a8abb8 clones=E2E Lead·session·2,E2E Worker·session·3"
+  },
+  {
+   "id": "S07",
+   "name": "before any message no session clone runtime is wired (lazy activation)",
+   "pass": "PASS",
+   "detail": "wired=1 activeChannels=[\"7dab3066-f117-45ba-a0bb-069f9364d70e\"]"
+  }
+ ],
+ "failed": 0
+}

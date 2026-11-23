@@ -1,0 +1,32 @@
+[
+ {
+  "id": "4993b411-c730-4123-8d7b-6a15c163cd90",
+  "channelId": "7dab3066-f117-45ba-a0bb-069f9364d70e",
+  "name": "E2E Lead",
+  "harness": "omp",
+  "role": "lead",
+  "agentKind": "channel_agent",
+  "enabled": 1,
+  "templateId": "f6ce7263-c211-4909-a341-74101faed77f",
+  "config": {
+   "provider": "local",
+   "model": "openai/gpt-oss-20b",
+   "rpcMode": "rpc"
+  }
+ },
+ {
+  "id": "954b942c-6698-46dc-ae77-c56fac6c794d",
+  "channelId": "7dab3066-f117-45ba-a0bb-069f9364d70e",
+  "name": "E2E Worker",
+  "harness": "omp",
+  "role": "worker",
+  "agentKind": "channel_agent",
+  "enabled": 1,
+  "templateId": "038a06fe-2688-421f-84d3-6e9939d9c1fa",
+  "config": {
+   "provider": "local",
+   "model": "openai/gpt-oss-20b",
+   "rpcMode": "rpc"
+  }
+ }
+]

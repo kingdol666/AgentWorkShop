@@ -1,0 +1,20 @@
+{
+ "rep": null,
+ "viaTool": {
+  "status": 200,
+  "json": {
+   "code": 0,
+   "message": "ok",
+   "data": {
+    "result": {
+     "text": "已沉淀到本人私有记忆: \"E2E校验码 KODA-0E033270\"(dedupKey=agent-save:982f63d4);已标注会话作用域(cs-d2ccf…,scope=session 检索可命中)"
+    }
+   }
+  },
+  "data": {
+   "result": {
+    "text": "已沉淀到本人私有记忆: \"E2E校验码 KODA-0E033270\"(dedupKey=agent-save:982f63d4);已标注会话作用域(cs-d2ccf…,scope=session 检索可命中)"
+   }
+  }
+ }
+}

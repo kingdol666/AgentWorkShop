@@ -74,7 +74,8 @@ export class CandidateEvidenceStore {
     return this.records.get(id)
   }
 
-  require(id: string): CandidateEvidenceEnvelope {
+  /** 取候选证据;不存在即抛 NOT_FOUND(不回落、不返回空信封)。 */
+  mustGet(id: string): CandidateEvidenceEnvelope {
     const value = this.get(id)
     if (!value) throw new CandidateEvidenceStoreError(CANDIDATE_STORE_ERROR_CODES.NOT_FOUND, `candidate ${id} was not found`)
     return value

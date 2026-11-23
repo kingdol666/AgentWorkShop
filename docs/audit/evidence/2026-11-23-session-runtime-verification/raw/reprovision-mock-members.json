@@ -1,0 +1,24 @@
+[
+ {
+  "id": "7b7916f9-1079-4015-bbb1-5ecbb3d82db2",
+  "channelId": "c1217149-574c-474f-b6de-f1a5dd4f54ba",
+  "name": "E2E Lead",
+  "harness": "mock",
+  "role": "lead",
+  "agentKind": "channel_agent",
+  "enabled": 1,
+  "templateId": "6a697749-395d-4c2e-a5d9-cf9ef16fea3e",
+  "config": {}
+ },
+ {
+  "id": "e4c899b3-c949-470e-a1a2-9489e97a9057",
+  "channelId": "c1217149-574c-474f-b6de-f1a5dd4f54ba",
+  "name": "E2E Worker",
+  "harness": "mock",
+  "role": "worker",
+  "agentKind": "channel_agent",
+  "enabled": 1,
+  "templateId": "2b0e1b78-d0ea-43c5-bd47-45fe7abae821",
+  "config": {}
+ }
+]

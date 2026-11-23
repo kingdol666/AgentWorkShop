@@ -1,0 +1,50 @@
+{
+ "phase": "lifecycle",
+ "at": "2026-11-23T15:43:09.206Z",
+ "model": "openai/gpt-oss-20b",
+ "results": [
+  {
+   "id": "L01a",
+   "name": "closing S1 marks the session closed and disables its clone members",
+   "pass": "PASS",
+   "detail": "close=200 status=closed clonesEnabled=0,0"
+  },
+  {
+   "id": "L01b",
+   "name": "closing S1 unloads exactly the S1 clone runtimes; the S2 clone stays wired",
+   "pass": "PASS",
+   "detail": "before=E2E Lead·session·1,E2E Lead·session·2 after=E2E Lead·session·2"
+  },
+  {
+   "id": "L02",
+   "name": "a closed session refuses new messages (409 SESSION_CLOSED)",
+   "pass": "PASS",
+   "detail": "status=409 code=SESSION_CLOSED"
+  },
+  {
+   "id": "L03",
+   "name": "S2 keeps working after S1 is closed",
+   "pass": "PASS",
+   "detail": "rep=@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(7fb61d5f-6b20-4db5-b76d-81b6bfb1617c):已处理「我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=3> ms=1549"
+  },
+  {
+   "id": "L04",
+   "name": "the closed state is persisted on the session row",
+   "pass": "PASS",
+   "detail": "status=closed"
+  },
+  {
+   "id": "L05",
+   "name": "disabling the channel stops every runtime of the channel (lifecycle owned at channel level)",
+   "pass": "PASS",
+   "detail": "patch=200 wired=0 activeChannels=[]"
+  },
+  {
+   "id": "L06",
+   "name": "a disabled channel refuses session messages",
+   "pass": "PASS",
+   "detail": "status=502 code=DELIVERY_FAILED"
+  }
+ ],
+ "failed": 0
+}

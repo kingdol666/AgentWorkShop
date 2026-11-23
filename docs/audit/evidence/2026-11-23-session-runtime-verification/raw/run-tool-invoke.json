@@ -1,0 +1,42 @@
+{
+ "list": [
+  "report_progress",
+  "complete_task",
+  "search_memory",
+  "save_memory"
+ ],
+ "S2": {
+  "status": 200,
+  "json": {
+   "code": 0,
+   "message": "ok",
+   "data": {
+    "result": {
+     "text": "记忆检索无命中(query=\"E2E校验码\", scope=auto)。可尝试更换关键词或放宽 scope。"
+    }
+   }
+  },
+  "data": {
+   "result": {
+    "text": "记忆检索无命中(query=\"E2E校验码\", scope=auto)。可尝试更换关键词或放宽 scope。"
+   }
+  }
+ },
+ "S1": {
+  "status": 200,
+  "json": {
+   "code": 0,
+   "message": "ok",
+   "data": {
+    "result": {
+     "text": "记忆检索结果(1 条, scope=auto;召回度量 hits=9/misses=9/命中率=50%):\n  [private · semantic · score=1 · private · channel=c1217149 · session=cs-d2ccf · 2026-11-23 23:41] E2E校验码 KODA-0E033270\n    本会话的校验码是 KODA-0E033270"
+    }
+   }
+  },
+  "data": {
+   "result": {
+    "text": "记忆检索结果(1 条, scope=auto;召回度量 hits=9/misses=9/命中率=50%):\n  [private · semantic · score=1 · private · channel=c1217149 · session=cs-d2ccf · 2026-11-23 23:41] E2E校验码 KODA-0E033270\n    本会话的校验码是 KODA-0E033270"
+   }
+  }
+ }
+}

@@ -1,0 +1,50 @@
+{
+ "phase": "after-restart",
+ "at": "2026-11-23T15:42:46.894Z",
+ "model": "openai/gpt-oss-20b",
+ "results": [
+  {
+   "id": "A01",
+   "name": "desktop relaunched on the same home: backend ready",
+   "pass": "PASS",
+   "detail": "pid=91568 version=0.18.0 origin=http://127.0.0.1:60834"
+  },
+  {
+   "id": "A02",
+   "name": "session metadata survived the restart (same ids, active, same member map)",
+   "pass": "PASS",
+   "detail": "S1=active S2=active S1map={\"7b7916f9-1079-4015-bbb1-5ecbb3d82db2\":\"9678a01f-8569-4a02-af01-868406a412d5\",\"e4c899b3-c949-470e-a1a2-9489e97a9057\":\"e0a679b4-6e28-4f19-b501-c04af4d377b5\"}"
+  },
+  {
+   "id": "A03",
+   "name": "after the restart no clone runtime is wired until a session is addressed again",
+   "pass": "PASS",
+   "detail": "wired=0 activeChannels=[]"
+  },
+  {
+   "id": "A04",
+   "name": "S1 addressed after the restart: the runtime is re-activated from the persisted session row and answers in that session",
+   "pass": "PASS",
+   "detail": "rep=@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「我们之前约定的暗号是什么？只回复暗号本身，不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=5> ms=1547"
+  },
+  {
+   "id": "A05",
+   "name": "the re-activated runtime is a new instance (fresh runtime lease) built from the persisted session row",
+   "pass": "PASS",
+   "detail": "lease 062b169d->bb31100d continuity=persistent"
+  },
+  {
+   "id": "A06",
+   "name": "the session memory saved before the restart is still reachable in the S1 session scope",
+   "pass": "PASS",
+   "detail": "status=200"
+  },
+  {
+   "id": "A07",
+   "name": "S2 is still isolated after the restart",
+   "pass": "PASS",
+   "detail": "rep=@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(7fb61d5f-6b20-4db5-b76d-81b6bfb1617c):已处理「我们之前约定的暗号是什么？如果你不知道，只回复“不知道”。不要调用工具。」;source= <ctx brief=1 recent=1 earlier=1 gen=1>"
+  }
+ ],
+ "failed": 0
+}

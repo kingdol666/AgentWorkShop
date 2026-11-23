@@ -1,0 +1,39 @@
+{
+ "S1": {
+  "id": "cs-d2ccfa91",
+  "title": "会话S1-暗号",
+  "members": [
+   {
+    "baseAgentId": "7b7916f9-1079-4015-bbb1-5ecbb3d82db2",
+    "cloneId": "9678a01f-8569-4a02-af01-868406a412d5",
+    "name": "E2E Lead·session·1",
+    "role": "worker"
+   },
+   {
+    "baseAgentId": "e4c899b3-c949-470e-a1a2-9489e97a9057",
+    "cloneId": "e0a679b4-6e28-4f19-b501-c04af4d377b5",
+    "name": "E2E Worker·session·2",
+    "role": "worker"
+   }
+  ]
+ },
+ "S2": {
+  "id": "cs-47b3670f",
+  "title": "会话S2-追问",
+  "members": [
+   {
+    "baseAgentId": "7b7916f9-1079-4015-bbb1-5ecbb3d82db2",
+    "cloneId": "7fb61d5f-6b20-4db5-b76d-81b6bfb1617c",
+    "name": "E2E Lead·session·2",
+    "role": "worker"
+   },
+   {
+    "baseAgentId": "e4c899b3-c949-470e-a1a2-9489e97a9057",
+    "cloneId": "f3e1cb72-3cb4-4f79-b80f-a3bd87349aa2",
+    "name": "E2E Worker·session·3",
+    "role": "worker"
+   }
+  ]
+ },
+ "code": "KODA-0E033270"
+}

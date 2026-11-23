@@ -1,0 +1,24 @@
+[
+ {
+  "id": "c25ca1ce-8f06-4945-8326-4b2ca6a1010c",
+  "channelId": "c1217149-574c-474f-b6de-f1a5dd4f54ba",
+  "agentId": "9678a01f-8569-4a02-af01-868406a412d5",
+  "kind": "semantic",
+  "title": "E2E校验码 KODA-0E033270",
+  "content": "本会话的校验码是 KODA-0E033270",
+  "dedupKey": "agent-save:982f63d4",
+  "titleFts": "E2E 校 验 码  KODA-0E033270",
+  "importance": 0.9,
+  "taskId": null,
+  "sessionId": "cs-d2ccfa91",
+  "accessCount": 0,
+  "lastAccessedAt": null,
+  "createdAt": "2026-11-23T23:41:26.905+08:00",
+  "outcome": "neutral",
+  "evidenceJson": "",
+  "scopeKind": "session",
+  "scopeKey": "",
+  "status": "active",
+  "expiresAt": null
+ }
+]

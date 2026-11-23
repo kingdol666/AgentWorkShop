@@ -9,6 +9,7 @@
  *    它们必须在入口设置 AW_DATA_DIR / AGENTWORKSHOP_TEST 之后才求值。
  */
 import type { DatabaseSync } from 'node:sqlite'
+import { randomBytes } from 'node:crypto'
 
 const { openWorkshopDb, initWorkshopDb } = await import('../../server/services/workshop/db/database')
 const { createChannelRepo } = await import('../../server/services/workshop/db/channel.repo')
@@ -132,10 +133,11 @@ export interface GroupChatTestContext {
 export function createGroupChatTestContext(): GroupChatTestContext {
   const registered: Array<{ id: string, name: string, role: string }> = []
   function mkUser(name: string): { id: string, name: string, role: string } {
+    // 夹具账号从不登录:口令按次随机生成,测试代码里不留可用的口令字面量
     const { user } = userRepository.createWithRoleBootstrap({
       name,
       email: `${name}@chat-test.local`,
-      password: 'Passw0rd!123',
+      password: `Fxt-${randomBytes(12).toString('hex')}!1aA`,
       role: 'user',
       status: 'active',
     })

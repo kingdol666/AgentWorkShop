@@ -1,0 +1,50 @@
+[
+ {
+  "type": "message",
+  "id": "e3f75353-073b-4ae0-b469-b16bdcfa175d",
+  "at": "2026-11-23T23:41:20.384+08:00",
+  "role": "ROLE_AGENT",
+  "name": "9678a01f-8569-4a02-af01-868406a412d5",
+  "text": "请记住这个暗号：KODA-0E033270。不要调用任何工具，只回复一行：“收到 KODA-0E033270”。"
+ },
+ {
+  "type": "message",
+  "id": "a969fdde-0352-45fb-aabb-9cc2b5d1feac",
+  "at": "2026-11-23T23:41:20.464+08:00",
+  "role": "ROLE_AGENT",
+  "name": "9678a01f-8569-4a02-af01-868406a412d5",
+  "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「请记住这个暗号：KODA-0E033270。不要调用任何工具，只回复一行：“收到 KODA-0E033270”。」;source= <ctx brief=1 recent=1 earlier=0 gen=0>"
+ },
+ {
+  "type": "message",
+  "id": "8badab79-4ff4-4fe8-b235-5f3d5a2b74fb",
+  "at": "2026-11-23T23:41:23.620+08:00",
+  "role": "ROLE_AGENT",
+  "name": "9678a01f-8569-4a02-af01-868406a412d5",
+  "text": "把我们刚才约定的暗号再告诉我，只回复暗号本身，不要调用工具。"
+ },
+ {
+  "type": "message",
+  "id": "7e8be878-8fda-4e4a-bf79-4e752c2d6627",
+  "at": "2026-11-23T23:41:23.683+08:00",
+  "role": "ROLE_AGENT",
+  "name": "9678a01f-8569-4a02-af01-868406a412d5",
+  "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「把我们刚才约定的暗号再告诉我，只回复暗号本身，不要调用工具。」;source= <ctx brief=1 recent=1 earlier=0 gen=0>"
+ },
+ {
+  "type": "message",
+  "id": "1e0c235a-7738-42c6-9d54-4de133390b80",
+  "at": "2026-11-23T23:41:25.203+08:00",
+  "role": "ROLE_AGENT",
+  "name": "9678a01f-8569-4a02-af01-868406a412d5",
+  "text": "不要调用任何工具。请从 1 数到 40，用逗号分隔，只输出数字。"
+ },
+ {
+  "type": "message",
+  "id": "bd9e31d3-5c04-4bd3-9d75-bda3b2544a98",
+  "at": "2026-11-23T23:41:25.275+08:00",
+  "role": "ROLE_AGENT",
+  "name": "9678a01f-8569-4a02-af01-868406a412d5",
+  "text": "@owner:904488cd-e2df-4086-a074-c82db1deeb4c mock 群聊回复(9678a01f-8569-4a02-af01-868406a412d5):已处理「不要调用任何工具。请从 1 数到 40，用逗号分隔，只输出数字。」;source= <ctx brief=1 recent=1 earlier=0 gen=0>"
+ }
+]

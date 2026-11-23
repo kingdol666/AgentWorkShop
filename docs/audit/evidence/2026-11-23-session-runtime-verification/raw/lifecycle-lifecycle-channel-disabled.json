@@ -1,0 +1,53 @@
+{
+ "patch": {
+  "status": 200,
+  "json": {
+   "code": 0,
+   "message": "ok",
+   "data": {
+    "id": "c1217149-574c-474f-b6de-f1a5dd4f54ba",
+    "name": "E2E SessionRuntime mwtfo1j4",
+    "description": "",
+    "scenarioPrompt": "你是测试用协作成员。严格按用户指令回答，回答尽量短；要求调用工具时必须调用工具。",
+    "llmJson": "",
+    "leadAgentId": "7b7916f9-1079-4015-bbb1-5ecbb3d82db2",
+    "workspace": "D:\\tmp\\aw-desktop-e2e-20261123\\home\\data\\workspaces\\c1217149-574c-474f-b6de-f1a5dd4f54ba",
+    "enabled": 0,
+    "ownerUserId": "904488cd-e2df-4086-a074-c82db1deeb4c",
+    "visibility": "private",
+    "joinPolicy": "owner_approve",
+    "approvalPolicy": "owner_only",
+    "chatEnabled": 1,
+    "version": 2,
+    "lineId": "",
+    "channelMode": "generic",
+    "createdAt": "2026-11-23T23:41:19.978+08:00",
+    "updatedAt": "2026-11-23T23:43:06.185+08:00"
+   }
+  },
+  "data": {
+   "id": "c1217149-574c-474f-b6de-f1a5dd4f54ba",
+   "name": "E2E SessionRuntime mwtfo1j4",
+   "description": "",
+   "scenarioPrompt": "你是测试用协作成员。严格按用户指令回答，回答尽量短；要求调用工具时必须调用工具。",
+   "llmJson": "",
+   "leadAgentId": "7b7916f9-1079-4015-bbb1-5ecbb3d82db2",
+   "workspace": "D:\\tmp\\aw-desktop-e2e-20261123\\home\\data\\workspaces\\c1217149-574c-474f-b6de-f1a5dd4f54ba",
+   "enabled": 0,
+   "ownerUserId": "904488cd-e2df-4086-a074-c82db1deeb4c",
+   "visibility": "private",
+   "joinPolicy": "owner_approve",
+   "approvalPolicy": "owner_only",
+   "chatEnabled": 1,
+   "version": 2,
+   "lineId": "",
+   "channelMode": "generic",
+   "createdAt": "2026-11-23T23:41:19.978+08:00",
+   "updatedAt": "2026-11-23T23:43:06.185+08:00"
+  }
+ },
+ "runtime": {
+  "wiredAgents": [],
+  "activeChannels": []
+ }
+}

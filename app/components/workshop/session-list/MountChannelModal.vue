@@ -44,13 +44,18 @@ const createAndMount = async (): Promise<void> => {
     const created = (res as unknown as { data?: { channelId?: string } })?.data
     const channelId = created?.channelId
     if (!channelId) throw new Error(t('channelSessionList.k1bg6shc027'))
+    let listLoaded = true
     try {
       await wsStore.load()
     }
     catch {
       // 频道已创建并挂载,只是清单刷新失败;下次加载即与服务端一致
+      listLoaded = false
     }
-    if (!wsStore.workspaces.find(w => w.id === props.wsId)?.activeChannelId) wsStore.setActiveChannel(props.wsId, channelId)
+    const workspace = wsStore.workspaces.find(w => w.id === props.wsId)
+    // 清单拿到就以服务端为准(已有 active 不覆盖);清单拿不到时无从判断,
+    // 仍把新频道设为当前——否则用户会停在空白控制台,以为创建失败。
+    if (!listLoaded || !workspace?.activeChannelId) wsStore.setActiveChannel(props.wsId, channelId)
     open.value = false
     mountForm.name = ''
     mountForm.description = ''

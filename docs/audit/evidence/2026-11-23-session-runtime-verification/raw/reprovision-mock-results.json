@@ -1,0 +1,50 @@
+{
+ "phase": "reprovision",
+ "at": "2026-11-23T15:41:20.117Z",
+ "model": "openai/gpt-oss-20b",
+ "results": [
+  {
+   "id": "P01",
+   "name": "re-provisioning on the same desktop instance (previous channel used a provider/model pair omp does not expose)",
+   "pass": "OBSERVED",
+   "detail": "oldChannel=edb82823-bf40-4b45-a2fb-2c1591020a7a"
+  },
+  {
+   "id": "S04a",
+   "name": "channel created with an omp lead and mounted once to the workspace",
+   "pass": "PASS",
+   "detail": "status=200 channel=c1217149-574c-474f-b6de-f1a5dd4f54ba mounted=d12772ed-fbd1-416d-9967-1bf434ec7fdd"
+  },
+  {
+   "id": "S04b",
+   "name": "worker member added",
+   "pass": "PASS",
+   "detail": "status=200 id=e4c899b3-c949-470e-a1a2-9489e97a9057"
+  },
+  {
+   "id": "S05",
+   "name": "channel tool policy limited to memory + task tools",
+   "pass": "PASS",
+   "detail": "status=200 {\"code\":0,\"message\":\"ok\",\"data\":{\"channelId\":\"c1217149-574c-474f-b6de-f1a5dd4f54ba\",\"mode\":\"selected\",\"source\":\"explicit\",\"updatedBy\":\"904488cd-e2df-4086-a074-c82db1deeb4c\",\"updatedAt\":\"2026-11-23T23:41:20.031+08:00\",\"st"
+  },
+  {
+   "id": "S06S1",
+   "name": "session S1 created as a clone group",
+   "pass": "PASS",
+   "detail": "status=200 id=cs-d2ccfa91 clones=E2E Lead·session·1,E2E Worker·session·2"
+  },
+  {
+   "id": "S06S2",
+   "name": "session S2 created as a clone group",
+   "pass": "PASS",
+   "detail": "status=200 id=cs-47b3670f clones=E2E Lead·session·2,E2E Worker·session·3"
+  },
+  {
+   "id": "S07",
+   "name": "before any message no session clone runtime is wired (lazy activation)",
+   "pass": "PASS",
+   "detail": "wired=4 activeChannels=[\"edb82823-bf40-4b45-a2fb-2c1591020a7a\",\"c1217149-574c-474f-b6de-f1a5dd4f54ba\"]"
+  }
+ ],
+ "failed": 0
+}

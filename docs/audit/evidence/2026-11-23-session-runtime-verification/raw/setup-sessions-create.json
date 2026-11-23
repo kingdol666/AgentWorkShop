@@ -1,0 +1,39 @@
+{
+ "S1": {
+  "id": "cs-f9c69dd5",
+  "title": "会话S1-暗号",
+  "members": [
+   {
+    "baseAgentId": "4993b411-c730-4123-8d7b-6a15c163cd90",
+    "cloneId": "e326a9b0-e4a6-4422-bf84-bcc7af80c5d7",
+    "name": "E2E Lead·session·1",
+    "role": "worker"
+   },
+   {
+    "baseAgentId": "954b942c-6698-46dc-ae77-c56fac6c794d",
+    "cloneId": "b062d293-ef0f-41c2-bb6c-723e4308c0c2",
+    "name": "E2E Worker·session·2",
+    "role": "worker"
+   }
+  ]
+ },
+ "S2": {
+  "id": "cs-93a8abb8",
+  "title": "会话S2-追问",
+  "members": [
+   {
+    "baseAgentId": "4993b411-c730-4123-8d7b-6a15c163cd90",
+    "cloneId": "d3509e7c-eb27-4e4b-8cd7-ebc802eb8cbd",
+    "name": "E2E Lead·session·2",
+    "role": "worker"
+   },
+   {
+    "baseAgentId": "954b942c-6698-46dc-ae77-c56fac6c794d",
+    "cloneId": "d2090080-ff6c-411c-bea5-29f9bd463408",
+    "name": "E2E Worker·session·3",
+    "role": "worker"
+   }
+  ]
+ },
+ "code": "KODA-E675FD05"
+}

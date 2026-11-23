@@ -38,7 +38,7 @@ test('bounded research runs produce immutable candidate-only evidence', async ()
   const run = await research.execute('run-1')
   assert.equal(run.state, 'completed')
   assert.equal(run.evidenceIds.length, 1)
-  const candidate = store.require(run.evidenceIds[0]!)
+  const candidate = store.mustGet(run.evidenceIds[0]!)
   assert.equal(candidate.candidateOnly, true)
   assert.equal(candidate.claimLevel, 'candidate')
   assert.throws(() => {
