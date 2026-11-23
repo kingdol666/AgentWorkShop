@@ -8,7 +8,7 @@ Build (pdfLaTeX + BibTeX), e.g. on Overleaf or locally:
   pdflatex Supplementary-File-S7.tex
   bibtex Supplementary-File-S7
   pdflatex Supplementary-File-S7.tex
-  pdflatex Supplementary-File-S7.tex  (rerun until references resolve)
+  pdplatex Supplementary-File-S7.tex  (rerun until references resolve)
 
 The rebuilt PDF is text-identical (page-for-page, whitespace-normalized) to
 Supplementary-File-S7-20261117.pdf in this folder (verified 2026-11-19).

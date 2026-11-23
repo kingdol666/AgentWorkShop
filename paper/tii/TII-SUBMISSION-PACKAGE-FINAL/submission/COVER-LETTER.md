@@ -1,43 +1,38 @@
-# Cover Letter — IEEE Transactions on Industrial Informatics
+# Cover Letter (Editor-Facing) — IEEE TII Initial Submission
 
-**Editor-only document — do not include in the anonymous manuscript PDF**
+> 使用说明：这是可选投稿信模板，不是初投必传文件。只有在 IEEE Author Portal 或编辑部确认渠道仅编辑可见后才发送，不要插入匿名稿件。
+> 方括号 `[...]` 处按实际情况填写；所有声明核实后删除本说明块。
 
-**Date:** [YYYY-MM-DD]
+---
 
-**To:** The Editor-in-Chief
+Date: [submission date]
 
-*IEEE Transactions on Industrial Informatics*
+To: Prof. Gerhard P. Hancke, Editor-in-Chief
+IEEE Transactions on Industrial Informatics
 
-**Re:** Regular Research Paper — “A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations”
+Re: Submission of a Regular Research Paper — "A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations"
 
-Dear Editor-in-Chief,
+Dear Prof. Hancke,
 
-On behalf of all authors, we submit the manuscript entitled “A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations” for consideration as a **Regular Research Paper** in *IEEE Transactions on Industrial Informatics*.
+On behalf of all co-authors, I submit the above manuscript for consideration as a **Regular Research Paper** in IEEE Transactions on Industrial Informatics.
 
-The manuscript addresses an industrial-informatics integration problem: an industrial agent may use online process observations to propose a setpoint change, but observation access and a plausible proposal must not by themselves authorize a plant-facing write. We present a configuration-driven runtime operation boundary that binds line, product, recipe, and run context to direction-specific acquisition and control mappings, registered protocol drivers, and configured limits. Task-mediated and direct calls are designed to enter a common dispatch boundary; route handlers then apply authorization, value admission, conditional approval, and route-specific revalidation. Command outcomes, optional setpoint readbacks, and later process observations are retained as distinct evidence types.
+**Authors (editor-only information).** [Full names, affiliations, countries; Corresponding author: name, email, phone.] All authors hold ORCID iDs, registered in the portal. [Funding: grant number(s) and agency, or "No external funding."]
 
-The contribution is a runtime contract for integrating industrial-agent proposals with governed writes, not a new control law or reasoning algorithm. The main evaluation uses direct probes at 55 writable endpoints in four simulated scenes spanning five protocol families. The service returned the expected response to all 220 admissible requests and all 219 collected structural violations; all 216 available simulator readbacks matched the requested values. Mock-driver fixtures tested selected guard branches. A separate scripted comparison and a simulated-twin write are exploratory; none of the three language-model episodes reached the target band. These tests characterize the exercised write paths. They do not establish task/direct parity, autonomous control, controller efficacy, or physical-plant performance.
+**Originality, exclusivity, and prior circulation.** [Confirm the manuscript is not under consideration elsewhere and all authors approved the submission. Disclose related work or previous public circulation privately to the editor, providing dates, links, and the relationship to this submission where applicable.] The submitted manuscript PDF does not identify the authors.
 
-The manuscript is within the scope of TII because it concerns the integration of industrial agents with production context, heterogeneous industrial communication mappings, online data acquisition, governed setpoint operations, and evidence-aware plant-facing execution. We believe the distinction between a proposed action, an authorized operation, a dispatched command, a readback, and a subsequent process observation is relevant to readers developing industrial-agent runtimes and supervisory automation systems.
+**Contribution (reviewer-facing summary).** The paper presents a configuration-driven runtime that lets industrial agents acquire process observations and submit setpoint intents through one governed boundary:
 
-**Statements to be completed and verified by the authors before submission**
+- a production-scene model binding line, product, recipe, and run context to direction-specific acquisition and control mappings, registered protocol drivers, and write limits;
+- a shared dispatcher admitting task-mediated and direct calls through authorization, conditional approval with post-approval route revalidation, and layered write guards, with command outcomes, readbacks, and later observations kept as separate, verification-graded evidence;
+- an evidence-bounded evaluation: 55 write-capable endpoints across four simulated scenes and five protocols (220/220 expected acceptances, 219/219 collected out-of-range rejections, 216/216 matching readbacks), guard/approval-route fixtures, an injection-twin demonstration, an exploratory nine-block scripted-versus-no-write comparison, and three language-model-driven episodes.
 
-- **Authors and affiliations:** [Insert the complete author list, affiliations, countries, and corresponding-author contact details.]
-- **ORCID and institutional email:** [Confirm that every author has an ORCID iD and an institutional email address in the IEEE Author Portal.]
-- **Originality and exclusive consideration:** [Confirm that the manuscript is original, has not been published previously in substantially the same form, is not under consideration elsewhere, and has been approved by all authors.]
-- **Prior circulation or related public material:** [If applicable, disclose to the editor any conference paper, preprint, public repository, or earlier public circulation, including the URL, date, overlap, and relationship to this manuscript. The anonymous PDF intentionally contains no such identifying link.]
-- **Funding:** [Insert the funding statement, grant number(s), or “This research received no external funding.”]
-- **Competing interests:** [Confirm the manuscript statement “The authors declare no competing interests,” or replace it with the accurate disclosure.]
-- **Suggested reviewers:** [Optional; provide only eligible researchers with institutional contact details and no conflicts of interest, if the portal requests them.]
+**Scope statements we wish to make explicit.** All results are simulator or mock-driver results; the paper does not claim general control efficacy, autonomous convergence, a complete correlated agent-to-device trace, or physical-plant safety. The batch-selection rule of the exploratory comparison is reported as unresolved, and the closed-loop control mechanism is stated as future work, to be pursued through agent-architecture orchestration and process-experience memory reuse inside the same governed boundary.
 
-The manuscript discloses the authors’ use of generative AI via ZCode for language editing, abstract drafting, LaTeX-source organization, and the layout of Fig. 4. The authors remain responsible for the accuracy, originality, and final approval of all submitted material. The study used simulated scenes, mock-driver fixtures, and a PLC-based simulated twin; it involved no human participants, personal data, or physical-plant operation. Selected simulator records and run summaries are available on reasonable request, while complete service snapshots, raw twin samples, and row-level server journals were not retained. No narrative supplementary file is being submitted as a routine initial-submission attachment; any supplementary or data material will be supplied only if permitted and requested by the journal or editor.
+**Declarations.** [Confirm competing interests and the actual AI assistance before sending.] The manuscript discloses that generative AI via ZCode assisted with language editing, drafting the abstract, organizing the LaTeX source, and laying out Fig. 4. The authors remain responsible for the manuscript. Selected simulator records and run summaries are available on reasonable request; complete service snapshots, raw twin samples, and row-level server journals were not retained. No narrative supplement is submitted with the initial manuscript.
 
-Thank you for considering this manuscript. We would be grateful for the opportunity to have it evaluated by the TII editorial and peer-review process.
+**Suggested reviewers (optional).** [Name, affiliation, email — 3–5 researchers working on industrial agents, OPC UA/MCP tool access, or governed plant-facing operations; no conflicts of interest.]
+
+Thank you for considering this submission.
 
 Sincerely,
-
-[Corresponding author full name]\
-[Department, Institution]\
-[City, Country]\
-[Institutional email]\
-[Telephone, if required]
+[Corresponding author name, title, affiliation, email]

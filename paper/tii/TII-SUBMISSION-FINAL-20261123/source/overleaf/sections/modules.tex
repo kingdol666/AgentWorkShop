@@ -20,7 +20,10 @@ active-recipe limits. These numerical bounds are distinct from the scope,
 policy, grant, and binding predicates in Eq.~(\ref{eq:dispatch-contract}).
 An absent optional limit imposes no restriction; an empty intersection admits no candidate, and the controller identifies the first violated layer when a limit is exceeded. Recipe dispatch checks a replacement recipe against the hard, baseline, and product limits rather than the previous recipe's window; trial overrides are additionally checked against the applicable recipe window.
 
-Algorithm~1 lists the checks for a single-node write after shared dispatch. Fig.~\ref{fig:hitl} compares that route with recipe operations. The algorithm shows the full-limit profile: a failed check stops dispatch, while a benchmark ablation can omit soft limits without removing the hard range.
+Algorithm~1 details the single-node write sequence after shared dispatch; Fig.~\ref{fig:hitl} maps the same boundary across the single-node and recipe routes. For
+\texttt{optimization\_explore}, the algorithm shows the ordinary full-limit profile: a failed
+check stops the request before driver dispatch, while a benchmark ablation may
+omit soft limits and retain the hard engineering range.
 
 \par\medskip
 \noindent\begin{minipage}{\columnwidth}
