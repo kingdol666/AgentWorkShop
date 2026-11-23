@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "tii-daq-7b824faa9819181e",
+  "startedAt": "2026-11-18T17:12:34.961Z",
+  "status": "blocked-before-proven-agent-daq",
+  "scope": {
+    "simulatedOnly": true,
+    "scenario": "cast-film-physics",
+    "trialRequested": true,
+    "oneAgentTask": true,
+    "noCloudOrModelServiceReconfiguration": true,
+    "fixtureApprovalNotHumanSubject": true
+  },
+  "isolation": {
+    "omp": {
+      "freshProfileInDisposableHome": true,
+      "providerOnly": "local",
+      "noCopiedAuthOrMcp": true,
+      "builtInToolsAndDiscoveryDisabled": true
+    },
+    "timescale": {
+      "publishedAddress": "127.0.0.1",
+      "publishedPort": 32773,
+      "noSharedMounts": true,
+      "noImagePull": true,
+      "runnerQueriesReadOnly": true
+    },
+    "mqttQueue": {
+      "publishedAddress": "127.0.0.1",
+      "publishedPort": 32774,
+      "noSharedMounts": true,
+      "noImagePull": true,
+      "separateFromSimulatedDeviceBroker": true
+    },
+    "listeners": {
+      "simulatorHttp": {
+        "address": "127.0.0.1",
+        "port": 60297,
+        "disposableProcessOwnershipVerified": true,
+        "checkedAt": "2026-11-18T17:12:45.557Z"
+      },
+      "mqtt": {
+        "address": "127.0.0.1",
+        "port": 60298,
+        "disposableProcessOwnershipVerified": true,
+        "checkedAt": "2026-11-18T17:12:45.615Z"
+      },
+      "opcUa": {
+        "address": "127.0.0.1",
+        "port": 60299,
+        "disposableProcessOwnershipVerified": true,
+        "checkedAt": "2026-11-18T17:12:48.200Z"
+      },
+      "modbus": {
+        "address": "127.0.0.1",
+        "port": 60300,
+        "disposableProcessOwnershipVerified": true,
+        "checkedAt": "2026-11-18T17:12:48.314Z"
+      },
+      "app": {
+        "address": "127.0.0.1",
+        "port": 60301,
+        "disposableProcessOwnershipVerified": true,
+        "checkedAt": "2026-11-18T17:12:49.732Z"
+      }
+    },
+    "app": {
+      "freshHomeMode": true,
+      "disposableCwd": true,
+      "enabledPluginCount": 0,
+      "loopbackOnlyInfrastructureSettings": true,
+      "infrastructureAutoStart": false
+    },
+    "daq": {
+      "standardCollectorRunning": true,
+      "mqttOnline": true,
+      "timescaleOnline": true,
+      "degraded": false,
+      "objectStoreOnline": false,
+      "diagnostics": []
+    }
+  },
+  "versions": {
+    "node": "v24.19.0",
+    "platform": "win32",
+    "arch": "x64",
+    "omp": "omp/18.12.2",
+    "model": {
+      "provider": "local",
+      "id": "google/gemma-4-12b-qat",
+      "quantization": "Q4_0",
+      "contextLength": 65536,
+      "parallel": 1
+    },
+    "app": {
+      "package": "0.13.0",
+      "sourceGitHead": "12423e1b883a9e64b0e0583f63bc4fc0e5f4b416",
+      "executedBundle": {
+        "sha256": "2ea4114339e54640a8af6ef016cb57519284afc80e1423341e95ded3c3bc42c7",
+        "fileCount": 699
+      },
+      "entryMtimeUtc": "2026-11-18T08:58:53.186Z",
+      "sourceToBundleEquivalenceVerified": false,
+      "healthVersion": "0.13.0",
+      "healthAppMode": "dev"
+    },
+    "simulator": {
+      "package": "0.1.0",
+      "sourceGitHead": "12423e1b883a9e64b0e0583f63bc4fc0e5f4b416",
+      "nodeOpcua": "2.178.0",
+      "executedCopy": {
+        "sha256": "808f7180d447a2b1a47f623507da7ab3a61fbd7b5b1629d8bcc15b6377996315",
+        "fileCount": 25
+      },
+      "copyPatch": "OPCUAServer host=127.0.0.1; advertised hostname kept separate"
+    },
+    "scriptSha256": "9199a6ecb881562c21c1cceaeba81674dc62100a15eb5c56e8cbed96b648890e",
+    "database": {
+      "postgres": "160015",
+      "timescale": "2.29.2",
+      "cachedImageId": "sha256:289d55704b1b3ee8263cd3805c6930f9cd54506835a8f19f9b85dad17d5c5a8a"
+    },
+    "queueBroker": {
+      "image": "eclipse-mosquitto:2",
+      "cachedImageId": "sha256:6f8d8a947c506f8a2290ec65cd4bd2bc7cb4d43fb5f6271f861cb013e2ef9797"
+    }
+  },
+  "stage": "MQTT-protocol-probe-observed",
+  "scene": {
+    "seed": 42,
+    "timeScale": 1,
+    "control": "ScrewSpeedSP",
+    "baseline": 120,
+    "candidate": 125,
+    "stepLimit": 5,
+    "mvDriver": "opcua",
+    "pvSignal": "thick",
+    "pvDriver": "mqtt",
+    "pvUnit": "μm",
+    "excludedPresetTransport": "Modbus RTU"
+  },
+  "entities": {
+    "lineId": "ln-b87002a1",
+    "productId": "pd-86eafe27",
+    "recipeId": "rc-86fda6d2",
+    "controlId": "dw-1591c8f9",
+    "daqNodeId": "dn-8a4486ae",
+    "channelId": "201d492d-e721-4051-993a-3715aaff15ad",
+    "agentId": "ede7683c-47ba-4e0c-8ef7-7b57be9c452b",
+    "activeRunId": "rr-bbd65431"
+  },
+  "lineStart": {
+    "runId": "rr-bbd65431",
+    "startedAt": "2026-11-19T01:12:52.074+08:00",
+    "baselineFixtureWrite": true,
+    "controlMode": "manual"
+  },
+  "bindings": [
+    {
+      "kind": "daq",
+      "nodeId": "dn-8a4486ae",
+      "mode": "auto"
+    },
+    {
+      "kind": "recipe",
+      "nodeId": "rc-86fda6d2",
+      "mode": "manual"
+    }
+  ],
+  "protocolProbe": {
+    "at": "2026-11-18T17:12:54.129Z",
+    "source": "independent invocation of AW MQTT driver test, not an ingest",
+    "value": 55.04,
+    "unit": "μm"
+  },
+  "failure": {
+    "stage": "MQTT-protocol-probe-observed",
+    "blocker": "unexpected-collector-raw-sample",
+    "appDiagnosticCategories": [],
+    "simulatorDiagnosticCategories": []
+  },
+  "lineStopConfirmed": true,
+  "cleanup": {
+    "stopped": [
+      {
+        "process": "app",
+        "exited": true
+      },
+      {
+        "process": "simulator",
+        "exited": true
+      }
+    ],
+    "portsReleased": true,
+    "disposableFilesRemoved": true,
+    "disposableContainerRemoved": true,
+    "removedContainers": {
+      "mqttQueue": true,
+      "timescale": true
+    }
+  },
+  "finishedAt": "2026-11-18T17:13:05.141Z"
+}

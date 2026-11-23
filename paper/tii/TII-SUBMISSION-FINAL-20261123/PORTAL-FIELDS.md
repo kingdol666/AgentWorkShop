@@ -22,10 +22,10 @@ TII-SUBMISSION-PACKAGE-FINAL-latex.pdf
 A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations
 ```
 
-## Abstract（单段，216 词，纯文本）
+## Abstract（单段，220 词，纯文本）
 
 ```
-Industrial agents that acquire process data and propose setpoint changes need an execution path that preserves production context, separates reading from writing, and distinguishes command acceptance from later process evidence. We present such a configuration-driven runtime. A production scene binds line, product, recipe, and run context to direction-specific acquisition and control mappings, registered protocol drivers, and configured write limits; task-mediated agent calls and direct tool calls converge on one dispatcher enforcing authorization, write limits, and post-approval revalidation. Command outcomes, setpoint readbacks, and subsequent process measurements are recorded as separate, verification-graded evidence. In direct-interface probes of 55 writable endpoints across four simulated scenes and five protocols, all 220 prespecified admissible requests were accepted as expected, all 219 collected structurally out-of-range requests were rejected, and all 216 available simulator readbacks matched the requested values. These mapping probes used direct interfaces and did not exercise an agent harness. An injection-twin governed write changed the holding-pressure setpoint from 60 to 63.7 bar with matching simulated readback. In an exploratory comparison, the scripted policy had lower integrated absolute error than a no-write condition in all nine valid blocks of the selected batch; the batch-selection rule remains unresolved. Three language-model-driven episodes were canceled before reaching the target. These results characterize governed application-level behavior; a complete correlated agent-to-device trace and physical-plant performance remain unverified.
+Industrial agents that acquire process data and propose setpoint changes need an execution path that preserves production context, separates reading from writing, and distinguishes command acceptance from later process evidence. We present such a configuration-driven runtime. A production scene binds line, product, recipe, and run context to direction-specific acquisition and control mappings, registered protocol drivers, and configured write limits. Task-mediated and direct calls share a dispatcher that checks access; write handlers apply limits and revalidate approved requests as required by the route. Command outcomes and setpoint readbacks are kept separate from subsequent process measurements. In direct-interface probes of 55 writable endpoints across four simulated scenes and five protocols, all 220 prespecified admissible requests were accepted as expected, all 219 collected structurally out-of-range requests were rejected, and all 216 available simulator readbacks matched the requested values. These mapping probes used direct interfaces and did not exercise an agent harness. An injection-twin governed write changed the holding-pressure setpoint from 60 to 63.7 bar with matching simulated readback. In an exploratory comparison, the scripted policy had lower integrated absolute error than a no-write condition in all nine valid blocks of the selected batch; the batch-selection rule remains unresolved. Three language-model-driven episodes were canceled before reaching the target. These results characterize governed application-level behavior; a complete correlated agent-to-device trace and physical-plant performance remain unverified.
 ```
 
 ## Keywords（6 个，按稿件顺序）
@@ -52,8 +52,8 @@ Industrial agents, online data acquisition, agent-mediated control, governed set
 | 表 | 4 |
 | 算法 | 1 |
 | 参考文献 | 24 |
-| 摘要 | 单段 216 词 |
-| 文件 | PDF，IEEE 双栏，US Letter，约 2.61 MB，字体全部嵌入 |
+| 摘要 | 单段 220 词 |
+| 文件 | PDF，IEEE 双栏，US Letter，约 2.63 MB，字体全部嵌入 |
 
 ## Data availability（门户如有该字段）
 
