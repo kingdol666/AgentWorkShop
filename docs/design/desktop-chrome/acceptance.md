@@ -1,5 +1,28 @@
 # Desktop chrome acceptance — 2026-11-22
 
+## Brand, icon set and boot sequence — 2026-11-24
+
+Branch `feat/brand-mark-icons-splash-20261124` (PR #289). All numbers below come from this machine,
+not from a CI runner.
+
+| Check | Result |
+| --- | --- |
+| Icon pipeline | `node scripts/desktop-brand.mjs` twice → `icon.ico` / `icon.png` byte-identical (SHA-256 match); `icon.ico` has 9 entries (16–64 BMP, 128/256 PNG) |
+| ICO pixels | Every entry 16–256 decoded with Pillow and inspected; 16/32/48/64 show the badge, not noise. **A defect was found here first**: the BMP entries were built from raw binary decoded as base64, so 16–64 were a colour strip. Fixed in `70a5af35`, regenerated, re-verified |
+| Icon, Windows shell | `SHGetFileInfo` on the packaged `AgentWorkShop.exe` and on the `.ico` both return the navy badge with the paper-white A (`live-exe-icon-20261124.png`) |
+| Installer | `AgentWorkShop-Setup-0.18.0-win-x64.exe` — 412,465,546 bytes, SHA-256 `342fd5cfb4120fa831714c4b922f93605c7bf79ada46220ee6f936a3e9b2b1bd`; silent `/S /D=D:\tmp\aw-desktop-install-v0174`, exit 0 |
+| npm payload | `agentworkshop-0.18.0.tgz` — 45,561,152 bytes, SHA-256 `8661996866e2cb6a358ed56c560a13d36ddd98b565f25736359c0eb726840093`, installed alone into an isolated prefix |
+| Installed exe | `ProductVersion 0.18.0.0`, `FileVersion 0.18.0`, timestamp 2026-11-24 02:17; asar contains `nativeTheme.shouldUseDarkColors` and `build/tray-{dark,light}.png` (hash equal to the repo's `icon.png`) |
+| Boot splash, live | Captured from the real frameless window: `live-splash-draw-20261124.png` (0.65 s — mint outline plus the scan line), `live-splash-rail-20261124.png` (1.1 s — solid mark, rail at 52 %, stage 03/04, trace lines) |
+| Main window, live | `live-main-window-20261124.png` — title rail with the bare mark, sidebar `AGENTWORKSHOP / DIGITAL TWIN`, dashboard at 150 % DPI |
+| Taskbar icon | `live-taskbar-icon-20261124.png` — dark plate, paper-white A, running underline |
+| Tray icon | `live-tray-icon-20261124.png` — bare deep-jade A for the light taskbar (system reports `SystemUsesLightTheme=1`); the mint variant is selected when Windows is dark. A stale `NotifyIconSettings` snapshot from the previous version was backed up to `D:/tmp/aw-brand-20261124/private/tray-cache-backup.reg` and removed; the rebuilt entry shows the new glyph |
+| Process hygiene | The 0.18.0 app was idle (`wiredAgents 0`, `activeChannels 0`) before it was stopped for the update; the stale source-mode instance and the old web demo from the previous session were stopped (the web demo was restarted from the new build on :3011). The updated app is left running (`pid 64596`, `phase ready`, `port 58593`) |
+
+Notes: the tray screenshot is captured from the Windows 11 hidden-icons flyout through UIA (matched by
+tooltip); the flyout is acrylic, so its apparent background follows the window behind it. No npm publish
+or GitHub release is part of this round.
+
 Worktree: `D:/tmp/aw-electron-desktop`, branch `feat/desktop-chrome` (from `origin/main` `3a931171`). Changes are committed on this branch; the user's main working tree was not touched.
 
 ## Delivered

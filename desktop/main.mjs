@@ -1,4 +1,4 @@
-import { app, BrowserWindow, WebContentsView, dialog, ipcMain, Menu, session, Tray, nativeImage, Notification, shell as electronShell } from 'electron'
+import { app, BrowserWindow, WebContentsView, dialog, ipcMain, Menu, session, Tray, nativeImage, nativeTheme, Notification, shell as electronShell } from 'electron'
 import { spawn } from 'node:child_process'
 import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -377,9 +377,22 @@ function hideToTray() {
 }
 
 function trayImage() {
-  const image = nativeImage.createFromPath(join(here, 'build', 'icon.png'))
+  // 托盘用裸字标(无铭牌底板):深色任务栏给信号绿,浅色任务栏给深玉绿。
+  // 32 px 源图由 Windows 按 DPI 缩放,16/24 px 槽位仍保持笔画清晰。
+  const file = nativeTheme.shouldUseDarkColors ? 'tray-dark.png' : 'tray-light.png'
+  const image = nativeImage.createFromPath(join(here, 'build', file))
   if (image.isEmpty()) return nativeImage.createEmpty()
-  return image.resize({ width: 16, height: 16, quality: 'best' })
+  return image
+}
+
+let trayThemeBound = false
+
+function bindTrayTheme() {
+  if (trayThemeBound) return
+  trayThemeBound = true
+  nativeTheme.on('updated', () => {
+    if (tray && !tray.isDestroyed()) tray.setImage(trayImage())
+  })
 }
 
 function trayMenuItem(descriptor) {
@@ -421,6 +434,7 @@ function createTray() {
   tray = new Tray(trayImage())
   tray.on('click', () => showMain())
   tray.on('double-click', () => showMain())
+  bindTrayTheme()
   refreshTray()
   writeStatus()
 }

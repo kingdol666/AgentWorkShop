@@ -14,7 +14,7 @@
 
 桌面窗口使用无边框 `BrowserWindow`：顶部 40px 是随应用分发的标题栏文档（`desktop/chrome/titlebar.html`），下方内容区是独立 `WebContentsView`，加载与 Web 端完全相同的 Nitro 页面，不做 DOM 注入或布局改写。标题栏提供品牌标识、当前页面标题、本机服务状态和自绘的最小化/最大化/关闭按钮；窗口按钮经 `desktop/chrome/preload.cjs` 的白名单 IPC 触达主进程。标题栏跟随应用的 `html.dark` 主题切换，在亮色下使用暖纸白，在暗色下使用深海军蓝与信号绿。
 
-品牌图标源文件是 `desktop/brand/icon.svg`（绿/青「A + 信号总线」标记）；`desktop/build/icon.png` 与 `desktop/build/icon.ico` 由它生成，供安装器、可执行文件和标题栏共用。设计原型与状态板见 `docs/design/desktop-chrome/prototype.html`（截图 `prototype.png`）。图标是从 SVG 渲染的 512px 圆角方形（四角透明），改动图标时同时更新 PNG/ICO。
+品牌母版是 `desktop/brand/mark.svg`（门架 A 字标，单一剪影、无渐变）、`badge.svg`（512 应用铭牌：深墨底 + 3px 内缘线）与 `tray-dark.svg` / `tray-light.svg`（托盘裸字标，深色任务栏用信号绿、浅色任务栏用深玉绿）。二进制图标不手工导出：`pnpm brand:desktop`（`scripts/desktop-brand.mjs`）用本机 Chrome 按目标尺寸光栅化 SVG，并封装 `desktop/build/icon.ico`（16–64 BMP、128/256 PNG，共 9 个条目）、`icon.png`、两个 32px 托盘图与 Web 端 `public/icon-180.png` / `icon-512.png`。托盘图标随 `nativeTheme` 切换；改字形只需改 SVG 再重跑该脚本。侧栏、标题栏、启动页、favicon 与 docs 站 favicon 共用同一条 `d`。设计研究、方向记录与启动动画关键帧见 `docs/design/desktop-chrome/brand-spec.md`、`direction-approved.md` 与 `*-20261124.png`。
 
 标题栏与桌面入口回归测试：`node --import tsx --test tests/desktop-chrome.test.ts tests/desktop-tray-splash.test.ts tests/desktop-terminal-entry.test.ts`。
 
@@ -32,7 +32,7 @@
 | 托盘通知 | 开 | 隐藏、重启服务、设置变更等提示 |
 | 自动检查更新 | 开 | 启动 4 秒后与每 30 分钟检查；手动检查不受影响 |
 
-启动时 Electron 立即创建托盘并显示 660×440 的无边框初始化窗口（`desktop/chrome/splash.html`），按真实阶段展示：准备运行环境 → 初始化工作区 → 启动本机服务 → 装配智能体工作台 → 就绪。窗口同时显示带时间戳的启动记录、实时耗时与进度条；只有 `/api/health` 返回 `status=ok` 且 `workshop=ready`、并且主页面加载完成后才显示主窗口。最小展示时间为 2 秒，避免界面闪烁；失败时显示错误、日志路径与「重试 / 打开日志 / 退出」，不会静默退出。动画支持 `prefers-reduced-motion`，文档 CSP 为 `default-src 'none'` 且只使用内联本地资源。
+启动时 Electron 立即创建托盘并显示 660×440 的无边框初始化窗口（`desktop/chrome/splash.html`），按真实阶段展示：准备运行环境 → 初始化工作区 → 启动本机服务 → 装配智能体工作台 → 就绪。启动页是一段一次性的通电序列：扫描线掠过、绿色细线把 A 字标描出来再交给实心字、品牌横线变成四站启动轨（每个站点落在该阶段的真实进度上）；窗口同时显示带时间戳的启动记录、实时耗时与进度；装配阶段沿字形再复检一次。只有 `/api/health` 返回 `status=ok` 且 `workshop=ready`、并且主页面加载完成后才显示主窗口。最小展示时间为 2 秒，避免界面闪烁；失败时显示错误、日志路径与「重试 / 打开日志 / 退出」，不会静默退出。等待期间没有循环动效；动画支持 `prefers-reduced-motion`（保留全部状态、去掉位移与描边），文档 CSP 为 `default-src 'none'` 且只使用内联本地资源。
 
 主进程会把 `phase`、`bootStage`、`port`、`trayCreated`、`windowVisible`、设置与 `lastError` 写入 `<home>/electron/desktop-status.json`，便于诊断与验收；「诊断信息」对话框展示同一组状态并提供数据/日志目录入口。`AW_DESKTOP_TEST_AUTOQUIT_MS` 与 `AW_DESKTOP_TEST_TRAY_MENU_MS` 仅用于自动化验收。
 

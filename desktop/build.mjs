@@ -210,7 +210,7 @@ async function run() {
         // One-click NSIS uses the package name for the per-user install folder.
         extraMetadata: { name: 'agentworkshop', version },
         directories: { output: out },
-        files: ['main.mjs', 'sidecar.mjs', 'update.mjs', 'chrome/**/*', 'build/icon.png'],
+        files: ['main.mjs', 'sidecar.mjs', 'update.mjs', 'chrome/**/*', 'build/*.png'],
         asar: true,
         npmRebuild: false,
         publish: null,

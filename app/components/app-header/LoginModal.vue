@@ -16,6 +16,7 @@ import { useAuthUiStore } from '@/app/stores/workshop/auth-ui'
 
 const authUi = useAuthUiStore()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const tab = ref<AuthTab>('login')
 const name = ref('')
@@ -65,6 +66,12 @@ const succeed = (nameText: string): void => {
 }
 
 const doLogin = async (): Promise<void> => {
+  // 与 /workshop 登录门同一套前置校验:空表单不发请求,否则界面只会收到
+  // 原始 400 toast(“[POST] /api/users/login: 400”),看不出该填什么。
+  if (!email.value.trim()) {
+    message.warning(t('wsHome.k8ieqzj020'))
+    return
+  }
   loading.value = true
   try {
     const u = await userStore.login(email.value, password.value)
@@ -74,6 +81,18 @@ const doLogin = async (): Promise<void> => {
   finally { loading.value = false }
 }
 const doRegister = async (): Promise<void> => {
+  if (!name.value.trim()) {
+    message.warning(t('wsHome.k1vnhyks019'))
+    return
+  }
+  if (!email.value.trim()) {
+    message.warning(t('wsHome.k8ieqzj020'))
+    return
+  }
+  if (password.value.length < 6) {
+    message.warning(t('wsHome.ksx73ra021'))
+    return
+  }
   loading.value = true
   try {
     const u = await userStore.register(name.value, email.value, password.value)
