@@ -147,7 +147,11 @@
 
 ### 7.2 Project 层计划（`docs/plans/2026-11-03-project-layer-plan.md`，验收清单 192 项）
 
-J–M 段（55 项）：**VERIFIED 14 / PARTIAL 36 / NOT_FOUND 3 / IMPL_NO_TEST 1 / SUPERSEDED 1**。未找到：性能 fixture（J8）、observe 影子运行报告（K15）、重复/双批准 SQL 断言（M3）。A–I 段（137 项）本轮**未完成逐项核对**（审查预算用于 M 段与三份其它计划），不作完成度判定——已核对段与未核对段分开陈述，不用计划复选框代替实现证据。
+D–F 段（47 项）：**VERIFIED 16 / PARTIAL 17 / SUPERSEDED 5 / IMPL_NO_TEST 5 / NOT_FOUND 4**。未找到：项目删除/purge（D7）、成果注入不得改变下一次决策（E13）、工作项状态机表驱动测试（F6）、BLOCKED 期间 root 完成的状态收敛（F9）。值得注意：所有 `tests/project-*.test.ts` 都把 `manager.submitProjectRoot` 打桩，真实 manager 侧派发代码没有被测试直接覆盖（F1）。
+
+J–M 段（55 项）：**VERIFIED 14 / PARTIAL 36 / NOT_FOUND 3 / IMPL_NO_TEST 1 / SUPERSEDED 1**。未找到：性能 fixture（J8）、observe 影子运行报告（K15）、重复/双批准 SQL 断言（M3）。
+
+A–C 段（45 项）与 G–I 段（45 项）本轮**未完成逐项核对**：执行核对的子任务在 4 小时内达到账号用量上限（2026-11-23 17:16 中断，限额当日 20:19 重置），不是代码问题。本报告对这些段不作完成度判定，也不以计划复选框代替实现证据；下轮可从未核对段继续。
 
 ### 7.3 上下文学习框架（`docs/plans/2026-11-13-…`，46 项）
 
