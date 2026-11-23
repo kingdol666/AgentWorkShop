@@ -1,0 +1,22 @@
+{
+  "description": "Allowlisted field extracts. Aliases replace internal identifiers; times are copied from the indicated records. Prompt descriptions are translations, not verbatim transcripts. These are not raw DAQ or packet captures.",
+  "A_historical_injection": {
+    "mappings": [
+      {"node": "PV-1", "kind": "daq", "signal": "part mass", "driver": "Modbus TCP", "unitId": 1, "holdingRegister": 40009, "dataType": "float32", "byteOrder": "big", "unit": "g", "intervalMs": 1000},
+      {"node": "SP-1", "kind": "dcw", "signal": "holding pressure", "driver": "Modbus TCP", "unitId": 1, "holdingRegister": 40001, "dataType": "float32", "byteOrder": "big", "unit": "MPa", "min": 45, "max": 85, "stepLimit": 2}
+    ],
+    "acquisitionReport": {"channel": "C1", "agent": "L1", "taskId": null, "promptSummary": "Read-only: inspect the most recent five minutes of part mass and melt pressure without writing", "messageAtUtcPlus8": "01:11:58.873", "reportedWindowUtcPlus8": "approximately 01:04–01:09", "reportedTool": "daq_query", "node": "PV-1", "reportedMean": 32.619, "reportedMin": 32.606, "reportedMax": 32.624, "reportedCount": 89, "originalToolCallAndResultRetained": false},
+    "controlPrompt": {"channel": "C1", "agent": "L1", "taskId": null, "promptSummary": "Use recipe_propose for a single 1 MPa increase in holding pressure and wait for approval; do not make another adjustment"},
+    "approval": {"id": "A1", "channel": "C1", "agent": "L1", "node": "SP-1", "from": 62, "to": 63, "status": "approved", "confirmed": true, "createdAtUtcPlus8": "01:18:29.340", "resolvedAtUtcPlus8": "01:18:45.298"},
+    "journal": {"id": "J1", "node": "SP-1", "source": "agent", "actor": "L1", "approvalId": "A1", "recipeRunId": "R1", "previous": 62, "current": 63, "atUtcPlus8": "01:18:45.325"},
+    "recipeReceipt": {"id": "R1", "node": "SP-1", "startedAtUtcPlus8": "01:18:45.300", "ok": true, "value": 63, "ack": "readback-verified", "verified": 1, "total": 1},
+    "separateDeviceRead": {"node": "SP-1", "ok": true, "value": 63, "raw": 63, "atUtcPlus8": "01:20:54.323"},
+    "laterDaqBucket": {"node": "PV-1", "bucketStartUtcPlus8": "01:19:00", "mean": 32.70750000000001, "min": 32.69, "max": 32.72, "count": 28}
+  },
+  "B_cast_film_reproduction": [
+    {"run": "F1", "ingestHttpStatus": 503, "sampleVerified": false, "agentTaskSubmitted": false, "trialWriteAttempted": false},
+    {"run": "F2", "probeAtUtc": "17:08:23.493", "probeValueUm": 55.44, "status": "no four qualifying run-tagged samples within 16 seconds", "agentTaskSubmitted": false, "trialWriteAttempted": false},
+    {"run": "F3", "probeAtUtc": "17:11:13.672", "probeValueUm": 55.44, "status": "unclassified runtime error before sample verification", "agentTaskSubmitted": false, "trialWriteAttempted": false},
+    {"run": "F4", "probeAtUtc": "17:12:54.129", "probeValueUm": 55.04, "status": "post-query sample validation failed; no validated raw series retained", "agentTaskSubmitted": false, "trialWriteAttempted": false, "lineStopConfirmed": true, "testProcessesExited": true, "disposableContainersRemoved": true, "testPortsReleased": true}
+  ]
+}

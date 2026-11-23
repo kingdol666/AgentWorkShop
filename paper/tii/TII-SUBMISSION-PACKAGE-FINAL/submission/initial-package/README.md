@@ -6,7 +6,7 @@
 
 ## 本目录内容
 
-- `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf`：**唯一上传文件**。实测 10 页、US Letter、约 2.61 MB、26 个字体全部嵌入、作者元数据为空。
+- `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf`：**匿名审稿主文件**。实测 10 页、US Letter、约 2.63 MB、26 个字体全部嵌入、作者元数据为空；新版 Fig. 3 在第 5 页。
 - `TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip`：完整论文源码（17 个文件，`main.tex` 在根目录），可导入 Overleaf；不是常规初投必传项。源码的文件夹形式见 `../../TII-SUBMISSION-PACKAGE-FINAL/overleaf-source/`。
 - `Supplementary-File-S7-20261117.pdf`：9 页 S7 叙述材料，供作者备查，**不上传**。TII 的补充材料只接受图形摘要、视频/多媒体和数据集说明。
 - `supplementary-source/`：上述 S7 PDF 的 LaTeX 源码（pdfLaTeX + BibTeX 可复编译，重编译文本与 PDF 逐页一致）；同样仅作者备查。

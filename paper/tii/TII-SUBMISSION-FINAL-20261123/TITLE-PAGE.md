@@ -1,6 +1,8 @@
 # Title Page / Author Metadata — IEEE TII (Double-Blind)
 
 > 使用说明：双盲下这份信息**不进入**审稿 PDF，只在 IEEE Author Portal 的作者/元数据字段填写。
+> 如果门户在 Upload Manuscript 步骤要求 **Title Page** 文件，用同目录的 `TITLE-PAGE.docx`（门户只收 DOC/DOCX）：
+> 用 Word 或 WPS 打开，把所有 `[...]` 占位符换成真实内容，删掉多余的作者行，查找确认不再有 `[`，再上传。
 > 按下表逐项替换 `[...]`，行数按实际作者人数增减；CRediT 角色 14 选（Conceptualization, Methodology, Software,
 > Validation, Formal analysis, Investigation, Resources, Data curation, Writing – original draft, Writing – review & editing,
 > Visualization, Supervision, Project administration, Funding acquisition）。
@@ -11,8 +13,8 @@
 - Title: A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations
 - Type: Regular Research Paper
 - Pages: 10 (submission limit ≤ 10)
-- Abstract words: 216 (single paragraph) | References: 24 | Figures: 6 | Tables: 4 | Algorithms: 1
-- File: `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` (IEEE double column, US Letter, 2,605,564 bytes, all fonts embedded)
+- Abstract words: 220 (single paragraph, whitespace count) | References: 24 | Figures: 6 | Tables: 4 | Algorithms: 1
+- File: `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` (IEEE double column, US Letter, 2,628,504 bytes, all fonts embedded)
 
 ## 2. Authors（按署名顺序）
 
