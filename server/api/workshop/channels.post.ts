@@ -21,6 +21,11 @@ const createChannelSchema = z.object({
   lineId: z.string().trim().optional(),
   /** channel 独立工作目录(omp 子进程 cwd);缺省 data/workspaces/<channelId> */
   workspace: z.string().optional(),
+  /**
+   * 显式挂载到某个 workspace(实体 id)。缺省自动建/挂 owner 的「默认工作区」,
+   * 保证 REST/脚本创建的频道能被 console(`/workshop/w/:wsId`)直接发现。
+   */
+  workspaceId: z.string().trim().min(1).max(64).optional(),
   /** 团队级插件开关(创建时即写入;未选中的插件其工具不注入该团队 Agent) */
   plugins: z
     .array(z.object({
@@ -54,6 +59,9 @@ export default defineApiHandler(async (event) => {
     leadAgent: body.leadAgent,
     ownerUserId: user.id,
     actor: user,
+    // console 是 workspace 作用域;REST/脚本入口默认保证频道可见(可显式指定 workspaceId)
+    mountToDefaultWorkspace: true,
+    workspaceId: body.workspaceId,
   })
   // 团队级插件开关:创建时即写入(未选中的插件其工具不注入该团队 Agent)
   if (Array.isArray(body.plugins) && body.plugins.length) {

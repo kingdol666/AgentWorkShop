@@ -20,6 +20,7 @@ import { parseJson } from '../../db/database'
 import { resolve } from 'node:path'
 import { activeSessionOfMember, SESSION_MARKER } from '../../agents/session-clone'
 import { createChannelSessionRepo } from '../../db/channel-session.repo'
+import { DEFAULT_WORKSPACE_NAME, chooseWorkspaceForNewChannel } from './workspace-defaults'
 
 export abstract class ManagerAdminChannel extends ManagerNotifications {
   listWorkspaces(userId: string): Array<WorkspaceRow & { channelIds: string[] }> {
@@ -59,9 +60,38 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
 
   unmountChannelFromWorkspace(userId: string, workspaceId: string, channelId: string): void {
     const ws = this.deps.repos.users.getWorkspace(workspaceId)
-    if (!ws) throw new AppError(404, 'NOT_FOUND', `workspace 不存在: ${workspaceId}`)
+    if (!ws) throw new AppError(404, ErrorCodes.NOT_FOUND, `workspace 不存在: ${workspaceId}`)
     this.requireOwned(ws.ownerUserId, userId, 'workspace')
     this.deps.repos.users.unmountChannel(workspaceId, channelId)
+  }
+
+  /**
+   * 保证新建频道在 console 可见:console 页按 workspace 作用域读取频道
+   * (`/workshop/w/:wsId`),因此 REST/脚本创建的频道必须挂到某个 workspace。
+   *
+   * 规则(幂等,mount 为 INSERT OR IGNORE):
+   *  - 显式 workspaceId:校验归属后挂载;
+   *  - 否则优先复用 owner 名为「默认工作区」的 workspace;
+   *  - 没有再复用 owner 最早创建的 workspace(避免重复建默认区);
+   *  - 都没有则创建默认 workspace 后挂载。
+   * 项目/模板等内部路径由各自调用方显式挂载,不受本方法影响。
+   */
+  ensureChannelWorkspaceMount(userId: string, channelId: string, workspaceId?: string): WorkspaceRow {
+    const channel = this.requireChannelRow(channelId)
+    this.requireOwned(channel.ownerUserId, userId, 'channel')
+    let workspace: WorkspaceRow
+    if (workspaceId) {
+      const requested = this.deps.repos.users.getWorkspace(workspaceId)
+      if (!requested) throw new AppError(404, ErrorCodes.NOT_FOUND, `workspace 不存在: ${workspaceId}`)
+      this.requireOwned(requested.ownerUserId, userId, 'workspace')
+      workspace = requested
+    }
+    else {
+      workspace = chooseWorkspaceForNewChannel(this.deps.repos.users.listWorkspaces(userId))
+        ?? this.deps.repos.users.createWorkspace(userId, DEFAULT_WORKSPACE_NAME)
+    }
+    this.deps.repos.users.mountChannel(workspace.id, channelId)
+    return workspace
   }
 
   // ===== Channel 管理面 =====
@@ -80,10 +110,23 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     ownerUserId?: string | null
     /** 操作者（用于 spawn/workspace 授权；缺省按普通用户处理） */
     actor?: SpawnActor
-  }): Promise<{ channelId: string, leadAgentId?: string, workspace: string }> {
+    /**
+     * REST/脚本入口:创建后把频道挂到 owner 的默认 workspace,让 console
+     * (`/workshop/w/:wsId`) 能直接发现它。项目/模板路径不传,由各自显式挂载。
+     */
+    mountToDefaultWorkspace?: boolean
+    /** 显式挂载目标(workspace 实体 id);仅与 mountToDefaultWorkspace 配合 */
+    workspaceId?: string
+  }): Promise<{ channelId: string, leadAgentId?: string, workspace: string, workspaceId?: string, workspaceName?: string }> {
     const actor = input.actor ?? { role: 'user' }
     if (input.workspace) assertChannelWorkspaceAllowed(input.workspace, actor)
     if (input.leadAgent) assertSpawnConfigAllowed(input.leadAgent.harness, input.leadAgent.config, actor)
+    // 显式 workspace 在创建频道前校验,避免"频道已建但挂载失败"留下不可见孤儿。
+    if (input.mountToDefaultWorkspace && input.workspaceId && input.ownerUserId) {
+      const requested = this.deps.repos.users.getWorkspace(input.workspaceId)
+      if (!requested) throw new AppError(404, ErrorCodes.NOT_FOUND, `workspace 不存在: ${input.workspaceId}`)
+      this.requireOwned(requested.ownerUserId, input.ownerUserId, 'workspace')
+    }
     const channel = this.deps.repos.channels.create({ name: input.name, description: input.description, scenarioPrompt: input.scenarioPrompt, channelMode: input.channelMode, ownerUserId: input.ownerUserId ?? null })
     // v17:owner 成员记录必须与 Channel 同时落库(不变量:有且只有一条 active owner)。
     // 迁移回填只覆盖**已存在**的 Channel;新建路径若不写,owner 会长期缺席名册 ——
@@ -133,7 +176,15 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     catch (err) {
       log.warn('[workshop] 频道录制流初始化失败(不阻断创建):', err instanceof Error ? err.message : err)
     }
-    return { channelId: channel.id, leadAgentId, workspace }
+    const mountedWorkspace = input.mountToDefaultWorkspace && channel.ownerUserId
+      ? this.ensureChannelWorkspaceMount(channel.ownerUserId, channel.id, input.workspaceId)
+      : null
+    return {
+      channelId: channel.id,
+      leadAgentId,
+      workspace,
+      ...(mountedWorkspace ? { workspaceId: mountedWorkspace.id, workspaceName: mountedWorkspace.name } : {}),
+    }
   }
 
   async getChannel(channelId: string): Promise<ChannelRow & { agents: AgentInfo[] }> {
