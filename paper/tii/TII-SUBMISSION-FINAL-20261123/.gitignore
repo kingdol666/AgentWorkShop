@@ -1,5 +1,5 @@
 # 父目录规则忽略 *.zip；此处显式放行交付用的 Overleaf 源码包
-!/source/TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip
+!/TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip
 
 # 作者本地备查证据；不通过公开 Git 分发
 /supplementary/Supporting-Evidence-S7.zip

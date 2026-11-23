@@ -1,24 +1,62 @@
 # IEEE TII Regular Research Paper 初投清单
 
-核对日期：2026-11-19。依据：[TII 作者须知](https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics)、[初投清单](https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics/new-submission?view=article&id=423:tii-checklist-for-manuscript-submissions&catid=17)、[补充材料规定](https://www.ieee-ies.org/images/files/tii/resources/Supplementary_Material-Revised.pdf)和 [IEEE 摘要指南](https://journals.ieeeauthorcenter.ieee.org/create-your-ieee-journal-article/create-the-text-of-your-article/structure-your-article/)。
+复核日期：2026-11-23（对照 TII 官网当日版本）。依据：[TII 作者须知](https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics)、[初投清单](https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics/new-submission?view=article&id=423:tii-checklist-for-manuscript-submissions&catid=17)、[补充材料规定](https://www.ieee-ies.org/images/files/tii/resources/Supplementary_Material-Revised.pdf)和 [IEEE 投稿与 AI 生成内容政策](https://journals.ieeeauthorcenter.ieee.org/become-an-ieee-journal-author/publishing-ethics/guidelines-and-policies/submission-and-peer-review-policies/)。
 
-## 选择文件
+> 本清单与汇总文件夹 `../../TII-SUBMISSION-FINAL-20261123/SUBMISSION-CHECKLIST.md` 内容相同，只调整了文件路径。两处如有出入，以汇总文件夹为准。
 
-| 文件（位于 `initial-package/`） | 本次初投处理 |
+## 结论
+
+常规初投**只上传一个文件**：`initial-package/TII-SUBMISSION-PACKAGE-FINAL-latex.pdf`。其余文件均为作者留存，不上传。
+
+| 文件 | 处理 |
 |---|---|
-| `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | **上传至审稿稿件栏。** 本地核验：IEEEtran 双栏、Letter、10 页、约 2.61 MB、字体全部嵌入（26/26）、作者元数据为空；摘要为单段且无引文、脚注和公式。页数和文件大小上限仍须以提交时的 Author Portal 为准。 |
-| `TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | 源码留存，可导入 Overleaf；官方清单未列为初投必传。 |
-| `Supplementary-File-S7-20261117.pdf` | 作者备查；不要把这份 9 页叙述 PDF 当作常规补充件上传。正文已保留主要选样依据与排除理由，不依赖 S7 叙述附件。`supplementary-source/` 为其 LaTeX 源码（可复编译），同样仅作者备查。 |
-| `Supporting-Evidence-S7.zip`（本地） | 作者备查；含脱敏记录、README 和校验清单，不是默认上传项。若编辑部要求数据，应先确认允许的类型、格式、大小和匿名方式；不要用补充材料规避页数限制。 |
+| `initial-package/TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | **上传至审稿稿件栏。** 实测：IEEEtran 双栏、US Letter、10 页、2,605,564 字节（约 2.61 MB）、26 个字体全部嵌入、无 Type 3 字体、作者元数据为空。 |
+| `initial-package/TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | 源码留存，可导入 Overleaf（`main.tex` 在压缩包根目录）；官方清单未列为初投必传。解包重编译与交付 PDF 文本一致、10/10 页像素一致。源码的文件夹形式在 `../../TII-SUBMISSION-PACKAGE-FINAL/overleaf-source/`（权威副本）。 |
+| `PORTAL-FIELDS.md` | 门户字段粘贴稿：文章类型、题目、摘要、关键词，与稿件第 1 页逐字一致。 |
+| `TITLE-PAGE.md` | 作者、ORCID、CRediT、基金模板，只填入门户；不并入审稿 PDF。 |
+| `COVER-LETTER.md` | 可选。TII 清单第 3 条把 cover letter 列为不得随稿提交的识别性材料；只有门户提供“仅编辑可见”的投稿信栏位时才使用。 |
+| `initial-package/Supplementary-File-S7-20261117.pdf` | 作者备查，不上传。TII 的补充材料只接受图形摘要、视频/多媒体、数据集说明；这份 9 页叙述性 PDF 不在其列，也不能用来规避页数限制。正文已自含主要选样依据与排除理由，不依赖它。 |
+| `initial-package/supplementary-source/` | S7 的 LaTeX 源码；重编译文本与 S7 PDF 逐页一致。仅作者备查。 |
+| `initial-package/Supporting-Evidence-S7.zip` | 作者备查的本地脱敏证据副本，**不进公开 Git**。若编辑部要求数据，先确认允许的类型、格式、大小和匿名方式。 |
 
-截至 2026-11-19 查阅的 TII 在线初投清单将匿名稿件列为必需上传项；请在提交当天复核 Author Portal 是否要求其他文件。不要上传整个目录、Word 编辑版、作者信息模板或公开 GitHub 链接。S7 默认作为作者备查；如编辑部要求提供额外数据，先确认当时允许的文件类型、格式、大小限制与匿名要求。
+不要上传整个文件夹、Word 编辑版、作者信息模板或公开 GitHub 链接。
 
-## 作者在门户确认
+## 官方 13 条逐条对照（2026-11-23 实测）
 
-- [ ] 登录 [IEEE Author Portal](https://ieee.atyponrex.com/journal/tii)，选择 Regular Research Paper；所有作者提供机构邮箱与 ORCID，确认作者顺序、单位、通讯作者。
-- [ ] 核对并填写作者贡献、基金和利益冲突（按门户实际字段）。如需提交作者信息页或投稿信，先确认不会向审稿人显示；不要把它们合并到稿件 PDF。
-- [ ] 确认所有作者批准本稿，稿件不在其他刊物审理；如存在会议论文、预印本或其他先前公开版本，按期刊政策如实披露。公开 Git 历史可能把稿件与项目或账号关联：在保密的编辑沟通渠道告知已有公开版本及链接，不在匿名稿件或审稿附件中放链接。不要把公开 Git 推送视为期刊授权的预印本存档。
-- [ ] 核对稿件的 AI 使用声明与实际工具及范围一致，包括摘要草拟和图 4 排版；根据 [IEEE PSPB 政策](https://pspb.ieee.org/images/files/PSPB/opsmanual.pdf) 和编辑部指引，在匿名审稿期间使用适当的披露位置，并在出版稿按要求披露生成内容。
-- [ ] 查看上传后的转换预览并确认 10 页完整、图 4 第 6 页、参考文献无截断、作者和识别性致谢不在审稿稿件中。门户字段、附件受理及编辑初筛，以实际系统与编辑部通知为准。
+| # | 官方要求 | 稿件情况 |
+|---|---|---|
+| 1 | 新投稿不得超过 10 页，否则立即退回 | **10 页**，符合 |
+| 2 | 所有作者账号须使用机构邮箱 | 作者在门户完成 |
+| 3 | 稿件中不得出现任何可识别作者的信息（姓名、简介、单位、cover letter、版权表、脚注、致谢等） | PDF 作者元数据为空；关键词扫描未见邮箱、网址、单位名、致谢段、作者简介和未解析引用。作者姓名系统无法代查，提交前请自行通读一遍。末尾 Declarations 只含利益冲突、数据与 AI 披露，不含身份信息 |
+| 4 | 若大量内容已发表于会议论文，须隐藏作者身份并以第三方口吻引用 | 无会议版（请作者确认） |
+| 5 | 多部分论文将被立即拒稿 | 不适用，本文为单篇 |
+| 6 | 只上传 PDF；必须嵌入非标准字体或避免使用 | **26/26 字体嵌入**，符合 |
+| 7 | 必须采用 IEEE 双栏格式 | IEEEtran journal 双栏，符合 |
+| 8 | 文件不超过 40 MB | 约 2.61 MB，符合 |
+| 9 | 选题须在 TII 范围内 | 工业智能体、工业通信、人机交互与监控，属 TII 范围 |
+| 10 | 所有被引文献须在正文中引用并讨论；应有相当比例为近期文献 | 24 条全部在正文中引用并讨论，其中 2025–2026 年 21 条。17 个 DOI 均可解析：16 条期刊/会议论文的 Crossref 登记信息（标题、刊物、年份、卷期页、作者）与 `refs.bib` 逐项一致，1 条为 CRC 专著（条目按 2001 年初版著录，DOI 指向 2018 年重印版）；4 条 arXiv 与 arXiv API 一致；MCP 规范链接可访问。2 条 ANSI/ISA 标准链接因网站反爬未能机器核验（标准本身存在） |
+| 11 | 摘要须规范撰写 | 单段 216 词，无引文、公式、脚注；唯一缩写 IAE 已在摘要内定义 |
+| 12 | 清楚说明自己的贡献 | 引言列出三条贡献，并标注对应章节 |
+| 13 | 行文清晰、无冗余 | 属评审判断项；全文章节、图表编号、交叉引用完整 |
 
-终稿上限 12 页；第 11 页起每页 250 美元（IES 会员每页 200 美元）。本清单不是查重结果，也不代表已提交或通过编辑初筛。
+## 作者在门户需要自己完成的事项
+
+系统无法代填，提交前逐项确认：
+
+- [ ] 登录 [IEEE Author Portal](https://ieee.atyponrex.com/journal/tii)（IEEE 账号，不是 ScholarOne 账号），选择 Regular Research Paper。
+- [ ] 按 `PORTAL-FIELDS.md` 粘贴题目、摘要、关键词。
+- [ ] 录入全部作者：姓名、单位、**机构邮箱**、**ORCID**（TII 要求每位作者都有），确认作者顺序与通讯作者。
+- [ ] 填写基金、利益冲突、作者贡献（按门户实际字段）；可参考 `TITLE-PAGE.md`。
+- [ ] 确认全体作者同意本稿，且稿件不在其他刊物审理。
+- [ ] **先前公开传播**：本稿的 PDF 与源码已随代码仓库进入公开 Git 历史。在仅编辑可见的渠道如实告知并提供链接；不要把链接放进匿名稿件或审稿附件。不要把公开 Git 推送视为期刊认可的预印本存档。
+- [ ] **AI 使用披露**：核对稿件 Declarations 中的披露与实际使用的工具和范围一致。IEEE 政策要求 AI 生成内容在 Acknowledgments 中披露，并指明具体章节和使用程度；TII 双盲要求匿名稿不含致谢，因此初投稿放在不含身份的 Declarations 中。**录用后的终稿须把这条披露移到 Acknowledgments。**
+- [ ] 上传后查看系统转换预览：确认 10 页完整，6 图 4 表无缺失，参考文献未截断。
+- [ ] 建议审稿人（可选）：3–5 位从事工业智能体、OPC UA/MCP 工具访问或受治理产线写入研究的学者，无利益冲突。
+
+## 页数与费用
+
+初投严格不超过 10 页；终稿严格不超过 12 页；第 11 页起每页 250 美元（IES 会员每页 200 美元）。
+
+## 说明
+
+本清单是格式与合规核对，不代表已通过编辑初筛或查重。门户字段与附件受理以提交当天的系统为准。
