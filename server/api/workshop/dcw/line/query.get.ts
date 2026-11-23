@@ -1,6 +1,7 @@
 /**
  * GET /api/workshop/dcw/line/query —— 产线数据查询(产品/配方/工艺参数/时间/间隔)。
  * qs: productId, recipeId, paramKey, from(epoch ms), to, bucketMs, limit
+ * from/to 缺省时按 24h 向前补齐(见 resolveLineQueryWindow),避免无窗口的全表聚合。
  */
 import { getQuery } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
@@ -11,6 +12,7 @@ import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/d
 import { getDcwProductRepo } from '@/server/services/workshop/dcw/dcw-product.repo'
 import { getDaqNodeRepo } from '@/server/services/workshop/daq/daq-node.repo'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
+import { resolveLineQueryWindow } from '@/server/services/workshop/dcw/line-query-window'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -49,14 +51,15 @@ export default defineApiHandler(async (event) => {
       throw new AppError(400, 'VALIDATION_ERROR', `查询参数 ${k} 必须为非负安全整数`)
     }
   }
+  const window = resolveLineQueryWindow(num(q.from), num(q.to))
   const result = await getDcwController().lineQuery({
     lineId: q.lineId ? String(q.lineId) : undefined,
     productId: q.productId ? String(q.productId) : undefined,
     recipeId: q.recipeId ? String(q.recipeId) : undefined,
     paramKey: q.paramKey ? String(q.paramKey) : undefined,
     nodeId: q.nodeId ? String(q.nodeId) : undefined,
-    fromMs: num(q.from),
-    toMs: num(q.to),
+    fromMs: window.fromMs,
+    toMs: window.toMs,
     bucketMs: num(q.bucketMs),
     limit: num(q.limit),
   })
