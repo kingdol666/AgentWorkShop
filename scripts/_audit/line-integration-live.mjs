@@ -92,14 +92,14 @@ async function main() {
   const wsId = (Array.isArray(wsList) ? wsList[0]?.id : null)
     ?? (await api('POST', '/api/workshop/workspaces', { name: `产线集成-${randomUUID().slice(0, 5)}` })).data?.id
   const chName = `产线集成频道-${randomUUID().slice(0, 5)}`
-  const ch = await api('POST', '/api/workshop/channels', { name: chName, lineId: spNode.lineId })
+  // 带 workspaceId 建频道:服务端随创建只挂载一次(建完再补挂会挂进两个工作区)
+  const ch = await api('POST', '/api/workshop/channels', { name: chName, lineId: spNode.lineId, workspaceId: wsId })
   const cid = ch.data?.channelId ?? ch.data?.id
   if (!step('L1-channel', Boolean(cid), `channel=${String(cid).slice(0, 12)} ${chName}`)) return finish(false)
   const lead = await api('POST', `/api/workshop/channels/${cid}/agents`, { name: '集成Lead', harness: 'mock', role: 'lead' })
   const leadId = lead.data?.id ?? lead.data?.agentId
   await api('POST', `/api/workshop/channels/${cid}/activate`, {})
-  const mounted = await api('POST', `/api/workshop/workspaces/${wsId}/channels/${cid}`, {})
-  if (!step('L1-mount', Boolean(leadId) && mounted.status === 200, `lead=${String(leadId).slice(0, 12)} mounted=${mounted.status}`)) return finish(false)
+  if (!step('L1-mount', Boolean(leadId) && ch.data?.workspaceId === wsId, `lead=${String(leadId).slice(0, 12)} mounted=${ch.data?.workspaceId ?? 'none'}`)) return finish(false)
 
   // ── L2 成员实例令牌 ──
   const tok = await api('POST', `/api/workshop/channels/${cid}/agents/${leadId}/rotate-token`, {})
@@ -177,12 +177,11 @@ async function main() {
     // 首线若忙(成功试验会挂起优化观察窗,期间拒新试验)也自然落到后续线。
     let candAgent = agent
     if ((cand.node.lineId ?? '') !== (spNode.lineId ?? '')) {
-      const c2 = await api('POST', '/api/workshop/channels', { name: `产线集成频道-${cand.node.lineId?.slice(0, 6)}-${randomUUID().slice(0, 4)}`, lineId: cand.node.lineId })
+      const c2 = await api('POST', '/api/workshop/channels', { name: `产线集成频道-${cand.node.lineId?.slice(0, 6)}-${randomUUID().slice(0, 4)}`, lineId: cand.node.lineId, workspaceId: wsId })
       const cid2 = c2.data?.channelId ?? c2.data?.id
       const l2 = await api('POST', `/api/workshop/channels/${cid2}/agents`, { name: '集成Lead', harness: 'mock', role: 'lead' })
       const candLeadId = l2.data?.id ?? l2.data?.agentId
       await api('POST', `/api/workshop/channels/${cid2}/activate`, {})
-      await api('POST', `/api/workshop/workspaces/${wsId}/channels/${cid2}`, {})
       const t2 = await api('POST', `/api/workshop/channels/${cid2}/agents/${candLeadId}/rotate-token`, {})
       candAgent = { id: candLeadId, token: t2.data?.token ?? '' }
       const bd = await api('POST', '/api/workshop/agent-tools/bindings', { agentId: candLeadId, nodeId: cand.node.id, kind: 'dcw' })

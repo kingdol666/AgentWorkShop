@@ -155,10 +155,8 @@ async function main() {
   }
 
   console.log('━━━ 8. 数字孪生界面渲染(/town,软件 WebGL) ━━━')
-  // town 按用户 workspace 挂载的频道渲染:建工作台 → 建频道 → 挂载
-  const mkCh = await api('POST', '/api/workshop/channels', { body: { name: `孪生空间频道 ${Date.now().toString(36)}` } })
-  const townChannelId = mkCh?.data?.channelId ?? mkCh?.data?.id ?? mkCh?.data?.channel?.id
-  check('为本用户创建频道(town 渲染前提)', mkCh?.code === 0 && !!townChannelId, townChannelId ?? mkCh?.message ?? '')
+  // town 按用户 workspace 挂载的频道渲染:先定工作台,再带 workspaceId 建频道。
+  // 服务端随创建只挂载一次;建完再补挂会把同一频道挂进两个工作区(默认工作区 + 本工作台)。
   const wsList = await api('GET', '/api/workshop/workspaces')
   let wsId = (wsList?.data?.workspaces ?? wsList?.data ?? [])[0]?.id
   if (!wsId) {
@@ -166,8 +164,10 @@ async function main() {
     wsId = mkWs?.data?.id ?? mkWs?.data?.workspace?.id
   }
   check('工作台就绪', !!wsId, wsId)
-  const mount = await api('POST', `/api/workshop/workspaces/${wsId}/channels/${townChannelId}`, { body: {} })
-  check('频道挂载到工作台', mount?.code === 0 || mount?.ok === true || mount?.status === 200, mount?.message ?? JSON.stringify(mount)?.slice(0, 80))
+  const mkCh = await api('POST', '/api/workshop/channels', { body: { name: `孪生空间频道 ${Date.now().toString(36)}`, workspaceId: wsId } })
+  const townChannelId = mkCh?.data?.channelId ?? mkCh?.data?.id ?? mkCh?.data?.channel?.id
+  check('为本用户创建频道(town 渲染前提)', mkCh?.code === 0 && !!townChannelId, townChannelId ?? mkCh?.message ?? '')
+  check('频道随创建挂载到工作台', mkCh?.data?.workspaceId === wsId, mkCh?.data?.workspaceName ?? '')
   const browser = await puppeteer.launch({
     executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
     headless: 'new',

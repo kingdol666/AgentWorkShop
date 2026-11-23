@@ -359,7 +359,7 @@ async function instantiate(): Promise<void> {
       aria-live="assertive"
     >
       <span class="i-tabler-alert-triangle" />
-      <span class="err-text">{{ error }}</span>
+      <span class="err-text" :title="error">{{ error }}</span>
       <button
         class="btn ghost small"
         @click="load"

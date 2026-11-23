@@ -85,8 +85,11 @@ export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping 
             modelId: this.config.model as string,
           })
         }
-        catch {
-          // 模型设置失败不致命(用 omp 默认模型)
+        catch (err) {
+          // 模型设置失败不致命,但绝不静默:omp 会继续用**它自己的默认模型**
+          // (可能是全局 config.yml 里的云端模型)——实测表现为回合卡到超时、
+          // 后续 harness 进程退出,而日志里什么都没有。这里留痕并指出正确取值。
+          log.warn(`[OmpAgent:${this.selfAgentId}] omp 拒绝配置的模型 ${String(this.config.provider)}/${String(this.config.model)}(${err instanceof Error ? err.message : String(err)});将回落到 omp 默认模型。provider/modelId 必须取自 \`omp models list\` 的 provider 段名与模型行。`)
         }
       }
 

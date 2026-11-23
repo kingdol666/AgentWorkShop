@@ -78,8 +78,8 @@ for (const spec of CHANNELS) {
   }
   const cid = ch.channelId ?? ch.id
   channels.push({ id: cid, name: spec.name, goal: spec.goal })
-  await api('POST', `/api/workshop/workspaces/${wsId}/channels/${cid}`, { token })
-  console.log('mounted channel:', spec.name, cid)
+  // 频道已随创建挂到 wsId(见上方 workspaceId);此处不再补挂,否则会挂进两个工作区
+  console.log('channel ready:', spec.name, cid)
 }
 
 console.log(JSON.stringify({ wsId, channels }, null, 1))
