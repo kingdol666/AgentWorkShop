@@ -9,3 +9,6 @@ build/
 
 # 作者本地备查证据；不通过公开 Git 分发
 /submission/initial-package/Supporting-Evidence-S7.zip
+
+# 历史绘图草稿与生成式插画（仅本地留存，成图以 resources/ 为准）
+/submission/initial-package/figure-sources/

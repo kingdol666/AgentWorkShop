@@ -1,11 +1,11 @@
 \section{System Design}
 \label{sec:design}
-The runtime exposes its named services through two entry paths. Task-mediated calls run through the collaboration runtime and a registered agent harness that hands the agent scoped tools for online acquisition, analysis, and control-intent submission. Direct REST or stdio-MCP calls support verification and integration testing. Both paths meet at the shared dispatcher (Fig.~\ref{fig:arch}), and scene configuration supplies the context, acquisition bindings, objectives, and write limits.
+The runtime exposes named operations through two paths (Fig.~\ref{fig:arch}). In a task, a registered agent harness is the adapter that exposes scoped tools for data acquisition (DAQ) and intent submission. An agent uses observations and the task objective to analyze what to propose; it does not decide whether a write is authorized. Direct representational state transfer (REST) or stdio MCP calls invoke operations without a task. The architecture routes both entries through one dispatcher; Section~\ref{sec:eval} tests selected direct calls, not equivalent behavior across both entries.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{resources/fig2.png}
-\caption{Task-mediated and direct tool calls share a dispatcher; a registered agent can acquire observations and submit a control intent, while direct calls provide a verification path. Direct calls do not require a task. Approved intents undergo route-specific revalidation (omitted here; see Fig.~\ref{fig:hitl}). The no-approval path remains subject to applicable authorization and write guards. Requests rejected by pre-dispatch checks stop before driver dispatch. Feedback and signals are schematic, not measured traces. Approvals, command outcomes, optional readbacks, and later data-acquisition (DAQ) observations are distinct records. In-flight exclusion of overlapping writes per node and process is not shown; equipment interlocks remain necessary.}
+\caption{Task-mediated and direct tool calls share a dispatcher; a registered agent can acquire observations and submit a control intent, while direct calls provide a test entry point. Direct calls do not require a task. Approved intents undergo route-specific revalidation (omitted here; see Fig.~\ref{fig:hitl}). The no-approval path remains subject to applicable authorization and write guards. Requests rejected by pre-dispatch checks stop before driver dispatch. Feedback and signals are schematic, not measured traces. Approvals, command outcomes, optional readbacks, and later data-acquisition (DAQ) observations are distinct records. In-flight exclusion of overlapping writes per node and process is not shown; equipment interlocks remain necessary.}
 \label{fig:arch}
 \end{figure*}
 
@@ -17,9 +17,9 @@ For each agent turn, the context builder assembles the production context and el
 
 \subsection{Layered Architecture}
 \label{sec:layers}
-Fig.~\ref{fig:arch} shows the layers: task and chat routes use registered harness adapters providing scoped acquisition and control tools, constrained by binding and channel policy; agent analysis remains distinct from deterministic boundary checks, and the feedback path and signals are schematic.
+Fig.~\ref{fig:arch} shows the layers: task and chat routes use registered harness adapters providing scoped acquisition and control tools, constrained by binding and by the policy of the agent's channel, its scoped execution context; agent analysis remains distinct from deterministic boundary checks, and the feedback path and signals are schematic.
 
-Direct REST agent-tool calls and the stdio-MCP bridge bypass task execution and enter the shared dispatcher. The task route gives the agent context, acquisition targets, and objectives; operation services resolve control mappings and guards. Read and analysis services---data acquisition (DAQ), MES access, retrieval, and optional model services---are separated from write and recipe services. Input/output mappings connect semantic nodes to built-in or plugin drivers, and owning services retain task, command, observation, and configuration records.
+Direct REST agent-tool calls and the stdio-MCP bridge bypass task execution and enter the shared dispatcher. The task route gives the agent context, acquisition targets, and objectives; operation services resolve control mappings and guards. Read and analysis services---DAQ, MES access, retrieval, and optional model services---are separated from write and recipe services. Input/output mappings connect semantic nodes to built-in or plugin drivers, and owning services retain task, command, observation, and configuration records.
 
 \subsection{Scene Configuration as the Integration Boundary}
 \label{sec:scene-config}
@@ -60,8 +60,7 @@ the named operation before selecting its handler. The handler resolves live
 production state, applies route-specific guards and limits, and requests any
 required approval before device I/O.
 
-For an industrial operation $u$ by agent $a$ in channel $c$, define the
-shared dispatch condition as
+For an industrial operation $u$ by agent $a$ in channel $c$, the shared dispatch condition is
 \begin{equation}
 \mathcal{A}(a,c,u)=\bigwedge_{X\in\mathcal{C}(u)}X(a,c,u).
 \label{eq:dispatch-contract}

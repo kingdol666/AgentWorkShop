@@ -10,7 +10,7 @@
 - Title: A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations
 - Type: Regular Research Paper
 - Pages: 10 (submission limit ≤ 10)
-- Abstract words: approximately 200 (IEEE-style whitespace count; verify in portal) | References: 24 | Figures: 6 | Tables: 4
+- Abstract words: 216 (whitespace count; verify in portal) | References: 24 | Figures: 6 | Tables: 4
 
 ## 2. Authors（按署名顺序）
 
@@ -41,7 +41,7 @@ Selected simulator records and run summaries are available on reasonable request
 
 ## 7. AI-use disclosure
 
-[Verify against actual use.] Generative AI via ZCode assisted with language editing, abstract drafting, LaTeX source organization, and the layout of Fig. 4. The authors remain responsible for the manuscript.
+[Verify the tool and scope against actual use, including the sources of the final artwork.] The manuscript's anonymous Acknowledgment discloses the use of generative AI via ZCode to edit the prose, draft the abstract, organize the LaTeX source, and lay out Fig. 4. The authors remain responsible for the manuscript.
 
 ## 8. Dual-use / ethics
 

@@ -1,0 +1,104 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
+% Compile: latexmk -pdf main.tex
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algpseudocode}
+% Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
+% the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
+% the latexmk -pdf (pdfLaTeX) path is unaffected.
+\usepackage{iftex}
+\ifxetex
+  \DeclareFontFamily{TU}{ptm}{}
+  \DeclareFontShape{TU}{ptm}{m}{n}{<->ptmr8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{n}{<->ptmb8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{it}{<->ptmri8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{it}{<->ptmbi8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sl}{<->ptmro8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sc}{<->ptmr8t}{}
+\fi
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{stfloats}
+\usepackage{placeins}
+\usepackage{url}
+% Allow line breaks at any character inside URLs/DOIs so long reference links
+% do not leave ragged gaps at column edges (IEEE reference layout).
+\usepackage{xurl}
+\usepackage{etoolbox}
+\urlstyle{same}
+% Cross-references and citations. The cite package renders IEEE-style citation
+% groups ([14]--[16], [20], [21]) with hyperref support.
+\usepackage{cite}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\hypersetup{bookmarksnumbered=true,
+  pdftitle={A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations},
+  pdfauthor={},
+  pdfsubject={IEEE Transactions on Industrial Informatics},
+  pdfkeywords={industrial agents, online data acquisition, agent-mediated control, governed setpoint control, industrial communication}}
+
+% Float placement only; IEEEtran margins and body type remain unchanged.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{7}
+\setcounter{dbltopnumber}{1}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.03}
+\renewcommand{\floatpagefraction}{0.72}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.72}
+
+% Tight but conventional float separation; body type and margins are unchanged.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{7pt plus 2pt minus 3pt}
+\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
+
+\newcommand{\system}{the platform}
+
+\begin{document}
+\bstctlcite{IEEEbstctl}
+
+\title{A Configuration-Driven Runtime for Integrating Industrial Agents With Online Data Acquisition and Governed Setpoint Operations}
+
+\author{}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Governed Setpoint Operations}
+
+\maketitle
+
+\begin{abstract}
+An industrial agent can use online process measurements to propose a setpoint change, but neither read access nor a plausible proposal grants write authority. We present a configuration-driven runtime that binds line, product, recipe, and run context to separate acquisition and control mappings, protocol drivers, and write limits. The design routes task-mediated and direct calls through a common authorization boundary. Handlers check write limits and revalidate proposals when approval is required. The runtime distinguishes command outcomes, setpoint readbacks, and subsequent process measurements. At 55 writable endpoints in four simulated scenes spanning five protocol families, direct probes received the expected acceptance response for all 220 admissible requests and the expected rejection for all 219 collected structural violations. All 216 available simulator readbacks matched the requested values. In a mock-driver fixture, requests outside the configured window were rejected with the window check enabled and accepted when it was removed. Neither test used a language-model agent. In a selected simulator batch with no documented selection rule, a scripted policy had lower integrated absolute error than a no-write condition in all nine valid blocks. Three language-model episodes were canceled without reaching the target band. The tests support conformance of the exercised write paths to their configured rules; they do not establish autonomous closed-loop control, end-to-end agent-to-device traceability, or physical-plant performance.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Industrial agents, online data acquisition, agent-mediated control, governed setpoint writing, industrial communication
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/system}
+\input{sections/closedloop}
+\input{sections/modules}
+\input{sections/evaluation}
+\input{sections/discussion}
+
+\section*{Acknowledgment}
+The authors used generative AI via ZCode to edit the prose, draft the abstract, organize the LaTeX source, and lay out Fig.~\ref{fig:hitl}. The authors remain responsible for the manuscript.
+
+\section*{Declarations}
+The authors declare no competing interests. The study used simulated scenes, mock-driver fixtures, and a PLC-based simulated twin. It involved no human participants, personal data, or physical-plant data. Author contributions and funding are withheld during anonymous review. Selected simulator records and run summaries are available on reasonable request; complete service snapshots, raw twin samples, and row-level server journals were not retained.
+
+\bibliographystyle{IEEEtran}
+% \IEEEtriggeratref{10} removed 2026-11-13: with the longer data-availability
+% statement the forced break spilled the remaining references onto an 11th
+% page; natural flow ends on page 10.
+\bibliography{resources/refs}
+
+\end{document}
+
