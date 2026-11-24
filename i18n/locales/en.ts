@@ -307,6 +307,8 @@ export default {
       lockedSlot: 'Fixed by the published revision',
       missingSlot: 'Enter a value for {name} to bind this revision.',
       refreshBinding: 'Refresh binding',
+      sessionInstance: 'session instance',
+      frozenBinding: 'Members of a session or project task instance keep the binding fixed at creation. It cannot be changed here until that instance closes.',
       unbindTitle: 'Unbind {name}?',
       unbindDescription: 'This removes the member’s current pinned prefab revision.',
       alreadyBound: 'This member already has a binding. Unbind it explicitly before choosing another revision.',

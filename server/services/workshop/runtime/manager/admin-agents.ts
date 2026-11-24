@@ -12,7 +12,7 @@ import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { assertSpawnConfigAllowed, assertSpawnConfigPatchAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
 import { instanceToAgentInfo, log } from './helpers'
-import { createChannelSession, closeChannelSession, reconcileClosingSessions, activeSessionIdOfMember, activeSessionOfMember, isUnclosedSessionClone, SESSION_MARKER } from '../../agents/session-clone'
+import { createChannelSession, closeChannelSession, reconcileClosingSessions, activeSessionIdOfMember, activeSessionOfMember, frozenBindingMembers, isUnclosedSessionClone, SESSION_MARKER } from '../../agents/session-clone'
 import { createChannelSessionBindingSnapshot, trustedSessionBindingIdentity } from '../../agents/session-snapshot'
 import { createChannelProductBindingRepo } from '../../db/channel-product-binding.repo'
 import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
@@ -364,14 +364,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     if (this.deps.repos.messages.hasUnconsumedByChannelAgent(member.channelId, member.id)) {
       throw new AppError(409, 'PREFAB_BINDING_BUSY', '成员存在待处理消息，请等待消息消费后再修改 AgentPrefab 绑定')
     }
-    const sessions = createChannelSessionRepo(this.deps.db).listByChannel(member.channelId)
-    const frozen = sessions.some((session) => {
-      if (session.status !== 'active' && session.status !== 'closing') return false
-      const map = parseJson<unknown>(session.memberMapJson, null)
-      return !!map && typeof map === 'object' && !Array.isArray(map)
-        && Object.values(map as Record<string, unknown>).some(value => value === member.id)
-    })
-    if (frozen) {
+    if (frozenBindingMembers(createChannelSessionRepo(this.deps.db).listByChannel(member.channelId)).has(member.id)) {
       throw new AppError(409, 'PREFAB_BINDING_FROZEN', '会话或项目任务实例成员的绑定快照已冻结，不能修改')
     }
   }

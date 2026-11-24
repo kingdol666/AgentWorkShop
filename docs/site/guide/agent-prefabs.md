@@ -34,7 +34,7 @@ AgentPrefab 把「角色/场景提示词 + 多维插槽 + 受支持模型配置 
 ## 4. 版本、克隆与重试
 
 - 成员绑定固定 `(prefabId, revision, slotValues, contentHash)`；发布新版本不会自动升级既有绑定。
-- Session 创建时固定成员 binding 与快照 hash；Session clone 复制同一 revision，不追最新版。
+- Session 创建时固定成员 binding 与快照 hash；Session clone 复制同一 revision，不追最新版。未关闭的会话或项目任务实例里的成员，在绑定卡片中只能查看，不能绑定或解绑。
 - Project task instance 首次创建时固定快照；同一工作项重试复用原快照；新工作项读取当时 Channel binding。
 - 必需能力缺失、revision 缺失、绑定损坏或 slot 必填为空时，新作业 fail closed；不会回退 legacy 工具面。
 - 普通 revision 更新等待安全空闲边界，不强停忙碌任务/HITL。管理员撤销工具/Skill/MCP 或停用成员后，下一次调用立即被拒。
@@ -51,4 +51,5 @@ AgentPrefab 把「角色/场景提示词 + 多维插槽 + 受支持模型配置 
 
 - 隔离全新实例实机验收 **21/21**（`scripts/experiments/prefab-acceptance.mjs`）：全新 `~/.agent/skills` 全局发现、导入默认未启用、启用、预制体草稿/发布、成员固定 revision 绑定、工具目录收窄且含 `activate_skill`、低信任 Skill 正文注入、越权调用拒绝、Session 克隆绑定与快照哈希、发布 revision 2 不自动升级、Skill 撤销即时拒绝、MCP 非 HTTPS 拒绝/清单无密钥/发现失败有界。
 - 合并主干门禁：unit 2185/2186（1 条件跳过）、MCP 14/14、skills 197/0、docs 101/0、i18n 3439/3439、lint/typecheck/build 全绿。
-- 未验证项：公网 HTTPS 外部 MCP 正向联通、Prefab 约束下真实 OMP 模型作业、浏览器 UI 点击验收。见[全流程验收报告](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)。
+- 未验证项：公网 HTTPS 外部 MCP 正向联通。见[全流程验收报告](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)。
+- 2026-11-24 管理与绑定复验：Web 与桌面端各 **56/56**——真实界面上的创建、编辑、绑定、解绑，会话实例成员只读，确认框跟随主题；并在自有隔离的本地模型（12B）下确认已绑定成员发给模型的请求带预制件角色提示、未绑定成员不带。小模型的任务完成率只做记录，不作为断言。见[验收报告](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-24-agent-prefab-management/REPORT.md)。

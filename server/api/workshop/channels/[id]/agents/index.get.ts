@@ -12,6 +12,8 @@ import { defineApiHandler } from '../../../../../utils/response'
 import { AppError } from '../../../../../utils/errors'
 import { getWorkshopManager } from '../../../../../plugins/workshop'
 import { channelAgentSummaries } from '../../../../../services/workshop/agents/agent-dto'
+import { frozenBindingMembers } from '../../../../../services/workshop/agents/session-clone'
+import { createChannelSessionRepo } from '../../../../../services/workshop/db/channel-session.repo'
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
@@ -29,5 +31,7 @@ export default defineApiHandler(async (event) => {
   const channel = (await manager.listChannels()).find(c => c.id === channelId)
   if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${channelId}`)
   const includeConfig = Boolean(user && (user.role === 'admin' || channel.ownerUserId === user.id))
-  return channelAgentSummaries(await manager.listChannelAgents(channelId), { includeConfig })
+  // 与绑定写入守卫同一条规则:未关闭会话/项目实例的成员只能查看,界面据此不提供绑定/解绑。
+  const frozenPrefabMembers = frozenBindingMembers(createChannelSessionRepo(manager.deps.db).listByChannel(channelId))
+  return channelAgentSummaries(await manager.listChannelAgents(channelId), { includeConfig, frozenPrefabMembers })
 })

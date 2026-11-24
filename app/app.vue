@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { message, theme } from 'ant-design-vue'
+import { ConfigProvider, message, theme } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import enUS from 'ant-design-vue/es/locale/en_US'
 
@@ -135,6 +135,19 @@ const themeConfig = computed(() => {
         titleFontSize: 18,
       },
     },
+  }
+})
+
+// 静态弹窗（Modal.confirm / message）挂在页面树之外，读不到模板里的 <a-config-provider>，
+// 会退回 antd 默认主题和「取 消」自动空格。4.2.6 的 ConfigProvider.config 类型只声明了
+// theme，但实现把传入项原样作为 Provider props 使用，所以这里同步同一份配置。
+watchEffect(() => {
+  if (import.meta.client) {
+    ConfigProvider.config({
+      theme: themeConfig.value,
+      locale: antdLocale.value,
+      autoInsertSpaceInButton: false,
+    } as Parameters<typeof ConfigProvider.config>[0])
   }
 })
 

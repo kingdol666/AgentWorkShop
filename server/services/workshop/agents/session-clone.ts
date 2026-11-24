@@ -354,6 +354,23 @@ export function isUnclosedSessionClone(sessions: ChannelSessionRow[], memberId: 
     && session.instanceKind !== 'project' && memberMapContains(session.memberMapJson, memberId))
 }
 
+/**
+ * 绑定冻结面：任一未关闭会话（含项目任务实例）成员映射命中的实例，其 Prefab 绑定
+ * 在实例创建时固定。写入守卫与成员列表读面共用这一条规则，避免界面可选项与守卫漂移。
+ */
+export function frozenBindingMembers(sessions: Array<{ status: string, memberMapJson: string }>): Set<string> {
+  const frozen = new Set<string>()
+  for (const session of sessions) {
+    if (session.status !== 'active' && session.status !== 'closing') continue
+    const map = parseJson<unknown>(session.memberMapJson, null)
+    if (!map || typeof map !== 'object' || Array.isArray(map)) continue
+    for (const value of Object.values(map as Record<string, unknown>)) {
+      if (typeof value === 'string') frozen.add(value)
+    }
+  }
+  return frozen
+}
+
 export function activeSessionOfMember(
   sessions: ChannelSessionRow[],
   memberId: string,

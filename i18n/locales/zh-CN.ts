@@ -307,6 +307,8 @@ export default {
       lockedSlot: '由发布版本固定',
       missingSlot: '填写 {name} 后才能绑定此版本。',
       refreshBinding: '刷新绑定',
+      sessionInstance: '会话实例',
+      frozenBinding: '会话或项目任务实例的成员在创建时固定绑定，实例关闭前不能在这里修改。',
       unbindTitle: '解绑 {name}？',
       unbindDescription: '此操作将移除该成员当前固定的预制件版本。',
       alreadyBound: '此成员已有绑定。请选择显式解绑，再绑定其他版本。',

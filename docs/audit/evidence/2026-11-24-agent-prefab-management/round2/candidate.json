@@ -1,0 +1,12 @@
+{
+  "head": "615906c7757872c9d2bd00ae06538fdd41908361",
+  "builtFrom": "git archive HEAD",
+  "excluded": [
+    "docs",
+    "paper",
+    "paper-show",
+    "vibe_images",
+    "bench"
+  ],
+  "createdAt": "2026-11-24T12:20:58.025Z"
+}

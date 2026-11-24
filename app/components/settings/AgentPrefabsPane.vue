@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { message, Modal } from 'ant-design-vue'
 import { ApiError, apiFetch } from '@/app/composables/workshop/apiClient'
+import { formatLocalStamp } from '@/app/composables/workshop/useLocalTime'
 import { useUserStore } from '@/app/stores/workshop/user'
 
 defineProps<{ activeTab: string }>()
@@ -39,6 +40,8 @@ interface Member {
   role: string
   prefabBindingVersion: string | null
   prefabBinding: { prefabId: string, revision: number, contentHash: string } | null
+  /** 属于未关闭的会话/项目任务实例：绑定在实例创建时固定，这里只能查看 */
+  prefabBindingFrozen?: boolean
 }
 
 type EditorMode = 'view' | 'edit' | 'new'
@@ -297,9 +300,17 @@ let membersRequest = 0
 let revisionRequest = 0
 
 const bindMember = computed(() => members.value.find(member => member.id === bindMemberId.value))
+const bindMemberFrozen = computed(() => bindMember.value?.prefabBindingFrozen === true)
+const memberOptions = computed(() => members.value.map(member => ({
+  value: member.id,
+  label: member.prefabBindingFrozen
+    ? `${member.name} (${member.role}) · ${t('settings.prefabs.sessionInstance')}`
+    : `${member.name} (${member.role})`,
+})))
 const hasBinding = computed(() => !!(bindMember.value?.prefabBindingVersion || bindMember.value?.prefabBinding))
+// Frozen members stay selectable for inspection, but the server rejects any binding change for them.
 const canChooseBinding = computed(() => bindMember.value?.prefabBindingVersion === null && !hasBinding.value
-  && !channelsLoading.value && !membersLoading.value && !bindingBusy.value)
+  && !bindMemberFrozen.value && !channelsLoading.value && !membersLoading.value && !bindingBusy.value)
 const boundPrefab = computed(() => prefabs.value.find(p => p.id === bindMember.value?.prefabBinding?.prefabId))
 const bindablePrefabs = computed(() => prefabs.value.filter(p => !p.archivedAt && p.headRevision > 0))
 const bindTarget = computed(() => bindablePrefabs.value.find(p => p.id === bindPrefabId.value))
@@ -314,7 +325,8 @@ const activeBindDraft = computed(() => bindTarget.value && bindDraft.value?.pref
 const missingBindSlot = computed(() => activeBindDraft.value?.prompt.slots.find(slot => slot.required
   && !slotValue(slot).trim()))
 const canBind = computed(() => canChooseBinding.value && !revisionLoading.value && !!activeBindDraft.value && !missingBindSlot.value)
-const canUnbind = computed(() => !channelsLoading.value && !membersLoading.value && !bindingBusy.value && !!bindMember.value?.prefabBindingVersion)
+const canUnbind = computed(() => !channelsLoading.value && !membersLoading.value && !bindingBusy.value
+  && !bindMemberFrozen.value && !!bindMember.value?.prefabBindingVersion)
 
 function slotValue(slot: Slot): string {
   return (slot.allowMemberOverride !== false ? bindSlots.value[slot.key] : undefined) ?? slot.defaultValue ?? ''
@@ -618,10 +630,11 @@ onMounted(async () => {
             {{ record.headRevision || t('settings.prefabs.draftOnly') }}
           </template>
         </a-table-column>
-        <a-table-column
-          :title="t('settings.prefabs.updatedAt')"
-          data-index="updatedAt"
-        />
+        <a-table-column :title="t('settings.prefabs.updatedAt')">
+          <template #default="{ record }">
+            <span :title="record.updatedAt">{{ formatLocalStamp(record.updatedAt) }}</span>
+          </template>
+        </a-table-column>
         <a-table-column :title="t('settings.skills.actions')">
           <template #default="{ record }">
             <div class="pf-row-actions">
@@ -969,7 +982,7 @@ onMounted(async () => {
           <a-select
             v-model:value="bindMemberId"
             :aria-label="t('settings.prefabs.member')"
-            :options="members.map(m => ({ value: m.id, label: `${m.name} (${m.role})` }))"
+            :options="memberOptions"
             :loading="membersLoading"
             :disabled="!bindChannelId || channelsLoading || membersLoading || bindingBusy"
             :placeholder="t('settings.prefabs.selectMember')"
@@ -1010,7 +1023,14 @@ onMounted(async () => {
         </template>
       </p>
       <p
-        v-if="hasBinding"
+        v-if="bindMemberFrozen"
+        class="pf-meta"
+        role="status"
+      >
+        {{ t('settings.prefabs.frozenBinding') }}
+      </p>
+      <p
+        v-else-if="hasBinding"
         class="pf-meta"
       >
         {{ t('settings.prefabs.unbindBeforeRebind') }}
@@ -1091,22 +1111,22 @@ onMounted(async () => {
           {{ t('settings.prefabs.refreshBinding') }}
         </a-button>
         <a-button
-          v-if="!hasBinding"
-          type="primary"
-          :loading="bindingBusy"
-          :disabled="!canBind"
-          @click="bind"
-        >
-          {{ t('settings.prefabs.bind') }}
-        </a-button>
-        <a-button
-          v-else
+          v-if="hasBinding && !bindMemberFrozen"
           danger
           :loading="bindingBusy"
           :disabled="!canUnbind"
           @click="unbind"
         >
           {{ t('settings.prefabs.unbind') }}
+        </a-button>
+        <a-button
+          v-else-if="!hasBinding && !bindMemberFrozen"
+          type="primary"
+          :loading="bindingBusy"
+          :disabled="!canBind"
+          @click="bind"
+        >
+          {{ t('settings.prefabs.bind') }}
         </a-button>
       </div>
     </a-card>

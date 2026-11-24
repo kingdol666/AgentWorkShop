@@ -1,0 +1,739 @@
+{
+  "startedAt": "2026-11-24T14:04:13.148Z",
+  "platform": "win32",
+  "node": "v24.19.0",
+  "target": "both",
+  "externalMcpDiscovery": "NOT_RUN",
+  "localModelRequested": true,
+  "localFixture": "NOT_REQUESTED",
+  "runs": [
+    {
+      "target": "web",
+      "checks": [
+        {
+          "name": "fresh_disposable_database_requires_setup",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "admin_register",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "skill_discovered_from_user_agent_root",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "skill_imported_immutable_disabled",
+          "status": "PASS",
+          "http": 200,
+          "enabledType": "boolean",
+          "enabledValue": false
+        },
+        {
+          "name": "skill_enabled",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "prefab_draft_created",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "prefab_revision_published",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "channel_with_mock_lead",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "member_bound_to_pinned_revision",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "catalog_exposes_activate_skill_only_for_assigned_skill",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "catalog_narrows_unselected_tool",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "activate_skill_returns_low_trust_body",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "unselected_tool_denied_at_dispatch",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "session_created",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "session_clone_copies_pinned_binding",
+          "status": "PASS"
+        },
+        {
+          "name": "session_snapshot_hash_matches",
+          "status": "PASS"
+        },
+        {
+          "name": "prefab_draft_edit_persists",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "revision2_published",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "existing_binding_not_auto_upgraded",
+          "status": "PASS"
+        },
+        {
+          "name": "revoked_skill_activation_denied",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "skill_restored_after_revocation",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "mcp_rejects_non_https",
+          "status": "PASS",
+          "http": 400,
+          "code": "MCP_HTTPS_REQUIRED"
+        },
+        {
+          "name": "mcp_manifest_registered_without_secret",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "mcp_discovery_unknown_manifest_rejected_before_connection",
+          "status": "PASS",
+          "http": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "name": "mcp_fixture_removed",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_create_named_draft",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_listed_edit_updates_row_and_survives_reload",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_member_bound_by_api_shows_pinned_revision",
+          "status": "PASS",
+          "http": 200,
+          "text": "当前绑定：Acceptance Analyst · 版本 1 · b40b1c30babd"
+        },
+        {
+          "name": "visible_session_instance_member_is_view_only",
+          "status": "PASS",
+          "http": 200,
+          "bind": false,
+          "unbind": false,
+          "unbindFirst": false,
+          "frozen": true,
+          "prefabSelect": false,
+          "text": "当前绑定：Acceptance Analyst · 版本 1 · b40b1c30babd"
+        },
+        {
+          "name": "visible_unbound_member_shows_default_state",
+          "status": "PASS",
+          "http": 200,
+          "text": "当前绑定：未绑定"
+        },
+        {
+          "name": "visible_bind_pins_published_head_revision",
+          "status": "PASS",
+          "http": 200,
+          "text": "当前绑定：Acceptance Analyst · 版本 2 · 3acf89ed3a73"
+        },
+        {
+          "name": "visible_bound_member_offers_only_unbind",
+          "status": "PASS",
+          "http": 200,
+          "bind": false,
+          "unbind": true,
+          "unbindFirst": true,
+          "frozen": false,
+          "prefabSelect": false
+        },
+        {
+          "name": "visible_binding_persisted_with_generation",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "mock_unbound_runtime_dispatch_completed",
+          "status": "PASS"
+        },
+        {
+          "name": "mock_bound_runtime_dispatch_completed",
+          "status": "PASS"
+        },
+        {
+          "name": "visible_unbind_cancel_keeps_binding",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_unbind_asks_for_confirmation",
+          "status": "PASS",
+          "http": 200,
+          "buttons": [
+            "取消",
+            "解绑"
+          ]
+        },
+        {
+          "name": "visible_confirm_dialog_follows_theme",
+          "status": "PASS",
+          "http": 200,
+          "darkSurface": "color(srgb 0.0509804 0.0823529 0.129412 / 0.96)",
+          "lightSurface": "color(srgb 1 1 1 / 0.98)"
+        },
+        {
+          "name": "visible_unbind_sends_generation_guard",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_unbind_returns_member_to_default_run",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_unbound_member_offers_bind_again",
+          "status": "PASS",
+          "http": 200,
+          "bind": true,
+          "unbind": false,
+          "unbindFirst": false,
+          "frozen": false,
+          "prefabSelect": true
+        },
+        {
+          "name": "mock_unbound_after_unbind_runtime_dispatch_completed",
+          "status": "PASS"
+        },
+        {
+          "name": "concurrent_bind_exactly_one_winner",
+          "status": "PASS"
+        },
+        {
+          "name": "concurrent_winner_is_the_only_persisted_binding",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "versioned_clear_removes_binding",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "published_prefab_archived",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "archived_prefab_cannot_create_new_binding",
+          "status": "PASS",
+          "http": 409,
+          "code": "PREFAB_ARCHIVED"
+        },
+        {
+          "name": "archived_prefab_old_pin_still_resolves",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "unpublished_draft_deleted_not_archived",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "archived_and_deleted_excluded_from_active_list",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "default_job_correct_binding_before_dispatch",
+          "status": "PASS"
+        },
+        {
+          "name": "default_job_ran_real_turns_with_local_model",
+          "status": "PASS",
+          "taskState": "SUBMITTED",
+          "completed": null,
+          "turns": 13,
+          "toolCalls": [
+            "aw_7d2f94c4e81624283249e8d95c7703bd_c55dec5b12b44b7c_report_prog",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo",
+            "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe"
+          ],
+          "nonceInReply": false
+        },
+        {
+          "name": "default_job_requests_carry_no_prefab_prompt",
+          "status": "PASS",
+          "prefabRoleTextLogged": false
+        },
+        {
+          "name": "expert_job_correct_binding_before_dispatch",
+          "status": "PASS"
+        },
+        {
+          "name": "expert_job_ran_real_turns_with_local_model",
+          "status": "PASS",
+          "taskState": "COMPLETED",
+          "completed": "COMPLETED",
+          "turns": 3,
+          "toolCalls": [
+            "aw_5ccf408a3680502608778cdb810c0b09_c55dec5b12b44b7c_report_prog",
+            "aw_5ccf408a3680502608778cdb810c0b09_8d5160f9ceaa74e4_get_task_de",
+            "aw_5ccf408a3680502608778cdb810c0b09_75c77375d86d8d49_complete_ta"
+          ],
+          "nonceInReply": false
+        },
+        {
+          "name": "expert_role_prompt_reached_model_request",
+          "status": "PASS",
+          "prefabRoleTextLogged": true
+        }
+      ],
+      "ui": "PASS",
+      "uiBinding": "PASS",
+      "localModel": "PASS",
+      "timings": {
+        "startup": 1191,
+        "l10": 399,
+        "visible-edit": 4022,
+        "visible-bind": 6654,
+        "mock-runtime-jobs": 143,
+        "visible-unbind": 7040,
+        "lifecycle": 128,
+        "local-model-preflight": 1798,
+        "local-model-jobs": 90496
+      },
+      "uiNotes": [],
+      "status": "PASS",
+      "cleanup": "PASS",
+      "pageErrors": [],
+      "visibility": "visible",
+      "visibilityAtStart": [
+        "visible",
+        "visible",
+        "visible"
+      ],
+      "electronSwitches": null
+    },
+    {
+      "target": "desktop",
+      "checks": [
+        {
+          "name": "fresh_disposable_database_requires_setup",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "admin_register",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "skill_discovered_from_user_agent_root",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "skill_imported_immutable_disabled",
+          "status": "PASS",
+          "http": 200,
+          "enabledType": "boolean",
+          "enabledValue": false
+        },
+        {
+          "name": "skill_enabled",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "prefab_draft_created",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "prefab_revision_published",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "channel_with_mock_lead",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "member_bound_to_pinned_revision",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "catalog_exposes_activate_skill_only_for_assigned_skill",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "catalog_narrows_unselected_tool",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "activate_skill_returns_low_trust_body",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "unselected_tool_denied_at_dispatch",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "session_created",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "session_clone_copies_pinned_binding",
+          "status": "PASS"
+        },
+        {
+          "name": "session_snapshot_hash_matches",
+          "status": "PASS"
+        },
+        {
+          "name": "prefab_draft_edit_persists",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "revision2_published",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "existing_binding_not_auto_upgraded",
+          "status": "PASS"
+        },
+        {
+          "name": "revoked_skill_activation_denied",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "skill_restored_after_revocation",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "mcp_rejects_non_https",
+          "status": "PASS",
+          "http": 400,
+          "code": "MCP_HTTPS_REQUIRED"
+        },
+        {
+          "name": "mcp_manifest_registered_without_secret",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "mcp_discovery_unknown_manifest_rejected_before_connection",
+          "status": "PASS",
+          "http": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "name": "mcp_fixture_removed",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_create_named_draft",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_listed_edit_updates_row_and_survives_reload",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_member_bound_by_api_shows_pinned_revision",
+          "status": "PASS",
+          "http": 200,
+          "text": "当前绑定：Acceptance Analyst · 版本 1 · b40b1c30babd"
+        },
+        {
+          "name": "visible_session_instance_member_is_view_only",
+          "status": "PASS",
+          "http": 200,
+          "bind": false,
+          "unbind": false,
+          "unbindFirst": false,
+          "frozen": true,
+          "prefabSelect": false,
+          "text": "当前绑定：Acceptance Analyst · 版本 1 · b40b1c30babd"
+        },
+        {
+          "name": "visible_unbound_member_shows_default_state",
+          "status": "PASS",
+          "http": 200,
+          "text": "当前绑定：未绑定"
+        },
+        {
+          "name": "visible_bind_pins_published_head_revision",
+          "status": "PASS",
+          "http": 200,
+          "text": "当前绑定：Acceptance Analyst · 版本 2 · 3acf89ed3a73"
+        },
+        {
+          "name": "visible_bound_member_offers_only_unbind",
+          "status": "PASS",
+          "http": 200,
+          "bind": false,
+          "unbind": true,
+          "unbindFirst": true,
+          "frozen": false,
+          "prefabSelect": false
+        },
+        {
+          "name": "visible_binding_persisted_with_generation",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "mock_unbound_runtime_dispatch_completed",
+          "status": "PASS"
+        },
+        {
+          "name": "mock_bound_runtime_dispatch_completed",
+          "status": "PASS"
+        },
+        {
+          "name": "visible_unbind_cancel_keeps_binding",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_unbind_asks_for_confirmation",
+          "status": "PASS",
+          "http": 200,
+          "buttons": [
+            "取消",
+            "解绑"
+          ]
+        },
+        {
+          "name": "visible_confirm_dialog_follows_theme",
+          "status": "PASS",
+          "http": 200,
+          "darkSurface": "color(srgb 0.0509804 0.0823529 0.129412 / 0.96)",
+          "lightSurface": "color(srgb 1 1 1 / 0.98)"
+        },
+        {
+          "name": "visible_unbind_sends_generation_guard",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_unbind_returns_member_to_default_run",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "visible_unbound_member_offers_bind_again",
+          "status": "PASS",
+          "http": 200,
+          "bind": true,
+          "unbind": false,
+          "unbindFirst": false,
+          "frozen": false,
+          "prefabSelect": true
+        },
+        {
+          "name": "mock_unbound_after_unbind_runtime_dispatch_completed",
+          "status": "PASS"
+        },
+        {
+          "name": "concurrent_bind_exactly_one_winner",
+          "status": "PASS"
+        },
+        {
+          "name": "concurrent_winner_is_the_only_persisted_binding",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "versioned_clear_removes_binding",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "published_prefab_archived",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "archived_prefab_cannot_create_new_binding",
+          "status": "PASS",
+          "http": 409,
+          "code": "PREFAB_ARCHIVED"
+        },
+        {
+          "name": "archived_prefab_old_pin_still_resolves",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "unpublished_draft_deleted_not_archived",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "archived_and_deleted_excluded_from_active_list",
+          "status": "PASS",
+          "http": 200
+        },
+        {
+          "name": "default_job_correct_binding_before_dispatch",
+          "status": "PASS"
+        },
+        {
+          "name": "default_job_ran_real_turns_with_local_model",
+          "status": "PASS",
+          "taskState": "COMPLETED",
+          "completed": "COMPLETED",
+          "turns": 3,
+          "toolCalls": [
+            "aw_33658be25efc372902d52f669bf710d3_c55dec5b12b44b7c_report_prog",
+            "aw_33658be25efc372902d52f669bf710d3_8d5160f9ceaa74e4_get_task_de",
+            "aw_33658be25efc372902d52f669bf710d3_75c77375d86d8d49_complete_ta"
+          ],
+          "nonceInReply": false
+        },
+        {
+          "name": "default_job_requests_carry_no_prefab_prompt",
+          "status": "PASS",
+          "prefabRoleTextLogged": false
+        },
+        {
+          "name": "expert_job_correct_binding_before_dispatch",
+          "status": "PASS"
+        },
+        {
+          "name": "expert_job_ran_real_turns_with_local_model",
+          "status": "PASS",
+          "taskState": "COMPLETED",
+          "completed": "COMPLETED",
+          "turns": 6,
+          "toolCalls": [
+            "aw_0065d22dbe3cce7b08971e5128a877cf_c55dec5b12b44b7c_report_prog",
+            "aw_0065d22dbe3cce7b08971e5128a877cf_8d5160f9ceaa74e4_get_task_de",
+            "aw_0065d22dbe3cce7b08971e5128a877cf_c55dec5b12b44b7c_report_prog",
+            "aw_0065d22dbe3cce7b08971e5128a877cf_7c6169ae673cd3f1_submit_task",
+            "aw_0065d22dbe3cce7b08971e5128a877cf_422252ea917fdb3b_send_messag",
+            "aw_0065d22dbe3cce7b08971e5128a877cf_75c77375d86d8d49_complete_ta"
+          ],
+          "nonceInReply": false
+        },
+        {
+          "name": "expert_role_prompt_reached_model_request",
+          "status": "PASS",
+          "prefabRoleTextLogged": true
+        }
+      ],
+      "ui": "PASS",
+      "uiBinding": "PASS",
+      "localModel": "PASS",
+      "timings": {
+        "startup": 4441,
+        "l10": 413,
+        "visible-edit": 2804,
+        "visible-bind": 6733,
+        "mock-runtime-jobs": 419,
+        "visible-unbind": 7240,
+        "lifecycle": 138,
+        "local-model-preflight": 2087,
+        "local-model-jobs": 46832
+      },
+      "uiNotes": [],
+      "status": "PASS",
+      "cleanup": "PASS",
+      "pageErrors": [],
+      "visibility": "visible",
+      "visibilityAtStart": [
+        "visible",
+        "visible",
+        "visible"
+      ],
+      "electronSwitches": [
+        "--remote-debugging-pipe",
+        "--disable-background-networking",
+        "--disable-component-update",
+        "--disable-sync",
+        "--no-proxy-server",
+        "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1",
+        "--disable-features=CalculateNativeWinOcclusion",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding"
+      ]
+    }
+  ],
+  "bundleEntry": {
+    "sha256": "49ddbc7279e23132df973e0a7eefb1402019e1c58d8a570d265f9acb20376e0f",
+    "sourceEquivalenceVerified": false
+  },
+  "status": "PASS",
+  "finishedAt": "2026-11-24T14:07:20.926Z",
+  "summary": {
+    "total": 112,
+    "pass": 112,
+    "fail": 0
+  }
+}

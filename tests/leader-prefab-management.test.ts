@@ -166,6 +166,34 @@ test('scheduler forwards selectors and explicit detach unchanged to the same wor
   ])
 })
 
+test('members of an unclosed session are frozen: the roster flags them and binding writes stay refused until it closes', async (t) => {
+  const f = fixture(t)
+  const { createChannelSessionRepo } = await import('../server/services/workshop/db/channel-session.repo')
+  const { frozenBindingMembers } = await import('../server/services/workshop/agents/session-clone')
+  const { channelAgentSummary } = await import('../server/services/workshop/agents/agent-dto')
+  const revision = f.publish()
+  const bindingJson = JSON.stringify(f.prefabs.buildBinding({ id: 'channel-owner' }, revision.prefabId, 1, { goal: 'x' }))
+  const sessions = createChannelSessionRepo(f.db)
+  const session = sessions.create({ channelId: f.channel.id, memberMap: { lead: f.lead.id } })
+  const frozen = frozenBindingMembers(sessions.listByChannel(f.channel.id))
+  assert.deepEqual([...frozen], [f.lead.id])
+  const member: AgentInfo = { id: f.lead.id, channelId: f.channel.id, name: f.lead.name, harness: 'mock', role: 'lead', config: {} }
+  assert.equal(channelAgentSummary(member, { frozenPrefabMembers: frozen }).prefabBindingFrozen, true)
+  assert.equal('prefabBindingFrozen' in channelAgentSummary(member), false)
+
+  const bind = () => f.manager.updateChannelAgent(f.lead.id, { prefabBindingJson: bindingJson }, { channelId: f.channel.id })
+  await assert.rejects(bind(), { code: 'PREFAB_BINDING_FROZEN' })
+  assert.equal(f.channelAgents.findById(f.lead.id)?.prefabBindingJson, '')
+  assert.deepEqual(f.reloads, [])
+  assert.equal(sessions.beginClosing(session.id), true)
+  await assert.rejects(bind(), { code: 'PREFAB_BINDING_FROZEN' })
+  assert.equal(sessions.close(session.id), true)
+  assert.equal(frozenBindingMembers(sessions.listByChannel(f.channel.id)).size, 0)
+  await bind()
+  assert.equal(JSON.parse(f.channelAgents.findById(f.lead.id)!.prefabBindingJson!).contentHash, revision.contentHash)
+  assert.deepEqual(f.reloads, [f.lead.id])
+})
+
 test('tool catalog exposes the selector for both locales', () => {
   for (const locale of ['zh', 'en'] as const) {
     const tools = loadHostToolDefs(locale)

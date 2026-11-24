@@ -28,6 +28,8 @@ export interface ChannelAgentSummary {
   templateId: string | null
   prefabBinding: Pick<AgentPrefabBinding, 'prefabId' | 'revision' | 'contentHash'> | null
   prefabBindingVersion: string | null
+  /** 成员属于未关闭的会话/项目任务实例：绑定在实例创建时固定，只读面据此提示 */
+  prefabBindingFrozen?: boolean
   config?: Record<string, unknown>
 }
 
@@ -38,7 +40,7 @@ function safeConfig(config: Record<string, unknown> | undefined | null): Record<
 }
 
 /** 名册投影（token 永远不出现） */
-export function channelAgentSummary(agent: AgentInfo, opts: { includeConfig?: boolean } = {}): ChannelAgentSummary {
+export function channelAgentSummary(agent: AgentInfo, opts: { includeConfig?: boolean, frozenPrefabMembers?: ReadonlySet<string> } = {}): ChannelAgentSummary {
   const summary: ChannelAgentSummary = {
     id: agent.id,
     channelId: agent.channelId,
@@ -53,11 +55,12 @@ export function channelAgentSummary(agent: AgentInfo, opts: { includeConfig?: bo
       : null,
     prefabBindingVersion: agent.prefabBindingVersion ?? null,
   }
+  if (opts.frozenPrefabMembers?.has(agent.id)) summary.prefabBindingFrozen = true
   if (opts.includeConfig) summary.config = safeConfig(agent.config)
   return summary
 }
 
 /** 批量投影 */
-export function channelAgentSummaries(agents: AgentInfo[], opts: { includeConfig?: boolean } = {}): ChannelAgentSummary[] {
+export function channelAgentSummaries(agents: AgentInfo[], opts: { includeConfig?: boolean, frozenPrefabMembers?: ReadonlySet<string> } = {}): ChannelAgentSummary[] {
   return agents.map(a => channelAgentSummary(a, opts))
 }

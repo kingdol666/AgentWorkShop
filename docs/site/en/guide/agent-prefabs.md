@@ -34,7 +34,7 @@ Effective capability = prefab selection ∩ system enabled/review ∩ Channel/Pr
 ## 4. Versions, clones and retries
 
 - A member binding pins `(prefabId, revision, slotValues, contentHash)`; publishing a new revision never silently upgrades existing bindings.
-- Session creation pins the member binding and snapshot hash; session clones copy the same revision and do not follow the latest.
+- Session creation pins the member binding and snapshot hash; session clones copy the same revision and do not follow the latest. Members of an unclosed session or project task instance are view-only in the binding card: they cannot be bound or unbound there.
 - A Project task instance pins its snapshot on first creation; retries of the same work item reuse it; a new work item reads the Channel binding at that time.
 - Missing required capability, missing revision, corrupt binding, or an empty required slot fails new work closed; it never falls back to the legacy tool surface.
 - Ordinary revision updates wait for a safe idle boundary and do not force-stop busy work/HITL. Admin revocation, member disablement or tool/Skill/MCP disablement blocks the next call immediately.
@@ -51,4 +51,5 @@ Effective capability = prefab selection ∩ system enabled/review ∩ Channel/Pr
 
 - Isolated fresh-instance live acceptance **21/21** (`scripts/experiments/prefab-acceptance.mjs`): global-scope discovery from a clean `~/.agent/skills`, immutable import disabled by default, enable, prefab draft/publish, member binding to the pinned revision, tool-catalog narrowing with `activate_skill` present, low-trust skill body injection, unauthorized dispatch denial, session clone binding + snapshot hash, revision 2 without auto-upgrade, immediate denial after skill revocation, and MCP non-HTTPS rejection / secret-less manifest / bounded discovery failure.
 - Merged-main gates: unit 2185/2186 (1 conditional skip), MCP 14/14, skills 197/0, docs 101/0, i18n 3439/3439, lint/typecheck/build PASS.
-- Not yet verified: an external MCP positive live trace against a public HTTPS server, real OMP-model work under a prefab, and browser UI click-through. See the [full-flow acceptance report](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md).
+- Not yet verified: an external MCP positive live trace against a public HTTPS server. See the [full-flow acceptance report](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md).
+- 2026-11-24 management and binding re-acceptance: **56/56 on both Web and desktop** — create, edit, bind and unbind through the visible UI, session-instance members view-only, the confirmation dialog following the theme; and under an owned, isolated local model (12B) the bound member's requests carried the prefab role text while the unbound member's did not. Task completion of a small model is recorded, not asserted. See the [acceptance report](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-24-agent-prefab-management/REPORT.md).
