@@ -1,0 +1,1477 @@
+{
+  "capturedAt": "2026-11-24T04:03:37.775Z",
+  "lines": [
+    {
+      "controlMode": "manual",
+      "id": "ln-4d6e8cd7",
+      "name": "Injection moulding quality-window study (disposable simulator)",
+      "color": "#3aa0ff",
+      "description": "PP appliance panel: part-weight spec 32.5 +/- 0.35 g, flash <= 0.4 %, sink mark <= 1.5 %. Baseline holding pressure is low, so part weight starts near 31.3 g; the governed write path brings the setpoint back into the band.",
+      "simulated": false,
+      "createdAt": "2026-11-24T11:48:57.881+08:00"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "dw-52356a22",
+      "name": "scen-injection:dcw:barrel-temp-1-sp",
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 240,
+      "readValue": 240,
+      "driver": "modbus-tcp",
+      "unit": "℃",
+      "semantics": "Barrel zone 1 temperature setpoint (Modbus TCP)"
+    },
+    {
+      "id": "dw-3343b754",
+      "name": "scen-injection:dcw:barrel-temp-2-sp",
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 246,
+      "readValue": 246,
+      "driver": "modbus-tcp",
+      "unit": "℃",
+      "semantics": "Barrel zone 2 temperature setpoint (Modbus TCP)"
+    },
+    {
+      "id": "dw-3d74dcd3",
+      "name": "scen-injection:dcw:barrel-temp-3-sp",
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 252,
+      "readValue": 252,
+      "driver": "modbus-tcp",
+      "unit": "℃",
+      "semantics": "Barrel zone 3 temperature setpoint (Modbus TCP)"
+    },
+    {
+      "id": "dw-ce12a306",
+      "name": "scen-injection:dcw:barrel-temp-4-sp",
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 258,
+      "readValue": 258,
+      "driver": "modbus-tcp",
+      "unit": "℃",
+      "semantics": "Barrel zone 4 temperature setpoint (Modbus TCP)"
+    },
+    {
+      "id": "dw-7f8eefe4",
+      "name": "scen-injection:dcw:screw-speed-sp",
+      "min": 60,
+      "max": 200,
+      "stepLimit": 3,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 120,
+      "readValue": 120,
+      "driver": "modbus-tcp",
+      "unit": "rpm",
+      "semantics": "Plasticising screw speed setpoint (Modbus TCP)"
+    },
+    {
+      "id": "dw-4feb99fd",
+      "name": "scen-injection:dcw:mold-temp-sp",
+      "min": 20,
+      "max": 95,
+      "stepLimit": 1.5,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 40,
+      "readValue": 40,
+      "driver": "modbus-rtu",
+      "unit": "℃",
+      "semantics": "Mould temperature setpoint (Modbus RTU)"
+    },
+    {
+      "id": "dw-dce2c044",
+      "name": "scen-injection:dcw:clamp-force-sp",
+      "min": 800,
+      "max": 2500,
+      "stepLimit": 34,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 1600,
+      "readValue": 1600,
+      "driver": "modbus-rtu",
+      "unit": "kN",
+      "semantics": "Clamping force setpoint (Modbus RTU)"
+    },
+    {
+      "id": "dw-6c4ba40e",
+      "name": "scen-injection:dcw:inject-speed-sp",
+      "min": 30,
+      "max": 130,
+      "stepLimit": 2,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 85,
+      "readValue": 85,
+      "driver": "opcua",
+      "unit": "mm/s",
+      "semantics": "Injection speed setpoint (OPC UA)"
+    },
+    {
+      "id": "dw-339dbf7c",
+      "name": "scen-injection:dcw:hold-pressure-sp",
+      "min": 20,
+      "max": 110,
+      "stepLimit": 1.8,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 46.8,
+      "readValue": 46.8,
+      "driver": "opcua",
+      "unit": "bar",
+      "semantics": "Holding pressure setpoint - first control for part weight (OPC UA)"
+    },
+    {
+      "id": "dw-ae9b4603",
+      "name": "scen-injection:dcw:hold-time-sp",
+      "min": 3,
+      "max": 15,
+      "stepLimit": 0.2,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 6,
+      "readValue": 6,
+      "driver": "opcua",
+      "unit": "s",
+      "semantics": "Holding time setpoint (OPC UA)"
+    },
+    {
+      "id": "dw-78578b3c",
+      "name": "scen-injection:dcw:cool-water-sp",
+      "min": 10,
+      "max": 45,
+      "stepLimit": 0.7,
+      "writeLockSeconds": 60,
+      "holdIntervalMs": 0,
+      "value": 24,
+      "readValue": 24,
+      "driver": "mqtt",
+      "unit": "℃",
+      "semantics": "Cooling water temperature setpoint (MQTT command topic)"
+    }
+  ],
+  "history": [
+    {
+      "id": "wh-bfe388e8",
+      "nodeId": "dw-339dbf7c",
+      "nodeName": "scen-injection:dcw:hold-pressure-sp",
+      "param": "烘箱温度设定",
+      "eng": 46.8,
+      "raw": 46.8,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:46.8,回读 46.8(标定后物理值 46.8)",
+      "recipeRunId": "rr-7b33651f",
+      "at": "2026-11-24T12:01:41.443+08:00"
+    },
+    {
+      "id": "wh-35f938c2",
+      "nodeId": "dw-78578b3c",
+      "nodeName": "scen-injection:dcw:cool-water-sp",
+      "param": "烘箱温度设定",
+      "eng": 24,
+      "raw": 24,
+      "ok": true,
+      "ack": "transport-ack",
+      "message": "已发布 24 → aw/inj/coolwater/set(QoS 1;broker 已受理,设备侧待验证)(标定后物理值 24)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.965+08:00"
+    },
+    {
+      "id": "wh-ea461859",
+      "nodeId": "dw-ae9b4603",
+      "nodeName": "scen-injection:dcw:hold-time-sp",
+      "param": "烘箱温度设定",
+      "eng": 6,
+      "raw": 6,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:6,回读 6(标定后物理值 6)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.954+08:00"
+    },
+    {
+      "id": "wh-d1f27872",
+      "nodeId": "dw-339dbf7c",
+      "nodeName": "scen-injection:dcw:hold-pressure-sp",
+      "param": "烘箱温度设定",
+      "eng": 45,
+      "raw": 45,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:45,回读 45(标定后物理值 45)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.945+08:00"
+    },
+    {
+      "id": "wh-c49b66a6",
+      "nodeId": "dw-6c4ba40e",
+      "nodeName": "scen-injection:dcw:inject-speed-sp",
+      "param": "烘箱温度设定",
+      "eng": 85,
+      "raw": 85,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:85,回读 85(标定后物理值 85)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.932+08:00"
+    },
+    {
+      "id": "wh-bf8a547f",
+      "nodeId": "dw-dce2c044",
+      "nodeName": "scen-injection:dcw:clamp-force-sp",
+      "param": "烘箱温度设定",
+      "eng": 1600,
+      "raw": 1600,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:1600 → raw 1600,回读 1600(标定后物理值 1600)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.922+08:00"
+    },
+    {
+      "id": "wh-abeec588",
+      "nodeId": "dw-4feb99fd",
+      "nodeName": "scen-injection:dcw:mold-temp-sp",
+      "param": "烘箱温度设定",
+      "eng": 40,
+      "raw": 40,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:40 → raw 40,回读 40(标定后物理值 40)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.913+08:00"
+    },
+    {
+      "id": "wh-ce4519cb",
+      "nodeId": "dw-7f8eefe4",
+      "nodeName": "scen-injection:dcw:screw-speed-sp",
+      "param": "烘箱温度设定",
+      "eng": 120,
+      "raw": 120,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:120 → raw 120,回读 120(标定后物理值 120)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.882+08:00"
+    },
+    {
+      "id": "wh-91a2ee6e",
+      "nodeId": "dw-ce12a306",
+      "nodeName": "scen-injection:dcw:barrel-temp-4-sp",
+      "param": "烘箱温度设定",
+      "eng": 258,
+      "raw": 258,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:258 → raw 258,回读 258(标定后物理值 258)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.851+08:00"
+    },
+    {
+      "id": "wh-03e897da",
+      "nodeId": "dw-3d74dcd3",
+      "nodeName": "scen-injection:dcw:barrel-temp-3-sp",
+      "param": "烘箱温度设定",
+      "eng": 252,
+      "raw": 252,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:252 → raw 252,回读 252(标定后物理值 252)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.820+08:00"
+    },
+    {
+      "id": "wh-2d4b4185",
+      "nodeId": "dw-3343b754",
+      "nodeName": "scen-injection:dcw:barrel-temp-2-sp",
+      "param": "烘箱温度设定",
+      "eng": 246,
+      "raw": 246,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:246 → raw 246,回读 246(标定后物理值 246)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.757+08:00"
+    },
+    {
+      "id": "wh-6839277c",
+      "nodeId": "dw-52356a22",
+      "nodeName": "scen-injection:dcw:barrel-temp-1-sp",
+      "param": "烘箱温度设定",
+      "eng": 240,
+      "raw": 240,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:240 → raw 240,回读 240(标定后物理值 240)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.653+08:00"
+    }
+  ],
+  "runs": [
+    {
+      "id": "rr-9ca5c076",
+      "recipeId": "rc-379d8be0",
+      "recipeName": "scen-injection-recipe-tii24",
+      "productId": "pd-b192d3ab",
+      "lineId": "ln-4d6e8cd7",
+      "recipeVersion": 1,
+      "startedAt": "2026-11-24T11:49:06.627+08:00",
+      "endedAt": null,
+      "results": [
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-52356a22",
+          "ok": true,
+          "message": "写入并回读一致:240 → raw 240,回读 240(标定后物理值 240)",
+          "value": 240,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-3343b754",
+          "ok": true,
+          "message": "写入并回读一致:246 → raw 246,回读 246(标定后物理值 246)",
+          "value": 246,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-3d74dcd3",
+          "ok": true,
+          "message": "写入并回读一致:252 → raw 252,回读 252(标定后物理值 252)",
+          "value": 252,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-ce12a306",
+          "ok": true,
+          "message": "写入并回读一致:258 → raw 258,回读 258(标定后物理值 258)",
+          "value": 258,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-7f8eefe4",
+          "ok": true,
+          "message": "写入并回读一致:120 → raw 120,回读 120(标定后物理值 120)",
+          "value": 120,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-4feb99fd",
+          "ok": true,
+          "message": "写入并回读一致:40 → raw 40,回读 40(标定后物理值 40)",
+          "value": 40,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-dce2c044",
+          "ok": true,
+          "message": "写入并回读一致:1600 → raw 1600,回读 1600(标定后物理值 1600)",
+          "value": 1600,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-6c4ba40e",
+          "ok": true,
+          "message": "写入并回读一致:85,回读 85(标定后物理值 85)",
+          "value": 85,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-339dbf7c",
+          "ok": true,
+          "message": "写入并回读一致:45,回读 45(标定后物理值 45)",
+          "value": 45,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-ae9b4603",
+          "ok": true,
+          "message": "写入并回读一致:6,回读 6(标定后物理值 6)",
+          "value": 6,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-78578b3c",
+          "ok": true,
+          "message": "已发布 24 → aw/inj/coolwater/set(QoS 1;broker 已受理,设备侧待验证)(标定后物理值 24)",
+          "value": 24,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 1
+          }
+        }
+      ],
+      "paramsSnapshot": [
+        {
+          "nodeId": "dw-52356a22",
+          "templateRef": "dcw-temp-sp",
+          "value": 240,
+          "min": 160,
+          "max": 300
+        },
+        {
+          "nodeId": "dw-3343b754",
+          "templateRef": "dcw-temp-sp",
+          "value": 246,
+          "min": 160,
+          "max": 300
+        },
+        {
+          "nodeId": "dw-3d74dcd3",
+          "templateRef": "dcw-temp-sp",
+          "value": 252,
+          "min": 160,
+          "max": 300
+        },
+        {
+          "nodeId": "dw-ce12a306",
+          "templateRef": "dcw-temp-sp",
+          "value": 258,
+          "min": 160,
+          "max": 300
+        },
+        {
+          "nodeId": "dw-7f8eefe4",
+          "templateRef": "dcw-temp-sp",
+          "value": 120,
+          "min": 60,
+          "max": 200
+        },
+        {
+          "nodeId": "dw-4feb99fd",
+          "templateRef": "dcw-temp-sp",
+          "value": 40,
+          "min": 20,
+          "max": 95
+        },
+        {
+          "nodeId": "dw-dce2c044",
+          "templateRef": "dcw-temp-sp",
+          "value": 1600,
+          "min": 800,
+          "max": 2500
+        },
+        {
+          "nodeId": "dw-6c4ba40e",
+          "templateRef": "dcw-temp-sp",
+          "value": 85,
+          "min": 30,
+          "max": 130
+        },
+        {
+          "nodeId": "dw-339dbf7c",
+          "templateRef": "dcw-temp-sp",
+          "value": 45,
+          "min": 20,
+          "max": 110
+        },
+        {
+          "nodeId": "dw-ae9b4603",
+          "templateRef": "dcw-temp-sp",
+          "value": 6,
+          "min": 3,
+          "max": 15
+        },
+        {
+          "nodeId": "dw-78578b3c",
+          "templateRef": "dcw-temp-sp",
+          "value": 24,
+          "min": 10,
+          "max": 45
+        }
+      ],
+      "ackSummary": {
+        "verified": 11,
+        "unverified": 0,
+        "failed": 0,
+        "total": 11
+      }
+    },
+    {
+      "id": "rr-da6dfdeb",
+      "recipeId": "rc-379d8be0",
+      "recipeName": "scen-injection-recipe-tii24",
+      "productId": "pd-b192d3ab",
+      "lineId": "ln-4d6e8cd7",
+      "recipeVersion": 1,
+      "startedAt": "2026-11-24T11:53:23.360+08:00",
+      "endedAt": null,
+      "results": [
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-339dbf7c",
+          "ok": false,
+          "message": "节点「scen-injection:dcw:hold-pressure-sp」本次变化 15bar 超过单步限制 1.8bar（来源:param）",
+          "value": 60
+        }
+      ],
+      "paramsSnapshot": [
+        {
+          "nodeId": "dw-339dbf7c",
+          "templateRef": "dcw-temp-sp",
+          "value": 60,
+          "min": 20,
+          "max": 110
+        }
+      ],
+      "ackSummary": {
+        "verified": 0,
+        "unverified": 0,
+        "failed": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "rr-7b33651f",
+      "recipeId": "rc-379d8be0",
+      "recipeName": "scen-injection-recipe-tii24",
+      "productId": "pd-b192d3ab",
+      "lineId": "ln-4d6e8cd7",
+      "recipeVersion": 1,
+      "startedAt": "2026-11-24T12:01:41.441+08:00",
+      "endedAt": null,
+      "results": [
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-339dbf7c",
+          "ok": true,
+          "message": "写入并回读一致:46.8,回读 46.8(标定后物理值 46.8)",
+          "value": 46.8,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        }
+      ],
+      "paramsSnapshot": [
+        {
+          "nodeId": "dw-339dbf7c",
+          "templateRef": "dcw-temp-sp",
+          "value": 46.8,
+          "min": 20,
+          "max": 110
+        }
+      ],
+      "ackSummary": {
+        "verified": 1,
+        "unverified": 0,
+        "failed": 0,
+        "total": 1
+      }
+    }
+  ],
+  "runDetails": [
+    {
+      "run": {
+        "id": "rr-9ca5c076",
+        "recipeId": "rc-379d8be0",
+        "recipeName": "scen-injection-recipe-tii24",
+        "productId": "pd-b192d3ab",
+        "lineId": "ln-4d6e8cd7",
+        "recipeVersion": 1,
+        "startedAt": "2026-11-24T11:49:06.627+08:00",
+        "endedAt": null,
+        "results": [
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-52356a22",
+            "ok": true,
+            "message": "写入并回读一致:240 → raw 240,回读 240(标定后物理值 240)",
+            "value": 240,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          },
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-3343b754",
+            "ok": true,
+            "message": "写入并回读一致:246 → raw 246,回读 246(标定后物理值 246)",
+            "value": 246,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          },
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-3d74dcd3",
+            "ok": true,
+            "message": "写入并回读一致:252 → raw 252,回读 252(标定后物理值 252)",
+            "value": 252,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          },
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-ce12a306",
+            "ok": true,
+            "message": "写入并回读一致:258 → raw 258,回读 258(标定后物理值 258)",
+            "value": 258,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          },
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-7f8eefe4",
+            "ok": true,
+            "message": "写入并回读一致:120 → raw 120,回读 120(标定后物理值 120)",
+            "value": 120,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          },
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-4feb99fd",
+            "ok": true,
+            "message": "写入并回读一致:40 → raw 40,回读 40(标定后物理值 40)",
+            "value": 40,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          },
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-dce2c044",
+            "ok": true,
+            "message": "写入并回读一致:1600 → raw 1600,回读 1600(标定后物理值 1600)",
+            "value": 1600,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          },
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-6c4ba40e",
+            "ok": true,
+            "message": "写入并回读一致:85,回读 85(标定后物理值 85)",
+            "value": 85,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          },
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-339dbf7c",
+            "ok": true,
+            "message": "写入并回读一致:45,回读 45(标定后物理值 45)",
+            "value": 45,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          },
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-ae9b4603",
+            "ok": true,
+            "message": "写入并回读一致:6,回读 6(标定后物理值 6)",
+            "value": 6,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          },
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-78578b3c",
+            "ok": true,
+            "message": "已发布 24 → aw/inj/coolwater/set(QoS 1;broker 已受理,设备侧待验证)(标定后物理值 24)",
+            "value": 24,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 1
+            }
+          }
+        ],
+        "paramsSnapshot": [
+          {
+            "nodeId": "dw-52356a22",
+            "templateRef": "dcw-temp-sp",
+            "value": 240,
+            "min": 160,
+            "max": 300
+          },
+          {
+            "nodeId": "dw-3343b754",
+            "templateRef": "dcw-temp-sp",
+            "value": 246,
+            "min": 160,
+            "max": 300
+          },
+          {
+            "nodeId": "dw-3d74dcd3",
+            "templateRef": "dcw-temp-sp",
+            "value": 252,
+            "min": 160,
+            "max": 300
+          },
+          {
+            "nodeId": "dw-ce12a306",
+            "templateRef": "dcw-temp-sp",
+            "value": 258,
+            "min": 160,
+            "max": 300
+          },
+          {
+            "nodeId": "dw-7f8eefe4",
+            "templateRef": "dcw-temp-sp",
+            "value": 120,
+            "min": 60,
+            "max": 200
+          },
+          {
+            "nodeId": "dw-4feb99fd",
+            "templateRef": "dcw-temp-sp",
+            "value": 40,
+            "min": 20,
+            "max": 95
+          },
+          {
+            "nodeId": "dw-dce2c044",
+            "templateRef": "dcw-temp-sp",
+            "value": 1600,
+            "min": 800,
+            "max": 2500
+          },
+          {
+            "nodeId": "dw-6c4ba40e",
+            "templateRef": "dcw-temp-sp",
+            "value": 85,
+            "min": 30,
+            "max": 130
+          },
+          {
+            "nodeId": "dw-339dbf7c",
+            "templateRef": "dcw-temp-sp",
+            "value": 45,
+            "min": 20,
+            "max": 110
+          },
+          {
+            "nodeId": "dw-ae9b4603",
+            "templateRef": "dcw-temp-sp",
+            "value": 6,
+            "min": 3,
+            "max": 15
+          },
+          {
+            "nodeId": "dw-78578b3c",
+            "templateRef": "dcw-temp-sp",
+            "value": 24,
+            "min": 10,
+            "max": 45
+          }
+        ],
+        "ackSummary": {
+          "verified": 11,
+          "unverified": 0,
+          "failed": 0,
+          "total": 11
+        }
+      },
+      "daqCount": 12,
+      "writesCount": 11
+    },
+    {
+      "run": {
+        "id": "rr-da6dfdeb",
+        "recipeId": "rc-379d8be0",
+        "recipeName": "scen-injection-recipe-tii24",
+        "productId": "pd-b192d3ab",
+        "lineId": "ln-4d6e8cd7",
+        "recipeVersion": 1,
+        "startedAt": "2026-11-24T11:53:23.360+08:00",
+        "endedAt": null,
+        "results": [
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-339dbf7c",
+            "ok": false,
+            "message": "节点「scen-injection:dcw:hold-pressure-sp」本次变化 15bar 超过单步限制 1.8bar（来源:param）",
+            "value": 60
+          }
+        ],
+        "paramsSnapshot": [
+          {
+            "nodeId": "dw-339dbf7c",
+            "templateRef": "dcw-temp-sp",
+            "value": 60,
+            "min": 20,
+            "max": 110
+          }
+        ],
+        "ackSummary": {
+          "verified": 0,
+          "unverified": 0,
+          "failed": 1,
+          "total": 1
+        }
+      },
+      "daqCount": 0,
+      "writesCount": 0
+    },
+    {
+      "run": {
+        "id": "rr-7b33651f",
+        "recipeId": "rc-379d8be0",
+        "recipeName": "scen-injection-recipe-tii24",
+        "productId": "pd-b192d3ab",
+        "lineId": "ln-4d6e8cd7",
+        "recipeVersion": 1,
+        "startedAt": "2026-11-24T12:01:41.441+08:00",
+        "endedAt": null,
+        "results": [
+          {
+            "templateRef": "dcw-temp-sp",
+            "nodeId": "dw-339dbf7c",
+            "ok": true,
+            "message": "写入并回读一致:46.8,回读 46.8(标定后物理值 46.8)",
+            "value": 46.8,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          }
+        ],
+        "paramsSnapshot": [
+          {
+            "nodeId": "dw-339dbf7c",
+            "templateRef": "dcw-temp-sp",
+            "value": 46.8,
+            "min": 20,
+            "max": 110
+          }
+        ],
+        "ackSummary": {
+          "verified": 1,
+          "unverified": 0,
+          "failed": 0,
+          "total": 1
+        }
+      },
+      "daqCount": 0,
+      "writesCount": 1
+    }
+  ],
+  "approvals": [
+    {
+      "id": "ap-a756ef46",
+      "nodeId": "recipe-propose:rc-379d8be0",
+      "status": "approved",
+      "createdAt": "2026-11-24T12:01:40.539+08:00",
+      "decidedAt": "2026-11-24T12:01:41.438+08:00",
+      "choice": 0,
+      "comment": "Approved step 1 for the disposable simulator demonstration.",
+      "packages": [
+        {
+          "name": "Step 1: hold pressure 45 to 46.8 bar",
+          "params": [
+            {
+              "name": "scen-injection:dcw:hold-pressure-sp",
+              "from": 45,
+              "to": 46.8,
+              "unit": "bar",
+              "preflight": {
+                "ok": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ap-10af521e",
+      "nodeId": "recipe-propose:rc-379d8be0",
+      "status": "approved",
+      "createdAt": "2026-11-24T11:56:21.459+08:00",
+      "decidedAt": "2026-11-24T11:56:22.337+08:00",
+      "choice": 0,
+      "comment": "Approved step 1 for the disposable simulator demonstration.",
+      "packages": [
+        {
+          "name": "Step 1: hold pressure 45 to 46.8 bar",
+          "params": [
+            {
+              "name": "scen-injection:dcw:hold-pressure-sp",
+              "from": 45,
+              "to": 46.8,
+              "unit": "bar",
+              "preflight": {
+                "ok": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ap-160d261a",
+      "nodeId": "recipe-propose:rc-379d8be0",
+      "status": "approved",
+      "createdAt": "2026-11-24T11:53:40.919+08:00",
+      "decidedAt": "2026-11-24T11:55:48.446+08:00",
+      "choice": 0,
+      "comment": "Approved: largest step allowed by the 1.8 bar node limit.",
+      "packages": [
+        {
+          "name": "Step 1: hold pressure 45.0 to 46.8 bar",
+          "params": [
+            {
+              "name": "scen-injection:dcw:hold-pressure-sp",
+              "from": 45,
+              "to": 46.8,
+              "unit": "bar",
+              "preflight": {
+                "ok": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ap-ba8f4279",
+      "nodeId": "recipe-propose:rc-379d8be0",
+      "status": "approved",
+      "createdAt": "2026-11-24T11:51:47.209+08:00",
+      "decidedAt": "2026-11-24T11:53:23.353+08:00",
+      "choice": 0,
+      "comment": "Approved for the disposable simulator demonstration: +15 bar within the 20-110 bar range.",
+      "packages": [
+        {
+          "name": "Preferred: hold pressure 45 to 60 bar",
+          "params": [
+            {
+              "name": "scen-injection:dcw:hold-pressure-sp",
+              "from": 45,
+              "to": 60,
+              "unit": "bar",
+              "preflight": {
+                "ok": true
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cautious: hold pressure 45 to 56 bar",
+          "params": [
+            {
+              "name": "scen-injection:dcw:hold-pressure-sp",
+              "from": 45,
+              "to": 56,
+              "unit": "bar",
+              "preflight": {
+                "ok": true
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "lineLog": null,
+  "partWeight": {
+    "nodeId": "dn-cc4a12bf",
+    "unit": "g",
+    "points": [
+      {
+        "at": 1795492140000,
+        "avg": 31.254444444444445,
+        "min": 31.23,
+        "max": 31.3,
+        "cnt": 9
+      },
+      {
+        "at": 1795492155000,
+        "avg": 31.227857142857147,
+        "min": 31.17,
+        "max": 31.29,
+        "cnt": 14
+      },
+      {
+        "at": 1795492170000,
+        "avg": 31.243333333333336,
+        "min": 31.16,
+        "max": 31.31,
+        "cnt": 15
+      },
+      {
+        "at": 1795492185000,
+        "avg": 31.256428571428575,
+        "min": 31.18,
+        "max": 31.32,
+        "cnt": 14
+      },
+      {
+        "at": 1795492200000,
+        "avg": 31.242857142857144,
+        "min": 31.12,
+        "max": 31.31,
+        "cnt": 14
+      },
+      {
+        "at": 1795492215000,
+        "avg": 31.276000000000003,
+        "min": 31.22,
+        "max": 31.35,
+        "cnt": 15
+      },
+      {
+        "at": 1795492230000,
+        "avg": 31.257857142857144,
+        "min": 31.19,
+        "max": 31.3,
+        "cnt": 14
+      },
+      {
+        "at": 1795492245000,
+        "avg": 31.261999999999997,
+        "min": 31.17,
+        "max": 31.38,
+        "cnt": 15
+      },
+      {
+        "at": 1795492260000,
+        "avg": 31.261000000000003,
+        "min": 31.19,
+        "max": 31.35,
+        "cnt": 10
+      },
+      {
+        "at": 1795492290000,
+        "avg": 32.12666666666667,
+        "min": 32.09,
+        "max": 32.18,
+        "cnt": 3
+      },
+      {
+        "at": 1795492305000,
+        "avg": 31.79928571428571,
+        "min": 31.58,
+        "max": 32.04,
+        "cnt": 14
+      },
+      {
+        "at": 1795492320000,
+        "avg": 31.5,
+        "min": 31.36,
+        "max": 31.63,
+        "cnt": 14
+      },
+      {
+        "at": 1795492335000,
+        "avg": 31.349999999999998,
+        "min": 31.26,
+        "max": 31.45,
+        "cnt": 12
+      },
+      {
+        "at": 1795492350000,
+        "avg": 31.29769230769231,
+        "min": 31.25,
+        "max": 31.36,
+        "cnt": 13
+      },
+      {
+        "at": 1795492365000,
+        "avg": 31.270000000000003,
+        "min": 31.22,
+        "max": 31.31,
+        "cnt": 14
+      },
+      {
+        "at": 1795492380000,
+        "avg": 31.262666666666668,
+        "min": 31.21,
+        "max": 31.35,
+        "cnt": 15
+      },
+      {
+        "at": 1795492395000,
+        "avg": 31.24142857142857,
+        "min": 31.17,
+        "max": 31.31,
+        "cnt": 14
+      },
+      {
+        "at": 1795492410000,
+        "avg": 31.24533333333333,
+        "min": 31.16,
+        "max": 31.31,
+        "cnt": 15
+      },
+      {
+        "at": 1795492425000,
+        "avg": 31.235000000000003,
+        "min": 31.18,
+        "max": 31.33,
+        "cnt": 14
+      },
+      {
+        "at": 1795492440000,
+        "avg": 31.24857142857142,
+        "min": 31.13,
+        "max": 31.31,
+        "cnt": 14
+      },
+      {
+        "at": 1795492455000,
+        "avg": 31.262,
+        "min": 31.17,
+        "max": 31.3,
+        "cnt": 15
+      },
+      {
+        "at": 1795492470000,
+        "avg": 31.285714285714285,
+        "min": 31.22,
+        "max": 31.41,
+        "cnt": 14
+      },
+      {
+        "at": 1795492485000,
+        "avg": 31.256428571428575,
+        "min": 31.18,
+        "max": 31.35,
+        "cnt": 14
+      },
+      {
+        "at": 1795492500000,
+        "avg": 31.247333333333337,
+        "min": 31.16,
+        "max": 31.36,
+        "cnt": 15
+      },
+      {
+        "at": 1795492515000,
+        "avg": 31.258571428571432,
+        "min": 31.18,
+        "max": 31.32,
+        "cnt": 14
+      },
+      {
+        "at": 1795492530000,
+        "avg": 31.257857142857148,
+        "min": 31.18,
+        "max": 31.31,
+        "cnt": 14
+      },
+      {
+        "at": 1795492545000,
+        "avg": 31.247333333333327,
+        "min": 31.18,
+        "max": 31.33,
+        "cnt": 15
+      },
+      {
+        "at": 1795492560000,
+        "avg": 31.263571428571428,
+        "min": 31.16,
+        "max": 31.33,
+        "cnt": 14
+      },
+      {
+        "at": 1795492575000,
+        "avg": 31.25,
+        "min": 31.18,
+        "max": 31.33,
+        "cnt": 15
+      },
+      {
+        "at": 1795492590000,
+        "avg": 31.240714285714287,
+        "min": 31.14,
+        "max": 31.29,
+        "cnt": 14
+      },
+      {
+        "at": 1795492605000,
+        "avg": 31.249333333333336,
+        "min": 31.18,
+        "max": 31.29,
+        "cnt": 15
+      },
+      {
+        "at": 1795492620000,
+        "avg": 31.23285714285714,
+        "min": 31.16,
+        "max": 31.3,
+        "cnt": 14
+      },
+      {
+        "at": 1795492635000,
+        "avg": 31.258666666666667,
+        "min": 31.21,
+        "max": 31.31,
+        "cnt": 15
+      },
+      {
+        "at": 1795492650000,
+        "avg": 31.262142857142845,
+        "min": 31.22,
+        "max": 31.33,
+        "cnt": 14
+      },
+      {
+        "at": 1795492665000,
+        "avg": 31.241333333333333,
+        "min": 31.17,
+        "max": 31.28,
+        "cnt": 15
+      },
+      {
+        "at": 1795492680000,
+        "avg": 31.259333333333338,
+        "min": 31.17,
+        "max": 31.31,
+        "cnt": 15
+      },
+      {
+        "at": 1795492695000,
+        "avg": 31.270000000000003,
+        "min": 31.22,
+        "max": 31.31,
+        "cnt": 14
+      },
+      {
+        "at": 1795492710000,
+        "avg": 31.264666666666663,
+        "min": 31.21,
+        "max": 31.33,
+        "cnt": 15
+      },
+      {
+        "at": 1795492725000,
+        "avg": 31.25,
+        "min": 31.19,
+        "max": 31.32,
+        "cnt": 14
+      },
+      {
+        "at": 1795492740000,
+        "avg": 31.247333333333327,
+        "min": 31.13,
+        "max": 31.34,
+        "cnt": 15
+      },
+      {
+        "at": 1795492755000,
+        "avg": 31.262142857142855,
+        "min": 31.17,
+        "max": 31.34,
+        "cnt": 14
+      },
+      {
+        "at": 1795492770000,
+        "avg": 31.240000000000002,
+        "min": 31.17,
+        "max": 31.33,
+        "cnt": 15
+      },
+      {
+        "at": 1795492785000,
+        "avg": 31.25714285714286,
+        "min": 31.2,
+        "max": 31.31,
+        "cnt": 14
+      },
+      {
+        "at": 1795492800000,
+        "avg": 31.251333333333335,
+        "min": 31.2,
+        "max": 31.3,
+        "cnt": 15
+      },
+      {
+        "at": 1795492815000,
+        "avg": 31.24533333333333,
+        "min": 31.15,
+        "max": 31.34,
+        "cnt": 15
+      },
+      {
+        "at": 1795492830000,
+        "avg": 31.224999999999998,
+        "min": 31.15,
+        "max": 31.28,
+        "cnt": 14
+      },
+      {
+        "at": 1795492845000,
+        "avg": 31.242,
+        "min": 31.18,
+        "max": 31.3,
+        "cnt": 15
+      },
+      {
+        "at": 1795492860000,
+        "avg": 31.237857142857145,
+        "min": 31.17,
+        "max": 31.32,
+        "cnt": 14
+      },
+      {
+        "at": 1795492875000,
+        "avg": 31.278,
+        "min": 31.19,
+        "max": 31.35,
+        "cnt": 15
+      },
+      {
+        "at": 1795492890000,
+        "avg": 31.27285714285714,
+        "min": 31.15,
+        "max": 31.38,
+        "cnt": 14
+      },
+      {
+        "at": 1795492905000,
+        "avg": 31.340000000000007,
+        "min": 31.29,
+        "max": 31.38,
+        "cnt": 14
+      },
+      {
+        "at": 1795492920000,
+        "avg": 31.344666666666665,
+        "min": 31.28,
+        "max": 31.42,
+        "cnt": 15
+      },
+      {
+        "at": 1795492935000,
+        "avg": 31.34142857142857,
+        "min": 31.27,
+        "max": 31.4,
+        "cnt": 14
+      },
+      {
+        "at": 1795492950000,
+        "avg": 31.35533333333333,
+        "min": 31.3,
+        "max": 31.42,
+        "cnt": 15
+      },
+      {
+        "at": 1795492965000,
+        "avg": 31.349333333333334,
+        "min": 31.25,
+        "max": 31.45,
+        "cnt": 15
+      },
+      {
+        "at": 1795492980000,
+        "avg": 31.354999999999997,
+        "min": 31.27,
+        "max": 31.41,
+        "cnt": 14
+      },
+      {
+        "at": 1795492995000,
+        "avg": 31.33533333333333,
+        "min": 31.25,
+        "max": 31.42,
+        "cnt": 15
+      },
+      {
+        "at": 1795493010000,
+        "avg": 31.354285714285716,
+        "min": 31.29,
+        "max": 31.43,
+        "cnt": 7
+      }
+    ]
+  }
+}

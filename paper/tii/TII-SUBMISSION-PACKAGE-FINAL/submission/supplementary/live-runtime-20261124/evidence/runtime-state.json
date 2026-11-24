@@ -1,0 +1,43 @@
+{
+  "runId": "tii-live-shots-20261124",
+  "startedAt": "2026-11-24T03:51:22.000Z",
+  "host": "127.0.0.1",
+  "ports": {
+    "app": 3090,
+    "sim": 4044,
+    "broker": 51830,
+    "mbtcp": 16086,
+    "rtu": 15086,
+    "opcua": 5877
+  },
+  "pids": {
+    "simulator": 92188,
+    "app": 57680
+  },
+  "build": {
+    "sourceGitHead": "7e50642493f9babf052c4be774cac3a85ea366f4",
+    "packageVersion": "0.18.0",
+    "healthVersion": "0.18.0",
+    "mode": "dev",
+    "worktreeChanges": [
+      "M plc-node-simulator/src/server/protocols/opcua.ts"
+    ],
+    "simulatorPatch": {
+      "file": "plc-node-simulator/src/server/protocols/opcua.ts",
+      "numstat": "1\t0\tplc-node-simulator/src/server/protocols/opcua.ts",
+      "purpose": "OPC UA server binds 127.0.0.1; advertised hostname unchanged"
+    }
+  },
+  "simulatorHealth": {
+    "ok": true,
+    "pid": 92188,
+    "simPort": 4044
+  },
+  "appHealth": {
+    "ok": true,
+    "version": "0.18.0",
+    "status": "ok",
+    "workshop": "ready",
+    "mode": "dev"
+  }
+}

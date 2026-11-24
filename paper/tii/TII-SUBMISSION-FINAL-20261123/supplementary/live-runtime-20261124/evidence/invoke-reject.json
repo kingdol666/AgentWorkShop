@@ -1,0 +1,34 @@
+{
+  "tool": "recipe_propose",
+  "args": {
+    "recipe_id": "rc-379d8be0",
+    "packages": [
+      {
+        "name": "Over-range attempt (expected to be rejected)",
+        "rationale": "Deliberately out-of-range target used to show the pre-dispatch guard: part weight is 31.26 g, so a large hold-pressure jump is proposed.",
+        "params": [
+          {
+            "node_id": "dw-339dbf7c",
+            "to": 130,
+            "unit": "bar",
+            "basis": "Part weight 31.26 g is below the 32.00-32.30 g band; large hold-pressure correction proposed.",
+            "exp_ref": "S7 injection pilot: 0.05035 g/bar ratio"
+          }
+        ]
+      }
+    ]
+  },
+  "startedAt": "2026-11-24T03:51:42.984Z",
+  "tookMs": 14,
+  "httpStatus": 200,
+  "envelopeCode": 0,
+  "message": "ok",
+  "isError": true,
+  "text": "预检失败:全部候选方案无一参数通过限界校验,未提交审批、产线无任何变更。「批准必被拒包」的方案不得入审:\n- 方案「Over-range attempt (expected to be rejected)」scen-injection:dcw:hold-pressure-sp:设定值 130bar 超出上限 节点工艺安全量程 的 110bar —— 约束层:节点安全量程(当前有效写入区间 20~110bar;各层限界按安全规约取交集,越界写入已拒绝)(已剔除)\n请按各条失败原因修订(越界值改到「节点量程∩参数基准∩产品限界」交集内;失效参数剔除或先恢复节点),再重新提交。",
+  "raw": {
+    "result": {
+      "text": "预检失败:全部候选方案无一参数通过限界校验,未提交审批、产线无任何变更。「批准必被拒包」的方案不得入审:\n- 方案「Over-range attempt (expected to be rejected)」scen-injection:dcw:hold-pressure-sp:设定值 130bar 超出上限 节点工艺安全量程 的 110bar —— 约束层:节点安全量程(当前有效写入区间 20~110bar;各层限界按安全规约取交集,越界写入已拒绝)(已剔除)\n请按各条失败原因修订(越界值改到「节点量程∩参数基准∩产品限界」交集内;失效参数剔除或先恢复节点),再重新提交。",
+      "isError": true
+    }
+  }
+}

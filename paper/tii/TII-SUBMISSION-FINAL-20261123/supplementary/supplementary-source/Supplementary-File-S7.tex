@@ -1,6 +1,7 @@
 \documentclass[10pt]{article}
 \usepackage[margin=0.78in]{geometry}
 \usepackage{booktabs,tabularx,array,longtable}
+\usepackage{graphicx}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{url}
@@ -343,7 +344,70 @@ Episode & Task state & Process value (g) & Guard status & Recorder-reported upda
 
 The archive does not include the server-side journal rows, a complete live-service source snapshot, or a hermetic runtime image. The consolidated evidence report records a journal reconciliation, but without the row-level export an independent reader cannot replay it or determine the exact ledger-to-driver event chain. The archive supports review of the saved episode records, not an independent rerun of the acquisition. The earlier November 1 five-seed endpoints and the E7 pilot are retained as separate batches and are not pooled with E6.
 
+\section*{Live runtime walk-through (November 24, 2026)}
+To document that the governed write path of Sections III--V is implemented and executable, a disposable instance of the current source tree was started on November 24, 2026 and driven through the production console. The instance ran package version 0.18.0 built from commit \texttt{7e5064249} with a fresh home directory, and the repository's PLC simulator ran beside it on loopback ports. The simulator was loaded with the injection-line preset of the scenario library used for the reported experiments, and the line, eleven writable endpoints, fourteen acquisition nodes, and the recipe were provisioned by the same scenario-provisioning code. All five protocol families (Modbus TCP, Modbus RTU, OPC UA, MQTT, HTTP) were the real driver stacks reaching the simulator; every write reported below passed through the platform dispatcher, its write guards, and the journal.
+
+This walk-through is not a replication of the November experiments and adds no process-effect sample. The source tree is later than the frozen experimental code, the simulated plant was warm-started rather than reset per block, and no language-model harness was active: the tools were invoked through the platform's own tool bridge by an agent identity whose declared harness is a deterministic mock, and the human decisions were supplied by the operator of this run. No physical device was connected.
+
+Three guard outcomes were observed. First, a proposal that asked for 130~bar on the holding-pressure endpoint was refused before any approval card was created, because the value exceeds the configured 20--110~bar node range; the line was unchanged. Second, a proposal that asked for 45 to 60~bar passed the preflight check shown in Fig.~\ref{fig:s7-approval} and was approved through the console, but the write handler then rejected the batch because a 15~bar change exceeds the 1.8~bar step limit; the batch recorded one failed parameter and a verified count of zero, and the readback stayed at 45~bar. Third, two approvals were refused before dispatch because the previous recipe trial on the line was 145~s and 178~s old and the trial cadence is 300~s.
+
+Five bounded steps were then dispatched, one per approval, each changing the holding-pressure setpoint by 1.8~bar: 45.0 to 46.8, 48.6, 50.4, 52.2, and 54.0~bar. Every step was read back at the requested value and acknowledged as readback-verified, with batch identifiers \texttt{rr-7b33651f}, \texttt{rr-6d5e1c6d}, \texttt{rr-9ef47779}, \texttt{rr-997bc46c}, and \texttt{rr-1180d109}. The part-weight channel, a separate later process measurement rather than a command receipt, moved from 31.25~g to 31.31, 31.40, 31.48, 31.58, and 31.67~g, where each value averages the four most recent 15~s buckets sampled 25~s after the step. The part remained below the 32.00--32.30~g band, which is consistent with the bounded step size; no convergence, efficacy, or autonomous operation is claimed.
+
+\begin{table}[htbp]
+\centering
+\caption{Recorded outcomes of the November 24, 2026 walk-through. Requests and readbacks are in bar; part weight is in g and is the channel mean over four 15~s buckets sampled 25~s after the outcome, that is, a later process observation rather than a command receipt.}
+\label{tab:s7-live}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}r r >{\raggedright\arraybackslash}X r r l@{}}
+\toprule
+No. & Request & Outcome & Readback & Part weight & Batch or record \\
+\midrule
+1 & 130.0 & Refused before approval: above the 110~bar node limit & 45.0 & 31.25 & \texttt{invoke-reject.json} \\
+2 & 60.0 & Approved, then rejected by the write handler: 15~bar $>$ 1.8~bar step limit & 45.0 & 31.25 & \texttt{rr-da6dfdeb} \\
+3 & 46.8 & Dispatched; readback verified & 46.8 & 31.31 & \texttt{rr-7b33651f} \\
+4 & 48.6 & Dispatched; readback verified & 48.6 & 31.40 & \texttt{rr-6d5e1c6d} \\
+5 & 50.4 & Dispatched; readback verified & 50.4 & 31.48 & \texttt{rr-9ef47779} \\
+6 & 52.2 & Dispatched; readback verified & 52.2 & 31.58 & \texttt{rr-997bc46c} \\
+7 & 54.0 & Dispatched; readback verified & 54.0 & 31.67 & \texttt{rr-1180d109} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{resources/fig-s7-approval-card.png}
+\caption{Structured approval card as rendered in the console during the walk-through. Two candidate packages were submitted for the same recipe; selecting one shows the per-parameter comparison, the preflight result, the rationale, and the experience reference, and only then enables approval. The package shown (45 to 60~bar) passed this preflight and was approved, yet the later write handler rejected it at the 1.8~bar step limit, so the preflight shown here is not a substitute for the write-time guard.}
+\label{fig:s7-approval}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{resources/fig-s7-write-history.png}
+\caption{Write history of the line after the walk-through, newest first. Each row records the engineering value, the raw device value, the acknowledgement class, and the batch identifier. The five step rows show increasing setpoints with matching raw values and an acknowledgement for every write; the batch identifiers match those in Table~\ref{tab:s7-live}. The leftmost text column is a template parameter label that remains Chinese in this build.}
+\label{fig:s7-writehistory}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{resources/fig-s7-part-weight-trend.png}
+\caption{Part-weight channel of the same run, captured from the time-series panel of the acquisition console at a 15~s bucket; the panel title, bucket selector, and the tabular list below the chart are outside this crop. The single early spike is the simulated plant's warm start before the first governed step; the subsequent staircase follows the five setpoint steps of Table~\ref{tab:s7-live}. The plotted series is an acquisition record, not a command receipt and not evidence of a physical process.}
+\label{fig:s7-trend}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{resources/fig-s7-line-console.png}
+\caption{Line console of the walk-through. The header reports eleven control nodes, five node writes, and zero failed writes since the line was started; the rejected 60~bar batch of Table~\ref{tab:s7-live} never reached a node write, which is why it does not appear as a failure here. The running batch, the sample count, and, on each control card, the current setpoint, the device readback, and the step limit that the write handler enforces are also shown. A few panel labels and template captions remain Chinese in this build.}
+\label{fig:s7-console}
+\end{figure}
+
+The console was displayed in its English locale. Some strings are generated server-side and are Chinese-only in this build, including audit summaries, tool messages, and the template parameter label visible in Fig.~\ref{fig:s7-writehistory}; the archived records preserve them verbatim, and Table~\ref{tab:s7-live} restates the corresponding values in English. The screenshots also display the platform's product name. They are therefore retained here as author-reference material and are not part of the anonymous upload; the companion reviewer archive continues to withhold user-interface media for the same reason.
+
+The records of this walk-through are kept in \texttt{live-runtime-20261124/}: \texttt{evidence/runtime-state.json} (build identity, ports, recorded processes), \texttt{evidence/seed.json} (simulated devices, provisioned entities, bindings, node limits, baseline means), \texttt{evidence/invoke-reject.json} (the out-of-range refusal), \texttt{evidence/invoke-main.json} (the approved-then-rejected 60~bar dispatch), \texttt{evidence/steps.json} (per-step request, decision, readback, and part-weight means), \texttt{evidence/platform-record.json} (recipe runs with per-parameter results and acknowledgement summaries, approval history, write history, and the sampled series), and the four screenshots. The simulator patch used for the run binds the OPC UA server to loopback and is recorded in the same file. Re-running the walk-through creates new batches and identifiers and does not reproduce these values unless the plant state is also restored.
+
 \section*{Reproduction and provenance}
+
 The available injection policy uses nominal gains of 0.052~g/bar and 0.05~g/s to form setpoint adjustments. Those values match defaults in the currently available simulator source, where they appear in the part-weight model. The historical simulator runtime and parameters were not captured, so this correspondence does not establish which values were deployed during the experiment. It does limit interpretation of the comparison as a test on an unknown process.
 
 The selected E6 run record reports a combined SHA-256 that matches local copies of the paired-run and scene-policy source. This self-reported hash does not independently identify the bytes loaded by the executing process. The running services and simulator were not captured as a complete snapshot. The archived records preserve the available source and run provenance. The two raw condition keys below are retained because the runner requires them: \texttt{C0} denotes the no-write control, and \texttt{C1} denotes the scripted setpoint policy. The commands below are historical provenance records, not a self-contained or safe end-to-end reproduction recipe. The companion archive provides safe offline record-level checks and never starts services or writes to equipment. They may target services and must not be run against shared or real equipment. Representative commands recorded by the runners are:

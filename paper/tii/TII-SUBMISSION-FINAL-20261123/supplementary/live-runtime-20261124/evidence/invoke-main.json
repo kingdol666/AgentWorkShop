@@ -1,0 +1,47 @@
+{
+  "tool": "recipe_propose",
+  "args": {
+    "recipe_id": "rc-379d8be0",
+    "packages": [
+      {
+        "name": "Preferred: hold pressure 45 to 60 bar",
+        "rationale": "Part weight averaged 31.26 g, below the 32.00-32.30 g band. With the documented ~0.052 g/bar dependence of part weight on holding pressure, +15 bar implies about +0.78 g, which should bring the part into the band while keeping flash below its 0.4 % limit.",
+        "params": [
+          {
+            "node_id": "dw-339dbf7c",
+            "to": 60,
+            "unit": "bar",
+            "basis": "Delta part weight +0.74 g required; 0.052 g/bar gives +15 bar.",
+            "exp_ref": "S7 injection pilot: 0.05035 g/bar, write 60 to 63.7 bar reached band"
+          }
+        ]
+      },
+      {
+        "name": "Cautious: hold pressure 45 to 56 bar",
+        "rationale": "Smaller correction that keeps a wider flash margin; expected to leave part weight slightly below the band and to require a second step.",
+        "params": [
+          {
+            "node_id": "dw-339dbf7c",
+            "to": 56,
+            "unit": "bar",
+            "basis": "Half of the estimated correction, prioritising flash margin.",
+            "exp_ref": "S7 injection pilot: 0.05035 g/bar"
+          }
+        ]
+      }
+    ]
+  },
+  "startedAt": "2026-11-24T03:51:47.193Z",
+  "tookMs": 96188,
+  "httpStatus": 200,
+  "envelopeCode": 0,
+  "message": "ok",
+  "isError": true,
+  "text": "整包下发失败:方案「Preferred: hold pressure 45 to 60 bar」已获批准,但整批下发 0/1 参数成功(典型:节点写入保持窗/节流未放行)。runId:rr-da6dfdeb(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-da6dfdeb（2026-11-24 11:53）成效=unassessed · ACK verified=0 unverified=0 failed=1 total=1\n- 批次 rr-9ca5c076（2026-11-24 11:49）成效=inconclusive · ACK verified=11 unverified=0 failed=0 total=11\n  · scen-injection:dcw:barrel-temp-1-sp ?→240 回读=240 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:barrel-temp-2-sp ?→246 回读=246 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:barrel-temp-3-sp ?→252 回读=252 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:barrel-temp-4-sp ?→258 回读=258 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:screw-speed-sp ?→120 回读=120 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:mold-temp-sp ?→40 回读=40 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:clamp-force-sp ?→1600 回读=1600 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:inject-speed-sp ?→85 回读=85 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:hold-pressure-sp ?→45 回读=45 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:hold-time-sp ?→6 回读=6 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:cool-water-sp ?→24 回读=? ACK=transport-ack 判定=unassessed\n[人工反馈] Approved for the disposable simulator demonstration: +15 bar within the 20-110 bar range.\n产线仍在运行原参数 —— 请等待约 60s(节点写入保持窗/节拍窗放行)后重新调用 recipe_rollback(dispatch=true) 整批重下发目标版本(逐节点直发路径不存在),或用 recipe_rollback(recipe_id, to_last_good=true) 统一回退到已知良好版本;并把失败原因写入汇报提醒人类。",
+  "raw": {
+    "result": {
+      "text": "整包下发失败:方案「Preferred: hold pressure 45 to 60 bar」已获批准,但整批下发 0/1 参数成功(典型:节点写入保持窗/节流未放行)。runId:rr-da6dfdeb(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-da6dfdeb（2026-11-24 11:53）成效=unassessed · ACK verified=0 unverified=0 failed=1 total=1\n- 批次 rr-9ca5c076（2026-11-24 11:49）成效=inconclusive · ACK verified=11 unverified=0 failed=0 total=11\n  · scen-injection:dcw:barrel-temp-1-sp ?→240 回读=240 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:barrel-temp-2-sp ?→246 回读=246 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:barrel-temp-3-sp ?→252 回读=252 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:barrel-temp-4-sp ?→258 回读=258 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:screw-speed-sp ?→120 回读=120 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:mold-temp-sp ?→40 回读=40 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:clamp-force-sp ?→1600 回读=1600 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:inject-speed-sp ?→85 回读=85 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:hold-pressure-sp ?→45 回读=45 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:hold-time-sp ?→6 回读=6 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:cool-water-sp ?→24 回读=? ACK=transport-ack 判定=unassessed\n[人工反馈] Approved for the disposable simulator demonstration: +15 bar within the 20-110 bar range.\n产线仍在运行原参数 —— 请等待约 60s(节点写入保持窗/节拍窗放行)后重新调用 recipe_rollback(dispatch=true) 整批重下发目标版本(逐节点直发路径不存在),或用 recipe_rollback(recipe_id, to_last_good=true) 统一回退到已知良好版本;并把失败原因写入汇报提醒人类。",
+      "isError": true
+    }
+  }
+}

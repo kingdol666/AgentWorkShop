@@ -1,0 +1,9 @@
+{
+  "patchStatus": 200,
+  "channel": {
+    "id": "f343b522-3d7d-4181-8442-1a5397abfcf1",
+    "name": "TII live-runtime evidence channel",
+    "channelMode": "production_line_integrated",
+    "lineId": ""
+  }
+}

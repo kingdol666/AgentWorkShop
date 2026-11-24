@@ -1,0 +1,139 @@
+{
+  "at": "2026-11-24T03:53:05.784Z",
+  "touched": [
+    {
+      "kind": "line",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:barrel-temp-1-sp",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:barrel-temp-2-sp",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:barrel-temp-3-sp",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:barrel-temp-4-sp",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:screw-speed-sp",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:mold-temp-sp",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:clamp-force-sp",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:inject-speed-sp",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:hold-pressure-sp",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:hold-time-sp",
+      "status": 200
+    },
+    {
+      "kind": "dcw",
+      "name": "scen-injection:dcw:cool-water-sp",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:melt-temp-pv",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:melt-pressure-pv",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:mold-temp-pv",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:clamp-force-pv",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:inj-pressure-pv",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:water-temp-pv",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:cool-flow-pv",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:part-weight",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:flash-rate",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:sink-mark",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:dim-dev",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:cycle-time",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:wall-profile",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "name": "scen-injection:daq:surface-image",
+      "status": 200
+    },
+    {
+      "kind": "product",
+      "status": 200
+    }
+  ],
+  "failures": []
+}
