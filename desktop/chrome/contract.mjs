@@ -3,6 +3,8 @@
 // assert the IPC surface without importing electron (which cannot load outside
 // the Electron runtime).
 
+import { isIP } from 'node:net'
+
 export const TITLEBAR_HEIGHT = 40
 
 export const CHROME_ACTIONS = Object.freeze(['minimize', 'toggle-maximize', 'close'])
@@ -30,27 +32,30 @@ export const MANUAL_PROXY_PROTOCOLS = Object.freeze(['http', 'https', 'socks5'])
 
 const UPDATE_ACTIONS = new Set(['check', 'download', 'pause', 'cancel', 'install', 'test-connection'])
 
-function validProxyHost(value) {
-  return typeof value === 'string' && value.length > 0 && value.length <= 253
-    && !/[\s/?#@]/.test(value)
-    && (/^[a-z\d](?:[a-z\d.-]{0,251}[a-z\d])?$/i.test(value)
-      || /^(?:[0-9a-f]{0,4}:){2,}[0-9a-f:.]+$/i.test(value))
+function normalizeProxyHost(value) {
+  if (typeof value !== 'string' || !value || value.length > 253) return ''
+  const host = value.startsWith('[') && value.endsWith(']') ? value.slice(1, -1) : value
+  if (isIP(host) === 6) return new URL(`http://[${host}]`).hostname.slice(1, -1)
+  if (isIP(value) === 4) return value
+  if (!value.split('.').every(label => /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/i.test(label))) return ''
+  // Reject ambiguous numeric hosts that WHATWG/Chromium can reinterpret as IPs.
+  if (/^(?:\d+|0x[a-f\d]+)$/i.test(value.split('.').at(-1))) return ''
+  return value.toLowerCase()
 }
 
 export function normalizeManualProxy(raw) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
   const protocol = MANUAL_PROXY_PROTOCOLS.includes(source.protocol) ? source.protocol : 'http'
-  const host = validProxyHost(source.host) ? source.host.toLowerCase() : ''
+  const host = normalizeProxyHost(source.host)
   const port = Number.isInteger(source.port) && source.port >= 1 && source.port <= 65_535 ? source.port : null
   return { protocol, host, port }
 }
 
 export function isManualProxyConfig(value) {
-  const normalized = normalizeManualProxy(value)
-  return validProxyHost(normalized.host) && Number.isInteger(normalized.port)
-    && normalized.protocol === value?.protocol
-    && normalized.host === String(value?.host ?? '').toLowerCase()
-    && normalized.port === value?.port
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    && Object.keys(value).length === 3 && MANUAL_PROXY_PROTOCOLS.includes(value.protocol)
+    && Boolean(normalizeProxyHost(value.host))
+    && Number.isInteger(value.port) && value.port >= 1 && value.port <= 65_535
 }
 
 export function isProxyMode(value) {

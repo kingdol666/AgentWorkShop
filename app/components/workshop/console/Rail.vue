@@ -62,6 +62,7 @@ const goOverview = (): void => {
       </button>
       <button
         class="rail-btn rail-brand"
+        data-aw-shell-brand
         type="button"
         aria-label="AgentWorkShop 工作区总览"
         title="AgentWorkShop"

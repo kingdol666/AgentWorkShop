@@ -281,15 +281,7 @@
     .manual-proxy-row label { color: var(--faint); font-size: 11px; }
     .manual-proxy-help { color: var(--dim); font-size: 10px; line-height: 1.45; }
     .manual-proxy button { width: 100%; }
-
-    select {
-      min-width: 112px;
-      padding: 6px 8px;
-      color: var(--soft);
-      background: var(--panel-strong);
-      border: 1px solid var(--line-strong);
-      border-radius: 6px;
-    }
+    .manual-proxy-error { color: var(--danger); font-size: 12px; line-height: 1.45; }
 
     input[type='checkbox'] {
       width: 16px;
@@ -410,7 +402,8 @@
               <label for="proxy-port">代理端口</label>
               <input id="proxy-port" type="number" inputmode="numeric" min="1" max="65535" step="1" placeholder="7890">
             </div>
-            <p class="manual-proxy-help">只保存地址和端口，不保存代理密码。代理仍只能访问固定的 GitHub 更新源。</p>
+            <p class="manual-proxy-help">填写代理主机和端口，不要填入密码。此设置只用于桌面更新。</p>
+            <p class="manual-proxy-error" id="proxy-setting-error" role="status" hidden></p>
             <button id="apply-proxy" type="button">应用手动代理</button>
           </div>
           <div class="setting-row">
@@ -464,6 +457,7 @@
       const proxyHost = document.getElementById('proxy-host')
       const proxyPort = document.getElementById('proxy-port')
       const applyProxy = document.getElementById('apply-proxy')
+      const proxySettingError = document.getElementById('proxy-setting-error')
       const autoCheck = document.getElementById('auto-check')
       const probeButton = document.getElementById('probe-button')
       const probeStatus = document.getElementById('probe-status')
@@ -497,6 +491,7 @@
         error: ['更新失败', '更新操作未完成，可以检查连接后重试。'],
       }
       const emptyProbe = { status: 'idle', route: 'unknown', elapsedMs: null, error: null }
+      let savedProxyKey
       let state = { status: 'idle', proxyMode: 'system', manualProxy: { protocol: 'http', host: '', port: null }, autoCheckUpdates: true, probe: emptyProbe }
 
       function text(value, fallback = '') {
@@ -539,8 +534,7 @@
       }
 
       function send(action, value) {
-        if (!api || typeof api.action !== 'function') return
-        api.action(action, value)
+        return api?.action(action, value) === true
       }
 
       function setVisible(element, visible) {
@@ -587,12 +581,21 @@
         }
       }
 
+      function showProxyError(message) {
+        proxySettingError.textContent = message
+        setVisible(proxySettingError, Boolean(message))
+      }
+
       function setManualProxy(next) {
-        const proxy = next && typeof next === 'object' ? next : {}
+        const proxy = next.manualProxy ?? {}
+        const key = JSON.stringify([next.proxyMode, proxy.protocol, proxy.host, proxy.port])
+        if (key === savedProxyKey) return
+        savedProxyKey = key
+        proxyMode.value = ['direct', 'manual'].includes(next.proxyMode) ? next.proxyMode : 'system'
         proxyProtocol.value = ['http', 'https', 'socks5'].includes(proxy.protocol) ? proxy.protocol : 'http'
         proxyHost.value = text(proxy.host)
         proxyPort.value = Number.isInteger(proxy.port) ? String(proxy.port) : ''
-        manualProxySettings.hidden = state.proxyMode !== 'manual'
+        manualProxySettings.hidden = proxyMode.value !== 'manual'
       }
 
       function setActions(next) {
@@ -621,7 +624,7 @@
         const status = text(next.status, 'idle')
         const route = text(next.route, 'unknown')
         const statusLabels = { idle: '尚未测试更新连接。', testing: '正在测试更新连接…', ok: '更新连接正常。', error: '更新连接测试失败。' }
-        const routeLabels = { direct: '直连线路', proxy: '手动代理线路', mixed: '混合线路', system: '系统规则/线路', unknown: '未测试' }
+        const routeLabels = { direct: '直连', manual: '手动代理', proxy: '系统代理规则', mixed: '系统混合规则', system: '跟随系统', unknown: '—' }
         probeStatus.textContent = text(next.error, statusLabels[status] || statusLabels.idle)
         probeStatus.dataset.kind = status
         probeRoute.textContent = routeLabels[route] || routeLabels.unknown
@@ -658,8 +661,8 @@
         if (status === 'error' && state.errorStage) footerStatus.textContent = `失败阶段：${text(state.errorStage)}`
         else if (status === 'installing') footerStatus.textContent = '安装程序正在接管更新流程。'
         else footerStatus.textContent = '仅支持 AgentWorkShop Windows 桌面安装版。'
-        proxyMode.value = state.proxyMode === 'direct' ? 'direct' : state.proxyMode === 'manual' ? 'manual' : 'system'
-        setManualProxy(state.manualProxy)
+        setManualProxy(state)
+        showProxyError(text(state.proxySettingError))
         autoCheck.checked = state.autoCheckUpdates === true
       }
 
@@ -671,13 +674,20 @@
       root.dataset.ready = 'true'
       actionButtons.forEach(button => button.addEventListener('click', () => send(button.dataset.action)))
       proxyMode.addEventListener('change', () => {
+        showProxyError('')
         if (proxyMode.value === 'manual') {
           manualProxySettings.hidden = false
+          if (state.proxyMode !== 'manual') showProxyError('应用手动代理后，新线路才会生效。')
+          proxyHost.focus()
           return
         }
+        manualProxySettings.hidden = true
         send('set-proxy', proxyMode.value)
       })
-      applyProxy.addEventListener('click', () => send('set-proxy', manualProxyValue()))
+      applyProxy.addEventListener('click', () => {
+        showProxyError('')
+        if (!send('set-proxy', manualProxyValue())) showProxyError('请输入有效的主机和端口，不要填入网址或凭据。')
+      })
       autoCheck.addEventListener('change', () => send('set-auto-check', autoCheck.checked))
       api.onState(apply)
       apply(state)

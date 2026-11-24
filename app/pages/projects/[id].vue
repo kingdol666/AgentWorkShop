@@ -1044,6 +1044,7 @@ onUnmounted(() => {
         </button>
         <button
           class="brand"
+          data-aw-shell-brand
           type="button"
           title="返回 Agent 工作台"
           @click="navigateTo('/workshop')"

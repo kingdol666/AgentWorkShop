@@ -8,7 +8,7 @@ import { isManualProxyConfig, normalizeManualProxy } from './chrome/contract.mjs
 export function manualProxyRules(raw) {
   if (!isManualProxyConfig(raw)) throw new Error('invalid manual proxy configuration')
   const proxy = normalizeManualProxy(raw)
-  const host = proxy.host.includes(':') && !proxy.host.startsWith('[') ? `[${proxy.host}]` : proxy.host
+  const host = proxy.host.includes(':') ? `[${proxy.host}]` : proxy.host
   const endpoint = `${host}:${proxy.port}`
   // A single fixed proxy URI applies to the HTTPS-only GitHub update channel.
   // No credentials or bypass rules are accepted here.
