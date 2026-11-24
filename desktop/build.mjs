@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
 const desktop = dirname(fileURLToPath(import.meta.url))
+const shellModules = ['main.mjs', 'sidecar.mjs', 'update.mjs', 'update-network.mjs', 'install-update.mjs']
 const help = `Usage: npm run build -- --backend <installed agentworkshop directory> [options]
 
 Run on Windows x64 with Node.js 24 and npm ci in desktop/. Supply a clean npm
@@ -65,7 +66,7 @@ async function copyTree(source, target, backendRoot = source) {
     // The app has its own Electron distribution; a previous npm launch may have expanded this one.
     if (electronPackage && (entry.name === 'dist' || entry.name === 'path.txt')) return false
     if ((fromRoot === '' && !backendEntries.has(entry.name))
-      || (desktopShell && !['package.json', 'main.mjs', 'sidecar.mjs', 'update.mjs', 'chrome', 'build'].includes(entry.name))) {
+      || (desktopShell && !['package.json', ...shellModules, 'chrome', 'build'].includes(entry.name))) {
       throw new Error(`Unexpected entry in installed backend: ${from}`)
     }
     return true
@@ -210,7 +211,7 @@ async function run() {
         // One-click NSIS uses the package name for the per-user install folder.
         extraMetadata: { name: 'agentworkshop', version },
         directories: { output: out },
-        files: ['main.mjs', 'sidecar.mjs', 'update.mjs', 'chrome/**/*', 'build/*.png'],
+        files: [...shellModules, 'chrome/**/*', 'build/*.png'],
         asar: true,
         npmRebuild: false,
         publish: null,

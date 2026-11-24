@@ -1,20 +1,23 @@
-import { app, BrowserWindow, WebContentsView, dialog, ipcMain, Menu, session, Tray, nativeImage, nativeTheme, Notification, shell as electronShell } from 'electron'
-import { spawn } from 'node:child_process'
-import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { app, BrowserWindow, WebContentsView, dialog, ipcMain, Menu, net, session, Tray, nativeImage, nativeTheme, Notification, shell as electronShell } from 'electron'
+import { createWriteStream, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { setTimeout as wait } from 'node:timers/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isAppUrl, startSidecar } from './sidecar.mjs'
-import { checkForUpdate, downloadUpdate, buildInstallHelper, INSTALL_HELPER_SCRIPT, UPDATE_REPO } from './update.mjs'
+import { checkForUpdate, discardUpdate, downloadUpdate, inspectUpdate, probeUpdateConnection, verifyDownloadedUpdate, UPDATE_REPO } from './update.mjs'
+import { createSystemUpdateTransport, manualProxyRules, pinnedFetch } from './update-network.mjs'
+import { INSTALL_CONFIRMATION, launchInstallHelper, readInstallResult, runConfirmedInstall } from './install-update.mjs'
 import {
   CHROME_CHANNELS,
+  UPDATE_CENTER_CHANNELS,
   SPLASH_CHANNELS,
   TITLEBAR_HEIGHT,
   bootStage,
   cleanPageTitle,
   isChromeAction,
+  isDesktopPageSender,
   isSplashAction,
+  isUpdateCenterAction,
   normalizeTheme,
 } from './chrome/contract.mjs'
 import { loadSettings, saveSettings } from './chrome/settings.mjs'
@@ -29,6 +32,9 @@ const { desktopHome } = await import(pathToFileURL(join(backend, 'shared', 'conf
 const home = desktopHome()
 const profile = join(home, 'electron')
 const settingsFile = join(profile, 'settings.json')
+const updatesDir = join(profile, 'updates')
+const titlebarFile = join(here, 'chrome', 'titlebar.html')
+const updateCenterFile = join(here, 'chrome', 'update-center.html')
 const statusFile = join(profile, 'desktop-status.json')
 const logsDir = join(home, 'logs')
 mkdirSync(profile, { recursive: true })
@@ -50,6 +56,7 @@ let log
 let tray
 let hideNoticeShown = false
 let pageTitle = ''
+let webBrandVisible = true
 let theme = 'dark'
 let serviceState = 'connecting'
 let statusPhase = 'booting'
@@ -64,8 +71,13 @@ let updateTimer
 let updateStartTimer
 let updateRelease = null
 let updateInstaller = null
-let updateBusy = false
-let updateState = { status: 'idle', version: null, progress: 0, error: null, notes: '' }
+let updateJob = null
+let updateCenter
+let systemUpdateTransport
+let updateTransportKey = ''
+let updateProbe = { status: 'idle', route: 'unknown' }
+let installNotice = null
+let updateState = { status: 'idle', version: null, progress: null, received: 0, total: null, speed: null, eta: null, error: null, errorStage: null, notice: null, notes: '' }
 
 function sendToChrome(channel, payload) {
   if (!shell || shell.webContents.isDestroyed()) return
@@ -100,6 +112,7 @@ function applyTheme(value) {
   if (next === theme) return
   theme = next
   sendToChrome(CHROME_CHANNELS.theme, theme)
+  sendUpdateState()
 }
 
 // The web build keeps its theme on <html class="dark"> and mirrors it into the
@@ -110,6 +123,27 @@ async function syncThemeFromPage() {
   try {
     const dark = await contentView.webContents.executeJavaScript('document.documentElement.classList.contains("dark")', true)
     applyTheme(dark ? 'dark' : 'light')
+  }
+  catch {
+    // The page may still be navigating; the next tick will retry.
+  }
+}
+
+async function syncBrandFromPage() {
+  if (!contentView || contentView.webContents.isDestroyed()) return
+  try {
+    const visible = await contentView.webContents.executeJavaScript(`(() => {
+      const nodes = document.querySelectorAll('.app-sider .logo, .rail-brand, .topnav .brand, .brand')
+      return [...nodes].some(node => {
+        const rect = node.getBoundingClientRect()
+        const style = getComputedStyle(node)
+        return rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.left < innerWidth
+          && style.visibility !== 'hidden' && style.display !== 'none'
+      })
+    })()`, true)
+    if (webBrandVisible === visible) return
+    webBrandVisible = visible === true
+    sendToChrome(CHROME_CHANNELS.brand, webBrandVisible)
   }
   catch {
     // The page may still be navigating; the next tick will retry.
@@ -129,9 +163,8 @@ async function refreshTheme() {
 }
 
 function currentVersion() {
-  // Test-only override so an installed build can exercise the full update UI
-  // against the public release without publishing a second version.
-  const test = process.env.AW_UPDATE_TEST_VERSION?.trim()
+  // Source-only display override; a packaged build always compares its real version.
+  const test = app.isPackaged ? undefined : process.env.AW_UPDATE_TEST_VERSION?.trim()
   if (test && /^\d+\.\d+\.\d+$/.test(test)) return test
   const version = app.getVersion()
   if (version && version !== '0.0.0') return version
@@ -182,123 +215,331 @@ function setServiceState(next) {
   writeStatus()
 }
 
+function updatePayload() {
+  return {
+    ...updateState,
+    notice: updateState.notice ?? installNotice,
+    currentVersion: currentVersion(),
+    proxyMode: settings.updateProxyMode,
+    manualProxy: settings.updateProxy,
+    autoCheckUpdates: settings.autoCheckUpdates,
+    probe: updateProbe,
+    theme,
+    canInstall: app.isPackaged && process.platform === 'win32',
+    busy: Boolean(updateJob),
+  }
+}
+
 function sendUpdateState() {
   sendToChrome(CHROME_CHANNELS.updateState, {
     status: updateState.status,
     version: updateState.version,
     progress: updateState.progress,
     error: updateState.error,
-    notes: updateState.notes,
   })
+  if (updateCenter && !updateCenter.isDestroyed()) {
+    updateCenter.webContents.send(UPDATE_CENTER_CHANNELS.state, updatePayload())
+  }
 }
 
 function setUpdateState(patch) {
   updateState = { ...updateState, ...patch }
   sendUpdateState()
-  refreshTray()
+  if ('status' in patch) refreshTray()
 }
 
-let updateChecking = false
+function startUpdateJob(kind) {
+  if (updateJob || stopping) return null
+  const job = { kind, controller: new AbortController(), interruption: null }
+  updateJob = job
+  return job
+}
+
+function finishUpdateJob(job) {
+  if (updateJob !== job) return
+  updateJob = null
+  sendUpdateState()
+}
+
+async function updateNetwork(signal) {
+  const mode = settings.updateProxyMode
+  const proxy = mode === 'manual' ? settings.updateProxy : null
+  const key = JSON.stringify([mode, proxy])
+  if (mode === 'direct') return { signal, fetchImpl: pinnedFetch, route: 'direct' }
+  if (systemUpdateTransport && updateTransportKey !== key) {
+    systemUpdateTransport = undefined
+  }
+  updateTransportKey = key
+  systemUpdateTransport ??= (async () => {
+    const isolated = session.fromPartition('aw-updater-network', { cache: false })
+    const proxyConfig = mode === 'manual'
+      ? { mode: 'fixed_servers', proxyRules: manualProxyRules(proxy), proxyBypassRules: '' }
+      : { mode: 'system' }
+    await isolated.setProxy(proxyConfig)
+    const { fetchImpl } = createSystemUpdateTransport({ net, session: isolated })
+    return {
+      fetchImpl,
+      resolveProxy: mode === 'system' ? url => isolated.resolveProxy(url) : null,
+      route: mode === 'manual' ? 'proxy' : 'system',
+    }
+  })().catch((err) => {
+    systemUpdateTransport = undefined
+    throw err
+  })
+  return { signal, ...await systemUpdateTransport }
+}
+
+function updateError(err, fallback) {
+  const code = String(err?.code ?? err?.cause?.code ?? '')
+  if (code === 'UPDATE_RATE_LIMITED') return 'GitHub 更新接口暂时限流，请稍后再试。系统代理线路未被切换。'
+  if (/PROXY.*AUTH|407/.test(code)) return '系统代理需要认证，请检查 Windows 代理设置。'
+  if (/PROXY|TUNNEL/.test(code)) return '无法通过代理访问更新服务，请检查代理设置。'
+  if (err?.name === 'TimeoutError' || /TIMED?OUT|TIMEOUT/.test(code)) return '更新连接超时，可以重试或检查代理。'
+  if (/ENOSPC/.test(code)) return '磁盘空间不足，请清理空间后重试。'
+  if (/SHA[- ]?256|checksum/i.test(String(err?.message))) return '更新包完整性校验失败，未执行安装。'
+  return fallback
+}
+
+const emptyTransfer = { progress: null, received: 0, total: null, speed: null, eta: null }
+
+function restoredTransfer(saved) {
+  if (saved.status === 'ready') {
+    updateInstaller = saved
+    return { status: 'ready', received: saved.bytes, total: saved.bytes, progress: 100 }
+  }
+  if (saved.status === 'paused') {
+    return { status: 'paused', received: saved.received, total: saved.total ?? null,
+      progress: saved.total ? Math.min(99, Math.floor(100 * saved.received / saved.total)) : null }
+  }
+  return { status: 'available' }
+}
+
 async function checkUpdate({ manual = false } = {}) {
-  if (updateChecking || updateBusy) return
-  if (['downloading', 'ready'].includes(updateState.status)) return
-  updateChecking = true
+  if (!manual && ['available', 'paused', 'ready', 'error'].includes(updateState.status) && updateRelease) return
+  const job = startUpdateJob('check')
+  if (!job) return
+  const previous = updateState
+  setUpdateState({ status: 'checking', error: null, errorStage: null, notice: null })
   try {
-    const result = await checkForUpdate({ currentVersion: currentVersion(), repo: updateRepo() })
+    const network = await updateNetwork(job.controller.signal)
+    const result = await checkForUpdate({ currentVersion: currentVersion(), repo: updateRepo(), ...network })
+    job.controller.signal.throwIfAborted()
     if (result.status === 'available') {
+      const saved = await inspectUpdate(result.release, { dir: updatesDir, ...network })
+      job.controller.signal.throwIfAborted()
+      const newlyAvailable = updateRelease?.version !== result.release.version
       updateRelease = result.release
-      setUpdateState({
-        status: 'available',
-        version: result.release.version,
-        progress: 0,
-        error: null,
-        notes: result.release.notes,
-      })
-      if (manual) notify('发现新版本', `AgentWorkShop v${result.release.version} 可在标题栏安装。`)
+      updateInstaller = null
+      setUpdateState({ ...emptyTransfer, version: result.release.version, notes: result.release.notes, ...restoredTransfer(saved) })
+      if (!manual && newlyAvailable && saved.status !== 'ready') notify('发现新版本', `AgentWorkShop v${result.release.version} 可在桌面更新中心下载。`)
     }
     else {
       updateRelease = null
-      setUpdateState({ status: 'idle', version: null, progress: 0, error: null, notes: '' })
-      if (manual) notify('已是最新版本', `当前版本 v${currentVersion()}`)
+      updateInstaller = null
+      setUpdateState({ ...emptyTransfer, status: 'current', version: null, notes: '' })
     }
   }
   catch (err) {
-    console.error('[update] check failed:', err.message)
-    if (!['downloading', 'ready'].includes(updateState.status)) setUpdateState({ status: 'idle' })
-    if (manual) notify('检查更新失败', err.message)
+    if (!stopping) {
+      // A failed metadata check must not hide a previously verified installer.
+      setUpdateState({ ...previous, status: updateRelease ? previous.status : 'error', errorStage: 'check',
+        error: updateError(err, '无法检查更新，请测试连接后重试。') })
+    }
   }
   finally {
-    updateChecking = false
+    finishUpdateJob(job)
   }
 }
 
 async function beginDownload() {
-  if (!updateRelease || updateBusy) return
-  updateBusy = true
-  setUpdateState({ status: 'downloading', version: updateRelease.version, progress: 0, error: null })
+  if (!updateRelease || !['available', 'paused', 'error'].includes(updateState.status)) return
+  const job = startUpdateJob('download')
+  if (!job) return
+  const release = updateRelease
+  const began = Date.now()
+  let last = began
+  let lastBytes = updateState.received
+  let speed = 0
+  updateInstaller = null
+  setUpdateState({ status: 'downloading', error: null, errorStage: null, notice: null, speed: null, eta: null })
   try {
-    const dir = join(tmpdir(), 'agentworkshop-update', updateRelease.version)
-    mkdirSync(dir, { recursive: true })
-    let lastAt = 0
-    const result = await downloadUpdate(updateRelease, {
-      dir,
-      onProgress: (received, total) => {
-        const progress = Math.max(0, Math.min(100, Math.floor((received * 100) / Math.max(1, total))))
+    const network = await updateNetwork(job.controller.signal)
+    const result = await downloadUpdate(release, {
+      dir: updatesDir,
+      ...network,
+      onProgress: (received, total, detail) => {
+        if (job.controller.signal.aborted) return
         const now = Date.now()
-        if (progress >= 100 || now - lastAt >= 250) {
-          lastAt = now
-          setUpdateState({ progress })
-        }
+        const reset = received < lastBytes || detail?.restarted
+        const elapsed = now - last
+        if (!reset && elapsed < 250 && (!total || received !== total)) return
+        const rate = elapsed > 0 ? Math.max(0, (received - lastBytes) * 1000 / elapsed) : 0
+        speed = reset ? 0 : speed ? 0.75 * speed + 0.25 * rate : rate
+        last = now
+        lastBytes = received
+        setUpdateState({ received, total: total || null, progress: total ? Math.min(99, Math.floor(received * 100 / total)) : null,
+          speed: speed > 0 ? speed : null, eta: total && speed > 0 ? Math.max(0, (total - received) / speed) : null,
+          ...(reset ? { notice: '服务器无法续传，已重新开始下载。' } : {}) })
       },
+      onVerify: () => setUpdateState({ status: 'verifying', speed: null, eta: null }),
     })
-    updateInstaller = result.path
-    setUpdateState({ status: 'ready', progress: 100, error: null })
+    job.controller.signal.throwIfAborted()
+    updateInstaller = result
+    setUpdateState({ status: 'ready', received: result.bytes, total: result.bytes, progress: 100, speed: null, eta: null, notice: null })
   }
   catch (err) {
-    console.error('[update] download failed:', err.message)
-    setUpdateState({ status: 'error', error: err.message })
+    if (job.interruption === 'cancel') {
+      try {
+        await discardUpdate(release, { dir: updatesDir })
+        setUpdateState({ ...emptyTransfer, status: 'available', notice: '已取消下载。' })
+      }
+      catch {
+        setUpdateState({ status: 'error', errorStage: 'download', error: '无法清理更新缓存，请重试。' })
+      }
+    }
+    else if (!stopping) {
+      const saved = await inspectUpdate(release, { dir: updatesDir }).catch(() => ({ status: 'none' }))
+      const transfer = restoredTransfer(saved)
+      if (job.interruption === 'pause') {
+        setUpdateState({ ...emptyTransfer, ...transfer, notice: saved.status === 'none' ? '已暂停。此连接没有可续传的数据，下次将从头下载。' : '已暂停。' })
+      }
+      else {
+        setUpdateState({ ...emptyTransfer, ...transfer, status: 'error', errorStage: 'download',
+          error: updateError(err, '更新下载未完成，可以重试或测试连接。') })
+      }
+    }
   }
   finally {
-    updateBusy = false
+    finishUpdateJob(job)
+  }
+}
+
+async function interruptDownload(kind) {
+  if (updateJob?.kind === 'download') {
+    if (!updateJob.interruption) {
+      updateJob.interruption = kind
+      updateJob.controller.abort()
+    }
+    return
+  }
+  if (kind !== 'cancel' || !updateRelease || !['paused', 'error'].includes(updateState.status)) return
+  const job = startUpdateJob('discard')
+  if (!job) return
+  sendUpdateState()
+  try {
+    await discardUpdate(updateRelease, { dir: updatesDir })
+    setUpdateState({ ...emptyTransfer, status: 'available', notice: '已取消下载。', error: null, errorStage: null })
+  }
+  catch {
+    setUpdateState({ status: 'error', errorStage: 'download', error: '无法清理更新缓存，请重试。' })
+  }
+  finally {
+    finishUpdateJob(job)
+  }
+}
+
+async function testUpdateConnection() {
+  const job = startUpdateJob('probe')
+  if (!job) return
+  updateProbe = { status: 'testing', route: 'unknown' }
+  sendUpdateState()
+  try {
+    const network = await updateNetwork(job.controller.signal)
+    const routes = new Set()
+    const { fetchImpl, resolveProxy } = network
+    const probeFetch = resolveProxy
+      ? async (url, options) => {
+        const rule = await Promise.race([resolveProxy(url).catch(() => ''), wait(3_000, '', { ref: false })])
+        for (const entry of rule.split(';').map(value => value.trim().toUpperCase())) {
+          if (entry === 'DIRECT') routes.add('direct')
+          else if (/^(?:PROXY|HTTPS?|SOCKS[45]?|QUIC)\s/.test(entry)) routes.add('proxy')
+        }
+        return fetchImpl(url, options)
+      }
+      : fetchImpl
+    const result = await probeUpdateConnection({ repo: updateRepo(), ...network, fetchImpl: probeFetch })
+    const route = routes.size > 1 ? 'mixed' : routes.values().next().value ?? network.route ?? 'unknown'
+    updateProbe = { status: 'ok', route, elapsedMs: result.elapsedMs }
+  }
+  catch (err) {
+    updateProbe = { status: 'error', route: 'unknown', error: updateError(err, '无法连接 GitHub 更新通道，请检查网络或代理。') }
+  }
+  finally {
+    finishUpdateJob(job)
   }
 }
 
 async function installUpdate() {
-  if (!app.isPackaged || process.platform !== 'win32') {
-    await showMessageBox({
-      type: 'info',
-      title: '自动更新',
-      message: '自动安装仅支持 Windows 安装版',
-      detail: '当前运行为开发/源码模式。请使用安装版，或在源码目录重新构建。',
+  if (!app.isPackaged || process.platform !== 'win32' || updateState.status !== 'ready' || !updateInstaller || !updateRelease || restarting) return
+  const job = startUpdateJob('install')
+  if (!job) return
+  sendUpdateState()
+  let stage = 'confirm'
+  let stopped = false
+  try {
+    const consent = {
+      type: 'question',
+      title: '安装更新',
+      message: `安装 AgentWorkShop v${updateRelease.version} 并重启？`,
+      detail: '安装会停止本机服务，可能中断正在执行的作业。请保存工作；也可以稍后再安装。',
+      ...INSTALL_CONFIRMATION,
+    }
+    await runConfirmedInstall({
+      confirm: () => updateCenter && !updateCenter.isDestroyed()
+        ? dialog.showMessageBox(updateCenter, consent)
+        : showMessageBox(consent),
+      verify: async () => {
+        stage = 'verify'
+        if (stopping || restarting) throw new Error('Desktop is not ready for update')
+        installNotice = null
+        setUpdateState({ status: 'installing', error: null, errorStage: null, notice: null })
+        await verifyDownloadedUpdate(updateRelease, updateInstaller, { signal: job.controller.signal })
+      },
+      stop: async () => {
+        stage = 'stop'
+        if (stopping || restarting) throw new Error('Desktop is not ready for update')
+        const instance = sidecar
+        if (instance) {
+          sidecarGeneration++
+          try {
+            await instance.stop({ gracefulOnly: true })
+          }
+          catch (err) {
+            watchSidecarClosed(sidecarGeneration, instance)
+            throw err
+          }
+          sidecar = undefined
+          stopped = true
+        }
+        setServiceState('offline')
+        job.controller.signal.throwIfAborted()
+      },
+      launch: async () => {
+        stage = 'launch'
+        await launchInstallHelper({ profile, installer: updateInstaller.path, executable: process.execPath })
+        quit()
+      },
     })
-    return
   }
-  if (!updateInstaller || !existsSync(updateInstaller)) {
-    setUpdateState({ status: 'error', error: '更新包不存在，请重新下载' })
-    return
+  catch {
+    const error = stage === 'verify'
+      ? '无法确认更新包的完整性，请重新下载。'
+      : stage === 'stop'
+        ? '本机服务未确认停止，更新包已保留，请稍后重试。'
+        : '未能启动更新安装，请稍后重试。'
+    if (stage === 'verify' && !stopping) {
+      updateInstaller = null
+      await discardUpdate(updateRelease, { dir: updatesDir }).catch(() => {})
+      setUpdateState({ ...emptyTransfer, status: 'error', errorStage: 'download', error })
+    }
+    else if (!stopping) {
+      setUpdateState({ status: 'ready', errorStage: 'install', error })
+    }
   }
-  const options = {
-    type: 'question',
-    title: '安装更新',
-    message: `安装 AgentWorkShop v${updateRelease.version} 并重启？`,
-    detail: (updateRelease.notes || '更新完成后应用会自动重启。').slice(0, 1_200),
-    buttons: ['重启并安装', '稍后'],
-    defaultId: 0,
-    cancelId: 1,
+  finally {
+    finishUpdateJob(job)
+    if (stopped && !stopping) void restartBackend({ confirm: false })
   }
-  const choice = process.env.AW_UPDATE_AUTOINSTALL === '1'
-    ? { response: 0 }
-    : await showMessageBox(options)
-  if (choice.response !== 0) return
-  const installer = updateInstaller
-  const exe = process.execPath
-  // The app stops its sidecar first; the detached helper waits for our files to
-  // unlock, runs the NSIS installer silently, then starts the updated executable.
-  const helperScript = join(tmpdir(), 'agentworkshop-update-helper.vbs')
-  writeFileSync(helperScript, INSTALL_HELPER_SCRIPT, 'ascii')
-  const helper = buildInstallHelper({ installer, executable: exe, scriptPath: helperScript, env: process.env })
-  spawn(helper.file, helper.args, { detached: true, stdio: 'ignore', windowsHide: true, env: helper.env }).unref()
-  quit()
 }
 
 function scheduleUpdates() {
@@ -512,28 +753,119 @@ function toggleSetting(key) {
     else stopUpdates()
   }
   sendPrefs()
+  sendUpdateState()
   refreshTray()
   writeStatus()
   const label = TRAY_SETTINGS.find(item => item.key === key)?.label ?? key
   notify('设置已更新', `${label}：${settings[key] ? '开启' : '关闭'}`)
 }
 
-function manualUpdateAction() {
-  if (updateState.status === 'ready') {
-    showMain()
-    void installUpdate()
+function openUpdateCenter() {
+  if (stopping) return
+  if (updateCenter && !updateCenter.isDestroyed()) {
+    updateCenter.show()
+    updateCenter.focus()
     return
   }
-  if (updateState.status === 'downloading') {
-    showMain()
+  const browser = new BrowserWindow({
+    title: 'AgentWorkShop · 桌面设置与更新',
+    width: 870, height: 700, minWidth: 390, minHeight: 490,
+    backgroundColor: theme === 'dark' ? '#070c14' : '#f5f5f5',
+    show: false,
+    autoHideMenuBar: true,
+    icon: join(here, 'build', 'icon.png'),
+    webPreferences: {
+      preload: join(here, 'chrome', 'update-center-preload.cjs'),
+      partition: 'aw-update-ui',
+      sandbox: true, contextIsolation: true, nodeIntegration: false,
+      webSecurity: true, webviewTag: false, devTools: false,
+    },
+  })
+  updateCenter = browser
+  harden(browser.webContents, { chrome: true })
+  browser.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+  browser.webContents.session.setPermissionCheckHandler(() => false)
+  browser.once('ready-to-show', () => {
+    if (!stopping && !browser.isDestroyed()) browser.show()
+  })
+  browser.on('closed', () => {
+    if (updateCenter === browser) updateCenter = undefined
+  })
+  void browser.loadFile(updateCenterFile).catch(() => {
+    if (!browser.isDestroyed()) browser.destroy()
+    notify('桌面更新', '无法打开更新界面。')
+  })
+}
+
+function changeUpdateProxy(value) {
+  if (updateJob) {
+    sendUpdateState()
     return
   }
-  if (updateState.status === 'available') {
-    showMain()
-    notify('发现新版本', `AgentWorkShop v${updateState.version} 可在标题栏安装。`)
+  const next = value === 'system' || value === 'direct'
+    ? { ...settings, updateProxyMode: value }
+    : { ...settings, updateProxyMode: 'manual', updateProxy: value.config }
+  try {
+    settings = saveSettings(settingsFile, next)
+    updateProbe = { status: 'idle', route: 'unknown' }
+    systemUpdateTransport = undefined
+    updateTransportKey = ''
+    setUpdateState({ notice: null })
+    writeStatus()
+    refreshTray()
+  }
+  catch {
+    setUpdateState({ notice: '桌面设置未保存，请检查本机目录权限或代理配置。' })
+  }
+}
+
+function changeUpdateSetting(key, value) {
+  if (updateJob && key === 'updateProxyMode') {
+    sendUpdateState()
     return
   }
-  void checkUpdate({ manual: true })
+  try {
+    settings = saveSettings(settingsFile, { ...settings, [key]: value })
+    if (key === 'updateProxyMode') updateProbe = { status: 'idle', route: 'unknown' }
+    else if (settings.autoCheckUpdates) scheduleUpdates()
+    else stopUpdates()
+    setUpdateState({ notice: null })
+    writeStatus()
+    refreshTray()
+  }
+  catch {
+    setUpdateState({ notice: '桌面设置未保存，请检查本机目录权限。' })
+  }
+}
+
+function handleUpdateCenterAction(action, value) {
+  if (stopping || !isUpdateCenterAction(action, value)) return
+  switch (action) {
+    case 'check':
+      void checkUpdate({ manual: true })
+      break
+    case 'download':
+      void beginDownload()
+      break
+    case 'pause':
+      void interruptDownload('pause')
+      break
+    case 'cancel':
+      void interruptDownload('cancel')
+      break
+    case 'install':
+      void installUpdate()
+      break
+    case 'test-connection':
+      void testUpdateConnection()
+      break
+    case 'set-proxy':
+      changeUpdateProxy(value)
+      break
+    case 'set-auto-check':
+      changeUpdateSetting('autoCheckUpdates', value)
+      break
+  }
 }
 
 function handleTrayAction(id) {
@@ -553,7 +885,8 @@ function handleTrayAction(id) {
       void restartBackend()
       break
     case 'check-update':
-      manualUpdateAction()
+    case 'open-update-center':
+      openUpdateCenter()
       break
     case 'open-home':
       openHome()
@@ -589,14 +922,20 @@ function registerChromeIpc() {
     sendToChrome(CHROME_CHANNELS.status, serviceState)
     sendToChrome(CHROME_CHANNELS.theme, theme)
     sendToChrome(CHROME_CHANNELS.title, pageTitle)
+    sendToChrome(CHROME_CHANNELS.brand, webBrandVisible)
     sendPrefs()
     sendUpdateState()
   })
   ipcMain.on(CHROME_CHANNELS.update, (event, action) => {
-    if (!shell || event.sender !== shell.webContents || action !== 'activate') return
-    if (updateState.status === 'available') void beginDownload()
-    else if (updateState.status === 'ready') void installUpdate()
-    else if (updateState.status === 'error') void checkUpdate()
+    if (action === 'open-center' && isDesktopPageSender(event, shell?.webContents, pathToFileURL(titlebarFile).href)) {
+      openUpdateCenter()
+    }
+  })
+  ipcMain.on(UPDATE_CENTER_CHANNELS.hello, (event) => {
+    if (isDesktopPageSender(event, updateCenter?.webContents, pathToFileURL(updateCenterFile).href)) sendUpdateState()
+  })
+  ipcMain.on(UPDATE_CENTER_CHANNELS.action, (event, action, value) => {
+    if (isDesktopPageSender(event, updateCenter?.webContents, pathToFileURL(updateCenterFile).href)) handleUpdateCenterAction(action, value)
   })
 }
 
@@ -610,6 +949,8 @@ function watchTheme() {
 function quit() {
   if (stopping) return
   stopping = true
+  stopUpdates()
+  updateJob?.controller.abort()
   statusPhase = 'quitting'
   writeStatus()
   void (async () => {
@@ -799,6 +1140,12 @@ async function revealMain() {
     writeStatus()
     refreshTray()
   }
+  void readInstallResult(profile).then((result) => {
+    if (result && result !== 'installed' && !stopping) {
+      installNotice = '上次更新未报告成功。请检查当前版本，必要时重新下载或安装。'
+      sendUpdateState()
+    }
+  })
   scheduleUpdates()
   scheduleTestAutoquit()
   scheduleTestTrayMenu()
@@ -868,7 +1215,10 @@ async function createShell(origin) {
     pageTitle = cleanPageTitle(title)
     sendToChrome(CHROME_CHANNELS.title, pageTitle)
   })
-  contentView.webContents.on('did-finish-load', () => void syncThemeFromPage())
+  contentView.webContents.on('did-finish-load', () => {
+    void syncThemeFromPage()
+    void syncBrandFromPage()
+  })
 
   browser.contentView.addChildView(contentView)
   layout()
@@ -882,9 +1232,10 @@ async function createShell(origin) {
   browser.on('focus', () => sendToChrome(CHROME_CHANNELS.state, windowState()))
   browser.on('blur', () => sendToChrome(CHROME_CHANNELS.state, windowState()))
   browser.on('close', (event) => {
-    if (allowQuit || !settings.closeToTray) return
+    if (allowQuit) return
     event.preventDefault()
-    hideToTray()
+    if (settings.closeToTray) hideToTray()
+    else quit()
   })
   browser.on('show', () => {
     if (statusPhase === 'hidden') statusPhase = 'ready'
@@ -902,6 +1253,7 @@ async function createShell(origin) {
     stopUpdates()
     shell = undefined
     contentView = undefined
+    webBrandVisible = true
     writeStatus()
     refreshTray()
   })
@@ -910,8 +1262,12 @@ async function createShell(origin) {
   await contentView.webContents.loadURL(origin)
   await refreshTheme()
   await syncThemeFromPage()
+  await syncBrandFromPage()
   layout()
-  themeTimer = setInterval(() => void syncThemeFromPage(), 2_000)
+  themeTimer = setInterval(() => {
+    void syncThemeFromPage()
+    void syncBrandFromPage()
+  }, 2_000)
   themeTimer.unref()
 }
 
@@ -1010,7 +1366,7 @@ async function retryStartup() {
 }
 
 async function restartBackend({ confirm = true } = {}) {
-  if (restarting || stopping) return
+  if (restarting || stopping || updateJob?.kind === 'install') return
   if (confirm) {
     const choice = await showMessageBox({
       type: 'question',
@@ -1023,6 +1379,7 @@ async function restartBackend({ confirm = true } = {}) {
     })
     if (choice.response !== 0) return
   }
+  if (restarting || stopping || updateJob?.kind === 'install') return
   restarting = true
   const previous = sidecar
   sidecarGeneration += 1

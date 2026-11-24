@@ -12,7 +12,7 @@
 
 ## 桌面外观与品牌
 
-桌面窗口使用无边框 `BrowserWindow`：顶部 40px 是随应用分发的标题栏文档（`desktop/chrome/titlebar.html`），下方内容区是独立 `WebContentsView`，加载与 Web 端完全相同的 Nitro 页面，不做 DOM 注入或布局改写。标题栏提供品牌标识、当前页面标题、本机服务状态和自绘的最小化/最大化/关闭按钮；窗口按钮经 `desktop/chrome/preload.cjs` 的白名单 IPC 触达主进程。标题栏跟随应用的 `html.dark` 主题切换，在亮色下使用暖纸白，在暗色下使用深海军蓝与信号绿。
+桌面窗口使用无边框 `BrowserWindow`：顶部 40px 是随应用分发的标题栏文档（`desktop/chrome/titlebar.html`），下方内容区是独立 `WebContentsView`，加载与 Web 端完全相同的 Nitro 页面，不做 DOM 注入或布局改写。标题栏提供窗口级服务状态、更新入口和自绘的最小化/最大化/关闭按钮；当下方 Web 壳已有可见品牌区时，标题栏自动收起重复字标，窄屏抽屉或无品牌页才保留简洁备用标识。窗口按钮经 `desktop/chrome/preload.cjs` 的白名单 IPC 触达主进程。标题栏跟随应用的 `html.dark` 主题切换，在亮色下使用暖纸白，在暗色下使用深海军蓝与信号绿。
 
 品牌母版是 `desktop/brand/mark.svg`（门架 A 字标，单一剪影、无渐变）、`badge.svg`（512 应用铭牌：深墨底 + 3px 内缘线）与 `tray-dark.svg` / `tray-light.svg`（托盘裸字标，深色任务栏用信号绿、浅色任务栏用深玉绿）。二进制图标不手工导出：`pnpm brand:desktop`（`scripts/desktop-brand.mjs`）用本机 Chrome 按目标尺寸光栅化 SVG，并封装 `desktop/build/icon.ico`（16–64 BMP、128/256 PNG，共 9 个条目）、`icon.png`、两个 32px 托盘图与 Web 端 `public/icon-180.png` / `icon-512.png`。托盘图标随 `nativeTheme` 切换；改字形只需改 SVG 再重跑该脚本。侧栏、标题栏、启动页、favicon 与 docs 站 favicon 共用同一条 `d`。设计研究、方向记录与启动动画关键帧见 `docs/design/desktop-chrome/brand-spec.md`、`direction-approved.md` 与 `*-20261124.png`。
 
@@ -30,7 +30,8 @@
 | 开机自动启动 | 关 | 安装版写入 Windows 登录项；源码模式不写系统 |
 | 启动后最小化到托盘 | 关 | 后端就绪后不显示主窗口，留在托盘 |
 | 托盘通知 | 开 | 隐藏、重启服务、设置变更等提示 |
-| 自动检查更新 | 开 | 启动 4 秒后与每 30 分钟检查；手动检查不受影响 |
+| 自动检查更新 | 开 | 启动后及运行期间检查版本，只提示，不下载、不安装；手动检查不受影响 |
+| 更新网络 | 跟随系统代理 | 仅供桌面更新器使用，可切换为手动代理或直连；不会修改系统、Web 或本机服务的网络设置 |
 
 启动时 Electron 立即创建托盘并显示 660×440 的无边框初始化窗口（`desktop/chrome/splash.html`），按真实阶段展示：准备运行环境 → 初始化工作区 → 启动本机服务 → 装配智能体工作台 → 就绪。启动页是一段一次性的通电序列：扫描线掠过、绿色细线把 A 字标描出来再交给实心字、品牌横线变成四站启动轨（每个站点落在该阶段的真实进度上）；窗口同时显示带时间戳的启动记录、实时耗时与进度；装配阶段沿字形再复检一次。只有 `/api/health` 返回 `status=ok` 且 `workshop=ready`、并且主页面加载完成后才显示主窗口。最小展示时间为 2 秒，避免界面闪烁；失败时显示错误、日志路径与「重试 / 打开日志 / 退出」，不会静默退出。等待期间没有循环动效；动画支持 `prefers-reduced-motion`（保留全部状态、去掉位移与描边），文档 CSP 为 `default-src 'none'` 且只使用内联本地资源。
 
@@ -38,7 +39,13 @@
 
 ## 更新通道
 
-桌面版启动 4 秒后检查 GitHub Releases 最新版本，此后每 30 分钟检查一次；发现比当前版本更新的 release 时，标题栏出现「更新 vX.Y.Z」。点击后把安装包下载到系统临时目录，并用 release 附带的 `SHA256SUMS.txt` 校验 SHA-256；再次确认后退出应用、静默运行 NSIS 安装包并重启。安装/重启由一个独立的无控制台 WSH 助手（`wscript.exe` + 固定 VBS，路径经环境变量传入）执行：应用先退出以释放被占用的文件，助手等待 6 秒后以 `/S` 安装并重新启动当前安装目录中的可执行文件。不使用 `cmd.exe` 命令串（引号会被 Node 转义破坏），也不使用 PowerShell（以 `DETACHED_PROCESS` 启动时立即退出）。`AW_UPDATE_AUTOINSTALL=1` 只用于验收测试，跳过确认对话框。下载只允许 `api.github.com`、`github.com`、`objects.githubusercontent.com`、`release-assets.githubusercontent.com` 四个 HTTPS 主机，逐跳校验重定向、拒绝凭据/非常规端口/非公网 DNS，校验失败不会执行安装包。`AW_UPDATE_CHECK=0` 可关闭检查；`AW_UPDATE_TEST_VERSION` 只用于验收测试。安装包当前未签名，信任锚是 HTTPS + 固定仓库 + SHA-256，不是 Authenticode。
+从桌面标题栏或托盘打开「桌面设置与更新」。更新网络和自动检查偏好保存在 `<home>/electron/settings.json`，不出现在 Web 设置中。默认**跟随系统代理**：更新器使用独立的 Electron 网络会话，按 Windows 代理及 PAC 规则访问 GitHub；如果 PAC 对某个地址返回 `DIRECT`，系统会直连。也可选择**手动代理**，填写无凭据的 HTTP、HTTPS 或 SOCKS5 地址与端口；密码不由应用保存或代填。切换到「直连」后不使用系统代理。应用不会在代理报错时自行切换线路。用「测试连接」检查线路；该操作验证更新端点，不下载整个安装包。速度取决于代理、CDN 和本地网络。
+
+更新分三步：**检查更新 → 下载 → 重启并安装**。自动检查只发现并提示新版本，关闭后仍可手动检查。下载显示已传输量、可用时的总量、速率和剩余时间。可以暂停、继续或取消；短暂网络错误会有限重试。若服务器不提供可验证的断点续传，继续时会重新下载。更新器只管理 `<home>/electron/updates/` 内自己的缓存；应用重开后可通过检查更新找回可恢复的下载，不会自行继续。下载完毕后必须通过对应版本的 `SHA256SUMS.txt` 完整校验，才显示「重启并安装」。
+
+下载结束、关闭窗口、退出应用或在确认框选择默认项「稍后」，都不会运行安装器。只有明确确认才会停止本机服务；在跑的作业可能受影响，请先保存工作。服务未确认停止时不启动安装。安装使用内置 WSH 助手；它等待旧桌面进程退出，才运行 NSIS `/S`，安装成功才启动新版。失败时可重新打开应用查看状态，也可手动运行发布页的安装器。
+
+更新目标限固定仓库和 `api.github.com`、`github.com`、`objects.githubusercontent.com`、`release-assets.githubusercontent.com` 四个 HTTPS 主机：每一跳都校验端口、主机和公网 DNS，拒绝 URL 内凭据。直连固定到已验证的公网地址；系统代理可在代理端解析域名，这部分依赖系统配置的代理。更新器不会使用 Web 会话凭据。安装包当前未签名，信任基础是 HTTPS、固定仓库及发布校验文件；SHA-256 不是独立的发布者签名。`AW_UPDATE_CHECK=0` 可停用定时检查，`AW_UPDATE_TEST_VERSION` 仅在源码模式可用。
 
 发布 release 时需上传安装器 `AgentWorkShop-Setup-<version>-win-x64.exe`、`SHA256SUMS.txt` 和 npm tarball。
 

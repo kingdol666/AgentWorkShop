@@ -21,7 +21,10 @@ export function buildTrayMenuModel({ settings, service, port, version, windowVis
   const serviceLabel = online
     ? `本机服务 · 运行中${port ? ` · 127.0.0.1:${port}` : ''}`
     : service === 'offline' ? '本机服务 · 已断开' : '本机服务 · 启动中…'
-  const updateBusy = ['downloading', 'ready'].includes(update?.status)
+  const updateBusy = ['checking', 'downloading', 'paused', 'verifying', 'installing'].includes(update?.status) || update?.busy === true
+  const centerLabel = update?.status === 'available'
+    ? `打开更新中心 · v${update.version}`
+    : update?.status === 'ready' ? `打开更新中心 · v${update.version} 可安装` : '打开更新中心'
   return [
     { id: 'open', label: windowVisible ? '打开 AgentWorkShop' : '显示主窗口' },
     { id: 'reload', label: '重新加载界面', enabled: online },
@@ -29,6 +32,7 @@ export function buildTrayMenuModel({ settings, service, port, version, windowVis
     { id: 'service-status', label: serviceLabel, enabled: false },
     { id: 'restart-service', label: '重启本地服务…', enabled: online },
     { type: 'separator' },
+    { id: 'open-update-center', label: centerLabel, enabled: true },
     { id: 'check-update', label: updateLabel(update), enabled: !updateBusy && update?.status !== 'ready' },
     { id: 'open-home', label: '打开数据目录' },
     { id: 'open-logs', label: '打开日志目录' },

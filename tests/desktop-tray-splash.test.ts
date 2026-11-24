@@ -110,6 +110,7 @@ test('tray menu exposes service state, maintenance actions and settings', () => 
     'reload',
     'service-status',
     'restart-service',
+    'open-update-center',
     'check-update',
     'open-home',
     'open-logs',
@@ -139,6 +140,28 @@ test('tray menu exposes service state, maintenance actions and settings', () => 
   assert.match(hidden.find(item => item.id === 'check-update')?.label ?? '', /0\.17\.6/)
   assert.equal(hidden.find(item => item.id === 'reload')?.enabled, false)
   assert.equal(hidden.find(item => item.id === 'restart-service')?.enabled, false)
+})
+
+test('update center keeps active jobs cancellable without exposing normal operations', () => {
+  const html = read('desktop/chrome/update-center.html')
+  assert.match(html, /next\.busy === true/)
+  assert.match(html, /const canPause = status === 'downloading'/)
+  assert.match(html, /const canCancel = \['downloading', 'verifying'\]\.includes\(status\)/)
+  assert.match(html, /!busy && \(status === 'paused' \|\| retryDownload\)/)
+  assert.match(html, /settingsControls\.forEach\(control => \{ control\.disabled = busy \}\)/)
+  assert.match(html, /const canDownload = !busy && \['available', 'paused'\]\.includes\(status\)/)
+  assert.match(html, /status === 'ready'/)
+
+  const busy = buildTrayMenuModel({
+    settings: normalizeSettings({}),
+    service: 'online',
+    port: 51234,
+    version: '0.17.5',
+    windowVisible: true,
+    update: { status: 'downloading', busy: true, progress: 20 },
+  })
+  assert.equal(busy.find(item => item.id === 'open-update-center')?.enabled, true)
+  assert.equal(busy.find(item => item.id === 'check-update')?.enabled, false)
 })
 
 test('splash document is self-contained, accessible and reduced-motion aware', () => {
@@ -174,7 +197,9 @@ test('main process boots the splash before the backend and closes to the tray', 
   assert.match(main, /import \{[^}]*Tray[^}]*nativeImage[^}]*Notification[^}]*\} from 'electron'/)
   assert.match(main, /createTray\(\)/)
   assert.match(main, /createSplash\(\)\s*\n\s*if \(stopping\) return\s*\n\s*startup = open\(\)/)
-  assert.match(main, /browser\.on\('close', \(event\) => \{[\s\S]{0,240}allowQuit \|\| !settings\.closeToTray[\s\S]{0,120}hideToTray\(\)/)
+  assert.match(main, /browser\.on\('close', \(event\) => \{/)
+  assert.match(main, /settings\.closeToTray/)
+  assert.match(main, /hideToTray\(\)/)
   assert.match(main, /settings\.startHidden/)
   assert.match(main, /AppUserModelId|setAppUserModelId/)
   assert.match(main, /setLoginItemSettings/)

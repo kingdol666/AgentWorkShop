@@ -10,10 +10,13 @@ const CHANNELS = {
   status: 'aw-chrome:status',
   theme: 'aw-chrome:theme',
   title: 'aw-chrome:title',
+  brand: 'aw-chrome:brand',
   prefs: 'aw-chrome:prefs',
   update: 'aw-chrome:update',
   updateState: 'aw-chrome:update-state',
 }
+
+const UPDATE_ACTIONS = new Set(['open-center'])
 
 function subscribe(channel, callback) {
   const handler = (_event, payload) => {
@@ -32,11 +35,16 @@ contextBridge.exposeInMainWorld('awChrome', {
   platform: process.platform,
   action: name => ipcRenderer.send(CHANNELS.action, name),
   hello: () => ipcRenderer.send(CHANNELS.hello),
-  updateAction: name => ipcRenderer.send(CHANNELS.update, name),
+  updateAction: (name) => {
+    if (!UPDATE_ACTIONS.has(name)) return false
+    ipcRenderer.send(CHANNELS.update, name)
+    return true
+  },
   onState: callback => subscribe(CHANNELS.state, callback),
   onStatus: callback => subscribe(CHANNELS.status, callback),
   onTheme: callback => subscribe(CHANNELS.theme, callback),
   onTitle: callback => subscribe(CHANNELS.title, callback),
+  onBrand: callback => subscribe(CHANNELS.brand, callback),
   onPrefs: callback => subscribe(CHANNELS.prefs, callback),
   onUpdate: callback => subscribe(CHANNELS.updateState, callback),
 })

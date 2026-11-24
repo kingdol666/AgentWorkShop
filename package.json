@@ -1,6 +1,6 @@
 {
   "name": "agentworkshop",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "type": "module",
   "description": "AgentWorkShop — a configuration-driven industrial agent runtime: agent teams, Channel sessions, Project delivery and governed plant writes",
   "license": "Apache-2.0",
@@ -66,6 +66,10 @@
     "desktop/main.mjs",
     "desktop/sidecar.mjs",
     "desktop/update.mjs",
+    "desktop/update-network.mjs",
+    "desktop/install-update.mjs",
+    "desktop/chrome/update-center.html",
+    "desktop/chrome/update-center-preload.cjs",
     "desktop/chrome/titlebar.html",
     "desktop/chrome/preload.cjs",
     "desktop/chrome/contract.mjs",

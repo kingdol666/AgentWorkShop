@@ -91,7 +91,7 @@ export async function startSidecar({ node, backend, home, log, env = process.env
       return false
     }
   }
-  async function stop() {
+  async function stop({ gracefulOnly = false } = {}) {
     if (failure || child.exitCode !== null || child.signalCode) return
     // Authenticate the actual listener before sending the stop token.
     if (await ready()) {
@@ -99,6 +99,7 @@ export async function startSidecar({ node, backend, home, log, env = process.env
     }
     const result = await Promise.race([closed, wait(11_000, 'timeout', { ref: false })])
     if (result !== 'timeout' || child.exitCode !== null || child.signalCode) return
+    if (gracefulOnly) throw new Error('Desktop server did not exit gracefully')
     if (process.platform === 'win32') {
       // PID must still be our live supervisor and its command line must be the packaged launcher.
       const q = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `(Get-CimInstance Win32_Process -Filter 'ProcessId=${child.pid}').CommandLine`], { encoding: 'utf8', windowsHide: true, timeout: 4000 })

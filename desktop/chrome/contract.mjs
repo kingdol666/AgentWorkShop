@@ -14,10 +14,63 @@ export const CHROME_CHANNELS = Object.freeze({
   status: 'aw-chrome:status',
   theme: 'aw-chrome:theme',
   title: 'aw-chrome:title',
+  brand: 'aw-chrome:brand',
   prefs: 'aw-chrome:prefs',
   update: 'aw-chrome:update',
   updateState: 'aw-chrome:update-state',
 })
+
+export const UPDATE_CENTER_CHANNELS = Object.freeze({
+  action: 'aw-update-center:action',
+  hello: 'aw-update-center:hello',
+  state: 'aw-update-center:state',
+})
+
+export const MANUAL_PROXY_PROTOCOLS = Object.freeze(['http', 'https', 'socks5'])
+
+const UPDATE_ACTIONS = new Set(['check', 'download', 'pause', 'cancel', 'install', 'test-connection'])
+
+function validProxyHost(value) {
+  return typeof value === 'string' && value.length > 0 && value.length <= 253
+    && !/[\s/?#@]/.test(value)
+    && (/^[a-z\d](?:[a-z\d.-]{0,251}[a-z\d])?$/i.test(value)
+      || /^(?:[0-9a-f]{0,4}:){2,}[0-9a-f:.]+$/i.test(value))
+}
+
+export function normalizeManualProxy(raw) {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
+  const protocol = MANUAL_PROXY_PROTOCOLS.includes(source.protocol) ? source.protocol : 'http'
+  const host = validProxyHost(source.host) ? source.host.toLowerCase() : ''
+  const port = Number.isInteger(source.port) && source.port >= 1 && source.port <= 65_535 ? source.port : null
+  return { protocol, host, port }
+}
+
+export function isManualProxyConfig(value) {
+  const normalized = normalizeManualProxy(value)
+  return validProxyHost(normalized.host) && Number.isInteger(normalized.port)
+    && normalized.protocol === value?.protocol
+    && normalized.host === String(value?.host ?? '').toLowerCase()
+    && normalized.port === value?.port
+}
+
+export function isProxyMode(value) {
+  return value === 'system' || value === 'direct' || value === 'manual'
+}
+
+export function isUpdateCenterAction(action, value) {
+  if (action === 'set-proxy') {
+    if (value === 'system' || value === 'direct') return true
+    return value?.mode === 'manual' && isManualProxyConfig(value.config)
+  }
+  if (action === 'set-auto-check') return typeof value === 'boolean'
+  return value === undefined && UPDATE_ACTIONS.has(action)
+}
+
+/** Privileged update commands only come from the exact local top-level document. */
+export function isDesktopPageSender(event, contents, url) {
+  return Boolean(contents && event.sender === contents && event.senderFrame
+    && event.senderFrame === contents.mainFrame && event.senderFrame.url === url)
+}
 
 export const SPLASH_CHANNELS = Object.freeze({
   action: 'aw-splash:action',
@@ -79,17 +132,20 @@ export const DEFAULT_SETTINGS = Object.freeze({
   startHidden: false,
   trayNotifications: true,
   autoCheckUpdates: true,
+  updateProxyMode: 'system',
+  updateProxy: Object.freeze({ protocol: 'http', host: '', port: null }),
 })
 
 export const SETTINGS_KEYS = Object.freeze(Object.keys(DEFAULT_SETTINGS))
 
-/** Coerce persisted JSON into the exact boolean settings surface. Unknown keys
- *  are dropped so a hand-edited settings file cannot add privileged behavior. */
+/** Normalize the fixed settings surface. Unknown keys never grant behavior. */
 export function normalizeSettings(raw) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
   const settings = {}
   for (const key of SETTINGS_KEYS) {
-    settings[key] = typeof source[key] === 'boolean' ? source[key] : DEFAULT_SETTINGS[key]
+    if (key === 'updateProxyMode') settings[key] = isProxyMode(source[key]) ? source[key] : DEFAULT_SETTINGS[key]
+    else if (key === 'updateProxy') settings[key] = normalizeManualProxy(source[key])
+    else settings[key] = typeof source[key] === 'boolean' ? source[key] : DEFAULT_SETTINGS[key]
   }
   return settings
 }
