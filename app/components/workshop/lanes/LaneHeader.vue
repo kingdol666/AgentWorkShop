@@ -180,6 +180,7 @@ const continuityBadge = computed(() => {
           :title="$t('agentLanesView.kt3n27m038', { p0: agent.name })"
           :ok-text="$t('common.remove')"
           :cancel-text="$t('common.cancel')"
+          :ok-button-props="{ danger: true }"
           @confirm="emit('remove', agent.agentId, agent.name)"
         >
           <a-button

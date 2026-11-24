@@ -280,6 +280,7 @@ useHead({ title: () => tt('titles.ctpl') })
             <a-popconfirm
               v-if="canWrite(t)"
               :title="$t('ctpl.k117jag9001')"
+              :ok-button-props="{ danger: true }"
               @confirm="remove(t)"
             >
               <a-button

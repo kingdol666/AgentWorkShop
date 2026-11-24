@@ -361,6 +361,7 @@ watch(() => props.channelId, () => {
         </a-button>
         <a-popconfirm
           :title="$t('channelTools.resetConfirm')"
+          :ok-button-props="{ danger: true }"
           @confirm="resetToDefault"
         >
           <a-button

@@ -43,8 +43,7 @@ function onIssue(): void {
         type="primary"
         @click="onIssue"
       >
-        <span class="i-tabler-plus" />
-        {{ $t('chips.issue') }}
+        <span class="i-tabler-plus" /><span>{{ $t('chips.issue') }}</span>
       </a-button>
     </a-space>
   </div>

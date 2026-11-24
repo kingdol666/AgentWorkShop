@@ -474,16 +474,21 @@ watch(() => props.channelId, () => {
                 v-if="activeSession.status === 'active'"
                 :title="t('sessionManage.closeConfirm')"
                 placement="bottomRight"
+                :ok-button-props="{ danger: true }"
                 @confirm="submitClose(activeSession)"
               >
-                <a-button
-                  size="small"
-                  danger
-                  :loading="closing === activeSession.id"
+                <button
+                  type="button"
+                  class="sm-close"
+                  :disabled="closing === activeSession.id"
+                  :aria-busy="closing === activeSession.id"
                 >
-                  <span class="i-tabler-square-x" />
-                  {{ t('sessionManage.closeBtn') }}
-                </a-button>
+                  <span
+                    :class="closing === activeSession.id ? 'i-tabler-loader-2 spin' : 'i-tabler-x'"
+                    aria-hidden="true"
+                  />
+                  <span>{{ t('sessionManage.closeBtn') }}</span>
+                </button>
               </a-popconfirm>
             </div>
             <div
@@ -962,6 +967,49 @@ watch(() => props.channelId, () => {
   color: var(--chat-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* 关闭会话:标题栏里的"安静危险"控件。
+ * 之前的 antd danger 小按钮把 14px 字塞进 24px 高,17px 的方框叉号还压着文字,
+ * 描边又是组件库自带的那支红 —— 整条标题栏最抢眼的成了这个低频动作。
+ * 现在:语义红浅底(--tone-danger-bg)+ 朱红字(--tone-danger-dot),26px 高、
+ * 12.5px/600、13px 的单线叉号;静息不描边(与徽标同一档"面色"),悬停才起边,
+ * 实心红只出现在确认框的按钮上。 */
+.sm-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 5px;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--tone-danger-dot);
+  cursor: pointer;
+  background: var(--tone-danger-bg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    opacity var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sm-close > span[class*="i-tabler"] {
+  width: 13px;
+  height: 13px;
+}
+.sm-close:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tone-danger-dot) 12%, var(--tone-danger-bg));
+  border-color: color-mix(in srgb, var(--tone-danger-dot) 32%, transparent);
+}
+.sm-close:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.sm-close:disabled {
+  cursor: progress;
+  opacity: 0.7;
 }
 .sm-create-hint,
 .create-product-error {
