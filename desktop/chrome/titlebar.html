@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="dark" data-platform="win32" data-maximized="false" data-focused="true">
+<html lang="zh-CN" data-theme="dark" data-platform="win32" data-maximized="false" data-focused="true" data-web-brand="true">
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; font-src 'self'">
@@ -101,6 +101,8 @@
       height: 20px;
       color: var(--rail-ink);
     }
+
+    html[data-web-brand='true'] .brand { display: none; }
 
     .wordmark {
       font-size: 12.5px;
@@ -342,11 +344,11 @@
     <span class="split" id="page-split" aria-hidden="true" hidden></span>
     <span class="page" id="page-title" hidden></span>
     <span class="drag" aria-hidden="true"></span>
-    <button class="update" id="update" type="button" hidden>
+    <button class="update" id="update" type="button" aria-label="更新中心" title="打开更新中心">
       <span class="update-dot" aria-hidden="true"></span>
-      <span id="update-label">更新</span>
+      <span id="update-label">更新中心</span>
     </button>
-    <span class="status" id="status" data-state="connecting" title="正在连接本机服务">
+    <span class="status" id="status" data-state="connecting" role="status" aria-live="polite" title="正在连接本机服务">
       <span class="status-dot" aria-hidden="true"></span>
       <span class="status-text" id="status-text">连接中</span>
     </span>
@@ -385,24 +387,32 @@
         button.addEventListener('click', () => api.action(button.dataset.action))
       })
       if (update) {
-        update.addEventListener('click', () => api.updateAction('activate'))
+        update.addEventListener('click', () => api.updateAction('open-center'))
       }
       api.onUpdate((state) => {
-        const status = state && state.status
-        if (!['available', 'downloading', 'ready', 'error'].includes(status)) {
-          update.hidden = true
-          return
-        }
+        const receivedState = state && state.status
+        const visibleStates = ['idle', 'current', 'checking', 'available', 'downloading', 'paused', 'verifying', 'ready', 'installing', 'error']
+        const updateState = visibleStates.includes(receivedState) ? receivedState : 'idle'
         update.hidden = false
-        update.dataset.state = status
-        updateLabel.textContent = status === 'available'
-          ? `更新 v${state.version}`
-          : status === 'downloading'
-            ? `下载 ${Math.max(0, Math.min(100, Number(state.progress) || 0))}%`
-            : status === 'ready' ? '重启安装' : '更新失败'
-        update.title = status === 'error'
-          ? (state.error || '更新失败，点击重试')
-          : status === 'ready' ? `已下载 v${state.version}，点击安装并重启` : `发现新版本 v${state.version}`
+        update.dataset.state = updateState
+        const rawProgress = state && state.progress
+        const hasProgress = rawProgress !== null && rawProgress !== undefined && Number.isFinite(Number(rawProgress))
+        const progress = Math.max(0, Math.min(100, Number(rawProgress) || 0))
+        updateLabel.textContent = updateState === 'idle' || updateState === 'current'
+          ? '更新中心'
+          : updateState === 'available'
+            ? `更新 v${state.version}`
+            : updateState === 'checking' ? '检查中'
+              : updateState === 'downloading' ? (hasProgress ? `下载 ${progress}%` : '下载中')
+                : updateState === 'paused' ? '下载已暂停'
+                  : updateState === 'verifying' ? '校验中'
+                    : updateState === 'installing' ? '安装中'
+                      : updateState === 'ready' ? '更新就绪' : '更新失败'
+        update.title = updateState === 'error'
+          ? (state.error || '更新失败，打开更新中心重试')
+          : updateState === 'ready' ? `已下载 v${state.version}，打开更新中心安装并重启`
+            : updateState === 'available' ? `发现新版本 v${state.version}，打开更新中心`
+              : '打开更新中心'
         update.setAttribute('aria-label', updateLabel.textContent)
       })
       api.onState((state) => {
@@ -428,6 +438,9 @@
         if (!close) return
         close.title = toTray ? '关闭到托盘' : '关闭'
         close.setAttribute('aria-label', close.title)
+      })
+      api.onBrand((visible) => {
+        root.dataset.webBrand = visible === true ? 'true' : 'false'
       })
       api.onTitle((value) => {
         const text = typeof value === 'string' ? value.trim() : ''

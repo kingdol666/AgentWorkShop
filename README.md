@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>source v0.19.0 (released 2026-11-24)</b> · one workshop mark across sidebar, rail, splash and icons · power-on boot sequence · generated desktop icon set with theme-aware tray · rebuilt close-session control and swept button family · console workspace-scoped channel creation · API identity-before-lookup hardening · bounded line queries · shared theme and accessibility refresh · desktop tray + boot splash · integrated desktop shell with in-app updates · shared <code>~/.AgentWorkShop</code> home · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
+<sub><b>source v0.20.0 (unreleased, 2026-11-24)</b> · explicit desktop update consent · system, manual and direct update routes · resumable verified downloads · one workshop mark across sidebar, rail, splash and icons · power-on boot sequence · generated desktop icon set with theme-aware tray · rebuilt close-session control and swept button family · console workspace-scoped channel creation · API identity-before-lookup hardening · bounded line queries · shared theme and accessibility refresh · desktop tray + boot splash · integrated desktop shell with in-app updates · shared <code>~/.AgentWorkShop</code> home · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[Quick start](#quick-start) · [Current source](#current-source-v0-19-0) · [0.19.0 release notes](#whats-new-in-0190) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [Current source](#current-source-v0-20-0) · [0.20.0 release notes](#whats-new-in-0200) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,11 +49,18 @@ A configuration-driven platform where **AI agent teams** and industrial systems 
 - **Delivery is a first-class concept**: **Project mode** turns a blueprint into a plan, a WBS with dependencies, L1 technical review, L2 owner acceptance and real deliverables — the project closes only when the deliverables pass;
 - **The loop is implemented in governed stages**: read → analyze → propose → policy-controlled approval where required → write → readback/audit; the scope of each test and whether it used a simulator or physical equipment are stated with its evidence.
 
-## Current source: v0.19.0
+## Current source: v0.20.0 (unreleased)
 
-The source version is **0.19.0** (npm + GitHub Release, 2026-11-24). This release gives the product one identity and one button language. The workshop mark is a single silhouette reused by the sidebar, the desktop title rail, the boot splash, the browser and docs favicons and the desktop badge, and the desktop icon set is now generated from those SVG masters by <code>pnpm brand:desktop</code> — a nine-entry <code>icon.ico</code> (16–64 BMP, 128/256 PNG), 180/512 PNGs and bare-glyph tray icons that follow the Windows theme. The boot splash became a one-shot power-on sequence (scan, outline draw, four-station rail, assembly retrace) that still reports only real backend stages and honours <code>prefers-reduced-motion</code>. The session header's close control was rebuilt on the semantic danger wash instead of the library's default small danger button, and the same defect class was swept app-wide: inline icons inside buttons now have real spacing, two-character Chinese labels are no longer auto-spaced, <code>colorError</code> uses the product vermilion, destructive confirmations use the danger button, and wide tables keep their own horizontal scroll so row actions stay reachable. It retains the 0.18.0 console/API scoping work, the 0.17.5 desktop baseline (close to tray, tray menu with five settings, staged boot splash, shared home, in-app updates) and the 0.16.x AgentPrefab capability baseline.
+The source version is **0.20.0** (unreleased, 2026-11-24). This release separates automatic checks from user-authorized downloads and installation: downloading never restarts the desktop, and the native confirmation defaults to 「稍后」. The update center can follow Windows system/PAC rules, use a bounded manual HTTP/HTTPS/SOCKS5 proxy, or connect directly; all routes remain isolated from the Web renderer and local backend. Downloads are resumable only with a strong validator and are promoted to installable state only after the exact release checksum passes. The title rail now yields its brand slot to a visible Web shell brand, removing the duplicate top-left identity while retaining a narrow-screen fallback. It retains the 0.19.0 icon/splash direction and the 0.18.0 console/API scoping work.
 
 v0.16.0 verification: PR quick-gates green on #262/#264/#265/#263/#266; focused suites **38/38**, post-merge **22/22** and **13/13**, Project/Prefab/Session regression set **235/235**; live isolated-instance acceptance on the release build — Leader/Prefab full chain **30/30 ×2** (create-with-prefab → provenance in SQLite → roster flags → catalog narrowing → dispatch allow/deny → user-worker protection → lead self-op denial → revision switch drops capability → unbind → remove preserves template+revisions → REST lead-delete 409), official L10 **21/21** on a fresh instance, AgentTeam CRUD/deploy/dispatch **25/25**, frontend SSR routes 200. Mimosa deep scan sealed (`sha256:a91957e0…`, 54 findings, dependency risk 0) — findings reported, not a security pass. Boundaries: external MCP positive live trace, real-OMP-model work under a prefab, and browser UI click-through remain NOT_RUN. See the [full-flow acceptance report](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md) and the [Prefab/Skills/MCP live report](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md).
+
+## What's new in 0.20.0
+
+- **User-controlled desktop updates**: automatic checks only report a newer release. The user clicks `下载更新`, waits for checksum verification, and separately chooses `安装并重启`; download completion, normal exit, Escape and the default 「稍后」 choice never install or restart. 用户完全决定检查、下载与重启安装的时机。
+- **Three isolated network routes**: the updater follows the Windows system/PAC route by default, supports a manually entered credential-free HTTP/HTTPS/SOCKS5 proxy, or uses direct HTTPS. Manual proxy settings contain only a validated protocol, host and port; they cannot change the fixed GitHub repository or asset names and never affect Web/local-service traffic. 更新器新增受限手动代理配置，代理失败不静默切换线路。
+- **Verified and resumable transfer**: a download resumes only with a matching strong validator and validated `206 Content-Range`; incompatible caches restart from zero. The complete installer is hashed against the exact release `SHA256SUMS.txt` before it becomes installable. 下载断点续传与完整性校验分离，未通过校验不能安装。
+- **One visible brand owner per desktop shell**: when the embedded Web shell exposes its own brand, the Electron title rail removes the duplicate wordmark; the title rail remains a compact fallback for narrow drawers and brandless pages. 桌面左上角不再重复显示两个产品字标。
 
 ## What's new in 0.19.0
 
@@ -87,10 +94,8 @@ v0.16.0 verification: PR quick-gates green on #262/#264/#265/#263/#266; focused 
 
 ## What's new in 0.17.3
 
-- **Update install helper (final)**: the silent install + relaunch step now runs through a detached, console-free WSH helper — `wscript.exe //B //NoLogo <fixed VBS>`. The VBS receives the installer and executable paths through `AW_UPDATE_INSTALLER`/`AW_UPDATE_EXE`, sleeps 6 s, runs the NSIS installer with `/S` and waits, then restarts the executable. This host is started with `DETACHED_PROCESS` and survives the app's exit, which neither `cmd.exe` (Node's `\"` quoting is not understood) nor Windows PowerShell (exits immediately when detached, verified on Windows 11) does. 更新安装改由独立无控制台 WSH 助手执行；`cmd.exe` 与分离式 PowerShell 两条路均已实测不可用。
-- **Acceptance hook**: `AW_UPDATE_AUTOINSTALL=1` skips the confirmation dialog for automated acceptance only; the dialog remains in normal use.
-- **Regression tests**: helper host and arguments are pinned, the VBS carries no absolute paths, and missing installer/executable/script paths are rejected.
-- **Verification**: the 0.17.3 acceptance run checks the release, downloads the installer through the API endpoint, verifies SHA-256, then lets the helper install over the current install directory and relaunch the app. 安装版实测：检查 → 下载 → SHA-256 → 安装 → 重启。
+- **Update install helper (historical)**: older 0.17.x notes described a fixed-delay WSH helper. The current desktop updater waits for the owned parent PID and requires an explicit native confirmation; download completion, normal exit, Escape and 「稍后」 never install or restart automatically. 更新安装助手已改为等待旧进程实际退出，并且必须由用户明确确认；下载完成、普通退出、Esc 与「稍后」都不会自动安装或重启。
+- **Historical acceptance note**: the old `AW_UPDATE_AUTOINSTALL` test bypass is removed from current desktop code and must not be used for new demonstrations.
 
 ## What's new in 0.17.2
 
@@ -522,7 +527,7 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current source version: **v0.19.0 (released 2026-11-24)** — [Latest release v0.19.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.19.0) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current source version: **v0.20.0 (unreleased)** — release candidate dated 2026-11-24; [Desktop update notes](./docs/desktop.md#更新通道) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

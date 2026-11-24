@@ -58,11 +58,50 @@ test('titlebar markup exposes accessible, bounded window controls', () => {
   assert.match(html, /-webkit-app-region: drag/)
   assert.match(html, /-webkit-app-region: no-drag/)
   assert.match(html, /window\.awChrome/)
-  assert.match(html, /id="update"/)
-  assert.match(html, /api\.updateAction\('activate'\)/)
+  assert.match(html, /api\.updateAction\('open-center'\)/)
+  assert.match(html, /id="update"[^>]+aria-label="更新中心"/)
+  assert.match(html, /updateState === 'idle' \|\| updateState === 'current'/)
+  assert.match(html, /hasProgress/)
+  assert.match(html, /'下载中'/)
+  assert.match(html, /updateState === 'ready' \? '更新就绪'/)
+  assert.match(html, /api\.onBrand\(/)
+  assert.match(html, /data-web-brand="true"/)
   assert.match(html, /data-theme='light'/)
   assert.doesNotMatch(html, /https?:\/\//)
   assert.doesNotMatch(html, /onclick=/i)
+})
+
+test('update center is a strict local, accessible document with fixed controls', () => {
+  const html = read('desktop/chrome/update-center.html')
+  assert.match(html, /Content-Security-Policy[^>]+default-src 'none'/)
+  assert.match(html, /window\.awUpdateCenter/)
+  assert.match(html, /data-action="check"/)
+  for (const action of ['download', 'pause', 'cancel', 'install', 'test-connection']) {
+    assert.match(html, new RegExp(`data-action="${action}"`))
+  }
+  for (const status of ['idle', 'checking', 'current', 'available', 'downloading', 'paused', 'verifying', 'ready', 'installing', 'error']) {
+    assert.match(html, new RegExp(status))
+  }
+  assert.match(html, /textContent/)
+  assert.match(html, /data-theme='light'/)
+  assert.match(html, /<option value="manual">手动代理<\/option>/)
+  assert.match(html, /id="manual-proxy-settings"/)
+  assert.match(html, /send\('set-proxy', manualProxyValue\(\)\)/)
+  assert.doesNotMatch(html, /https?:\/\//)
+  assert.doesNotMatch(html, /onclick=/i)
+  assert.doesNotMatch(html, /<script[^>]+src=/i)
+  assert.doesNotMatch(html, /<link[^>]+href=/i)
+})
+
+test('update center preload exposes only validated local actions and state', () => {
+  const preload = read('desktop/chrome/update-center-preload.cjs')
+  assert.match(preload, /contextBridge\.exposeInMainWorld\('awUpdateCenter'/)
+  assert.match(preload, /aw-update-center:action/)
+  assert.match(preload, /aw-update-center:hello/)
+  assert.match(preload, /aw-update-center:state/)
+  assert.match(preload, /ipcRenderer\.send\(CHANNELS\.action, action, value\)/)
+  assert.match(preload, /onState:/)
+  assert.doesNotMatch(preload, /exposeInMainWorld\('electron'/)
 })
 
 test('preload keeps the IPC surface on the shared channel contract', () => {
@@ -105,6 +144,8 @@ test('packaging ships the chrome assets and the app icon', () => {
   for (const entry of [
     'desktop/chrome/titlebar.html',
     'desktop/chrome/preload.cjs',
+    'desktop/chrome/update-center.html',
+    'desktop/chrome/update-center-preload.cjs',
     'desktop/chrome/contract.mjs',
     'desktop/update.mjs',
     'desktop/build/icon.png',

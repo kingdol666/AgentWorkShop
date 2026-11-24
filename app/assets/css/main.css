@@ -2655,7 +2655,7 @@ body {
 }
 
 /* 长 token(节点 ID / run id / hash)在窄屏必须能断,否则整页被顶宽 */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .aw-mono,
   code,
   kbd,
@@ -2665,7 +2665,7 @@ body {
 }
 
 /* ── 画布留白:窄屏收边(桌面 16/20,手持 10/12)—— 手持设备每像素都贵 ── */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .app-content {
     margin: 12px 12px 0;
   }
@@ -2675,7 +2675,7 @@ body {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 639px) {
   .app-content {
     margin: 10px 10px 0;
   }
@@ -2685,7 +2685,7 @@ body {
    desktop 的 justify-content: space-between 要求两侧都有余量;
    窄屏两侧一挤,标题就被压成一列竖排字(实测 /daq「暂 停 全 部 采 集」)。
    堆叠顺序 = 阅读顺序:kicker → 标题 → 描述 → 操作。 */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .aw-page-head {
     flex-direction: column;
     align-items: stretch;
@@ -2703,7 +2703,7 @@ body {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 639px) {
   .aw-page-head {
     padding-bottom: 12px;
     margin-bottom: 14px;
@@ -2734,7 +2734,7 @@ body {
 }
 
 /* 页头右侧的操作/徽标组:窄屏允许换行,不参与"压扁标题" */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .aw-page-head > .badges,
   .aw-page-head > .actions,
   .aw-page-head > .head-actions,
@@ -2750,7 +2750,7 @@ body {
 /* ══ 2. 分段控件 / 筛选条:窄屏横向滚动,绝不顶破视口 ══════════════════════
    antd Segmented 是定宽块,项目里当筛选条用;窄屏必须能横扫。
    用 mask 在右缘渐隐,提示"还有更多"——比直接裁断诚实。 */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .ant-segmented {
     max-width: 100%;
     overflow-x: auto;
@@ -2787,7 +2787,7 @@ body {
    窄屏不把表格重排成卡片 —— 那会丢掉列语义(哪一列是"驱动"哪一列是"产线")。
    保留列,只给它一条可扫的卷轴,并把身份列(第一列)钉在左缘:
    横扫时始终知道"这一行是谁"。 */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .ant-table-wrapper {
     max-width: 100%;
   }
@@ -2813,7 +2813,7 @@ body {
 }
 
 /* 分页器窄屏收边 */
-@media (max-width: 640px) {
+@media (max-width: 639px) {
   .ant-pagination {
     flex-wrap: wrap;
     row-gap: 6px;
@@ -2830,7 +2830,7 @@ body {
 }
 
 /* ══ 4. 面板/仪表:窄屏统一收边 + 头部换行 ════════════════════════════════ */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .aw-bench,
   .aw-tile,
   .aw-glass-panel {
@@ -2844,7 +2844,7 @@ body {
 }
 
 /* 统计带:桌面是一行分格量规,窄屏折成 2 列(数值本身不被压扁) */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .aw-gauge-band {
     flex-wrap: wrap;
   }
@@ -3006,7 +3006,7 @@ body {
    * DaqNodeRow、line-pill、infra-banner 各处,而且被更高特异度的规则盖回来)。
    * <small> 是语义标签:它在手持档的**下限**由可读性决定,不由排版细节决定 ——
    * 所以这里用一条语义级兜底,而不是继续加类名。 */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   /* 用 body 而不是 .app-content:浮层(抽屉/tooltip/popover)被 teleport 到 body 下,
    * 不属于 .app-content,用后者会漏掉它们(实测:同一批 <small> 在页面里修好、
    * 在浮层里照旧)。 */
@@ -3030,7 +3030,7 @@ body {
    * (`.app-footer[data-v-x]` = 0,2,0),全局层同选择器只有 0,1,0,靠源码顺序取胜不可靠
    * (构建后组件样式与 main.css 的先后会被打包器重排)。而"手持视距下的字号地板"是
    * 无障碍要求,不是主题偏好 —— 它就应该盖过组件里的 10px 微字。 */
-@media (max-width: 640px) {
+@media (max-width: 639px) {
   .aw-kicker,
   .aw-bench-kicker,
   .aw-bench-meta,
@@ -3065,7 +3065,7 @@ body {
 
 /* 抽屉打开时(on≤900 的窄屏形态),侧栏铭牌的可读距离比桌面更近,
    但抽屉宽度只有 264px —— 抬字号同时要收一点字距,避免分组标顶到刻度线。 */
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   body.nav-drawer .app-sider .logo-sub,
   body.nav-drawer .app-sider .menu-group-text,
   body.nav-drawer .app-sider .footer-line,
@@ -3079,7 +3079,7 @@ body {
 }
 
 /* ══ 8. 浮层:窄屏抽屉/模态占满可用宽,底部留安全区 ═══════════════════════ */
-@media (max-width: 640px) {
+@media (max-width: 639px) {
   .ant-drawer-content-wrapper {
     max-width: 100vw;
   }
@@ -3217,7 +3217,7 @@ body.nav-drawer .app-sider .app-menu {
 
 /* 手持宽度兜底:模拟器/部分 WebView 只报 hasTouch 不报 pointer:coarse,
    触控命中区不能只押在 pointer 媒体特性上。 */
-@media (max-width: 640px) {
+@media (max-width: 639px) {
   .icon-btn,
   .collapse-btn {
     width: 40px !important;

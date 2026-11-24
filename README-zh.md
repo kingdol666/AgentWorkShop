@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.19.0（2026-11-24 发布）</b> · 全站统一工作台字标 · 一次性通电启动序列 · 脚本生成的桌面图标与随主题切换的托盘 · 重建关闭会话控件并清扫按钮族 · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.20.0（未发布，2026-11-24）</b> · 桌面更新由用户明确同意 · 系统/手动/直连三种更新线路 · 可恢复且校验的下载 · 全站统一工作台字标 · 一次性通电启动序列 · 脚本生成的桌面图标与随主题切换的托盘 · 重建关闭会话控件并清扫按钮族 · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-19-0) · [0.19.0 发布说明](#whats-new-in-0190) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-20-0) · [0.20.0 发布说明](#whats-new-in-0200) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,11 +49,18 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 当前源码 v0.19.0
+## 当前源码 v0.20.0（未发布）
 
-当前源码版本为 **0.19.0**（npm + GitHub Release，2026-11-24）。本版给产品收敛出**一个身份、一套按钮语言**：工作台的 A 字标是一条实心剪影，侧栏、桌面标题栏、启动页、网页与文档站 favicon、桌面徽标共用同一条路径；桌面图标改由 `pnpm brand:desktop` 从这些 SVG 母版生成 —— 九档 `icon.ico`（16–64 BMP、128/256 PNG）、180/512 PNG，以及随 Windows 主题切换的裸字标托盘图标，全部字节级可重现。启动页重做成一次性通电序列（扫描线 → 描字 → 四站信号轨 → 装配复检），进度仍只来自后端真实阶段，并遵守 `prefers-reduced-motion`。会话标题栏的「关闭会话」重建为语义红浅底控件，不再使用组件库默认的 24px 描边红按钮；同一类缺陷在全站清扫：按钮内联图标补齐 6px 间距、二字中文不再被自动插空格、`colorError` 与产品朱红同源、15 处破坏性确认框改用危险色按钮、宽表在自己的容器内横向滚动，操作列不再被裁。保留 0.18.0 的 console/API 作用域修复、0.17.5 桌面基线（关闭到托盘、托盘 5 项设置、分阶段启动动画、共享 home、应用内更新）与 0.16.x 的 AgentPrefab 能力基线。
+当前源码版本为 **0.20.0**（未发布，2026-11-24）。本版把自动检查、下载与重启安装彻底分开：下载完成不会重启，原生确认框默认选择「稍后」。更新中心支持跟随 Windows 系统/PAC、填写受限的无凭据 HTTP/HTTPS/SOCKS5 手动代理，或使用直连；三条线路都与 Web 渲染器和本机后端隔离。只有强校验器匹配时才续传，完整安装包通过对应版本校验文件后才进入可安装状态。下方 Web 壳已有品牌时，桌面标题栏自动让出重复字标；窄屏抽屉或无品牌页保留简洁备用标识。保留 0.19.0 的图标/启动动画方向与 0.18.0 的 console/API 作用域修复。
 
 v0.16.0 验证：#262/#264/#265/#263/#266 PR quick-gate 全绿；focused 套件 **38/38**、合并后 **22/22** 与 **13/13**、Project/Prefab/Session 回归集 **235/235**；发布构建实机隔离验收——Leader/Prefab 全链 **30/30 ×2**（创建带 Prefab 的 Worker → SQLite 来源核验 → 名册标记 → 目录收窄 → dispatch 放行/拒绝 → 用户路径 Worker 保护 → lead 自改拒绝 → revision 切换即收窄 → 解绑 → 移除保留模板与 revision → REST 删 lead 409），官方 L10 全新实例 **21/21**，AgentTeam CRUD/部署/派发 **25/25**，前端 SSR 路由 200。Mimosa 深扫有封印（`sha256:a91957e0…`，54 findings，依赖风险 0）——findings 如实呈报，不作安全通过声明。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
+
+## What's new in 0.20.0
+
+- **用户掌控桌面更新**：自动检查只提示新版本；用户点击「下载更新」，校验完成后再单独点击「安装并重启」。下载完成、普通退出、Esc 与默认「稍后」都不会安装或重启。
+- **三种隔离网络线路**：默认跟随 Windows 系统/PAC，也可填写受限的无凭据 HTTP/HTTPS/SOCKS5 手动代理，或选择直连。手动配置只保存协议、主机和端口，不能改变固定 GitHub 仓库与资产名，也不影响 Web/本机服务。
+- **可恢复且可验证的下载**：只有强校验器与 `206 Content-Range` 一致才续传；不兼容缓存从头开始。安装包必须与精确版本的 `SHA256SUMS.txt` 完整匹配后才可安装。
+- **桌面单一可见品牌 owner**：嵌入的 Web 壳有自己的品牌时，Electron 标题栏收起重复字标；窄屏抽屉和无品牌页面保留简洁备用标识，左上角不再出现两个产品 Logo。
 
 ## What's new in 0.19.0
 
@@ -87,10 +94,8 @@ v0.16.0 验证：#262/#264/#265/#263/#266 PR quick-gate 全绿；focused 套件 
 
 ## What's new in 0.17.3
 
-- **更新安装助手（最终）**：静默安装 + 重启改由独立的无控制台 WSH 助手执行——`wscript.exe //B //NoLogo <固定 VBS>`。VBS 通过 `AW_UPDATE_INSTALLER`/`AW_UPDATE_EXE` 读取安装包与可执行文件路径，等待 6 秒后以 `/S` 运行 NSIS 安装包并等待其结束，再重启应用。该助手以 `DETACHED_PROCESS` 启动且能在应用退出后存活；`cmd.exe`（不识别 Node 的 `\"` 转义）与 Windows PowerShell（分离启动即退出，Windows 11 实测）都不可行。更新安装改由独立无控制台 WSH 助手执行；`cmd.exe` 与分离式 PowerShell 两条路均已实测不可用。
-- **验收钩子**：`AW_UPDATE_AUTOINSTALL=1` 仅供自动化验收跳过确认对话框；常规使用仍显示对话框。
-- **回归测试**：固定助手宿主与参数、VBS 不含绝对路径、缺失安装包/可执行文件/脚本路径必须拒绝。
-- **验证**：0.17.3 验收实测检查发布 → 经 API 端点下载 → SHA-256 校验 → 助手就地在当前安装目录完成静默安装并重启应用。安装版实测：检查 → 下载 → SHA-256 → 安装 → 重启。
+- **更新安装助手（历史说明）**：旧 0.17.x 文案曾描述固定延迟 WSH 助手。当前桌面更新器等待本进程 PID 实际退出，并且必须经过原生明确确认；下载完成、普通退出、Esc 与「稍后」都不会自动安装或重启。
+- **历史验收说明**：旧的 `AW_UPDATE_AUTOINSTALL` 绕过已从当前桌面代码删除，不得用于新的实机演示。
 
 ## What's new in 0.17.2
 
@@ -526,7 +531,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.19.0（已发布 2026-11-24）** —— [最新版本 v0.19.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.19.0) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.20.0（未发布）** —— 发布候选日期 2026-11-24；[桌面更新说明](./docs/desktop.md#更新通道) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

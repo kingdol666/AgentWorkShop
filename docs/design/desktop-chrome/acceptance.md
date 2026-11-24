@@ -1,5 +1,23 @@
 # Desktop chrome acceptance — 2026-11-22
 
+## v0.20.0 update candidate — 2026-11-24
+
+This is a local, unsigned release candidate. It was not published and did not replace the active installation.
+All packaged checks used a disposable home/profile; the existing desktop and Web demo were not overwritten.
+
+| Check | Result |
+| --- | --- |
+| npm payload | `agentworkshop-0.20.0.tgz` — 45.6 MB, npm shasum `742ce017f7b86048d7be8e1171bf1586aecefc86`, SHA-256 `43f9d562da1628f3f5480a5ef62b9d08e50bbf94a25d6fe4af52f721dc1df636` |
+| Windows installer | `AgentWorkShop-Setup-0.20.0-win-x64.exe` — 411,208,361 bytes, SHA-256 `615e68e189f25bc3b01544edcfd0e09d3cd316442190651731a40d1f96bc909e`; unsigned per-user NSIS candidate |
+| Packaged boot | Isolated `win-unpacked/AgentWorkShop.exe` reached the update center and local backend health path; Web bridge remained separate from the desktop update bridge |
+| System route | Real GitHub metadata/checksum/CDN probe succeeded through the Windows system route; source-mode transfer began at 392 MB, paused with bytes retained, resumed, and cancelled without installation |
+| Direct route | Real packaged/source probe completed successfully; no renderer or local-backend proxy change was observed |
+| Manual route | UI persisted a bounded `{ protocol: 'http', host: '127.0.0.1', port: 9 }` config in the disposable profile; the unavailable proxy failed with a redacted actionable message and did not fall back to direct |
+| Consent | Full suite covers default/cancel 「稍后」 and verify → graceful stop → WSH launch ordering; smoke scripts ended with `available` after cancel and performed no installation |
+| UI | Titlebar brand yields to an observable Web brand; update center settings and Web bridge isolation passed in source and packaged smoke |
+
+Not proven in this local candidate: a successful packaged old-version → 0.20.0 upgrade, sustained full-size throughput, and a successful authenticated corporate proxy. Those require a published higher release and a disposable old-version install; no claim is made here.
+
 ## v0.19.0 release and local update — 2026-11-24
 
 Release `v0.19.0` (tag on `cacee7c3`, GitHub Release latest, npm `agentworkshop@0.19.0`) installed over
@@ -99,6 +117,8 @@ The in-app update flow was exercised on installed builds. The 0.17.0–0.17.2 he
 | Automatic relaunch | The helper started the app at 02:34:14 on the same home (`D:/tmp/aw-desktop-update-0173-home`); supervisor pid 75480, port 51068, `/api/health` `status=ok`, `workshop=ready`, version `0.17.3`; the helper process exited afterwards |
 | Global npm 0.17.3 | `aw --version` → `agentworkshop 0.17.3`; `aw start` on port 3814 with a fresh home: health `status=ok/workshop=ready`, SSR `/` 200 (32,673 bytes), `aw stop` graceful |
 | Release integrity | GitHub asset digests: installer `a1575a63…`, tarball `58d6706c28333a736e5e75bfca099f3b40eaa275b7bddca9cd65d8fc7945d721`; npm tarball HTTP 200 with the same bytes |
+
+Historical note: the 0.17.3 acceptance run predates the current updater. `AW_UPDATE_AUTOINSTALL` is removed from current code; new demonstrations must use the native confirmation and the default 「稍后」 path.
 
 Not covered here: Authenticode signing (installer is unsigned), physical HIL, external MCP positive traces, and long real-model runs.
 

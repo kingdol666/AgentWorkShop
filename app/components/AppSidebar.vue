@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
 
     <nav
       class="app-menu"
-      aria-label="主导航"
+      :aria-label="t('header.openNav')"
     >
       <div
         v-for="group in menuGroups"
