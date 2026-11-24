@@ -14,7 +14,7 @@
 | `PORTAL-FIELDS.md` | 门户字段粘贴稿；摘要为 220 词，与当前源码一致。 |
 | `IEEE-TII-Title-Page.docx` | 门户要求时上传；编辑可见、不发送给审稿人。含当前题目、Haozheng Zhang、Bo Fu、Liangbin Li、Jungen Chen、两组单位、通讯地址和邮箱、Acknowledgments。 |
 | `TITLE-PAGE.md` | Title Page 内容说明和底稿。 |
-| `Cover-Letter-IEEE-TII.md` | 可选；TII 常规初投不需要，且不得并入匿名稿。 |
+| `Cover-Letter-IEEE-TII.md` / `IEEE-TII-Cover-Letter.docx` | 可选；TII 常规初投不需要，且不得并入匿名稿。两版内容一致：只讲贡献、证据边界与后续闭环优化工作，**不含**作者姓名/单位/邮箱/ORCID/基金/致谢/推荐审稿人/仓库链接。 |
 | `supplementary/Supplementary-File-S7-20261124.pdf` | 作者备查，不上传；正文不依赖它。新增“Live runtime walk-through (November 24, 2026)”一节（含 4 张实机控制台截图与 S7-XII 记录表）。 |
 | `supplementary/live-runtime-20261124/` | 该节引用的截图与记录级证据 JSON；显示平台标识，故不进匿名附件。 |
 | `supplementary/Supporting-Evidence-S7.zip` | 作者备查的本地脱敏证据副本，不进公开 Git。 |
