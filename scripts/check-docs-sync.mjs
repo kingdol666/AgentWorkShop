@@ -278,7 +278,7 @@ section('[4b/6] 版本呈现面全链一致(config.yml / README / 站点 hero / 
       bad(`${file} 当前源码版本为 ${m[1]},而 package.json 是 ${pkgVersion}`)
       continue
     }
-    const released = m[2] === 'released' || m[2] === '已发布'
+    const released = /^(?:released(?: |$)|已发布(?: |$))/i.test(m[2])
     ok(`${file} 当前源码版本 = ${m[1]} (${released ? 'released' : 'unreleased'}) = package.json`)
     if (released && needsReleaseLink && !text.includes(`releases/tag/v${m[1]}`))
       bad(`${file} 声明已发布,但缺少指向 v${m[1]} 的 release 链接`)

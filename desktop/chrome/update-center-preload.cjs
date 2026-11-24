@@ -22,9 +22,7 @@ function validManualProxy(value) {
   const { protocol, host, port } = value.config
   return ['http', 'https', 'socks5'].includes(protocol)
     && typeof host === 'string' && host.length > 0 && host.length <= 253
-    && !/[\s/?#@]/.test(host)
-    && (/^[a-z\d](?:[a-z\d.-]{0,251}[a-z\d])?$/i.test(host)
-      || /^(?:[0-9a-f]{0,4}:){2,}[0-9a-f:.]+$/i.test(host))
+    && /^[a-z\d.:[\]-]+$/i.test(host)
     && Number.isInteger(port) && port >= 1 && port <= 65535
 }
 

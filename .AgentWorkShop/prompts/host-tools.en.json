@@ -15,10 +15,11 @@
     }
   },
   "update_team_agent": {
-    "description": "(Current lead only) Update a worker you created, including replacing or detaching its published AgentPrefab binding.",
+    "description": "(Current lead only) Update a worker you created; a published AgentPrefab binding cannot be replaced once set. Detach it with the current expectedBindingVersion.",
     "parameters": {
       "properties": {
-        "prefab": { "description": "Published revision selector, or null to detach" }
+        "prefab": { "description": "Published revision selector (only when currently unbound), or null to detach" },
+        "expectedBindingVersion": { "description": "Required with prefab=null; copy the opaque prefabBindingVersion from list_team_agents" }
       }
     }
   },

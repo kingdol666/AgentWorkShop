@@ -3,7 +3,7 @@
  *
  * body:
  *  - { prefabId, revision, slotValues } → 固定 revision 的 binding
- *  - { clear: true } 或 { prefabBinding: null } → 显式解绑
+ *  - { clear: true, expectedBindingVersion } 或 { prefabBinding: null, expectedBindingVersion } → 显式解绑
  * 请求只保存 binding JSON；凭据/秘密不进入成员配置。变更后成员运行时卸载，下次装配生效。
  */
 import { getRouterParam, readBody } from 'h3'
@@ -25,6 +25,7 @@ export default defineApiHandler(async (event) => {
 
   const body = (await readBody<Record<string, unknown>>(event)) ?? {}
   const clear = body.clear === true || body.prefabBinding === null
+  const expectedBindingVersion = typeof body.expectedBindingVersion === 'string' ? body.expectedBindingVersion : undefined
   const service = createAgentPrefabService(manager.deps.db)
   let prefabBindingJson = ''
   if (!clear) {
@@ -34,11 +35,11 @@ export default defineApiHandler(async (event) => {
     const binding = service.buildBinding({ id: user.id, role: user.role }, prefabId, revision, body.slotValues)
     prefabBindingJson = JSON.stringify(binding)
   }
-  const agent = await manager.updateChannelAgent(agentId, { prefabBindingJson }, {
+  const agent = await manager.updateChannelAgent(agentId, { prefabBindingJson, expectedBindingVersion }, {
     channelId,
     by: 'user',
     reason: clear ? 'prefab-unbind' : 'prefab-bind',
     actor: user,
   })
-  return { agentId: agent.id, prefabBinding: prefabBindingJson ? JSON.parse(prefabBindingJson) : null }
+  return { agentId: agent.id, prefabBinding: prefabBindingJson ? JSON.parse(prefabBindingJson) : null, prefabBindingVersion: agent.prefabBindingVersion ?? null }
 })

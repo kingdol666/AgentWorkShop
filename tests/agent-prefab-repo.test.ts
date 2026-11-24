@@ -4,6 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { openWorkshopDb } from '../server/services/workshop/db/database/open'
+import { migratePrefabColumns } from '../server/services/workshop/db/database/migrations-prefab'
 import { createAgentPrefabRepo } from '../server/services/workshop/db/agent-prefab.repo'
 import type { AgentPrefabDraft } from '../server/services/workshop/agent-prefabs/types'
 
@@ -59,6 +60,52 @@ test('draft update uses expectedUpdatedAt CAS and visibility lists privately', (
     )
     assert.equal(repo.listVisible('u1').length, 1)
     assert.equal(repo.listVisible('u2').length, 0)
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('existing prefab rows survive the additive archive migration', () => {
+  const db = openWorkshopDb(':memory:')
+  try {
+    const repo = createAgentPrefabRepo(db)
+    const row = repo.create({ name: 'Existing', ownerUserId: 'u1', draft: draft('Existing') })
+    const revision = repo.publish(row.id, 0, draft('Existing'), 'u1')
+    db.exec('ALTER TABLE agent_prefabs DROP COLUMN archived_at')
+    migratePrefabColumns(db)
+    migratePrefabColumns(db)
+    const next = createAgentPrefabRepo(db)
+    assert.equal(next.findById(row.id)?.archivedAt, null)
+    assert.deepEqual({ ...next.findRevision(row.id, 1) }, revision)
+    assert.equal(next.listVisible('u1')[0]?.id, row.id)
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('channel member prefab binding uses SQLite CAS and never replaces an existing bind', async () => {
+  const db = openWorkshopDb(':memory:')
+  try {
+    const { createChannelRepo } = await import('../server/services/workshop/db/channel.repo')
+    const { createChannelAgentRepo, prefabBindingVersionOf } = await import('../server/services/workshop/db/channel-agent.repo')
+    const channels = createChannelRepo(db)
+    const channelAgents = createChannelAgentRepo(db)
+    const channel = channels.create({ name: 'C', ownerUserId: 'u1' })
+    const member = channelAgents.create({ channelId: channel.id, templateId: null, name: 'w', harness: 'mock', role: 'worker' })
+    const prefabs = createAgentPrefabRepo(db)
+    const prefab = prefabs.create({ name: 'Expert', ownerUserId: 'u1', draft: draft('Expert') })
+    const rev = prefabs.publish(prefab.id, 0, draft('Expert'), 'u1')
+    const binding = JSON.stringify({ prefabId: prefab.id, revision: 1, slotValues: {}, contentHash: rev.contentHash })
+    const bound = channelAgents.setPrefabBinding(channel.id, member.id, binding)
+    const version = prefabBindingVersionOf(bound.prefabBindingJson)
+    assert.match(version ?? '', /^[0-9a-f-]{36}$/)
+    assert.throws(() => channelAgents.setPrefabBinding(channel.id, member.id, binding), { code: 'PREFAB_ALREADY_BOUND' })
+    assert.throws(() => channelAgents.setPrefabBinding(channel.id, member.id, '', 'stale'), { code: 'PREFAB_BINDING_CHANGED' })
+    assert.equal(channelAgents.findById(member.id)?.prefabBindingJson, bound.prefabBindingJson)
+    const cleared = channelAgents.setPrefabBinding(channel.id, member.id, '', version!)
+    assert.equal(cleared.prefabBindingJson, '')
   }
   finally {
     db.close()

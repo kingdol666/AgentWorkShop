@@ -67,6 +67,7 @@ export interface AgentPrefabRow {
   ownerUserId: string | null
   draftJson: string
   headRevision: number
+  archivedAt: string | null
   createdAt: string
   updatedAt: string
 }

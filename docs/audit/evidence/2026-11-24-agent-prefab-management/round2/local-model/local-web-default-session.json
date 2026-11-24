@@ -1,0 +1,138 @@
+{
+  "taskState": "SUBMITTED",
+  "completed": null,
+  "firstTurns": 1,
+  "nonceInReply": false,
+  "messages": [
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_c55dec5b12b44b7c_report_prog"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d0701b5fe1990cb1_search_memo"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_7d2f94c4e81624283249e8d95c7703bd_d886b4d3ccbbb38d_list_channe"
+      ]
+    }
+  ]
+}

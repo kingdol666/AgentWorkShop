@@ -1,0 +1,38 @@
+{
+  "taskState": "COMPLETED",
+  "completed": "COMPLETED",
+  "firstTurns": 1,
+  "nonceInReply": false,
+  "messages": [
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_33658be25efc372902d52f669bf710d3_c55dec5b12b44b7c_report_prog"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_33658be25efc372902d52f669bf710d3_8d5160f9ceaa74e4_get_task_de"
+      ]
+    },
+    {
+      "role": "assistant",
+      "provider": "local",
+      "model": "gemma-4-12B-it-QAT-Q4_0.gguf",
+      "stopReason": "toolUse",
+      "text": "",
+      "tools": [
+        "aw_33658be25efc372902d52f669bf710d3_75c77375d86d8d49_complete_ta"
+      ]
+    }
+  ]
+}

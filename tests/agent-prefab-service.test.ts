@@ -91,6 +91,41 @@ test('visibility: private only owner/admin, public readable', () => {
   }
 })
 
+test('delete checks the saved draft; archiving keeps immutable pins but denies new bindings', () => {
+  const db = openWorkshopDb(':memory:')
+  try {
+    const service = createAgentPrefabService(db)
+    const owner = { id: 'u1' }
+    const reader = { id: 'u2' }
+    const first = service.create(owner, draft({ visibility: 'public' }))
+    assert.throws(() => service.remove(reader, first.id, first.updatedAt), expectCode('PREFAB_OWNER_REQUIRED'))
+    const edited = service.update(owner, first.id, first.updatedAt, draft({ name: 'Edited', visibility: 'public' }))
+    assert.throws(() => service.remove(owner, first.id, first.updatedAt), expectCode('PREFAB_EDIT_CONFLICT'))
+    assert.throws(() => service.publish(owner, first.id, 0, first.updatedAt), expectCode('PREFAB_EDIT_CONFLICT'))
+    const published = service.publish(owner, first.id, 0, edited.updatedAt)
+    const binding = service.buildBinding(reader, first.id, 1, {})
+    assert.equal(binding.contentHash, published.contentHash)
+    assert.throws(() => service.remove(owner, first.id, edited.updatedAt), expectCode('PREFAB_EDIT_CONFLICT'))
+    assert.deepEqual(service.remove(owner, first.id, service.get(owner, first.id).updatedAt), { id: first.id, archived: true })
+    assert.equal(service.list(reader).length, 0)
+    assert.equal(service.list({ id: 'admin', role: 'admin' }).length, 0)
+    const archived = service.get(reader, first.id)
+    assert.ok(archived.archivedAt)
+    assert.equal(service.loadRevision(first.id, 1)?.revision.contentHash, binding.contentHash)
+    assert.throws(() => service.buildBinding(reader, first.id, 1, {}), expectCode('PREFAB_ARCHIVED'))
+    assert.throws(() => service.buildBinding({ kind: 'channel-lead', channelOwnerUserId: owner.id }, first.id, 1, {}), expectCode('PREFAB_ARCHIVED'))
+    assert.throws(() => service.update(owner, first.id, archived.updatedAt, draft()), expectCode('PREFAB_ARCHIVED'))
+    assert.throws(() => service.publish(owner, first.id, 1, archived.updatedAt), expectCode('PREFAB_ARCHIVED'))
+
+    const unpublished = service.create(owner, draft({ name: 'Unused draft' }))
+    assert.deepEqual(service.remove(owner, unpublished.id, unpublished.updatedAt), { id: unpublished.id, archived: false })
+    assert.throws(() => service.get(owner, unpublished.id), expectCode('NOT_FOUND'))
+  }
+  finally {
+    db.close()
+  }
+})
+
 test('invalid binding JSON is rejected', () => {
   assert.equal(parseAgentPrefabBinding(''), null)
   assert.throws(() => parseAgentPrefabBinding('{}'), expectCode('PREFAB_BINDING_INVALID'))

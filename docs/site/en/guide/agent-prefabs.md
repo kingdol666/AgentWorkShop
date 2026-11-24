@@ -24,17 +24,17 @@ AgentPrefabs package role/scenario prompts, multi-dimensional slots, supported m
 
 ## 3. Settings › Agent Prefabs
 
-1. Create a draft with role prompt, scenario prompt and slots (key/label/default/required/member-override/max length).
-2. Select tools, plugin tools, Skill revisions and MCP tools from the capability catalog; optionally mark required.
-3. Save the draft, then publish an immutable revision (head CAS; only one concurrent publish wins).
-4. In “Bind to Channel member”, choose Channel, member and revision, then fill allowed slots.
+1. Choose **New prefab** and name the draft before creating it. Use **Edit** in the list to open an existing prefab. Owners and administrators can edit, publish, and remove it; other authorized users can view public prefabs.
+2. Set the role/scenario prompts, slots, and model profile, and select tools, plugin tools, Skill revisions, or MCP tools. A locked slot comes from the published snapshot and cannot be overridden at binding time.
+3. Save the draft, then separately publish an immutable revision. Publishing never changes a member's existing binding. Unpublished drafts can be deleted; archiving hides a published prefab from new bindings without changing existing pins or historical snapshots.
+4. In **Bind to Channel member**, select the Channel, member, and published revision. Each member instance can have one binding. Another bind returns `409 PREFAB_ALREADY_BOUND`; explicitly unbind before switching. An unbound member runs with its ordinary Agent configuration and platform permissions.
 
 Effective capability = prefab selection ∩ system enabled/review ∩ Channel/Project policy ∩ role/industrial gates ∩ harness support. Platform collaboration/task tools remain available (still subject to Channel/Project policy).
 
 ## 4. Versions, clones and retries
 
 - A member binding pins `(prefabId, revision, slotValues, contentHash)`; publishing a new revision never silently upgrades existing bindings.
-- Session creation pins the member binding and snapshot hash; session clones copy the same revision and do not follow the latest.
+- Session creation pins the member binding and snapshot hash; session clones copy the same revision and do not follow the latest. Members of an unclosed session or project task instance are view-only in the binding card: they cannot be bound or unbound there.
 - A Project task instance pins its snapshot on first creation; retries of the same work item reuse it; a new work item reads the Channel binding at that time.
 - Missing required capability, missing revision, corrupt binding, or an empty required slot fails new work closed; it never falls back to the legacy tool surface.
 - Ordinary revision updates wait for a safe idle boundary and do not force-stop busy work/HITL. Admin revocation, member disablement or tool/Skill/MCP disablement blocks the next call immediately.
@@ -51,4 +51,5 @@ Effective capability = prefab selection ∩ system enabled/review ∩ Channel/Pr
 
 - Isolated fresh-instance live acceptance **21/21** (`scripts/experiments/prefab-acceptance.mjs`): global-scope discovery from a clean `~/.agent/skills`, immutable import disabled by default, enable, prefab draft/publish, member binding to the pinned revision, tool-catalog narrowing with `activate_skill` present, low-trust skill body injection, unauthorized dispatch denial, session clone binding + snapshot hash, revision 2 without auto-upgrade, immediate denial after skill revocation, and MCP non-HTTPS rejection / secret-less manifest / bounded discovery failure.
 - Merged-main gates: unit 2185/2186 (1 conditional skip), MCP 14/14, skills 197/0, docs 101/0, i18n 3439/3439, lint/typecheck/build PASS.
-- Not yet verified: an external MCP positive live trace against a public HTTPS server, real OMP-model work under a prefab, and browser UI click-through. See the [full-flow acceptance report](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md).
+- Not yet verified: an external MCP positive live trace against a public HTTPS server. See the [full-flow acceptance report](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md).
+- 2026-11-24 management and binding re-acceptance: **56/56 on both Web and desktop** — create, edit, bind and unbind through the visible UI, session-instance members view-only, the confirmation dialog following the theme; and under an owned, isolated local model (12B) the bound member's requests carried the prefab role text while the unbound member's did not. Task completion of a small model is recorded, not asserted. See the [acceptance report](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-24-agent-prefab-management/REPORT.md).

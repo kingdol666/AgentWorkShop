@@ -32,7 +32,10 @@ const emit = defineEmits<{
   >
     <!-- 全屏孪生页没有全局导航:固定提供返回主界面(仪表盘)的入口 -->
     <AppBackToMain />
-    <div class="brand">
+    <div
+      class="brand"
+      data-aw-shell-brand
+    >
       <svg
         class="brand-glyph"
         viewBox="0 0 32 32"

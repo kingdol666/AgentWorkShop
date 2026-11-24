@@ -49,9 +49,9 @@ export function openWorkshopDb(path: string): DatabaseSync {
  * 历史:v1 初始契约;v2 2026-11-15 channels.channel_mode;v3 messages.claim_token;v4 受治理经验版本;
  * v5 发布请求+审计 outbox;v6 反射 outbox;v7 设备写尝试账本;v8 AgentPrefab 草稿/不可变 revision;
  * v9 chat_deliveries 重试索引移出契约 SQL(0.7 时代存量库缺 next_retry_at 列,契约内建索引会中断启动)；
- * v10 channel_agents 创建来源（既有实例保守标记为 system/protected）。
+ * v10 channel_agents 创建来源（既有实例保守标记为 system/protected）；v11 AgentPrefab 归档。
  */
-export const SCHEMA_CONTRACT_VERSION = 10
+export const SCHEMA_CONTRACT_VERSION = 11
 
 /** 对已打开的库执行初始化:WAL + 外键约束 + 建表 + 增量迁移 */
 export function initWorkshopDb(db: DatabaseSync): void {

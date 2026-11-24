@@ -62,6 +62,15 @@ test('desktop settings accept a bounded manual proxy without credentials or arbi
   assert.equal(isUpdateCenterAction('set-proxy', {
     mode: 'manual', config: { protocol: 'http', host: 'http://proxy.local/path', port: 8080 },
   }), false)
+  for (const host of [':::1', 'a..b', '-example.local', '127.1', '0x7f000001', 'proxy.local:8080', 'proxy.local;DIRECT']) {
+    assert.equal(isUpdateCenterAction('set-proxy', {
+      mode: 'manual', config: { protocol: 'http', host, port: 8080 },
+    }), false, host)
+  }
+  assert.equal(normalizeManualProxy({ protocol: 'http', host: '[2001:0DB8::1]', port: 8080 }).host, '2001:db8::1')
+  assert.match(main, /settings: diagnosticSettings/)
+  assert.match(main, /isolated\.closeAllConnections\(\)/)
+  assert.match(main, /code: 'ERR_UPDATE_PROXY_ROUTE'/)
 })
 
 test('update IPC allows only the exact local top-level document', () => {

@@ -231,7 +231,10 @@ onBeforeUnmount(() => {
     :aria-hidden="navHydrated && isDrawer && !drawerOpen ? 'true' : undefined"
   >
     <!-- 品牌区:AwLogo 门架 A 字标(单一实心剪影,currentColor 随主题;与 favicon/桌面图标同源) -->
-    <div class="logo">
+    <div
+      class="logo"
+      data-aw-shell-brand
+    >
       <div
         class="logo-mark"
         aria-hidden="true"

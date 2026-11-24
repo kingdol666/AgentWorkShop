@@ -19,5 +19,5 @@ export default defineApiHandler(async (event) => {
   if (!body.draft || typeof body.draft !== 'object') throw new AppError(400, 'VALIDATION_ERROR', 'draft 必填')
   const service = createAgentPrefabService(getWorkshopManager().deps.db)
   const row = service.update({ id: user.id, role: user.role }, id, body.expectedUpdatedAt, body.draft)
-  return { ...row, draft: JSON.parse(row.draftJson) }
+  return { ...row, canEdit: true, draft: JSON.parse(row.draftJson) }
 })

@@ -2,7 +2,7 @@
  * ManagerLeadTeam —— lead 自主团队管理面(扩容/调参/裁撤)
  * (拆分层,承 ManagerAdminAgents)
  */
-import { ManagerAdminAgents } from './admin-agents'
+import { ManagerAdminAgents, assertPrefabBindingActiveAtWrite } from './admin-agents'
 import type { AgentInfo, CreateTeamMemberInput, TeamMemberView, UpdateTeamMemberPatch } from '../../agents/agent-interface'
 import { AppError } from '../../../../utils/errors'
 import { instanceToAgentInfo, KNOWN_HARNESSES, log, rowToTask } from './helpers'
@@ -15,6 +15,7 @@ import { withTransaction } from '../../db/transaction'
 import { checkToolAgainstScope } from '../permission-scope'
 import { createChannelSessionRepo } from '../../db/channel-session.repo'
 import { isUnclosedSessionClone } from '../../agents/session-clone'
+import { prefabBindingVersionOf } from '../../db/channel-agent.repo'
 
 function isCurrentLead(channel: ChannelRow, caller: ChannelAgentRow): boolean {
   return channel.enabled === 1 && channel.leadAgentId === caller.id
@@ -74,7 +75,7 @@ export abstract class ManagerLeadTeam extends ManagerAdminAgents {
         if (binding) prefabBinding = { prefabId: binding.prefabId, revision: binding.revision, contentHash: binding.contentHash }
       }
       catch { /* 损坏的绑定由执行面拒绝，不应导致全员名单不可读。 */ }
-      return { id: row.id, name: row.name, role: row.role as AgentInfo['role'], harness: row.harness, enabled: row.enabled, prefabBinding, manageable, protected: !manageable }
+      return { id: row.id, name: row.name, role: row.role as AgentInfo['role'], harness: row.harness, enabled: row.enabled, prefabBinding, prefabBindingVersion: prefabBindingVersionOf(row.prefabBindingJson), manageable, protected: !manageable }
     })
   }
 
@@ -92,6 +93,7 @@ export abstract class ManagerLeadTeam extends ManagerAdminAgents {
           `Channel worker 名册已达到上限 ${workerCount}/${workerLimit}(禁用成员也计数)。请复用现有成员或先由用户调整名册。`)
       }
       const prefabBindingJson = input.prefab === undefined ? undefined : this.buildTeamBindingJson(channel, input.prefab)
+      if (prefabBindingJson) assertPrefabBindingActiveAtWrite(this.deps.db, prefabBindingJson)
       let templateId = input.templateId
       if (templateId) {
         const tpl = this.deps.repos.agents.findById(templateId)
@@ -145,8 +147,9 @@ export abstract class ManagerLeadTeam extends ManagerAdminAgents {
       : patch.prefab === null
         ? ''
         : this.buildTeamBindingJson(channel, patch.prefab)
-    // Explicitly pick instance fields. In particular, no caller-supplied serialized binding or source can pass through.
-    return this.updateChannelAgent(agentId, { name: patch.name, config: patch.config, enabled: patch.enabled, prefabBindingJson }, {
+    // Binding replacement is deliberately impossible; clearing is a CAS and
+    // therefore needs the generation shown in listTeamMembers.
+    return this.updateChannelAgent(agentId, { name: patch.name, config: patch.config, enabled: patch.enabled, prefabBindingJson, expectedBindingVersion: patch.expectedBindingVersion }, {
       channelId, by: `lead:${callerAgentId}`, reason: patch.reason, actor: { role: 'agent', id: callerAgentId },
     })
   }

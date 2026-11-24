@@ -43,10 +43,13 @@ function fixture(t: TestContext, ownerUserId: string | null = 'channel-owner') {
   const notices: string[] = []
   const reloads: string[] = []
   const manager = Object.assign(Object.create(AgentChannelManager.prototype) as InstanceType<typeof AgentChannelManager>, {
-    deps: { db, repos: { channels, channelAgents, agents } },
+    deps: { db, repos: { channels, channelAgents, agents, messages: { hasUnconsumedByChannelAgent: () => false } } },
     activeInvocationScopes: new Map(),
+    runtimeOf: () => ({ getState: () => 'idle', hasActiveSupervisionAttempt: () => false }),
+    getTaskEngine: () => ({ list: () => [] }),
     ensureAgentRuntime: () => undefined,
     unloadAgent: async (_: string, id: string) => { reloads.push(id) },
+    stopAndDetach: async (_: string, id: string) => { reloads.push(id) },
     notifyMember: (_: string, event: { op: string }) => { notices.push(event.op) },
   })
   const agentInfo: AgentInfo = { id: lead.id, channelId: channel.id, name: lead.name, harness: 'mock', role: 'lead', config: {} }
@@ -63,7 +66,7 @@ function fixture(t: TestContext, ownerUserId: string | null = 'channel-owner') {
   return { db, channels, channel, channelAgents, agents, memberInput, lead, manager, ws, prefabs, publish, notices, reloads }
 }
 
-test('lead tools atomically bind a published revision, display safe metadata and switch or detach', async (t) => {
+test('lead tools atomically bind a published revision, display safe metadata, reject replacement and detach by version', async (t) => {
   const f = fixture(t)
   const first = f.publish()
   const second = f.prefabs.publish({ id: 'channel-owner' }, first.prefabId, 1)
@@ -84,16 +87,17 @@ test('lead tools atomically bind a published revision, display safe metadata and
 
   await handleUpdateTeamAgent({ agent_id: worker.id, name: 'Renamed' }, f.ws)
   assert.equal(f.channelAgents.findById(worker.id)?.prefabBindingJson, worker.prefabBindingJson)
-  const update = await handleUpdateTeamAgent({
+  await assert.rejects(handleUpdateTeamAgent({
     agent_id: worker.id,
     prefab: { prefabId: second.prefabId, revision: 2, slotValues: { goal: 'new goal' } },
-  }, f.ws)
-  assert.match(update.text, /revision=2/)
-  assert.equal(JSON.parse(f.channelAgents.findById(worker.id)!.prefabBindingJson!).contentHash, second.contentHash)
-  await handleUpdateTeamAgent({ agent_id: worker.id, prefab: null }, f.ws)
+  }, f.ws), { code: 'PREFAB_ALREADY_BOUND' })
+  assert.equal(JSON.parse(f.channelAgents.findById(worker.id)!.prefabBindingJson!).contentHash, first.contentHash)
+  const bindingVersion = JSON.parse(worker.prefabBindingJson!).bindingVersion as string
+  await assert.rejects(handleUpdateTeamAgent({ agent_id: worker.id, prefab: null }, f.ws), { code: 'PREFAB_BINDING_VERSION_REQUIRED' })
+  await handleUpdateTeamAgent({ agent_id: worker.id, prefab: null, expectedBindingVersion: bindingVersion }, f.ws)
   assert.equal(f.channelAgents.findById(worker.id)?.prefabBindingJson, '')
-  assert.deepEqual(f.notices, ['added', 'updated', 'updated', 'updated'])
-  assert.deepEqual(f.reloads, [worker.id, worker.id, worker.id])
+  assert.deepEqual(f.notices, ['added', 'updated', 'updated'])
+  assert.deepEqual(f.reloads, [worker.id, worker.id])
   assert.deepEqual(f.prefabs.get({ id: 'channel-owner' }, first.prefabId), beforeDraft)
 })
 
@@ -160,6 +164,34 @@ test('scheduler forwards selectors and explicit detach unchanged to the same wor
     ['worker', { name: undefined, config: undefined, prefab, enabled: undefined, reason: undefined }],
     ['worker', { name: undefined, config: undefined, prefab: null, enabled: 0, reason: undefined }],
   ])
+})
+
+test('members of an unclosed session are frozen: the roster flags them and binding writes stay refused until it closes', async (t) => {
+  const f = fixture(t)
+  const { createChannelSessionRepo } = await import('../server/services/workshop/db/channel-session.repo')
+  const { frozenBindingMembers } = await import('../server/services/workshop/agents/session-clone')
+  const { channelAgentSummary } = await import('../server/services/workshop/agents/agent-dto')
+  const revision = f.publish()
+  const bindingJson = JSON.stringify(f.prefabs.buildBinding({ id: 'channel-owner' }, revision.prefabId, 1, { goal: 'x' }))
+  const sessions = createChannelSessionRepo(f.db)
+  const session = sessions.create({ channelId: f.channel.id, memberMap: { lead: f.lead.id } })
+  const frozen = frozenBindingMembers(sessions.listByChannel(f.channel.id))
+  assert.deepEqual([...frozen], [f.lead.id])
+  const member: AgentInfo = { id: f.lead.id, channelId: f.channel.id, name: f.lead.name, harness: 'mock', role: 'lead', config: {} }
+  assert.equal(channelAgentSummary(member, { frozenPrefabMembers: frozen }).prefabBindingFrozen, true)
+  assert.equal('prefabBindingFrozen' in channelAgentSummary(member), false)
+
+  const bind = () => f.manager.updateChannelAgent(f.lead.id, { prefabBindingJson: bindingJson }, { channelId: f.channel.id })
+  await assert.rejects(bind(), { code: 'PREFAB_BINDING_FROZEN' })
+  assert.equal(f.channelAgents.findById(f.lead.id)?.prefabBindingJson, '')
+  assert.deepEqual(f.reloads, [])
+  assert.equal(sessions.beginClosing(session.id), true)
+  await assert.rejects(bind(), { code: 'PREFAB_BINDING_FROZEN' })
+  assert.equal(sessions.close(session.id), true)
+  assert.equal(frozenBindingMembers(sessions.listByChannel(f.channel.id)).size, 0)
+  await bind()
+  assert.equal(JSON.parse(f.channelAgents.findById(f.lead.id)!.prefabBindingJson!).contentHash, revision.contentHash)
+  assert.deepEqual(f.reloads, [f.lead.id])
 })
 
 test('tool catalog exposes the selector for both locales', () => {

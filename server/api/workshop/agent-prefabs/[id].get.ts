@@ -5,15 +5,17 @@ import { getRouterParam } from 'h3'
 import { defineApiHandler } from '../../../utils/response'
 import { resolveUser } from '../caller'
 import { getWorkshopManager } from '../../../plugins/workshop'
-import { createAgentPrefabService } from '../../../services/workshop/agent-prefabs/service'
+import { canEditAgentPrefab, createAgentPrefabService } from '../../../services/workshop/agent-prefabs/service'
 
 export default defineApiHandler((event) => {
   const user = resolveUser(event)
   const id = getRouterParam(event, 'id') ?? ''
   const service = createAgentPrefabService(getWorkshopManager().deps.db)
-  const row = service.get({ id: user.id, role: user.role }, id)
+  const actor = { id: user.id, role: user.role }
+  const row = service.get(actor, id)
   return {
     ...row,
+    canEdit: canEditAgentPrefab(row, actor),
     draft: JSON.parse(row.draftJson),
     revisions: service.repo.listRevisions(id).map(r => ({
       revision: r.revision,

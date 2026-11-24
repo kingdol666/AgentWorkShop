@@ -10,7 +10,7 @@ import type { AgentPrefabDraft, AgentPrefabRevisionRow, AgentPrefabRevisionSnaps
 import { AppError } from '../../../utils/errors'
 import { withTransaction } from './transaction'
 
-const COLS = 'id, name, description, visibility, owner_user_id AS ownerUserId, draft_json AS draftJson, head_revision AS headRevision, created_at AS createdAt, updated_at AS updatedAt'
+const COLS = 'id, name, description, visibility, owner_user_id AS ownerUserId, draft_json AS draftJson, head_revision AS headRevision, archived_at AS archivedAt, created_at AS createdAt, updated_at AS updatedAt'
 const REV_COLS = 'prefab_id AS prefabId, revision, snapshot_json AS snapshotJson, content_hash AS contentHash, created_at AS createdAt, created_by AS createdBy'
 
 /** 对象键排序 canonical JSON（发布 hash 稳定） */
@@ -39,15 +39,20 @@ export function createAgentPrefabRepo(db: DatabaseSync) {
     `INSERT INTO agent_prefabs (id, name, description, visibility, owner_user_id, draft_json, head_revision, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
   )
-  const selectAll = db.prepare(`SELECT ${COLS} FROM agent_prefabs ORDER BY updated_at DESC`)
-  const selectVisible = db.prepare(`SELECT ${COLS} FROM agent_prefabs WHERE owner_user_id = ? OR visibility = 'public' ORDER BY updated_at DESC`)
+  const selectAll = db.prepare(`SELECT ${COLS} FROM agent_prefabs WHERE archived_at IS NULL ORDER BY updated_at DESC`)
+  const selectVisible = db.prepare(`SELECT ${COLS} FROM agent_prefabs WHERE archived_at IS NULL AND (owner_user_id = ? OR visibility = 'public') ORDER BY updated_at DESC`)
   const selectById = db.prepare(`SELECT ${COLS} FROM agent_prefabs WHERE id = ?`)
   const updateDraftStmt = db.prepare(
-    `UPDATE agent_prefabs SET name = ?, description = ?, visibility = ?, draft_json = ?, updated_at = ? WHERE id = ? AND updated_at = ?`,
+    `UPDATE agent_prefabs SET name = ?, description = ?, visibility = ?, draft_json = ?, updated_at = ? WHERE id = ? AND updated_at = ? AND archived_at IS NULL`,
   )
   const updateHeadStmt = db.prepare(
-    `UPDATE agent_prefabs SET head_revision = ?, updated_at = ? WHERE id = ? AND head_revision = ?`,
+    `UPDATE agent_prefabs SET head_revision = ?, updated_at = ? WHERE id = ? AND head_revision = ? AND updated_at = ? AND archived_at IS NULL`,
   )
+  const archiveStmt = db.prepare(`UPDATE agent_prefabs SET archived_at = ?, updated_at = ? WHERE id = ? AND updated_at = ? AND archived_at IS NULL`)
+  const deleteDraftStmt = db.prepare(`DELETE FROM agent_prefabs
+    WHERE id = ? AND updated_at = ? AND head_revision = 0 AND archived_at IS NULL
+      AND NOT EXISTS (SELECT 1 FROM agent_prefab_revisions WHERE prefab_id = agent_prefabs.id)`)
+  const hasRevision = db.prepare('SELECT 1 FROM agent_prefab_revisions WHERE prefab_id = ? LIMIT 1')
   const insertRevision = db.prepare(
     `INSERT INTO agent_prefab_revisions (prefab_id, revision, snapshot_json, content_hash, created_at, created_by)
      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -66,6 +71,7 @@ export function createAgentPrefabRepo(db: DatabaseSync) {
         ownerUserId: input.ownerUserId,
         draftJson: JSON.stringify(input.draft),
         headRevision: 0,
+        archivedAt: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -106,21 +112,40 @@ export function createAgentPrefabRepo(db: DatabaseSync) {
       return next
     },
 
-    /** 发布：head CAS + immutable revision */
-    publish(id: string, expectedHead: number, draft: AgentPrefabDraft, actorId: string): AgentPrefabRevisionRow {
+    /** Unpublished drafts have no pins. Retain the parent and every published revision otherwise. */
+    remove(id: string, expectedUpdatedAt: string): { id: string, archived: boolean } {
+      return withTransaction(db, () => {
+        const current = selectById.get(id) as unknown as AgentPrefabRow | undefined
+        if (!current) throw new AppError(404, 'NOT_FOUND', `AgentPrefab 不存在：${id}`)
+        if (current.archivedAt) throw new AppError(409, 'PREFAB_ARCHIVED', 'AgentPrefab 已归档')
+        if (current.updatedAt !== expectedUpdatedAt) throw new AppError(409, 'PREFAB_EDIT_CONFLICT', 'AgentPrefab 已变化，请刷新后重试')
+        const archived = current.headRevision > 0 || Boolean(hasRevision.get(id))
+        const now = new Date(Math.max(Date.now(), Date.parse(current.updatedAt) + 1)).toISOString()
+        const result = archived ? archiveStmt.run(now, now, id, expectedUpdatedAt) : deleteDraftStmt.run(id, expectedUpdatedAt)
+        if (Number(result.changes) !== 1) throw new AppError(409, 'PREFAB_EDIT_CONFLICT', 'AgentPrefab 已变化，请刷新后重试')
+        return { id, archived }
+      })
+    },
+
+    /** 发布：head + draft CAS，revision 不可变。 */
+    publish(id: string, expectedHead: number, draft: AgentPrefabDraft, actorId: string, expectedUpdatedAt?: string): AgentPrefabRevisionRow {
       const current = selectById.get(id) as unknown as AgentPrefabRow | undefined
       if (!current) throw new AppError(404, 'NOT_FOUND', `AgentPrefab 不存在：${id}`)
       if (current.headRevision !== expectedHead) {
         throw new AppError(409, 'PREFAB_REVISION_CONFLICT', 'AgentPrefab head 已变化，请刷新后重试')
       }
+      if (current.archivedAt) throw new AppError(409, 'PREFAB_ARCHIVED', 'AgentPrefab 已归档')
+      if (expectedUpdatedAt !== undefined && current.updatedAt !== expectedUpdatedAt) {
+        throw new AppError(409, 'PREFAB_EDIT_CONFLICT', 'AgentPrefab 草稿已变化，请刷新后再发布')
+      }
       const revision = current.headRevision + 1
       const snapshot: AgentPrefabRevisionSnapshot = { schemaVersion: 1, draft }
       const snapshotJson = JSON.stringify(snapshot)
       const contentHash = prefabSnapshotHash(draft)
-      const now = new Date().toISOString()
+      const now = new Date(Math.max(Date.now(), Date.parse(current.updatedAt) + 1)).toISOString()
       const row: AgentPrefabRevisionRow = { prefabId: id, revision, snapshotJson, contentHash, createdAt: now, createdBy: actorId }
       return withTransaction(db, () => {
-        const updated = updateHeadStmt.run(revision, now, id, expectedHead)
+        const updated = updateHeadStmt.run(revision, now, id, expectedHead, current.updatedAt)
         if (Number(updated.changes ?? 0) !== 1) {
           throw new AppError(409, 'PREFAB_REVISION_CONFLICT', 'AgentPrefab head 并发变化，发布未生效')
         }

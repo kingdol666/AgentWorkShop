@@ -74,7 +74,7 @@ let updateInstaller = null
 let updateJob = null
 let updateCenter
 let systemUpdateTransport
-let updateTransportKey = ''
+let proxySettingError = null
 let updateProbe = { status: 'idle', route: 'unknown' }
 let installNotice = null
 let updateState = { status: 'idle', version: null, progress: null, received: 0, total: null, speed: null, eta: null, error: null, errorStage: null, notice: null, notes: '' }
@@ -130,18 +130,19 @@ async function syncThemeFromPage() {
 }
 
 async function syncBrandFromPage() {
-  if (!contentView || contentView.webContents.isDestroyed()) return
+  const contents = contentView?.webContents
+  if (!contents || contents.isDestroyed()) return
   try {
-    const visible = await contentView.webContents.executeJavaScript(`(() => {
-      const nodes = document.querySelectorAll('.app-sider .logo, .rail-brand, .topnav .brand, .brand')
+    const visible = await contents.executeJavaScript(`(() => {
+      const nodes = document.querySelectorAll('[data-aw-shell-brand]')
       return [...nodes].some(node => {
+        if (node.closest('[inert], [aria-hidden="true"]')) return false
         const rect = node.getBoundingClientRect()
-        const style = getComputedStyle(node)
         return rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.left < innerWidth
-          && style.visibility !== 'hidden' && style.display !== 'none'
+          && rect.bottom > 0 && rect.top < innerHeight && getComputedStyle(node).visibility === 'visible'
       })
-    })()`, true)
-    if (webBrandVisible === visible) return
+    })()`)
+    if (contents !== contentView?.webContents || webBrandVisible === visible) return
     webBrandVisible = visible === true
     sendToChrome(CHROME_CHANNELS.brand, webBrandVisible)
   }
@@ -182,6 +183,8 @@ function updateRepo() {
 }
 
 function writeStatus() {
+  const diagnosticSettings = { ...settings }
+  delete diagnosticSettings.updateProxy
   const snapshot = {
     schema: 1,
     product: 'AgentWorkShop',
@@ -195,7 +198,7 @@ function writeStatus() {
     windowVisible: Boolean(shell && !shell.isDestroyed() && shell.isVisible()),
     windowFocused: Boolean(shell && !shell.isDestroyed() && shell.isFocused()),
     trayCreated: Boolean(tray && !tray.isDestroyed()),
-    settings,
+    settings: diagnosticSettings,
     startedAt,
     updatedAt: new Date().toISOString(),
     lastError: lastStartupError,
@@ -222,6 +225,7 @@ function updatePayload() {
     currentVersion: currentVersion(),
     proxyMode: settings.updateProxyMode,
     manualProxy: settings.updateProxy,
+    proxySettingError,
     autoCheckUpdates: settings.autoCheckUpdates,
     probe: updateProbe,
     theme,
@@ -264,23 +268,30 @@ function finishUpdateJob(job) {
 async function updateNetwork(signal) {
   const mode = settings.updateProxyMode
   const proxy = mode === 'manual' ? settings.updateProxy : null
-  const key = JSON.stringify([mode, proxy])
   if (mode === 'direct') return { signal, fetchImpl: pinnedFetch, route: 'direct' }
-  if (systemUpdateTransport && updateTransportKey !== key) {
-    systemUpdateTransport = undefined
-  }
-  updateTransportKey = key
   systemUpdateTransport ??= (async () => {
     const isolated = session.fromPartition('aw-updater-network', { cache: false })
     const proxyConfig = mode === 'manual'
       ? { mode: 'fixed_servers', proxyRules: manualProxyRules(proxy), proxyBypassRules: '' }
       : { mode: 'system' }
     await isolated.setProxy(proxyConfig)
+    await isolated.closeAllConnections()
     const { fetchImpl } = createSystemUpdateTransport({ net, session: isolated })
     return {
-      fetchImpl,
+      fetchImpl: mode === 'manual'
+        ? async (url, init) => {
+          const rule = await isolated.resolveProxy(url)
+          const scheme = { http: 'PROXY', https: 'HTTPS', socks5: 'SOCKS5' }[proxy.protocol]
+          const endpoint = proxyConfig.proxyRules.split('://')[1]
+          if (rule.trim().toLowerCase() !== `${scheme} ${endpoint}`.toLowerCase()) {
+            throw Object.assign(new Error('manual proxy route unavailable'), { code: 'ERR_UPDATE_PROXY_ROUTE' })
+          }
+          init.signal?.throwIfAborted()
+          return fetchImpl(url, init)
+        }
+        : fetchImpl,
       resolveProxy: mode === 'system' ? url => isolated.resolveProxy(url) : null,
-      route: mode === 'manual' ? 'proxy' : 'system',
+      route: mode === 'manual' ? 'manual' : 'system',
     }
   })().catch((err) => {
     systemUpdateTransport = undefined
@@ -809,25 +820,20 @@ function changeUpdateProxy(value) {
     settings = saveSettings(settingsFile, next)
     updateProbe = { status: 'idle', route: 'unknown' }
     systemUpdateTransport = undefined
-    updateTransportKey = ''
-    setUpdateState({ notice: null })
+    proxySettingError = null
+    sendUpdateState()
     writeStatus()
-    refreshTray()
   }
   catch {
-    setUpdateState({ notice: '桌面设置未保存，请检查本机目录权限或代理配置。' })
+    proxySettingError = '桌面设置未保存，请检查本机目录权限。'
+    sendUpdateState()
   }
 }
 
 function changeUpdateSetting(key, value) {
-  if (updateJob && key === 'updateProxyMode') {
-    sendUpdateState()
-    return
-  }
   try {
     settings = saveSettings(settingsFile, { ...settings, [key]: value })
-    if (key === 'updateProxyMode') updateProbe = { status: 'idle', route: 'unknown' }
-    else if (settings.autoCheckUpdates) scheduleUpdates()
+    if (settings.autoCheckUpdates) scheduleUpdates()
     else stopUpdates()
     setUpdateState({ notice: null })
     writeStatus()
@@ -839,7 +845,14 @@ function changeUpdateSetting(key, value) {
 }
 
 function handleUpdateCenterAction(action, value) {
-  if (stopping || !isUpdateCenterAction(action, value)) return
+  if (stopping) return
+  if (!isUpdateCenterAction(action, value)) {
+    if (action === 'set-proxy') {
+      proxySettingError = '请输入有效的主机和端口，不要填入网址或凭据。'
+      sendUpdateState()
+    }
+    return
+  }
   switch (action) {
     case 'check':
       void checkUpdate({ manual: true })

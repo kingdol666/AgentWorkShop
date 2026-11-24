@@ -1807,6 +1807,7 @@ CREATE TABLE IF NOT EXISTS agent_prefabs (
   owner_user_id  TEXT,
   draft_json     TEXT NOT NULL DEFAULT '{}',
   head_revision  INTEGER NOT NULL DEFAULT 0,
+  archived_at    TEXT,
   created_at     TEXT NOT NULL,
   updated_at     TEXT NOT NULL
 );
