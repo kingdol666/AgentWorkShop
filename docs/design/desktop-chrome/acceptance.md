@@ -1,5 +1,24 @@
 # Desktop chrome acceptance — 2026-11-22
 
+## v0.19.0 release and local update — 2026-11-24
+
+Release `v0.19.0` (tag on `cacee7c3`, GitHub Release latest, npm `agentworkshop@0.19.0`) installed over
+the previous 0.18.0 app on this machine.
+
+| Check | Result |
+| --- | --- |
+| npm publish | `agentworkshop@0.19.0` — 45,577,806 bytes, shasum `79269334753e04d276612cb4e9c18f5b636cd975`; `npm view agentworkshop@0.19.0 dist.shasum` returns the same value and the tarball URL answers HTTP 200 |
+| Installer | `AgentWorkShop-Setup-0.19.0-win-x64.exe` — 411,200,743 bytes, SHA-256 `cdbe6ec1b13e6c546802d29c932220435dfae1e19cb0ac97e809825babd8ab6c`; built from an isolated prefix install of the packed tarball whose SHA-1 equals the published shasum; silent `/S /D=D:\tmp\aw-desktop-install-v0174`, exit 0 |
+| Installed payload | `resources/backend/package.json` **0.19.0**, `AgentWorkShop.exe` `ProductVersion 0.19.0.0` / `FileVersion 0.19.0`, `.output/server/index.mjs` present |
+| Boot after update | First launch hung before creating any window (CDP had no page targets, no status file). Cause: `.runtime/aw.lock` and `data.lock` left by a killed instance (pids 62280 / 86544, both gone). The locks were moved to `D:/tmp/aw-stale-lock-backup-20261124/` after checking the pids; the relaunch then reported `booting → ready`, `version=0.19.0`, `port=54724`, `trayCreated=true`, `windowVisible=true` |
+| Backend | `/api/health` → `status ok / workshop ready / version 0.19.0` on the real `~/.AgentWorkShop` home |
+| Main window, live | `D:/tmp/aw-ui-fix-20261124/desktop/window.png` — the user's 「桌面端真实作业演示」 channel in the multi-session view at 150 % DPI, title rail `已连接`, the rebuilt 「× 关闭会话」 chip in the header |
+| Close control, real window | `desktop/close-chip-real-2x.png` — 26 px chip, semantic danger wash, 13 px single-stroke ×, 6 px gap; browser measurements on the same build: 5.36:1 light / 6.87:1 dark, confirmation primary `#a83f34` with the label `确定` |
+| Tray, live | UIA match by tooltip 「AgentWorkShop v0.19.0 · 本机服务运行中」 → `desktop/tray-icon-cell.png` shows the bare deep-jade A for the light taskbar |
+
+Note: the app is left running (`port 54724`, `phase ready`); no in-app update was exercised because the
+installer was already the released one. The security scanner has no sealed conclusion for this cycle.
+
 ## Brand, icon set and boot sequence — 2026-11-24
 
 Branch `feat/brand-mark-icons-splash-20261124` (PR #289). All numbers below come from this machine,
