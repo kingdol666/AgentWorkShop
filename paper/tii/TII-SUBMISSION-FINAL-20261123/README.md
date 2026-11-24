@@ -25,7 +25,7 @@
 | `SUBMISSION-CHECKLIST.md` | 初投清单、门户填写顺序、作者待办、页数与费用 |
 | `IEEE-TII-Title-Page.docx` | 已完成的编辑可见 Title Page；作者信息与通讯信息已按当前稿填写 |
 | `TITLE-PAGE.md` | Title Page 内容说明和底稿 |
-| `Cover-Letter-IEEE-TII.md` | 可选投稿信；TII 常规初投不需要，且不得并入匿名稿 |
+| `Cover-Letter-IEEE-TII.md` / `IEEE-TII-Cover-Letter.docx` | 可选投稿信（内容一致的 Markdown 与 Word 两版）；只讲贡献、证据边界与后续闭环优化工作，不含作者身份、基金、推荐审稿人等识别信息；TII 常规初投不需要，且不得并入匿名稿 |
 | `supplementary/Supplementary-File-S7-20261124.pdf` | 12 页 S7 证据叙述材料（含 2026-11-24 实机控制台走查一节），作者备查，不上传 |
 | `supplementary/live-runtime-20261124/` | 实机走查的 4 张控制台截图与记录级证据 JSON（含截图说明 README）；显示平台标识，不进匿名附件 |
 | `supplementary/supplementary-source/` | S7 的 LaTeX 源码（含本节新增图件） |
