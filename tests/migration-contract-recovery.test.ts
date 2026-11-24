@@ -67,10 +67,10 @@ test('v9 channel agents migrate to protected provenance without claiming a leade
     const v9Schema = SCHEMA_SQL.replace(
       /^ {2}created_by_kind TEXT NOT NULL DEFAULT 'system'.*\n {2}created_by_id .*\n {2}created_via .*\n {2}created_reason .*\n/m,
       '',
-    )
+    ).replace(/^ {2}archived_at {4}TEXT,\n/m, '')
     assert.notEqual(v9Schema, SCHEMA_SQL)
     const v9Fingerprint = fingerprintMigration(v9Schema)
-    assert.equal(CONTRACT_VERSION, 10)
+    assert.ok(CONTRACT_VERSION > 9)
     run(db, 'UPDATE aw_migration_ledger SET version = 9, fingerprint = ? WHERE version = ?', v9Fingerprint, CONTRACT_VERSION)
 
     initWorkshopDb(db)
@@ -83,7 +83,7 @@ test('v9 channel agents migrate to protected provenance without claiming a leade
     assert.equal(row.createdVia, 'protected')
     assert.equal(row.createdReason, '')
     assert.equal(ledgerRow(db, 9)?.fingerprint, v9Fingerprint)
-    assert.equal(ledgerRow(db, 10)?.fingerprint, fingerprintMigration(SCHEMA_SQL))
+    assert.equal(ledgerRow(db, CONTRACT_VERSION)?.fingerprint, fingerprintMigration(SCHEMA_SQL))
   }
   finally { db.close() }
 })

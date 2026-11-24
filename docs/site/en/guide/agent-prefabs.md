@@ -24,10 +24,10 @@ AgentPrefabs package role/scenario prompts, multi-dimensional slots, supported m
 
 ## 3. Settings › Agent Prefabs
 
-1. Create a draft with role prompt, scenario prompt and slots (key/label/default/required/member-override/max length).
-2. Select tools, plugin tools, Skill revisions and MCP tools from the capability catalog; optionally mark required.
-3. Save the draft, then publish an immutable revision (head CAS; only one concurrent publish wins).
-4. In “Bind to Channel member”, choose Channel, member and revision, then fill allowed slots.
+1. Choose **New prefab** and name the draft before creating it. Use **Edit** in the list to open an existing prefab. Owners and administrators can edit, publish, and remove it; other authorized users can view public prefabs.
+2. Set the role/scenario prompts, slots, and model profile, and select tools, plugin tools, Skill revisions, or MCP tools. A locked slot comes from the published snapshot and cannot be overridden at binding time.
+3. Save the draft, then separately publish an immutable revision. Publishing never changes a member's existing binding. Unpublished drafts can be deleted; archiving hides a published prefab from new bindings without changing existing pins or historical snapshots.
+4. In **Bind to Channel member**, select the Channel, member, and published revision. Each member instance can have one binding. Another bind returns `409 PREFAB_ALREADY_BOUND`; explicitly unbind before switching. An unbound member runs with its ordinary Agent configuration and platform permissions.
 
 Effective capability = prefab selection ∩ system enabled/review ∩ Channel/Project policy ∩ role/industrial gates ∩ harness support. Platform collaboration/task tools remain available (still subject to Channel/Project policy).
 

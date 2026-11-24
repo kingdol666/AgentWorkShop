@@ -89,12 +89,11 @@ C5 save/search_memory 会话记忆、C6 负例(越量程 400、跨用户 403)。
 
 ### 10. L10 AgentPrefab / Skills / MCP 腿(2026-11-21 新增)
 
-`node scripts/experiments/prefab-acceptance.mjs --base <url> --home <AW_HOME> --user-home <隔离用户目录> --evidence <dir>`:
+在完成生产构建的隔离工作树运行 `node scripts/experiments/prefab-acceptance.mjs --target both --evidence <新目录>`；只跑 Web 用 `--target web`，复核原 L10 范围可加 `--l10-only`。脚本自建数据目录和回环实例，不接管现用服务。
 在**全新实例**上完成 Skill 发现(`~/.agent/skills`)/不可变导入/启用 → Prefab 草稿/发布 →
 Channel 成员固定 revision 绑定 → 工具目录收窄 + `activate_skill` low-trust 正文 →
 未选能力 dispatch 拒绝 → Session clone binding/快照 → 发布新 revision 不自动升级 →
-Skill 撤销即时拒绝 → MCP 非 HTTPS/无 secret/失败有界。正向外部 MCP 联通和真实 OMP 模型
-作业若未跑,分别记 PARTIAL/BLOCKED;单测/fake 不能替代实网/真实模型证据。
+Skill 撤销即时拒绝。单独记录预制件界面、绑定/未绑定作业与外部 MCP/真实模型覆盖；没有专用的本地模型环境时，不自动加载共享模型，也不回退到云端。
 
 ## 受控步断言与 override 语义(2026-11-21 沉淀)
 

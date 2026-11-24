@@ -6,10 +6,10 @@ import type { AgentWorkspace, AgentInfo, TeamMemberView } from '../../agent-inte
 import type { AgentPrefabSelector } from '../../../agent-prefabs/types'
 import type { HostToolResult } from '../types'
 
-function formatPrefab(binding: TeamMemberView['prefabBinding'] | undefined): string {
-  return binding
-    ? `prefabId=${binding.prefabId}, revision=${binding.revision}, contentHash=${binding.contentHash}`
-    : 'prefab=none, revision=-, contentHash=-'
+function formatPrefab(member: Pick<TeamMemberView, 'prefabBinding' | 'prefabBindingVersion'> | AgentInfo): string {
+  return member.prefabBinding
+    ? `prefabId=${member.prefabBinding.prefabId}, revision=${member.prefabBinding.revision}, contentHash=${member.prefabBinding.contentHash}, bindingVersion=${member.prefabBindingVersion ?? '-'}`
+    : 'prefab=none, revision=-, contentHash=-, bindingVersion=-'
 }
 
 export async function handleListTeamAgents(ws: AgentWorkspace): Promise<HostToolResult> {
@@ -18,7 +18,8 @@ export async function handleListTeamAgents(ws: AgentWorkspace): Promise<HostTool
     ? await ws.listTeamMembers()
     : (await ws.listAgents()).map(a => ({ ...a, manageable: false, protected: true }))
   const text = agents.map(a =>
-    `  ${a.id} (${a.name}, role=${a.role}, harness=${a.harness}, enabled=${a.enabled ?? 1}, ${formatPrefab(a.prefabBinding)}, manageable=${a.manageable}, protected=${a.protected})`,
+    `  ${a.id} (${a.name}, role=${a.role}, harness=${a.harness}, enabled=${a.enabled ?? 1}, ${formatPrefab(a)}, manageable=${a.manageable}, protected=${a.protected})`,
+
   ).join('\n')
   return { text: `团队成员(${agents.length}):\n${text || '(空)'}` }
 }
@@ -48,7 +49,7 @@ export async function handleCreateTeamAgent(args: Record<string, unknown>, ws: A
       `团队成员已创建并加入 channel:`,
       `  id: ${agent.id}`,
       `  name: ${agent.name}(role=worker, harness=${agent.harness})`,
-      `  ${formatPrefab(agent.prefabBinding)}`,
+      `  ${formatPrefab(agent)}`,
       `list_team_agents 可随时查看团队名册。`,
     ].join('\n'),
   }
@@ -65,10 +66,11 @@ export async function handleUpdateTeamAgent(args: Record<string, unknown>, ws: A
     config: systemPrompt !== undefined ? { systemPromptPrefix: systemPrompt } : undefined,
     enabled: enabled === undefined ? undefined : (enabled ? 1 : 0),
     prefab: args.prefab as AgentPrefabSelector | null | undefined,
+    expectedBindingVersion: typeof args.expectedBindingVersion === 'string' ? args.expectedBindingVersion : undefined,
     reason,
   })
   return {
-    text: `团队成员 ${agentId} 已更新:name="${agent.name}"${enabled !== undefined ? `, enabled=${enabled ? 1 : 0}` : ''}, ${formatPrefab(agent.prefabBinding)}。`,
+    text: `团队成员 ${agentId} 已更新:name="${agent.name}"${enabled !== undefined ? `, enabled=${enabled ? 1 : 0}` : ''}, ${formatPrefab(agent)}。`,
   }
 }
 

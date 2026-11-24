@@ -37,9 +37,19 @@ function assertVisible(row: AgentPrefabRow, actor: PrefabActor): void {
   throw new AppError(403, 'PREFAB_FORBIDDEN', '无权访问该 AgentPrefab')
 }
 
+export function canEditAgentPrefab(row: AgentPrefabRow, actor: PrefabActor): boolean {
+  return !row.archivedAt && (isAdmin(actor) || row.ownerUserId === actor.id)
+}
+
+function assertActive(row: AgentPrefabRow): void {
+  if (row.archivedAt) throw new AppError(409, 'PREFAB_ARCHIVED', 'AgentPrefab 已归档，不能编辑、发布或用于新的绑定')
+}
+
 function assertEditable(row: AgentPrefabRow, actor: PrefabActor): void {
-  if (isAdmin(actor) || row.ownerUserId === actor.id) return
-  throw new AppError(403, 'PREFAB_OWNER_REQUIRED', '仅所有者或管理员可编辑 AgentPrefab')
+  if (!isAdmin(actor) && row.ownerUserId !== actor.id) {
+    throw new AppError(403, 'PREFAB_OWNER_REQUIRED', '仅所有者或管理员可编辑 AgentPrefab')
+  }
+  assertActive(row)
 }
 
 function asString(value: unknown, field: string, max: number, required = false): string {
@@ -241,12 +251,19 @@ export function createAgentPrefabService(db: DatabaseSync) {
     return repo.updateDraft(id, expectedUpdatedAt, { name: draft.name, description: draft.description, visibility: draft.visibility, draft })
   }
 
-  function publish(actor: PrefabActor, id: string, expectedHead: number): AgentPrefabRevisionRow {
+  function remove(actor: PrefabActor, id: string, expectedUpdatedAt: string): { id: string, archived: boolean } {
+    const row = repo.findById(id)
+    if (!row) throw new AppError(404, 'NOT_FOUND', `AgentPrefab 不存在：${id}`)
+    assertEditable(row, actor)
+    return repo.remove(id, expectedUpdatedAt)
+  }
+
+  function publish(actor: PrefabActor, id: string, expectedHead: number, expectedUpdatedAt?: string): AgentPrefabRevisionRow {
     const row = repo.findById(id)
     if (!row) throw new AppError(404, 'NOT_FOUND', `AgentPrefab 不存在：${id}`)
     assertEditable(row, actor)
     const draft = parseDraft(row)
-    return repo.publish(id, expectedHead, draft, actor.id)
+    return repo.publish(id, expectedHead, draft, actor.id, expectedUpdatedAt ?? row.updatedAt)
   }
 
   function loadRevision(prefabId: string, revision: number): { row: AgentPrefabRow, revision: AgentPrefabRevisionRow, draft: AgentPrefabDraft } | null {
@@ -277,6 +294,7 @@ export function createAgentPrefabService(db: DatabaseSync) {
       else {
         assertVisible(row, actor)
       }
+      assertActive(row)
     }
     const loaded = loadRevision(prefabId, revision)
     if (!loaded) throw new AppError(404, 'PREFAB_REVISION_NOT_FOUND', `AgentPrefab revision 不存在：${prefabId}@${revision}`)
@@ -290,6 +308,7 @@ export function createAgentPrefabService(db: DatabaseSync) {
     get,
     create,
     update,
+    remove,
     publish,
     loadRevision,
     buildBinding,

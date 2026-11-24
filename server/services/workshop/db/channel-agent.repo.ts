@@ -4,9 +4,52 @@
  * name/harness/config + 独立 role + token。
  * 工厂接收 DatabaseSync(依赖注入),不持有任何单例。
  */
-import { randomUUID, timingSafeEqual } from 'node:crypto'
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import type { ChannelAgentCreationSource, ChannelAgentRow } from './database/rows'
+import { AppError } from '../../../utils/errors'
+
+/** Opaque binding generation. Legacy rows use a stable digest until they are rebound. */
+export function prefabBindingVersionOf(raw: string | undefined | null): string | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as { bindingVersion?: unknown }
+    if (typeof parsed.bindingVersion === 'string' && parsed.bindingVersion) return parsed.bindingVersion
+  }
+  catch { /* malformed bindings are handled by the prefab runtime/parser */ }
+  return createHash('sha256').update(raw, 'utf8').digest('hex')
+}
+
+/** Add a fresh generation without changing the pinned prefab content fields. */
+export function versionPrefabBinding(raw: string): string {
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(raw) as Record<string, unknown>
+  }
+  catch {
+    throw new AppError(400, 'PREFAB_BINDING_INVALID', 'AgentPrefab 绑定格式非法')
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new AppError(400, 'PREFAB_BINDING_INVALID', 'AgentPrefab 绑定格式非法')
+  }
+  if (typeof parsed.bindingVersion === 'string' && parsed.bindingVersion) return raw
+  parsed.bindingVersion = randomUUID()
+  return JSON.stringify(parsed)
+}
+
+/** Give a syntactically valid binding a generation once; malformed JSON stays malformed for the runtime to reject. */
+export function ensurePrefabBindingVersion(raw: string): string {
+  if (!raw) return raw
+  try {
+    const parsed = JSON.parse(raw) as { bindingVersion?: unknown }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      && typeof parsed.bindingVersion === 'string' && parsed.bindingVersion) return raw
+    return versionPrefabBinding(raw)
+  }
+  catch {
+    return raw
+  }
+}
 
 /**
  * token 比对(定长归一 + 常量时间):长度不同直接 false,不抛异常。
@@ -46,6 +89,8 @@ export interface ChannelAgentPatch {
   enabled?: number
   /** undefined = 保留；'' = 显式解绑 */
   prefabBindingJson?: string
+  /** Required for explicit clear; ignored for non-binding updates. */
+  expectedBindingVersion?: string
 }
 
 export type ChannelAgentRepo = ReturnType<typeof createChannelAgentRepo>
@@ -69,6 +114,14 @@ export function createChannelAgentRepo(db: DatabaseSync) {
   const selectByTemplate = db.prepare(`SELECT ${COLS} FROM channel_agents WHERE template_id = ? ORDER BY created_at ASC`)
   const updateStmt = db.prepare(
     `UPDATE channel_agents SET name = ?, harness = ?, config_json = ?, prefab_binding_json = ?, role = ?, enabled = ?, updated_at = ? WHERE id = ?`,
+  )
+  const bindPrefabStmt = db.prepare(
+    `UPDATE channel_agents SET prefab_binding_json = ?, updated_at = ? WHERE channel_id = ? AND id = ? AND COALESCE(prefab_binding_json, '') = ''
+      AND EXISTS (SELECT 1 FROM agent_prefabs WHERE id = ? AND archived_at IS NULL)`,
+  )
+  const selectPrefabArchive = db.prepare('SELECT archived_at AS archivedAt FROM agent_prefabs WHERE id = ?')
+  const clearPrefabStmt = db.prepare(
+    `UPDATE channel_agents SET prefab_binding_json = '', updated_at = ? WHERE channel_id = ? AND id = ? AND prefab_binding_json = ?`,
   )
   const removeStmt = db.prepare(`DELETE FROM channel_agents WHERE channel_id = ? AND id = ?`)
 
@@ -177,6 +230,54 @@ export function createChannelAgentRepo(db: DatabaseSync) {
       }
       updateStmt.run(next.name, next.harness, next.configJson, next.prefabBindingJson ?? '', next.role, next.enabled, next.updatedAt, id)
       return next
+    },
+
+    /**
+     * Bind once, or clear with an expected generation. The WHERE clause is the
+     * SQLite compare-and-swap boundary; callers never replace an existing bind.
+     */
+    setPrefabBinding(channelId: string, id: string, nextJson: string, expectedBindingVersion?: string): ChannelAgentRow {
+      const current = selectByChannelAgent.get(channelId, id) as unknown as ChannelAgentRow | undefined
+      if (!current) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${id}`)
+      const now = new Date().toISOString()
+      if (nextJson !== '') {
+        if ((current.prefabBindingJson ?? '') !== '') {
+          throw new AppError(409, 'PREFAB_ALREADY_BOUND', '成员已绑定 AgentPrefab；不允许替换绑定')
+        }
+        const versioned = versionPrefabBinding(nextJson)
+        let prefabId = ''
+        try {
+          const parsed = JSON.parse(nextJson) as { prefabId?: unknown }
+          prefabId = typeof parsed.prefabId === 'string' ? parsed.prefabId : ''
+        }
+        catch { /* route/service validation reports the canonical binding error */ }
+        const result = bindPrefabStmt.run(versioned, now, channelId, id, prefabId)
+        if (Number(result.changes ?? 0) !== 1) {
+          const latest = selectByChannelAgent.get(channelId, id) as unknown as ChannelAgentRow | undefined
+          if ((latest?.prefabBindingJson ?? '') !== '') {
+            throw new AppError(409, 'PREFAB_ALREADY_BOUND', '成员已绑定 AgentPrefab；不允许替换绑定')
+          }
+          const prefab = selectPrefabArchive.get(prefabId) as { archivedAt: string | null } | undefined
+          if (prefab?.archivedAt) {
+            throw new AppError(409, 'PREFAB_ARCHIVED', 'AgentPrefab 已归档，不能用于新的绑定')
+          }
+          throw new AppError(409, 'PREFAB_BINDING_CHANGED', '成员绑定已变化，请刷新后重试')
+        }
+      }
+      else {
+        if (!expectedBindingVersion) {
+          throw new AppError(400, 'PREFAB_BINDING_VERSION_REQUIRED', '解绑必须提供 expectedBindingVersion')
+        }
+        const currentRaw = current.prefabBindingJson ?? ''
+        if (!currentRaw || prefabBindingVersionOf(currentRaw) !== expectedBindingVersion) {
+          throw new AppError(409, 'PREFAB_BINDING_CHANGED', '成员绑定已变化，请刷新后重试')
+        }
+        const result = clearPrefabStmt.run(now, channelId, id, currentRaw)
+        if (Number(result.changes ?? 0) !== 1) {
+          throw new AppError(409, 'PREFAB_BINDING_CHANGED', '成员绑定已变化，请刷新后重试')
+        }
+      }
+      return selectByChannelAgent.get(channelId, id) as unknown as ChannelAgentRow
     },
 
     /** 移除实例(仅删实例,不删模板) */

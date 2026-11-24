@@ -227,6 +227,7 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
           config: decision.config,
           enabled: decision.enabled === undefined ? undefined : (decision.enabled ? 1 : 0),
           prefab: decision.prefab,
+          ...(decision.expectedBindingVersion !== undefined ? { expectedBindingVersion: decision.expectedBindingVersion } : {}),
           reason: decision.reason,
         }).then(
           () => undefined,

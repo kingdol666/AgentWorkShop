@@ -622,7 +622,7 @@
   {
     "name": "update_team_agent",
     "label": "Update Team Agent",
-    "description": "(Current lead only) Update a worker you created (manageable=true). Rename, configure, enable/disable, or replace/detach its published prefab binding. Protected members and prefab authoring cannot be changed with this tool.",
+    "description": "(Current lead only) Update a worker you created (manageable=true). A published AgentPrefab binding cannot be replaced once set; detach with the current expectedBindingVersion. Protected members and prefab authoring cannot be changed with this tool.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -656,7 +656,11 @@
             },
             { "type": "null" }
           ],
-          "description": "Omit to preserve the binding, pass a published revision selector to replace it, or pass null to detach."
+          "description": "Omit to preserve the binding, pass a published revision selector only when unbound, or pass null to detach (requires expectedBindingVersion)."
+        },
+        "expectedBindingVersion": {
+          "type": "string",
+          "description": "Opaque generation copied from list_team_agents.prefabBindingVersion; required when prefab is null"
         },
         "reason": {
           "type": "string",

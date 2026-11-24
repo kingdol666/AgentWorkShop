@@ -28,7 +28,17 @@ import { createImprovementActionRepo } from '../../db/improvement-action.repo'
 import { withTransaction } from '../../db/transaction'
 import { workshopSettings } from '../../settings'
 import { selectBroadcastTargets } from './broadcast-targets'
+import { ensurePrefabBindingVersion } from '../../db/channel-agent.repo'
 import { randomUUID } from 'node:crypto'
+
+export function assertPrefabBindingActiveAtWrite(db: Parameters<typeof withTransaction>[0], raw: string | undefined): void {
+  if (!raw) return
+  const parsed = parseJson<Record<string, unknown>>(raw, {})
+  const prefabId = typeof parsed.prefabId === 'string' ? parsed.prefabId : ''
+  if (!prefabId) return
+  const row = db.prepare('SELECT archived_at AS archivedAt FROM agent_prefabs WHERE id = ?').get(prefabId) as { archivedAt: string | null } | undefined
+  if (row?.archivedAt) throw new AppError(409, 'PREFAB_ARCHIVED', 'AgentPrefab 已归档，不能用于新的绑定')
+}
 
 type AddChannelAgentInput = Partial<ChannelAgentCreationSource> & {
   channelId: string
@@ -62,6 +72,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     assertSpawnConfigAllowed(tpl.harness, instConfig, input.actor ?? { role: 'user' })
     // 绑定即执行入口:引擎未安装的模板不许入 channel(deploy/加成员在此失败,不产生半成品实例)
     assertHarnessUsable(tpl.harness, instConfig)
+    assertPrefabBindingActiveAtWrite(this.deps.db, input.prefabBindingJson)
     if (input.role === 'lead') {
       const channel = this.deps.repos.channels.findById(input.channelId)
       if (channel && channel.leadAgentId) {
@@ -74,7 +85,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       name: tpl.name,
       harness: tpl.harness,
       config: instConfig,
-      prefabBindingJson: input.prefabBindingJson ?? '',
+      prefabBindingJson: ensurePrefabBindingVersion(input.prefabBindingJson ?? ''),
       role: input.role,
       createdByKind: input.createdByKind,
       createdById: input.createdById,
@@ -341,20 +352,99 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     }
   }
 
+  private assertPrefabBindingChangeSafeSync(member: ChannelAgentRow): void {
+    const runtime = this.runtimeOf(member.channelId, member.id)
+    if (runtime?.getState() === 'busy' || runtime?.hasActiveSupervisionAttempt?.()) {
+      throw new AppError(409, 'PREFAB_BINDING_BUSY', '成员正在执行回合或监督任务，请等待空闲后再修改 AgentPrefab 绑定')
+    }
+    const tasks = this.getTaskEngine().list(member.channelId)
+    if (tasks.some(task => task.assigneeId === member.id && !['COMPLETED', 'CANCELED', 'FAILED', 'SUPERSEDED'].includes(task.state))) {
+      throw new AppError(409, 'PREFAB_BINDING_BUSY', '成员存在未完成任务，请等待任务收敛后再修改 AgentPrefab 绑定')
+    }
+    if (this.deps.repos.messages.hasUnconsumedByChannelAgent(member.channelId, member.id)) {
+      throw new AppError(409, 'PREFAB_BINDING_BUSY', '成员存在待处理消息，请等待消息消费后再修改 AgentPrefab 绑定')
+    }
+    const sessions = createChannelSessionRepo(this.deps.db).listByChannel(member.channelId)
+    const frozen = sessions.some((session) => {
+      if (session.status !== 'active' && session.status !== 'closing') return false
+      const map = parseJson<unknown>(session.memberMapJson, null)
+      return !!map && typeof map === 'object' && !Array.isArray(map)
+        && Object.values(map as Record<string, unknown>).some(value => value === member.id)
+    })
+    if (frozen) {
+      throw new AppError(409, 'PREFAB_BINDING_FROZEN', '会话或项目任务实例成员的绑定快照已冻结，不能修改')
+    }
+  }
+
+  private async assertPrefabBindingChangeSafe(member: ChannelAgentRow): Promise<void> {
+    try {
+      const { getToolApprovals } = await import('../../agents/tool-approvals')
+      if (getToolApprovals().listPending(member.id).length > 0) {
+        throw new AppError(409, 'PREFAB_BINDING_BUSY', '成员存在待处理审批，请等待审批收敛后再修改 AgentPrefab 绑定')
+      }
+    }
+    catch (err) {
+      if (err instanceof AppError) throw err
+      // Approval service may be absent in a reduced test/runtime build.
+    }
+    // This must remain after the asynchronous approval lookup. Callers perform
+    // the SQL mutation synchronously after this resolves, with no further await.
+    this.assertPrefabBindingChangeSafeSync(member)
+  }
+
   /** 更新实例(name/harness/config/enabled);变更后卸载已装配运行时以重载 */
   async updateChannelAgent(
     instanceId: string,
-    patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number, prefabBindingJson?: string },
+    patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number, prefabBindingJson?: string, expectedBindingVersion?: string },
     meta?: { channelId?: string, by?: string, reason?: string, actor?: SpawnActor },
   ): Promise<AgentInfo> {
     const m = this.deps.repos.channelAgents.findById(instanceId)
     if (!m) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
+    if (meta?.channelId && meta.channelId !== m.channelId) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
+    const bindingChange = patch.prefabBindingJson !== undefined
+    if (patch.prefabBindingJson) {
+      if ((m.prefabBindingJson ?? '') !== '') {
+        throw new AppError(409, 'PREFAB_ALREADY_BOUND', '成员已绑定 AgentPrefab；不允许替换绑定')
+      }
+      assertPrefabBindingActiveAtWrite(this.deps.db, patch.prefabBindingJson)
+    }
+    if (bindingChange) await this.assertPrefabBindingChangeSafe(m)
     const nextConfig = patch.config ?? parseJson<Record<string, unknown>>(m.configJson, {})
     assertSpawnConfigPatchAllowed(patch.harness ?? m.harness, parseJson<Record<string, unknown>>(m.configJson, {}), nextConfig, meta?.actor ?? { role: 'user' })
     if (patch.harness) assertHarnessUsable(patch.harness, nextConfig)
-    const updated = this.deps.repos.channelAgents.update(instanceId, patch)
-    if (!updated) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
-    await this.unloadAgent(updated.channelId, instanceId)
+    if (bindingChange) {
+      const current = this.deps.repos.channelAgents.findById(instanceId)
+      if (current) this.assertPrefabBindingChangeSafeSync(current)
+    }
+    const updated = withTransaction(this.deps.db, () => {
+      const current = this.deps.repos.channelAgents.findById(instanceId)
+      if (!current) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
+      if (meta?.channelId && meta.channelId !== current.channelId) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
+      if (bindingChange) this.assertPrefabBindingChangeSafeSync(current)
+      // Binding mutations have their own SQLite CAS. Never route them through the
+      // generic member UPDATE, which would permit replacing a pinned revision.
+      if (patch.prefabBindingJson !== undefined) {
+        if (patch.prefabBindingJson) assertPrefabBindingActiveAtWrite(this.deps.db, patch.prefabBindingJson)
+        this.deps.repos.channelAgents.setPrefabBinding(
+          current.channelId,
+          instanceId,
+          patch.prefabBindingJson,
+          patch.expectedBindingVersion,
+        )
+      }
+      const memberPatch = patch.prefabBindingJson === undefined
+        ? patch
+        : { ...patch, prefabBindingJson: undefined }
+      this.deps.repos.channelAgents.update(instanceId, memberPatch)
+      return this.deps.repos.channelAgents.findById(instanceId)!
+    })
+    // No await between commit and stopAndDetach: its synchronous tombstone
+    // prevents callers from re-wiring the pre-change runtime while it stops.
+    const bindingStop = bindingChange && this.runtimeOf(updated.channelId, instanceId)
+      ? this.stopAndDetach(updated.channelId, instanceId)
+      : undefined
+    if (bindingStop) await bindingStop
+    else if (!bindingChange) await this.unloadAgent(updated.channelId, instanceId)
     this.notifyMember(updated.channelId, {
       op: 'updated',
       agentId: instanceId,

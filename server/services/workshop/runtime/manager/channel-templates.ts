@@ -45,6 +45,9 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
     if (loaded.row.visibility !== 'public' && loaded.row.ownerUserId !== user.id && user.role !== 'admin') {
       throw new AppError(403, 'PREFAB_FORBIDDEN', '当前用户无权转移该 AgentPrefab')
     }
+    if (loaded.row.archivedAt) {
+      throw new AppError(409, 'PREFAB_ARCHIVED', 'Channel 模板引用了已归档的 AgentPrefab，请先更新模板绑定')
+    }
     validateBindingSlots(loaded.draft, binding.slotValues, true)
   }
 

@@ -22,14 +22,17 @@ export interface UpdateTeamMemberPatch {
   name?: string
   config?: Record<string, unknown>
   enabled?: number
-  /** Omit to preserve; null to detach; an explicit selector replaces the binding. */
+  /** Omit to preserve; null to detach; an explicit selector is rejected if already bound. */
   prefab?: AgentPrefabSelector | null
+  /** Required when prefab is null; stale generations fail closed. */
+  expectedBindingVersion?: string
   reason?: string
 }
 
 /** Caller-relative team roster; no tokens, configs or prefab slot values. */
 export interface TeamMemberView extends Pick<AgentInfo, 'id' | 'name' | 'role' | 'harness' | 'enabled'> {
   prefabBinding: Pick<AgentPrefabBinding, 'prefabId' | 'revision' | 'contentHash'> | null
+  prefabBindingVersion: string | null
   manageable: boolean
   protected: boolean
 }
@@ -52,6 +55,8 @@ export interface AgentInfo {
   templateId?: string | null
   /** 当前成员固定的 AgentPrefab binding（null/缺省 = legacy 成员） */
   prefabBinding?: AgentPrefabBinding | null
+  /** Opaque binding-only generation for stale-safe clear; never contains slot values. */
+  prefabBindingVersion?: string | null
 }
 
 /** 运行请求:平台向 Agent 投递的一次消息输入 */

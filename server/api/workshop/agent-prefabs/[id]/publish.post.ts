@@ -15,8 +15,11 @@ export default defineApiHandler(async (event) => {
   if (!Number.isInteger(body.expectedHead) || (body.expectedHead as number) < 0) {
     throw new AppError(400, 'VALIDATION_ERROR', 'expectedHead 必填（并发发布保护）')
   }
+  if (body.expectedUpdatedAt !== undefined && (typeof body.expectedUpdatedAt !== 'string' || !body.expectedUpdatedAt)) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'expectedUpdatedAt 必须是非空字符串')
+  }
   const service = createAgentPrefabService(getWorkshopManager().deps.db)
-  const revision = service.publish({ id: user.id, role: user.role }, id, body.expectedHead as number)
+  const revision = service.publish({ id: user.id, role: user.role }, id, body.expectedHead as number, body.expectedUpdatedAt)
   return {
     prefabId: revision.prefabId,
     revision: revision.revision,

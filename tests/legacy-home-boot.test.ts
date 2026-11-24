@@ -9,7 +9,7 @@ process.env.AGENTWORKSHOP_TEST = '1'
 process.env.AW_MODE = 'home'
 process.env.AW_HOME = mkdtempSync(join(tmpdir(), 'aw-legacy-home-'))
 
-const { initWorkshopDb } = await import('../server/services/workshop/db/database/open')
+const { initWorkshopDb, SCHEMA_CONTRACT_VERSION } = await import('../server/services/workshop/db/database/open')
 
 test('legacy pre-ledger home with old chat_deliveries boots: columns backfilled before SCHEMA_SQL indexes', () => {
   const db = new DatabaseSync(':memory:')
@@ -44,5 +44,5 @@ test('legacy pre-ledger home with old chat_deliveries boots: columns backfilled 
   assert.ok(idx, 'idx_chat_deliveries_retry must exist after boot')
   // schema contract is recorded on the legacy home
   const ledger = db.prepare('SELECT MAX(version) AS v FROM aw_migration_ledger WHERE name = \'schema-contract\'').get() as { v?: number }
-  assert.equal(Number(ledger.v), 10)
+  assert.equal(Number(ledger.v), SCHEMA_CONTRACT_VERSION)
 })

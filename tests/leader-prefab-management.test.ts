@@ -43,10 +43,13 @@ function fixture(t: TestContext, ownerUserId: string | null = 'channel-owner') {
   const notices: string[] = []
   const reloads: string[] = []
   const manager = Object.assign(Object.create(AgentChannelManager.prototype) as InstanceType<typeof AgentChannelManager>, {
-    deps: { db, repos: { channels, channelAgents, agents } },
+    deps: { db, repos: { channels, channelAgents, agents, messages: { hasUnconsumedByChannelAgent: () => false } } },
     activeInvocationScopes: new Map(),
+    runtimeOf: () => ({ getState: () => 'idle', hasActiveSupervisionAttempt: () => false }),
+    getTaskEngine: () => ({ list: () => [] }),
     ensureAgentRuntime: () => undefined,
     unloadAgent: async (_: string, id: string) => { reloads.push(id) },
+    stopAndDetach: async (_: string, id: string) => { reloads.push(id) },
     notifyMember: (_: string, event: { op: string }) => { notices.push(event.op) },
   })
   const agentInfo: AgentInfo = { id: lead.id, channelId: channel.id, name: lead.name, harness: 'mock', role: 'lead', config: {} }
@@ -63,7 +66,7 @@ function fixture(t: TestContext, ownerUserId: string | null = 'channel-owner') {
   return { db, channels, channel, channelAgents, agents, memberInput, lead, manager, ws, prefabs, publish, notices, reloads }
 }
 
-test('lead tools atomically bind a published revision, display safe metadata and switch or detach', async (t) => {
+test('lead tools atomically bind a published revision, display safe metadata, reject replacement and detach by version', async (t) => {
   const f = fixture(t)
   const first = f.publish()
   const second = f.prefabs.publish({ id: 'channel-owner' }, first.prefabId, 1)
@@ -84,16 +87,17 @@ test('lead tools atomically bind a published revision, display safe metadata and
 
   await handleUpdateTeamAgent({ agent_id: worker.id, name: 'Renamed' }, f.ws)
   assert.equal(f.channelAgents.findById(worker.id)?.prefabBindingJson, worker.prefabBindingJson)
-  const update = await handleUpdateTeamAgent({
+  await assert.rejects(handleUpdateTeamAgent({
     agent_id: worker.id,
     prefab: { prefabId: second.prefabId, revision: 2, slotValues: { goal: 'new goal' } },
-  }, f.ws)
-  assert.match(update.text, /revision=2/)
-  assert.equal(JSON.parse(f.channelAgents.findById(worker.id)!.prefabBindingJson!).contentHash, second.contentHash)
-  await handleUpdateTeamAgent({ agent_id: worker.id, prefab: null }, f.ws)
+  }, f.ws), { code: 'PREFAB_ALREADY_BOUND' })
+  assert.equal(JSON.parse(f.channelAgents.findById(worker.id)!.prefabBindingJson!).contentHash, first.contentHash)
+  const bindingVersion = JSON.parse(worker.prefabBindingJson!).bindingVersion as string
+  await assert.rejects(handleUpdateTeamAgent({ agent_id: worker.id, prefab: null }, f.ws), { code: 'PREFAB_BINDING_VERSION_REQUIRED' })
+  await handleUpdateTeamAgent({ agent_id: worker.id, prefab: null, expectedBindingVersion: bindingVersion }, f.ws)
   assert.equal(f.channelAgents.findById(worker.id)?.prefabBindingJson, '')
-  assert.deepEqual(f.notices, ['added', 'updated', 'updated', 'updated'])
-  assert.deepEqual(f.reloads, [worker.id, worker.id, worker.id])
+  assert.deepEqual(f.notices, ['added', 'updated', 'updated'])
+  assert.deepEqual(f.reloads, [worker.id, worker.id])
   assert.deepEqual(f.prefabs.get({ id: 'channel-owner' }, first.prefabId), beforeDraft)
 })
 

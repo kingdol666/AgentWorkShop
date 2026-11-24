@@ -13,6 +13,7 @@
  *  - 其余调用方只拿 summary（id/name/role/harness/enabled/templateId）。
  */
 import type { AgentInfo } from './agent-interface'
+import type { AgentPrefabBinding } from '../agent-prefabs/types'
 
 const SENSITIVE_CONFIG_KEYS = ['command', 'args', 'cwd', 'env'] as const
 
@@ -25,6 +26,8 @@ export interface ChannelAgentSummary {
   agentKind?: string
   enabled: number
   templateId: string | null
+  prefabBinding: Pick<AgentPrefabBinding, 'prefabId' | 'revision' | 'contentHash'> | null
+  prefabBindingVersion: string | null
   config?: Record<string, unknown>
 }
 
@@ -45,6 +48,10 @@ export function channelAgentSummary(agent: AgentInfo, opts: { includeConfig?: bo
     agentKind: agent.agentKind,
     enabled: agent.enabled ?? 1,
     templateId: agent.templateId ?? null,
+    prefabBinding: agent.prefabBinding
+      ? { prefabId: agent.prefabBinding.prefabId, revision: agent.prefabBinding.revision, contentHash: agent.prefabBinding.contentHash }
+      : null,
+    prefabBindingVersion: agent.prefabBindingVersion ?? null,
   }
   if (opts.includeConfig) summary.config = safeConfig(agent.config)
   return summary

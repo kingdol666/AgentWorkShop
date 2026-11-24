@@ -12,6 +12,7 @@ import { parseJson } from '../../db/database'
 import { randomUUID } from 'node:crypto'
 import { userRepository } from '../../../../repositories/user.repository'
 import { parseAgentPrefabBinding } from '../../agent-prefabs/service'
+import { prefabBindingVersionOf } from '../../db/channel-agent.repo'
 
 export const log = createLogger('workshop.manager')
 
@@ -40,6 +41,7 @@ export function instanceToAgentInfo(m: ChannelAgentRow): AgentInfo {
         return null
       }
     })(),
+    prefabBindingVersion: prefabBindingVersionOf(m.prefabBindingJson),
   }
 }
 

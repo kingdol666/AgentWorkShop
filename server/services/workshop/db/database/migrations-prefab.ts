@@ -12,6 +12,9 @@ function hasColumn(db: DatabaseSync, table: string, column: string): boolean {
 }
 
 export function migratePrefabColumns(db: DatabaseSync): void {
+  if (!hasColumn(db, 'agent_prefabs', 'archived_at')) {
+    db.exec('ALTER TABLE agent_prefabs ADD COLUMN archived_at TEXT')
+  }
   if (!hasColumn(db, 'channel_agents', 'prefab_binding_json')) {
     db.exec('ALTER TABLE channel_agents ADD COLUMN prefab_binding_json TEXT NOT NULL DEFAULT \'\'')
   }

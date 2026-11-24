@@ -5,7 +5,7 @@
 import { defineApiHandler } from '../../../utils/response'
 import { resolveUser } from '../caller'
 import { getWorkshopManager } from '../../../plugins/workshop'
-import { createAgentPrefabService } from '../../../services/workshop/agent-prefabs/service'
+import { canEditAgentPrefab, createAgentPrefabService } from '../../../services/workshop/agent-prefabs/service'
 
 function draftOf(row: { draftJson: string }): unknown {
   try {
@@ -18,8 +18,9 @@ function draftOf(row: { draftJson: string }): unknown {
 
 export default defineApiHandler((event) => {
   const user = resolveUser(event)
+  const actor = { id: user.id, role: user.role }
   const service = createAgentPrefabService(getWorkshopManager().deps.db)
   return {
-    prefabs: service.list({ id: user.id, role: user.role }).map(row => ({ ...row, draft: draftOf(row) })),
+    prefabs: service.list(actor).map(row => ({ ...row, canEdit: canEditAgentPrefab(row, actor), draft: draftOf(row) })),
   }
 })
