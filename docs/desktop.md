@@ -58,7 +58,7 @@ Node/TypeScript 负责数据集、作业与评估调度、门禁和模型注册�
 pnpm install --frozen-lockfile
 pnpm build
 npm pack --ignore-scripts --pack-destination D:\aw-artifacts
-npm install -g --ignore-scripts --prefix D:\aw-artifacts\prefix D:\aw-artifacts\agentworkshop-0.18.0.tgz
+npm install -g --ignore-scripts --prefix D:\aw-artifacts\prefix D:\aw-artifacts\agentworkshop-0.19.0.tgz
 npm --prefix desktop ci
 npm --prefix desktop run build -- --backend D:\aw-artifacts\prefix\node_modules\agentworkshop --out D:\aw-artifacts\desktop
 ```

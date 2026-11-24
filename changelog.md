@@ -1,4 +1,4 @@
-## Unreleased — Workshop mark, icon system and a power-on boot sequence（2026-11-24）
+## v0.19.0 — Workshop mark, generated icon set, power-on boot and a rebuilt button family（2026-11-24）
 
 - One mark on every surface: the A of the workshop gantry is a single silhouette — flat apex, 216-unit baseline, triangular counter, no gradient inside the letter, no glow. The sidebar (`AwLogo.vue`), the title rail, the boot splash, the browser favicon, the docs-site favicon and the desktop badge now carry the same path, and it still reads as an A at 16 px. 品牌字标收敛为单一实心剪影；侧栏、标题栏、启动页、网页与文档站 favicon、桌面图标同源，去掉渐变与辉光。
 - The desktop icon set is generated from SVG masters by `pnpm brand:desktop` (`scripts/desktop-brand.mjs`): a 512 badge, a nine-entry `icon.ico` (16–64 BMP, 128/256 PNG), 180/512 PNGs for the web and 32 px tray glyphs. Nothing is hand-exported any more. 桌面图标改由脚本从 SVG 母版按目标尺寸光栅化并封装 ICO，不再手工导出二进制。

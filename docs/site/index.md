@@ -73,7 +73,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.18.0 · 已发布</i></span>
+        <span>版本 <i>v0.19.0 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -90,11 +90,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.18.0 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.19.0 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.18.0 版本：REST 建的频道按工作区归属（console 可见且不串区）；详情/任务类 API、DAQ 外部推送与 A2A 方法改为先验身份后查资源；产线查询省略时间窗时按最近 24h；共享主题、设置页签、导航抽屉焦点、头部控件与启动动画按键盘语义与减少动态效果整理。此前版本已提供一体化桌面壳、关闭到托盘、桌面/Web 共用 <code>~/.AgentWorkShop</code>、基于 GitHub Releases 的应用内更新与 WSH 静默安装助手：
+      当前为 v0.19.0 版本：全站收敛为一条实心 A 字标，桌面图标改由母版脚本生成并按 Windows 主题切换托盘字形；启动页重做成一次性通电序列；会话标题栏「关闭会话」重建为语义红浅底控件，并清扫全站按钮族（图标贴字、二字中文自动空格、危险色、破坏性确认框、宽表横扫）。此前版本已提供按工作区归属的频道、先验身份后查资源的详情/任务 API、有界产线查询、共享主题与无障碍刷新、一体化桌面壳、关闭到托盘、桌面/Web 共用 <code>~/.AgentWorkShop</code>、基于 GitHub Releases 的应用内更新与 WSH 静默安装助手：
       系统设置新增技能管理（标准 SKILL.md 发现 → 不可变受管导入 → 显式启用，覆盖
       内置、<code>&lt;configRoot&gt;/skills</code>、<code>~/.agent/skills</code> 等全局根，全程不执行
       Skill 脚本）、外部 MCP（HTTPS 清单 + <code>AW_MCP_*</code> 凭据引用 + 评审制
