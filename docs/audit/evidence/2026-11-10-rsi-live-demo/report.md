@@ -111,7 +111,7 @@ recipe_trial 入参门 → assertRecipeOperation 三轨授权 + 运行门反僵�
 | 图 | 内容 |
 |---|---|
 | ![仪表盘](./03-dashboard.png) | 运行产线 1/1 · 控制节点 7/7 · **累计采样 55083** · 写命令成功率 100% · **执行引擎 14/14 全就绪** |
-| ![产线详情](./05-dcw-line-detail.png) | WWTP 产线运行中：批次 rr-689536a9、7 控制节点 设定=PLC 读数 全部已 ACK、工艺量程/单步限幅 |
+| ![产线详情](./05-dcw-line-detail.jpg) | WWTP 产线运行中：批次 rr-689536a9、7 控制节点 设定=PLC 读数 全部已 ACK、工艺量程/单步限幅 |
 | ![项目看板](./08-project-board.png) | **真实 deepseek-flash leader 的 plan v1 全文**（facts×5、只引用既有交付物、遵从不新增工作项）、工作项 100%、kernel 三健康 ok |
 | ![RSI 看板](./10-rsi-board.png) | 经验 3 条（2 candidate + **1 validated**）、Profile v3·active 注入预览全文、元层成效（profile_promote 6/6）、跨频道互读证据 |
 | ![登录](./01-login.png) / ![产线列表](./04-dcw-lines.png) / ![项目列表](./09-projects-list.png) | 入口页与资源面 |

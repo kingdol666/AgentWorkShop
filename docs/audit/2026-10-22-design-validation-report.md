@@ -49,25 +49,25 @@
 ## 3. 实机截图（本轮 eda-live-demo 重拍）
 
 ### 3.1 数据管理台：多字段复合查询与预览
-![数据查询](evidence/2026-10-21-eda-demo/demo-1-data-query.png)
+*[图示略：数据查询——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 3.2 数据台账与导出
-![数据台账](evidence/2026-10-21-eda-demo/demo-2-data-ledger.png)
+*[图示略：数据台账——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 3.3 标量节点实时镜像
-![标量实时](evidence/2026-10-21-eda-demo/demo-3-daq-scalar-live.png)
+*[图示略：标量实时——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 3.4 数组（膜厚断面 48 点）帧镜像
-![数组帧](evidence/2026-10-21-eda-demo/demo-4-daq-vector-frames.png)
+*[图示略：数组帧——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 3.5 图像（CCD）帧镜像
-![图像帧](evidence/2026-10-21-eda-demo/demo-5-daq-image-frames.png)
+*[图示略：图像帧——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 3.6 EDA 工坊分析
-![EDA 分析](evidence/2026-10-21-eda-demo/demo-6-studio-analysis.png)
+*[图示略：EDA 分析——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 3.7 EDA 看板
-![看板](evidence/2026-10-21-eda-demo/demo-7-studio-board.png)
+*[图示略：看板——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ## 4. 证据索引
 

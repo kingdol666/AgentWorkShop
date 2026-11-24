@@ -42,27 +42,27 @@
 ## 6. 实机演示截图（论据；每张截图的渲染产物均有 DOM 断言背书）
 
 ### 6.1 数据管理台：批量查询与实时展示（预览表列=所选节点，多序列经 /studio 与看板展示）
-![数据管理台查询](evidence/2026-10-21-eda-demo/demo-1-data-query.png)
+*[图示略：数据管理台查询——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 6.2 数据管理台：导出任务 + 批次台账
-![台账](evidence/2026-10-21-eda-demo/demo-2-data-ledger.png)
+*[图示略：台账——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 > 本报告 §3/§4/§5/§7 的数字由 `scripts/eda-demo-report-patch.mjs` 从最终 `demo-evidence.json` 自动同步，消除手抄漂移。
 
 ### 6.3 /daq 标量节点：实时镜像详情
-![标量实时](evidence/2026-10-21-eda-demo/demo-3-daq-scalar-live.png)
+*[图示略：标量实时——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 6.4 /daq 数组节点（膜厚断面）：轮廓 polyline 渲染（WS 实时帧到达，polylines=1）
-![数组帧](evidence/2026-10-21-eda-demo/demo-4-daq-vector-frames.png)
+*[图示略：数组帧——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 6.5 /daq 图像节点（CCD）：页面打开状态下实时推送→contentUrl 图像即时上屏（imgs=1, viaWs=true）
-![图像帧](evidence/2026-10-21-eda-demo/demo-5-daq-image-frames.png)
+*[图示略：图像帧——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 6.6 EDA 工坊：图表分析 + golden 叠加（叠加数据请求 200、无错误横幅；golden 节点按全名精确匹配）
-![studio 分析](evidence/2026-10-21-eda-demo/demo-6-studio-analysis.png)
+*[图示略：studio 分析——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 6.7 EDA 看板：栅格卡内嵌图表渲染（cells=1）
-![看板](evidence/2026-10-21-eda-demo/demo-7-studio-board.png)
+*[图示略：看板——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ## 7. 断言明细（24/24）
 

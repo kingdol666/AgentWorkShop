@@ -28,38 +28,38 @@
 
 ### 2.1 在线拉数 → 代码后处理 → 图表
 
-![在线拉数与表格](evidence/2026-10-26-eda-production-review/02-live-table.png)
+*[图示略：在线拉数与表格——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 在线选择产线与 `Part Weight`/`Flash Rate` 两个 DAQ 节点，拉取最近 1 小时数据；表格直接呈现宽表。随后在浏览器本地执行用户代码：
 
-![代码后处理](evidence/2026-10-26-eda-production-review/03-transform.png)
+*[图示略：代码后处理——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 `transform(rows)` 过滤后得到 1735 行，图表配置选择 line / x=at / y=Part Weight，绘图成功：
 
-![绘图结果](evidence/2026-10-26-eda-production-review/04-drawn-chart.png)
+*[图示略：绘图结果——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 2.2 在线查看器、模板与结果保存
 
 在线查看器外壳内是真实 ECharts canvas（不是静态截图），支持缩放与 PNG：
 
-![在线查看器](evidence/2026-10-26-eda-production-review/05-online-viewer.png)
+*[图示略：在线查看器——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 模板保存后刷新页面仍在；保存为图表、保存为分析结果均有成功回执：
 
-![图表保存回执](evidence/2026-10-26-eda-production-review/06a-chart-saved.png)
-![分析结果保存回执](evidence/2026-10-26-eda-production-review/06b-result-saved.png)
-![模板持久化](evidence/2026-10-26-eda-production-review/07-template-persisted.png)
+*[图示略：图表保存回执——原始图片资产已清理，数据与结论见同目录 json/正文]*
+*[图示略：分析结果保存回执——原始图片资产已清理，数据与结论见同目录 json/正文]*
+*[图示略：模板持久化——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 2.3 Studio 图库、管道快照、看板与台账
 
 保存的管道图表在 Studio 中作为 `pipeline` 快照打开（含保存时的配置/数据快照），在 Board 中同样能渲染：
 
-![Studio 管道快照](evidence/2026-10-26-eda-production-review/10-studio-pipeline-snapshot.png)
-![Board 管道快照](evidence/2026-10-26-eda-production-review/11-board-pipeline-snapshot.png)
+*[图示略：Studio 管道快照——原始图片资产已清理，数据与结论见同目录 json/正文]*
+*[图示略：Board 管道快照——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 分析结果进入台账：
 
-![分析台账](evidence/2026-10-26-eda-production-review/09-analysis-ledger.png)
+*[图示略：分析台账——原始图片资产已清理，数据与结论见同目录 json/正文]*
 
 ### 2.4 EDA 本轮修掉的真实缺陷
 
