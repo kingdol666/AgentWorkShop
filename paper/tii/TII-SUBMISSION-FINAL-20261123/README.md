@@ -26,8 +26,9 @@
 | `IEEE-TII-Title-Page.docx` | 已完成的编辑可见 Title Page；作者信息与通讯信息已按当前稿填写 |
 | `TITLE-PAGE.md` | Title Page 内容说明和底稿 |
 | `Cover-Letter-IEEE-TII.md` | 可选投稿信；TII 常规初投不需要，且不得并入匿名稿 |
-| `supplementary/Supplementary-File-S7-20261117.pdf` | 9 页 S7 证据叙述材料，作者备查，不上传 |
-| `supplementary/supplementary-source/` | S7 的 LaTeX 源码 |
+| `supplementary/Supplementary-File-S7-20261124.pdf` | 12 页 S7 证据叙述材料（含 2026-11-24 实机控制台走查一节），作者备查，不上传 |
+| `supplementary/live-runtime-20261124/` | 实机走查的 4 张控制台截图与记录级证据 JSON（含截图说明 README）；显示平台标识，不进匿名附件 |
+| `supplementary/supplementary-source/` | S7 的 LaTeX 源码（含本节新增图件） |
 | `supplementary/Supporting-Evidence-S7.zip` | 本地脱敏证据副本，不进公开 Git |
 
 ## 本轮 Fig. 3 与全文复核
@@ -62,7 +63,11 @@ pdfLaTeX + BibTeX：`latexmk -pdf main.tex`。已验证：把源码压缩包解�
 | `TII-SUBMISSION-PACKAGE-FINAL-latex.pdf` | `fa9b31ecb9e994cf2c0b5144987e99d03f46f3c476188e5479ed175a619cfcb4` |
 | `TII-SUBMISSION-PACKAGE-FINAL-overleaf.zip` | `2b15cc06fa673ceb568689dc6c25223acdd57e5020f92c3eeb86d829028acefc` |
 | `overleaf-source/resources/fig3.png` | `bc024477547b0d45b1e0377f358f036e7dbdf4550c3db2341122ac3b4642e143` |
-| `supplementary/Supplementary-File-S7-20261117.pdf` | `f7de9f604c38c5826f2eaee164ca02d604e1eafbe1666cf3fe404b1d607f0cb3` |
+| `supplementary/Supplementary-File-S7-20261124.pdf` | `b2f1c4ed78e2f1a4de7306f4cd033319269dc6fa73692c75b44ffa84d864a04f` |
+| `supplementary/live-runtime-20261124/fig-s7-1-approval-card.png` | `4a47f9dfccb75a13e379621974460fc99d487bc5dc4f46a17f72290764f30bc7` |
+| `supplementary/live-runtime-20261124/fig-s7-2-write-history.png` | `9c1e9666fee0c11a535a8685d0252102a6a2a944bb631bd392807bc4881b0ff1` |
+| `supplementary/live-runtime-20261124/fig-s7-3-part-weight-trend.png` | `434f0519afcefd2300eb913396505311faf4265f65066298fa3d615b961bee7a` |
+| `supplementary/live-runtime-20261124/fig-s7-4-line-console.png` | `a9ca4cc5c0b941e5a21fe6d22977b56a711f6947961349b209ba5fc443b5f66e` |
 | `supplementary/Supporting-Evidence-S7.zip`（本地） | `42f23ccbf6f22bfa02b56ca593e72bff88f66758b907040de40f8b912150f5a0` |
 
 格式与合规核验不预判期刊是否送审或接收。

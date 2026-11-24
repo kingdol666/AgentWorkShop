@@ -1,0 +1,635 @@
+{
+  "capturedAt": "2026-11-24T03:49:07.648Z",
+  "base": "http://127.0.0.1:3090",
+  "sim": "http://127.0.0.1:4044",
+  "simPorts": {
+    "modbus-tcp": 16086,
+    "modbus-rtu": 15086,
+    "opcua": 5877,
+    "mqtt": 51830
+  },
+  "auth": {
+    "email": "tii-live@example.invalid",
+    "role": "admin",
+    "how": "register-first-admin"
+  },
+  "simulatorDevices": [
+    {
+      "id": "inj-machine-mbtcp",
+      "protocol": "modbus-tcp",
+      "running": true,
+      "error": null
+    },
+    {
+      "id": "inj-mold-rtu",
+      "protocol": "modbus-rtu",
+      "running": true,
+      "error": null
+    },
+    {
+      "id": "inj-inject-opcua",
+      "protocol": "opcua",
+      "running": true,
+      "error": null
+    },
+    {
+      "id": "inj-cool-mqtt",
+      "protocol": "mqtt",
+      "running": true,
+      "error": null
+    },
+    {
+      "id": "inj-inspect-http",
+      "protocol": "http",
+      "running": true,
+      "error": null
+    }
+  ],
+  "plant": {
+    "kind": "injection",
+    "id": "injection",
+    "seed": 42,
+    "timeScale": 6
+  },
+  "entities": {
+    "channelId": "f343b522-3d7d-4181-8442-1a5397abfcf1",
+    "agentInstanceId": "2f465dde-106b-4be5-a4f7-9ae6d93101d3",
+    "lineId": "ln-4d6e8cd7",
+    "productId": "pd-b192d3ab",
+    "recipeId": "rc-379d8be0",
+    "runStarted": true
+  },
+  "nodes": [
+    {
+      "id": "dw-52356a22",
+      "name": "scen-injection:dcw:barrel-temp-1-sp",
+      "unit": "℃",
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "decimals": 1,
+      "driver": "modbus-tcp",
+      "value": 240,
+      "readValue": 240,
+      "enabled": true
+    },
+    {
+      "id": "dw-3343b754",
+      "name": "scen-injection:dcw:barrel-temp-2-sp",
+      "unit": "℃",
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "decimals": 1,
+      "driver": "modbus-tcp",
+      "value": 246,
+      "readValue": 246,
+      "enabled": true
+    },
+    {
+      "id": "dw-3d74dcd3",
+      "name": "scen-injection:dcw:barrel-temp-3-sp",
+      "unit": "℃",
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "decimals": 1,
+      "driver": "modbus-tcp",
+      "value": 252,
+      "readValue": 252,
+      "enabled": true
+    },
+    {
+      "id": "dw-ce12a306",
+      "name": "scen-injection:dcw:barrel-temp-4-sp",
+      "unit": "℃",
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "decimals": 1,
+      "driver": "modbus-tcp",
+      "value": 258,
+      "readValue": 258,
+      "enabled": true
+    },
+    {
+      "id": "dw-7f8eefe4",
+      "name": "scen-injection:dcw:screw-speed-sp",
+      "unit": "rpm",
+      "min": 60,
+      "max": 200,
+      "stepLimit": 3,
+      "decimals": 0,
+      "driver": "modbus-tcp",
+      "value": 120,
+      "readValue": 120,
+      "enabled": true
+    },
+    {
+      "id": "dw-4feb99fd",
+      "name": "scen-injection:dcw:mold-temp-sp",
+      "unit": "℃",
+      "min": 20,
+      "max": 95,
+      "stepLimit": 1.5,
+      "decimals": 1,
+      "driver": "modbus-rtu",
+      "value": 40,
+      "readValue": 40,
+      "enabled": true
+    },
+    {
+      "id": "dw-dce2c044",
+      "name": "scen-injection:dcw:clamp-force-sp",
+      "unit": "kN",
+      "min": 800,
+      "max": 2500,
+      "stepLimit": 34,
+      "decimals": 0,
+      "driver": "modbus-rtu",
+      "value": 1600,
+      "readValue": 1600,
+      "enabled": true
+    },
+    {
+      "id": "dw-6c4ba40e",
+      "name": "scen-injection:dcw:inject-speed-sp",
+      "unit": "mm/s",
+      "min": 30,
+      "max": 130,
+      "stepLimit": 2,
+      "decimals": 0,
+      "driver": "opcua",
+      "value": 85,
+      "readValue": 85,
+      "enabled": true
+    },
+    {
+      "id": "dw-339dbf7c",
+      "name": "scen-injection:dcw:hold-pressure-sp",
+      "unit": "bar",
+      "min": 20,
+      "max": 110,
+      "stepLimit": 1.8,
+      "decimals": 1,
+      "driver": "opcua",
+      "value": 45,
+      "readValue": 45,
+      "enabled": true
+    },
+    {
+      "id": "dw-ae9b4603",
+      "name": "scen-injection:dcw:hold-time-sp",
+      "unit": "s",
+      "min": 3,
+      "max": 15,
+      "stepLimit": 0.2,
+      "decimals": 1,
+      "driver": "opcua",
+      "value": 6,
+      "readValue": 6,
+      "enabled": true
+    },
+    {
+      "id": "dw-78578b3c",
+      "name": "scen-injection:dcw:cool-water-sp",
+      "unit": "℃",
+      "min": 10,
+      "max": 45,
+      "stepLimit": 0.7,
+      "decimals": 1,
+      "driver": "mqtt",
+      "value": 24,
+      "readValue": 24,
+      "enabled": true
+    }
+  ],
+  "daqNodes": [
+    {
+      "id": "dn-d5f9adaf",
+      "name": "scen-injection:daq:melt-temp-pv",
+      "unit": "℃",
+      "min": 20,
+      "max": 320,
+      "decimals": 1,
+      "driver": "modbus-tcp"
+    },
+    {
+      "id": "dn-303ee11e",
+      "name": "scen-injection:daq:melt-pressure-pv",
+      "unit": "bar",
+      "min": 0,
+      "max": 160,
+      "decimals": 1,
+      "driver": "modbus-tcp"
+    },
+    {
+      "id": "dn-89cf2ed9",
+      "name": "scen-injection:daq:mold-temp-pv",
+      "unit": "℃",
+      "min": 10,
+      "max": 110,
+      "decimals": 1,
+      "driver": "modbus-rtu"
+    },
+    {
+      "id": "dn-667283b4",
+      "name": "scen-injection:daq:clamp-force-pv",
+      "unit": "kN",
+      "min": 0,
+      "max": 2600,
+      "decimals": 0,
+      "driver": "modbus-rtu"
+    },
+    {
+      "id": "dn-b5c5d970",
+      "name": "scen-injection:daq:inj-pressure-pv",
+      "unit": "bar",
+      "min": 0,
+      "max": 180,
+      "decimals": 1,
+      "driver": "opcua"
+    },
+    {
+      "id": "dn-37154c69",
+      "name": "scen-injection:daq:water-temp-pv",
+      "unit": "℃",
+      "min": 5,
+      "max": 60,
+      "decimals": 1,
+      "driver": "mqtt"
+    },
+    {
+      "id": "dn-8c358304",
+      "name": "scen-injection:daq:cool-flow-pv",
+      "unit": "L/min",
+      "min": 0,
+      "max": 80,
+      "decimals": 1,
+      "driver": "mqtt"
+    },
+    {
+      "id": "dn-cc4a12bf",
+      "name": "scen-injection:daq:part-weight",
+      "unit": "g",
+      "min": 25,
+      "max": 40,
+      "decimals": 2,
+      "driver": "http"
+    },
+    {
+      "id": "dn-2eff2224",
+      "name": "scen-injection:daq:flash-rate",
+      "unit": "%",
+      "min": 0,
+      "max": 5,
+      "decimals": 3,
+      "driver": "http"
+    },
+    {
+      "id": "dn-b9ed0d66",
+      "name": "scen-injection:daq:sink-mark",
+      "unit": "%",
+      "min": 0,
+      "max": 10,
+      "decimals": 3,
+      "driver": "http"
+    },
+    {
+      "id": "dn-17db6b33",
+      "name": "scen-injection:daq:dim-dev",
+      "unit": "mm",
+      "min": -0.5,
+      "max": 0.5,
+      "decimals": 3,
+      "driver": "http"
+    },
+    {
+      "id": "dn-b9c357cd",
+      "name": "scen-injection:daq:cycle-time",
+      "unit": "s",
+      "min": 5,
+      "max": 60,
+      "decimals": 1,
+      "driver": "http"
+    },
+    {
+      "id": "dn-5f84590a",
+      "name": "scen-injection:daq:wall-profile",
+      "unit": "mm",
+      "min": 1,
+      "max": 5,
+      "decimals": 4,
+      "driver": "http"
+    },
+    {
+      "id": "dn-ed1ed3c1",
+      "name": "scen-injection:daq:surface-image",
+      "unit": "灰度",
+      "min": 0,
+      "max": 255,
+      "decimals": 3,
+      "driver": "http"
+    }
+  ],
+  "recipe": {
+    "id": "rc-379d8be0",
+    "name": "scen-injection-recipe-tii24",
+    "version": 1,
+    "opIntervalMs": 0,
+    "params": [
+      {
+        "nodeId": "dw-52356a22",
+        "templateRef": "dcw-temp-sp",
+        "value": 240,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-3343b754",
+        "templateRef": "dcw-temp-sp",
+        "value": 246,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-3d74dcd3",
+        "templateRef": "dcw-temp-sp",
+        "value": 252,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-ce12a306",
+        "templateRef": "dcw-temp-sp",
+        "value": 258,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-7f8eefe4",
+        "templateRef": "dcw-temp-sp",
+        "value": 120,
+        "min": 60,
+        "max": 200
+      },
+      {
+        "nodeId": "dw-4feb99fd",
+        "templateRef": "dcw-temp-sp",
+        "value": 40,
+        "min": 20,
+        "max": 95
+      },
+      {
+        "nodeId": "dw-dce2c044",
+        "templateRef": "dcw-temp-sp",
+        "value": 1600,
+        "min": 800,
+        "max": 2500
+      },
+      {
+        "nodeId": "dw-6c4ba40e",
+        "templateRef": "dcw-temp-sp",
+        "value": 85,
+        "min": 30,
+        "max": 130
+      },
+      {
+        "nodeId": "dw-339dbf7c",
+        "templateRef": "dcw-temp-sp",
+        "value": 45,
+        "min": 20,
+        "max": 110
+      },
+      {
+        "nodeId": "dw-ae9b4603",
+        "templateRef": "dcw-temp-sp",
+        "value": 6,
+        "min": 3,
+        "max": 15
+      },
+      {
+        "nodeId": "dw-78578b3c",
+        "templateRef": "dcw-temp-sp",
+        "value": 24,
+        "min": 10,
+        "max": 45
+      }
+    ],
+    "daqWindows": [
+      {
+        "nodeId": "dn-d5f9adaf",
+        "min": 235,
+        "max": 262
+      },
+      {
+        "nodeId": "dn-cc4a12bf",
+        "min": 32.15,
+        "max": 32.85
+      },
+      {
+        "nodeId": "dn-2eff2224",
+        "min": 0,
+        "max": 0.8
+      },
+      {
+        "nodeId": "dn-b9ed0d66",
+        "min": 0,
+        "max": 2
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "kind": "recipe",
+      "nodeId": "rc-379d8be0",
+      "id": "nb-1597a386",
+      "status": 200,
+      "modeSwitch": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "melt-temp-pv",
+      "nodeId": "dn-d5f9adaf",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "melt-pressure-pv",
+      "nodeId": "dn-303ee11e",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "mold-temp-pv",
+      "nodeId": "dn-89cf2ed9",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "clamp-force-pv",
+      "nodeId": "dn-667283b4",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "inj-pressure-pv",
+      "nodeId": "dn-b5c5d970",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "water-temp-pv",
+      "nodeId": "dn-37154c69",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "cool-flow-pv",
+      "nodeId": "dn-8c358304",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "part-weight",
+      "nodeId": "dn-cc4a12bf",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "flash-rate",
+      "nodeId": "dn-2eff2224",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "sink-mark",
+      "nodeId": "dn-b9ed0d66",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "dim-dev",
+      "nodeId": "dn-17db6b33",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "cycle-time",
+      "nodeId": "dn-b9c357cd",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "wall-profile",
+      "nodeId": "dn-5f84590a",
+      "status": 200
+    },
+    {
+      "kind": "daq",
+      "sig": "surface-image",
+      "nodeId": "dn-ed1ed3c1",
+      "status": 200
+    }
+  ],
+  "daqInfra": {
+    "controller": {
+      "running": true,
+      "defaultIntervalMs": 5000,
+      "minIntervalMs": 1000,
+      "defaultPublishIntervalMs": 1000,
+      "minPublishIntervalMs": 0,
+      "queryDisplayIntervalMs": 5000,
+      "minQueryDisplayIntervalMs": 500,
+      "nodesTotal": 14,
+      "nodesOnline": 14,
+      "produced": 14,
+      "consumed": 14,
+      "dropped": 0,
+      "samplesStored": 0,
+      "tsdbDropped": 0,
+      "alarmsRaised": 2,
+      "framesStored": 0
+    },
+    "infra": {
+      "mqttOnline": true,
+      "tsdbOnline": true,
+      "objectStoreOnline": true,
+      "degraded": false,
+      "warning": "",
+      "startedBy": "direct",
+      "lastCheckAt": "2026-11-24T11:47:11.682+08:00"
+    }
+  },
+  "baselinePvMean": {
+    "melt-temp-pv": null,
+    "melt-pressure-pv": null,
+    "mold-temp-pv": null,
+    "clamp-force-pv": null,
+    "inj-pressure-pv": null,
+    "water-temp-pv": null,
+    "cool-flow-pv": null,
+    "part-weight": null,
+    "flash-rate": null,
+    "sink-mark": null,
+    "dim-dev": null,
+    "cycle-time": null,
+    "wall-profile": null,
+    "surface-image": null
+  },
+  "scenario": {
+    "pv": {
+      "sig": "part-weight",
+      "target": 32.5,
+      "tol": 0.35,
+      "unit": "g",
+      "label": "制品克重"
+    },
+    "guards": [
+      {
+        "sig": "flash-rate",
+        "max": 0.4,
+        "label": "飞边率"
+      },
+      {
+        "sig": "sink-mark",
+        "max": 1.5,
+        "label": "缩痕指数"
+      }
+    ],
+    "knobs": [
+      {
+        "sig": "hold-pressure-sp",
+        "share": 0.55,
+        "gain": 0.052,
+        "lo": 20,
+        "hi": 110
+      },
+      {
+        "sig": "hold-time-sp",
+        "share": 0.4,
+        "gain": 0.05,
+        "lo": 3,
+        "hi": 15
+      }
+    ],
+    "daqWindows": {
+      "part-weight": [
+        32.15,
+        32.85
+      ],
+      "flash-rate": [
+        0,
+        0.8
+      ],
+      "sink-mark": [
+        0,
+        2
+      ],
+      "MeltTemp": [
+        235,
+        262
+      ]
+    }
+  }
+}

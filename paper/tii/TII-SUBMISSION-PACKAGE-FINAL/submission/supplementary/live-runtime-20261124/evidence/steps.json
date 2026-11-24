@@ -1,0 +1,698 @@
+[
+  {
+    "index": 1,
+    "startedAt": "2026-11-24T03:56:21.284Z",
+    "approvalId": "ap-10af521e",
+    "decisionStatus": 200,
+    "invokeExit": 0,
+    "from": 45,
+    "to": 46.8,
+    "stepLimit": 1.8,
+    "isError": true,
+    "tookMs": 909,
+    "text": "方案「Step 1: hold pressure 45 to 46.8 bar」已获批准,但整批下发启动失败:本产线上一次配方试验距今仅 178s,试验节拍为 ≥300s(防连发震荡),请等待 122s 后再试\n产线状态可能已变化,请核查执行记录与设备实际状态后再决定是否重试 —— 真实下发路径仅两条:配方链路整批(recipe_trial / recipe_apply / recipe_rollback),或工艺优化 Channel 的 optimization_explore(受治理的逐节点探索步,联锁照常)。",
+    "readbackAfter": {
+      "value": 45,
+      "readValue": 45,
+      "min": 20,
+      "max": 110,
+      "stepLimit": 1.8
+    },
+    "weightBefore": {
+      "lastBuckets": [
+        {
+          "at": 1795492500000,
+          "avg": 31.247333333333337,
+          "min": 31.16,
+          "max": 31.36,
+          "cnt": 15
+        },
+        {
+          "at": 1795492515000,
+          "avg": 31.258571428571432,
+          "min": 31.18,
+          "max": 31.32,
+          "cnt": 14
+        },
+        {
+          "at": 1795492530000,
+          "avg": 31.257857142857148,
+          "min": 31.18,
+          "max": 31.31,
+          "cnt": 14
+        },
+        {
+          "at": 1795492545000,
+          "avg": 31.247333333333327,
+          "min": 31.18,
+          "max": 31.33,
+          "cnt": 15
+        },
+        {
+          "at": 1795492560000,
+          "avg": 31.263571428571428,
+          "min": 31.16,
+          "max": 31.33,
+          "cnt": 14
+        },
+        {
+          "at": 1795492575000,
+          "avg": 31.24,
+          "min": 31.18,
+          "max": 31.28,
+          "cnt": 6
+        }
+      ],
+      "mean4": 31.2522
+    },
+    "weightAfter": {
+      "lastBuckets": [
+        {
+          "at": 1795492530000,
+          "avg": 31.257857142857148,
+          "min": 31.18,
+          "max": 31.31,
+          "cnt": 14
+        },
+        {
+          "at": 1795492545000,
+          "avg": 31.247333333333327,
+          "min": 31.18,
+          "max": 31.33,
+          "cnt": 15
+        },
+        {
+          "at": 1795492560000,
+          "avg": 31.263571428571428,
+          "min": 31.16,
+          "max": 31.33,
+          "cnt": 14
+        },
+        {
+          "at": 1795492575000,
+          "avg": 31.25,
+          "min": 31.18,
+          "max": 31.33,
+          "cnt": 15
+        },
+        {
+          "at": 1795492590000,
+          "avg": 31.240714285714287,
+          "min": 31.14,
+          "max": 31.29,
+          "cnt": 14
+        },
+        {
+          "at": 1795492605000,
+          "avg": 31.235,
+          "min": 31.18,
+          "max": 31.29,
+          "cnt": 2
+        }
+      ],
+      "mean4": 31.2473
+    },
+    "ok": false,
+    "attemptedAt": "2026-11-24T03:56:21.284Z"
+  },
+  {
+    "index": 1,
+    "startedAt": "2026-11-24T04:01:40.382Z",
+    "attemptedAt": "2026-11-24T04:01:40.382Z",
+    "approvalId": "ap-a756ef46",
+    "decisionStatus": 200,
+    "invokeExit": 0,
+    "from": 45,
+    "to": 46.8,
+    "stepLimit": 1.8,
+    "isError": false,
+    "tookMs": 946,
+    "text": "方案「Step 1: hold pressure 45 to 46.8 bar」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-7b336)。runId:rr-7b33651f(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-7b33651f（2026-11-24 12:01）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 45→46.8 回读=46.8 ACK=readback-verified 判定=unassessed\n- 批次 rr-da6dfdeb（2026-11-24 11:53）成效=unassessed · ACK verified=0 unverified=0 failed=1 total=1\n- 批次 rr-9ca5c076（2026-11-24 11:49）成效=inconclusive · ACK verified=11 unverified=0 failed=0 total=11\n  · scen-injection:dcw:barrel-temp-1-sp ?→240 回读=240 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:barrel-temp-2-sp ?→246 回读=246 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:barrel-temp-3-sp ?→252 回读=252 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:barrel-temp-4-sp ?→258 回读=258 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:screw-speed-sp ?→120 回读=120 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:mold-temp-sp ?→40 回读=40 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:clamp-force-sp ?→1600 回读=1600 ACK=readback-verified 判定=unassessed\n  · scen-injection:dcw:inject-speed-sp ?→85 回读=8",
+    "readbackAfter": {
+      "value": 46.8,
+      "readValue": 45,
+      "min": 20,
+      "max": 110,
+      "stepLimit": 1.8
+    },
+    "weightBefore": {
+      "lastBuckets": [
+        {
+          "at": 1795492815000,
+          "avg": 31.24533333333333,
+          "min": 31.15,
+          "max": 31.34,
+          "cnt": 15
+        },
+        {
+          "at": 1795492830000,
+          "avg": 31.224999999999998,
+          "min": 31.15,
+          "max": 31.28,
+          "cnt": 14
+        },
+        {
+          "at": 1795492845000,
+          "avg": 31.242,
+          "min": 31.18,
+          "max": 31.3,
+          "cnt": 15
+        },
+        {
+          "at": 1795492860000,
+          "avg": 31.237857142857145,
+          "min": 31.17,
+          "max": 31.32,
+          "cnt": 14
+        },
+        {
+          "at": 1795492875000,
+          "avg": 31.278,
+          "min": 31.19,
+          "max": 31.35,
+          "cnt": 15
+        },
+        {
+          "at": 1795492890000,
+          "avg": 31.25111111111111,
+          "min": 31.15,
+          "max": 31.31,
+          "cnt": 9
+        }
+      ],
+      "mean4": 31.2522
+    },
+    "weightAfter": {
+      "lastBuckets": [
+        {
+          "at": 1795492845000,
+          "avg": 31.242,
+          "min": 31.18,
+          "max": 31.3,
+          "cnt": 15
+        },
+        {
+          "at": 1795492860000,
+          "avg": 31.237857142857145,
+          "min": 31.17,
+          "max": 31.32,
+          "cnt": 14
+        },
+        {
+          "at": 1795492875000,
+          "avg": 31.278,
+          "min": 31.19,
+          "max": 31.35,
+          "cnt": 15
+        },
+        {
+          "at": 1795492890000,
+          "avg": 31.27285714285714,
+          "min": 31.15,
+          "max": 31.38,
+          "cnt": 14
+        },
+        {
+          "at": 1795492905000,
+          "avg": 31.340000000000007,
+          "min": 31.29,
+          "max": 31.38,
+          "cnt": 14
+        },
+        {
+          "at": 1795492920000,
+          "avg": 31.33428571428571,
+          "min": 31.3,
+          "max": 31.37,
+          "cnt": 7
+        }
+      ],
+      "mean4": 31.3063
+    },
+    "ok": true
+  },
+  {
+    "index": 2,
+    "startedAt": "2026-11-24T04:06:50.420Z",
+    "attemptedAt": "2026-11-24T04:06:50.420Z",
+    "approvalId": "ap-7bdb7b40",
+    "decisionStatus": 200,
+    "invokeExit": 0,
+    "from": 46.8,
+    "to": 48.6,
+    "stepLimit": 1.8,
+    "isError": false,
+    "tookMs": 926,
+    "text": "方案「Step 2: hold pressure 46.8 to 48.6 bar」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-6d5e1)。runId:rr-6d5e1c6d(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-6d5e1c6d（2026-11-24 12:06）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 46.8→48.6 回读=48.6 ACK=readback-verified 判定=unassessed\n- 批次 rr-7b33651f（2026-11-24 12:01）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 45→46.8 回读=46.8 ACK=readback-verified 判定=unassessed\n- 批次 rr-da6dfdeb（2026-11-24 11:53）成效=unassessed · ACK verified=0 unverified=0 failed=1 total=1\n[人工反馈] Approved step 2 for the disposable simulator demonstration.\n- scen-injection:dcw:hold-pressure-sp 46.8→48.6bar [设备证实✓]\n请等待工艺惯性后 daq_query 复测判读:有进步 → 效果回访时回写经验到知识库;劣化 → 立即 recipe_rollback(recipe_id, dispatch=true) 统一回退并通报。",
+    "readbackAfter": {
+      "value": 48.6,
+      "readValue": 46.8,
+      "min": 20,
+      "max": 110,
+      "stepLimit": 1.8
+    },
+    "weightBefore": {
+      "lastBuckets": [
+        {
+          "at": 1795493130000,
+          "avg": 31.338666666666665,
+          "min": 31.27,
+          "max": 31.41,
+          "cnt": 15
+        },
+        {
+          "at": 1795493145000,
+          "avg": 31.341428571428565,
+          "min": 31.3,
+          "max": 31.41,
+          "cnt": 14
+        },
+        {
+          "at": 1795493160000,
+          "avg": 31.332666666666675,
+          "min": 31.28,
+          "max": 31.42,
+          "cnt": 15
+        },
+        {
+          "at": 1795493175000,
+          "avg": 31.336428571428577,
+          "min": 31.26,
+          "max": 31.4,
+          "cnt": 14
+        },
+        {
+          "at": 1795493190000,
+          "avg": 31.32066666666667,
+          "min": 31.27,
+          "max": 31.42,
+          "cnt": 15
+        },
+        {
+          "at": 1795493205000,
+          "avg": 31.347999999999995,
+          "min": 31.31,
+          "max": 31.4,
+          "cnt": 5
+        }
+      ],
+      "mean4": 31.3344
+    },
+    "weightAfter": {
+      "lastBuckets": [
+        {
+          "at": 1795493160000,
+          "avg": 31.332666666666675,
+          "min": 31.28,
+          "max": 31.42,
+          "cnt": 15
+        },
+        {
+          "at": 1795493175000,
+          "avg": 31.336428571428577,
+          "min": 31.26,
+          "max": 31.4,
+          "cnt": 14
+        },
+        {
+          "at": 1795493190000,
+          "avg": 31.32066666666667,
+          "min": 31.27,
+          "max": 31.42,
+          "cnt": 15
+        },
+        {
+          "at": 1795493205000,
+          "avg": 31.399333333333335,
+          "min": 31.31,
+          "max": 31.51,
+          "cnt": 15
+        },
+        {
+          "at": 1795493220000,
+          "avg": 31.420714285714286,
+          "min": 31.33,
+          "max": 31.48,
+          "cnt": 14
+        },
+        {
+          "at": 1795493235000,
+          "avg": 31.46,
+          "min": 31.45,
+          "max": 31.47,
+          "cnt": 2
+        }
+      ],
+      "mean4": 31.4002
+    },
+    "ok": true
+  },
+  {
+    "index": 3,
+    "startedAt": "2026-11-24T04:12:00.456Z",
+    "attemptedAt": "2026-11-24T04:12:00.456Z",
+    "approvalId": "ap-fad56ec5",
+    "decisionStatus": 200,
+    "invokeExit": 0,
+    "from": 48.6,
+    "to": 50.4,
+    "stepLimit": 1.8,
+    "isError": false,
+    "tookMs": 945,
+    "text": "方案「Step 3: hold pressure 48.6 to 50.4 bar」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-9ef47)。runId:rr-9ef47779(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-9ef47779（2026-11-24 12:12）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 48.6→50.4 回读=50.4 ACK=readback-verified 判定=unassessed\n- 批次 rr-6d5e1c6d（2026-11-24 12:06）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 46.8→48.6 回读=48.6 ACK=readback-verified 判定=unassessed\n- 批次 rr-7b33651f（2026-11-24 12:01）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 45→46.8 回读=46.8 ACK=readback-verified 判定=unassessed\n[人工反馈] Approved step 3 for the disposable simulator demonstration.\n- scen-injection:dcw:hold-pressure-sp 48.6→50.4bar [设备证实✓]\n请等待工艺惯性后 daq_query 复测判读:有进步 → 效果回访时回写经验到知识库;劣化 → 立即 recipe_rollback(recipe_id, dispatch=true) 统一回退并通报。",
+    "readbackAfter": {
+      "value": 50.4,
+      "readValue": 48.6,
+      "min": 20,
+      "max": 110,
+      "stepLimit": 1.8
+    },
+    "weightBefore": {
+      "lastBuckets": [
+        {
+          "at": 1795493430000,
+          "avg": 31.444999999999997,
+          "min": 31.4,
+          "max": 31.53,
+          "cnt": 14
+        },
+        {
+          "at": 1795493445000,
+          "avg": 31.43733333333333,
+          "min": 31.39,
+          "max": 31.5,
+          "cnt": 15
+        },
+        {
+          "at": 1795493460000,
+          "avg": 31.45071428571428,
+          "min": 31.36,
+          "max": 31.5,
+          "cnt": 14
+        },
+        {
+          "at": 1795493475000,
+          "avg": 31.466,
+          "min": 31.42,
+          "max": 31.56,
+          "cnt": 15
+        },
+        {
+          "at": 1795493490000,
+          "avg": 31.438000000000002,
+          "min": 31.38,
+          "max": 31.49,
+          "cnt": 15
+        },
+        {
+          "at": 1795493505000,
+          "avg": 31.437142857142852,
+          "min": 31.36,
+          "max": 31.51,
+          "cnt": 14
+        }
+      ],
+      "mean4": 31.448
+    },
+    "weightAfter": {
+      "lastBuckets": [
+        {
+          "at": 1795493460000,
+          "avg": 31.45071428571428,
+          "min": 31.36,
+          "max": 31.5,
+          "cnt": 14
+        },
+        {
+          "at": 1795493475000,
+          "avg": 31.466,
+          "min": 31.42,
+          "max": 31.56,
+          "cnt": 15
+        },
+        {
+          "at": 1795493490000,
+          "avg": 31.438000000000002,
+          "min": 31.38,
+          "max": 31.49,
+          "cnt": 15
+        },
+        {
+          "at": 1795493505000,
+          "avg": 31.437142857142852,
+          "min": 31.36,
+          "max": 31.51,
+          "cnt": 14
+        },
+        {
+          "at": 1795493520000,
+          "avg": 31.53133333333333,
+          "min": 31.47,
+          "max": 31.61,
+          "cnt": 15
+        },
+        {
+          "at": 1795493535000,
+          "avg": 31.522000000000002,
+          "min": 31.48,
+          "max": 31.6,
+          "cnt": 10
+        }
+      ],
+      "mean4": 31.4821
+    },
+    "ok": true
+  },
+  {
+    "index": 4,
+    "startedAt": "2026-11-24T04:17:10.505Z",
+    "attemptedAt": "2026-11-24T04:17:10.505Z",
+    "approvalId": "ap-91c5e1a3",
+    "decisionStatus": 200,
+    "invokeExit": 0,
+    "from": 50.4,
+    "to": 52.2,
+    "stepLimit": 1.8,
+    "isError": false,
+    "tookMs": 928,
+    "text": "方案「Step 4: hold pressure 50.4 to 52.2 bar」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-997bc)。runId:rr-997bc46c(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-997bc46c（2026-11-24 12:17）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 50.4→52.2 回读=52.2 ACK=readback-verified 判定=unassessed\n- 批次 rr-9ef47779（2026-11-24 12:12）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 48.6→50.4 回读=50.4 ACK=readback-verified 判定=unassessed\n- 批次 rr-6d5e1c6d（2026-11-24 12:06）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 46.8→48.6 回读=48.6 ACK=readback-verified 判定=unassessed\n[人工反馈] Approved step 4 for the disposable simulator demonstration.\n- scen-injection:dcw:hold-pressure-sp 50.4→52.2bar [设备证实✓]\n请等待工艺惯性后 daq_query 复测判读:有进步 → 效果回访时回写经验到知识库;劣化 → 立即 recipe_rollback(recipe_id, dispatch=true) 统一回退并通报。",
+    "readbackAfter": {
+      "value": 52.2,
+      "readValue": 50.4,
+      "min": 20,
+      "max": 110,
+      "stepLimit": 1.8
+    },
+    "weightBefore": {
+      "lastBuckets": [
+        {
+          "at": 1795493745000,
+          "avg": 31.56,
+          "min": 31.49,
+          "max": 31.63,
+          "cnt": 14
+        },
+        {
+          "at": 1795493760000,
+          "avg": 31.52199999999999,
+          "min": 31.43,
+          "max": 31.59,
+          "cnt": 15
+        },
+        {
+          "at": 1795493775000,
+          "avg": 31.52928571428572,
+          "min": 31.46,
+          "max": 31.57,
+          "cnt": 14
+        },
+        {
+          "at": 1795493790000,
+          "avg": 31.53733333333333,
+          "min": 31.44,
+          "max": 31.64,
+          "cnt": 15
+        },
+        {
+          "at": 1795493805000,
+          "avg": 31.515000000000004,
+          "min": 31.42,
+          "max": 31.6,
+          "cnt": 14
+        },
+        {
+          "at": 1795493820000,
+          "avg": 31.535000000000004,
+          "min": 31.48,
+          "max": 31.59,
+          "cnt": 10
+        }
+      ],
+      "mean4": 31.5292
+    },
+    "weightAfter": {
+      "lastBuckets": [
+        {
+          "at": 1795493775000,
+          "avg": 31.52928571428572,
+          "min": 31.46,
+          "max": 31.57,
+          "cnt": 14
+        },
+        {
+          "at": 1795493790000,
+          "avg": 31.53733333333333,
+          "min": 31.44,
+          "max": 31.64,
+          "cnt": 15
+        },
+        {
+          "at": 1795493805000,
+          "avg": 31.515000000000004,
+          "min": 31.42,
+          "max": 31.6,
+          "cnt": 14
+        },
+        {
+          "at": 1795493820000,
+          "avg": 31.56266666666667,
+          "min": 31.48,
+          "max": 31.68,
+          "cnt": 15
+        },
+        {
+          "at": 1795493835000,
+          "avg": 31.62642857142857,
+          "min": 31.56,
+          "max": 31.68,
+          "cnt": 14
+        },
+        {
+          "at": 1795493850000,
+          "avg": 31.61166666666666,
+          "min": 31.58,
+          "max": 31.66,
+          "cnt": 6
+        }
+      ],
+      "mean4": 31.5789
+    },
+    "ok": true
+  },
+  {
+    "index": 5,
+    "startedAt": "2026-11-24T04:22:20.567Z",
+    "attemptedAt": "2026-11-24T04:22:20.567Z",
+    "approvalId": "ap-b9a8c095",
+    "decisionStatus": 200,
+    "invokeExit": 0,
+    "from": 52.2,
+    "to": 54,
+    "stepLimit": 1.8,
+    "isError": false,
+    "tookMs": 931,
+    "text": "方案「Step 5: hold pressure 52.2 to 54 bar」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-1180d)。runId:rr-1180d109(后续轮次按此回访效果并回写经验)\n\n## 配方证据链（按批次；成效结论由 verdict 聚合，非 Agent 自述）\n- 批次 rr-1180d109（2026-11-24 12:22）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 52.2→54 回读=54 ACK=readback-verified 判定=unassessed\n- 批次 rr-997bc46c（2026-11-24 12:17）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 50.4→52.2 回读=52.2 ACK=readback-verified 判定=unassessed\n- 批次 rr-9ef47779（2026-11-24 12:12）成效=inconclusive · ACK verified=1 unverified=0 failed=0 total=1\n  · scen-injection:dcw:hold-pressure-sp 48.6→50.4 回读=50.4 ACK=readback-verified 判定=unassessed\n[人工反馈] Approved step 5 for the disposable simulator demonstration.\n- scen-injection:dcw:hold-pressure-sp 52.2→54bar [设备证实✓]\n请等待工艺惯性后 daq_query 复测判读:有进步 → 效果回访时回写经验到知识库;劣化 → 立即 recipe_rollback(recipe_id, dispatch=true) 统一回退并通报。",
+    "readbackAfter": {
+      "value": 54,
+      "readValue": 52.2,
+      "min": 20,
+      "max": 110,
+      "stepLimit": 1.8
+    },
+    "weightBefore": {
+      "lastBuckets": [
+        {
+          "at": 1795494060000,
+          "avg": 31.612142857142857,
+          "min": 31.55,
+          "max": 31.67,
+          "cnt": 14
+        },
+        {
+          "at": 1795494075000,
+          "avg": 31.634,
+          "min": 31.55,
+          "max": 31.7,
+          "cnt": 15
+        },
+        {
+          "at": 1795494090000,
+          "avg": 31.620714285714282,
+          "min": 31.56,
+          "max": 31.68,
+          "cnt": 14
+        },
+        {
+          "at": 1795494105000,
+          "avg": 31.627142857142854,
+          "min": 31.54,
+          "max": 31.7,
+          "cnt": 14
+        },
+        {
+          "at": 1795494120000,
+          "avg": 31.63866666666667,
+          "min": 31.56,
+          "max": 31.7,
+          "cnt": 15
+        },
+        {
+          "at": 1795494135000,
+          "avg": 31.622000000000003,
+          "min": 31.57,
+          "max": 31.68,
+          "cnt": 5
+        }
+      ],
+      "mean4": 31.6271
+    },
+    "weightAfter": {
+      "lastBuckets": [
+        {
+          "at": 1795494090000,
+          "avg": 31.620714285714282,
+          "min": 31.56,
+          "max": 31.68,
+          "cnt": 14
+        },
+        {
+          "at": 1795494105000,
+          "avg": 31.627142857142854,
+          "min": 31.54,
+          "max": 31.7,
+          "cnt": 14
+        },
+        {
+          "at": 1795494120000,
+          "avg": 31.63866666666667,
+          "min": 31.56,
+          "max": 31.7,
+          "cnt": 15
+        },
+        {
+          "at": 1795494135000,
+          "avg": 31.672142857142855,
+          "min": 31.57,
+          "max": 31.76,
+          "cnt": 14
+        },
+        {
+          "at": 1795494150000,
+          "avg": 31.721333333333337,
+          "min": 31.66,
+          "max": 31.78,
+          "cnt": 15
+        },
+        {
+          "at": 1795494165000,
+          "avg": 31.64,
+          "min": 31.64,
+          "max": 31.64,
+          "cnt": 1
+        }
+      ],
+      "mean4": 31.668
+    },
+    "ok": true
+  }
+]

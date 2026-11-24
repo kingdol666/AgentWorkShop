@@ -1,0 +1,590 @@
+{
+  "capturedAt": "2026-11-24T03:50:20.947Z",
+  "allowPrivateHostPatched": [
+    {
+      "nodeId": "dn-cc4a12bf",
+      "name": "scen-injection:daq:part-weight",
+      "status": 200
+    },
+    {
+      "nodeId": "dn-2eff2224",
+      "name": "scen-injection:daq:flash-rate",
+      "status": 200
+    },
+    {
+      "nodeId": "dn-b9ed0d66",
+      "name": "scen-injection:daq:sink-mark",
+      "status": 200
+    },
+    {
+      "nodeId": "dn-17db6b33",
+      "name": "scen-injection:daq:dim-dev",
+      "status": 200
+    },
+    {
+      "nodeId": "dn-b9c357cd",
+      "name": "scen-injection:daq:cycle-time",
+      "status": 200
+    },
+    {
+      "nodeId": "dn-5f84590a",
+      "name": "scen-injection:daq:wall-profile",
+      "status": 200
+    },
+    {
+      "nodeId": "dn-ed1ed3c1",
+      "name": "scen-injection:daq:surface-image",
+      "status": 200
+    }
+  ],
+  "daqInfra": {
+    "controllerRunning": true,
+    "degraded": false,
+    "mqttOnline": true,
+    "tsdbOnline": true,
+    "objectStoreOnline": true,
+    "lastError": ""
+  },
+  "sampleCounts": {
+    "scen-injection:daq:melt-temp-pv": 5,
+    "scen-injection:daq:melt-pressure-pv": 5,
+    "scen-injection:daq:mold-temp-pv": 5,
+    "scen-injection:daq:clamp-force-pv": 5,
+    "scen-injection:daq:inj-pressure-pv": 5,
+    "scen-injection:daq:water-temp-pv": 5,
+    "scen-injection:daq:cool-flow-pv": 5,
+    "scen-injection:daq:part-weight": 5,
+    "scen-injection:daq:flash-rate": 5,
+    "scen-injection:daq:sink-mark": 5,
+    "scen-injection:daq:dim-dev": 5,
+    "scen-injection:daq:cycle-time": 5,
+    "scen-injection:daq:wall-profile": 0,
+    "scen-injection:daq:surface-image": 0
+  },
+  "daqMeans": {
+    "scen-injection:daq:melt-temp-pv": null,
+    "scen-injection:daq:melt-pressure-pv": null,
+    "scen-injection:daq:mold-temp-pv": null,
+    "scen-injection:daq:clamp-force-pv": null,
+    "scen-injection:daq:inj-pressure-pv": null,
+    "scen-injection:daq:water-temp-pv": null,
+    "scen-injection:daq:cool-flow-pv": null,
+    "scen-injection:daq:part-weight": null,
+    "scen-injection:daq:flash-rate": null,
+    "scen-injection:daq:sink-mark": null,
+    "scen-injection:daq:dim-dev": null,
+    "scen-injection:daq:cycle-time": null,
+    "scen-injection:daq:wall-profile": null,
+    "scen-injection:daq:surface-image": null
+  },
+  "dcwNodes": [
+    {
+      "id": "dw-52356a22",
+      "name": "scen-injection:dcw:barrel-temp-1-sp",
+      "value": 240,
+      "readValue": 240,
+      "readAt": null,
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "enabled": true
+    },
+    {
+      "id": "dw-3343b754",
+      "name": "scen-injection:dcw:barrel-temp-2-sp",
+      "value": 246,
+      "readValue": 246,
+      "readAt": null,
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "enabled": true
+    },
+    {
+      "id": "dw-3d74dcd3",
+      "name": "scen-injection:dcw:barrel-temp-3-sp",
+      "value": 252,
+      "readValue": 252,
+      "readAt": null,
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "enabled": true
+    },
+    {
+      "id": "dw-ce12a306",
+      "name": "scen-injection:dcw:barrel-temp-4-sp",
+      "value": 258,
+      "readValue": 258,
+      "readAt": null,
+      "min": 160,
+      "max": 300,
+      "stepLimit": 2.8,
+      "enabled": true
+    },
+    {
+      "id": "dw-7f8eefe4",
+      "name": "scen-injection:dcw:screw-speed-sp",
+      "value": 120,
+      "readValue": 120,
+      "readAt": null,
+      "min": 60,
+      "max": 200,
+      "stepLimit": 3,
+      "enabled": true
+    },
+    {
+      "id": "dw-4feb99fd",
+      "name": "scen-injection:dcw:mold-temp-sp",
+      "value": 40,
+      "readValue": 40,
+      "readAt": null,
+      "min": 20,
+      "max": 95,
+      "stepLimit": 1.5,
+      "enabled": true
+    },
+    {
+      "id": "dw-dce2c044",
+      "name": "scen-injection:dcw:clamp-force-sp",
+      "value": 1600,
+      "readValue": 1600,
+      "readAt": null,
+      "min": 800,
+      "max": 2500,
+      "stepLimit": 34,
+      "enabled": true
+    },
+    {
+      "id": "dw-6c4ba40e",
+      "name": "scen-injection:dcw:inject-speed-sp",
+      "value": 85,
+      "readValue": 85,
+      "readAt": null,
+      "min": 30,
+      "max": 130,
+      "stepLimit": 2,
+      "enabled": true
+    },
+    {
+      "id": "dw-339dbf7c",
+      "name": "scen-injection:dcw:hold-pressure-sp",
+      "value": 45,
+      "readValue": 45,
+      "readAt": null,
+      "min": 20,
+      "max": 110,
+      "stepLimit": 1.8,
+      "enabled": true
+    },
+    {
+      "id": "dw-ae9b4603",
+      "name": "scen-injection:dcw:hold-time-sp",
+      "value": 6,
+      "readValue": 6,
+      "readAt": null,
+      "min": 3,
+      "max": 15,
+      "stepLimit": 0.2,
+      "enabled": true
+    },
+    {
+      "id": "dw-78578b3c",
+      "name": "scen-injection:dcw:cool-water-sp",
+      "value": 24,
+      "readValue": 24,
+      "readAt": null,
+      "min": 10,
+      "max": 45,
+      "stepLimit": 0.7,
+      "enabled": true
+    }
+  ],
+  "lineHistory": [
+    {
+      "id": "wh-35f938c2",
+      "nodeId": "dw-78578b3c",
+      "nodeName": "scen-injection:dcw:cool-water-sp",
+      "param": "烘箱温度设定",
+      "eng": 24,
+      "raw": 24,
+      "ok": true,
+      "ack": "transport-ack",
+      "message": "已发布 24 → aw/inj/coolwater/set(QoS 1;broker 已受理,设备侧待验证)(标定后物理值 24)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.965+08:00"
+    },
+    {
+      "id": "wh-ea461859",
+      "nodeId": "dw-ae9b4603",
+      "nodeName": "scen-injection:dcw:hold-time-sp",
+      "param": "烘箱温度设定",
+      "eng": 6,
+      "raw": 6,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:6,回读 6(标定后物理值 6)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.954+08:00"
+    },
+    {
+      "id": "wh-d1f27872",
+      "nodeId": "dw-339dbf7c",
+      "nodeName": "scen-injection:dcw:hold-pressure-sp",
+      "param": "烘箱温度设定",
+      "eng": 45,
+      "raw": 45,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:45,回读 45(标定后物理值 45)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.945+08:00"
+    },
+    {
+      "id": "wh-c49b66a6",
+      "nodeId": "dw-6c4ba40e",
+      "nodeName": "scen-injection:dcw:inject-speed-sp",
+      "param": "烘箱温度设定",
+      "eng": 85,
+      "raw": 85,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:85,回读 85(标定后物理值 85)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.932+08:00"
+    },
+    {
+      "id": "wh-bf8a547f",
+      "nodeId": "dw-dce2c044",
+      "nodeName": "scen-injection:dcw:clamp-force-sp",
+      "param": "烘箱温度设定",
+      "eng": 1600,
+      "raw": 1600,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:1600 → raw 1600,回读 1600(标定后物理值 1600)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.922+08:00"
+    },
+    {
+      "id": "wh-abeec588",
+      "nodeId": "dw-4feb99fd",
+      "nodeName": "scen-injection:dcw:mold-temp-sp",
+      "param": "烘箱温度设定",
+      "eng": 40,
+      "raw": 40,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:40 → raw 40,回读 40(标定后物理值 40)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.913+08:00"
+    },
+    {
+      "id": "wh-ce4519cb",
+      "nodeId": "dw-7f8eefe4",
+      "nodeName": "scen-injection:dcw:screw-speed-sp",
+      "param": "烘箱温度设定",
+      "eng": 120,
+      "raw": 120,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:120 → raw 120,回读 120(标定后物理值 120)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.882+08:00"
+    },
+    {
+      "id": "wh-91a2ee6e",
+      "nodeId": "dw-ce12a306",
+      "nodeName": "scen-injection:dcw:barrel-temp-4-sp",
+      "param": "烘箱温度设定",
+      "eng": 258,
+      "raw": 258,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:258 → raw 258,回读 258(标定后物理值 258)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.851+08:00"
+    },
+    {
+      "id": "wh-03e897da",
+      "nodeId": "dw-3d74dcd3",
+      "nodeName": "scen-injection:dcw:barrel-temp-3-sp",
+      "param": "烘箱温度设定",
+      "eng": 252,
+      "raw": 252,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:252 → raw 252,回读 252(标定后物理值 252)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.820+08:00"
+    },
+    {
+      "id": "wh-2d4b4185",
+      "nodeId": "dw-3343b754",
+      "nodeName": "scen-injection:dcw:barrel-temp-2-sp",
+      "param": "烘箱温度设定",
+      "eng": 246,
+      "raw": 246,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:246 → raw 246,回读 246(标定后物理值 246)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.757+08:00"
+    },
+    {
+      "id": "wh-6839277c",
+      "nodeId": "dw-52356a22",
+      "nodeName": "scen-injection:dcw:barrel-temp-1-sp",
+      "param": "烘箱温度设定",
+      "eng": 240,
+      "raw": 240,
+      "ok": true,
+      "ack": "readback-verified",
+      "message": "写入并回读一致:240 → raw 240,回读 240(标定后物理值 240)",
+      "recipeRunId": "rr-9ca5c076",
+      "at": "2026-11-24T11:49:06.653+08:00"
+    }
+  ],
+  "runs": [
+    {
+      "id": "rr-9ca5c076",
+      "recipeId": "rc-379d8be0",
+      "recipeName": "scen-injection-recipe-tii24",
+      "productId": "pd-b192d3ab",
+      "lineId": "ln-4d6e8cd7",
+      "recipeVersion": 1,
+      "startedAt": "2026-11-24T11:49:06.627+08:00",
+      "endedAt": null,
+      "results": [
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-52356a22",
+          "ok": true,
+          "message": "写入并回读一致:240 → raw 240,回读 240(标定后物理值 240)",
+          "value": 240,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-3343b754",
+          "ok": true,
+          "message": "写入并回读一致:246 → raw 246,回读 246(标定后物理值 246)",
+          "value": 246,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-3d74dcd3",
+          "ok": true,
+          "message": "写入并回读一致:252 → raw 252,回读 252(标定后物理值 252)",
+          "value": 252,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-ce12a306",
+          "ok": true,
+          "message": "写入并回读一致:258 → raw 258,回读 258(标定后物理值 258)",
+          "value": 258,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-7f8eefe4",
+          "ok": true,
+          "message": "写入并回读一致:120 → raw 120,回读 120(标定后物理值 120)",
+          "value": 120,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-4feb99fd",
+          "ok": true,
+          "message": "写入并回读一致:40 → raw 40,回读 40(标定后物理值 40)",
+          "value": 40,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-dce2c044",
+          "ok": true,
+          "message": "写入并回读一致:1600 → raw 1600,回读 1600(标定后物理值 1600)",
+          "value": 1600,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-6c4ba40e",
+          "ok": true,
+          "message": "写入并回读一致:85,回读 85(标定后物理值 85)",
+          "value": 85,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-339dbf7c",
+          "ok": true,
+          "message": "写入并回读一致:45,回读 45(标定后物理值 45)",
+          "value": 45,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-ae9b4603",
+          "ok": true,
+          "message": "写入并回读一致:6,回读 6(标定后物理值 6)",
+          "value": 6,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "dcw-temp-sp",
+          "nodeId": "dw-78578b3c",
+          "ok": true,
+          "message": "已发布 24 → aw/inj/coolwater/set(QoS 1;broker 已受理,设备侧待验证)(标定后物理值 24)",
+          "value": 24,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 1
+          }
+        }
+      ],
+      "paramsSnapshot": [
+        {
+          "nodeId": "dw-52356a22",
+          "templateRef": "dcw-temp-sp",
+          "value": 240,
+          "min": 160,
+          "max": 300
+        },
+        {
+          "nodeId": "dw-3343b754",
+          "templateRef": "dcw-temp-sp",
+          "value": 246,
+          "min": 160,
+          "max": 300
+        },
+        {
+          "nodeId": "dw-3d74dcd3",
+          "templateRef": "dcw-temp-sp",
+          "value": 252,
+          "min": 160,
+          "max": 300
+        },
+        {
+          "nodeId": "dw-ce12a306",
+          "templateRef": "dcw-temp-sp",
+          "value": 258,
+          "min": 160,
+          "max": 300
+        },
+        {
+          "nodeId": "dw-7f8eefe4",
+          "templateRef": "dcw-temp-sp",
+          "value": 120,
+          "min": 60,
+          "max": 200
+        },
+        {
+          "nodeId": "dw-4feb99fd",
+          "templateRef": "dcw-temp-sp",
+          "value": 40,
+          "min": 20,
+          "max": 95
+        },
+        {
+          "nodeId": "dw-dce2c044",
+          "templateRef": "dcw-temp-sp",
+          "value": 1600,
+          "min": 800,
+          "max": 2500
+        },
+        {
+          "nodeId": "dw-6c4ba40e",
+          "templateRef": "dcw-temp-sp",
+          "value": 85,
+          "min": 30,
+          "max": 130
+        },
+        {
+          "nodeId": "dw-339dbf7c",
+          "templateRef": "dcw-temp-sp",
+          "value": 45,
+          "min": 20,
+          "max": 110
+        },
+        {
+          "nodeId": "dw-ae9b4603",
+          "templateRef": "dcw-temp-sp",
+          "value": 6,
+          "min": 3,
+          "max": 15
+        },
+        {
+          "nodeId": "dw-78578b3c",
+          "templateRef": "dcw-temp-sp",
+          "value": 24,
+          "min": 10,
+          "max": 45
+        }
+      ],
+      "ackSummary": {
+        "verified": 11,
+        "unverified": 0,
+        "failed": 0,
+        "total": 11
+      }
+    }
+  ],
+  "lines": [
+    {
+      "id": "ln-4d6e8cd7",
+      "name": "注塑成型质量窗口寻优 injection-tii24",
+      "color": "#3aa0ff",
+      "description": "家用电器面板(PP)注塑:规格克重 32.5±0.35 g、飞边 ≤0.4%、缩痕 ≤1.5%、尺寸偏差 ±0.05 mm。起始保压偏低 → 克重 ≈31.3 g 偏轻 + 缩痕超标;闭环把保压/保压时间/模温调回窗口,同时守住飞边上限。 [AWB-SCEN:injection 重复接入自动复用本线]",
+      "controlMode": "manual",
+      "simulated": false,
+      "createdAt": "2026-11-24T11:48:57.881+08:00"
+    }
+  ]
+}
