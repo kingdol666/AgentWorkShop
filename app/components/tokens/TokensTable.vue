@@ -137,13 +137,13 @@ const pagination = {
                 size="small"
                 @click="emit('rename', record)"
               >
-                <span class="i-tabler-edit" />
-                {{ $t('tokens.k3vrpcs009') }}
+                <span class="i-tabler-edit" /><span>{{ $t('tokens.k3vrpcs009') }}</span>
               </a-button>
               <a-popconfirm
                 :title="record.id === currentTokenId ? $t('tokens.revokeCurrentWarn') : $t('tokens.revokeWarn')"
                 :ok-text="$t('common.revoke')"
                 :cancel-text="$t('common.cancel')"
+                :ok-button-props="{ danger: true }"
                 @confirm="emit('revoke', record)"
               >
                 <!-- 安静文本按钮:常态墨灰,悬停转红 —— 红色只留给真实确认瞬间,不再整行批发 -->
@@ -152,8 +152,7 @@ const pagination = {
                   size="small"
                   class="tok-revoke"
                 >
-                  <span class="i-tabler-trash" />
-                  {{ $t('tokens.k3xmrz010') }}
+                  <span class="i-tabler-trash" /><span>{{ $t('tokens.k3xmrz010') }}</span>
                 </a-button>
               </a-popconfirm>
             </a-space>

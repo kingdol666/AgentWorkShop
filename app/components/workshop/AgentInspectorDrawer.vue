@@ -270,6 +270,7 @@ const stateDot: Record<string, string> = {
             :title="$t('agentInspectorDrawer.k1ofh789002')"
             :ok-text="$t('agentInspectorDrawer.okRemove')"
             :cancel-text="$t('common.cancel')"
+            :ok-button-props="{ danger: true }"
             @confirm="removeMember"
           >
             <a-button

@@ -141,6 +141,7 @@ const { t: tt } = useI18n()
             </a-button>
             <a-popconfirm
               :title="$t('agents.keetzvf007')"
+              :ok-button-props="{ danger: true }"
               @confirm="emit('remove', record)"
             >
               <a-button

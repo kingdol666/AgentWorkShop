@@ -236,6 +236,7 @@ useHead({ title: () => t('titles.users') })
               <a-popconfirm
                 :title="$t('users.k1jk2os9001')"
                 :disabled="isSelf(record as UserRecord)"
+                :ok-button-props="{ danger: true }"
                 @confirm="removeUser(record as UserRecord)"
               >
                 <a-button

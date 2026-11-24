@@ -178,7 +178,7 @@ onMounted(load)
         :loading="loading"
         @click="load"
       >
-        <span class="i-tabler-refresh" /> {{ t('settings.skills.refresh') }}
+        <span class="i-tabler-refresh" /><span>{{ t('settings.skills.refresh') }}</span>
       </a-button>
       <span class="sk-roots">
         <span

@@ -374,6 +374,7 @@ useHead({ title: () => t('titles.schedules') })
               </a-button>
               <a-popconfirm
                 :title="t('sched.deleteConfirm')"
+                :ok-button-props="{ danger: true }"
                 @confirm="remove(record as ScheduleDto)"
               >
                 <a-button

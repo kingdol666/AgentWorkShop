@@ -1418,6 +1418,16 @@ ul.task-list {
   border-radius: var(--radius-control) !important;
 }
 
+/* 按钮图标间距:antd 只为它自己的 <Icon class="anticon"> 生成 margin
+ * (`.anticon + span { margin-left: 8px }`),项目里用的是 UnoCSS 的
+ * <span class="i-tabler-*">,拿不到这条规则 → 图标直接贴住文字
+ * (实测"＋签发 Token""刷新""关闭会话"都是图标压字)。
+ * 约定:图标 span 与标签 span 相邻时由这里统一留 6px;icon-only 按钮不匹配。 */
+.ant-btn > span[class*="i-tabler"] + span,
+.ant-btn > span + span[class*="i-tabler"] {
+  margin-inline-start: 6px;
+}
+
 /* 行内文字按钮:可读的最低一档,危险操作保持语义红(原先 2.23:1 近乎隐形) */
 .ant-btn-text:not(:disabled),
 .ant-btn-link:not(:disabled) {
@@ -2761,6 +2771,16 @@ body {
   .ant-segmented-item-label {
     white-space: nowrap;
   }
+}
+
+/* 宽表在自身容器内滚动(桌面档同样成立)。
+ * antd 只有配了 scroll.x 时才给 .ant-table-content 加 overflow —— 未配置时是
+ * overflow:visible:实测 1024 宽下 /tokens 表格 861px 塞进 702px 容器,
+ * 操作列被裁到视口外 100px,而文档层没有横向滚动条,用户既看不到也点不到。
+ * 这里只把容器变成"自己的卷轴";≤900 的钉首列规则见下方媒体块。 */
+.ant-table-wrapper .ant-table-content,
+.ant-table-wrapper .ant-table-body {
+  overflow-x: auto !important;
 }
 
 /* ══ 3. 表格:窄屏成为"账页条"(可横扫,首列钉住) ═══════════════════════════

@@ -298,6 +298,7 @@ const avatarText = (m: AepChannelMember): string =>
               :title="$t('chat.removeConfirm')"
               :ok-text="$t('common.remove')"
               :cancel-text="$t('common.cancel')"
+              :ok-button-props="{ danger: true }"
               @confirm="onRemove(m)"
             >
               <a-button

@@ -177,6 +177,7 @@ watch(() => props.rows.length, (n) => {
                 :title="$t('analysis.removeConfirm', { p0: row.title })"
                 :ok-text="$t('analysis.remove')"
                 :cancel-text="$t('analysis.cancel')"
+                :ok-button-props="{ danger: true }"
                 placement="left"
                 @confirm="emit('remove', row)"
               >

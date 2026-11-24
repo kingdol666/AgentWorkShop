@@ -89,7 +89,9 @@ const themeConfig = computed(() => {
       colorInfo: dark ? '#41c8f4' : '#3f6094',
       // antd 默认 error 色 #ff4d4f 在暖纸底上只有 3.27:1(实测 danger 文字按钮)
       // —— 亮色档改用同色相的深红,暗色档反相提亮。
-      colorError: dark ? '#ff8080' : '#c0261f',
+      // 这里直接用产品语义红(--tone-danger-dot):此前是另一支红 #c0261f,
+      // 和 main.css 的朱红并排时"同一件事两种红",danger 按钮的描边最明显。
+      colorError: dark ? '#ff8080' : '#a83f34',
       colorLink: accent,
       borderRadius: 8,
       // 与 main.css --font-body 同源:Geist Variable(实际加载的字体;中文回退系统栈)
@@ -160,6 +162,7 @@ useHead({
   <a-config-provider
     :locale="antdLocale"
     :theme="themeConfig"
+    :auto-insert-space-in-button="false"
   >
     <NuxtLayout>
       <NuxtPage />

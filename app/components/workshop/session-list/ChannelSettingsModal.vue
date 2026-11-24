@@ -532,7 +532,7 @@ const openSaveTemplate = (): void => {
           @click="openSaveTemplate"
         >
           <span class="i-tabler-template" />
-          {{ $t('channelSessionList.k6kpql010') }}
+          <span>{{ $t('channelSessionList.k6kpql010') }}</span>
         </a-button>
         <span class="ws-hint">{{ $t('channelSessionList.k1x6kznr021') }}</span>
       </a-form-item>

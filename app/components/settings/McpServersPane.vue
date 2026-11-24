@@ -213,14 +213,14 @@ onMounted(load)
         :loading="loading"
         @click="load"
       >
-        <span class="i-tabler-refresh" /> {{ t('settings.mcp.refresh') }}
+        <span class="i-tabler-refresh" /><span>{{ t('settings.mcp.refresh') }}</span>
       </a-button>
       <a-button
         v-if="canAdmin"
         type="primary"
         @click="creating = !creating"
       >
-        <span class="i-tabler-plus" /> {{ t('settings.mcp.add') }}
+        <span class="i-tabler-plus" /><span>{{ t('settings.mcp.add') }}</span>
       </a-button>
     </div>
 
