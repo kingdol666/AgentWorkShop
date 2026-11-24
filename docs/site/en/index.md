@@ -77,7 +77,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.18.0 · released</i></span>
+        <span>Version <i>v0.19.0 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -94,11 +94,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.18.0 (RELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.19.0 (RELEASED)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      v0.18.0 keeps channels created over REST inside their workspace (visible in the workspace-scoped console, never leaking into another), resolves caller identity before resource lookup in detail/task routes, DAQ ingest and A2A methods, bounds line queries to a 24-hour default window, and refreshes the shared theme, settings tabs, drawer focus handling, header controls and boot splash with keyboard semantics and reduced-motion support. Earlier releases provide the integrated desktop shell, close-to-tray, the shared <code>~/.AgentWorkShop</code> home, GitHub-release in-app updates and the WSH silent-install helper:
+      v0.19.0 gives the product one identity and one button language: the workshop A is a single silhouette reused by the sidebar, the desktop title rail, the boot splash and every favicon, with the desktop icon set generated from those masters and a tray glyph that follows the Windows theme; the boot splash is a one-shot power-on sequence; the session header's close control is rebuilt on the semantic danger wash and the same defect class was swept across the button family (icon spacing, Chinese label spacing, danger palette, destructive confirmations, scrollable wide tables). Earlier releases provide workspace-scoped channels, identity-before-lookup detail/task APIs, bounded line queries, the refreshed shared theme, the integrated desktop shell, close-to-tray, the shared <code>~/.AgentWorkShop</code> home, GitHub-release in-app updates and the WSH silent-install helper:
       System Settings gains Skills (standard SKILL.md discovery → immutable managed import →
       explicit enable, covering built-in, <code>&lt;configRoot&gt;/skills</code> and
       <code>~/.agent/skills</code> global roots with zero script execution), external MCP

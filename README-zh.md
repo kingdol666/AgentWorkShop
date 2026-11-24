@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.18.0（2026-11-23 发布）</b> · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.19.0（2026-11-24 发布）</b> · 全站统一工作台字标 · 一次性通电启动序列 · 脚本生成的桌面图标与随主题切换的托盘 · 重建关闭会话控件并清扫按钮族 · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-18-0) · [0.18.0 发布说明](#whats-new-in-0180) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-19-0) · [0.19.0 发布说明](#whats-new-in-0190) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,11 +49,19 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 当前源码 v0.18.0
+## 当前源码 v0.19.0
 
-当前源码版本为 **0.18.0**（npm + GitHub Release，2026-11-23）。本版修复发版审查发现的 console 与 API 作用域缺陷，并刷新共享视觉层。REST 建的频道会挂到 owner 的默认工作区（或显式指定、且在建频道前校验归属的工作区），因此在按工作区作用域读取的 console 里可见；console 自身的「新建频道」弹窗把当前 workspace id 随创建请求提交，在一个工作区里建的频道不会再漏进另一个。详情与任务类 REST handler、DAQ 外部推送和 A2A JSON-RPC 方法都改为先解析调用者身份再查资源，未鉴权调用者不能再借 404/401 的差异枚举 ID；A2A AgentCard 的公开开关同时覆盖 JSON-RPC 的 `agent/getCard`。`GET /api/workshop/dcw/line/query` 省略时间窗时按最近 24h 查询，不再对时序历史做无界聚合。共享主题、设置页签、侧栏抽屉焦点、头部控件、HITL 浮层、页面族与桌面启动动画按键盘与读屏语义、令牌化颜色和减少动态效果重新整理。保留 0.17.5 桌面基线（关闭到托盘、托盘 5 项设置、分阶段启动动画、共享 home、应用内更新）与 0.16.x 的 AgentPrefab 能力基线。
+当前源码版本为 **0.19.0**（npm + GitHub Release，2026-11-24）。本版给产品收敛出**一个身份、一套按钮语言**：工作台的 A 字标是一条实心剪影，侧栏、桌面标题栏、启动页、网页与文档站 favicon、桌面徽标共用同一条路径；桌面图标改由 `pnpm brand:desktop` 从这些 SVG 母版生成 —— 九档 `icon.ico`（16–64 BMP、128/256 PNG）、180/512 PNG，以及随 Windows 主题切换的裸字标托盘图标，全部字节级可重现。启动页重做成一次性通电序列（扫描线 → 描字 → 四站信号轨 → 装配复检），进度仍只来自后端真实阶段，并遵守 `prefers-reduced-motion`。会话标题栏的「关闭会话」重建为语义红浅底控件，不再使用组件库默认的 24px 描边红按钮；同一类缺陷在全站清扫：按钮内联图标补齐 6px 间距、二字中文不再被自动插空格、`colorError` 与产品朱红同源、15 处破坏性确认框改用危险色按钮、宽表在自己的容器内横向滚动，操作列不再被裁。保留 0.18.0 的 console/API 作用域修复、0.17.5 桌面基线（关闭到托盘、托盘 5 项设置、分阶段启动动画、共享 home、应用内更新）与 0.16.x 的 AgentPrefab 能力基线。
 
 v0.16.0 验证：#262/#264/#265/#263/#266 PR quick-gate 全绿；focused 套件 **38/38**、合并后 **22/22** 与 **13/13**、Project/Prefab/Session 回归集 **235/235**；发布构建实机隔离验收——Leader/Prefab 全链 **30/30 ×2**（创建带 Prefab 的 Worker → SQLite 来源核验 → 名册标记 → 目录收窄 → dispatch 放行/拒绝 → 用户路径 Worker 保护 → lead 自改拒绝 → revision 切换即收窄 → 解绑 → 移除保留模板与 revision → REST 删 lead 409），官方 L10 全新实例 **21/21**，AgentTeam CRUD/部署/派发 **25/25**，前端 SSR 路由 200。Mimosa 深扫有封印（`sha256:a91957e0…`，54 findings，依赖风险 0）——findings 如实呈报，不作安全通过声明。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
+
+## What's new in 0.19.0
+
+- **一个字标，脚本生成图标**：工作台的 A 只有一条实心剪影 —— 平顶、216 单位基线、三角中宫，字里没有渐变也没有辉光。侧栏、桌面标题栏、启动页、浏览器 favicon、文档站 favicon 与桌面徽标共用同一条路径；`pnpm brand:desktop` 把仓库里的 SVG 母版光栅化成 512 徽标、九档 `icon.ico`（16–64 BMP、128/256 PNG）、180/512 PNG 与 32px 托盘字标，输出逐字节可重现。品牌字标与桌面图标同源，不再手工导出二进制。
+- **通电式启动序列**：启动页一格扫描线掠过，薄荷描边画出字标再交给实心字形；品牌横线变成四站信号轨，光点落在真实阶段进度上，装配阶段再复描一次轮廓。进度仍只取后端真实阶段，等待期间没有循环动效，`prefers-reduced-motion` 保留全部状态只去掉运动。启动动画从"进度条 + 清单"改成一次性通电序列。
+- **重建关闭会话控件**：会话标题栏改为 26px 语义红浅底 chip（`--tone-danger-bg` / `--tone-danger-dot`），12.5px/600、13px 单线叉号、图标与文字 6px 间距；悬停加深填充并起 32% 描边，关闭中显示旋转指示，确认框的按钮改为实心朱红。此前是组件库默认的 24px 描边红按钮：14px 字、17px 方框叉号压着文字、还是第三支红。
+- **按钮族全站清扫**：antd 按钮里的 UnoCSS 内联图标补齐 6px 间距（贴字 20 处 → 0）；关掉 `autoInsertSpaceInButton`，二字中文不再被撑成「部 署 / 刷 新 / 校 验 / 取 消 / 确 定」（14 处 → 0）；`colorError` 改为产品朱红（亮 `#a83f34` / 暗 `#ff8080`）；15 处破坏性确认框的「确定」从品牌绿改为危险色；未配 `scroll.x` 的宽表也能在容器内横扫，1024 宽下 `/tokens` 的操作列不再被裁到视口外。
+- **桌面壳**：0.17.5 基线的无边框标题栏、分阶段启动页与托盘集成行为不变；本轮更新图标、启动页视觉与应用内更新资产。实机证据见 `docs/design/desktop-chrome/acceptance.md` 与 `docs/audit/evidence/2026-11-24-close-session-button/REPORT.md`。
 
 ## What's new in 0.18.0
 
@@ -518,7 +526,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.18.0（已发布 2026-11-23）** —— [最新版本 v0.18.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.18.0) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.19.0（已发布 2026-11-24）** —— [最新版本 v0.19.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.19.0) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />
