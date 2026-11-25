@@ -73,7 +73,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.20.0 · 未发布</i></span>
+        <span>版本 <i>v0.20.1 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -90,11 +90,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.20.0 (UNRELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.20.1 (RELEASED 2026-11-25)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.20.0 版本：自动检查只提示新版本，桌面更新下载与重启安装均由用户明确选择；更新中心支持系统/PAC、受限手动代理与直连，并保持与 Web/本机服务隔离。只有校验文件完整匹配后才进入可安装状态；嵌入 Web 壳有品牌时桌面标题栏收起重复字标，窄屏保留简洁备用标识。此前版本已提供按工作区归属的频道、先验身份后查资源的详情/任务 API、有界产线查询、共享主题与无障碍刷新、一体化桌面壳、关闭到托盘、桌面/Web 共用 <code>~/.AgentWorkShop</code>、基于 GitHub Releases 的应用内更新与 WSH 安装助手：
+      当前为 v0.20.1 版本：本轮把 DAQ 时序库就绪门、Timescale 必需 schema 失败即止、CI 生产启动冒烟与 agent 子进程宿主密钥清洗落地，运行时不再在初始化未完成时静默丢写。桌面端同时保留 0.20.0 的更新能力：自动检查只提示新版本，桌面更新下载与重启安装均由用户明确选择；更新中心支持系统/PAC、受限手动代理与直连，并保持与 Web/本机服务隔离。只有校验文件完整匹配后才进入可安装状态；嵌入 Web 壳有品牌时桌面标题栏收起重复字标，窄屏保留简洁备用标识。此前版本已提供按工作区归属的频道、先验身份后查资源的详情/任务 API、有界产线查询、共享主题与无障碍刷新、一体化桌面壳、关闭到托盘、桌面/Web 共用 <code>~/.AgentWorkShop</code>、基于 GitHub Releases 的应用内更新与 WSH 安装助手：
       系统设置新增技能管理（标准 SKILL.md 发现 → 不可变受管导入 → 显式启用，覆盖
       内置、<code>&lt;configRoot&gt;/skills</code>、<code>~/.agent/skills</code> 等全局根，全程不执行
       Skill 脚本）、外部 MCP（HTTPS 清单 + <code>AW_MCP_*</code> 凭据引用 + 评审制

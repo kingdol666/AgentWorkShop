@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.20.0（未发布，2026-11-24）</b> · 桌面更新由用户明确同意 · 系统/手动/直连三种更新线路 · 可恢复且校验的下载 · 全站统一工作台字标 · 一次性通电启动序列 · 脚本生成的桌面图标与随主题切换的托盘 · 重建关闭会话控件并清扫按钮族 · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.20.1（已发布，2026-11-25）</b> · 时序库就绪门 · Timescale 必需 schema 失败即止 · CI 生产启动冒烟 · 引擎子进程宿主密钥清洗 · 桌面更新由用户明确同意 · 系统/手动/直连三种更新线路 · 可恢复且校验的下载 · 全站统一工作台字标 · 一次性通电启动序列 · 脚本生成的桌面图标与随主题切换的托盘 · 重建关闭会话控件并清扫按钮族 · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-20-0) · [0.20.0 发布说明](#whats-new-in-0200) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [当前源码](#当前源码-v0-20-1) · [0.20.1 发布说明](#whats-new-in-0201) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -49,11 +49,19 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 当前源码 v0.20.0（未发布）
+## 当前源码 v0.20.1（已发布）
 
-当前源码版本为 **0.20.0**（未发布，2026-11-24）。本版把自动检查、下载与重启安装彻底分开：下载完成不会重启，原生确认框默认选择「稍后」。更新中心支持跟随 Windows 系统/PAC、填写受限的无凭据 HTTP/HTTPS/SOCKS5 手动代理，或使用直连；三条线路都与 Web 渲染器和本机后端隔离。只有强校验器匹配时才续传，完整安装包通过对应版本校验文件后才进入可安装状态。下方 Web 壳已有品牌时，桌面标题栏自动让出重复字标；窄屏抽屉或无品牌页保留简洁备用标识。保留 0.19.0 的图标/启动动画方向与 0.18.0 的 console/API 作用域修复。
+当前源码版本为 **0.20.1**（npm + GitHub Release，2026-11-25）。本版处理全仓复审发现的运行时路径：数采时序库的就绪门对齐真实适配器初始化（或显式降级 SQLite），采集、刷盘与验收脚本都等待它；在线恢复、离线重试、旧初始化与旧 rollup 装配由代次守卫，迟到的初始化不会再覆盖已恢复的适配器或静默丢样。Timescale 启动时，必需表、hypertable、打标列或热路径索引创建失败即初始化失败并释放连接池（运行时显式降级），可选索引与压缩策略只告警；SQLite 写入自愈建表，初始化前的 Timescale 写入显式抛 `TSDB_NOT_READY`。CI 纳入独立 `.mjs` 套件与生产启动冒烟（构建、隔离启动、健康/SSR/401、缺会话密钥拒绝启动）。omp、逐行 spawn 与 Claude Agent SDK 三类引擎子进程统一按名称清洗宿主秘密，保留 `AW_ENGINE_*` 与显式注入的 provider key。保留 0.20.0 的桌面更新基础（明确同意、三条网络线路、可恢复且校验的下载）、0.19.0 的图标/启动动画方向与 0.18.0 的 console/API 作用域修复。
 
 v0.16.0 验证：#262/#264/#265/#263/#266 PR quick-gate 全绿；focused 套件 **38/38**、合并后 **22/22** 与 **13/13**、Project/Prefab/Session 回归集 **235/235**；发布构建实机隔离验收——Leader/Prefab 全链 **30/30 ×2**（创建带 Prefab 的 Worker → SQLite 来源核验 → 名册标记 → 目录收窄 → dispatch 放行/拒绝 → 用户路径 Worker 保护 → lead 自改拒绝 → revision 切换即收窄 → 解绑 → 移除保留模板与 revision → REST 删 lead 409），官方 L10 全新实例 **21/21**，AgentTeam CRUD/部署/派发 **25/25**，前端 SSR 路由 200。Mimosa 深扫有封印（`sha256:a91957e0…`，54 findings，依赖风险 0）——findings 如实呈报，不作安全通过声明。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
+
+## What's new in 0.20.1
+
+- **时序库就绪门成为真屏障**：存储只在适配器初始化完成（或显式降级 SQLite）后才报告就绪；采集、刷盘与验收脚本都等待它。在线恢复、离线重试、旧初始化与旧 rollup 装配由代次守卫，迟到的初始化不能覆盖已恢复的适配器，也不会静默丢样。屏障拒绝会被记录，但不再冻结刷盘缓冲。
+- **Timescale 必需 schema 失败即止**：必需表、hypertable、打标列与热路径索引不再吞错；任一失败会让初始化失败并释放连接池，可选索引与压缩策略只告警。SQLite 写入自愈建表；初始化前的 Timescale 写入显式抛 `TSDB_NOT_READY`。
+- **CI 覆盖发布路径**：quick-gate 纳入独立 `.mjs` 套件（18 条断言），新增 `build-smoke` 作业——生产构建、隔离端口启动、健康/SSR/401、缺 `NUXT_SESSION_PASSWORD` 拒绝启动。
+- **所有引擎子进程统一清洗宿主秘密**：omp、逐行 spawn 与 Claude Agent SDK 共用按名称的清洗规则（`*_TOKEN`、`*_SECRET`、`*_PASSWORD`、`*_API_KEY`、`PGPASSWORD`、`MYSQL_PWD`、provider 前缀），显式 provider key 在清洗后合并。
+- **验证（2026-11-25）**：隔离生产构建实机验收——产线接入 V1–V6 **8 通过 / 0 失败**（V6 无受保护线夹具按 SKIP）、REST **73/73**、DAQ **17/17** 且降级路径仍 fail-closed、Prefab 绑定 **15/15**、真实 omp goal 任务 COMPLETED 且交付物有数据实证；全量单测 **2,350 通过 / 0 失败 / 1 skip**；typecheck、lint、i18n 3,496/3,496、docs 101/0、quick-gate 与 build-smoke 全绿。Mimosa 扫描仍为 `runStatus=inconclusive`，**不报告为安全通过**。证据：[稳定性审查报告](docs/audit/evidence/2026-11-25-stability-audit/REPORT.md)。
 
 ## What's new in 0.20.0
 
@@ -531,7 +539,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.20.0（未发布）** —— 发布候选日期 2026-11-24；[桌面更新说明](./docs/desktop.md#更新通道) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.20.1（已发布 2026-11-25）** —— [v0.20.1 发布页](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.20.1) · [桌面更新说明](./docs/desktop.md#更新通道) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />
