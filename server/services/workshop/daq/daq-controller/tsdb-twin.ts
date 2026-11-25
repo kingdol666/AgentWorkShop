@@ -31,7 +31,15 @@ export abstract class DaqControllerTsdbTwin extends DaqControllerSweepAlarms {
     if (this.tsdbWriting) return
     this.tsdbWriting = true
     try {
-      await waitForTsdb()
+      try {
+        await waitForTsdb()
+      }
+      catch (err) {
+        // 屏障 reject(Timescale 与 SQLite 都初始化失败)曾让每次刷盘都在首行抛出:
+        // 调用点是 void,批次只增不减直到进程重启。适配器写入本身自愈(SQLite ensureDb)
+        // 或 fail-closed(Timescale TSDB_NOT_READY),因此记录失败后继续尝试。
+        markDaqRuntimeFailure(err, '时序库就绪')
+      }
       while (this.tsdbBuffer.length > 0) {
         const batch = this.tsdbBuffer.splice(0, this.tsdbBuffer.length)
         let ok = false

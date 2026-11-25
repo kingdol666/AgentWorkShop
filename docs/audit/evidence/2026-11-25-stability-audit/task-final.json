@@ -787,7 +787,7 @@
       "role": "ROLE_AGENT",
       "parts": [
         {
-          "text": "🔧 bash ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"CLAUDE_PROJECT_DIR='D:\\\\codes\\\\ABO\\\\AgentWorkShop'\\nHOST=0.0.0.0\\nHUGGINGFACEHUB_API_TOKEN=31788<REDACTED>\\nModelScope_API_KEY=ms-20a187b8-52cc-4877-8e6c-4eccbca3a59e\\nModelScope_BASE_URL=https://api-inference.modelscope.cn/v1\\nNITRO_HOST=0.0."
+          "text": "🔧 bash ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"CLAUDE_PROJECT_DIR='D:\\\\codes\\\\ABO\\\\AgentWorkShop'\\nHOST=0.0.0.0\\nHUGGINGFACEHUB_API_TOKEN=<REDACTED>\\nModelScope_API_KEY=<REDACTED>\\nModelScope_BASE_URL=https://api-inference.modelscope.cn/v1\\nNITRO_HOST=0.0."
         }
       ]
     },

@@ -19,6 +19,7 @@ yarn-error.log*
 pnpm-debug.log*
 # 验收证据日志需随报告入库(可复核);其余 *.log 仍忽略
 !docs/audit/evidence/**/logs/
+!docs/audit/evidence/2026-11-25-stability-audit/api-live-e2e.log
 !docs/audit/evidence/**/logs/*.log
 !docs/audit/evidence/**/gates/
 !docs/audit/evidence/**/gates/*.log
