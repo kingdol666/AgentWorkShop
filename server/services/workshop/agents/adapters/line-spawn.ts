@@ -46,14 +46,16 @@ const PLATFORM_SECRET_ENV = [
  * 证明只靠显式名单不足。带这些后缀/前缀的键一律不透传,引擎需要的
  * provider key 由 options.env 显式注入(合并在清洗之后)。
  */
-const SENSITIVE_ENV_SUFFIX = /(_|^)(TOKEN|SECRET|SECRETKEY|SECRET_KEY|PASSWORD|PASSWD|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIALS?)$/i
+const SENSITIVE_ENV_SUFFIX = /(TOKEN|SECRET|SECRETKEY|SECRET_KEY|PASSWORD|PASSWD|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIALS?)$/i
+/** `PGPASSWORD`/`MYSQL_PWD` 这类不带分隔符的宿主口令变量 */
+const SENSITIVE_ENV_PWD = /(^|_)PWD$/i
 const SENSITIVE_ENV_PREFIX = /^(HUGGINGFACE|HF_|NPM_|NODE_AUTH_TOKEN|GITHUB_|GH_|AWS_|OPENAI_|ANTHROPIC_|AZURE_|GOOGLE_API|COHERE_|MISTRAL_|GROQ_)/i
 /** 引擎侧显式占位(测试/适配器用于传递引擎 provider 凭据):放行 */
 const ENGINE_PASSTHROUGH = /^AW_ENGINE_/i
 
 function isSensitiveEnvKey(key: string): boolean {
   if (ENGINE_PASSTHROUGH.test(key)) return false
-  return SENSITIVE_ENV_SUFFIX.test(key) || SENSITIVE_ENV_PREFIX.test(key)
+  return SENSITIVE_ENV_SUFFIX.test(key) || SENSITIVE_ENV_PWD.test(key) || SENSITIVE_ENV_PREFIX.test(key)
 }
 
 /**

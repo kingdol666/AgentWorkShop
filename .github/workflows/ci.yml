@@ -1,4 +1,4 @@
-# CI 快测门禁:PR 必跑 typecheck / lint / unit 三件套。
+# CI 快测门禁:PR 必跑 typecheck / lint / unit / mjs 四步,另有 build-smoke 生产构建启动验收。
 # Team/chat/HITL/DAQ-DCW 模拟器 e2e 与外部依赖测试按环境分层,不在 PR 必跑
 # (套件矩阵见 docs/audit/2026-10-30-real-harness-acceptance-report.md)。
 name: CI

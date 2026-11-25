@@ -56,10 +56,13 @@ test('P1-1 名称即秘密的宿主变量不得透传给 agent 子进程', () =>
     AWS_SECRET_ACCESS_KEY: synthetic,
     OPENAI_API_KEY: synthetic,
     AW_DAQ_OBJECTSTORE_SECRETKEY: synthetic,
+    PGPASSWORD: synthetic,
+    MYSQL_PWD: synthetic,
+    ModelScope_API_KEY: synthetic,
     AW_ENGINE_PROVIDER_KEY: synthetic,
   }
   const env = scrubPlatformSecrets(input)
-  for (const name of ['HUGGINGFACEHUB_API_TOKEN', 'NPM_TOKEN', 'NODE_AUTH_TOKEN', 'AWS_SECRET_ACCESS_KEY', 'OPENAI_API_KEY', 'AW_DAQ_OBJECTSTORE_SECRETKEY']) {
+  for (const name of ['HUGGINGFACEHUB_API_TOKEN', 'NPM_TOKEN', 'NODE_AUTH_TOKEN', 'AWS_SECRET_ACCESS_KEY', 'OPENAI_API_KEY', 'AW_DAQ_OBJECTSTORE_SECRETKEY', 'PGPASSWORD', 'MYSQL_PWD', 'ModelScope_API_KEY']) {
     assert.equal(env[name], undefined, `${name} 不得进入 agent 运行环境`)
   }
   assert.equal(env.AW_ENGINE_PROVIDER_KEY, synthetic, '引擎显式占位必须放行')
@@ -77,6 +80,12 @@ test('P1-1 omp 启动器使用同一清洗函数(不得全量继承 process.env)
   const src = read('server/services/workshop/agents/adapters/omp-rpc-client/start.ts')
   assert.match(src, /scrubPlatformSecrets\(/, 'omp 必须复用平台秘密清洗')
   assert.ok(!src.includes('env: { ...process.env, ...this.options.env }'), '不得保留全量继承写法')
+})
+
+test('P1-1 Claude Agent SDK 子进程同样不得全量继承 process.env', () => {
+  const src = read('server/services/workshop/agents/claude-agent.ts')
+  assert.match(src, /scrubPlatformSecrets\(process\.env\)/, 'claude-agent 必须复用平台秘密清洗')
+  assert.ok(!src.includes('{ ...process.env }'), '不得保留全量继承写法')
 })
 
 // ═══════════════ P1-2 MES hook 白名单 ═══════════════

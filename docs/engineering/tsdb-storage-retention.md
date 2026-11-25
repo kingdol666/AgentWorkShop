@@ -107,11 +107,14 @@ PUT  /api/workshop/daq/storage/retention # 逐产线保留期(admin/editor)
 
 ## 6. 上线/回滚
 
-**数据库权限**:历史治理旁路会创建 `daq_rollup` / `daq_line_storage` / `daq_rollup_watermark`
-三张表与索引,并对 `daq_samples` 执行 `DELETE` / `drop_chunks`。外部托管 PostgreSQL 请预先授权
-(`CREATE` on schema public + 上述表的读写);旁路初始化失败会在日志打印
-`[daq-tsdb] 保留期/rollup 旁路初始化失败`,此时采集不受影响,但**保留期不会自动执行**,
-`GET /api/workshop/daq/storage` 会显示 `rollup.enabled=false`,需运维修复后重启。
+**数据库权限**:适配器启动时会创建 `daq_samples` / `daq_frames`（含 hypertable、打标列与热路径索引），
+历史治理旁路还会创建 `daq_rollup` / `daq_line_storage` / `daq_rollup_watermark` 三张表与索引，并对
+`daq_samples` 执行 `DELETE` / `drop_chunks`。外部托管 PostgreSQL 请预先授权：`CREATE` on schema public、
+`daq_samples` 上的 `ALTER TABLE ... ADD COLUMN` 与 `CREATE INDEX`、`daq_samples` / `daq_frames` 的读写，
+以及三张旁路表的读写。必需 DDL 失败会让适配器初始化失败并释放连接池（日志打印
+`[daq-tsdb] 时序后端初始化失败`，运行时降级 SQLite）；旁路失败只影响保留期聚合，日志打印
+`[daq-tsdb] 保留期/rollup 旁路初始化失败`，此时采集不受影响，但**保留期不会自动执行**，
+`GET /api/workshop/daq/storage` 会显示 `rollup.enabled=false`，需运维修复后重启。
 
 **升级(已有数据)**:直接部署新版本即可。
 

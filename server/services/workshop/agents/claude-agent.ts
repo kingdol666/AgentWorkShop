@@ -32,6 +32,7 @@ import { workerPrompt, peerPrompt, systemManual } from './prompt-builder'
 import { getHitlRegistry } from './hitl-registry'
 import { harnessSettings } from '../settings'
 import { generateMcpBridgeEnv } from './harness-env'
+import { scrubPlatformSecrets } from './adapters/line-spawn'
 import { BaseAgentImpl } from './base-agent'
 
 const log = createLogger('workshop.claude')
@@ -457,7 +458,8 @@ export class ClaudeSdkAgentImpl extends BaseAgentImpl implements AgentInterface 
       baseUrl: this.config.baseUrl,
       bridgePath: this.config.mcpBridgePath,
     })
-    const env: Record<string, string> = { ...process.env } as Record<string, string>
+    // 与 omp/逐行 spawn 同口径:先剥离宿主秘密,再由 bridge 与 provider 配置显式覆盖。
+    const env: Record<string, string> = { ...scrubPlatformSecrets(process.env) } as Record<string, string>
     Object.assign(env, bridge.bridgeEnv)
     if (this.config.apiKey) env.ANTHROPIC_AUTH_TOKEN = this.config.apiKey
     if (this.config.providerBaseUrl) env.ANTHROPIC_BASE_URL = this.config.providerBaseUrl

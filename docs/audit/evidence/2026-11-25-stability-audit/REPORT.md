@@ -67,4 +67,4 @@
 
 **修复**（PR #300）：在显式名单之外增加“名称即秘密”规则（`*_TOKEN`、`*_SECRET`、`*_PASSWORD`、`*_API_KEY`、`*_ACCESS_KEY` 等后缀与 `HUGGINGFACE|HF_|NPM_|GITHUB_|AWS_|OPENAI_|ANTHROPIC_|AZURE_` 等前缀；`AW_ENGINE_*` 保留为引擎显式透传）；omp 与逐行 spawn 均改为“先清洗 `process.env`、再合并显式 `options.env`”，保证引擎所需 provider key 不被误剥。回归测试覆盖该泄漏场景并含突变验证。
 
-**处理记录**：原始证据在推送到 GitHub 时被 secret scanning 拒绝；随即在本地将令牌值脱敏、重写提交（未产生远端明文）。**运维仍需独立轮换** Hugging Face 令牌、npm 令牌与该本地对象存储密钥——代码修复不能使已泄露的凭据恢复安全。
+**处理记录**：原始证据在推送到 GitHub 时被 secret scanning 拒绝；随即在本地将令牌值脱敏、重写提交（未产生远端明文）。**复审补丁（2026-11-25）**：首次脱敏漏掉了 agent `env` 转储中的两处值（`HUGGINGFACEHUB_API_TOKEN`、`ModelScope_API_KEY`），并遗漏了 Claude Agent SDK 子进程仍整份继承 `process.env` 的路径；两处已在后续补丁中修正（证据二次脱敏 + 该 spawn 路径接入同一清洗函数 + `PGPASSWORD`/`MYSQL_PWD` 等名称规则）。Git 历史仍包含脱敏前提交，**相关令牌必须轮换**——代码修复不能使已泄露的凭据恢复安全。
