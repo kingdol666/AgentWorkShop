@@ -14,7 +14,7 @@ defineProps<{
   setTMode: (m: 'translate' | 'rotate' | 'scale') => void
   onScaleInput: (v: number) => void
   onScaleCommit: (v: number) => void
-  removeSelectedDevice: () => void
+  removeSelectedDevice: (force?: boolean) => void
 }>()
 </script>
 
@@ -66,13 +66,20 @@ defineProps<{
     </div>
 
     <div class="ins-foot">
-      <button
-        class="btn btn-danger ins-del"
-        :class="{ armed: deviceDeleteArmed === selected.id }"
-        @click="removeSelectedDevice"
+      <ConfirmPopover
+        :title="$t('common.confirmDeleteTitle', { p0: selected.id })"
+        :description="$t('common.confirmDeleteDesc')"
+        :ok-text="$t('common.delete')"
+        @confirm="removeSelectedDevice(true)"
       >
-        {{ deviceDeleteArmed === selected.id ? $t('townView.k1w10xa5152') : $t('townView.k121kfef182') }}
-      </button>
+        <button
+          class="btn btn-danger ins-del"
+          :class="{ armed: deviceDeleteArmed === selected.id }"
+          type="button"
+        >
+          {{ deviceDeleteArmed === selected.id ? $t('townView.k1w10xa5152') : $t('townView.k121kfef182') }}
+        </button>
+      </ConfirmPopover>
     </div>
   </template>
   <div

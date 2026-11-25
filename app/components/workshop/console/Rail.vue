@@ -2,7 +2,7 @@
 /**
  * 控制台图标轨(ChatGPT 式 rail,56px 常驻左缘):
  *   顶部 侧栏开合 → 品牌(回总览) → ⌘K →
- *   中部 七个视图位(对话/时间线/泳道/任务板/同屏/小镇/多会话;tooltip+active 填充态)
+ *   中部六个视图位(对话/时间线/泳道/任务板/同屏/小镇;tooltip+active 填充态)
  *   → A2A 调试器 →
  *   底部 头像(回总览;登录态逃生口)。
  *
@@ -33,7 +33,6 @@ const items: Array<{ value: CenterView, icon: string, key: string }> = [
   { value: 'board', icon: 'i-tabler-list-check', key: 'wsView.k3ko7a8011' },
   { value: 'split', icon: 'i-tabler-layout-2', key: 'wsView.k3xbmo012' },
   { value: 'town', icon: 'i-tabler-map-2', key: 'wsView.k1cz0pbw013' },
-  { value: 'sessions', icon: 'i-tabler-stack-2', key: 'wsView.sessions' },
 ]
 
 /** 头像字母(邮箱首字符;未登录时回退站标) */

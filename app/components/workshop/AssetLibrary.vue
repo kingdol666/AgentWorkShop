@@ -198,14 +198,22 @@ async function doRemove(id: string): Promise<void> {
         <span class="model-name">{{ townModelName(t, m) }}</span>
         <span class="model-badge">{{ $t('assetLibrary.k1n32zs0006') }}</span>
         <div class="card-actions">
-          <button
+          <ConfirmPopover
             v-if="m.file.includes('/assets/game/devices/')"
-            class="card-btn danger"
+            :title="$t('assetLibrary.removeConfirmTitle', { p0: townModelName(t, m) })"
+            :description="$t('assetLibrary.removeConfirmDesc')"
+            :ok-text="$t('common.delete')"
             :disabled="deletingId === m.id"
-            @click="doRemove(m.id)"
+            @confirm="doRemove(m.id)"
           >
-            {{ deletingId === m.id ? '…' : $t('assetLibrary.k498l011') }}
-          </button>
+            <button
+              class="card-btn danger"
+              type="button"
+              :disabled="deletingId === m.id"
+            >
+              {{ deletingId === m.id ? '…' : $t('assetLibrary.k498l011') }}
+            </button>
+          </ConfirmPopover>
         </div>
       </div>
       <div

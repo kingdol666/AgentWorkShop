@@ -26,12 +26,14 @@ const props = defineProps<{
   wsId: string
   /** 聚焦 channel(会话分组的数据作用域;undefined = 未聚焦) */
   channelId?: string
+  /** 对话页当前选中会话(null=群聊)，用于侧栏高亮 */
+  activeSessionId?: string | null
 }>()
 
 const emit = defineEmits<{
   (e: 'openAgent', target: { channelId: string, agentId: string }): void
   (e: 'openPalette'): void
-  (e: 'openSession', sessionId: string): void
+  (e: 'openSession', sessionId: string | null): void
 }>()
 
 const wsStore = useWorkspacesStore()
@@ -169,6 +171,21 @@ const goTemplates = (): void => {
          相邻 antd Select 的 DOM 上(行内 .row1 布局丢失、按钮错位)。
          ClientOnly 隔离:SSR 输出空壳,客户端一次性渲染,无水合配对。 -->
     <ClientOnly>
+      <!-- 会话分组优先(ChatGPT「历史会话」同位)：聚焦频道后先看到当前对话，频道列表在后 -->
+      <div
+        v-if="channelId"
+        class="side-section"
+      >
+        <div class="side-label">
+          {{ $t('sessionManage.title') }}
+        </div>
+        <workshop-console-session-mini-list
+          :channel-id="channelId"
+          :active-session-id="activeSessionId"
+          @open="emit('openSession', $event)"
+        />
+      </div>
+
       <div class="side-section">
         <div class="side-label">
           {{ $t('wsView.channelListTitle') }} · {{ mountedChannels.length }}
@@ -212,15 +229,22 @@ const goTemplates = (): void => {
             >
               <span class="i-tabler-settings2 im-pop" />
             </button>
-            <button
-              class="op im"
-              type="button"
-              :title="$t('channelSessionList.unmountTitle')"
-              :aria-label="$t('channelSessionList.k1yurooi036', { p0: ch.name })"
-              @click.stop="unmount(ch.id)"
+            <ConfirmPopover
+              :title="$t('channelSessionList.unmountConfirmTitle', { p0: ch.name })"
+              :description="$t('channelSessionList.unmountConfirmDesc')"
+              :ok-text="$t('common.remove')"
+              @confirm="unmount(ch.id)"
             >
-              <span class="i-tabler-x im-pop" />
-            </button>
+              <button
+                class="op im"
+                type="button"
+                :title="$t('channelSessionList.unmountTitle')"
+                :aria-label="$t('channelSessionList.k1yurooi036', { p0: ch.name })"
+                @click.stop
+              >
+                <span class="i-tabler-x im-pop" />
+              </button>
+            </ConfirmPopover>
           </div>
           <div class="row2">
             <!-- 快照未到达:计数不可信,显示同步占位(不呈现误导性的"0 成员") -->
@@ -245,19 +269,7 @@ const goTemplates = (): void => {
         </div>
       </div>
 
-      <!-- 会话分组(聚焦频道;ChatGPT「历史会话」同位):点击切到多会话视图 -->
-      <div
-        v-if="channelId"
-        class="side-section"
-      >
-        <div class="side-label">
-          {{ $t('sessionManage.title') }}
-        </div>
-        <workshop-console-session-mini-list
-          :channel-id="channelId"
-          @open="emit('openSession', $event)"
-        />
-      </div>
+      <!-- 会话分组已在频道列表之前渲染（首屏可见，不依赖滚动） -->
 
       <div class="mount-template">
         <a-select

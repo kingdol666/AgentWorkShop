@@ -76,21 +76,36 @@ const filterProductId = defineModel<string>('filterProductId', { required: true 
       >
         {{ $t('dcwDetail.k3x4t1069') }}
       </button>
-      <button
+      <div
         v-for="p in lineProducts"
         :key="p.id"
         class="prod-chip"
         :class="{ on: filterProductId === p.id }"
+        role="button"
+        tabindex="0"
         :title="p.description"
         @click="filterProductId = p.id"
+        @keydown.enter.prevent="filterProductId = p.id"
+        @keydown.space.prevent="filterProductId = p.id"
       >
         {{ p.name }}
-        <span
-          class="prod-del"
-          :title="$t('dcwDetail.k1bpfjgx012')"
-          @click.stop="emit('remove-product', p.id)"
-        >×</span>
-      </button>
+        <ConfirmPopover
+          :title="$t('dcw.removeProductConfirmTitle', { p0: p.name })"
+          :description="$t('dcw.removeProductConfirmDesc')"
+          :ok-text="$t('common.delete')"
+          @confirm="emit('remove-product', p.id)"
+        >
+          <span
+            class="prod-del"
+            role="button"
+            tabindex="0"
+            :title="$t('dcwDetail.k1bpfjgx012')"
+            @keydown.enter.stop.prevent="($event.currentTarget as HTMLElement).click()"
+            @keydown.space.stop.prevent="($event.currentTarget as HTMLElement).click()"
+            @click.stop
+          >×</span>
+        </ConfirmPopover>
+      </div>
     </div>
     <p
       v-else
@@ -179,12 +194,19 @@ const filterProductId = defineModel<string>('filterProductId', { required: true 
           >
             {{ $t('dcwDetail.dispatchHistBtn') }}
           </button>
-          <button
-            class="mini-btn danger"
-            @click="emit('remove-recipe', r.id)"
+          <ConfirmPopover
+            :title="$t('dcw.removeRecipeConfirmTitle', { p0: r.name })"
+            :description="$t('dcw.removeRecipeConfirmDesc')"
+            :ok-text="$t('common.delete')"
+            @confirm="emit('remove-recipe', r.id)"
           >
-            {{ $t('dcwDetail.k3xakp063') }}
-          </button>
+            <button
+              class="mini-btn danger"
+              type="button"
+            >
+              {{ $t('dcwDetail.k3xakp063') }}
+            </button>
+          </ConfirmPopover>
         </div>
       </div>
       <div
@@ -320,6 +342,11 @@ const filterProductId = defineModel<string>('filterProductId', { required: true 
 .prod-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 12px; font-size: 12px; cursor: pointer; color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); }
 .prod-chip.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 .prod-del { color: var(--tone-danger-dot); font-weight: 700; }
+.prod-del:focus-visible,
+.prod-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* 配方网格:minmax(320px) 在 355px 画布(减去卡片内边距)里会溢出 1px,用 min() 兜住 */
 .recipe-grid { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }

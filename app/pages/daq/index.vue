@@ -218,7 +218,6 @@ const opt = useDaqOptimizations()
       :editing="tpl.tplEditing.value"
       :saving="tpl.tplSaving.value"
       :error="tpl.tplError.value"
-      :confirming-del="tpl.confirmingDel.value"
       @edit="tpl.editTpl"
       @copy="tpl.copyTpl"
       @remove="tpl.askDelTpl"

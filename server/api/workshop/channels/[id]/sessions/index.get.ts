@@ -32,6 +32,7 @@ export default defineApiHandler(async (event) => {
       memberMap: parseMemberMap(s.memberMapJson),
       createdAt: s.createdAt,
       closedAt: s.closedAt,
+      archivedAt: s.archivedAt,
       channelMode: s.channelMode,
       productId: s.productId,
       lineId: s.lineId,

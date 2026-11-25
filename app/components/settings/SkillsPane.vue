@@ -118,32 +118,23 @@ async function toggle(item: ManagedRevision, checked: boolean): Promise<void> {
   }
 }
 
-function remove(item: ManagedRevision): void {
-  Modal.confirm({
-    title: t('settings.skills.removeConfirm'),
-    content: `${item.name}@${item.contentHash.slice(0, 12)}`,
-    okText: t('common.delete'),
-    okType: 'danger',
-    cancelText: t('common.cancel'),
-    onOk: async () => {
-      busyId.value = item.id
-      try {
-        await apiFetch({
-          base: '/api/system/skills',
-          path: `/${encodeURIComponent(item.id)}`,
-          init: { method: 'DELETE' },
-        })
-        message.success(t('settings.skills.removed'))
-        await load()
-      }
-      catch (err) {
-        message.error(err instanceof Error ? err.message : String(err))
-      }
-      finally {
-        busyId.value = null
-      }
-    },
-  })
+async function removeNow(item: ManagedRevision): Promise<void> {
+  busyId.value = item.id
+  try {
+    await apiFetch({
+      base: '/api/system/skills',
+      path: `/${encodeURIComponent(item.id)}`,
+      init: { method: 'DELETE' },
+    })
+    message.success(t('settings.skills.removed'))
+    await load()
+  }
+  catch (err) {
+    message.error(err instanceof Error ? err.message : String(err))
+  }
+  finally {
+    busyId.value = null
+  }
 }
 
 onMounted(load)
@@ -235,15 +226,22 @@ onMounted(load)
         width="100px"
       >
         <template #default="{ record }">
-          <a-button
-            danger
-            type="link"
-            size="small"
+          <ConfirmPopover
+            :title="t('settings.skills.removeConfirm')"
+            :description="`${record.name}@${record.contentHash.slice(0, 12)}`"
+            :ok-text="t('common.delete')"
             :disabled="!canAdmin || busyId === record.id"
-            @click="remove(record)"
+            @confirm="removeNow(record)"
           >
-            {{ t('common.delete') }}
-          </a-button>
+            <a-button
+              danger
+              type="link"
+              size="small"
+              :disabled="!canAdmin || busyId === record.id"
+            >
+              {{ t('common.delete') }}
+            </a-button>
+          </ConfirmPopover>
         </template>
       </a-table-column>
       <template #expandedRowRender="{ record }">

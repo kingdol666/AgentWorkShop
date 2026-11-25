@@ -112,15 +112,25 @@ const {
         >
           <span :class="group.collapsed ? 'i-tabler-chevrons-down' : 'i-tabler-chevrons-up'" />
         </button>
-        <button
+        <ConfirmPopover
           v-if="group.source === 'user'"
-          class="mini-btn"
+          :title="t('settings.groups.deleteConfirmTitle', { p0: groupLabel(group) })"
+          :description="t('settings.groups.deleteConfirmDesc')"
+          :ok-text="t('common.delete')"
           :disabled="groupBusy === group.id"
-          :title="t('settings.groups.delete')"
-          @click="removeGroup(group)"
+          @confirm="removeGroup(group)"
         >
-          <span class="i-tabler-trash" />
-        </button>
+          <button
+            class="mini-btn"
+            type="button"
+            :disabled="groupBusy === group.id"
+            :title="t('settings.groups.delete')"
+            :aria-label="t('settings.groups.delete')"
+            @click.stop
+          >
+            <span class="i-tabler-trash" />
+          </button>
+        </ConfirmPopover>
       </span>
     </header>
 

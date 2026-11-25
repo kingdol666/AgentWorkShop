@@ -144,11 +144,22 @@ const { fmtTime, fmtNum, fmtPct, shortId } = useAmlFormat()
                     :title="$t('aml.k1amlx189')"
                     @click="$emit('editNote', d.id, d.note)"
                   />
-                  <span
-                    class="i-tabler-trash edit-i"
-                    :title="$t('aml.k1amlx190')"
-                    @click="$emit('remove', d.id, $t('aml.k1amlx198'))"
-                  />
+                  <ConfirmPopover
+                    :title="$t('aml.k1amlx198')"
+                    :description="$t('common.confirmDeleteDesc')"
+                    :ok-text="$t('common.delete')"
+                    @confirm="$emit('remove', d.id, $t('aml.k1amlx198'))"
+                  >
+                    <span
+                      class="i-tabler-trash edit-i"
+                      role="button"
+                      tabindex="0"
+                      :title="$t('aml.k1amlx190')"
+                      :aria-label="$t('aml.k1amlx190')"
+                      @keydown.enter.prevent="($event.currentTarget as HTMLElement).click()"
+                      @keydown.space.prevent="($event.currentTarget as HTMLElement).click()"
+                    />
+                  </ConfirmPopover>
                 </span>
               </td>
             </tr>

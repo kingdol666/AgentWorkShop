@@ -18,13 +18,30 @@ import type { ProductView } from '#shared/dcw-protocol'
 
 const { t } = useI18n()
 
-const props = defineProps<{ channelId: string }>()
-const emit = defineEmits<{ (e: 'openAgent', id: string): void }>()
+const props = defineProps<{
+  channelId: string
+  /** 嵌入对话页：隐藏自身页头与会话卡栏，只渲染 selectedSessionId 的会话详情。 */
+  embedded?: boolean
+  /** 嵌入模式由父层控制的选中会话；null = 群聊（本组件不抢选第一个）。 */
+  selectedSessionId?: string | null
+}>()
+const emit = defineEmits<{
+  (e: 'openAgent', id: string): void
+  (e: 'select-session', id: string | null): void
+  (e: 'sessions-changed'): void
+}>()
 
 const api = useWorkshopApi()
 
 // ===== 数据面 =====
 const sessions = ref<ChannelSessionSummaryDto[]>([])
+/** 侧栏会话迷你列表共享的版本号：本视图的增删改都 bump 一次。 */
+const sessionListRevision = useState<number>('aw-session-list-revision', () => 0)
+/** 会话增删改后同时通知侧栏与嵌入宿主（会话条/选中项）。 */
+function notifySessionsChanged(): void {
+  sessionListRevision.value += 1
+  emit('sessions-changed')
+}
 const agentById = ref<Record<string, { id: string, name: string, enabled?: number, harness: string }>>({})
 const queueByAgent = ref<Record<string, { state: string, queuedCount: number, completedCount: number }>>({})
 const loading = ref(true)
@@ -39,6 +56,10 @@ const briefBlock = ref<string | null>(null)
 const history = ref<SessionHistoryDto[]>([])
 const composerText = ref('')
 const sending = ref(false)
+let messagesSeq = 0
+let contextSeq = 0
+let loadAllSeq = 0
+let productsSeq = 0
 const pendingSessionSend = ref<{ sessionId: string, text: string, clientMessageId: string } | null>(null)
 const newClientMessageId = (): string => {
   const cryptoApi = globalThis.crypto as Crypto | undefined
@@ -64,26 +85,31 @@ const productName = (productId?: string | null): string =>
   dcwProducts.value.find(product => product.id === productId)?.name ?? productId ?? '—'
 const snapshotHashLabel = (hash?: string): string => hash || '—'
 async function loadProducts(): Promise<void> {
+  const seq = ++productsSeq
+  const channelId = props.channelId
   productsLoading.value = true
   productsError.value = ''
   channelMode.value = null
   try {
     const channels = await api.listChannels()
-    const channel = channels.data?.find(channel => channel.id === props.channelId)
+    if (seq !== productsSeq || channelId !== props.channelId) return
+    const channel = channels.data?.find(channel => channel.id === channelId)
     if (!channel) throw new Error(t('sessionManage.channelUnavailable'))
     channelMode.value = channel.channelMode === 'production_line_integrated' ? 'production_line_integrated' : 'generic'
     if (channelMode.value === 'generic') return
-    const [bindings, catalog] = await Promise.all([api.getChannelProducts(props.channelId), api.getDcwCatalog()])
+    const [bindings, catalog] = await Promise.all([api.getChannelProducts(channelId), api.getDcwCatalog()])
+    if (seq !== productsSeq || channelId !== props.channelId) return
     channelProductIds.value = bindings.data?.productIds ?? []
     productRevision.value = bindings.data?.revision ?? 0
     dcwProducts.value = (catalog.data?.products ?? bindings.data?.products ?? [])
       .filter(product => channel.lineId && product.lineId === channel.lineId)
   }
   catch (err) {
+    if (seq !== productsSeq || channelId !== props.channelId) return
     productsError.value = apiErrorMessage(err)
   }
   finally {
-    productsLoading.value = false
+    if (seq === productsSeq && channelId === props.channelId) productsLoading.value = false
   }
 }
 
@@ -105,14 +131,18 @@ function sessionClones(s: ChannelSessionSummaryDto): string[] {
 const stateLabel = (state: string): string =>
   state === 'busy' ? t('sessionManage.stateBusy') : state === 'stopped' ? t('sessionManage.stateStopped') : t('sessionManage.stateIdle')
 
-async function loadAll(): Promise<void> {
+async function loadAll(options: { autoSelect?: boolean } = {}): Promise<void> {
+  const seq = ++loadAllSeq
+  const channelId = props.channelId
   loading.value = true
   loadError.value = ''
   const [sess, agents, queue] = await Promise.allSettled([
-    api.listChannelSessions(props.channelId),
-    api.listChannelAgents(props.channelId),
-    api.queueOverview(props.channelId),
+    api.listChannelSessions(channelId),
+    api.listChannelAgents(channelId),
+    api.queueOverview(channelId),
   ])
+  // 快速切频道/重试:旧代际响应不得写回,也不得取消新一代的产物加载
+  if (seq !== loadAllSeq || channelId !== props.channelId) return
   void loadProducts()
   if (sess.status === 'fulfilled') {
     sessions.value = [...(sess.value.data ?? [])].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
@@ -131,8 +161,23 @@ async function loadAll(): Promise<void> {
     queueByAgent.value = {}
   }
   loading.value = false
-  // 自动选中:优先第一个 active 会话,否则第一个
-  if (!activeSessionId.value || !sessions.value.some(s => s.id === activeSessionId.value)) {
+  if (props.embedded) {
+    // 嵌入对话页：选中权归父层（群聊 = null），本组件不得自动抢选第一个会话。
+    const target = props.selectedSessionId
+      ? sessions.value.find(s => s.id === props.selectedSessionId)
+      : undefined
+    if (target) await selectSession(target)
+    else if (activeSessionId.value) {
+      activeSessionId.value = null
+      messages.value = []
+      brief.value = null
+      briefBlock.value = null
+      history.value = []
+    }
+    return
+  }
+  // 自动选中:优先第一个 active 会话,否则第一个(归档路径传 autoSelect:false,由调用方只选一次)
+  if (options.autoSelect !== false && (!activeSessionId.value || !sessions.value.some(s => s.id === activeSessionId.value))) {
     const first = sessions.value.find(s => s.status === 'active') ?? sessions.value[0]
     if (first) void selectSession(first)
     else activeSessionId.value = null
@@ -153,10 +198,12 @@ function stopPoll(): void {
 }
 
 async function loadMessages(s: ChannelSessionSummaryDto): Promise<void> {
+  const seq = ++messagesSeq
   messagesLoading.value = true
   try {
     const cloneIds = new Set(sessionClones(s))
     const res = await api.listChannelMessages(props.channelId, 500)
+    if (seq !== messagesSeq || activeSessionId.value !== s.id) return
     const rows = (res.data ?? []).filter(m =>
       (m.fromAgentId != null && cloneIds.has(m.fromAgentId)) || (m.toAgentId != null && cloneIds.has(m.toAgentId)),
     )
@@ -167,19 +214,23 @@ async function loadMessages(s: ChannelSessionSummaryDto): Promise<void> {
     if (sig(next) !== sig(messages.value)) messages.value = next
   }
   catch (err) {
-    messages.value = []
+    if (seq === messagesSeq && activeSessionId.value === s.id) messages.value = []
     if (isAuthError(err)) stopPoll()
   }
-  finally { messagesLoading.value = false }
+  finally {
+    if (seq === messagesSeq) messagesLoading.value = false
+  }
 }
 
 /** Session Context：brief/block/history 与消息并行拉取；失败不阻断消息面。 */
 async function loadContext(s: ChannelSessionSummaryDto): Promise<void> {
+  const seq = ++contextSeq
   const [b, h, blk] = await Promise.allSettled([
     api.getSessionBrief(props.channelId, s.id),
     api.getSessionHistory(props.channelId, s.id, 80),
     api.getSessionBlock(props.channelId, s.id),
   ])
+  if (seq !== contextSeq || activeSessionId.value !== s.id) return
   brief.value = b.status === 'fulfilled' ? (b.value.data ?? null) : null
   history.value = h.status === 'fulfilled' ? (h.value.data ?? []) : []
   briefBlock.value = blk.status === 'fulfilled' ? (blk.value.data?.block ?? null) : null
@@ -213,8 +264,29 @@ async function sendMessage(): Promise<void> {
 
 async function selectSession(s: ChannelSessionSummaryDto): Promise<void> {
   activeSessionId.value = s.id
+  // 切换即清空旧内容：旧请求返回后会按 sessionId/seq 丢弃，不会落到新标题下。
+  messages.value = []
+  brief.value = null
+  briefBlock.value = null
+  history.value = []
   await Promise.all([loadMessages(s), loadContext(s)])
 }
+
+/** 嵌入模式：父层切换会话时跟随；选中 id 失效（归档/删除）则清空详情等父层回落群聊。 */
+watch(() => props.selectedSessionId, (id) => {
+  if (!props.embedded) return
+  const target = id ? sessions.value.find(s => s.id === id) : undefined
+  if (target) void selectSession(target)
+  else {
+    messagesSeq += 1
+    contextSeq += 1
+    activeSessionId.value = null
+    messages.value = []
+    brief.value = null
+    briefBlock.value = null
+    history.value = []
+  }
+})
 
 // 选中会话为 active 时轻轮询(10s):新消息与运行态回流;切换/卸载/登出即停
 let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -259,9 +331,13 @@ async function submitCreate(): Promise<void> {
     createTitle.value = ''
     createProductId.value = undefined
     await loadAll()
+    notifySessionsChanged()
     if (res.data?.sessionId) {
       const s = sessions.value.find(x => x.id === res.data!.sessionId)
-      if (s) await selectSession(s)
+      if (s) {
+        await selectSession(s)
+        emit('select-session', s.id)
+      }
     }
   }
   catch (err) {
@@ -278,11 +354,63 @@ async function submitClose(s: ChannelSessionSummaryDto): Promise<void> {
     const res = await api.closeChannelSession(props.channelId, s.id, { reason: 'owner closed from console' })
     message.success(t('sessionManage.closeOk', { p0: s.title, p1: res.data?.canceledTasks ?? 0 }))
     await loadAll()
+    notifySessionsChanged()
   }
   catch (err) {
     message.error(apiErrorMessage(err))
   }
   finally { closing.value = null }
+}
+
+// ===== 会话改名(仅展示标题) =====
+const renameOpen = ref(false)
+const renameTitle = ref('')
+const renaming = ref(false)
+function openRename(s: ChannelSessionSummaryDto): void {
+  renameTitle.value = s.title
+  renameOpen.value = true
+}
+async function submitRename(): Promise<void> {
+  const session = activeSession.value
+  const title = renameTitle.value.trim()
+  if (!session || !title || renaming.value) return
+  renaming.value = true
+  try {
+    const res = await api.renameChannelSession(props.channelId, session.id, { title })
+    const next = res.data?.title ?? title
+    const row = sessions.value.find(item => item.id === session.id)
+    if (row) row.title = next
+    renameOpen.value = false
+    message.success(t('sessionManage.renameOk', { p0: next }))
+    notifySessionsChanged()
+  }
+  catch (err) {
+    message.error(apiErrorMessage(err))
+  }
+  finally { renaming.value = false }
+}
+
+// ===== 归档会话(active 先关闭级联;归档后从清单隐藏) =====
+const archiving = ref<string | null>(null)
+async function submitArchive(s: ChannelSessionSummaryDto): Promise<void> {
+  archiving.value = s.id
+  const removedIndex = sessions.value.findIndex(item => item.id === s.id)
+  try {
+    const res = await api.archiveChannelSession(props.channelId, s.id)
+    message.success(t('sessionManage.archiveOk', { p0: s.title, p1: res.data?.canceledTasks ?? 0 }))
+    if (activeSessionId.value === s.id) activeSessionId.value = null
+    // 归档后只选一次：先无自动选择地刷新清单，再按原索引选下一个可用会话。
+    await loadAll({ autoSelect: false })
+    // 优先选中原位置的「下一个」可用会话（列表已移除归档项，索引自然前移）。
+    const next = sessions.value[Math.min(Math.max(removedIndex, 0), sessions.value.length - 1)]
+    if (next) await selectSession(next)
+    emit('select-session', next?.id ?? null)
+    notifySessionsChanged()
+  }
+  catch (err) {
+    message.error(apiErrorMessage(err))
+  }
+  finally { archiving.value = null }
 }
 
 // ===== 消息行渲染 =====
@@ -327,12 +455,24 @@ watch(() => props.channelId, () => {
   productRevision.value = 0
   void loadAll()
 })
+
+/** 嵌入对话页时由宿主触发「新建会话」（复用本组件已有的产品选择/创建流程）。 */
+defineExpose({
+  openCreate: (): void => { createOpen.value = true },
+  refresh: (): Promise<void> => loadAll(),
+})
 </script>
 
 <template>
-  <div class="sm-wrap">
-    <!-- 头部:标题 + 刷新 + 新建 -->
-    <header class="sm-head">
+  <div
+    class="sm-wrap"
+    :class="{ 'is-embedded': embedded }"
+  >
+    <!-- 头部:标题 + 刷新 + 新建(嵌入对话页时由宿主页头承载) -->
+    <header
+      v-if="!embedded"
+      class="sm-head"
+    >
       <div class="sm-title-row">
         <span class="i-tabler-stack-2 sm-title-icon" />
         <h3 class="sm-title">
@@ -344,7 +484,7 @@ watch(() => props.channelId, () => {
           class="sm-refresh"
           :disabled="loading"
           :title="t('sessionManage.refresh')"
-          @click="loadAll"
+          @click="loadAll()"
         >
           <span
             class="i-tabler-refresh"
@@ -395,7 +535,10 @@ watch(() => props.channelId, () => {
       class="sm-body"
     >
       <!-- 左:会话卡片列 -->
-      <aside class="sm-rail">
+      <aside
+        v-if="!embedded"
+        class="sm-rail"
+      >
         <button
           v-for="s in sessions"
           :key="s.id"
@@ -464,17 +607,56 @@ watch(() => props.channelId, () => {
                 class="sm-dot"
                 :class="activeSession.status === 'active' ? 'is-active-dot' : 'is-closed-dot'"
               />
-              <h4>{{ activeSession.title }}</h4>
+              <h4 data-testid="session-detail-title">
+                {{ activeSession.title }}
+              </h4>
               <span
                 class="sm-badge"
                 :class="activeSession.status === 'active' ? 'is-ok' : 'is-muted'"
               >{{ activeSession.status === 'active' ? t('sessionManage.active') : t('sessionManage.closed') }}</span>
               <span class="sm-head-spacer" />
-              <a-popconfirm
-                v-if="activeSession.status === 'active'"
-                :title="t('sessionManage.closeConfirm')"
+              <button
+                v-if="activeSession.instanceKind === 'manual'"
+                type="button"
+                class="sm-action"
+                data-testid="session-rename"
+                :disabled="renaming"
+                @click="openRename(activeSession)"
+              >
+                <span
+                  class="i-tabler-pencil"
+                  aria-hidden="true"
+                />
+                <span>{{ t('sessionManage.rename') }}</span>
+              </button>
+              <ConfirmPopover
+                v-if="activeSession.instanceKind === 'manual'"
+                :title="t('sessionManage.archiveConfirmTitle')"
+                :description="t('sessionManage.archiveConfirm')"
+                :ok-text="t('sessionManage.archive')"
                 placement="bottomRight"
-                :ok-button-props="{ danger: true }"
+                @confirm="submitArchive(activeSession)"
+              >
+                <button
+                  type="button"
+                  class="sm-action"
+                  data-testid="session-archive"
+                  :disabled="archiving === activeSession.id"
+                  :aria-busy="archiving === activeSession.id"
+                >
+                  <span
+                    :class="archiving === activeSession.id ? 'i-tabler-loader-2 spin' : 'i-tabler-archive'"
+                    aria-hidden="true"
+                  />
+                  <span>{{ t('sessionManage.archive') }}</span>
+                </button>
+              </ConfirmPopover>
+              <ConfirmPopover
+                v-if="activeSession.status === 'active'"
+                :title="t('sessionManage.closeConfirmTitle')"
+                :description="t('sessionManage.closeConfirm')"
+                :ok-text="t('sessionManage.closeBtn')"
+                placement="bottomRight"
                 @confirm="submitClose(activeSession)"
               >
                 <button
@@ -489,7 +671,7 @@ watch(() => props.channelId, () => {
                   />
                   <span>{{ t('sessionManage.closeBtn') }}</span>
                 </button>
-              </a-popconfirm>
+              </ConfirmPopover>
             </div>
             <div
               v-if="activeSession.productId"
@@ -590,22 +772,22 @@ watch(() => props.channelId, () => {
               <b>{{ brief.nextStep }}</b>
             </div>
             <div class="sm-brief-row muted">
-              <span>当前任务：{{ brief.currentTask?.title ?? '—' }}</span>
+              <span>{{ t('sessionManage.briefCurrentTask', { p0: brief.currentTask?.title ?? '—' }) }}</span>
               <span>{{ brief.currentTask?.state ?? '—' }} · {{ brief.currentTask?.progress ?? 0 }}%</span>
-              <span>交付物 {{ brief.deliverables.length }}</span>
-              <span>未决 {{ brief.openQuestions.length }}</span>
+              <span>{{ t('sessionManage.briefDeliverables', { p0: brief.deliverables.length }) }}</span>
+              <span>{{ t('sessionManage.briefOpen', { p0: brief.openQuestions.length }) }}</span>
             </div>
             <p
               v-if="brief.openQuestions.length"
               class="sm-brief-open"
             >
-              未决：{{ brief.openQuestions.join('；') }}
+              {{ t('sessionManage.briefOpenList', { p0: brief.openQuestions.join('；') }) }}
             </p>
             <details
               v-if="briefBlock"
               class="sm-block-preview"
             >
-              <summary>注入预览（每回合进入 harness 的上下文块）</summary>
+              <summary>{{ t('sessionManage.blockPreview') }}</summary>
               <pre>{{ briefBlock }}</pre>
             </details>
           </div>
@@ -615,12 +797,12 @@ watch(() => props.channelId, () => {
               :rows="2"
               :maxlength="8000"
               :disabled="!isManualSession || activeSession.status !== 'active'"
-              :placeholder="isManualSession ? '向本会话的成员发消息（Ctrl/⌘+Enter 发送）' : '任务/项目会话由项目派发控制，只读查看'"
+              :placeholder="t(isManualSession ? 'sessionManage.composePhManual' : 'sessionManage.composePhReadonly')"
               @keydown.ctrl.enter.prevent="sendMessage"
               @keydown.meta.enter.prevent="sendMessage"
             />
             <div class="sm-compose-actions">
-              <span class="muted">{{ isManualSession ? '消息进入 session clone 成员；回执自动落同一 session。' : '只读：任务/项目会话由项目派发与验收链路控制。' }}</span>
+              <span class="muted">{{ t(isManualSession ? 'sessionManage.composeHintManual' : 'sessionManage.composeHintReadonly') }}</span>
               <a-button
                 type="primary"
                 size="small"
@@ -628,7 +810,7 @@ watch(() => props.channelId, () => {
                 :disabled="!composerText.trim() || !isManualSession || activeSession.status !== 'active'"
                 @click="sendMessage"
               >
-                发送
+                {{ t('sessionManage.send') }}
               </a-button>
             </div>
           </div>
@@ -644,6 +826,26 @@ watch(() => props.channelId, () => {
         </div>
       </section>
     </div>
+
+    <!-- 改名弹窗(仅展示标题;不改会话状态) -->
+    <a-modal
+      v-model:open="renameOpen"
+      :title="t('sessionManage.renameTitle')"
+      :confirm-loading="renaming"
+      :ok-text="t('sessionManage.renameOkBtn')"
+      :cancel-text="t('sessionManage.createCancel')"
+      :ok-button-props="{ disabled: !renameTitle.trim() }"
+      @ok="submitRename"
+    >
+      <a-input
+        v-model:value="renameTitle"
+        data-testid="session-rename-input"
+        :maxlength="120"
+        show-count
+        :placeholder="t('sessionManage.renamePlaceholder')"
+        @press-enter="submitRename"
+      />
+    </a-modal>
 
     <!-- 新建会话弹窗(克隆全部基础成员;标题可选) -->
     <a-modal
@@ -706,6 +908,17 @@ watch(() => props.channelId, () => {
   min-height: 0;
   flex-direction: column;
   background: var(--paper);
+}
+/* 对话页内嵌：不重复页头/会话卡栏，详情吃满画布并与 chat 画布同底 */
+.sm-wrap.is-embedded {
+  background: var(--chat-canvas);
+}
+.sm-wrap.is-embedded .sm-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.sm-wrap.is-embedded .sm-detail {
+  border: 0;
 }
 .sm-head {
   flex: 0 0 auto;
@@ -996,6 +1209,46 @@ watch(() => props.channelId, () => {
     opacity var(--transition-fast),
     transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* 中性行内操作(改名/归档):与危险色关闭按钮区分,常显但低对比 */
+.sm-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 5px;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--chat-ink-soft);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-control);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    opacity var(--transition-fast);
+}
+.sm-action > span[class*="i-tabler"] {
+  width: 13px;
+  height: 13px;
+}
+.sm-action:hover:not(:disabled) {
+  color: var(--chat-ink);
+  background: color-mix(in srgb, var(--chat-ink) 6%, transparent);
+  border-color: var(--chat-line-strong);
+}
+.sm-action:focus-visible {
+  outline: 2px solid var(--chat-accent);
+  outline-offset: 1px;
+}
+.sm-action:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
 .sm-close > span[class*="i-tabler"] {
   width: 13px;
   height: 13px;
@@ -1263,6 +1516,10 @@ watch(() => props.channelId, () => {
   }
   .sm-detail-head {
     padding: 10px 12px;
+  }
+  .sm-detail-title {
+    flex-wrap: wrap;
+    row-gap: 6px;
   }
   .sm-detail-title h4 {
     white-space: normal;

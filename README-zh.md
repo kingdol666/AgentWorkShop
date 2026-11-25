@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.20.1)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.21.0)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.20.1（已发布，2026-11-25）</b> · 时序库就绪门 · Timescale 必需 schema 失败即止 · CI 生产启动冒烟 · 引擎子进程宿主密钥清洗 · 桌面更新由用户明确同意 · 系统/手动/直连三种更新线路 · 可恢复且校验的下载 · 全站统一工作台字标 · 一次性通电启动序列 · 脚本生成的桌面图标与随主题切换的托盘 · 重建关闭会话控件并清扫按钮族 · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.21.0（已发布，2026-11-26）</b> · 时序库就绪门 · Timescale 必需 schema 失败即止 · CI 生产启动冒烟 · 引擎子进程宿主密钥清洗 · 桌面更新由用户明确同意 · 系统/手动/直连三种更新线路 · 可恢复且校验的下载 · 全站统一工作台字标 · 一次性通电启动序列 · 脚本生成的桌面图标与随主题切换的托盘 · 重建关闭会话控件并清扫按钮族 · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [看 90 秒系统片](#看-90-秒系统片) · [当前源码](#当前源码-v0-20-1) · [0.20.1 发布说明](#whats-new-in-0201) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [看 90 秒系统片](#看-90-秒系统片) · [当前源码](#当前源码-v0-21-0) · [0.21.0 发布说明](#whats-new-in-0210) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -57,9 +57,18 @@
 - **交付是一等概念**：**Project 模式**把蓝图变成计划、带依赖的 WBS、L1 技术复核、L2 Owner 验收与真实交付物——交付物不通过，项目不算完成；
 - **作业链按治理阶段实现**：读取 → 分析 → 提案 → 按有效策略审批（如适用）→ 下发 → 回读/审计；每份验收证据应注明实际覆盖范围及使用模拟器还是物理设备。
 
-## 当前源码 v0.20.1（已发布）
+## 当前源码 v0.21.0（已发布）
 
-当前源码版本为 **0.20.1**（npm + GitHub Release，2026-11-25）。本版处理全仓复审发现的运行时路径：数采时序库的就绪门对齐真实适配器初始化（或显式降级 SQLite），采集、刷盘与验收脚本都等待它；在线恢复、离线重试、旧初始化与旧 rollup 装配由代次守卫，迟到的初始化不会再覆盖已恢复的适配器或静默丢样。Timescale 启动时，必需表、hypertable、打标列或热路径索引创建失败即初始化失败并释放连接池（运行时显式降级），可选索引与压缩策略只告警；SQLite 写入自愈建表，初始化前的 Timescale 写入显式抛 `TSDB_NOT_READY`。CI 纳入独立 `.mjs` 套件与生产启动冒烟（构建、隔离启动、健康/SSR/401、缺会话密钥拒绝启动）。omp、逐行 spawn 与 Claude Agent SDK 三类引擎子进程统一按名称清洗宿主秘密，保留 `AW_ENGINE_*` 与显式注入的 provider key。保留 0.20.0 的桌面更新基础（明确同意、三条网络线路、可恢复且校验的下载）、0.19.0 的图标/启动动画方向与 0.18.0 的 console/API 作用域修复。
+当前源码版本为 **0.21.0**（npm + GitHub Release，2026-11-26）。本版补齐会话生命周期，并把多会话并入对话页。手工会话可改名、归档、恢复；归档会话必须先关闭才可永久清理，关闭进行中的一批工作最多等 150 ms，重复归档返回 SESSION_CLOSING；直派、项目与目录会话的改名/归档由各自的频道生命周期拒绝。归档列表只经可见频道与属主范围返回。所有普通删除/移除在触发点确认（共享 ConfirmPopover 包装标准 a-popconfirm）：取消不发请求，只有确认才执行；AML 删除在弹窗加载失败时不再放行删除。对话页自身持有「群聊 / 会话」：会话条、会话详情、改名、归档与关闭同页，独立多会话视图移除，旧 ?view=sessions 深链落到 chat。项目深链 ?view=chat&channel=…&session=… 只选中目标一次；消息、上下文与清单的旧响应由代次和频道校验丢弃。归档会话在设置页恢复或永久清理。保留 0.20.1 的运行时加固、0.20.0 的桌面更新基础、0.19.0 的图标/启动动画方向与 0.18.0 的 console/API 作用域修复。
+
+## What's new in 0.21.0
+
+- **手工会话可改名、归档与恢复**：只有手工会话开放 `重命名`、`归档`；归档后必须先关闭才能永久清理，关闭等待最多 150 ms（第二次归档返回 `SESSION_CLOSING`）；直派/项目会话的改名、归档被频道生命周期拒绝；归档列表只经可见频道与属主范围。手工会话才可管理，不把手工会话语义套到直派/项目会话。
+- **删除在触发点确认**：移出频道、删除工作区、移除团队与成员、解绑数采节点、移除 Town 设备/频道、删除 DCW 产品/配方/模板、删除 AML 数据集/模型/作业、设置页 Skill/MCP/AgentPrefab/Runtime 分组、归档会话永久删除，全部改为共享 `ConfirmPopover`（标准 `a-popconfirm`）：取消不发请求，确认才执行，危险按钮用红色。多步治理弹窗（解绑预览、角色变更、插件停用、项目完成门）保持不变。普通删除/移除全部就地确认；复杂治理保留弹窗。
+- **对话页自身承载全会话**：频道页顶部显示会话条（群聊 / 会话、运行数与总数、状态、新建），同页内嵌会话详情（成员、消息流、Session Context、会话 composer、改名、归档、关闭）；侧栏「会话」列表可回群聊并高亮当前会话。归档当前会话自动选下一个可用会话，没有则回群聊。会话作用域隐藏全局 composer。无需进入独立多会话页。
+- **旧多会话入口移除**：`Rail`、视图选项与数字快捷键不再提供多会话；`?view=sessions` 落到 `chat`；项目任务与目录会话打开 `?view=chat&channel=…&session=…` 且只选中目标一次。历史深链不空白、不 404。
+- **验证（2026-11-26）**：隔离生产构建 + 真实 Chrome UI：群聊 → 新建会话 → 会话详情 → 发消息 → 回群聊 → 侧栏会话 → 改名 → 归档 → 回群聊；移出频道、归档永久删除的确认/取消；760 px 无溢出、0 页面错误 / 0 失败请求；会话契约 **7/7**、全量单测 **2,371 项 / 2,370 通过 / 0 失败 / 1 跳过**、eslint 0、typecheck、i18n 3,577/3,577 unresolved 0、docs 101/0 与 build 全绿。本轮未跑 Mimosa 扫描，**不宣称安全通过**。
+- **剩余 P2**：任务板取消（菜单/拖拽）仍然直接执行；项目归档/完成门保留原生 `window.confirm`；归档会话只能在设置页查看；Host 和侧栏各自拉一次会话清单（后续抽共享 store）；无效 `?session=` 静默回群聊。
 
 ## What's new in 0.20.1
 
@@ -549,7 +558,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.20.1（已发布 2026-11-25）** —— [v0.20.1 发布页](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.20.1) · [桌面更新说明](./docs/desktop.md#更新通道) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.21.0（已发布 2026-11-26）** —— [v0.21.0 发布页](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.21.0) · [桌面更新说明](./docs/desktop.md#更新通道) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

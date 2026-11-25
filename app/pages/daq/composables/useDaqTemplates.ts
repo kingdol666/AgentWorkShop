@@ -41,7 +41,6 @@ export function useDaqTemplates(t: (key: string, named?: Record<string, unknown>
   const tplEditing = ref<string | null>(null)
   const tplSaving = ref(false)
   const tplError = ref('')
-  const confirmingDel = ref('')
   const tplForm = ref<DaqTemplateForm>({
     name: '', ch: '', code: '', unit: '',
     min: 0, max: 100, base: 50, amp: 2,
@@ -67,7 +66,6 @@ export function useDaqTemplates(t: (key: string, named?: Record<string, unknown>
   function resetTplForm(): void {
     tplEditing.value = null
     tplError.value = ''
-    confirmingDel.value = ''
     fillTplForm({ key: '', name: '', code: '', ch: '', unit: '', base: 50, amp: 2, min: 0, max: 100, decimals: 2, icon: 'thermo' })
   }
 
@@ -116,20 +114,13 @@ export function useDaqTemplates(t: (key: string, named?: Record<string, unknown>
     }
   }
 
-  /** 两段式删除确认(避免误删;空目录风格与节点表一致) */
+  /** 删除确认已由模板行的 Popconfirm 完成 */
   async function askDelTpl(tp: DaqTemplateDef): Promise<void> {
-    if (confirmingDel.value !== tp.key) {
-      confirmingDel.value = tp.key
-      return
-    }
     try {
       await daq.removeTemplate(tp.key)
     }
     catch (err) {
       tplError.value = apiErrorMessage(err)
-    }
-    finally {
-      confirmingDel.value = ''
     }
   }
 
@@ -138,7 +129,6 @@ export function useDaqTemplates(t: (key: string, named?: Record<string, unknown>
     tplEditing,
     tplSaving,
     tplError,
-    confirmingDel,
     tplForm,
     iconChoices: DAQ_TEMPLATE_ICONS,
     customTpls,

@@ -123,12 +123,24 @@ const { fmtTime, fmtNum, shortId, statusLabel, isActiveStatus, canRetry } = useA
                 >
                   {{ confirmRetry === j.id ? $t('aml.k1amlx096') : $t('aml.k1amlx095') }}
                 </button>
-                <span
+                <ConfirmPopover
                   v-if="!isActiveStatus(j.status)"
-                  class="i-tabler-trash edit-i"
-                  :title="$t('aml.k1amlx190')"
-                  @click.stop="$emit('remove', j.id, $t('aml.k1amlx200'))"
-                />
+                  :title="$t('aml.k1amlx200')"
+                  :description="$t('common.confirmDeleteDesc')"
+                  :ok-text="$t('common.delete')"
+                  @confirm="$emit('remove', j.id, $t('aml.k1amlx200'))"
+                >
+                  <span
+                    class="i-tabler-trash edit-i"
+                    role="button"
+                    tabindex="0"
+                    :title="$t('aml.k1amlx190')"
+                    :aria-label="$t('aml.k1amlx190')"
+                    @keydown.enter.prevent="($event.currentTarget as HTMLElement).click()"
+                    @keydown.space.prevent="($event.currentTarget as HTMLElement).click()"
+                    @click.stop
+                  />
+                </ConfirmPopover>
               </td>
             </tr>
             <tr

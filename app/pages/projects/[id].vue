@@ -216,7 +216,7 @@ async function dispatch(workItemId: string): Promise<void> {
  * 打开会话（2026-11-07）：把 session 所属 Channel 挂到 workspace 后直达控制台会话视图。
  * 已挂载的频道直接跳；未挂载时自动挂载（幂等）——这是「project/task session → 控制台」的可视入口。
  */
-async function openSessionConsole(channelId: string): Promise<void> {
+async function openSessionConsole(channelId: string, sessionId?: string | null): Promise<void> {
   if (!channelId) return
   await run(async () => {
     const res = await http.get<{ data: Array<{ id: string, channelIds: string[] }> }>('/workshop/workspaces')
@@ -231,12 +231,13 @@ async function openSessionConsole(channelId: string): Promise<void> {
       error.value = '还没有 Workspace，请先在「Agent 工作台」创建一个'
       return
     }
-    await navigateTo(`/workshop/w/${target.id}?view=sessions&channel=${channelId}`)
+    const sessionQuery = sessionId ? `&session=${encodeURIComponent(sessionId)}` : ''
+    await navigateTo(`/workshop/w/${target.id}?view=chat&channel=${channelId}${sessionQuery}`)
   })
 }
 
 async function openTaskSession(wi: WorkItemObs): Promise<void> {
-  if (wi.instanceChannelId) await openSessionConsole(wi.instanceChannelId)
+  if (wi.instanceChannelId) await openSessionConsole(wi.instanceChannelId, wi.sessionId)
 }
 
 /** 打开项目办公室（Leader 频道），走与任务会话相同的 workspace 挂载逻辑。 */
@@ -1662,7 +1663,7 @@ onUnmounted(() => {
                   size="small"
                   type="link"
                   :data-testid="`open-project-session-${s.id}`"
-                  @click="openSessionConsole(s.channelId)"
+                  @click="openSessionConsole(s.channelId, s.id)"
                 >
                   打开会话
                 </a-button>

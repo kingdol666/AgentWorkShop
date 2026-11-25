@@ -292,11 +292,23 @@ const bindDeviceId = defineModel<string>('bindDeviceId', { required: true })
           {{ dv.name }}
         </option>
       </select>
+      <ConfirmPopover
+        v-if="boundDeviceName"
+        :title="$t('daq.unbindConfirmTitle')"
+        :description="$t('daq.unbindConfirmDesc')"
+        :ok-text="$t('common.remove')"
+        @confirm="emit('bind-toggle')"
+      >
+        <button class="pill-btn">
+          {{ $t('daqDetail.k479eh044') }}
+        </button>
+      </ConfirmPopover>
       <button
+        v-else
         class="pill-btn"
         @click="emit('bind-toggle')"
       >
-        {{ boundDeviceName ? $t('daqDetail.k479eh044') : $t('daqDetail.k452a8052') }}
+        {{ $t('daqDetail.k452a8052') }}
       </button>
     </div>
   </section>

@@ -225,10 +225,10 @@ export function useTownLayout(params: {
   }
   /** 删除选中设备实例(移除孪生 + 场景节点);两步确认:首击布防 3s,再击执行 */
   const deviceDeleteArmed = ref('')
-  function removeSelectedDevice(): void {
+  function removeSelectedDevice(force = false): void {
     const sel = selected.value
     if (!sel || sel.kind !== 'device') return
-    if (deviceDeleteArmed.value !== sel.id) {
+    if (!force && deviceDeleteArmed.value !== sel.id) {
       deviceDeleteArmed.value = sel.id
       window.setTimeout(() => {
         if (deviceDeleteArmed.value === sel.id) deviceDeleteArmed.value = ''

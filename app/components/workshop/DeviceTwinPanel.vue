@@ -78,7 +78,7 @@ provideDeviceTwinDcwWrite()
         :armed="armedId === tw.id"
         :busy="busyId === tw.id"
         @focus="$emit('focus-device', tw)"
-        @remove="removeTwin(tw)"
+        @remove="force => removeTwin(tw, force)"
       />
     </div>
 

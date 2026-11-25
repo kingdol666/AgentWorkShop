@@ -8,6 +8,8 @@ defineProps<{
   wsId: string
   /** 聚焦 channel(透传给侧栏的会话分组;undefined = 未聚焦) */
   channelId?: string
+  /** 对话页当前选中会话(null=群聊)，侧栏会话高亮 */
+  activeSessionId?: string | null
   leftWidth: number
   /** 窄屏档(≤1023):宽度不再由拖拽决定,改为抽屉定宽 */
   narrow: boolean
@@ -16,7 +18,7 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'openAgent', target: { channelId: string, agentId: string }): void
   (e: 'openPalette'): void
-  (e: 'openSession', sessionId: string): void
+  (e: 'openSession', sessionId: string | null): void
 }>()
 </script>
 
@@ -29,6 +31,7 @@ const emit = defineEmits<{
       <workshop-channel-session-list
         :ws-id="wsId"
         :channel-id="channelId"
+        :active-session-id="activeSessionId"
         @open-session="emit('openSession', $event)"
         @open-palette="emit('openPalette')"
       />

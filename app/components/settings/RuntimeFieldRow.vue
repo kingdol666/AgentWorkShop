@@ -91,13 +91,21 @@ if (import.meta.client) {
         style="width: 220px"
         @change="markDirty(item.key)"
       />
-      <button
-        class="aw-pill outline rt-reset"
-        :title="t('settings.runtime.resetKey')"
-        @click="resetRuntimeKey(item.key)"
+      <ConfirmPopover
+        :title="t('settings.runtime.resetKeyConfirmTitle')"
+        :description="t('settings.runtime.resetKeyConfirmDesc')"
+        :ok-text="t('settings.runtime.resetKey')"
+        @confirm="resetRuntimeKey(item.key)"
       >
-        <span class="i-tabler-rotate" />
-      </button>
+        <button
+          class="aw-pill outline rt-reset"
+          type="button"
+          :title="t('settings.runtime.resetKey')"
+          :aria-label="t('settings.runtime.resetKey')"
+        >
+          <span class="i-tabler-rotate" />
+        </button>
+      </ConfirmPopover>
     </div>
   </div>
 </template>

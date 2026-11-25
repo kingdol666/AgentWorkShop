@@ -28,50 +28,82 @@ const emit = defineEmits<{
       </p>
     </div>
     <div class="head-acts">
-      <div class="lib-links">
+      <nav
+        class="lib-links"
+        data-testid="lib-nav"
+        :aria-label="$t('wsHome.libraryNav')"
+      >
         <button
           type="button"
           class="lib-link"
           @click="navigateTo('/workshop/agents')"
         >
-          {{ $t('wsHome.k3pa5h4013') }}
+          <span
+            class="i-tabler-template lib-icon"
+            aria-hidden="true"
+          />
+          <span>{{ $t('wsHome.k3pa5h4013') }}</span>
         </button>
         <button
           type="button"
           class="lib-link"
           @click="navigateTo('/workshop/teams')"
         >
-          {{ $t('wsHome.k3svl8y014') }}
+          <span
+            class="i-tabler-users-group lib-icon"
+            aria-hidden="true"
+          />
+          <span>{{ $t('wsHome.k3svl8y014') }}</span>
         </button>
         <button
           type="button"
           class="lib-link"
           @click="navigateTo('/workshop/channel-templates')"
         >
-          Channel {{ $t('wsHome.k41ds5027') }}
+          <span
+            class="i-tabler-layout-grid lib-icon"
+            aria-hidden="true"
+          />
+          <span>Channel {{ $t('wsHome.k41ds5027') }}</span>
         </button>
         <button
           type="button"
           class="lib-link"
           @click="navigateTo('/workshop/schedules')"
         >
-          {{ $t('titles.schedules') }}
+          <span
+            class="i-tabler-clock-bolt lib-icon"
+            aria-hidden="true"
+          />
+          <span>{{ $t('titles.schedules') }}</span>
         </button>
         <button
           type="button"
           class="lib-link"
           @click="navigateTo('/tokens')"
         >
-          API Token
+          <span
+            class="i-tabler-key lib-icon"
+            aria-hidden="true"
+          />
+          <span>API Token</span>
         </button>
+        <span
+          class="lib-sep"
+          aria-hidden="true"
+        />
         <button
           type="button"
-          class="lib-link"
+          class="lib-link is-danger"
           @click="emit('logout')"
         >
-          {{ $t('wsHome.k484e7015') }}
+          <span
+            class="i-tabler-logout lib-icon"
+            aria-hidden="true"
+          />
+          <span>{{ $t('wsHome.k484e7015') }}</span>
         </button>
-      </div>
+      </nav>
       <div class="head-cta">
         <!-- 项目中心：Project 层的前端入口（与"新建工作区"并置，工作台首页即可达） -->
         <button
@@ -133,36 +165,89 @@ const emit = defineEmits<{
     gap: 12px;
   }
 
-  .lib-links {
+  /* 提高一级特异度:本块排在基础规则之前,若同特异度会被后面的基础规则反覆盖 */
+  .head-acts .lib-links {
+    width: 100%;
     justify-content: flex-start;
-    gap: 8px 16px;
   }
 }
 
-/* 库链接行:安静文字链(降噪,主 CTA 只剩一个) */
-.lib-links { display: inline-flex; flex-wrap: wrap; gap: 2px 14px; justify-content: flex-end; }
+/* 库工具条:一处有边界的操作面(图标 + 文字 chip),与主 CTA 明确分层 */
+.lib-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 3px;
+  background: var(--surface-card, var(--paper-raised));
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
 
 .lib-link {
-  padding: 2px 0;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 9px;
   font-family: var(--font-body);
   font-size: 12.5px;
-  color: var(--ink-faint);
+  font-weight: 550;
+  line-height: 1;
+  color: var(--ink-soft);
+  white-space: nowrap;
   cursor: pointer;
   background: transparent;
   border: 0;
+  border-radius: 8px;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.lib-icon {
+  font-size: 14px;
+  color: var(--ink-faint);
   transition: color var(--transition-fast);
 }
 
-.lib-link:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.lib-link:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
 
-/* 手持命中区:纯文字链在窄屏不足 40px 宽,补成可点方块 */
+.lib-link:hover .lib-icon { color: var(--accent); }
+
+.lib-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.lib-link:active { transform: scale(0.98); }
+
+.lib-link.is-danger { color: var(--tone-danger-dot); }
+.lib-link.is-danger .lib-icon { color: currentColor; opacity: 0.75; }
+.lib-link.is-danger:hover {
+  color: var(--tone-danger-dot);
+  background: var(--tone-danger-bg);
+}
+
+.lib-sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: var(--line);
+}
+
+/* 手持命中区:chip 本身已 ≥30px 高,窄屏再补足 40px 触控高度 */
 @media (pointer: coarse) {
   .lib-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     min-width: 40px;
     min-height: 40px;
+    justify-content: center;
   }
 }
 </style>

@@ -16,29 +16,8 @@ export interface AmlEntitiesDeps {
 export function useAmlEntities(deps: AmlEntitiesDeps) {
   const { t: tt } = useI18n()
 
-  /** 确认对话框:antd Modal.confirm(带样式);动态 import 失败时退化为放行(服务端仍有二次校验) */
-  async function confirmDialog(text: string): Promise<boolean> {
-    try {
-      const { Modal } = await import('ant-design-vue')
-      return await new Promise<boolean>((resolve) => {
-        Modal.confirm({
-          title: text,
-          okText: tt('aml.k1amlx190'),
-          cancelText: tt('aml.k1amlx202'),
-          onOk: () => resolve(true),
-          onCancel: () => resolve(false),
-        })
-      })
-    }
-    catch {
-      return true
-    }
-  }
-
-  /** 删除实体(元数据 + ./aml 下目录);被引用/生产阶段的会被服务端拒绝并给出原因 */
-  async function removeEntity(kind: 'datasets' | 'models' | 'jobs', id: string, confirmText: string): Promise<void> {
-    const okToDelete = await confirmDialog(confirmText)
-    if (!okToDelete) return
+  /** 删除实体(元数据 + ./aml 下目录);确认已在表格行内的 Popconfirm 完成 */
+  async function removeEntity(kind: 'datasets' | 'models' | 'jobs', id: string, _confirmText?: string): Promise<void> {
     try {
       await amlApi(`/${kind}/${id}`, { method: 'DELETE' })
       message.success(tt('aml.k1amlx193'))

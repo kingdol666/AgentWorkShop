@@ -174,12 +174,19 @@ defineProps<{
       >
         {{ $t('townView.k1b3kp8f056') }}
       </button>
-      <button
-        class="bp-btn danger"
-        @click="removeChannelFromScene"
+      <ConfirmPopover
+        :title="$t('townView.removeChannelConfirmTitle')"
+        :description="$t('townView.removeChannelConfirmDesc')"
+        :ok-text="$t('common.remove')"
+        @confirm="removeChannelFromScene"
       >
-        {{ $t('townView.k1hs45qg057') }}
-      </button>
+        <button
+          class="bp-btn danger"
+          type="button"
+        >
+          {{ $t('townView.k1hs45qg057') }}
+        </button>
+      </ConfirmPopover>
       <button
         class="bp-btn"
         @click="onSelectChannel(null)"

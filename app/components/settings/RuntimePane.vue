@@ -108,12 +108,19 @@ const { plugins } = providePluginAdmin(computed(() => props.activeTab))
         <span class="i-tabler-device-floppy" />
         {{ savingRuntime ? '…' : t('settings.runtime.save') }}
       </button>
-      <button
-        class="aw-pill outline"
-        @click="resetAllRuntime"
+      <ConfirmPopover
+        :title="t('settings.runtime.resetAllConfirmTitle')"
+        :description="t('settings.runtime.resetAllConfirmDesc')"
+        :ok-text="t('settings.runtime.resetAll')"
+        @confirm="resetAllRuntime"
       >
-        {{ t('settings.runtime.resetAll') }}
-      </button>
+        <button
+          class="aw-pill outline"
+          type="button"
+        >
+          {{ t('settings.runtime.resetAll') }}
+        </button>
+      </ConfirmPopover>
       <span class="rt-path aw-mono">{{ rcStore.settingsPath }}</span>
     </div>
 

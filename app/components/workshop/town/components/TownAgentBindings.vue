@@ -79,13 +79,21 @@ defineProps<{
         </option>
       </select>
     </span>
-    <button
-      class="bind-x"
-      :title="$t('townView.k1k73omv016')"
-      @click="unbindAgentNode(b.id)"
+    <ConfirmPopover
+      :title="$t('townView.unbindConfirmTitle')"
+      :description="$t('townView.unbindConfirmDesc')"
+      :ok-text="$t('common.remove')"
+      @confirm="unbindAgentNode(b.id)"
     >
-      ✕
-    </button>
+      <button
+        class="bind-x"
+        type="button"
+        :title="$t('townView.k1k73omv016')"
+        :aria-label="$t('townView.k1k73omv016')"
+      >
+        ✕
+      </button>
+    </ConfirmPopover>
   </div>
   <div
     v-if="!agentBindings.length"

@@ -21,6 +21,7 @@ import { executionModeOfChannel } from '../../agents/execution-mode'
 import { createTaskInstanceChannel } from '../../agents/task-channel'
 import type { TaskInstanceDeps, TaskInstancePrefabOptions } from '../../agents/task-channel'
 import { getAgentNodeBindingRepo } from '../../agents/node-bindings.repo'
+import { assertSessionPurgeable, cloneIdsOf, purgeArchivedSessionData, type SessionPurgeCounts } from '../../agents/session-purge'
 import { createChannelSessionRepo, type ChannelSessionRow } from '../../db/channel-session.repo'
 import type { SessionCloneDeps } from '../../agents/session-clone'
 import { parseJson } from '../../db/database'
@@ -664,6 +665,205 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       detail: { sessionId: input.sessionId, canceledTasks: result.canceledTasks },
     })
     return result
+  }
+
+  /** 会话行必须存在且属于该频道（跨频道 sid → 404，避免按 id 越权读删）。 */
+  protected requireSessionOfChannel(channelId: string, sessionId: string): ChannelSessionRow {
+    const session = createChannelSessionRepo(this.deps.db).findById(sessionId)
+    if (!session || session.channelId !== channelId) {
+      throw new AppError(404, 'NOT_FOUND', `会话不存在: ${sessionId}`)
+    }
+    return session
+  }
+
+  /** 会话改名：只改展示标题（owner/admin；不改会话状态与派发链路）。 */
+  async renameChannelSession(input: {
+    channelId: string
+    sessionId: string
+    actor: { id: string, role: string }
+    title: string
+  }): Promise<{ sessionId: string, title: string }> {
+    const channel = this.deps.repos.channels.findById(input.channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${input.channelId}`)
+    this.requireWritable(channel.ownerUserId, input.actor, 'channel')
+    const session = this.requireSessionOfChannel(input.channelId, input.sessionId)
+    if (session.instanceKind !== 'manual') {
+      throw new AppError(409, 'SESSION_MANAGED', '项目/任务会话由项目生命周期管理，不能改名')
+    }
+    const title = String(input.title ?? '').trim()
+    if (!title) throw new AppError(400, 'SESSION_TITLE_REQUIRED', '会话名称不能为空')
+    if (title.length > 120) throw new AppError(400, 'SESSION_TITLE_TOO_LONG', '会话名称不能超过 120 个字符')
+    if (!createChannelSessionRepo(this.deps.db).rename(input.sessionId, title)) {
+      throw new AppError(404, 'NOT_FOUND', `会话不存在: ${input.sessionId}`)
+    }
+    const { recordOps } = await import('../../ops/ops')
+    recordOps({
+      actor: input.actor.id,
+      actorName: 'owner',
+      actorKind: 'user',
+      action: 'channel.session.rename',
+      kind: 'system',
+      targetKind: 'channel',
+      targetId: input.channelId,
+      summary: `会话改名 ${input.sessionId.slice(0, 8)} → ${title}`,
+      detail: { sessionId: input.sessionId, title },
+    })
+    return { sessionId: input.sessionId, title }
+  }
+
+  /**
+   * 归档会话：手工会话专属。active/closing 先走既有 close 级联（取消在飞任务 +
+   * 停用全部 clone），再写 archived_at；重复归档幂等。
+   */
+  async archiveChannelSession(input: {
+    channelId: string
+    sessionId: string
+    actor: { id: string, role: string }
+  }): Promise<{ archived: true, archivedAt: string, canceledTasks: number, clones: string[] }> {
+    const channel = this.deps.repos.channels.findById(input.channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${input.channelId}`)
+    this.requireWritable(channel.ownerUserId, input.actor, 'channel')
+    const session = this.requireSessionOfChannel(input.channelId, input.sessionId)
+    if (session.instanceKind !== 'manual') {
+      throw new AppError(409, 'SESSION_MANAGED', '项目/任务会话由项目生命周期管理，不能归档')
+    }
+    if (session.archivedAt) {
+      return { archived: true, archivedAt: session.archivedAt, canceledTasks: 0, clones: [] }
+    }
+    let canceledTasks = 0
+    if (session.status !== 'closed') {
+      const closed = await this.closeChannelSession({
+        channelId: input.channelId,
+        sessionId: input.sessionId,
+        actor: input.actor,
+        reason: 'owner archived session',
+      })
+      canceledTasks = closed.canceledTasks
+    }
+    // 并发 close 在飞时 closeChannelSession 会立即返回(不等待),不能据此写 archived_at：
+    // 有界等待事务对账收敛到 closed；仍 closing 则拒绝归档，避免 archived+closing 半态。
+    const sessionRepo = createChannelSessionRepo(this.deps.db)
+    let latest = sessionRepo.findById(input.sessionId)
+    for (let i = 0; latest && latest.status !== 'closed' && i < 100; i += 1) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      latest = sessionRepo.findById(input.sessionId)
+    }
+    if (!latest) throw new AppError(404, 'NOT_FOUND', `会话不存在: ${input.sessionId}`)
+    if (latest.status !== 'closed') {
+      throw new AppError(409, 'SESSION_CLOSING', '会话正在关闭，请稍后重试归档')
+    }
+    const clones = cloneIdsOf(latest.memberMapJson)
+    const archivedAt = new Date().toISOString()
+    if (!sessionRepo.setArchived(input.sessionId, archivedAt)) {
+      throw new AppError(404, 'NOT_FOUND', `会话不存在: ${input.sessionId}`)
+    }
+    const { recordOps } = await import('../../ops/ops')
+    recordOps({
+      actor: input.actor.id,
+      actorName: 'owner',
+      actorKind: 'user',
+      action: 'channel.session.archive',
+      kind: 'system',
+      targetKind: 'channel',
+      targetId: input.channelId,
+      summary: `归档会话 ${input.sessionId.slice(0, 8)}（取消在飞任务 ${canceledTasks} 个）`,
+      detail: { sessionId: input.sessionId, canceledTasks },
+    })
+    return { archived: true, archivedAt, canceledTasks, clones }
+  }
+
+  /** 恢复已归档会话：回到普通清单（closed 状态保持，不自动重开运行时）。 */
+  async restoreChannelSession(input: {
+    channelId: string
+    sessionId: string
+    actor: { id: string, role: string }
+  }): Promise<{ restored: true, already: boolean }> {
+    const channel = this.deps.repos.channels.findById(input.channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${input.channelId}`)
+    this.requireWritable(channel.ownerUserId, input.actor, 'channel')
+    const session = this.requireSessionOfChannel(input.channelId, input.sessionId)
+    if (session.instanceKind !== 'manual') {
+      throw new AppError(409, 'SESSION_MANAGED', '项目/任务会话由项目生命周期管理，不能恢复归档')
+    }
+    if (!session.archivedAt) return { restored: true, already: true }
+    if (!createChannelSessionRepo(this.deps.db).setArchived(input.sessionId, null)) {
+      throw new AppError(404, 'NOT_FOUND', `会话不存在: ${input.sessionId}`)
+    }
+    const { recordOps } = await import('../../ops/ops')
+    recordOps({
+      actor: input.actor.id,
+      actorName: 'owner',
+      actorKind: 'user',
+      action: 'channel.session.restore',
+      kind: 'system',
+      targetKind: 'channel',
+      targetId: input.channelId,
+      summary: `恢复会话 ${input.sessionId.slice(0, 8)}`,
+      detail: { sessionId: input.sessionId },
+    })
+    return { restored: true, already: false }
+  }
+
+  /**
+   * 永久删除已归档会话：停摘残留运行时 → 事务级联清理 DB（会话/克隆/消息/任务/记忆）
+   * → 清理 agent-node-bindings.json 持久层。不可恢复，调用方必须已二次确认。
+   */
+  async purgeChannelSession(input: {
+    channelId: string
+    sessionId: string
+    actor: { id: string, role: string }
+  }): Promise<SessionPurgeCounts & { clones: number }> {
+    const channel = this.deps.repos.channels.findById(input.channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${input.channelId}`)
+    this.requireWritable(channel.ownerUserId, input.actor, 'channel')
+    const session = this.requireSessionOfChannel(input.channelId, input.sessionId)
+    // 先验闸门再停摘：未归档/未关闭/项目会话的 409 必须是纯拒绝，不能顺手停掉在跑运行时。
+    assertSessionPurgeable(session)
+    const clones = cloneIdsOf(session.memberMapJson)
+
+    // 防御性摘除：已关闭会话的运行时理论上已卸载，但绝不能让清理后的进程继续持有旧信箱。
+    for (const cloneId of clones) {
+      await this.stopAndDetach(input.channelId, cloneId)
+    }
+    const counts = purgeArchivedSessionData(this.deps.db, session)
+
+    // JSON 持久层不参与 SQLite 事务：DB 已提交后再清理；失败只留孤儿绑定，不复活会话。
+    try {
+      const bindings = getAgentNodeBindingRepo()
+      for (const cloneId of clones) bindings.removeAgent(cloneId)
+    }
+    catch (err) {
+      log.warn(`[workshop] 清理已删除会话 ${input.sessionId.slice(0, 8)} 的节点绑定失败:`, err)
+    }
+
+    const { recordOps } = await import('../../ops/ops')
+    recordOps({
+      actor: input.actor.id,
+      actorName: 'owner',
+      actorKind: 'user',
+      action: 'channel.session.purge',
+      kind: 'system',
+      targetKind: 'channel',
+      targetId: input.channelId,
+      summary: `永久删除归档会话 ${input.sessionId.slice(0, 8)}`,
+      detail: { sessionId: input.sessionId, ...counts },
+    })
+    return { ...counts, clones: clones.length }
+  }
+
+  /** 当前用户可见（owner/admin）的已归档会话，按归档时间倒序。 */
+  listArchivedSessions(actor: { id: string, role: string }): Array<ChannelSessionRow & { channelName: string }> {
+    const sessions = createChannelSessionRepo(this.deps.db)
+    const visible = this.listChannelsVisibleTo(actor).filter(channel =>
+      actor.role === 'admin' || (channel.ownerUserId !== null && channel.ownerUserId === actor.id),
+    )
+    const archivedTime = (value: string | null): number => {
+      const parsed = value ? Date.parse(value) : Number.NaN
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+    return visible
+      .flatMap(channel => sessions.listArchivedByChannel(channel.id).map(session => ({ ...session, channelName: channel.name })))
+      .sort((a, b) => archivedTime(b.archivedAt) - archivedTime(a.archivedAt))
   }
 
   /** 会话清单（含每会话成员映射）。 */

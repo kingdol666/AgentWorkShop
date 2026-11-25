@@ -247,39 +247,28 @@ function publish(): void {
   })
 }
 
-function removePrefab(row: PrefabRow): void {
+async function removePrefabNow(row: PrefabRow): Promise<void> {
   if (!canEditRow(row) || busy.value || loading.value || conflict.value) return
-  const archive = row.headRevision > 0
-  Modal.confirm({
-    title: t(archive ? 'settings.prefabs.archiveTitle' : 'settings.prefabs.deleteTitle', { name: row.name }),
-    content: t(archive ? 'settings.prefabs.archiveDescription' : 'settings.prefabs.deleteDescription'),
-    okText: t(archive ? 'settings.prefabs.archive' : 'common.delete'),
-    okType: 'danger',
-    cancelText: t('common.cancel'),
-    onOk: async () => {
-      if (!canEditRow(row) || busy.value || loading.value || conflict.value) return
-      busy.value = true
-      error.value = ''
-      try {
-        const result = await apiFetch<{ id: string, archived: boolean }>({
-          base: prefabApi,
-          path: `/${encodeURIComponent(row.id)}`,
-          init: { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt: row.updatedAt }) },
-        })
-        prefabs.value = prefabs.value.filter(p => p.id !== result.id)
-        if (selected.value?.id === result.id) applyEditor(null, null)
-        message.success(t(result.archived ? 'settings.prefabs.archivedDone' : 'settings.prefabs.deleted'))
-        // Do not overwrite an unrelated in-progress edit.
-        if (result.archived) await load(dirty.value)
-      }
-      catch (err) {
-        reportWriteError(err)
-      }
-      finally {
-        busy.value = false
-      }
-    },
-  })
+  busy.value = true
+  error.value = ''
+  try {
+    const result = await apiFetch<{ id: string, archived: boolean }>({
+      base: prefabApi,
+      path: `/${encodeURIComponent(row.id)}`,
+      init: { method: 'DELETE', body: JSON.stringify({ expectedUpdatedAt: row.updatedAt }) },
+    })
+    prefabs.value = prefabs.value.filter(p => p.id !== result.id)
+    if (selected.value?.id === result.id) applyEditor(null, null)
+    message.success(t(result.archived ? 'settings.prefabs.archivedDone' : 'settings.prefabs.deleted'))
+    // Do not overwrite an unrelated in-progress edit.
+    if (result.archived) await load(dirty.value)
+  }
+  catch (err) {
+    reportWriteError(err)
+  }
+  finally {
+    busy.value = false
+  }
 }
 
 const channels = ref<Channel[]>([])
@@ -476,23 +465,14 @@ async function bind(): Promise<void> {
   await writeBinding(bindChannelId.value, bindMember.value.id, { prefabId: target.prefabId, revision: target.revision, slotValues }, false)
 }
 
-function unbind(): void {
+async function unbind(): Promise<void> {
   const channelId = bindChannelId.value
   const member = bindMember.value
   const expectedBindingVersion = member?.prefabBindingVersion
   if (!canUnbind.value || !channelId || !member || !expectedBindingVersion) return
-  Modal.confirm({
-    title: t('settings.prefabs.unbindTitle', { name: member.name }),
-    content: t('settings.prefabs.unbindDescription'),
-    okText: t('settings.prefabs.unbind'),
-    okType: 'danger',
-    cancelText: t('common.cancel'),
-    onOk: () => {
-      if (!canUnbind.value || bindChannelId.value !== channelId || bindMember.value?.id !== member.id
-        || bindMember.value.prefabBindingVersion !== expectedBindingVersion) return
-      return writeBinding(channelId, member.id, { clear: true, expectedBindingVersion }, true)
-    },
-  })
+  if (!canUnbind.value || bindChannelId.value !== channelId || bindMember.value?.id !== member.id
+    || bindMember.value.prefabBindingVersion !== expectedBindingVersion) return
+  await writeBinding(channelId, member.id, { clear: true, expectedBindingVersion }, true)
 }
 
 async function loadCatalog(): Promise<void> {
@@ -655,15 +635,22 @@ onMounted(async () => {
                 >
                   {{ t('settings.prefabs.edit') }}
                 </a-button>
-                <a-button
-                  size="small"
-                  danger
-                  :aria-label="t(record.headRevision ? 'settings.prefabs.archiveTitle' : 'settings.prefabs.deleteTitle', { name: record.name })"
+                <ConfirmPopover
+                  :title="t(record.headRevision ? 'settings.prefabs.archiveTitle' : 'settings.prefabs.deleteTitle', { name: record.name })"
+                  :description="t(record.headRevision ? 'settings.prefabs.archiveDescription' : 'settings.prefabs.deleteDescription')"
+                  :ok-text="t(record.headRevision ? 'settings.prefabs.archive' : 'common.delete')"
                   :disabled="busy || loading || conflict"
-                  @click="removePrefab(record)"
+                  @confirm="removePrefabNow(record)"
                 >
-                  {{ t(record.headRevision ? 'settings.prefabs.archive' : 'common.delete') }}
-                </a-button>
+                  <a-button
+                    size="small"
+                    danger
+                    :aria-label="t(record.headRevision ? 'settings.prefabs.archiveTitle' : 'settings.prefabs.deleteTitle', { name: record.name })"
+                    :disabled="busy || loading || conflict"
+                  >
+                    {{ t(record.headRevision ? 'settings.prefabs.archive' : 'common.delete') }}
+                  </a-button>
+                </ConfirmPopover>
               </template>
             </div>
           </template>
@@ -1110,15 +1097,22 @@ onMounted(async () => {
         >
           {{ t('settings.prefabs.refreshBinding') }}
         </a-button>
-        <a-button
+        <ConfirmPopover
           v-if="hasBinding && !bindMemberFrozen"
-          danger
-          :loading="bindingBusy"
+          :title="t('settings.prefabs.unbindTitle', { name: bindMember?.name ?? '' })"
+          :description="t('settings.prefabs.unbindDescription')"
+          :ok-text="t('settings.prefabs.unbind')"
           :disabled="!canUnbind"
-          @click="unbind"
+          @confirm="unbind"
         >
-          {{ t('settings.prefabs.unbind') }}
-        </a-button>
+          <a-button
+            danger
+            :loading="bindingBusy"
+            :disabled="!canUnbind"
+          >
+            {{ t('settings.prefabs.unbind') }}
+          </a-button>
+        </ConfirmPopover>
         <a-button
           v-else-if="!hasBinding && !bindMemberFrozen"
           type="primary"

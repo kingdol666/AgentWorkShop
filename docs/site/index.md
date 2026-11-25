@@ -76,7 +76,7 @@ footer:
         14 个 harness（<code>agents/registry.ts</code>）/ 144 个设置项（<code>aw config list</code>）/ 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.20.1 · 已发布</i></span>
+        <span>版本 <i>v0.21.0 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -93,37 +93,37 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.20.1 (RELEASED 2026-11-25)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.21.0 (RELEASED 2026-11-26)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.20.1（2026-11-25）。这一版不改功能面，专修“出问题时系统怎么表现”：时序库就绪门只在适配器初始化完成或显式降级 SQLite 后置位，采集、刷盘与验收脚本都等这道门；Timescale 必需表、超表、打标列或热路径索引任一失败，初始化即失败并释放连接池，可选索引只告警；SQLite 写入自愈建表，初始化前的 Timescale 写入显式抛 <code>TSDB_NOT_READY</code>。CI 新增生产构建启动冒烟；omp、逐行 spawn 与 Claude Agent SDK 三类子进程统一清洗宿主密钥。桌面端保留 0.20.0 的更新治理：检查只提示，下载与重启安装分别由用户明确选择，系统/PAC、受限手动代理与直连三条线路互不串扰，断点续传仅在强校验一致时继续。
-      同月已交付的能力面——AgentPrefab、标准 Skill 供应链与评审制外部 MCP——仍以只读评审、不可变 revision 与运行时重新授权为边界，见
-      <a href="/AgentWorkShop/guide/agent-prefabs">AgentPrefab / Skill / MCP 指南</a>。
+      当前为 v0.21.0（2026-11-26）。这一版补齐会话生命周期，并把多会话并入对话页：手工会话可改名、归档、恢复；归档会话先关闭再永久清理，关闭最多等 150 ms。所有普通删除/移除在触发点确认（标准 <code>ConfirmPopover</code> 包装 <code>a-popconfirm</code>）：取消零请求，确认才执行；AML 删除不再因弹窗加载失败而放行。对话页自身持有「群聊 / 会话 + 新建 + 会话详情」，独立多会话视图移除，旧 <code>?view=sessions</code> 落到 <code>chat</code>；项目深链只选中目标一次，旧的列表与上下文响应由代次和频道校验丢弃。归档会话在设置页恢复或永久清理。
+      参数下发等写操作仍在节点授权与配方审批之后执行；模拟证据不是物理 HIL，见
+      <a href="/AgentWorkShop/guide/line-governance">产线治理指南</a>。
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">READINESS</span>
-        <h3>时序库就绪门</h3>
-        <p>ready 只在适配器初始化完成（或显式降级 SQLite）后置位；在线恢复、离线重试与旧 rollup 装配由代次守卫；屏障拒绝只记录，不再冻结刷盘缓冲。</p>
-        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-25-stability-audit/REPORT.md">审查报告 →</a></p>
+        <span class="tag">LIFECYCLE</span>
+        <h3>会话可治理</h3>
+        <p>只有手工会话可改名/归档/恢复；归档会话一律先关闭，关闭在途最多 150 ms（第二次归档返回 <code>SESSION_CLOSING</code>）；直派、项目与目录会话被频道生命周期拒绝。归档列表只经可见频道与属主范围。</p>
+        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-26-chat-sessions/REPORT.md">审查报告 →</a></p>
       </div>
       <div class="hw-f">
         <span class="tag">FAIL-CLOSED</span>
-        <h3>必需 schema 失败即止</h3>
-        <p>Timescale 必需表、超表、打标列与热路径索引不再吞错；失败即释放连接池。可选索引与压缩策略只告警，SQLite 写入自愈建表。</p>
-        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/engineering/tsdb-storage-retention.md">存储与保留 →</a></p>
+        <h3>删除就地确认</h3>
+        <p>移出频道、删除工作区、移除团队/成员、解绑数采、按 X 删除归档会话，全部用标准 <code>a-popconfirm</code>：取消不发请求，确认才执行，危险按钮为红色。AML 删除不再因弹窗加载失败而放行删除。</p>
+        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/engineering/line-governance.md">治理与审计 →</a></p>
       </div>
       <div class="hw-f">
-        <span class="tag">HARDENING</span>
-        <h3>把失败变成可读状态</h3>
-        <p>CI 跑生产构建启动冒烟；三类引擎子进程按名称清洗宿主秘密，<code>AW_ENGINE_*</code> 与显式 provider key 保留；<code>TSDB_NOT_READY</code> 显式报错。</p>
+        <span class="tag">ONE SURFACE</span>
+        <h3>对话页承载会话</h3>
+        <p>对话页顶部会话条 + 同页会话详情；侧栏可回群聊，归档当前会话自动选下一个或回群聊；旧 <code>?view=sessions</code> 落到 <code>chat</code>，项目深链只选中目标一次。</p>
         <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/changelog.md">更新日志 →</a></p>
       </div>
     </div>
     <div class="hw-note">
       <span class="t">验证</span>
-      <p>v0.20.1（2026-11-25）：隔离生产构建上 V1–V6 <b>8/0</b>（V6 跳过）、REST <b>73/73</b>、DAQ <b>17/17</b>（降级路径仍 fail-closed）、Prefab <b>15/15</b>；真实 omp goal 任务 COMPLETED 并交付 5,153 字节可复核报告；全量单测 <b>2,355 项 / 2,354 通过 / 0 失败 / 1 跳过</b>（复跑；首轮 <code>http-drivers</code> 一次 libuv 收尾瞬态，单跑 10/10）；i18n 3,496/3,496、docs 101/0、typecheck/lint/生产启动冒烟全绿。模拟证据不构成物理 HIL；Mimosa <code>inconclusive</code>，不作安全通过声明。详见<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-25-stability-audit/REPORT.md">稳定性审查报告</a>与<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP 实机报告</a>。</p>
+      <p>v0.21.0（2026-11-26）：隔离生产构建上真实 Chrome UI 全流程通过（群聊/新建/会话详情/发消息/改名/归档/删除确认，窄屏无溢出，0 页面错误 / 0 失败请求）；契约 <b>7/7</b>、全量单测 <b>2,371 项 / 2,370 通过 / 0 失败 / 1 跳过</b>、eslint 0、typecheck、i18n 3,577/3,577 unresolved 0、docs 101/0、build 全绿。Mimosa 扫描本轮未运行，**不宣称安全通过**。详见 <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-26-chat-sessions/REPORT.md">会话合并与删除确认报告</a>。</p>
     </div>
   </section>
 

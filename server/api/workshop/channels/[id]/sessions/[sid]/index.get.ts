@@ -36,6 +36,7 @@ export default defineApiHandler(async (event) => {
     memberMap: parseMemberMap(s.memberMapJson),
     createdBy: s.createdBy,
     createdAt: s.createdAt,
+    archivedAt: s.archivedAt,
     closedAt: s.closedAt,
     projectId: s.projectId,
     projectWorkItemId: s.projectWorkItemId,

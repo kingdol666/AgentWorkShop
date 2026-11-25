@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 控制台中部画布:按 view 挂载七个视图之一(时间线 / 群聊 / Agent lanes / 任务板 /
- * 多通道同屏 / RPG 小镇 / 多会话),窄屏另有第 4 区「检查器」并入切换条;无频道时给诚实空态。
+ * 多通道同屏 / RPG 小镇),窄屏另有第 4 区「检查器」并入切换条;无频道时给诚实空态。
  * 各视图组件自带数据流,本层只负责选路与把 open-task / open-agent 上抛。
  */
 import type { CenterView } from '@/app/pages/workshop/composables/useWorkspaceShell'
@@ -22,6 +22,9 @@ const emit = defineEmits<{
   (e: 'openTask', target: TaskTarget): void
   (e: 'openAgent', id: string): void
 }>()
+
+/** 对话页会话作用域：null=群聊；侧栏/会话条/详情共用这一份选中。 */
+const chatSessionId = defineModel<string | null>('chatSessionId', { default: null })
 </script>
 
 <template>
@@ -34,10 +37,12 @@ const emit = defineEmits<{
         v-if="view === 'timeline'"
         :channel-id="channelId"
       />
-      <!-- v17 人类群聊时间线(chat.message 频道流;人类与 Agent 同场,投递台账可见) -->
-      <workshop-chat-timeline
+      <!-- 对话页统一入口：群聊 ↔ 会话在同一页切换（多会话不再单开页面） -->
+      <workshop-chat-session-host
         v-else-if="view === 'chat'"
+        v-model:session-id="chatSessionId"
         :channel-id="channelId"
+        @open-agent="emit('openAgent', $event)"
       />
       <workshop-agent-lanes-view
         v-else-if="view === 'lanes'"
@@ -56,12 +61,6 @@ const emit = defineEmits<{
       <workshop-town-view
         v-else-if="view === 'town'"
         :channel-id="channelId"
-      />
-      <!-- S1 多会话:Channel=模板,会话=克隆实例组(新建/关闭/成员运行态/会话消息流) -->
-      <workshop-session-manage-view
-        v-else-if="view === 'sessions'"
-        :channel-id="channelId"
-        @open-agent="emit('openAgent', $event)"
       />
       <!-- 窄屏第 4 区:检查器并入切换条(桌面仍是右侧常驻栏) -->
       <workshop-inspector-panel

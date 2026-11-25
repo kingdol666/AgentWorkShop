@@ -27,7 +27,6 @@ defineProps<{
   editing: string | null
   saving: boolean
   error: string
-  confirmingDel: string
 }>()
 
 const emit = defineEmits<{
@@ -77,12 +76,19 @@ const form = defineModel<DaqTemplateFormModel>('form', { required: true })
               >
                 {{ $t('daq.k45eb0034') }}
               </button>
-              <button
-                class="mini-btn danger"
-                @click="emit('remove', t)"
+              <ConfirmPopover
+                :title="$t('daq.removeTemplateConfirmTitle', { p0: t.name })"
+                :description="$t('daq.removeTemplateConfirmDesc')"
+                :ok-text="$t('common.delete')"
+                @confirm="emit('remove', t)"
               >
-                {{ confirmingDel === t.key ? $t('daq.k1hhheu3101') : $t('daq.k3xakp114') }}
-              </button>
+                <button
+                  class="mini-btn danger"
+                  type="button"
+                >
+                  {{ $t('daq.k3xakp114') }}
+                </button>
+              </ConfirmPopover>
             </td>
           </tr>
           <tr v-if="!customTpls.length">

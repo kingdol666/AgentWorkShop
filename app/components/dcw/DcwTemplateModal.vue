@@ -106,13 +106,20 @@ watch(open, (v) => {
               class="tpl-tag"
               :class="{ builtin: tpl.builtin }"
             >{{ tpl.builtin ? $t('dcw.k3x23c054') : $t('dcw.k3t616a058') }}</span>
-            <button
+            <ConfirmPopover
               v-if="!tpl.builtin"
-              class="mini-btn danger"
-              @click="doRemoveTemplate(tpl.key)"
+              :title="$t('dcw.removeTemplateConfirmTitle', { p0: tpl.name })"
+              :description="$t('dcw.removeTemplateConfirmDesc')"
+              :ok-text="$t('common.delete')"
+              @confirm="doRemoveTemplate(tpl.key)"
             >
-              {{ $t('dcw.k3xakp026') }}
-            </button>
+              <button
+                class="mini-btn danger"
+                type="button"
+              >
+                {{ $t('dcw.k3xakp026') }}
+              </button>
+            </ConfirmPopover>
           </div>
         </div>
         <p class="sec-label">

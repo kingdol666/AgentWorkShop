@@ -54,14 +54,22 @@ defineProps<{
         <span class="dcw-name">{{ r.name }}</span>
       </span>
       <span class="dcw-cur"><b>{{ r.value != null ? r.value.toFixed(r.decimals) : '--' }}</b><i>{{ r.unit }}</i></span>
-      <button
+      <ConfirmPopover
         v-if="mode === 'edit'"
-        class="bind-x"
-        :title="$t('townView.k1k73omv016')"
-        @click="unbindDcw(r.dcwId)"
+        :title="$t('townView.unbindConfirmTitle')"
+        :description="$t('townView.unbindConfirmDesc')"
+        :ok-text="$t('common.remove')"
+        @confirm="unbindDcw(r.dcwId)"
       >
-        ✕
-      </button>
+        <button
+          class="bind-x"
+          type="button"
+          :title="$t('townView.k1k73omv016')"
+          :aria-label="$t('townView.k1k73omv016')"
+        >
+          ✕
+        </button>
+      </ConfirmPopover>
     </div>
     <div
       class="dcw-win"

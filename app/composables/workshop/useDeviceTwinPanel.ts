@@ -28,8 +28,8 @@ export function useDeviceTwinPanel() {
   /** 行内删除(两步确认:首击布防 3s,再击执行) */
   const armedId = ref('')
   let armedTimer: ReturnType<typeof setTimeout> | null = null
-  async function removeTwin(t: { id: string, name: string }): Promise<void> {
-    if (armedId.value !== t.id) {
+  async function removeTwin(t: { id: string, name: string }, force = false): Promise<void> {
+    if (!force && armedId.value !== t.id) {
       armedId.value = t.id
       if (armedTimer) clearTimeout(armedTimer)
       armedTimer = setTimeout(() => {

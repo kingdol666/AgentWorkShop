@@ -88,12 +88,24 @@ defineProps<{
           {{ dv.name }}
         </option>
       </select>
-      <button
-        class="bind-add-btn"
-        :disabled="!selectedDcwDeviceName && !dcwBindPick"
-        @click="selectedDcwDeviceName ? unbindSelectedDcw() : bindSelectedDcw()"
+      <ConfirmPopover
+        v-if="selectedDcwDeviceName"
+        :title="$t('townView.unbindConfirmTitle')"
+        :description="$t('townView.unbindConfirmDesc')"
+        :ok-text="$t('common.remove')"
+        @confirm="unbindSelectedDcw()"
       >
-        {{ selectedDcwDeviceName ? $t('townView.k479eh149') : $t('townView.k452a8102') }}
+        <button class="bind-add-btn">
+          {{ $t('townView.k479eh149') }}
+        </button>
+      </ConfirmPopover>
+      <button
+        v-else
+        class="bind-add-btn"
+        :disabled="!dcwBindPick"
+        @click="bindSelectedDcw()"
+      >
+        {{ $t('townView.k452a8102') }}
       </button>
     </div>
   </div>

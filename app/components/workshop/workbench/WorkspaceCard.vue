@@ -58,13 +58,22 @@ const emit = defineEmits<{
         <span class="i-tabler-arrow-right im-pop" />
         {{ $t('wsHome.kr1uwwi018') }}
       </button>
-      <button
-        class="aw-ghost im"
-        :title="$t('wsHome.delWs')"
-        @click.stop="emit('remove', workspace.id)"
+      <ConfirmPopover
+        :title="$t('wsHome.delWsConfirmTitle', { p0: workspace.name })"
+        :description="$t('wsHome.delWsConfirmDesc')"
+        :ok-text="$t('common.delete')"
+        @confirm="emit('remove', workspace.id)"
       >
-        <span class="i-tabler-trash im-shake" />
-      </button>
+        <button
+          class="aw-ghost im"
+          type="button"
+          :title="$t('wsHome.delWs')"
+          :aria-label="$t('wsHome.delWs')"
+          @click.stop
+        >
+          <span class="i-tabler-trash im-shake" />
+        </button>
+      </ConfirmPopover>
     </div>
   </div>
 </template>

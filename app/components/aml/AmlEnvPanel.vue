@@ -190,14 +190,18 @@ const { shortId } = useAmlFormat()
           </li>
         </ul>
         <div class="ec-actions">
-          <button
+          <ConfirmPopover
             v-if="inventory && inventory.issues.some(i => i.problem === 'orphan_dir')"
-            class="mini-btn"
-            @click="$emit('prune')"
+            :title="$t('aml.pruneConfirmTitle')"
+            :description="$t('aml.pruneConfirmDesc')"
+            :ok-text="$t('aml.k1amlx188')"
+            @confirm="$emit('prune')"
           >
-            <span class="i-tabler-trash" />
-            {{ $t('aml.k1amlx188') }}
-          </button>
+            <button class="mini-btn">
+              <span class="i-tabler-trash" />
+              {{ $t('aml.k1amlx188') }}
+            </button>
+          </ConfirmPopover>
         </div>
       </div>
     </div>

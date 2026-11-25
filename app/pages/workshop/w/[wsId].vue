@@ -59,6 +59,17 @@ const {
   onViewKey,
 } = useWorkspaceShell(isDesktop, channelId)
 
+/** 对话页会话作用域（null=群聊）：侧栏/顶部会话条/内嵌详情共用一份。 */
+const chatSessionId = ref<string | null>(null)
+function openChatSession(sessionId: string | null): void {
+  chatSessionId.value = sessionId
+  view.value = 'chat'
+}
+// 切频道 = 切会话上下文：回到群聊，避免把 A 频道的会话选中带到 B 频道。
+watch(channelId, () => {
+  chatSessionId.value = null
+})
+
 // 覆盖层(抽屉 / ⌘K / A2A):活动条、中部画布、右栏三处入口在此汇聚成一份状态
 const {
   agentDrawerOpen,
@@ -105,11 +116,12 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         v-if="leftOpen"
         :ws-id="wsId"
         :channel-id="channelId"
+        :active-session-id="chatSessionId"
         :left-width="leftWidth"
         :narrow="narrowUI"
         @open-agent="openAgentInChannel"
         @open-palette="paletteOpen = true"
-        @open-session="view = 'sessions'"
+        @open-session="openChatSession"
       />
       <workshop-pane-splitter
         v-if="leftOpen && !narrowUI"
@@ -136,6 +148,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
           @open-palette="paletteOpen = true"
         />
         <ConsoleCenterPane
+          v-model:chat-session-id="chatSessionId"
           :ws-id="wsId"
           :channel-id="channelId"
           :view="view"
@@ -154,6 +167,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
           v-model:a2a-open="a2aDebugOpen"
           :ws-id="wsId"
           :channel-id="channelId"
+          :session-active="view === 'chat' && !!chatSessionId"
         />
       </section>
 

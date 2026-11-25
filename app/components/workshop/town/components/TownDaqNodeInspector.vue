@@ -25,7 +25,7 @@ defineProps<{
   isLegacyDaqTwin: (t: ReturnType<typeof useDeviceTwins>['twins'][number]) => boolean
   onDaqIntervalCommit: () => void
   onDaqThresholdCommit: (key: 'min' | 'max' | 'warnLow' | 'warnHigh', raw: string) => void
-  removeSelectedDevice: () => void
+  removeSelectedDevice: (force?: boolean) => void
   unbindDaq: (daqId: string) => void
   bindDaq: (daqId: string, deviceId: string) => void
 }>()
@@ -66,12 +66,24 @@ defineProps<{
           {{ dv.name }}
         </option>
       </select>
-      <button
-        class="bind-add-btn"
-        :disabled="!daqBoundDeviceName && !bindPick"
-        @click="daqBoundDeviceName ? unbindDaq(selected.id) : bindDaq(selected.id, bindPick); bindPick = ''"
+      <ConfirmPopover
+        v-if="daqBoundDeviceName"
+        :title="$t('townView.unbindConfirmTitle')"
+        :description="$t('townView.unbindConfirmDesc')"
+        :ok-text="$t('common.remove')"
+        @confirm="unbindDaq(selected.id)"
       >
-        {{ daqBoundDeviceName ? $t('townView.k479eh149') : $t('townView.k452a8102') }}
+        <button class="bind-add-btn">
+          {{ $t('townView.k479eh149') }}
+        </button>
+      </ConfirmPopover>
+      <button
+        v-else
+        class="bind-add-btn"
+        :disabled="!bindPick"
+        @click="bindDaq(selected.id, bindPick); bindPick = ''"
+      >
+        {{ $t('townView.k452a8102') }}
       </button>
     </div>
     <!-- 节点单点控制(server DaqNode 参数:启停/周期/量程/预警带;REST 落库即时生效) -->
@@ -145,13 +157,20 @@ defineProps<{
       </div>
       <div class="daq-info-row">
         <span>{{ $t('townView.k3xakp079') }}</span>
-        <button
-          class="bind-add-btn danger"
-          :title="$t('townView.kpwutri014')"
-          @click="removeSelectedDevice()"
+        <ConfirmPopover
+          :title="$t('common.confirmDeleteTitle', { p0: selectedDaqNode?.name ?? selected.id })"
+          :description="$t('common.confirmDeleteDesc')"
+          :ok-text="$t('common.delete')"
+          @confirm="removeSelectedDevice(true)"
         >
-          {{ $t('townView.k1bpp30k080') }}
-        </button>
+          <button
+            class="bind-add-btn danger"
+            type="button"
+            :title="$t('townView.kpwutri014')"
+          >
+            {{ $t('townView.k1bpp30k080') }}
+          </button>
+        </ConfirmPopover>
       </div>
     </div>
     <div

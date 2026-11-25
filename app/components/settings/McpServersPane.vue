@@ -6,7 +6,7 @@
  * - 启用/停用、删除、重新发现全部走服务端审计
  * 本面板不发起 MCP 连接；连接由服务端 broker 在发现/调用时执行。
  */
-import { message, Modal } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { useUserStore } from '@/app/stores/workshop/user'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 
@@ -153,32 +153,23 @@ async function review(serverId: string, tool: McpTool, status: 'approved' | 'rej
   }
 }
 
-function remove(server: McpServer): void {
-  Modal.confirm({
-    title: t('settings.mcp.removeConfirm'),
-    content: server.id,
-    okText: t('common.delete'),
-    okType: 'danger',
-    cancelText: t('common.cancel'),
-    onOk: async () => {
-      busy.value = server.id
-      try {
-        await apiFetch({
-          base: '/api/system/mcp-servers',
-          path: `/${encodeURIComponent(server.id)}`,
-          init: { method: 'DELETE' },
-        })
-        message.success(t('settings.mcp.removed'))
-        await load()
-      }
-      catch (err) {
-        message.error(err instanceof Error ? err.message : String(err))
-      }
-      finally {
-        busy.value = null
-      }
-    },
-  })
+async function removeNow(server: McpServer): Promise<void> {
+  busy.value = server.id
+  try {
+    await apiFetch({
+      base: '/api/system/mcp-servers',
+      path: `/${encodeURIComponent(server.id)}`,
+      init: { method: 'DELETE' },
+    })
+    message.success(t('settings.mcp.removed'))
+    await load()
+  }
+  catch (err) {
+    message.error(err instanceof Error ? err.message : String(err))
+  }
+  finally {
+    busy.value = null
+  }
 }
 
 onMounted(load)
@@ -315,15 +306,22 @@ onMounted(load)
           >
             {{ t('settings.mcp.discover') }}
           </a-button>
-          <a-button
-            danger
-            type="link"
-            size="small"
+          <ConfirmPopover
+            :title="t('settings.mcp.removeConfirm')"
+            :description="record.id"
+            :ok-text="t('common.delete')"
             :disabled="!canAdmin"
-            @click="remove(record)"
+            @confirm="removeNow(record)"
           >
-            {{ t('common.delete') }}
-          </a-button>
+            <a-button
+              danger
+              type="link"
+              size="small"
+              :disabled="!canAdmin"
+            >
+              {{ t('common.delete') }}
+            </a-button>
+          </ConfirmPopover>
         </template>
       </a-table-column>
       <template #expandedRowRender="{ record }">

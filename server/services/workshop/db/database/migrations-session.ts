@@ -3,7 +3,7 @@
  *
  * 只做加列/加索引，不重建任何表：
  *  - tasks/messages/chat_messages/chat_deliveries/agent_memories 增加 session_id；
- *  - channel_sessions 增加 brief/summary/last_active_at/generation；
+ *  - channel_sessions 增加 brief/summary/last_active_at/generation/archived_at；
  *  - project_work_item_attempts 增加 session_id（attempt → session 溯源）。
  *
  * 时序要求：本函数必须在 tasks 的 legacy 重建之前执行；两处 tasks_new 的
@@ -17,6 +17,9 @@ export function migrateSessionContextColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'channel_sessions', 'brief_json', 'TEXT NOT NULL DEFAULT \'{}\'')
   migrateAddColumn(db, 'channel_sessions', 'last_active_at', 'TEXT')
   migrateAddColumn(db, 'channel_sessions', 'generation', 'INTEGER NOT NULL DEFAULT 0')
+  // 归档会话(2026-11-25):archived_at 非空 = 从所有会话清单隐藏,仅「设置 → 归档对话」可见。
+  // 只加列不改 SCHEMA_SQL 契约(冻结版本哈希),旧库启动路径与本迁移一致。
+  migrateAddColumn(db, 'channel_sessions', 'archived_at', 'TEXT')
   migrateAddColumn(db, 'channel_sessions', 'product_id', 'TEXT')
   migrateAddColumn(db, 'channel_sessions', 'line_id', 'TEXT')
   migrateAddColumn(db, 'channel_sessions', 'binding_snapshot_json', 'TEXT NOT NULL DEFAULT \'\'')
@@ -38,6 +41,7 @@ export function migrateSessionContextColumns(db: DatabaseSync): void {
 /** 索引必须在 tasks 重建之后创建（rebuild 会丢索引）。 */
 export function ensureSessionIndexes(db: DatabaseSync): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_channel_sessions_active ON channel_sessions(channel_id, status, created_at DESC)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_channel_sessions_archived ON channel_sessions(channel_id, archived_at)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_channel_sessions_project ON channel_sessions(project_id, project_work_item_id, status)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_session ON tasks(channel_id, session_id, state, created_at)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, created_at)')

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppearancePane from '~/components/settings/AppearancePane.vue'
 import AgentPrefabsPane from '~/components/settings/AgentPrefabsPane.vue'
+import ArchivedSessionsPane from '~/components/settings/ArchivedSessionsPane.vue'
 import McpServersPane from '~/components/settings/McpServersPane.vue'
 import RuntimePane from '~/components/settings/RuntimePane.vue'
 import SkillsPane from '~/components/settings/SkillsPane.vue'
@@ -17,7 +18,7 @@ onMounted(() => {
   })
 })
 
-type SettingsTab = 'appearance' | 'runtime' | 'skills' | 'mcp' | 'prefabs' | 'system'
+type SettingsTab = 'appearance' | 'runtime' | 'skills' | 'mcp' | 'prefabs' | 'archives' | 'system'
 const activeTab = ref<SettingsTab>('appearance')
 const focusedTab = ref<SettingsTab>('appearance')
 
@@ -27,11 +28,12 @@ const tabs = computed(() => [
   { key: 'skills', icon: 'i-tabler-puzzle', label: t('settings.skillsTab'), pane: SkillsPane },
   { key: 'mcp', icon: 'i-tabler-plug', label: t('settings.mcpTab'), pane: McpServersPane },
   { key: 'prefabs', icon: 'i-tabler-box', label: t('settings.prefabsTab'), pane: AgentPrefabsPane },
+  { key: 'archives', icon: 'i-tabler-archive', label: t('settings.archivesTab'), pane: ArchivedSessionsPane },
   { key: 'system', icon: 'i-tabler-server-2', label: t('settings.systemTab'), pane: SystemPane },
 ] as const)
 
 /** 懒挂载:首次激活才挂载(键盘预览焦点不触发请求),挂后保留状态。 */
-const mountedPanes = reactive<Record<SettingsTab, boolean>>({ appearance: true, runtime: false, skills: false, mcp: false, prefabs: false, system: false })
+const mountedPanes = reactive<Record<SettingsTab, boolean>>({ appearance: true, runtime: false, skills: false, mcp: false, prefabs: false, archives: false, system: false })
 function selectTab(key: SettingsTab) {
   focusedTab.value = key
   activeTab.value = key

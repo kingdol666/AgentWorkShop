@@ -46,9 +46,11 @@ export interface ChannelSessionRow {
   /** AgentPrefab 绑定快照（Session 创建时固定 revision/slot/hash） */
   prefabSnapshotJson: string
   prefabSnapshotHash: string
+  /** 归档时间（非空 = 从会话清单隐藏，仅在设置页归档对话中可见） */
+  archivedAt: string | null
 }
 
-const SESSION_COLS = 'id, channel_id AS channelId, title, status, memory_policy AS memoryPolicy, member_map_json AS memberMapJson, created_by AS createdBy, created_at AS createdAt, closed_at AS closedAt, project_id AS projectId, project_work_item_id AS projectWorkItemId, created_by_kind AS createdByKind, instance_kind AS instanceKind, summary, brief_json AS briefJson, last_active_at AS lastActiveAt, generation, channel_mode AS channelMode, product_id AS productId, line_id AS lineId, binding_snapshot_json AS bindingSnapshotJson, binding_snapshot_hash AS bindingSnapshotHash, binding_snapshot_revision AS bindingSnapshotRevision, prefab_snapshot_json AS prefabSnapshotJson, prefab_snapshot_hash AS prefabSnapshotHash'
+const SESSION_COLS = 'id, channel_id AS channelId, title, status, memory_policy AS memoryPolicy, member_map_json AS memberMapJson, created_by AS createdBy, created_at AS createdAt, closed_at AS closedAt, project_id AS projectId, project_work_item_id AS projectWorkItemId, created_by_kind AS createdByKind, instance_kind AS instanceKind, summary, brief_json AS briefJson, last_active_at AS lastActiveAt, generation, channel_mode AS channelMode, product_id AS productId, line_id AS lineId, binding_snapshot_json AS bindingSnapshotJson, binding_snapshot_hash AS bindingSnapshotHash, binding_snapshot_revision AS bindingSnapshotRevision, prefab_snapshot_json AS prefabSnapshotJson, prefab_snapshot_hash AS prefabSnapshotHash, archived_at AS archivedAt'
 
 export function createChannelSessionRepo(db: DatabaseSync) {
   const insertStmt = db.prepare(
@@ -56,12 +58,17 @@ export function createChannelSessionRepo(db: DatabaseSync) {
      VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, '', '{}', ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const byIdStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE id = ?`)
-  const byChannelStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE channel_id = ? ORDER BY created_at DESC`)
+  // 归档会话从常规清单隐藏(历史仍可读:findById / listArchivedByChannel)。
+  const byChannelStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE channel_id = ? AND archived_at IS NULL ORDER BY created_at DESC`)
+  const archivedByChannelStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE channel_id = ? AND archived_at IS NOT NULL ORDER BY archived_at DESC`)
   const byWorkItemStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE project_work_item_id = ? ORDER BY created_at DESC`)
   const byProjectStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE project_id = ? ORDER BY created_at DESC`)
   const closeStmt = db.prepare(`UPDATE channel_sessions SET status = 'closed', closed_at = ? WHERE id = ? AND status IN ('active', 'closing')`)
   const beginClosingStmt = db.prepare(`UPDATE channel_sessions SET status = 'closing' WHERE id = ? AND status IN ('active', 'closing')`)
   const byStatusStmt = db.prepare(`SELECT ${SESSION_COLS} FROM channel_sessions WHERE status = ? ORDER BY created_at ASC`)
+  const renameStmt = db.prepare(`UPDATE channel_sessions SET title = ? WHERE id = ?`)
+  const setArchivedStmt = db.prepare(`UPDATE channel_sessions SET archived_at = ? WHERE id = ?`)
+  const removeStmt = db.prepare(`DELETE FROM channel_sessions WHERE id = ?`)
 
   return {
     create(input: {
@@ -116,6 +123,26 @@ export function createChannelSessionRepo(db: DatabaseSync) {
 
     listByChannel(channelId: string): ChannelSessionRow[] {
       return byChannelStmt.all(channelId) as unknown as ChannelSessionRow[]
+    },
+
+    /** 已归档会话（仅归档对话管理面使用；常规清单不含）。 */
+    listArchivedByChannel(channelId: string): ChannelSessionRow[] {
+      return archivedByChannelStmt.all(channelId) as unknown as ChannelSessionRow[]
+    },
+
+    /** 改名（仅改展示标题；返回是否命中会话行）。 */
+    rename(id: string, title: string): boolean {
+      return Number(renameStmt.run(title, id).changes ?? 0) > 0
+    },
+
+    /** 归档（at=ISO 时间）或恢复（at=null）；返回是否命中会话行。 */
+    setArchived(id: string, at: string | null): boolean {
+      return Number(setArchivedStmt.run(at, id).changes ?? 0) > 0
+    },
+
+    /** 永久删除会话行（调用方必须先完成持久层级联清理）。 */
+    remove(id: string): boolean {
+      return Number(removeStmt.run(id).changes ?? 0) > 0
     },
 
     /** 某工作项名下的会话（任务实例；重试复用 active 行） */

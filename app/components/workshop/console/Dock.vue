@@ -15,6 +15,8 @@ defineProps<{
   wsId: string
   /** 聚焦 channel(页面已确认存在,本组件只在其挂载时渲染) */
   channelId: string
+  /** 对话页当前处于会话作用域：会话详情自带 composer，隐藏全局 Composer。 */
+  sessionActive?: boolean
 }>()
 
 const view = defineModel<CenterView>('view', { required: true })
@@ -37,9 +39,9 @@ const focusComposer = (): void => {
     ref="composerBox"
     class="composer-pane"
   >
-    <!-- sessions 视图自带 session composer/上下文，隐藏全局任务 composer，避免窄屏遮挡 -->
+    <!-- 会话作用域自带 session composer/上下文，隐藏全局群聊 composer，避免双输入框 -->
     <workshop-composer
-      v-if="view !== 'sessions'"
+      v-if="!sessionActive"
       :channel-id="channelId"
     />
 

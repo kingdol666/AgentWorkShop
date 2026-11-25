@@ -132,6 +132,10 @@ h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.02
 .note-text { display: inline-flex; gap: 6px; align-items: center; }
 .note-text .edit-i { cursor: pointer; opacity: 0.5; }
 .note-text .edit-i:hover { opacity: 1; }
+.note-text .edit-i:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .live-dot {
   width: 7px;
   height: 7px;

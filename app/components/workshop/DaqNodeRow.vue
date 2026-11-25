@@ -376,11 +376,21 @@ async function removeNodeDevice(deviceId: string): Promise<void> {
           :title="$t('daq.k2bindtip137')"
         >
           {{ deviceNameById(did) }}
-          <span
-            class="dev-unbind"
-            title="unbind"
-            @click="removeNodeDevice(did)"
-          >✕</span>
+          <ConfirmPopover
+            :title="$t('daq.unbindConfirmTitle')"
+            :description="$t('daq.unbindConfirmDesc')"
+            :ok-text="$t('common.remove')"
+            @confirm="removeNodeDevice(did)"
+          >
+            <button
+              class="dev-unbind"
+              type="button"
+              :title="$t('daq.unbindConfirmTitle')"
+              :aria-label="$t('daq.unbindConfirmTitle')"
+            >
+              ✕
+            </button>
+          </ConfirmPopover>
         </span>
         <select
           class="line-sel dev-add"
@@ -523,7 +533,15 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 
 .dev-binds { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .dev-bind-chip { display: inline-flex; gap: 4px; align-items: center; padding: 1px 7px; font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: var(--radius-chip); }
-.dev-unbind { cursor: pointer; opacity: 0.55; font-size: var(--fs-micro); }
+.dev-unbind {
+  padding: 0;
+  font-size: var(--fs-micro);
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  opacity: 0.55;
+}
 .dev-unbind:hover { opacity: 1; color: var(--tone-danger-dot); }
 .dev-add { max-width: 130px; font-size: 11px; }
 .line-sel {

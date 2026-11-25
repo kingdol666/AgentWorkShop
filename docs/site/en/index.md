@@ -80,7 +80,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.20.1 · released</i></span>
+        <span>Version <i>v0.21.0 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -96,38 +96,38 @@ footer:
   <section class="hw-sec">
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
-      <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.20.1 (RELEASED 2026-11-25)</span>
+      <h2 class="hw-sec-title">New this month</h2>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.21.0 (RELEASED 2026-11-26)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      v0.20.1 (2026-11-25) does not add a feature surface; it fixes how the system behaves when something goes wrong. DAQ time-series readiness is set only after the adapter finishes initializing (or explicitly degrades to SQLite), and collectors, flushes and acceptance scripts wait on it; online recovery, offline retry and stale rollup attaches are guarded by generation checks. Timescale initialization fails closed when any required table, hypertable, tag column or hot-path index fails, releasing the pool; optional indexes and compression policies only warn. SQLite writes self-heal their schema, and writing through Timescale before initialization throws <code>TSDB_NOT_READY</code>. CI adds a production boot smoke; omp, line-spawn and the Claude Agent SDK scrub inherited host secrets by name. The 0.20.0 desktop update contract remains: checks only report, download and restart-install are separate user choices, and system/PAC, bounded manual proxy and direct HTTPS never leak into each other. Only an exact checksum match becomes installable.
-      The capability surface delivered earlier this month — AgentPrefabs, the standard Skill supply chain and review-gated external MCP — still bounds itself with read-only review, immutable revisions and per-invocation re-authorization; see the
-      <a href="/AgentWorkShop/en/guide/agent-prefabs">AgentPrefabs / Skills / MCP guide</a>.
+      v0.21.0 (2026-11-26) closes the session lifecycle and merges session management into the chat page: only manual sessions can be renamed, archived or restored; an archived session is purged after it is closed, and a busy close is bounded to 150 ms. Every ordinary delete/remove confirms in place (the shared <code>ConfirmPopover</code> around a standard <code>a-popconfirm</code>): cancelling sends no request and only confirming acts, and the AML delete no longer falls back to deleting when its dialog fails to load. The chat page holds 「group chat / session + create + session detail」, the standalone sessions view is removed, and old <code>?view=sessions</code> links resolve to <code>chat</code>; a project deep link selects its target once, stale list and context responses are discarded by generation and channel checks. Archived sessions are restored or purged in settings.
+      Parameter dispatch and other writes still run after node authorization and recipe approval; simulation evidence is not physical HIL. See
+      <a href="/AgentWorkShop/guide/line-governance">line governance</a>.
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">READINESS</span>
-        <h3>Readiness is a real barrier</h3>
-        <p>Ready is set only after adapter initialization (or explicit SQLite degradation); online recovery, offline retry and stale rollup attaches are generation-guarded; a rejected barrier is logged but no longer freezes the flush buffer.</p>
-        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-25-stability-audit/REPORT.md">Audit report →</a></p>
+        <span class="tag">LIFECYCLE</span>
+        <h3>A session you can govern</h3>
+        <p>Only manual sessions can be renamed, archived or restored; an archived session must be closed first, a busy close is bounded to 150 ms (a second archive returns <code>SESSION_CLOSING</code>); task, project and catalog sessions are refused by their channel lifecycle. Archived rows come only from visible channels and the owner scope.</p>
+        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-26-chat-sessions/REPORT.md">Acceptance report →</a></p>
       </div>
       <div class="hw-f">
         <span class="tag">FAIL-CLOSED</span>
-        <h3>Required schema fails closed</h3>
-        <p>Required Timescale tables, hypertables, tag columns and hot-path indexes no longer swallow errors; a failure releases the pool. Optional indexes only warn, and SQLite writes self-heal.</p>
-        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/engineering/tsdb-storage-retention.md">Storage &amp; retention →</a></p>
+        <h3>Delete where you trigger it</h3>
+        <p>Unmount channel, delete workspace, remove team/member, unbind DAQ, purge an archived session — all confirm in a standard <code>a-popconfirm</code>: cancelling sends no request, only confirm acts, and dangerous buttons are red. The AML delete no longer falls back to deleting when its dialog fails to load.</p>
+        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/engineering/line-governance.md">Governance and audit →</a></p>
       </div>
       <div class="hw-f">
-        <span class="tag">HARDENING</span>
-        <h3>Failures become readable states</h3>
-        <p>CI runs a production boot smoke; three harness child families scrub host secrets by name while preserving <code>AW_ENGINE_*</code> and explicit provider keys; <code>TSDB_NOT_READY</code> is explicit.</p>
+        <span class="tag">ONE SURFACE</span>
+        <h3>Sessions live in the chat page</h3>
+        <p>A session bar and the session detail sit on the same page; the sidebar returns to group chat, archiving the active session selects the next or group chat; old <code>?view=sessions</code> resolves to <code>chat</code>, and a project deep link selects its target once.</p>
         <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/changelog.md">Changelog →</a></p>
       </div>
     </div>
     <div class="hw-note">
       <span class="t">Verification</span>
-      <p>v0.20.1 (2026-11-25): on an isolated production build — line onboarding V1–V6 <b>8/0</b> (V6 skipped), REST <b>73/73</b>, DAQ <b>17/17</b> with the degraded path still fail-closed, prefab binding <b>15/15</b>; a real omp goal task COMPLETED with a 5,153-byte, data-grounded deliverable; full unit suite <b>2,355 tests / 2,354 pass / 0 fail / 1 skip</b> on re-run (one <code>http-drivers</code> libuv teardown transient in the first run cleared at 10/10); i18n 3,496/3,496, docs 101/0, typecheck, lint and the production boot smoke green. Simulator evidence is not physical HIL; Mimosa <code>inconclusive</code>, no security-pass claim. See the <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-25-stability-audit/REPORT.md">stability audit report</a> and the <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP live report</a>.</p>
+      <p>v0.21.0 (2026-11-26): on an isolated production build a real Chrome UI pass went green (group chat / create / session detail / message / rename / archive / delete confirm, narrow viewport with no overflow, 0 page errors / 0 failed requests); session contract <b>7/7</b>, full unit suite <b>2,371 tests / 2,370 pass / 0 fail / 1 skip</b>, eslint 0, typecheck, i18n 3,577/3,577 unresolved 0, docs 101/0 and build green. The Mimosa scan was not run this round and is <b>not</b> reported as a security pass. See the <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-26-chat-sessions/REPORT.md">session merge and delete confirmation report</a>.</p>
     </div>
   </section>
 

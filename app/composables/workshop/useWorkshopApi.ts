@@ -132,6 +132,8 @@ export interface ChannelSessionDto extends ChannelSessionProductSnapshotDto {
   summary?: string
   lastActiveAt?: string | null
   kind?: 'manual' | 'task' | 'project'
+  /** 归档时间（非空 = 不在常规清单显示，仅在设置页归档对话可见） */
+  archivedAt?: string | null
   brief?: SessionBriefDto | null
 }
 
@@ -142,6 +144,19 @@ export interface ChannelSessionDto extends ChannelSessionProductSnapshotDto {
  */
 export interface ChannelSessionSummaryDto extends Omit<ChannelSessionDto, 'brief'> {
   brief?: Pick<SessionBriefDto, 'currentTask' | 'nextStep' | 'openQuestions' | 'deliverables'> | null
+}
+
+/** 归档对话管理行（GET /workshop/sessions/archived） */
+export interface ArchivedSessionDto {
+  id: string
+  channelId: string
+  channelName: string
+  title: string
+  status: 'active' | 'closing' | 'closed'
+  instanceKind: 'manual' | 'task' | 'project'
+  createdAt: string
+  closedAt: string | null
+  archivedAt: string
 }
 
 /** Session Context：平台确定性 brief（有界；不含原始 transcript） */
@@ -274,6 +289,20 @@ export function useWorkshopApi() {
     /** 关闭会话(级联:在飞任务按树取消 + clone 实例停用;幂等) */
     closeChannelSession: (id: string, sid: string, body?: { reason?: string }) =>
       http.post<{ data: { canceledTasks: number, clones: string[] } }>(`/workshop/channels/${id}/sessions/${sid}/close`, body ?? {}),
+    /** 改名（仅展示标题） */
+    renameChannelSession: (id: string, sid: string, body: { title: string }) =>
+      http.patch<{ data: { sessionId: string, title: string } }>(`/workshop/channels/${id}/sessions/${sid}`, body),
+    /** 归档（active 会话会先关闭并取消在飞任务；归档后从常规清单隐藏） */
+    archiveChannelSession: (id: string, sid: string) =>
+      http.post<{ data: { archived: true, archivedAt: string, canceledTasks: number, clones: string[] } }>(`/workshop/channels/${id}/sessions/${sid}/archive`, {}),
+    /** 恢复已归档会话（保持 closed，回到常规清单） */
+    restoreChannelSession: (id: string, sid: string) =>
+      http.post<{ data: { restored: true, already: boolean } }>(`/workshop/channels/${id}/sessions/${sid}/restore`, {}),
+    /** 永久删除已归档会话（不可恢复；后端级联清理 DB + 节点绑定持久层） */
+    deleteChannelSession: (id: string, sid: string) =>
+      http.delete<{ data: { sessions: number, agents: number, messages: number, tasks: number, chatMessages: number, chatDeliveries: number, memories: number, clones: number } }>(`/workshop/channels/${id}/sessions/${sid}`),
+    /** 归档对话管理清单（owner/admin 可见范围内） */
+    listArchivedSessions: () => http.get<{ data: ArchivedSessionDto[] }>('/workshop/sessions/archived'),
     /** Session Context brief（确定性装配） */
     getSessionBrief: (id: string, sid: string) => http.get<{ data: SessionBriefDto | null }>(`/workshop/channels/${id}/sessions/${sid}/brief`),
     /** 注入 v2：prompt 前最终装配文本（分层块预览） */

@@ -51,25 +51,36 @@ const seedLabel = (x: { id?: string, templateId?: string, name: string }): strin
         @change="(v: unknown) => emit('toggleVisibility', team, v === true)"
       />
       <span class="owner">{{ team.ownerName ?? '-' }}</span>
-      <a-dropdown v-if="canWrite">
-        <span class="i-tabler-dots op" />
-        <template #overlay>
-          <a-menu>
-            <a-menu-item @click="emit('deploy', team)">
-              {{ $t('teams.deployToChannel') }}
-            </a-menu-item>
-            <a-menu-item @click="emit('plugins', team)">
-              {{ $t('teams.k1plugon047') }}
-            </a-menu-item>
-            <a-menu-item
-              danger
-              @click="emit('remove', team)"
-            >
-              {{ $t('teams.k1bpojhf011') }}
-            </a-menu-item>
-          </a-menu>
-        </template>
-      </a-dropdown>
+      <template v-if="canWrite">
+        <a-dropdown>
+          <span class="i-tabler-dots op" />
+          <template #overlay>
+            <a-menu>
+              <a-menu-item @click="emit('deploy', team)">
+                {{ $t('teams.deployToChannel') }}
+              </a-menu-item>
+              <a-menu-item @click="emit('plugins', team)">
+                {{ $t('teams.k1plugon047') }}
+              </a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
+        <ConfirmPopover
+          :title="$t('teams.removeTeamConfirmTitle', { p0: seedLabel(team) })"
+          :description="$t('teams.removeTeamConfirmDesc')"
+          :ok-text="$t('common.delete')"
+          @confirm="emit('remove', team)"
+        >
+          <button
+            class="op team-del"
+            type="button"
+            :aria-label="$t('teams.k1bpojhf011')"
+            :title="$t('teams.k1bpojhf011')"
+          >
+            <span class="i-tabler-trash" />
+          </button>
+        </ConfirmPopover>
+      </template>
       <!-- 用 outlined 而不是 text:text 按钮在卡片头上与旁边的 owner 文本
            长得一模一样,用户看不出这里是**唯一的主操作**(实测三张卡片都如此)。 -->
       <a-button
@@ -97,11 +108,22 @@ const seedLabel = (x: { id?: string, templateId?: string, name: string }): strin
         </a-tag>
         <span class="member-name">{{ seedLabel(m) }}</span>
         <span class="member-harness">{{ m.harness }}</span>
-        <span
+        <ConfirmPopover
           v-if="canWrite"
-          class="i-tabler-x rm"
-          @click="emit('removeMember', team, m.templateId)"
-        />
+          :title="$t('teams.removeMemberConfirmTitle', { p0: seedLabel(m) })"
+          :description="$t('teams.removeMemberConfirmDesc')"
+          :ok-text="$t('common.remove')"
+          @confirm="emit('removeMember', team, m.templateId)"
+        >
+          <button
+            class="rm"
+            type="button"
+            :aria-label="$t('common.remove')"
+            :title="$t('common.remove')"
+          >
+            <span class="i-tabler-x" />
+          </button>
+        </ConfirmPopover>
       </div>
       <a-button
         v-if="canWrite"
@@ -153,6 +175,16 @@ const seedLabel = (x: { id?: string, templateId?: string, name: string }): strin
 
 .op { cursor: pointer; opacity: 0.4; }
 .op:hover { opacity: 1; }
+button.op {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+}
+.op.team-del { color: var(--tone-danger-dot); }
 .members {
   display: flex;
   flex-direction: column;
@@ -171,7 +203,16 @@ const seedLabel = (x: { id?: string, templateId?: string, name: string }): strin
   font-size: 11px;
   color: var(--ink-faint);
 }
-.rm { cursor: pointer; opacity: 0.35; }
+.rm {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  opacity: 0.35;
+}
 .rm:hover { opacity: 1; }
 
 /* ══ 窄屏(v9):卡片头 / 成员行换行(原 teams.vue 900px 块里属于卡片的规则,逐字复制) ══ */

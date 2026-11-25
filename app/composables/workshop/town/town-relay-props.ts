@@ -144,7 +144,7 @@ export interface TownRightRailProps {
   fmtDaq: (st: DaqSimState) => string
   onDaqIntervalCommit: () => void
   onDaqThresholdCommit: (key: 'min' | 'max' | 'warnLow' | 'warnHigh', raw: string) => void
-  removeSelectedDevice: () => void
+  removeSelectedDevice: (force?: boolean) => void
   unbindDaq: (daqId: string) => void
   bindDaq: (daqId: string, deviceId: string) => void
   daqTemplates: DaqTemplate[]

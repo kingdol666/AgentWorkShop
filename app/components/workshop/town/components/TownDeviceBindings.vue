@@ -88,14 +88,22 @@ defineProps<{
       width="56"
       height="20"
     />
-    <button
+    <ConfirmPopover
       v-if="mode === 'edit'"
-      class="bind-x"
-      :title="$t('townView.k1k73omv016')"
-      @click="unbindDaq(r.daqId)"
+      :title="$t('townView.unbindConfirmTitle')"
+      :description="$t('townView.unbindConfirmDesc')"
+      :ok-text="$t('common.remove')"
+      @confirm="unbindDaq(r.daqId)"
     >
-      ✕
-    </button>
+      <button
+        class="bind-x"
+        type="button"
+        :title="$t('townView.k1k73omv016')"
+        :aria-label="$t('townView.k1k73omv016')"
+      >
+        ✕
+      </button>
+    </ConfirmPopover>
   </div>
   <div
     v-if="!boundDaqRows.length"

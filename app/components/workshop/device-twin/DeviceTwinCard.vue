@@ -25,7 +25,8 @@ defineProps<{
 }>()
 
 defineEmits<{
-  (e: 'focus' | 'remove'): void
+  (e: 'focus'): void
+  (e: 'remove', force?: boolean): void
 }>()
 
 /** 数采实体(绿卡):kind=daq 或旧数据 modelRef 前缀兜底 */
@@ -46,11 +47,14 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
 </script>
 
 <template>
-  <button
+  <div
     class="twin-card"
     :class="{ daq: isDaq(twin) }"
-    type="button"
+    role="button"
+    tabindex="0"
     @click="$emit('focus')"
+    @keydown.enter.self="$emit('focus')"
+    @keydown.space.self.prevent="$emit('focus')"
   >
     <div class="twin-row">
       <span class="twin-model-tag">{{ modelTag(twin.modelRef || twin.name) }}</span>
@@ -58,15 +62,25 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
         <span class="twin-name">{{ twin.name }}</span>
         <span class="twin-code">{{ isDaq(twin) ? 'DAQ' : devNo(twin.id) }}</span>
       </div>
-      <button
-        class="twin-del"
-        :class="{ armed }"
+      <ConfirmPopover
+        :title="$t('deviceTwinPanel.deleteConfirmTitle', { p0: twin.name })"
+        :description="$t('deviceTwinPanel.deleteConfirmDesc')"
+        :ok-text="$t('common.delete')"
         :disabled="busy"
-        :title="armed ? $t('deviceTwinPanel.armDelete') : $t('deviceTwinPanel.delDevice')"
-        @click.stop="$emit('remove')"
+        @confirm="$emit('remove', true)"
       >
-        {{ armed ? $t('deviceTwinPanel.k44653007') : '✕' }}
-      </button>
+        <button
+          class="twin-del"
+          :class="{ armed }"
+          type="button"
+          :disabled="busy"
+          :title="armed ? $t('deviceTwinPanel.armDelete') : $t('deviceTwinPanel.delDevice')"
+          :aria-label="$t('deviceTwinPanel.delDevice')"
+          @click.stop
+        >
+          {{ armed ? $t('deviceTwinPanel.k44653007') : '✕' }}
+        </button>
+      </ConfirmPopover>
       <span
         class="twin-state"
         :class="`s-${twin.state}`"
@@ -108,7 +122,7 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
       v-if="dcwRows?.length"
       :rows="dcwRows ?? []"
     />
-  </button>
+  </div>
 </template>
 
 <style scoped>
@@ -127,6 +141,10 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
 }
 .twin-card:hover {
   background: var(--hud-panel-hover);
+}
+.twin-card:focus-visible {
+  outline: 2px solid var(--hud-accent, var(--accent));
+  outline-offset: 2px;
 }
 .twin-card:active {
   background: var(--hud-panel-raised);

@@ -163,11 +163,22 @@ const { fmtTime, fmtNum, shortId } = useAmlFormat()
                 v-if="promoteActionOf(m).length === 0"
                 class="dim"
               >--</span>
-              <span
-                class="i-tabler-trash edit-i"
-                :title="$t('aml.k1amlx190')"
-                @click="$emit('remove', m.id, $t('aml.k1amlx199'))"
-              />
+              <ConfirmPopover
+                :title="$t('aml.k1amlx199')"
+                :description="$t('common.confirmDeleteDesc')"
+                :ok-text="$t('common.delete')"
+                @confirm="$emit('remove', m.id, $t('aml.k1amlx199'))"
+              >
+                <span
+                  class="i-tabler-trash edit-i"
+                  role="button"
+                  tabindex="0"
+                  :title="$t('aml.k1amlx190')"
+                  :aria-label="$t('aml.k1amlx190')"
+                  @keydown.enter.prevent="($event.currentTarget as HTMLElement).click()"
+                  @keydown.space.prevent="($event.currentTarget as HTMLElement).click()"
+                />
+              </ConfirmPopover>
             </td>
           </tr>
         </tbody>
