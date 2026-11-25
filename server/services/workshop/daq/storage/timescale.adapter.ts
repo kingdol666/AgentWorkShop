@@ -28,7 +28,8 @@ export class TimescaleAdapter implements TsdbPort {
 
   constructor(private readonly url: string) {}
 
-  async init(): Promise<void> {
+  /** @param poolOverride 测试注入口:缺省按 url 建真实 pg Pool */
+  async init(poolOverride?: Pool): Promise<void> {
     const mod = requirePg('pg') as typeof import('pg')
     // 连接池/语句超时来自 daq.timescale.*(生产调优;异常查询不得长期占用连接)
     const s = daqRuntimeSettings()
@@ -39,8 +40,36 @@ export class TimescaleAdapter implements TsdbPort {
       max: Math.max(1, Math.min(32, Number(s.timescale.poolMax))),
       statement_timeout: timeoutMs,
     } as unknown as import('pg').PoolConfig
-    this.pool = new mod.Pool(poolConfig)
-    await this.pool.query(`
+    const pool = poolOverride ?? new mod.Pool(poolConfig)
+    this.pool = pool
+    try {
+      await this.applySchema(pool)
+    }
+    catch (err) {
+      // 必需 schema 失败 → 工厂将降级;先释放本池,避免降级路径遗留连接
+      this.pool = null
+      await Promise.resolve(pool.end?.()).catch(() => {})
+      throw err
+    }
+    this.initialized = true
+    // P0-3 物理参数(chunk=1 天 + 列存压缩;逐条守护)
+    await this.applyPhysicalPolicies()
+    // 保留期:drop_chunks 周期执行(30min;未装扩展时静默跳过)
+    void this.sweepRetention()
+    if (!this.retentionTimer) {
+      this.retentionTimer = setInterval(() => void this.sweepRetention(), 30 * 60_000)
+      this.retentionTimer.unref?.()
+    }
+  }
+
+  /**
+   * 必需 schema —— 表/打标列/hypertable 任一失败必须让 init 失败(由工厂显式降级并告警),
+   * 不得以"连上了"冒充可用:缺列的库会让打标查询/帧写入在运行时静默失败。
+   * 可选项(tag/page 辅助索引、chunk/压缩策略)失败只告警:查询仍正确,仅性能/空间回收退化。
+   * 所有 DDL 都是编译期字面量,零外部输入。
+   */
+  private async applySchema(pool: Pool): Promise<void> {
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS daq_samples (
         node_id text        NOT NULL,
         ts       timestamptz NOT NULL,
@@ -51,38 +80,36 @@ export class TimescaleAdapter implements TsdbPort {
       );
     `)
     // hypertable 幂等创建(未装 timescaledb 扩展时报错 → 由工厂降级)
-    await this.pool.query(
+    await pool.query(
       `SELECT create_hypertable('daq_samples', 'ts', if_not_exists => TRUE, migrate_data => TRUE)`,
     )
-    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_node_ts ON daq_samples (node_id, ts DESC)`)
-    // 存量库迁移:先补打标列(幂等;已存在时报错吞掉),再建依赖列的索引
-    for (const ddl of [
-      'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS quality text NOT NULL DEFAULT \'good\'',
-      'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS line_id text',
-      'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS product_id text',
-      'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS recipe_id text',
-      'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS run_id text',
-      // 到达时间(首次入库;旧行为 NULL = unknown)
-      'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS ingested_at bigint',
-    ]) {
-      await this.pool.query(ddl).catch(() => {})
-    }
-    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_tag ON daq_samples (product_id, recipe_id, ts DESC)`).catch(() => {})
-    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_page ON daq_samples (node_id, ts ASC)`).catch(() => {})
-    // 帧表(v2:向量/图像元数据;像素 blob 在对象存储,JSONB 承载点列与派生指标;
-    // DDL 为静态字面量,零外部输入)
-    await this.pool.query('CREATE TABLE IF NOT EXISTS daq_frames (node_id text NOT NULL, ts timestamptz NOT NULL, kind text NOT NULL, template_key text, device_binding_id text, line_id text, product_id text, recipe_id text, run_id text, points integer NOT NULL DEFAULT 0, meta jsonb NOT NULL DEFAULT \'{}\'::jsonb, metrics jsonb NOT NULL DEFAULT \'{}\'::jsonb, PRIMARY KEY (node_id, ts))').catch(() => {})
-    await this.pool.query(`SELECT create_hypertable('daq_frames', 'ts', if_not_exists => TRUE, migrate_data => TRUE)`).catch(() => {})
-    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_frames_node_ts ON daq_frames (node_id, ts DESC)`).catch(() => {})
-    this.initialized = true
-    // P0-3 物理参数(chunk=1 天 + 列存压缩;逐条守护)
-    await this.applyPhysicalPolicies()
-    // 保留期:drop_chunks 周期执行(30min;未装扩展时静默跳过)
-    void this.sweepRetention()
-    if (!this.retentionTimer) {
-      this.retentionTimer = setInterval(() => void this.sweepRetention(), 30 * 60_000)
-      this.retentionTimer.unref?.()
-    }
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_node_ts ON daq_samples (node_id, ts DESC)`)
+    // 存量库迁移:先补打标列(幂等),再建依赖列的索引
+    await pool.query(`ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS quality text NOT NULL DEFAULT 'good'`)
+    await pool.query(`ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS line_id text`)
+    await pool.query(`ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS product_id text`)
+    await pool.query(`ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS recipe_id text`)
+    await pool.query(`ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS run_id text`)
+    // 到达时间(首次入库;旧行为 NULL = unknown)
+    await pool.query(`ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS ingested_at bigint`)
+    // 辅助索引:缺失只会让打标分页变慢,但会让 schema 迁移被无关锁/权限问题卡死启动
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_tag ON daq_samples (product_id, recipe_id, ts DESC)`).catch((err: unknown) => {
+      this.warnOptional('idx_daq_samples_tag', err)
+    })
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_page ON daq_samples (node_id, ts ASC)`).catch((err: unknown) => {
+      this.warnOptional('idx_daq_samples_page', err)
+    })
+    // 帧表(v2:向量/图像元数据;像素 blob 在对象存储,JSONB 承载点列与派生指标)
+    await pool.query('CREATE TABLE IF NOT EXISTS daq_frames (node_id text NOT NULL, ts timestamptz NOT NULL, kind text NOT NULL, template_key text, device_binding_id text, line_id text, product_id text, recipe_id text, run_id text, points integer NOT NULL DEFAULT 0, meta jsonb NOT NULL DEFAULT \'{}\'::jsonb, metrics jsonb NOT NULL DEFAULT \'{}\'::jsonb, PRIMARY KEY (node_id, ts))')
+    await pool.query(`SELECT create_hypertable('daq_frames', 'ts', if_not_exists => TRUE, migrate_data => TRUE)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_frames_node_ts ON daq_frames (node_id, ts DESC)`).catch((err: unknown) => {
+      this.warnOptional('idx_daq_frames_node_ts', err)
+    })
+  }
+
+  private warnOptional(name: string, err: unknown): void {
+    const msg = err instanceof Error ? (err.message.split('\n')[0] ?? '') : String(err)
+    console.warn(`[timescale] 可选对象 ${name} 未生效(查询仍正确,仅性能退化): ${msg}`)
   }
 
   /**
