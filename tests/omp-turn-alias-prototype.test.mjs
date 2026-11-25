@@ -1,15 +1,22 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { randomBytes } from 'node:crypto'
 
+// 外部依赖:本用例要真拉起 `omp` 二进制;CI/洁净环境未安装时按纪律带原因 skip(不伪造通过)。
+const ompProbe = spawnSync('omp', ['--version'], { stdio: 'ignore', timeout: 10_000 })
+const ompMissing = Boolean(ompProbe.error) || ompProbe.status === null
+
 // Standalone experiment: does not import or alter the product OMP adapter.
-test('persistent OMP rotates model-visible host tools and rejects stale names', { timeout: 90_000 }, async () => {
+test('persistent OMP rotates model-visible host tools and rejects stale names', {
+  timeout: 90_000,
+  skip: ompMissing ? 'omp binary not available in this environment' : false,
+}, async () => {
   const root = await mkdtemp(join(tmpdir(), 'aw-omp-tool-fence-'))
   const home = join(root, 'home')
   const work = join(root, 'work')
