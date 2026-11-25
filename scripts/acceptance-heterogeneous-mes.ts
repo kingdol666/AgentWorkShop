@@ -88,7 +88,7 @@ const { getDcwController } = await import('../server/services/workshop/dcw/dcw-c
 const { getDaqNodeRepo } = await import('../server/services/workshop/daq/daq-node.repo')
 const { DaqNode } = await import('../server/services/workshop/daq/daq-node')
 const { getDaqController } = await import('../server/services/workshop/daq/daq-controller')
-const { getTsdb, tsdbReady } = await import('../server/services/workshop/daq/storage')
+const { getTsdb, waitForTsdb } = await import('../server/services/workshop/daq/storage')
 const { bridgeMesHistory } = await import('../server/services/workshop/mes/mes-bridge')
 const { createMesController } = await import('../server/services/workshop/mes/mes-controller')
 const { mesRestDcwDriver } = await import('../server/services/workshop/dcw/drivers/mes-rest')
@@ -106,7 +106,7 @@ bindOpsRepos({
   audit: createAuditRepo(db),
   approvalRequests: createApprovalRequestRepo(db),
 })
-await tsdbReady
+await waitForTsdb()
 
 // ---------- 夹具:产线 / 产品 / 配方 / 批次 ----------
 const line = getDcwLineRepo().create({ name: '异构验收线', simulated: false })

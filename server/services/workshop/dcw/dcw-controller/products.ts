@@ -63,9 +63,9 @@ export abstract class DcwControllerProducts extends DcwControllerLines {
     const startMs = Date.parse(run.startedAt)
     const writes = repo.historyInWindow(run.startedAt, run.endedAt, id)
     const { getDaqNodeRepo } = await import('../../daq/daq-node.repo')
-    const { getTsdb, tsdbReady } = await import('../../daq/storage')
+    const { getTsdb, waitForTsdb } = await import('../../daq/storage')
     const { findDaqTemplate } = await import('../../daq/daq-templates')
-    await tsdbReady
+    await waitForTsdb()
     const bucketMs = endMs - startMs > 60_000 ? Math.max(1000, Math.round((endMs - startMs) / 200)) : undefined
     const daq = [] as Array<{ templateRef: string, nodeId: string, nodeName: string, ch: string, unit: string, latest: number | null, avg: number | null, min: number | null, max: number | null, cnt: number }>
     // 并行查询(tsdb 往返一次/节点,互不依赖):N+1 串行会让 50 节点产线的批次视图放大 50 倍时延。

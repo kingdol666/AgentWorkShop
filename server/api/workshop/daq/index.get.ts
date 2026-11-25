@@ -8,7 +8,7 @@ import { defineApiHandler } from '@/server/utils/response'
 import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
 import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 import { listDaqTemplates } from '@/server/services/workshop/daq/daq-templates'
-import { tsdbReady } from '@/server/services/workshop/daq/storage'
+import { waitForTsdb } from '@/server/services/workshop/daq/storage'
 import { getDaqQueue } from '@/server/services/workshop/daq/bus'
 import { daqInfraStatus } from '@/server/services/workshop/daq/infra'
 import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
@@ -17,7 +17,7 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   // ws.ts 出口装配 + 管线上电(幂等;路由模块加载即绑定)
   bindDaqHost(broadcastSceneEvent)
-  await Promise.all([tsdbReady, getDaqQueue()])
+  await Promise.all([waitForTsdb(), getDaqQueue()])
   const ctrl = getDaqController()
   ctrl.provisionLegacyTwins()
   const state = ctrl.controllerState()

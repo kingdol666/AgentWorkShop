@@ -310,8 +310,8 @@ function defaultDeps(): Required<MesBridgeDeps> {
       return resolveDcwDriver(kind as never) as MesBridgeDriver
     },
     tsdb: async () => {
-      const { getTsdb, tsdbReady } = await import('../daq/storage')
-      await tsdbReady
+      const { getTsdb, waitForTsdb } = await import('../daq/storage')
+      await waitForTsdb()
       return getTsdb()
     },
     objectStore: async () => {

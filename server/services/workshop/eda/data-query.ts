@@ -157,8 +157,8 @@ export async function dataQuery(user: ResolvedUser, inp: DataQueryInput): Promis
 
   inflight.set(user.id, nInFlight + 1)
   try {
-    const { getTsdb, tsdbReady } = await import('../daq/storage')
-    await tsdbReady
+    const { getTsdb, waitForTsdb } = await import('../daq/storage')
+    await waitForTsdb()
     const tsdb = getTsdb()
     const repo = getDaqNodeRepo()
     const series: DataQuerySeries[] = []

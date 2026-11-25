@@ -11,7 +11,7 @@ import { TSDB_WRITE_RETRIES } from './helpers'
 import { markDaqRuntimeFailure } from '../infra'
 import { findDaqTemplate } from '../daq-templates'
 import { getDaqHostPorts } from '../host-ports'
-import { getTsdb } from '../storage'
+import { getTsdb, waitForTsdb } from '../storage'
 import { getDcwNodeRepo } from '../../dcw/dcw-node.repo'
 
 export abstract class DaqControllerTsdbTwin extends DaqControllerSweepAlarms {
@@ -31,6 +31,7 @@ export abstract class DaqControllerTsdbTwin extends DaqControllerSweepAlarms {
     if (this.tsdbWriting) return
     this.tsdbWriting = true
     try {
+      await waitForTsdb()
       while (this.tsdbBuffer.length > 0) {
         const batch = this.tsdbBuffer.splice(0, this.tsdbBuffer.length)
         let ok = false

@@ -237,8 +237,8 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
    * 打标样本跨通道聚合;paramKey 限定工艺参数(DAQ 模板),bucketMs 降采样。
    */
   async lineQuery(opts: LineQueryOpts): Promise<LineQueryResult> {
-    const { getTsdb, tsdbReady } = await import('../../daq/storage')
-    await tsdbReady
+    const { getTsdb, waitForTsdb } = await import('../../daq/storage')
+    await waitForTsdb()
     const { getDaqNodeRepo } = await import('../../daq/daq-node.repo')
     const { findDaqTemplate } = await import('../../daq/daq-templates')
     // 时间间隔参数(bucketMs):缺省与下限来自 daq.query.*(live 配置,热重载)

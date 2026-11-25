@@ -17,6 +17,7 @@ const requirePg = createRequire(import.meta.url)
 export class TimescaleAdapter implements TsdbPort {
   readonly backend = 'timescale'
   private pool: Pool | null = null
+  private initialized = false
   private retentionTimer: NodeJS.Timeout | null = null
   /** 保留期(daq.tsRetentionH;env DAQ_TS_RETENTION_H 兼容) */
   private readonly retentionH = daqRuntimeSettings().tsRetentionH
@@ -73,6 +74,7 @@ export class TimescaleAdapter implements TsdbPort {
     await this.pool.query('CREATE TABLE IF NOT EXISTS daq_frames (node_id text NOT NULL, ts timestamptz NOT NULL, kind text NOT NULL, template_key text, device_binding_id text, line_id text, product_id text, recipe_id text, run_id text, points integer NOT NULL DEFAULT 0, meta jsonb NOT NULL DEFAULT \'{}\'::jsonb, metrics jsonb NOT NULL DEFAULT \'{}\'::jsonb, PRIMARY KEY (node_id, ts))').catch(() => {})
     await this.pool.query(`SELECT create_hypertable('daq_frames', 'ts', if_not_exists => TRUE, migrate_data => TRUE)`).catch(() => {})
     await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_frames_node_ts ON daq_frames (node_id, ts DESC)`).catch(() => {})
+    this.initialized = true
     // P0-3 物理参数(chunk=1 天 + 列存压缩;逐条守护)
     await this.applyPhysicalPolicies()
     // 保留期:drop_chunks 周期执行(30min;未装扩展时静默跳过)
@@ -129,6 +131,7 @@ export class TimescaleAdapter implements TsdbPort {
   }
 
   async close(): Promise<void> {
+    this.initialized = false
     if (this.retentionTimer) {
       clearInterval(this.retentionTimer)
       this.retentionTimer = null
@@ -138,7 +141,8 @@ export class TimescaleAdapter implements TsdbPort {
   }
 
   async writeSamples(rows: DaqSampleRow[]): Promise<void> {
-    if (!this.pool || rows.length === 0) return
+    if (rows.length === 0) return
+    if (!this.pool || !this.initialized) throw new Error('TSDB_NOT_READY: Timescale adapter has not completed initialization')
     const now = Date.now()
     // 数组化参数(unnest):纯占位符,不拼接任何值,也不拼接占位符串。
     const col = {
@@ -331,7 +335,8 @@ export class TimescaleAdapter implements TsdbPort {
   // ===== 帧(daq_frames;元数据+JSONB,像素在对象存储)=====
 
   async writeFrames(rows: import('./tsdb-port').DaqFrameRow[]): Promise<void> {
-    if (!this.pool || rows.length === 0) return
+    if (rows.length === 0) return
+    if (!this.pool || !this.initialized) throw new Error('TSDB_NOT_READY: Timescale adapter has not completed initialization')
     // 固定占位符逐行插入 + 客户端事务(帧量级 ≤ 每节点每周期 1 条,无需动态 VALUES)
     const client = await this.pool.connect()
     try {
