@@ -34,15 +34,37 @@ const PLATFORM_SECRET_ENV = [
   'AW_TUI_PASSWORD',
   'ADMIN_TOKEN',
   'CLOUDFLARE_TUNNEL_TOKEN',
+  'AW_DAQ_OBJECTSTORE_SECRETKEY',
+  'AW_DAQ_INGEST_TOKEN',
+  'AW_AGENT_TOKEN',
 ] as const
 
 /**
- * 剥离平台自身秘密(会话口令/管理员口令/隧道令牌)。
+ * 名称即秘密的通用规则。显式名单永远追不上运维在宿主环境里导出的
+ * HUGGINGFACEHUB_API_TOKEN / NPM_TOKEN / AWS_SECRET_ACCESS_KEY 之类变量;
+ * 2026-11-25 实机验收中 agent 的 bash 工具用 `env` 读到了宿主 HF/npm 令牌,
+ * 证明只靠显式名单不足。带这些后缀/前缀的键一律不透传,引擎需要的
+ * provider key 由 options.env 显式注入(合并在清洗之后)。
+ */
+const SENSITIVE_ENV_SUFFIX = /(_|^)(TOKEN|SECRET|SECRETKEY|SECRET_KEY|PASSWORD|PASSWD|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIALS?)$/i
+const SENSITIVE_ENV_PREFIX = /^(HUGGINGFACE|HF_|NPM_|NODE_AUTH_TOKEN|GITHUB_|GH_|AWS_|OPENAI_|ANTHROPIC_|AZURE_|GOOGLE_API|COHERE_|MISTRAL_|GROQ_)/i
+/** 引擎侧显式占位(测试/适配器用于传递引擎 provider 凭据):放行 */
+const ENGINE_PASSTHROUGH = /^AW_ENGINE_/i
+
+function isSensitiveEnvKey(key: string): boolean {
+  if (ENGINE_PASSTHROUGH.test(key)) return false
+  return SENSITIVE_ENV_SUFFIX.test(key) || SENSITIVE_ENV_PREFIX.test(key)
+}
+
+/**
+ * 剥离平台自身秘密(会话口令/管理员口令/隧道令牌 + 名称即秘密的通用规则)。
  * 导出给不经 spawnLineProcess 的启动器(omp RPC 客户端)复用,避免两套口径。
+ * 注意:调用方应在**清洗之后的合并顺序**里叠加显式 options.env,否则引擎
+ * provider key 会被一并剥掉。
  */
 export function scrubPlatformSecrets(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const deny = new Set<string>(PLATFORM_SECRET_ENV)
-  return Object.fromEntries(Object.entries(env).filter(([k]) => !deny.has(k)))
+  return Object.fromEntries(Object.entries(env).filter(([k]) => !deny.has(k) && !isSensitiveEnvKey(k)))
 }
 
 /** 拒绝 shell 元字符(命令只能是纯可执行路径) */
@@ -116,7 +138,7 @@ export function spawnLineProcess(command: string, args: string[], options: LineS
   const { file, needsCmd } = resolveExecutable(command)
   const env = options.cleanEnv
     ? { ...options.env }
-    : scrubPlatformSecrets({ ...process.env, ...options.env })
+    : { ...scrubPlatformSecrets(process.env), ...options.env }
   if (needsCmd) {
     // Windows .cmd shim:固定包装器 'cmd.exe' + /d /s /c。
     // 可执行文件路径无条件引号包裹:无空格路径裸奔时,/s 模式的 cmd 会吞掉
