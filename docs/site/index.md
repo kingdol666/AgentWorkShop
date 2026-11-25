@@ -37,6 +37,7 @@ footer:
     </div>
     <div class="hw-cta">
       <a class="hw-btn primary" href="/AgentWorkShop/guide/getting-started">快速开始 <span class="arr">→</span></a>
+      <a class="hw-btn" href="#film">看 90 秒影片 <span class="arr">→</span></a>
       <a class="hw-btn" href="/AgentWorkShop/demo">产品演示 <span class="arr">→</span></a>
       <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">GitHub <span class="arr">↗</span></a>
       <span class="hw-cta-sep"></span>
@@ -62,15 +63,17 @@ footer:
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
         <div class="hw-stat"><span class="v">144</span><span class="k">运行时设置项</span></div>
-        <div class="hw-stat"><span class="v">1100+*</span><span class="k">历史验收断言</span></div>
+        <div class="hw-stat"><span class="v">2355</span><span class="k">全量单测</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
       </div>
       <p class="hw-stat-note">
-        * 2026-09-24 历史验收波次（当时源码 v0.9.x）使用隔离 AW_HOME 的生产构建、PLC 模拟器与真实协议栈；~1100+ 基础矩阵断言最终轮通过，补充功能波按报告逐项记录（包含环境/凭据受限项）。**该轮是模拟器设备证据，不是物理 PLC/HIL 验收。**报告见
+        单测项数取自 2026-11-25 本地复跑（2,354 通过 / 0 失败 / 1 条件跳过）；隔离生产构建实机验收 REST 73/73、DAQ 17/17、Prefab 15/15、V1–V6 8/0。**模拟器设备证据，不是物理 PLC/HIL 验收。**报告见
+        <code>docs/audit/evidence/2026-11-25-stability-audit/REPORT.md</code>。
+        历史 2026-09-24 全量覆盖（~1100 断言）仍归档在
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> 与
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>。
-        其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
-        14 个 harness(<code>agents/registry.ts</code>) / 144 个设置项(<code>aw config list</code>) / 7 态任务机。
+        其余是可数出来的静态事实：6 类驱动（5 内置 + serial-bridge 串口插件）/ 4 个入口（WS · MCP · A2A · REST）/
+        14 个 harness（<code>agents/registry.ts</code>）/ 144 个设置项（<code>aw config list</code>）/ 7 态任务机。
       </p>
       <div class="aw-statusbar">
         <span>版本 <i>v0.20.1 · 已发布</i></span>
@@ -94,45 +97,69 @@ footer:
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.20.1 版本：本轮把 DAQ 时序库就绪门、Timescale 必需 schema 失败即止、CI 生产启动冒烟与 agent 子进程宿主密钥清洗落地，运行时不再在初始化未完成时静默丢写。桌面端同时保留 0.20.0 的更新能力：自动检查只提示新版本，桌面更新下载与重启安装均由用户明确选择；更新中心支持系统/PAC、受限手动代理与直连，并保持与 Web/本机服务隔离。只有校验文件完整匹配后才进入可安装状态；嵌入 Web 壳有品牌时桌面标题栏收起重复字标，窄屏保留简洁备用标识。此前版本已提供按工作区归属的频道、先验身份后查资源的详情/任务 API、有界产线查询、共享主题与无障碍刷新、一体化桌面壳、关闭到托盘、桌面/Web 共用 <code>~/.AgentWorkShop</code>、基于 GitHub Releases 的应用内更新与 WSH 安装助手：
-      系统设置新增技能管理（标准 SKILL.md 发现 → 不可变受管导入 → 显式启用，覆盖
-      内置、<code>&lt;configRoot&gt;/skills</code>、<code>~/.agent/skills</code> 等全局根，全程不执行
-      Skill 脚本）、外部 MCP（HTTPS 清单 + <code>AW_MCP_*</code> 凭据引用 + 评审制
-      shared-safe 只读工具 + 出口防护）与 Agent 预制件（角色/场景提示词 + 多维插槽 +
-      逐能力开关封装为不可变 revision）；Channel 成员固定绑定，Session/Project 实例
-      冻结快照，运行时每次调用重新授权。请先阅读
-      <a href="/AgentWorkShop/guide/agent-prefabs">AgentPrefab / Skill / MCP</a>；
-      模拟验收不构成物理 HIL 或生产就绪证明。
+      当前为 v0.20.1（2026-11-25）。这一版不改功能面，专修“出问题时系统怎么表现”：时序库就绪门只在适配器初始化完成或显式降级 SQLite 后置位，采集、刷盘与验收脚本都等这道门；Timescale 必需表、超表、打标列或热路径索引任一失败，初始化即失败并释放连接池，可选索引只告警；SQLite 写入自愈建表，初始化前的 Timescale 写入显式抛 <code>TSDB_NOT_READY</code>。CI 新增生产构建启动冒烟；omp、逐行 spawn 与 Claude Agent SDK 三类子进程统一清洗宿主密钥。桌面端保留 0.20.0 的更新治理：检查只提示，下载与重启安装分别由用户明确选择，系统/PAC、受限手动代理与直连三条线路互不串扰，断点续传仅在强校验一致时继续。
+      同月已交付的能力面——AgentPrefab、标准 Skill 供应链与评审制外部 MCP——仍以只读评审、不可变 revision 与运行时重新授权为边界，见
+      <a href="/AgentWorkShop/guide/agent-prefabs">AgentPrefab / Skill / MCP 指南</a>。
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">SKILLS</span>
-        <h3>标准 Skill 供应链</h3>
-        <p>发现内置与全局根（npm 标准 ~/.agent/skills）的 SKILL.md；导入为按内容哈希的不可变受管副本，默认未启用，启停留审计。</p>
-        <p><a href="/AgentWorkShop/guide/agent-prefabs">技能管理 →</a></p>
+        <span class="tag">READINESS</span>
+        <h3>时序库就绪门</h3>
+        <p>ready 只在适配器初始化完成（或显式降级 SQLite）后置位；在线恢复、离线重试与旧 rollup 装配由代次守卫；屏障拒绝只记录，不再冻结刷盘缓冲。</p>
+        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-25-stability-audit/REPORT.md">审查报告 →</a></p>
       </div>
       <div class="hw-f">
-        <span class="tag">MCP</span>
-        <h3>外部 MCP 评审制接入</h3>
-        <p>HTTPS Streamable HTTP 清单 + AW_MCP_* 凭据引用；发现只产生 pending，管理员评审 shared-safe 只读后才可调用；出口防护拒绝私网/环回。</p>
-        <p><a href="/AgentWorkShop/guide/agent-prefabs">外部 MCP →</a></p>
+        <span class="tag">FAIL-CLOSED</span>
+        <h3>必需 schema 失败即止</h3>
+        <p>Timescale 必需表、超表、打标列与热路径索引不再吞错；失败即释放连接池。可选索引与压缩策略只告警，SQLite 写入自愈建表。</p>
+        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/engineering/tsdb-storage-retention.md">存储与保留 →</a></p>
       </div>
       <div class="hw-f">
-        <span class="tag">PREFAB</span>
-        <h3>专家智能体预制件</h3>
-        <p>角色/场景提示词 + 多维自定义插槽 + 逐能力开关发布为不可变 revision；Channel 成员固定绑定，作业运行时按交集重新授权。</p>
-        <p><a href="/AgentWorkShop/guide/agent-prefabs">AgentPrefab 指南 →</a></p>
+        <span class="tag">HARDENING</span>
+        <h3>把失败变成可读状态</h3>
+        <p>CI 跑生产构建启动冒烟；三类引擎子进程按名称清洗宿主秘密，<code>AW_ENGINE_*</code> 与显式 provider key 保留；<code>TSDB_NOT_READY</code> 显式报错。</p>
+        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/changelog.md">更新日志 →</a></p>
       </div>
     </div>
     <div class="hw-note">
       <span class="t">验证</span>
-      <p>v0.15.0 合并主干门禁（<code>87805eaf</code>）：typecheck/lint/build、docs 101/0、i18n 3439/3439、skills 197/0、MCP 14/14、unit 2185/2186（1 条件跳过）全绿；隔离全新实例实机验收 21/21（Skill 发现→导入→启用→预制体发布→绑定→目录收窄→activate_skill 低信任注入→越权拒绝→会话快照→修订不自动升级→撤销即时生效→MCP HTTPS/无密钥/失败有界）；存量实例两轮重启持久性核验（写尝试台账 3277 行分布一致、绝不重发）；v0.16.0 在真实旧库副本上实证存量家目录升级路径（契约 v9）。仅模拟证据，不构成物理 HIL；外部 MCP 正向实网、Prefab 下真实模型作业、浏览器点击验收 NOT_RUN；Mimosa inconclusive 不作安全通过声明，详见报告。<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md">全流程验收报告</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP 实机报告</a></p>
+      <p>v0.20.1（2026-11-25）：隔离生产构建上 V1–V6 <b>8/0</b>（V6 跳过）、REST <b>73/73</b>、DAQ <b>17/17</b>（降级路径仍 fail-closed）、Prefab <b>15/15</b>；真实 omp goal 任务 COMPLETED 并交付 5,153 字节可复核报告；全量单测 <b>2,355 项 / 2,354 通过 / 0 失败 / 1 跳过</b>（复跑；首轮 <code>http-drivers</code> 一次 libuv 收尾瞬态，单跑 10/10）；i18n 3,496/3,496、docs 101/0、typecheck/lint/生产启动冒烟全绿。模拟证据不构成物理 HIL；Mimosa <code>inconclusive</code>，不作安全通过声明。详见<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-25-stability-audit/REPORT.md">稳定性审查报告</a>与<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP 实机报告</a>。</p>
     </div>
+  </section>
+
+  <section class="hw-sec" id="film">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">01</span>
+      <h2 class="hw-sec-title">90 秒看全系统</h2>
+      <span class="hw-sec-en">SYSTEM FILM · v0.20.1 · 2026-11-25</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <p class="hw-lead">
+      一部在真实 0.20.1 桌面实例上完成的作业回放：提交目标 → 取数 → 双口径统计 → 写交付物 → 更新中心。
+      不是 UI 渲染稿，也不是概念片；片内数字来自任务 <code>0c3e927d</code>，可在任务列表、状态时间线与交付物抽屉里回读。
+    </p>
+    <figure class="aw-console">
+      <figcaption class="aw-console-bar">
+        <span class="aw-console-tag">FILM.01</span>
+        <span class="aw-console-title">AGENTWORKSHOP 0.20.1 · 系统宣传片</span>
+        <span class="aw-console-meta">87.7s · 1920×1080 · 中文烧录字幕</span>
+      </figcaption>
+      <div class="aw-console-body">
+<video controls preload="metadata" :poster="'/AgentWorkShop/demo/agentworkshop-0.20.1-promo-poster.jpg'" :src="'/AgentWorkShop/demo/agentworkshop-0.20.1-promo.mp4'" style="display:block;width:100%;background:#000"></video>
+</div>
+      <p class="aw-console-cap">
+        <b>真实作业，不是 mock。</b>
+        数据分析师在 6 分 37 秒内完成 270 个 15 秒桶 / 1,912 个原始点 / 均值 185.048℃ / 偏差 +0.048℃ 的复盘报告；
+        有效数据只有 67 分钟，片内与交付物都按 67 分钟口径标注。演练产线 <code>ln-cca0c356</code> 为影子模拟（simulated），
+        模拟证据不等于物理 HIL 或投产批准；Mimosa 审计 <code>inconclusive</code>，不作安全背书。
+        <a href="/AgentWorkShop/demo">分镜索引与素材规格 →</a>
+      </p>
+    </figure>
   </section>
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">01</span>
+      <span class="hw-sec-no">02</span>
       <h2 class="hw-sec-title">真实界面</h2>
       <span class="hw-sec-en">INTERFACE</span>
     </div>
@@ -223,7 +250,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">02</span>
+      <span class="hw-sec-no">03</span>
       <h2 class="hw-sec-title">架构</h2>
       <span class="hw-sec-en">ARCHITECTURE</span>
     </div>
@@ -298,7 +325,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">03</span>
+      <span class="hw-sec-no">04</span>
       <h2 class="hw-sec-title">设计思路</h2>
       <span class="hw-sec-en">DESIGN PRINCIPLES</span>
     </div>
@@ -339,7 +366,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">04</span>
+      <span class="hw-sec-no">05</span>
       <h2 class="hw-sec-title">能力全景</h2>
       <span class="hw-sec-en">CAPABILITIES</span>
     </div>
@@ -374,7 +401,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">05</span>
+      <span class="hw-sec-no">06</span>
       <h2 class="hw-sec-title">应用前景</h2>
       <span class="hw-sec-en">APPLICATIONS</span>
     </div>
@@ -417,7 +444,7 @@ footer:
 
   <section class="hw-cta-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">06</span>
+      <span class="hw-sec-no">07</span>
       <h2 class="hw-sec-title">一分钟上手</h2>
       <span class="hw-sec-en">QUICK START</span>
     </div>
@@ -443,7 +470,7 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">07</span>
+      <span class="hw-sec-no">08</span>
       <h2 class="hw-sec-title">研究论文</h2>
       <span class="hw-sec-en">RESEARCH PAPER</span>
     </div>

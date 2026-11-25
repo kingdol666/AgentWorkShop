@@ -39,6 +39,7 @@ footer:
     </div>
     <div class="hw-cta">
       <a class="hw-btn primary" href="/AgentWorkShop/en/guide/getting-started">Get started <span class="arr">→</span></a>
+      <a class="hw-btn" href="#film">Watch the 90s film <span class="arr">→</span></a>
       <a class="hw-btn" href="/AgentWorkShop/en/demo">Product demo <span class="arr">→</span></a>
       <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">GitHub <span class="arr">↗</span></a>
       <span class="hw-cta-sep"></span>
@@ -64,13 +65,15 @@ footer:
         <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
         <div class="hw-stat"><span class="v">144</span><span class="k">runtime settings</span></div>
-        <div class="hw-stat"><span class="v">1100+*</span><span class="k">historical acceptance assertions</span></div>
+        <div class="hw-stat"><span class="v">2355</span><span class="k">unit tests</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">task states</span></div>
       </div>
       <p class="hw-stat-note">
-        * The 2026-09-24 historical acceptance (source was v0.9.x) used an isolated AW_HOME, production build, PLC simulator and real protocol
-        stacks. Its ~1100+ baseline assertions passed in the final round; follow-up features are reported item by item,
-        including environment/credential-limited cases. **This is simulator evidence, not physical PLC/HIL acceptance.** Reports:
+        Unit-test count from the 2026-11-25 local re-run (2,354 pass / 0 fail / 1 conditional skip);
+        isolated production-build acceptance covered REST 73/73, DAQ 17/17, prefab binding 15/15 and line onboarding V1–V6 8/0.
+        **This is simulator evidence, not physical PLC/HIL acceptance.** Report:
+        <code>docs/audit/evidence/2026-11-25-stability-audit/REPORT.md</code>.
+        The 2026-09-24 historical full-coverage wave (~1100 assertions) remains archived in
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> and
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>.
         The rest are countable facts: 6 driver classes (5 built-in + the serial-bridge plugin) / 4 entry points (WS · MCP · A2A · REST) /
@@ -98,47 +101,72 @@ footer:
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      v0.20.1 hardens the runtime: DAQ time-series readiness now tracks real adapter initialization and explicit degradation, Timescale initialization fails closed on any required schema error, CI adds the standalone `.mjs` suites and a production boot smoke, and harness child processes scrub inherited host secrets. The desktop update foundation from 0.20.0 remains: automatic checks only report a newer release, while download and restart-install are separate user choices; the update center follows Windows system/PAC rules, accepts a bounded manual proxy, or uses direct HTTPS, isolated from the Web renderer and local service. Only a complete exact checksum match becomes installable. When the embedded Web shell has its own brand, the desktop title rail hides the duplicate wordmark and keeps a compact fallback for narrow or brandless pages. Earlier releases provide workspace-scoped channels, identity-before-lookup detail/task APIs, bounded line queries, the refreshed shared theme, the integrated desktop shell, close-to-tray, the shared <code>~/.AgentWorkShop</code> home, GitHub-release in-app updates and the WSH install helper:
-      System Settings gains Skills (standard SKILL.md discovery → immutable managed import →
-      explicit enable, covering built-in, <code>&lt;configRoot&gt;/skills</code> and
-      <code>~/.agent/skills</code> global roots with zero script execution), external MCP
-      (HTTPS manifests + <code>AW_MCP_*</code> credential references + reviewed shared-safe
-      read tools + egress guarding) and Agent Prefabs (role/scenario prompts + multi-dimensional
-      slots + per-capability switches packaged as immutable revisions). Channel members pin a
-      revision, Session/Project instances freeze the snapshot, and the runtime re-authorizes
-      every invocation. See
-      <a href="/AgentWorkShop/en/guide/agent-prefabs">AgentPrefabs / Skills / MCP</a>;
-      simulated acceptance is not physical HIL or production approval.
+      v0.20.1 (2026-11-25) does not add a feature surface; it fixes how the system behaves when something goes wrong. DAQ time-series readiness is set only after the adapter finishes initializing (or explicitly degrades to SQLite), and collectors, flushes and acceptance scripts wait on it; online recovery, offline retry and stale rollup attaches are guarded by generation checks. Timescale initialization fails closed when any required table, hypertable, tag column or hot-path index fails, releasing the pool; optional indexes and compression policies only warn. SQLite writes self-heal their schema, and writing through Timescale before initialization throws <code>TSDB_NOT_READY</code>. CI adds a production boot smoke; omp, line-spawn and the Claude Agent SDK scrub inherited host secrets by name. The 0.20.0 desktop update contract remains: checks only report, download and restart-install are separate user choices, and system/PAC, bounded manual proxy and direct HTTPS never leak into each other. Only an exact checksum match becomes installable.
+      The capability surface delivered earlier this month — AgentPrefabs, the standard Skill supply chain and review-gated external MCP — still bounds itself with read-only review, immutable revisions and per-invocation re-authorization; see the
+      <a href="/AgentWorkShop/en/guide/agent-prefabs">AgentPrefabs / Skills / MCP guide</a>.
     </p>
     <div class="hw-feats">
       <div class="hw-f">
-        <span class="tag">SKILLS</span>
-        <h3>Standard skill supply chain</h3>
-        <p>Discover SKILL.md from built-in and global roots (npm-standard ~/.agent/skills); import immutable content-hash copies disabled by default with audited enable/disable.</p>
-        <p><a href="/AgentWorkShop/en/guide/agent-prefabs">Skills management →</a></p>
+        <span class="tag">READINESS</span>
+        <h3>Readiness is a real barrier</h3>
+        <p>Ready is set only after adapter initialization (or explicit SQLite degradation); online recovery, offline retry and stale rollup attaches are generation-guarded; a rejected barrier is logged but no longer freezes the flush buffer.</p>
+        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-25-stability-audit/REPORT.md">Audit report →</a></p>
       </div>
       <div class="hw-f">
-        <span class="tag">MCP</span>
-        <h3>Review-gated external MCP</h3>
-        <p>HTTPS Streamable HTTP manifests with AW_MCP_* credential references; discovery only yields pending records — admins review shared-safe read tools before any call; the egress guard rejects private/loopback targets.</p>
-        <p><a href="/AgentWorkShop/en/guide/agent-prefabs">External MCP →</a></p>
+        <span class="tag">FAIL-CLOSED</span>
+        <h3>Required schema fails closed</h3>
+        <p>Required Timescale tables, hypertables, tag columns and hot-path indexes no longer swallow errors; a failure releases the pool. Optional indexes only warn, and SQLite writes self-heal.</p>
+        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/engineering/tsdb-storage-retention.md">Storage &amp; retention →</a></p>
       </div>
       <div class="hw-f">
-        <span class="tag">PREFAB</span>
-        <h3>Expert agent prefabs</h3>
-        <p>Role/scenario prompts + multi-dimensional custom slots + per-capability switches publish as immutable revisions; Channel members pin a revision and the runtime re-authorizes against the full intersection.</p>
-        <p><a href="/AgentWorkShop/en/guide/agent-prefabs">AgentPrefab guide →</a></p>
+        <span class="tag">HARDENING</span>
+        <h3>Failures become readable states</h3>
+        <p>CI runs a production boot smoke; three harness child families scrub host secrets by name while preserving <code>AW_ENGINE_*</code> and explicit provider keys; <code>TSDB_NOT_READY</code> is explicit.</p>
+        <p><a href="https://github.com/kingdol666/AgentWorkShop/blob/main/changelog.md">Changelog →</a></p>
       </div>
     </div>
     <div class="hw-note">
       <span class="t">Verification</span>
-      <p>Merged-main gates for v0.15.0 (<code>87805eaf</code>): typecheck/lint/build, docs 101/0, i18n 3439/3439, skills 197/0, MCP 14/14, unit 2185/2186 (1 conditional skip) all green; isolated fresh-instance live acceptance 21/21 (skill discovery→import→enable→prefab publish→binding→catalog narrowing→activate_skill low-trust injection→denial→session snapshot→no auto-upgrade→revocation→MCP HTTPS/secret-less/bounded checks); the provisioned instance passed two restart-persistence cycles (write-attempt ledger 3277 rows, identical distribution, never resent); v0.16.0 verified the legacy-home upgrade path on a copy of a real pre-ledger home (contract v9). Simulator evidence only, not physical HIL; external MCP live trace, real-model work under a prefab and browser click-through remain NOT_RUN; Mimosa inconclusive, no security-pass claim — see the reports. <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md">Full-flow acceptance report</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP live report</a></p>
+      <p>v0.20.1 (2026-11-25): on an isolated production build — line onboarding V1–V6 <b>8/0</b> (V6 skipped), REST <b>73/73</b>, DAQ <b>17/17</b> with the degraded path still fail-closed, prefab binding <b>15/15</b>; a real omp goal task COMPLETED with a 5,153-byte, data-grounded deliverable; full unit suite <b>2,355 tests / 2,354 pass / 0 fail / 1 skip</b> on re-run (one <code>http-drivers</code> libuv teardown transient in the first run cleared at 10/10); i18n 3,496/3,496, docs 101/0, typecheck, lint and the production boot smoke green. Simulator evidence is not physical HIL; Mimosa <code>inconclusive</code>, no security-pass claim. See the <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-25-stability-audit/REPORT.md">stability audit report</a> and the <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md">Prefab/Skills/MCP live report</a>.</p>
     </div>
+  </section>
+
+  <section class="hw-sec" id="film">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">01</span>
+      <h2 class="hw-sec-title">The system in 90 seconds</h2>
+      <span class="hw-sec-en">SYSTEM FILM · v0.20.1 · 2026-11-25</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <p class="hw-lead">
+      A task replayed on a real 0.20.1 desktop instance: submit a goal → query telemetry → two independent statistics → write a deliverable →
+      check the update centre. Not a UI render and not a concept film; the numbers come from task <code>0c3e927d</code> and can be read back
+      in the task list, the status timeline and the artifact drawer. On-screen text is Chinese; the English scene index is on the
+      <a href="/AgentWorkShop/en/demo">demo page</a>.
+    </p>
+    <figure class="aw-console">
+      <figcaption class="aw-console-bar">
+        <span class="aw-console-tag">FILM.01</span>
+        <span class="aw-console-title">AGENTWORKSHOP 0.20.1 · SYSTEM FILM</span>
+        <span class="aw-console-meta">87.7s · 1920×1080 · Chinese on-screen captions</span>
+      </figcaption>
+      <div class="aw-console-body">
+<video controls preload="metadata" :poster="'/AgentWorkShop/demo/agentworkshop-0.20.1-promo-poster.jpg'" :src="'/AgentWorkShop/demo/agentworkshop-0.20.1-promo.mp4'" style="display:block;width:100%;background:#000"></video>
+</div>
+      <p class="aw-console-cap">
+        <b>A real task, not a mock.</b>
+        A data analyst completed 270 15-second buckets / 1,912 raw points / mean 185.048 °C / +0.048 °C deviation in 6 m 37 s.
+        Only 67 minutes of valid data exist, and both the film and the deliverable say so. The demo line <code>ln-cca0c356</code>
+        is a shadow simulation (<code>simulated=true</code>); simulator evidence is not physical HIL or production approval;
+        Mimosa is <code>inconclusive</code>, no security endorsement.
+        <a href="/AgentWorkShop/en/demo">Scene index and specs →</a>
+      </p>
+    </figure>
   </section>
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">01</span>
+      <span class="hw-sec-no">02</span>
       <h2 class="hw-sec-title">Interface</h2>
       <span class="hw-sec-en">INTERFACE</span>
     </div>
@@ -232,7 +260,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">02</span>
+      <span class="hw-sec-no">03</span>
       <h2 class="hw-sec-title">Architecture</h2>
       <span class="hw-sec-en">ARCHITECTURE</span>
     </div>
@@ -308,7 +336,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">03</span>
+      <span class="hw-sec-no">04</span>
       <h2 class="hw-sec-title">Design principles</h2>
       <span class="hw-sec-en">DESIGN PRINCIPLES</span>
     </div>
@@ -349,7 +377,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">04</span>
+      <span class="hw-sec-no">05</span>
       <h2 class="hw-sec-title">Capabilities</h2>
       <span class="hw-sec-en">CAPABILITIES</span>
     </div>
@@ -383,7 +411,7 @@ footer:
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">05</span>
+      <span class="hw-sec-no">06</span>
       <h2 class="hw-sec-title">Where it fits</h2>
       <span class="hw-sec-en">APPLICATIONS</span>
     </div>
@@ -426,7 +454,7 @@ footer:
 
   <section class="hw-cta-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">06</span>
+      <span class="hw-sec-no">07</span>
       <h2 class="hw-sec-title">Up and running in a minute</h2>
       <span class="hw-sec-en">QUICK START</span>
     </div>
@@ -452,7 +480,7 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
 
   <section class="hw-sec">
     <div class="hw-sec-head">
-      <span class="hw-sec-no">07</span>
+      <span class="hw-sec-no">08</span>
       <h2 class="hw-sec-title">Research paper</h2>
       <span class="hw-sec-en">RESEARCH PAPER</span>
     </div>

@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.5)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.20.1)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -36,7 +36,15 @@
 
 </div>
 
-[快速开始](#快速开始) · [当前源码](#当前源码-v0-20-1) · [0.20.1 发布说明](#whats-new-in-0201) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [看 90 秒系统片](#看-90-秒系统片) · [当前源码](#当前源码-v0-20-1) · [0.20.1 发布说明](#whats-new-in-0201) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+
+---
+
+## 看 90 秒系统片
+
+[![AgentWorkShop 0.20.1 —— 90 秒系统片](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/promo-poster.jpg)](https://kingdol666.github.io/AgentWorkShop/#film)
+
+真实 0.20.1 桌面实例的作业回放，不是 UI 渲染稿：提交目标 → 取数 → 双口径统计 → 写交付物 → 更新中心。片内数字来自任务 `0c3e927d`，可在任务详情与交付物抽屉里回读。中文字幕驱动，无配音。[在文档站观看](https://kingdol666.github.io/AgentWorkShop/#film) · [MP4](https://kingdol666.github.io/AgentWorkShop/demo/agentworkshop-0.20.1-promo.mp4) · [分镜索引](https://kingdol666.github.io/AgentWorkShop/demo)
 
 ---
 
@@ -53,15 +61,13 @@
 
 当前源码版本为 **0.20.1**（npm + GitHub Release，2026-11-25）。本版处理全仓复审发现的运行时路径：数采时序库的就绪门对齐真实适配器初始化（或显式降级 SQLite），采集、刷盘与验收脚本都等待它；在线恢复、离线重试、旧初始化与旧 rollup 装配由代次守卫，迟到的初始化不会再覆盖已恢复的适配器或静默丢样。Timescale 启动时，必需表、hypertable、打标列或热路径索引创建失败即初始化失败并释放连接池（运行时显式降级），可选索引与压缩策略只告警；SQLite 写入自愈建表，初始化前的 Timescale 写入显式抛 `TSDB_NOT_READY`。CI 纳入独立 `.mjs` 套件与生产启动冒烟（构建、隔离启动、健康/SSR/401、缺会话密钥拒绝启动）。omp、逐行 spawn 与 Claude Agent SDK 三类引擎子进程统一按名称清洗宿主秘密，保留 `AW_ENGINE_*` 与显式注入的 provider key。保留 0.20.0 的桌面更新基础（明确同意、三条网络线路、可恢复且校验的下载）、0.19.0 的图标/启动动画方向与 0.18.0 的 console/API 作用域修复。
 
-v0.16.0 验证：#262/#264/#265/#263/#266 PR quick-gate 全绿；focused 套件 **38/38**、合并后 **22/22** 与 **13/13**、Project/Prefab/Session 回归集 **235/235**；发布构建实机隔离验收——Leader/Prefab 全链 **30/30 ×2**（创建带 Prefab 的 Worker → SQLite 来源核验 → 名册标记 → 目录收窄 → dispatch 放行/拒绝 → 用户路径 Worker 保护 → lead 自改拒绝 → revision 切换即收窄 → 解绑 → 移除保留模板与 revision → REST 删 lead 409），官方 L10 全新实例 **21/21**，AgentTeam CRUD/部署/派发 **25/25**，前端 SSR 路由 200。Mimosa 深扫有封印（`sha256:a91957e0…`，54 findings，依赖风险 0）——findings 如实呈报，不作安全通过声明。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
-
 ## What's new in 0.20.1
 
 - **时序库就绪门成为真屏障**：存储只在适配器初始化完成（或显式降级 SQLite）后才报告就绪；采集、刷盘与验收脚本都等待它。在线恢复、离线重试、旧初始化与旧 rollup 装配由代次守卫，迟到的初始化不能覆盖已恢复的适配器，也不会静默丢样。屏障拒绝会被记录，但不再冻结刷盘缓冲。
 - **Timescale 必需 schema 失败即止**：必需表、hypertable、打标列与热路径索引不再吞错；任一失败会让初始化失败并释放连接池，可选索引与压缩策略只告警。SQLite 写入自愈建表；初始化前的 Timescale 写入显式抛 `TSDB_NOT_READY`。
 - **CI 覆盖发布路径**：quick-gate 纳入独立 `.mjs` 套件（18 条断言），新增 `build-smoke` 作业——生产构建、隔离端口启动、健康/SSR/401、缺 `NUXT_SESSION_PASSWORD` 拒绝启动。
 - **所有引擎子进程统一清洗宿主秘密**：omp、逐行 spawn 与 Claude Agent SDK 共用按名称的清洗规则（`*_TOKEN`、`*_SECRET`、`*_PASSWORD`、`*_API_KEY`、`PGPASSWORD`、`MYSQL_PWD`、provider 前缀），显式 provider key 在清洗后合并。
-- **验证（2026-11-25）**：隔离生产构建实机验收——产线接入 V1–V6 **8 通过 / 0 失败**（V6 无受保护线夹具按 SKIP）、REST **73/73**、DAQ **17/17** 且降级路径仍 fail-closed、Prefab 绑定 **15/15**、真实 omp goal 任务 COMPLETED 且交付物有数据实证；全量单测 **2,350 通过 / 0 失败 / 1 skip**；typecheck、lint、i18n 3,496/3,496、docs 101/0、quick-gate 与 build-smoke 全绿。Mimosa 扫描仍为 `runStatus=inconclusive`，**不报告为安全通过**。证据：[稳定性审查报告](docs/audit/evidence/2026-11-25-stability-audit/REPORT.md)。
+- **验证（2026-11-25）**：隔离生产构建实机验收——产线接入 V1–V6 **8 通过 / 0 失败**（V6 无受保护线夹具按 SKIP）、REST **73/73**、DAQ **17/17** 且降级路径仍 fail-closed、Prefab 绑定 **15/15**、真实 omp goal 任务 COMPLETED 且交付物有数据实证；全量单测**复跑 2,355 项 / 2,354 通过 / 0 失败 / 1 跳过**（发布审计记录 2,350 通过；复跑首轮 `http-drivers` 出现 1 次 libuv 收尾瞬态，单独 10/10）；typecheck、lint、i18n 3,496/3,496、docs 101/0、quick-gate 与 build-smoke 全绿。Mimosa 扫描仍为 `runStatus=inconclusive`，**不报告为安全通过**。证据：[稳定性审查报告](docs/audit/evidence/2026-11-25-stability-audit/REPORT.md)。
 
 ## What's new in 0.20.0
 
@@ -131,6 +137,8 @@ v0.16.0 验证：#262/#264/#265/#263/#266 PR quick-gate 全绿；focused 套件 
 - **运行时 fail-closed 边界（#264）**：native/REST/MCP/Project 派发先验证成员在所属 Channel 存活；损坏或哈希不匹配的 Prefab 绑定不再回落 legacy；Prefab 闸先于 Project 工具提前返回；Worker 无法获得 lead-only 基线工具；固定 capability 版本必须与 registry 精确匹配。
 - **Prefab profile、Skill 别名与 Project 重试快照（#265）**：已发布 profile 按字段应用到受支持 harness（provider/model/effort；OMP thinking level 经 `set_thinking_level` RPC 下发，不改启动参数）；唯一 Skill 别名 canonical 化为 revision id；Project 工作项重试复用首次固定的 Prefab 快照（CAS/哈希/成员漂移校验），不再读取当前模板绑定。
 - **存量家目录启动修复（v9，来自 0.15.1）**：0.7 时代旧家目录启动即崩（契约 SQL 在补列前建 `idx_chat_deliveries_retry`）；v9 把该索引移出契约 SQL、补列后幂等创建——已在真实旧库副本上实证。
+
+**v0.16.0 验证**：#262/#264/#265/#263/#266 PR quick-gate 全绿；focused 套件 **38/38**、合并后 **22/22** 与 **13/13**、Project/Prefab/Session 回归集 **235/235**；发布构建实机隔离验收——Leader/Prefab 全链 **30/30 ×2**（创建带 Prefab 的 Worker → SQLite 来源核验 → 名册标记 → 目录收窄 → dispatch 放行/拒绝 → 用户路径 Worker 保护 → lead 自改拒绝 → revision 切换即收窄 → 解绑 → 移除保留模板与 revision → REST 删 lead 409），官方 L10 全新实例 **21/21**，AgentTeam CRUD/部署/派发 **25/25**，前端 SSR 路由 200。Mimosa 深扫有封印（`sha256:a91957e0…`，54 findings，依赖风险 0）——findings 如实呈报，不作安全通过声明。边界：外部 MCP 正向实网联通、Prefab 指导下的真实 OMP 模型作业、浏览器 UI 点击验收为 NOT_RUN。见[全流程验收报告](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md)与[Prefab/Skills/MCP 实机报告](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md)。
 
 ## What's new in 0.15.0 — 历史发布说明
 
@@ -480,6 +488,8 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 ## 验证与验收
 
 验收按 **aw-system-acceptance 六层流程**执行：T0 静态门禁 → T1 单元与契约 → T2 实机核心闭环 → T3 回归面 → T4 插件/工具面 → T5 发布产物冒烟。
+
+**本轮（2026-11-25，v0.20.1 源码）**：全量单测复跑 **2,355 项 / 2,354 通过 / 0 失败 / 1 跳过**；隔离生产构建实机验收——产线接入 V1–V6 **8/0**（V6 跳过）、REST **73/73**、DAQ **17/17**（降级路径仍 fail-closed）、Prefab 绑定 **15/15**；真实 omp goal 任务在桌面构建上完成，交付 5,153 字节且有数据实证的报告；typecheck、lint、i18n 3,496/3,496、docs 101/0 与生产启动冒烟全绿。Mimosa 保持 `inconclusive`。见[稳定性审查报告](docs/audit/evidence/2026-11-25-stability-audit/REPORT.md)。
 
 **历史验收证据（2026-11-08 至 2026-11-12；各报告注明对应构建与 commit）：**
 
