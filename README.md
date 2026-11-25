@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.17.5)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.20.1)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -36,7 +36,15 @@
 
 </div>
 
-[Quick start](#quick-start) · [Current source](#current-source-v0-20-1) · [0.20.1 release notes](#whats-new-in-0201) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [Watch the film](#watch-the-90-second-film) · [Current source](#current-source-v0-20-1) · [0.20.1 release notes](#whats-new-in-0201) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+
+---
+
+## Watch the 90-second film
+
+[![AgentWorkShop 0.20.1 — 90-second system film](https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/promo-poster.jpg)](https://kingdol666.github.io/AgentWorkShop/#film)
+
+A real 0.20.1 desktop instance — not a UI mockup — querying DAQ history, computing two independent statistics, writing a reviewable deliverable, and showing the update centre. The on-screen text is Chinese and the film is caption-driven (no voice-over). [Watch on the docs site](https://kingdol666.github.io/AgentWorkShop/#film) · [MP4](https://kingdol666.github.io/AgentWorkShop/demo/agentworkshop-0.20.1-promo.mp4) · [Scene index](https://kingdol666.github.io/AgentWorkShop/demo)
 
 ---
 
@@ -53,15 +61,13 @@ A configuration-driven platform where **AI agent teams** and industrial systems 
 
 The source version is **0.20.1** (npm + GitHub Release, 2026-11-25). This release hardens the runtime paths found by the whole-repository review. DAQ time-series readiness now tracks the real adapter initialization (or an explicit SQLite degradation), and collectors, flushes and acceptance scripts wait on it; online recovery, offline retry and stale initialization or rollup attaches are guarded by generation checks, so a late initialization cannot overwrite a recovered adapter or silently drop samples. Timescale startup fails closed when a required table, hypertable, tag column or hot-path index cannot be created — the pool is released and the runtime degrades explicitly — while optional indexes and compression policies only warn; SQLite writes self-heal their schema, and writing through Timescale before initialization is an explicit `TSDB_NOT_READY`. CI runs the standalone `.mjs` suites plus a production boot smoke (build, isolated boot, health/SSR/401, and refusal to start without the session secret). Harness children — omp, line-spawn and the Claude Agent SDK — scrub inherited host secrets by name, preserving `AW_ENGINE_*` and explicitly supplied provider keys. It retains the 0.20.0 desktop update foundation (explicit consent, three network routes, verified resumable downloads), the 0.19.0 icon/splash direction and the 0.18.0 console/API scoping work.
 
-v0.16.0 verification: PR quick-gates green on #262/#264/#265/#263/#266; focused suites **38/38**, post-merge **22/22** and **13/13**, Project/Prefab/Session regression set **235/235**; live isolated-instance acceptance on the release build — Leader/Prefab full chain **30/30 ×2** (create-with-prefab → provenance in SQLite → roster flags → catalog narrowing → dispatch allow/deny → user-worker protection → lead self-op denial → revision switch drops capability → unbind → remove preserves template+revisions → REST lead-delete 409), official L10 **21/21** on a fresh instance, AgentTeam CRUD/deploy/dispatch **25/25**, frontend SSR routes 200. Mimosa deep scan sealed (`sha256:a91957e0…`, 54 findings, dependency risk 0) — findings reported, not a security pass. Boundaries: external MCP positive live trace, real-OMP-model work under a prefab, and browser UI click-through remain NOT_RUN. See the [full-flow acceptance report](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md) and the [Prefab/Skills/MCP live report](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md).
-
 ## What's new in 0.20.1
 
 - **DAQ readiness is a real barrier**: storage reports ready only after the adapter has finished initializing (or explicitly degraded to SQLite). Collectors, flush paths and acceptance scripts wait on it; online recovery, offline retry, stale initialization and stale rollup attaches are guarded by generation checks, so a late initialization can no longer overwrite a recovered adapter or silently drop samples. A rejected barrier is recorded but no longer freezes the flush buffer. 时序库就绪门对齐真实初始化/降级；旧初始化与旧旁路装配被代次守卫；屏障拒绝只记录不再冻结刷盘。
 - **Timescale fails closed on required schema**: required tables, hypertables, tag columns and hot-path indexes are applied without swallowed errors; any failure aborts initialization and releases the pool, while optional indexes and compression policies only warn. SQLite writes self-heal instead of dropping rows, and pre-initialization Timescale writes throw `TSDB_NOT_READY`. 必需 schema 失败即初始化失败并释放连接池；可选索引/策略仅告警；SQLite 写入自愈。
 - **CI runs the release paths**: quick-gate includes the standalone `.mjs` suites (18 assertions), and `build-smoke` builds the production server, boots it on an isolated port, and checks health, SSR, 401 and refusal to start without `NUXT_SESSION_PASSWORD`. `.mjs` 套件纳入 quick-gate，新增生产构建启动冒烟。
 - **Host secrets are scrubbed from every harness child**: omp, line-spawn and the Claude Agent SDK now share one name-based scrubber (`*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `*_API_KEY`, `PGPASSWORD`, `MYSQL_PWD`, provider prefixes) and merge explicitly supplied provider keys after scrubbing. 三类引擎子进程统一清洗宿主秘密，显式 provider key 在清洗后合并。
-- **Verification (2026-11-25)**: isolated production-build acceptance — line onboarding V1–V6 **8 pass / 0 fail** (V6 skipped without a protected-line fixture), REST **73/73**, DAQ **17/17** with the degraded path still fail-closed, prefab binding **15/15**, and a real omp goal task COMPLETED with a data-grounded deliverable; full unit suite **2,350 pass / 0 fail / 1 skip**; typecheck, lint, i18n 3,496/3,496, docs 101/0, quick-gate and build-smoke green. The Mimosa scan remained incomplete (`runStatus=inconclusive`) and is **not** reported as a security pass. Evidence: [stability audit report](docs/audit/evidence/2026-11-25-stability-audit/REPORT.md).
+- **Verification (2026-11-25)**: isolated production-build acceptance — line onboarding V1–V6 **8 pass / 0 fail** (V6 skipped without a protected-line fixture), REST **73/73**, DAQ **17/17** with the degraded path still fail-closed, prefab binding **15/15**, and a real omp goal task COMPLETED with a data-grounded deliverable; full unit suite **2,355 tests / 2,354 pass / 0 fail / 1 skip** on re-run (the release audit recorded 2,350 pass; one `http-drivers` libuv teardown transient cleared at 10/10 alone); typecheck, lint, i18n 3,496/3,496, docs 101/0, quick-gate and build-smoke green. The Mimosa scan remained incomplete (`runStatus=inconclusive`) and is **not** reported as a security pass. Evidence: [stability audit report](docs/audit/evidence/2026-11-25-stability-audit/REPORT.md).
 
 ## What's new in 0.20.0
 
@@ -131,6 +137,8 @@ v0.16.0 verification: PR quick-gates green on #262/#264/#265/#263/#266; focused 
 - **Fail-closed runtime boundaries (#264)**: native/REST/MCP/Project dispatch validates a live member in its claimed Channel before any tool runs; malformed or hash-mismatched Prefab bindings no longer fall back to legacy; the Prefab gate precedes the Project-tool early return; workers cannot obtain lead-only baseline tools; pinned capability versions must match the registry exactly.
 - **Prefab profiles, Skill aliases, Project retry snapshots (#265)**: published profiles apply per-field to supported harnesses (provider/model/effort; OMP thinking level via `set_thinking_level` RPC, never launch args); unique Skill aliases canonicalize to revision ids; Project work-item retries reuse the first-pinned Prefab snapshot with CAS/hash/member-drift validation instead of re-reading current template bindings.
 - **Legacy-home boot fix (schema v9, from 0.15.1)**: a 0.7-era home crashed on boot because the contract SQL built `idx_chat_deliveries_retry` before column backfill; v9 moved the index out of the contract SQL and creates it idempotently after backfill — verified against a copy of a real legacy home.
+
+**v0.16.0 verification**: PR quick-gates green on #262/#264/#265/#263/#266; focused suites **38/38**, post-merge **22/22** and **13/13**, Project/Prefab/Session regression set **235/235**; live isolated-instance acceptance on the release build — Leader/Prefab full chain **30/30 ×2** (create-with-prefab → provenance in SQLite → roster flags → catalog narrowing → dispatch allow/deny → user-worker protection → lead self-op denial → revision switch drops capability → unbind → remove preserves template+revisions → REST lead-delete 409), official L10 **21/21** on a fresh instance, AgentTeam CRUD/deploy/dispatch **25/25**, frontend SSR routes 200. Mimosa deep scan sealed (`sha256:a91957e0…`, 54 findings, dependency risk 0) — findings reported, not a security pass. Boundaries: external MCP positive live trace, real-OMP-model work under a prefab, and browser UI click-through remain NOT_RUN. See the [full-flow acceptance report](docs/audit/evidence/2026-11-21-fullflow-round/REPORT.md) and the [Prefab/Skills/MCP live report](docs/audit/evidence/2026-11-21-agent-prefab-acceptance/REPORT.md).
 
 ## What's new in 0.15.0 (historical release notes)
 
@@ -478,6 +486,8 @@ At runtime, a bound member's work is re-authorized **on every invocation** again
 ## Verification
 
 Acceptance follows the **aw-system-acceptance six-layer flow**: T0 static gates → T1 unit & contract → T2 live core loops → T3 regression → T4 plugin/tool surface → T5 release-artifact smoke.
+
+**Current round (2026-11-25, v0.20.1 source):** unit **2,355 tests / 2,354 pass / 0 fail / 1 skip** on re-run; isolated production-build acceptance — line onboarding V1–V6 **8/0** (V6 skipped), REST **73/73**, DAQ **17/17** with the degraded path still fail-closed, prefab binding **15/15**; a real omp goal task completed on the desktop build with a 5,153-byte, data-grounded deliverable; typecheck, lint, i18n 3,496/3,496, docs 101/0 and the production boot smoke are green. Mimosa stayed `inconclusive`. See the [stability audit report](docs/audit/evidence/2026-11-25-stability-audit/REPORT.md).
 
 **2026-11-08 to 2026-11-12 historical acceptance evidence (each report identifies its build/commit):**
 
