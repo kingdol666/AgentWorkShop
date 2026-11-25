@@ -119,6 +119,8 @@
     "test:sdk-surface": "node scripts/test-sdk-surface.mjs",
     "test:twin-provider": "tsx --test tests/aml-twin-provider-registry.test.ts",
     "test:unit": "tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/*.test.ts",
+    "test:unit-mjs": "node --test tests/*.test.mjs",
+    "test:boot-smoke": "node scripts/ci-boot-smoke.mjs",
     "test:acceptance-context": "node --test tests/context-learning-acceptance.test.mjs",
     "test:acceptance-context-learning": "node --test tests/context-learning-acceptance.test.mjs",
     "test:onboarding-v6": "node --test tests/onboarding-v6*.test.mjs",
