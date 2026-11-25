@@ -77,7 +77,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.20.0 · unreleased</i></span>
+        <span>Version <i>v0.20.1 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -94,11 +94,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">What's new</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.20.0 (UNRELEASED)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.20.1 (RELEASED 2026-11-25)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      v0.20.0 separates automatic checks from user-authorized download and restart: the desktop update center follows Windows system/PAC rules by default, accepts a bounded manual proxy, or uses direct HTTPS, while remaining isolated from the Web renderer and local service. Only a complete exact checksum match becomes installable. When the embedded Web shell has its own brand, the desktop title rail hides the duplicate wordmark and keeps a compact fallback for narrow or brandless pages. Earlier releases provide workspace-scoped channels, identity-before-lookup detail/task APIs, bounded line queries, the refreshed shared theme, the integrated desktop shell, close-to-tray, the shared <code>~/.AgentWorkShop</code> home, GitHub-release in-app updates and the WSH install helper:
+      v0.20.1 hardens the runtime: DAQ time-series readiness now tracks real adapter initialization and explicit degradation, Timescale initialization fails closed on any required schema error, CI adds the standalone `.mjs` suites and a production boot smoke, and harness child processes scrub inherited host secrets. The desktop update foundation from 0.20.0 remains: automatic checks only report a newer release, while download and restart-install are separate user choices; the update center follows Windows system/PAC rules, accepts a bounded manual proxy, or uses direct HTTPS, isolated from the Web renderer and local service. Only a complete exact checksum match becomes installable. When the embedded Web shell has its own brand, the desktop title rail hides the duplicate wordmark and keeps a compact fallback for narrow or brandless pages. Earlier releases provide workspace-scoped channels, identity-before-lookup detail/task APIs, bounded line queries, the refreshed shared theme, the integrated desktop shell, close-to-tray, the shared <code>~/.AgentWorkShop</code> home, GitHub-release in-app updates and the WSH install helper:
       System Settings gains Skills (standard SKILL.md discovery → immutable managed import →
       explicit enable, covering built-in, <code>&lt;configRoot&gt;/skills</code> and
       <code>~/.agent/skills</code> global roots with zero script execution), external MCP
