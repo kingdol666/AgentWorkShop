@@ -62,7 +62,7 @@ const { getDcwProductRepo } = await import('../server/services/workshop/dcw/dcw-
 const { getDcwRecipeRepo } = await import('../server/services/workshop/dcw/dcw-recipe.repo')
 const { getDaqNodeRepo } = await import('../server/services/workshop/daq/daq-node.repo')
 const { DaqNode } = await import('../server/services/workshop/daq/daq-node')
-const { getTsdb } = await import('../server/services/workshop/daq/storage')
+const { getTsdb, waitForTsdb } = await import('../server/services/workshop/daq/storage')
 const { hashDatasetDir } = await import('../server/services/workshop/aml/dataset-builder')
 const { submitJob } = await import('../server/services/workshop/aml/job-orchestrator')
 const { readDataset } = await import('../server/services/workshop/process-model/trainers/dataset-reader')
@@ -131,6 +131,7 @@ for (let r = 0; r < N_RUNS; r++) {
   }
   plant.push({ u: us, y: ys })
 }
+await waitForTsdb()
 await getTsdb().writeSamples(samples)
 
 const datasetDir = join(rt.datasetsDir, 'ds-acc')

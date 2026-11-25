@@ -112,8 +112,8 @@ export async function toolAmlNodeCatalog(agentId: string): Promise<{ text: strin
   if (daqBindings.length === 0 && mesNodes.length === 0) {
     return { text: '你尚未绑定任何数采节点,AML 自动建模工具不可用(数据集构建要求所用节点均有你的 daq 绑定;mes-rest 点位用 dcw 绑定;绑定只缩不放)。请在数字孪生界面绑定数采节点后重试。' }
   }
-  const { getTsdb, tsdbReady } = await import('../../daq/storage')
-  await tsdbReady
+  const { getTsdb, waitForTsdb } = await import('../../daq/storage')
+  await waitForTsdb()
   const tsdb = getTsdb()
   const from24h = Date.now() - 24 * 3_600_000
   const cards: string[] = []

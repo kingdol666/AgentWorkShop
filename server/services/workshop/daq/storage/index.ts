@@ -27,59 +27,85 @@ import { rawCutoffMs } from './retention'
 
 const log = createLogger('daq.tsdb')
 
-interface DaqTsdbState { current?: TsdbPort, initError?: unknown }
+interface DaqTsdbState {
+  current?: TsdbPort
+  initialization?: Promise<void>
+  rollupGeneration?: number
+}
 const g = globalThis as typeof globalThis & {
   __daqTsdbState?: DaqTsdbState
   __daqRollupStore?: TimescaleRollupStore | null
 }
 
-function makeFallback(reason: string): TsdbPort {
-  void detachRollupStore()
+function trackInitialization(st: DaqTsdbState, initialization: Promise<void>): Promise<void> {
+  st.initialization = initialization
+  // Keep initialization failures observable to readers without letting startup fail before
+  // a route has had a chance to await the readiness barrier.
+  void initialization.catch((err) => {
+    log.error('[daq-tsdb] 时序后端初始化失败:', err instanceof Error ? err.message : err)
+  })
+  return initialization
+}
+
+function makeFallback(reason: string): SqliteTimeSeriesAdapter {
   const dev = new SqliteTimeSeriesAdapter()
-  // init 失败不再静默:读路径有 ensureDb 惰性自愈兜底,但这里必须留下证据
-  dev.init().catch(err => log.error(`[daq-tsdb] SQLite 降级实例初始化失败(读路径将自愈重试):`, err instanceof Error ? err.message : err))
   log.warn(`[daq-tsdb] ${reason} → 已降级 SQLite 时序仿真`)
   return dev
 }
 
-/** 就绪门:消费者可 await 后再批量写(真实 Timescale 异步建表完成前由门挡住) */
-export const tsdbReady: Promise<void> = (() => {
+/** 就绪门:每次读取当前适配器的初始化 Promise,允许重连成功后恢复可用 */
+export function waitForTsdb(): Promise<void> {
+  const st = g.__daqTsdbState
+  return st?.initialization ?? Promise.resolve()
+}
+
+function initializeTsdb(): Promise<void> {
   const st: DaqTsdbState = g.__daqTsdbState ??= {}
-  if (!st.current) {
-    const url = process.env.DAQ_TSDB_URL
-    if (!url) {
-      // 无配置(启动插件尚未装配):先占位仿真库;插件随后按 infra 状态 rebuild
-      const dev = new SqliteTimeSeriesAdapter()
-      dev.init().catch(err => log.error('[daq-tsdb] SQLite 占位实例初始化失败(读路径将自愈重试):', err instanceof Error ? err.message : err))
-      st.current = dev
-    }
-    else {
-      const adapter = new TimescaleAdapter(url)
-      st.current = adapter
-      void adapter.init().then(
-        () => {
-          log.info('[daq-tsdb] TimescaleDB 就绪:', url.replace(/\/\/[^@]*@/, '//***@'))
-          return attachRollupStore(url)
-        },
-        (err) => {
-          if (g.__daqTsdbState?.current === adapter) {
-            g.__daqTsdbState.current = makeFallback(err instanceof Error ? err.message : String(err))
-          }
-        },
-      ).catch(err => log.error('[daq-tsdb] 历史治理旁路装配失败(采集不受影响):', err instanceof Error ? err.message : err))
-    }
+  if (st.initialization) return trackInitialization(st, st.initialization)
+  if (st.current) return trackInitialization(st, Promise.resolve())
+
+  const url = process.env.DAQ_TSDB_URL
+  if (!url) {
+    // 无配置(启动插件尚未装配):先占位仿真库;插件随后按 infra 状态 rebuild
+    const dev = new SqliteTimeSeriesAdapter()
+    st.current = dev
+    return trackInitialization(st, dev.init())
   }
-  return Promise.resolve()
-})()
+
+  const adapter = new TimescaleAdapter(url)
+  st.current = adapter
+  const initialization = adapter.init().then(
+    () => {
+      log.info('[daq-tsdb] TimescaleDB 就绪:', url.replace(/\/\/[^@]*@/, '//***@'))
+      void attachRollupStore(url, adapter).catch((err) => {
+        log.error('[daq-tsdb] 历史治理旁路装配失败(采集不受影响):', err instanceof Error ? err.message : err)
+      })
+    },
+    async (err) => {
+      if (g.__daqTsdbState?.current !== adapter) return
+      await Promise.resolve(adapter.close?.()).catch(() => {})
+      if (g.__daqTsdbState?.current !== adapter) return
+      const fallback = makeFallback(err instanceof Error ? err.message : String(err))
+      g.__daqTsdbState.current = fallback
+      void detachRollupStore().catch((detachError) => {
+        log.error('[daq-tsdb] 历史治理旁路释放失败:', detachError instanceof Error ? detachError.message : detachError)
+      })
+      await fallback.init()
+    },
+  )
+  return trackInitialization(st, initialization)
+}
+
+initializeTsdb()
 
 export function getTsdb(): TsdbPort {
   const st: DaqTsdbState = g.__daqTsdbState ??= {}
   let cur = st.current
   if (!cur) {
     cur = new SqliteTimeSeriesAdapter()
-    void cur.init()
-    log.info('[daq-tsdb] SQLite 时序仿真就绪(data/daq-timeseries.sqlite)')
     st.current = cur
+    trackInitialization(st, cur.init())
+    log.info('[daq-tsdb] SQLite 时序仿真就绪(data/daq-timeseries.sqlite)')
   }
   return cur
 }
@@ -94,12 +120,25 @@ export async function rebuildTsdb(online: boolean, url?: string | null): Promise
     void Promise.resolve(old?.close?.()).catch(() => {})
   }
   if (!online || !url) {
-    await detachRollupStore()
-    if (st.current?.backend !== 'sqlite-emulated') {
-      swap(makeFallback('infra 判定离线'))
+    if (st.current?.backend === 'sqlite-emulated') {
+      try {
+        if (st.initialization) await st.initialization
+        else await trackInitialization(st, st.current.init())
+        return
+      }
+      catch {
+        // Replace a failed placeholder/fallback with a fresh adapter below.
+      }
     }
+    const fallback = makeFallback('infra 判定离线')
+    void detachRollupStore().catch((err) => {
+      log.error('[daq-tsdb] 历史治理旁路释放失败:', err instanceof Error ? err.message : err)
+    })
+    swap(fallback)
+    await trackInitialization(st, fallback.init())
     return
   }
+
   const adapter = new TimescaleAdapter(url)
   // PG/Timescale 初始化窗口:接受 TCP 但建连即断(Connection terminated)→ 有限重试
   let lastErr: unknown
@@ -118,12 +157,23 @@ export async function rebuildTsdb(online: boolean, url?: string | null): Promise
     await adapter.close?.().catch(() => {})
     throw lastErr
   }
+  void detachRollupStore().catch((err) => {
+    log.error('[daq-tsdb] 历史治理旁路释放失败:', err instanceof Error ? err.message : err)
+  })
   swap(adapter)
-  await attachRollupStore(url)
+  await trackInitialization(st, Promise.resolve())
+  void attachRollupStore(url, adapter).catch((err) => {
+    log.error('[daq-tsdb] 历史治理旁路装配失败(采集不受影响):', err instanceof Error ? err.message : err)
+  })
   log.info('[daq-tsdb] TimescaleDB 就绪:', url.replace(/\/\/[^@]*@/, '//***@'))
 }
 
-async function attachRollupStore(url: string): Promise<void> {
+async function attachRollupStore(url: string, expectedAdapter: TsdbPort): Promise<void> {
+  const st: DaqTsdbState = g.__daqTsdbState ??= {}
+  if (st.current !== expectedAdapter) return
+  const generation = (st.rollupGeneration ?? 0) + 1
+  st.rollupGeneration = generation
+
   let s: ReturnType<typeof daqRuntimeSettings>
   try {
     s = daqRuntimeSettings()
@@ -150,7 +200,15 @@ async function attachRollupStore(url: string): Promise<void> {
     // 旁路失败不阻断采集(原始样本仍可写/可查);但要留下证据,并由运维面暴露
     log.error('[daq-tsdb] 保留期/rollup 旁路初始化失败(采集不受影响):', err instanceof Error ? err.message : err)
     await store.close().catch(() => {})
-    g.__daqRollupStore = null
+    if (st.rollupGeneration === generation && st.current === expectedAdapter) {
+      const old = g.__daqRollupStore
+      g.__daqRollupStore = null
+      await Promise.resolve(old?.close?.()).catch(() => {})
+    }
+    return
+  }
+  if (st.rollupGeneration !== generation || st.current !== expectedAdapter) {
+    await store.close().catch(() => {})
     return
   }
   const old = g.__daqRollupStore
@@ -159,6 +217,8 @@ async function attachRollupStore(url: string): Promise<void> {
 }
 
 async function detachRollupStore(): Promise<void> {
+  const st: DaqTsdbState = g.__daqTsdbState ??= {}
+  st.rollupGeneration = (st.rollupGeneration ?? 0) + 1
   const old = g.__daqRollupStore
   g.__daqRollupStore = null
   await Promise.resolve(old?.close?.()).catch(() => {})

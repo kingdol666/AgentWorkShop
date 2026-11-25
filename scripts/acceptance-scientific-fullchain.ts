@@ -58,7 +58,7 @@ const { getDcwRecipeRepo } = await import('../server/services/workshop/dcw/dcw-r
 const { getDcwController } = await import('../server/services/workshop/dcw/dcw-controller')
 const { DaqNode } = await import('../server/services/workshop/daq/daq-node')
 const { getDaqNodeRepo } = await import('../server/services/workshop/daq/daq-node.repo')
-const { getTsdb } = await import('../server/services/workshop/daq/storage')
+const { getTsdb, waitForTsdb } = await import('../server/services/workshop/daq/storage')
 const { buildDataset } = await import('../server/services/workshop/aml/dataset-builder')
 const { evaluateGates } = await import('../server/services/workshop/aml/gates')
 const { submitJob } = await import('../server/services/workshop/aml/job-orchestrator')
@@ -142,6 +142,7 @@ const plantSeries: Array<{ u: number[], y: number[] }> = []
     getDcwRecipeRepo().closeRun(run.id)
     plantSeries.push({ u: us, y: ys })
   }
+  await waitForTsdb()
   await getTsdb().writeSamples(samples)
 }
 

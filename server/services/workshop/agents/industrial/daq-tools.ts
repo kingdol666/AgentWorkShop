@@ -219,8 +219,8 @@ export async function toolDaqQuery(agentId: string, args: {
   const wantAll = !requestedScoped && String(args.scope ?? '').trim().toLowerCase() === 'all'
   const explicitProduct = trustedScope?.productId ?? requestedProduct
 
-  const { getTsdb, tsdbReady, tsdbQueryHistory, tsdbRetentionInfo } = await import('../../daq/storage')
-  await tsdbReady
+  const { getTsdb, waitForTsdb, tsdbQueryHistory, tsdbRetentionInfo } = await import('../../daq/storage')
+  await waitForTsdb()
   const tsdb = getTsdb()
   // 分层保留:窗口早于原始样本保留期 → 自动改走 1m/1h 聚合(不静默返回空)
   const rawRetentionH = tsdbRetentionInfo().rawRetentionH
@@ -472,8 +472,8 @@ export async function toolDaqFrames(agentId: string, args: {
   const pointLimit = includePoints
     ? Math.min(Math.max(Math.round(Number.isFinite(pointLimitRaw) && pointLimitRaw > 0 ? pointLimitRaw : 128), 1), 1024)
     : 16
-  const { getTsdb, tsdbReady } = await import('../../daq/storage')
-  await tsdbReady
+  const { getTsdb, waitForTsdb } = await import('../../daq/storage')
+  await waitForTsdb()
   const tsdb = getTsdb()
 
   const sections: string[] = []

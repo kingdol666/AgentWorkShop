@@ -91,8 +91,8 @@ export async function buildGolden(user: ResolvedUser, args: {
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
     throw new GoldenError(400, 'VALIDATION_ERROR', '批次窗口非法。')
   }
-  const { getTsdb, tsdbReady } = await import('../daq/storage')
-  await tsdbReady
+  const { getTsdb, waitForTsdb } = await import('../daq/storage')
+  await waitForTsdb()
   const series = await getTsdb().queryTagged({
     runId: run.id,
     nodeIds: [node.id],
@@ -186,8 +186,8 @@ export async function deviationScore(user: ResolvedUser, args: {
   if (!golden) throw new GoldenError(404, 'NOT_FOUND', '该配方/节点尚无 golden 参考轨迹,请先从 good 批次生成。')
   const startMs = Date.parse(run.startedAt)
   const endMs = Date.parse(run.endedAt)
-  const { getTsdb, tsdbReady } = await import('../daq/storage')
-  await tsdbReady
+  const { getTsdb, waitForTsdb } = await import('../daq/storage')
+  await waitForTsdb()
   const series = await getTsdb().queryTagged({ runId: run.id, nodeIds: [args.nodeId], fromMs: startMs, toMs: endMs, limit: 1_000_000 })
   const pts = (series.get(args.nodeId) ?? []).map(p => ({ ts: p.at, v: p.value ?? p.avg ?? 0 })).filter(p => Number.isFinite(p.v))
   if (!pts.length) throw new GoldenError(400, 'VALIDATION_ERROR', '该批次窗口内无样本。')

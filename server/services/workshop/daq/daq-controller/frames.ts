@@ -5,7 +5,7 @@
 import { DaqControllerViews } from './views'
 import type { DaqFrameRecord, DaqFrameRow } from '../storage/tsdb-port'
 import { getObjectStore } from '../objectstore'
-import { getTsdb, tsdbReady } from '../storage'
+import { getTsdb, waitForTsdb } from '../storage'
 import { getDcwNodeRepo } from '../../dcw/dcw-node.repo'
 import { AppError } from '../../../../utils/errors'
 
@@ -124,7 +124,7 @@ export abstract class DaqControllerFrames extends DaqControllerViews {
   /** 节点帧历史(v2:向量/图像元数据;像素按需经 frameContent 从对象存储取) */
   async frames(id: string, opts: { fromMs?: number, toMs?: number, kind?: 'vector' | 'image', limit?: number }) {
     this.ensureLoop()
-    await tsdbReady
+    await waitForTsdb()
     const node = this.nodeOfFrames(id)
     if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     const rows = await getTsdb().queryFrames(id, opts)
@@ -145,7 +145,7 @@ export abstract class DaqControllerFrames extends DaqControllerViews {
   /** 帧内容(图像主图/缩略图;从对象存储读取后由 REST 流式返回) */
   async frameContent(id: string, tsMs: number, thumb: boolean): Promise<{ data: Buffer, mime: string }> {
     this.ensureLoop()
-    await tsdbReady
+    await waitForTsdb()
     const node = this.nodeOfFrames(id)
     if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     // 读穿透:先查内存攒批缓冲(帧刚 ingest、尚未刷盘时命中),未命中再查 TSDB

@@ -125,14 +125,15 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   }
 
   async writeSamples(rows: DaqSampleRow[]): Promise<void> {
-    if (!this.db || rows.length === 0) return
+    if (rows.length === 0) return
+    const db = await this.ensureDb()
     // 批内单事务:一次 fsync 落整批(逐行 run 会每行一次 WAL fsync,写放大)
-    const ins = this.db.prepare(
+    const ins = db.prepare(
       'INSERT OR IGNORE INTO daq_samples (node_id, ts_ms, value, state, quality, line_id, product_id, recipe_id, run_id, ingested_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    const existing = this.db.prepare('SELECT value, state, quality FROM daq_samples WHERE node_id = ? AND ts_ms = ?')
+    const existing = db.prepare('SELECT value, state, quality FROM daq_samples WHERE node_id = ? AND ts_ms = ?')
     const now = Date.now()
-    this.db.exec('BEGIN')
+    db.exec('BEGIN')
     try {
       for (const r of rows) {
         const res = ins.run(r.nodeId, r.tsMs, r.value, r.state, r.quality ?? 'good', r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null, r.ingestedAt ?? now)
@@ -144,11 +145,11 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
           }
         }
       }
-      this.db.exec('COMMIT')
+      db.exec('COMMIT')
     }
     catch (err) {
       try {
-        this.db.exec('ROLLBACK')
+        db.exec('ROLLBACK')
       }
       catch { /* 事务已终结 */ }
       throw err
@@ -310,20 +311,21 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   // ===== 帧(daq_frames;与 Timescale 同契约)=====
 
   async writeFrames(rows: import('./tsdb-port').DaqFrameRow[]): Promise<void> {
-    if (!this.db || rows.length === 0) return
-    const ins = this.db.prepare(
+    if (rows.length === 0) return
+    const db = await this.ensureDb()
+    const ins = db.prepare(
       'INSERT OR IGNORE INTO daq_frames (node_id, ts_ms, kind, template_key, device_binding_id, line_id, product_id, recipe_id, run_id, points, meta, metrics) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    this.db.exec('BEGIN')
+    db.exec('BEGIN')
     try {
       for (const r of rows) {
         ins.run(r.nodeId, r.tsMs, r.kind, r.templateKey ?? null, r.deviceBindingId ?? null, r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null, r.points, JSON.stringify(r.meta ?? {}), JSON.stringify(r.metrics ?? {}))
       }
-      this.db.exec('COMMIT')
+      db.exec('COMMIT')
     }
     catch (err) {
       try {
-        this.db.exec('ROLLBACK')
+        db.exec('ROLLBACK')
       }
       catch { /* 事务已终结 */ }
       throw err

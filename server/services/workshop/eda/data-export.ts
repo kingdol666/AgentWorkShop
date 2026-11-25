@@ -98,8 +98,8 @@ async function runExportJob(jobId: string): Promise<void> {
   if (!job || job.status !== 'running') return
   try {
     const { exportDaqDataset, createRunContextResolver } = await import('../agents/industrial/daq-export')
-    const { getTsdb, tsdbReady } = await import('../daq/storage')
-    await tsdbReady
+    const { getTsdb, waitForTsdb } = await import('../daq/storage')
+    await waitForTsdb()
     const { findDaqTemplate } = await import('../daq/daq-templates')
     const { getDcwLineRepo } = await import('../dcw/dcw-line.repo')
     const nodeOf = (id: string) => {

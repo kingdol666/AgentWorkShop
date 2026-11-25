@@ -165,8 +165,8 @@ export async function computeRunFeatures(runId: string, opts: { graceMs?: number
   if (!run.endedAt) throw new Error('批次未关账,不能提特征')
   const jobId = jobStart(runId)
   try {
-    const { getTsdb, tsdbReady } = await import('../daq/storage')
-    await tsdbReady
+    const { getTsdb, waitForTsdb } = await import('../daq/storage')
+    await waitForTsdb()
     const { getDcwController } = await import('../dcw/dcw-controller')
     const startMs = Date.parse(run.startedAt)
     const endMs = Date.parse(run.endedAt)

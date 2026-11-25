@@ -419,8 +419,8 @@ export async function toolAmlModelReference(agentId: string, args: {
   const beatMs = io.beatMs
   const now = Date.now()
   const fromMs = now - H * beatMs - 5 * beatMs
-  const { getTsdb, tsdbReady } = await import('../../daq/storage')
-  await tsdbReady
+  const { getTsdb, waitForTsdb } = await import('../../daq/storage')
+  await waitForTsdb()
   const tsdb = getTsdb()
   const columns = new Map<string, number[]>()
   const shortage: string[] = []

@@ -98,8 +98,8 @@ export function mirrorRunClosed(run: RunMirrorInput): void {
 /** 关账窗口样本计数:逐节点 queryTagged 求和(nodeIds 单节点时 limit 全局≡每节点,语义正确) */
 async function backfillSampleCount(runId: string, lineId: string, startedAt: string, endedAt: string | null): Promise<void> {
   try {
-    const { getTsdb, tsdbReady } = await import('../daq/storage')
-    await tsdbReady
+    const { getTsdb, waitForTsdb } = await import('../daq/storage')
+    await waitForTsdb()
     const { getDaqNodeRepo } = await import('../daq/daq-node.repo')
     const nodes = getDaqNodeRepo().all().filter(n => n.lineId === lineId)
     if (nodes.length === 0) return

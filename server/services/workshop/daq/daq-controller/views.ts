@@ -9,7 +9,7 @@ import type { BroadcastFn } from './types'
 import type { DaqNode } from '../daq-node'
 import { g_queueLost } from './helpers'
 import { getDaqQueue } from '../bus'
-import { getTsdb, tsdbReady } from '../storage'
+import { getTsdb, waitForTsdb } from '../storage'
 import { queryLatest } from '../storage/latest-window'
 
 export abstract class DaqControllerViews extends DaqControllerTsdbTwin {
@@ -80,7 +80,7 @@ export abstract class DaqControllerViews extends DaqControllerTsdbTwin {
    *  窗口超 limit 时不能拿最旧段冒充最新(2026-10-27 MQTT 审计实测的静默说谎)。 */
   async samples(id: string, opts: { fromMs?: number, toMs?: number, bucketMs?: number, limit?: number }) {
     this.ensureLoop()
-    await tsdbReady
+    await waitForTsdb()
     const node = this.repo.byId(id)
     if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     return queryLatest(getTsdb(), id, opts)
