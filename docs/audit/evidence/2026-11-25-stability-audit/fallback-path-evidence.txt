@@ -1,0 +1,10 @@
+# 降级路径实证(实例以不可达 DAQ_TSDB_URL=postgres://accept@127.0.0.1:9/aw 启动)
+# 1) GET /api/workshop/daq → 200, meta.tsdb=sqlite-emulated(真实降级)
+# 2) GET /api/workshop/daq/infra → degraded=true, warning="数采后端初始化失败,已降级并停采:connect ECONNREFUSED 127.0.0.1:9"
+# 3) POST /api/workshop/daq/controller {action:start} → code=DAQ_INFRA_DEGRADED(设计要求:降级即停采,fail-closed 未被本次修复削弱)
+--- 服务器日志摘录 ---
+{"t":"2026-11-25T13:14:36.035+08:00","level":"warn","scope":"daq.tsdb","msg":"[daq-tsdb] connect ECONNREFUSED 127.0.0.1:9 → 已降级 SQLite 时序仿真"}
+{"t":"2026-11-25T13:14:48.610+08:00","level":"error","scope":"daq.infra","msg":"[daq-infra]","args":["数采后端初始化失败,已降级并停采:connect ECONNREFUSED 127.0.0.1:9"]}
+[workshop] DAQ 基础设施降级,跳过 resumeAll:数采后端初始化失败,已降级并停采:connect ECONNREFUSED 127.0.0.1:9
+{"t":"2026-11-25T13:15:31.155+08:00","level":"error","scope":"daq.infra","msg":"[daq-infra]","args":["数采后端初始化失败,已降级并停采:connect ECONNREFUSED 127.0.0.1:9"]}
+{"t":"2026-11-25T13:16:01.176+08:00","level":"error","scope":"daq.infra","msg":"[daq-infra]","args":["数采后端初始化失败,已降级并停采:connect ECONNREFUSED 127.0.0.1:9"]}

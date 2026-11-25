@@ -1,0 +1,78 @@
+{
+  "loginStatus": 200,
+  "apiProbe": {
+    "/api/workshop/daq": 200,
+    "/api/workshop/channels": 200,
+    "/api/workshop/runtime": 200,
+    "/api/workshop/agent-prefabs": 200
+  },
+  "uiPass": 7,
+  "routes": [
+    {
+      "name": "01-dashboard",
+      "path": "/",
+      "status": 200,
+      "title": "仪表盘 · AgentWorkShop",
+      "errors": [],
+      "sample": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 "
+    },
+    {
+      "name": "02-workshop",
+      "path": "/workshop",
+      "status": 200,
+      "title": "Workshop · Agent Harness",
+      "errors": [
+        "console: Hydration completed but contains mismatches."
+      ],
+      "sample": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 "
+    },
+    {
+      "name": "03-daq",
+      "path": "/daq",
+      "status": 200,
+      "title": "数采中心 · AgentWorkShop",
+      "errors": [],
+      "sample": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 "
+    },
+    {
+      "name": "04-projects",
+      "path": "/projects",
+      "status": 200,
+      "title": "项目中心 · AgentWorkShop",
+      "errors": [],
+      "sample": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 "
+    },
+    {
+      "name": "05-town",
+      "path": "/town",
+      "status": 200,
+      "title": "AgentWorkShop",
+      "errors": [],
+      "sample": "返回主界面 还没有挂载任何 Channel 请到 Agent 工作台 创建/挂载频道后,再回到 AgentWorkShop 孪生空间。 v0.20.0"
+    },
+    {
+      "name": "06-settings",
+      "path": "/settings",
+      "status": 200,
+      "title": "AgentWorkShop",
+      "errors": [],
+      "sample": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 "
+    },
+    {
+      "name": "07-aml",
+      "path": "/aml",
+      "status": 200,
+      "title": "AML 自动建模 · AgentWorkShop",
+      "errors": [],
+      "sample": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 "
+    },
+    {
+      "name": "08-operations",
+      "path": "/operations",
+      "status": 200,
+      "title": "AgentWorkShop",
+      "errors": [],
+      "sample": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 "
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "09-daq-live",
+    "path": "/daq",
+    "status": 200,
+    "errors": [],
+    "sample": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0.20.0 / dev 数采中心 语言 简体中文 验 验收管理员-7f38f38"
+  },
+  {
+    "name": "10-channel-console",
+    "path": "/workshop/w/0e28f79b-401c-4805-94c6-d6076c963303",
+    "status": 200,
+    "errors": [],
+    "sample": "跳到主要内容 A 默认工作区 新建 Channel 搜索 ⌘K 频道会话列表 · 1 注塑验收频道-20261125 4 成员 多会话 从 Channel 模板挂载 模板 = 场景 + 工作目录 + 团队;实例化即装配成员 全部成员空闲 返回主界面 #注塑验收频道-20261125 OPEN seq 441 新的协作 把目标交给你的 AI 团队 描述你要交付的结果，提及一个 Agent 开始协作。"
+  },
+  {
+    "name": "11-settings-prefabs",
+    "path": "/settings",
+    "status": 200,
+    "errors": [],
+    "sample": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0.20.0 / dev 数采中心 系统设置 语言 简体中文 验 验收管理员-7f"
+  },
+  {
+    "name": "12-projects",
+    "path": "/projects",
+    "status": 200,
+    "errors": [],
+    "sample": "跳到主要内容 AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 项目中心 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时监控 产线日志 系统 API Token 用户管理 权限管理 插件管理 工具管理 系统设置 v0.20.0 / dev 数采中心 系统设置 项目中心 语言 简体中文 验 验收管"
+  },
+  {
+    "name": "13-town",
+    "path": "/town",
+    "status": 200,
+    "errors": [],
+    "sample": "返回主界面 DIGITAL TWIN AGENTWORKSHOP · 数字孪生平台 运行 编辑 保存布局 ◉ 0 0 FPS 验收 验收管理员-7f38f38f 设备资源 13 设备模型库 拖入孪生空间生成实例 拖放或选择模型文件 AGV 搬运车 · AGV 设备 · 拖拽放置 删 流延冷却单元 · CST 设备 · 拖拽放置 删 控制台 · CON 设备 · 拖拽放置 删 机械臂单元 · ARM"
+  }
+]

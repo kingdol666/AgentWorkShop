@@ -1,0 +1,74 @@
+{
+  "passes": 17,
+  "failures": 0,
+  "evidence": {
+    "GET /daq 200": {
+      "ok": true,
+      "detail": "status=200"
+    },
+    "后端自描述可用": {
+      "ok": true,
+      "detail": "tsdb=timescale"
+    },
+    "controller 状态可读": {
+      "ok": true,
+      "detail": "nodesTotal=0"
+    },
+    "非降级(写路径可用)": {
+      "ok": true,
+      "detail": "degraded=false"
+    },
+    "采集总控启动": {
+      "ok": true,
+      "detail": "running=true"
+    },
+    "存在可用标量模板": {
+      "ok": true,
+      "detail": "template=temp-tc"
+    },
+    "POST /daq 创建节点": {
+      "ok": true,
+      "detail": "id=dn-4e6b24c"
+    },
+    "第一次 ingest 受理": {
+      "ok": true,
+      "detail": "status=200 code=0"
+    },
+    "第二次 ingest 受理": {
+      "ok": true,
+      "detail": "status=200 code=0"
+    },
+    "flush 后 samplesStored 真实增长": {
+      "ok": true,
+      "detail": "2 → 4"
+    },
+    "stored 增量 == 摄入条数(无幽灵计数)": {
+      "ok": true,
+      "detail": "delta=2"
+    },
+    "samples API 返回聚合点": {
+      "ok": true,
+      "detail": "points=1 bucketMs=15000"
+    },
+    "桶计数合计 == 摄入条数": {
+      "ok": true,
+      "detail": "cnt=2"
+    },
+    "回读区间覆盖两次写入值": {
+      "ok": true,
+      "detail": "vals=[42.5,43.5,43]"
+    },
+    "GET /runtime 正常": {
+      "ok": true,
+      "detail": "wired=0"
+    },
+    "采集总控停止": {
+      "ok": true,
+      "detail": "running=false"
+    },
+    "删除验收节点": {
+      "ok": true,
+      "detail": "status=200"
+    }
+  }
+}

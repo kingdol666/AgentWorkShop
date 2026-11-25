@@ -1,0 +1,69 @@
+{
+  "prefabId": "prefab-aa16910e",
+  "channelId": "3ce41f3b-157b-440b-bb63-3e4edd978bd8",
+  "memberId": "a6f91648-04db-45dc-b557-25dea186ffc6",
+  "pass": 15,
+  "fail": 0,
+  "evidence": {
+    "频道存在可绑定的 worker 成员": {
+      "ok": true,
+      "detail": "member=数据分析师 workers=3"
+    },
+    "清场解绑既有绑定": {
+      "ok": true,
+      "detail": "status=200"
+    },
+    "创建草稿": {
+      "ok": true,
+      "detail": "id=prefab-aa16910"
+    },
+    "发布不可变 revision 1": {
+      "ok": true,
+      "detail": "revision=1 hash=91f4820610"
+    },
+    "绑定 revision 1": {
+      "ok": true,
+      "detail": "version=3e41df27"
+    },
+    "重复绑定被拒 PREFAB_ALREADY_BOUND(409)": {
+      "ok": true,
+      "detail": "status=409 code=PREFAB_ALREADY_BOUND"
+    },
+    "过期 expectedUpdatedAt 被拒 PREFAB_EDIT_CONFLICT": {
+      "ok": true,
+      "detail": "status=409 code=PREFAB_EDIT_CONFLICT"
+    },
+    "当前版本草稿更新通过": {
+      "ok": true,
+      "detail": "status=200"
+    },
+    "发布 revision 2": {
+      "ok": true,
+      "detail": "revision=2"
+    },
+    "成员仍固定在 revision 1(不随发布漂移)": {
+      "ok": true,
+      "detail": "revision=1"
+    },
+    "错误 expectedBindingVersion 被拒(409)": {
+      "ok": true,
+      "detail": "status=409 code=PREFAB_BINDING_CHANGED"
+    },
+    "按当前版本解绑成功": {
+      "ok": true,
+      "detail": "status=200"
+    },
+    "归档已发布预制件(不物理删 revision)": {
+      "ok": true,
+      "detail": "status=200 code=0"
+    },
+    "归档后新绑定被拒(409)": {
+      "ok": true,
+      "detail": "status=409 code=PREFAB_ARCHIVED"
+    },
+    "历史 revision 1/2 仍可读": {
+      "ok": true,
+      "detail": "r1=200 r2=200"
+    }
+  }
+}
