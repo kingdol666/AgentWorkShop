@@ -38,9 +38,31 @@ jobs:
         run: pnpm run lint
       - name: Unit tests
         run: pnpm run test:unit
+      - name: Unit tests (mjs suites)
+        run: pnpm run test:unit-mjs
       - name: i18n parity
         run: pnpm run i18n:check
       - name: CSS variable integrity
         run: pnpm run check:cssvars
       - name: Frontend lifecycle contract
         run: pnpm run frontend-lifecycle-contract
+
+  # 生产构建 + 启动冒烟:quick-gate 只验静态与单测,构建/SSR/鉴权门在此层兜底。
+  # 独立 job 便于失败归因;不做外部依赖(无 Timescale/MQTT/模型),只用临时 home。
+  build-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build production output
+        run: pnpm run build
+      - name: Boot smoke (health, SSR, auth gate, missing-secret refusal)
+        run: pnpm run test:boot-smoke
