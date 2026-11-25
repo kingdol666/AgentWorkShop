@@ -45,6 +45,34 @@ test('P1-1 scrubPlatformSecrets 剥离会话/管理员/隧道凭据', () => {
   assert.equal(env.AW_ENGINE_PROVIDER_KEY, synthetic)
 })
 
+test('P1-1 名称即秘密的宿主变量不得透传给 agent 子进程', () => {
+  // 2026-11-25 实机:agent 的 bash 工具 `env` 读到了宿主 HF/npm 令牌与对象存储密钥
+  const synthetic = 'synthetic-value-for-assertion'
+  const input: Record<string, string> = {
+    PATH: '/usr/bin',
+    HUGGINGFACEHUB_API_TOKEN: synthetic,
+    NPM_TOKEN: synthetic,
+    NODE_AUTH_TOKEN: synthetic,
+    AWS_SECRET_ACCESS_KEY: synthetic,
+    OPENAI_API_KEY: synthetic,
+    AW_DAQ_OBJECTSTORE_SECRETKEY: synthetic,
+    AW_ENGINE_PROVIDER_KEY: synthetic,
+  }
+  const env = scrubPlatformSecrets(input)
+  for (const name of ['HUGGINGFACEHUB_API_TOKEN', 'NPM_TOKEN', 'NODE_AUTH_TOKEN', 'AWS_SECRET_ACCESS_KEY', 'OPENAI_API_KEY', 'AW_DAQ_OBJECTSTORE_SECRETKEY']) {
+    assert.equal(env[name], undefined, `${name} 不得进入 agent 运行环境`)
+  }
+  assert.equal(env.AW_ENGINE_PROVIDER_KEY, synthetic, '引擎显式占位必须放行')
+  assert.equal(env.PATH, '/usr/bin', '非秘密变量不得误伤')
+})
+
+test('P1-1 显式 env 在清洗之后合并,引擎 provider key 不被误剥', () => {
+  const omp = read('server/services/workshop/agents/adapters/omp-rpc-client/start.ts')
+  assert.match(omp, /\.\.\.scrubPlatformSecrets\(process\.env\), \.\.\.this\.options\.env/, 'omp 必须先清洗再合并显式 env')
+  const line = read('server/services/workshop/agents/adapters/line-spawn.ts')
+  assert.match(line, /\.\.\.scrubPlatformSecrets\(process\.env\), \.\.\.options\.env/, '逐行 spawn 必须先清洗再合并显式 env')
+})
+
 test('P1-1 omp 启动器使用同一清洗函数(不得全量继承 process.env)', () => {
   const src = read('server/services/workshop/agents/adapters/omp-rpc-client/start.ts')
   assert.match(src, /scrubPlatformSecrets\(/, 'omp 必须复用平台秘密清洗')

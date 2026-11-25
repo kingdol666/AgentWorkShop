@@ -20,8 +20,8 @@ export abstract class OmpRpcClientStart extends OmpRpcClientUsage {
       cwd: this.options.cwd ?? process.cwd(),
       // 平台会话/管理员凭据不得泄入引擎子进程(与 spawnLineProcess 同一清洗函数,
       // 避免"其余 harness 清洗、omp 全量继承"的双标)。omp 自身需要的 provider key
-      // 由引擎配置文件/显式 options.env 提供。
-      env: scrubPlatformSecrets({ ...process.env, ...this.options.env }),
+      // 由引擎配置文件/显式 options.env 提供;显式 env 在清洗之后合并,不会被误剥。
+      env: { ...scrubPlatformSecrets(process.env), ...this.options.env },
       windowsHide: true,
     })
 
