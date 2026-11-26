@@ -30,6 +30,8 @@ import { parseJson } from '../../db/database'
 import { reflectExperience } from '../memory/reflector'
 import { recordParameterClaim } from '../../experience/claims'
 import { backfillOperationEvidence } from '../../daq/provenance-evidence'
+import { runCuratorSweep } from '../../memory/curator'
+import { attributeMemoryInjection, cleanupInjectionLogs } from '../../memory/effect'
 import { collectInterventionFact, collectTaskFact, listUnreflectedInterventions } from '../memory/reflect-collector'
 import { registerInterventionAssessmentHook } from '../../aml/intervention-ledger'
 import { getDcwController } from '../../dcw/dcw-controller'
@@ -133,6 +135,8 @@ export abstract class ManagerState extends ManagerContracts {
    */
   protected readonly deferredChannelRecycles = new Map<string, string>()
   protected memoryTimer: NodeJS.Timeout | null = null
+  /** 批次 E：Curator 30min 单飞定时器（与 6h 维护解耦；失败只记日志） */
+  protected curatorTimer: NodeJS.Timeout | null = null
   /** §7.3 outbox 独立补偿定时器(短周期重试;与记忆维护 6h 周期解耦) */
   protected outboxTimer: NodeJS.Timeout | null = null
   protected chatDeliveryTimer: NodeJS.Timeout | null = null
@@ -281,6 +285,11 @@ export abstract class ManagerState extends ManagerContracts {
         void backfillOperationEvidence(this.deps.db, { limit: 10 }).catch(() => {})
       }
       catch { /* 补采失败不阻断维护 */ }
+      // 批次 H：注入日志 90 天清理
+      try {
+        cleanupInjectionLogs(this.deps.db, 90)
+      }
+      catch { /* 清理失败不阻断维护 */ }
       // RSI 独立回读验证(WP-C1):对未验证的写入台账做设备侧复读(match/mismatch/inconclusive)
       try {
         verifyAllPending(this.deps.db, { perChannel: 20 })
@@ -292,6 +301,18 @@ export abstract class ManagerState extends ManagerContracts {
       this.runGroupChatMaintenance()
     }, memorySettings().maintenance_ms)
     this.memoryTimer.unref?.()
+    // 批次 E：Curator 汇整（30min；单进程单飞；未配置/失败只记日志）
+    if (process.env.AW_MEMORY_CURATOR_DISABLED !== '1') {
+      this.curatorTimer = setInterval(() => {
+        void runCuratorSweep(this.deps.db, {
+          limit: 2,
+          useLlm: Boolean(process.env.AW_MEMORY_CURATOR_LLM_URL?.trim()),
+        }).catch((err) => {
+          log.warn('[memory] Curator 汇整失败:', err instanceof Error ? err.message : err)
+        })
+      }, 30 * 60_000)
+      this.curatorTimer.unref?.()
+    }
     // §7.3 ④ outbox 独立短周期消费:重试节奏不能被 6h 的 memory.maintenance_ms 拖住
     this.outboxTimer = setInterval(() => {
       try {
@@ -556,6 +577,11 @@ export abstract class ManagerState extends ManagerContracts {
     try {
       const task = this.getTaskEngine().get(taskId)
       if (!task) return
+      // 批次 H：任务终态归因（同 task 只计一次；无注入不产生统计）
+      try {
+        attributeMemoryInjection(this.deps.db, taskId, task.state === 'COMPLETED')
+      }
+      catch { /* 归因失败不影响学习环 */ }
       const fact = collectTaskFact(this.deps.db, {
         channelId,
         taskId,

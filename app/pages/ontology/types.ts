@@ -3,6 +3,7 @@
 export interface OntologySummary {
   id: string
   lineId: string
+  productId?: string
   versions: number
   latest: number
   status: string
@@ -13,6 +14,7 @@ export interface DraftSummary {
   ontologyId: string
   baseVersion: number | null
   rev: number
+  productId?: string
   ownerUserId: string
   updatedAt: string
 }

@@ -308,6 +308,11 @@ export interface MemoryRow {
   deleteReason?: string | null
   /** 来源深链（task/run/intervention/ontology 的 JSON 引用） */
   originRef?: string
+  /** 时序有效性（批次 K）：valid_from/valid_to/recorded_at/superseded_by */
+  validFrom?: string | null
+  validTo?: string | null
+  recordedAt?: string | null
+  supersededBy?: string | null
 }
 export interface ChannelAgentCreationSource {
   createdByKind: 'system' | 'user' | 'leader'

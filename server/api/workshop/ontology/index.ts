@@ -15,11 +15,12 @@ export default defineApiHandler(async (event) => {
     const user = resolveUser(event)
     const query = getQuery(event)
     const lineId = typeof query.lineId === 'string' && query.lineId ? query.lineId : undefined
-    const ontologies = listOntologies(lineId)
+    const productId = typeof query.productId === 'string' && query.productId ? query.productId : undefined
+    const ontologies = listOntologies(lineId, productId)
     const drafts = listDrafts(actorFromUser(user), typeof query.ontologyId === 'string' ? { ontologyId: query.ontologyId } : {})
     return {
       ontologies,
-      drafts: drafts.map(d => ({ id: d.id, ontologyId: d.ontologyId, baseVersion: d.baseVersion, rev: d.rev, ownerUserId: d.ownerUserId, updatedAt: d.updatedAt })),
+      drafts: drafts.map(d => ({ id: d.id, ontologyId: d.ontologyId, baseVersion: d.baseVersion, rev: d.rev, productId: d.productId, ownerUserId: d.ownerUserId, updatedAt: d.updatedAt })),
     }
   }
   const user = requireRole(event, ['admin', 'editor'])
@@ -29,6 +30,7 @@ export default defineApiHandler(async (event) => {
   const draft = createDraft(actorFromUser(user), {
     ontologyId,
     lineId: typeof body.lineId === 'string' ? body.lineId : '',
+    productId: typeof body.productId === 'string' ? body.productId : '',
     name: typeof body.name === 'string' ? body.name : undefined,
     cloneFromVersion: body.cloneFromVersion === true,
   })

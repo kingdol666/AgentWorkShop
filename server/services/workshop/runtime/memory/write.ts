@@ -11,6 +11,13 @@ import type { MemoryWriteOutcome } from '../../db/memory.repo'
 import { randomUUID } from 'node:crypto'
 
 export abstract class AgentMemoryWrite extends AgentMemoryRecall {
+  /** Memory Fabric 策略：disabled/readonly 禁止写入（批次 I） */
+  protected assertWritable(): void {
+    const mode = this.repo.memoryAccessMode(this.opts.channelId, this.opts.sessionId)
+    if (mode === 'disabled') throw new Error('记忆策略 disabled（incognito）：不读不写')
+    if (mode === 'readonly') throw new Error('记忆策略 readonly：只读不写')
+  }
+
   /**
    * Agent 主动沉淀(save_memory 工具):把作业过程中的可复用结论/经验写入记忆库。
    * scope='private' → 本人 semantic 域;scope='shared' → Channel 公共域(全员可检索;
@@ -32,6 +39,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     /** 跨频道经验的证据锚点(scope=line|global 必填) */
     taskId?: string | null
   }): Promise<{ scope: 'private' | 'shared' | 'line' | 'global', dedupKey: string, outcome: MemoryWriteOutcome }> {
+    this.assertWritable()
     if (input.scope === 'line' || input.scope === 'global') {
       const expScope: 'line' | 'global' = input.scope
       return this.saveExperience({ ...input, scope: expScope })
@@ -176,8 +184,28 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     return { scope: input.scope, dedupKey, outcome: write.outcome }
   }
 
+  /** 批次 J：每回合落定写 runtime working memory（24h TTL；不参与长期注入排名） */
+  recordWorkingTurn(input: { taskId?: string | null, sessionId?: string | null, text: string }): void {
+    const mode = this.repo.memoryAccessMode(this.opts.channelId, input.sessionId ?? this.opts.sessionId)
+    if (mode === 'disabled' || mode === 'readonly') return
+    const text = input.text.trim()
+    if (!text) return
+    try {
+      this.repo.writeWorkingMemory({
+        runtimeId: this.opts.agentId,
+        sessionId: input.sessionId ?? this.opts.sessionId ?? '',
+        taskId: input.taskId ?? '',
+        key: 'last_turn',
+        value: text.slice(0, 1200),
+      })
+    }
+    catch { /* 工作记忆失败不阻断回合 */ }
+  }
+
   /** run 后(任务路径;仅终态调用):harvest TaskEngine 终态 + deliverable,并刷新 L0 简报 */
   async recordTaskOutcome(task: WorkspaceTask): Promise<void> {
+    if (this.repo.memoryAccessMode(this.opts.channelId, this.opts.sessionId) !== 'inherit'
+      && this.repo.memoryAccessMode(this.opts.channelId, this.opts.sessionId) !== 'isolated') return
     // 优先 deliverable/summary 命名成果;harness 任意命名(如 mock 的 result)兜底取全部成果
     const preferred = task.artifacts.filter(a => a.name === 'deliverable' || a.name === 'summary')
     const source = preferred.length > 0 ? preferred : task.artifacts
@@ -207,6 +235,8 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
 
   /** run 后(点对点路径):请求 + 我方回复摘要 */
   async recordPeerExchange(msg: A2AMessage, replyText: string, sessionId?: string): Promise<void> {
+    if (this.repo.memoryAccessMode(this.opts.channelId, sessionId ?? this.opts.sessionId) === 'disabled'
+      || this.repo.memoryAccessMode(this.opts.channelId, sessionId ?? this.opts.sessionId) === 'readonly') return
     const ask = partsText(msg.parts).slice(0, 150)
     const content = replyText ? `问:${ask} 答:${replyText.slice(0, 250)}` : ask
     const fromId = (msg.metadata?.['x-aw-from-agent'] as string | undefined) ?? 'unknown'
@@ -237,6 +267,8 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
    *  - 幂等键 `dialog:<messageId>`：重放同一消息不新增行。
    */
   async recordDialog(msg: A2AMessage, replyText: string, sessionId?: string | null): Promise<void> {
+    const mode = this.repo.memoryAccessMode(this.opts.channelId, sessionId ?? this.opts.sessionId)
+    if (mode === 'disabled' || mode === 'readonly') return
     const ask = partsText(msg.parts).trim()
     const answer = replyText.trim()
     if (!ask || !answer) return

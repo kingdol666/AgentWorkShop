@@ -22,7 +22,7 @@
 | `npm run lint` | PASS（含 RSI 红线：34 文件 0 设备写） |
 | `npm run typecheck` | PASS |
 | 定向测试（timing/dialog/provenance/claims/ontology surface） | 18/18 PASS |
-| 全量 `test:unit` | **最终 2437 tests / 2436 pass / 1 skip / 0 fail**（首轮唯一失败为 `managed-mcp-client` 并行端口抖动，单独复跑 1/1 PASS，整仓复跑 0 fail） |
+| 全量 `test:unit` | **最终 2458 tests / 2457 pass / 1 skip / 0 fail**（首轮 `managed-mcp-client` 并行端口抖动，单跑与整仓复跑均 PASS） |
 | `npm run i18n:check` | PARITY OK（3757/3757） |
 | `npm run docs:check` | 101/0 |
 | `npm run readme:lint` | PASS |
@@ -47,21 +47,40 @@
 - **批次 D**：`migrations-ontology-evidence.ts`、`ontology/repo.ts` 非法等级拒绝、`aml/ontology-learning.ts` 映射
 - **UI**：`/memory` 新增「产线追溯 / 参数手册」区、人工裁定入口；修复信封解包
 
-## 5. 未完成 / 不在本轮验收范围（如实）
+## 4.5 Phase 2/3 补充交付（2026-11-27 二轮）
 
-- **批次 E（Curator 通用知识手册 + LLM 写作器 + 调度/版本/来源表）未实现**；参数手册目前是确定性模板（无 LLM、无独立 run 表），满足“连续结构化经验分析”，但不满足计划 M13–M22 的 Curator 验收。
-- **批次 H（注入效果归因 + 保守自动退役）未实现**。
-- **批次 M2/M3 的建议引擎 / HITL 建议卡 / `parameter_proposals` 未实现**；用户已裁决“具体怎么下发交给 Agent 研究”，本轮只做事实链 + 结构化经验 + 只读查询；Agent 仍走 `recipe_trial/update/apply + HITL + 本体护栏`。
-- **批次 C（本体产品域）只完成迁移与证据词表；repo/service/API/UI 的 productId 透传未完成**。产品域迁移已注册，但 `latestPublishedForLine` 尚不区分产品。
-- **Phase 2/3（Fabric/Blocks/Documents/时序/透明控制）未开始**。
-- **全量 unit 已复跑并通过**（2436/2437，1 skip）；首轮 `managed-mcp-client` 失败为并行抖动，单跑与整仓复跑均 PASS。
-- **实机验收数据是演示夹具**：`aw-seed-acceptance.mjs` 通过真实表结构写入 2 条干预、1 条 DAQ 快照、1 条结构化 claim、2 条写尝试；不是历史自然积累。`raw_available=0` 是故意构造“raw 已过期仍可查快照”的场景。
-- 测试 home 中被脚本误改的 Harness 记忆（标题/正文被追加、其中 1 条被裁定退役）是验收脚本早期选择器缺陷留下的痕迹；不影响本轮功能结论，但该 home 不是干净数据。
+- **C 本体产品域**：`product_id` contracts/repo/service/API/UI 全链；`latestPublishedForLine(line,'')` 不取产品版、产品不回退产线；`ontology-product-scope` 测试 2/2。
+- **E Curator**：`memory_curation_runs/sources/state`；来源准入、12+ 碎片→五段结构化文档、来源 id、增量 noop、人工编辑保护 + force、冲突并列、L0.5 注入 ≤200 tok；LLM 写作器（OpenAI 兼容 + SSRF 护栏 + 超时/非法 JSON 模板回退）；30min 调度；`/memory` 知识手册管理面。
+- **F 决策点线索**：HITL 登记时附 ≤3 条 validated+deployed 经验（≤150 tok，只读）。
+- **H 效果闭环**：注入留痕/任务归因（同 task 只计一次）/channel 自动退役/line-product flag/人工恢复 30 天豁免/90 天日志清理。
+- **M2/M3 建议引擎**：硬过滤、1–3 条 + doNothing、cold_start、证据深链、`parameter_proposals`、`param_proposal` 工具/API、`proposal_id` 下发校验、verdict → assessed + 追加证据版本（继承 active）。
+- **I Fabric 策略**：channel/session `memory_access_mode`；disabled 不读不写、isolated 不读 line/product/workspace、readonly 只读；recall/write/Curator 一致；API/UI。
+- **J Core Blocks / 文件 / 工作记忆**：blocks（limit/locked/revision/rollback）、documents（六命令、路径穿越拒绝、软删恢复、64KB/200 上限）、runtime working memory（每回合落定、TTL 24h、按 runtime/session/task 隔离）；注入与工具/API/UI。
+- **K 时序/链接**：valid_from/valid_to/recorded_at/superseded_by；默认排除失效、`as_of` 回看；memory_links 四关系；Curator 写 derived_from；supersede 不删除。
+- **L 控制面**：incognito（disabled）、导出/导入 JSONL、敏感过滤、健康（FTS/超限）、修复（工作记忆/日志清理）。
+
+实机（桌面端 CDP）：
+- 截图 13：产线追溯 + 参数手册 + 核心块（工艺口径）+ 记忆文件（保压调参.md）+ 访问策略；
+- 截图 14：生成 2 条参数建议（proposed，期望 0.085/0.08，置信 67%）；
+- 截图 15：知识手册（Curator）在记忆中心可见；
+- API：readonly→inherit 策略往返成功；导出 12,490 B；健康 memories=10/fts=15/blocks=1/docs=1；curations=1。
+
+## 5. 已知边界（功能已交付，但不等同于“零限制”）
+
+- **Curator LLM 写作器**需运维配置 `AW_MEMORY_CURATOR_LLM_URL/KEY/MODEL`（并过 SSRF 护栏）；未配置/超时/非法 JSON 一律模板回退，run 行记 `fallback_reason`。本轮实机走模板（未配置端点）。
+- **产品域选择器**当前为文本输入（产品 id），候选来自调用方；尚未从 `channel_product_bindings` 动态下拉。
+- **导出/导入/健康/修复**以 REST + 服务层为主；`/memory` UI 仅展示核心块/文件/访问策略/建议/手册，导出/导入/健康页尚未做成独立面板。
+- **建议 HITL 拒绝回写**：`proposal_id` 已透传到 trial/apply 与干预台账，判定后 `assessed`；HITL 卡拒绝原因尚未单独回写 proposal（当前由未下发 + 人工审计体现）。
+- **引用面板/时间线**：`memory_injection_log`、`memory_links`、`as_of` 已落库/可查，但对话侧“本轮引用了哪些记忆”的 UI 尚未展开。
+- **session 级 access mode**：列/解析/生效已实现，UI 只提供 channel 级选择。
+- **实机验收数据是演示夹具**：`aw-seed-acceptance.mjs` / `aw-phase23-seed.mts` 通过真实服务/表结构写入干预、DAQ 快照、claim、提案、块、文件与 Curator 文档；不是历史自然积累。`raw_available=0` 是故意构造“raw 已过期仍可查快照”的场景。
+- 测试 home 中被早期脚本误改的 Harness 记忆是选择器缺陷留下的痕迹；不影响功能结论，但该 home 不是干净数据。
 
 ## 6. 证据清单（本目录）
 
 - `01-memory-list.png` … `09-industry-top.png`：Web 端全流程
-- `10-desktop-dashboard.png` … `12-desktop-industry.png`：桌面端
-- `web-run.log` / `desktop-run.log`
+- `10-desktop-dashboard.png` … `12-desktop-industry.png`：桌面端 Phase 1
+- `13-desktop-phase23.png` / `14-desktop-proposals.png` / `15-desktop-curated.png`：桌面端 Phase 2/3（块/文件/访问策略/建议/知识手册）
+- `web-run.log` / `desktop-run.log` / `desktop-phase23.log`
 - `timing-dialog-evidence.json`：自动注入隔离 + 对话沉淀的实机 DB 证据
-- 复现脚本（仓库外）：`D:/tmp/aw-web-acceptance.mjs`、`D:/tmp/aw-desktop-acceptance.mjs`、`D:/tmp/aw-seed-acceptance.mjs`、`D:/tmp/aw-timing-live.mts`
+- 复现脚本（仓库外）：`D:/tmp/aw-web-acceptance.mjs`、`D:/tmp/aw-desktop-acceptance.mjs`、`D:/tmp/aw-seed-acceptance.mjs`、`D:/tmp/aw-timing-live.mts`、`D:/tmp/aw-phase23-seed.mts`、`D:/tmp/aw-desktop-phase23.mjs`

@@ -52,6 +52,7 @@ function invertComparison(op: string): ControlGuard['when']['op'] | null {
 function scopeOf(rule: OntologyRule, options: CompileOptions) {
   return {
     lineId: rule.scope.lineId || options.scope?.lineId || '',
+    productId: (rule.scope as { productId?: string }).productId || options.scope?.productId || '',
     recipeId: rule.scope.recipeId || options.scope?.recipeId || '',
     conditionId: rule.scope.conditionId || options.scope?.conditionId || '',
   }

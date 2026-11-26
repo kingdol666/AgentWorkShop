@@ -26,7 +26,7 @@ export default defineApiHandler(async (event) => {
     return {
       ontologyId,
       versions: listVersions(ontologyId).map(v => ({
-        version: v.version, status: v.status, name: v.name, lineId: v.lineId,
+        version: v.version, status: v.status, name: v.name, lineId: v.lineId, productId: v.productId,
         parentVersion: v.parentVersion, contentHash: v.contentHash,
         publishedBy: v.publishedBy, createdAt: v.createdAt,
         compiled: parseCompiled(v.compiledJson),

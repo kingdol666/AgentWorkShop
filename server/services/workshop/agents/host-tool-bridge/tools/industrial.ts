@@ -20,6 +20,7 @@ import { toolIndustrialResources } from '../../industrial/resources-tools'
 import { toolOntologyCompilePreview, toolOntologyDraftAutofix, toolOntologyDraftCreate, toolOntologyDraftUpdate, toolOntologyDraftValidate, toolOntologyNodeNeighbors, toolOntologyPublishPropose, toolOntologyRuleExplain, toolOntologySceneInspect, toolOntologyVersionCompare } from '../../industrial/ontology-tools'
 import { toolOperationProvenance } from '../../industrial/provenance-tools'
 import { toolParamExperienceQuery } from '../../industrial/param-experience-tools'
+import { toolParamProposal } from '../../industrial/parameter-tools'
 
 type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string, sessionScope?: ChannelSessionExecutionScope) => Promise<HostToolResult>
 
@@ -69,6 +70,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   // 批次 N3:操作+数采全量追溯(只读;设定/上下文/DAQ 前后值/判定/拒绝尝试)
   ['operation_provenance', (agentId, args, _channelId, sessionScope) => toolOperationProvenance(agentId, args as Parameters<typeof toolOperationProvenance>[1], sessionScope as DaqQueryExecutionScope | undefined)],
   ['param_experience_query', (agentId, args, _channelId, sessionScope) => toolParamExperienceQuery(agentId, args as Parameters<typeof toolParamExperienceQuery>[1], sessionScope as DaqQueryExecutionScope | undefined)],
+  ['param_proposal', (agentId, args, _channelId, sessionScope) => toolParamProposal(agentId, args as Parameters<typeof toolParamProposal>[1], sessionScope as DaqQueryExecutionScope | undefined)],
   ['dcw_judge', (agentId, args) => toolDcwJudge(agentId, args as { record_id?: string, verdict?: string, reason?: string })],
   ['dcw_rollback', (agentId, args) => toolDcwRollback(agentId, args as { record_id?: string, node_id?: string, to?: string })],
   ['dcw_journal', (agentId, args) => toolDcwJournal(agentId, args as { node_id?: string, recipe_id?: string, limit?: number | string })],

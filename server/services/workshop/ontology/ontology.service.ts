@@ -131,6 +131,8 @@ export interface CreateDraftInput {
   /** 从已发布版本克隆(基于上一版继续演进) */
   cloneFromVersion?: boolean
   lineId?: string
+  /** 产品域（批次 C）：空 = 产线通用；非空 = 产品独立版本 */
+  productId?: string
   name?: string
 }
 
@@ -146,11 +148,12 @@ export function createDraft(actor: Actor, input: CreateDraftInput): DraftRow {
   if (active) {
     throw new AppError(409, 'DRAFT_ALREADY_ACTIVE', `本体 ${ontologyId} 已有活跃草稿(${active.id}, rev=${active.rev});请继续编辑`)
   }
-  let doc: OntologyDraftDoc = emptyDraftDoc(ontologyId, input.lineId ?? '')
+  let doc: OntologyDraftDoc = emptyDraftDoc(ontologyId, input.lineId ?? '', input.productId ?? '')
   if (input.name) doc.name = input.name
   if (input.cloneFromVersion) {
-    const latest = repo.latestVersion(ontologyId, 'published')
-    if (!latest) throw new AppError(404, 'VERSION_NOT_FOUND', `本体 ${ontologyId} 还没有已发布版本可克隆`)
+    // 严格作用域克隆：产品版本只克隆同产品版本，产线通用只克隆产线通用
+    const latest = repo.latestVersionForScope(ontologyId, doc.lineId, doc.productId, 'published')
+    if (!latest) throw new AppError(404, 'VERSION_NOT_FOUND', `本体 ${ontologyId} 在该产线/产品作用域还没有已发布版本可克隆`)
     doc = cloneVersionDoc(latest)
     input = { ...input, baseVersion: latest.version }
   }
@@ -160,6 +163,7 @@ export function createDraft(actor: Actor, input: CreateDraftInput): DraftRow {
     baseVersion: input.baseVersion ?? null,
     draftJson: JSON.stringify(doc),
     ownerUserId: ownerId,
+    productId: doc.productId,
   })
   log({ ontologyId, version: input.baseVersion ?? 0, action: 'draft.create', actor, detail: { draftId: row.id } })
   return row
@@ -188,6 +192,7 @@ function cloneVersionDoc(version: VersionRow): OntologyDraftDoc {
     name: version.name || version.id,
     description: '',
     lineId: version.lineId,
+    productId: version.productId ?? '',
     entities,
     relations,
     rules,
@@ -584,7 +589,7 @@ export function publishDraft(
   const compile = compileOntology(doc, {
     ontologyId: draft.ontologyId,
     version: versionNumber,
-    scope: { lineId: doc.lineId },
+    scope: { lineId: doc.lineId, productId: doc.productId },
     currentBounds: options.currentBounds,
     approvedOnly: true,
   })
@@ -601,7 +606,7 @@ export function publishDraft(
 
   const contentHash = draftContentHash(doc)
   const packHash = ontologyPackHash({ rulePackHash: compile.rulePackHash, contentHash })
-  const parent = repo.latestVersion(draft.ontologyId)
+  const parent = repo.latestVersionForScope(draft.ontologyId, doc.lineId, doc.productId)
   const compiledJson = JSON.stringify({
     schemaVersion: ONTOLOGY_SCHEMA_VERSION,
     ontologyId: draft.ontologyId,
@@ -625,6 +630,7 @@ export function publishDraft(
     version = repo.publishSnapshot({
       version: {
         id: draft.ontologyId, version: versionNumber, name: doc.name, lineId: doc.lineId,
+        productId: doc.productId,
         parentVersion: parent?.version ?? null, contentHash, compiledJson, changelogJson: changelog,
         status: 'published', ownerUserId: draft.ownerUserId, publishedBy: actor.userId,
         createdAt: '', updatedAt: '',
@@ -735,8 +741,8 @@ export function retireVersion(ontologyId: string, version: number, actor: Actor)
   log({ ontologyId, version, action: 'retire', actor })
 }
 
-export function listOntologies(lineId?: string) {
-  return getOntologyRepo().listAllOntologyIds(lineId)
+export function listOntologies(lineId?: string, productId?: string) {
+  return getOntologyRepo().listAllOntologyIds(lineId, productId)
 }
 
 // ===== 运行时消费面 =====
@@ -749,9 +755,9 @@ export interface ActiveOntology {
 }
 
 /** 取某产线当前生效的已发布本体(该线最新的 published 版本;无则 null) */
-export function resolveActiveOntology(lineId: string): ActiveOntology | null {
+export function resolveActiveOntology(lineId: string, productId = ''): ActiveOntology | null {
   const repo = getOntologyRepo()
-  const version = repo.latestPublishedForLine(lineId)
+  const version = repo.latestPublishedForLine(lineId, productId)
   if (!version) return null
   const compiled = JSON.parse(version.compiledJson || '{}') as {
     artifacts?: OntologyCompileResult['artifacts']
@@ -764,10 +770,10 @@ export function resolveActiveOntology(lineId: string): ActiveOntology | null {
 }
 
 /** 运行时守卫求值(供求解/下发前置检查调用) */
-export function evaluateOntologyGuards(lineId: string, input: Omit<GuardEvaluationInput, 'scope'> & { recipeId?: string, conditionId?: string }): GuardEvaluationResult & { packHash: string } {
-  const active = resolveActiveOntology(lineId)
+export function evaluateOntologyGuards(lineId: string, input: Omit<GuardEvaluationInput, 'scope'> & { recipeId?: string, conditionId?: string }, productId = ''): GuardEvaluationResult & { packHash: string } {
+  const active = resolveActiveOntology(lineId, productId)
   if (!active) return { ok: true, blocked: false, violations: [], evaluated: 0, skipped: 0, packHash: '' }
-  const result = evaluateGuards(active.guards, { ...input, scope: { lineId, recipeId: input.recipeId, conditionId: input.conditionId } })
+  const result = evaluateGuards(active.guards, { ...input, scope: { lineId, productId, recipeId: input.recipeId, conditionId: input.conditionId } })
   return { ...result, packHash: active.packHash }
 }
 
@@ -816,9 +822,9 @@ export function verifyVersionBindings(ontologyId: string, version: number): { ok
 export function evaluateOntologyGuardsForNodes(
   lineId: string,
   moves: Array<{ nodeId: string, from: number | null, to: number }>,
-  opts: { recipeId?: string, conditionId?: string } = {},
+  opts: { recipeId?: string, conditionId?: string, productId?: string } = {},
 ): GuardEvaluationResult & { packHash: string, unmapped: string[] } {
-  const active = resolveActiveOntology(lineId)
+  const active = resolveActiveOntology(lineId, opts.productId ?? '')
   if (!active || active.guards.length === 0) {
     return { ok: true, blocked: false, violations: [], evaluated: 0, skipped: 0, packHash: '', unmapped: [] }
   }
@@ -883,8 +889,8 @@ export interface SceneSubgraph {
   guards: Array<{ id: string, ruleId: string, message: string, onViolate: string }>
 }
 
-export function sceneSubgraph(lineId: string, opts: { limit?: number } = {}): SceneSubgraph | null {
-  const active = resolveActiveOntology(lineId)
+export function sceneSubgraph(lineId: string, opts: { limit?: number, productId?: string } = {}): SceneSubgraph | null {
+  const active = resolveActiveOntology(lineId, opts.productId ?? '')
   if (!active) return null
   const repo = getOntologyRepo()
   const entities = repo.listEntities(active.version.id, active.version.version)
@@ -921,12 +927,12 @@ export function sceneSubgraph(lineId: string, opts: { limit?: number } = {}): Sc
 }
 
 /** AML 派生:特征候选 + 时滞先验(供训练编排消费) */
-export function deriveTrainingPriors(lineId: string): {
+export function deriveTrainingPriors(lineId: string, productId = ''): {
   featureCandidates: Array<{ entityKey: string, role: string, relation: string, evidenceLevel: string, priorDelayMs?: number, variabilityChecked: boolean }>
   delayPriors: Array<{ entityKey: string, delayMs: number, basis: string, variabilityChecked: boolean }>
   monotonicity: Array<{ output: string, input: string, direction: string }>
 } | null {
-  const active = resolveActiveOntology(lineId)
+  const active = resolveActiveOntology(lineId, productId)
   if (!active) return null
   return {
     featureCandidates: active.artifacts.processModel.featureCandidates,

@@ -35,6 +35,7 @@ export default defineApiHandler(async (event) => {
     version: version.version,
     status: version.status,
     lineId: version.lineId,
+    productId: version.productId,
     contentHash: version.contentHash,
     parentVersion: version.parentVersion,
     createdAt: version.createdAt,

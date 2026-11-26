@@ -34,6 +34,7 @@ import { handleCancelTask, handleDispatchTask, handleGetMyTaskQueue, handleGetTa
 import { handleGrantNodes, handleRevokeNodes } from './tools/team-delegation'
 import { handleBroadcastMessage, handleListOtherTeams, handlePollMessages, handleReadChannelMail, handleSearchOtherTeamsMemory, handleSendCrossChannelMessage, handleSendMessageToAgent } from './tools/messaging'
 import { handleSaveMemory, handleSearchMemory } from './tools/memory'
+import { toolMemoryBlocks as handleMemoryBlocks, toolMemoryFiles as handleMemoryFiles } from './tools/memory-fabric'
 import { handleImprovementList } from './tools/improvement'
 import { handleCreateTeamAgent, handleGetQueueOverview, handleListTeamAgents, handleRemoveTeamAgent, handleUpdateTeamAgent } from './tools/team'
 import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, LEAD_ONLY_TOOL_NAMES, OBSERVE_BLOCKED_TOOL_NAMES } from '../tool-classes'
@@ -541,6 +542,10 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
         return await handleSearchMemory(args, ws, ctx.state.sessionId)
       case 'save_memory':
         return await handleSaveMemory(args, ws, ctx.state.sessionId)
+      case 'memory_blocks':
+        return await handleMemoryBlocks(ctx.identity.agentId, args, ctx.identity.channelId, ctx.state.sessionId)
+      case 'memory_files':
+        return await handleMemoryFiles(ctx.identity.agentId, args, ctx.identity.channelId, ctx.state.sessionId)
       case 'improvement_list':
         return await handleImprovementList(args, ws)
       case 'create_team_agent':

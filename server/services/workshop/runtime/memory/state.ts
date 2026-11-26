@@ -42,9 +42,17 @@ export abstract class AgentMemoryState extends AgentMemoryContracts {
    * 之所以不直接把此处换成表驱动：`private` 档历史上还要包含"可信 product/line 经验"
    * （见 tests/memory-private-channel-isolation），而表中该档限定 scopeKind=session|channel。
    */
-  protected inScope(row: MemoryRow, scope: MemoryScope, sessionId?: string | null, scopeContext?: ScopeContext, automatic = false): boolean {
+  protected inScope(row: MemoryRow, scope: MemoryScope, sessionId?: string | null, scopeContext?: ScopeContext, automatic = false, asOf?: string | null): boolean {
     // RSI(WP-A3):retired 经验不参与任何档位检索/注入(过期或劣化回滚后的行只保留审计价值)
     if (row.status === 'retired') return false
+    // 批次 K：时序有效性（失效不删除；默认排除失效，asOf 回看历史）
+    const at = asOf ? Date.parse(asOf) : Date.now()
+    if (row.validFrom && Date.parse(row.validFrom) > at) return false
+    if (row.validTo && Date.parse(row.validTo) <= at) return false
+    // Memory Fabric 策略（批次 I）：disabled 不读；isolated 不读 workspace/line/product
+    const accessMode = this.repo.memoryAccessMode(this.opts.channelId, sessionId ?? this.opts.sessionId)
+    if (accessMode === 'disabled') return false
+    if (accessMode === 'isolated' && row.scopeKind && ['line', 'product', 'global'].includes(row.scopeKind)) return false
     // 软删行：检索/注入/统计一律不可见（FTS 触发器对任意 UPDATE 都会重建索引，
     // 因此删除不能依赖物理清理，必须由读侧统一过滤）
     if (row.deletedAt) return false

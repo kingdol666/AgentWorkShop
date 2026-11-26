@@ -226,11 +226,12 @@ async function loadVersions(ontologyId: string): Promise<void> {
 
 /** 新建草稿:a-modal 表单(此前两连发 window.prompt,无校验无撤销) */
 const draftModalOpen = ref(false)
-const draftForm = reactive({ ontologyId: '', lineId: '' })
+const draftForm = reactive({ ontologyId: '', lineId: '', productId: '' })
 
 function openDraftModal(): void {
   draftForm.ontologyId = currentOntologyId()
   draftForm.lineId = ''
+  draftForm.productId = ''
   draftModalOpen.value = true
 }
 
@@ -238,7 +239,7 @@ async function submitDraft(): Promise<void> {
   if (!draftForm.ontologyId.trim()) return
   busy.value = true
   try {
-    const res = await ontologyApi<{ draft: DraftSummary }>('', { method: 'POST', body: { ontologyId: draftForm.ontologyId.trim(), lineId: draftForm.lineId.trim() } })
+    const res = await ontologyApi<{ draft: DraftSummary }>('', { method: 'POST', body: { ontologyId: draftForm.ontologyId.trim(), lineId: draftForm.lineId.trim(), productId: draftForm.productId.trim() } })
     message.success(t('ontology.draftCreated', { id: res.draft.id }))
     draftModalOpen.value = false
     draftId.value = res.draft.id
@@ -480,6 +481,11 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
           size="small"
           placeholder="ln-..."
         /></label>
+        <label>{{ t('ontology.prompt.productId') }}<a-input
+          v-model:value="draftForm.productId"
+          size="small"
+          placeholder="P-...（空=产线通用）"
+        /></label>
       </div>
     </a-modal>
 
@@ -583,7 +589,7 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
               :key="o.id"
             >
               <strong>{{ o.id }}</strong>
-              <span>{{ o.lineId || t('ontology.global') }} · v{{ o.latest }} · {{ o.status }}</span>
+              <span>{{ o.lineId || t('ontology.global') }}<template v-if="o.productId"> · {{ o.productId }}</template> · v{{ o.latest }} · {{ o.status }}</span>
             </li>
             <li
               v-if="overview.ontologies.length === 0"

@@ -15,6 +15,7 @@ import { createId } from './twin/contracts'
 import { getAmlRuntime } from './runtime'
 import type { IdentifiabilityVerdict } from './identifiability'
 import { captureOperationEvidence } from '../daq/provenance-evidence'
+import { attributeProposal } from '../experience/parameter-proposal'
 
 /** 机器可读判据(随干预落库;不是散文) */
 export interface InterventionCriterion {
@@ -224,8 +225,20 @@ export function attachAssessment(
     try {
       const db = getAmlRuntime().db
       void captureOperationEvidence(db, id).catch(() => {})
+      // 批次 M3：建议归因（只有显式挂 proposal_id 的干预）
+      const row = db.prepare('SELECT proposal_id AS proposalId FROM intervention_events WHERE id = ?').get(id) as { proposalId?: string } | undefined
+      if (row?.proposalId) {
+        attributeProposal(db, row.proposalId, {
+          verdict: assessment.verdict,
+          effect: assessment.effect ?? null,
+          ciLow: assessment.ciLow ?? null,
+          ciHigh: assessment.ciHigh ?? null,
+          mde: assessment.mde ?? null,
+          interventionId: id,
+        })
+      }
     }
-    catch { /* 快照失败静默；维护任务会补采 */ }
+    catch { /* 快照/归因失败静默；维护任务会补采 */ }
     return true
   }
   catch (err) {

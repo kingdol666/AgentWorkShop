@@ -256,6 +256,8 @@ export const ontologyDraftDocSchema = z.object({
   description: z.string().max(2000).default(''),
   /** 授权锚;空 = 全局本体(仅 admin 可发布) */
   lineId: z.string().max(120).default(''),
+  /** 产品域（批次 C）：空 = 产线通用版本；非空 = 该产品独立版本，不与产线版本隐式继承 */
+  productId: z.string().max(120).default(''),
   entities: z.array(ontologyEntitySchema).default([]),
   relations: z.array(ontologyRelationSchema).default([]),
   rules: z.array(ontologyRuleSchema).default([]),
@@ -264,8 +266,8 @@ export const ontologyDraftDocSchema = z.object({
 })
 export type OntologyDraftDoc = z.infer<typeof ontologyDraftDocSchema>
 
-export function emptyDraftDoc(ontologyId: string, lineId = ''): OntologyDraftDoc {
-  return { schemaVersion: ONTOLOGY_SCHEMA_VERSION, name: ontologyId, description: '', lineId, entities: [], relations: [], rules: [], bindings: [], note: '' }
+export function emptyDraftDoc(ontologyId: string, lineId = '', productId = ''): OntologyDraftDoc {
+  return { schemaVersion: ONTOLOGY_SCHEMA_VERSION, name: ontologyId, description: '', lineId, productId, entities: [], relations: [], rules: [], bindings: [], note: '' }
 }
 
 export function parseDraftDoc(value: unknown): OntologyDraftDoc {
@@ -322,7 +324,7 @@ export interface ControlGuard {
   ruleId: string
   when: { variableKey: string, op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte', value: number | string | boolean }
   forbid: { kind: 'positive_increment' | 'nonzero_increment', variableKey: string }
-  scope: { lineId: string, recipeId: string, conditionId: string }
+  scope: { lineId: string, productId?: string, recipeId: string, conditionId: string }
   onViolate: 'block_recommendation' | 'annotate'
   message: string
 }
@@ -397,7 +399,7 @@ export interface CompileOptions {
   version: number
   /** 现行权威界(来自 ProblemConfig/effectiveDomain);提供时强制「只收紧」 */
   currentBounds?: { mv?: Record<string, BoundsEntry>, cv?: Record<string, BoundsEntry> }
-  scope?: { lineId?: string, recipeId?: string, conditionId?: string }
+  scope?: { lineId?: string, productId?: string, recipeId?: string, conditionId?: string }
   createdAt?: string
   /**
    * 只接受 approved_for_control 的规则产出控制侧产物(发布路径必开;预览可关)。

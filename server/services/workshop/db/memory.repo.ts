@@ -8,6 +8,10 @@ import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, StatementSync } from 'node:sqlite'
 import { AppError } from '../../../utils/errors'
 import type { MemoryKind, MemoryOutcome, MemoryRow, MemoryScopeKind, MemoryStatus } from './database'
+import { recordMemoryInjection, type InjectionTraceInput } from '../memory/effect'
+import { listBlocks, type MemoryBlock } from '../memory/blocks'
+import { documentIndex } from '../memory/documents'
+import { loadWorkingMemory, upsertWorkingMemory, type WorkingMemoryRow } from '../memory/working'
 
 /** 团队共享记忆域 sentinel(单 channel 内全员可读) */
 export const TEAM_AGENT_ID = '__team__'
@@ -142,7 +146,8 @@ const COLS = `m.id, m.channel_id AS channelId, m.agent_id AS agentId, m.kind, m.
   m.owner_user_id AS ownerUserId, m.author_kind AS authorKind, m.author_id AS authorId,
   m.revision, m.pinned, m.updated_at AS updatedAt,
   m.deleted_at AS deletedAt, m.deleted_by AS deletedBy, m.delete_reason AS deleteReason,
-  m.origin_ref AS originRef`
+  m.origin_ref AS originRef, m.valid_from AS validFrom, m.valid_to AS validTo,
+  m.recorded_at AS recordedAt, m.superseded_by AS supersededBy`
 
 export function createMemoryRepo(db: DatabaseSync) {
   const upsertStmt = db.prepare(
@@ -789,6 +794,69 @@ export function createMemoryRepo(db: DatabaseSync) {
       return (opts.channelId
         ? listRecentInChannelStmt.all(agentId, opts.channelId, limit)
         : listRecentStmt.all(agentId, limit)) as unknown as MemoryRow[]
+    },
+
+    /** Memory Fabric 访问策略：session 覆盖 channel（inherit = 沿用默认） */
+    memoryAccessMode(channelId: string, sessionId?: string | null): 'inherit' | 'isolated' | 'disabled' | 'readonly' {
+      try {
+        const sessionMode = sessionId
+          ? (db.prepare('SELECT memory_access_mode AS mode FROM channel_sessions WHERE id = ?').get(sessionId) as { mode?: string } | undefined)?.mode
+          : undefined
+        if (sessionMode && sessionMode !== 'inherit') return sessionMode as 'isolated' | 'disabled' | 'readonly'
+        const channelMode = (db.prepare('SELECT memory_access_mode AS mode FROM channels WHERE id = ?').get(channelId) as { mode?: string } | undefined)?.mode
+        return (channelMode === 'isolated' || channelMode === 'disabled' || channelMode === 'readonly') ? channelMode : 'inherit'
+      }
+      catch {
+        return 'inherit'
+      }
+    },
+
+    /** 批次 J：核心块 / 文件索引 / 工作记忆（Fabric 注入面） */
+    listMemoryBlocks(scopeIds: string[]): MemoryBlock[] {
+      return listBlocks(db, scopeIds)
+    },
+    documentIndex(scopeIds: string[], limit = 20): Array<{ path: string, size: number, revision: number }> {
+      return documentIndex(db, scopeIds, limit)
+    },
+    loadWorkingMemory(runtimeId: string, sessionId?: string | null, taskId?: string | null): WorkingMemoryRow[] {
+      return loadWorkingMemory(db, runtimeId, sessionId, taskId)
+    },
+    writeWorkingMemory(input: Parameters<typeof upsertWorkingMemory>[1]): void {
+      upsertWorkingMemory(db, input)
+    },
+
+    /** 批次 H：注入留痕（refs 只记 id/kind/source；正文不入日志） */
+    logInjection(input: InjectionTraceInput): string | null {
+      return recordMemoryInjection(db, input)
+    },
+
+    /** Curator 文档注入面（L0.5）：本频道 + 本产线/产品作用域，pin/新近优先 */
+    listCuratedForInjection(
+      channelId: string,
+      opts: { lineId?: string | null, productId?: string | null, limit?: number } = {},
+    ): MemoryRow[] {
+      const where = [
+        `m.channel_id = ?`,
+        `m.kind = 'curated'`,
+        `m.deleted_at IS NULL`,
+        `m.status NOT IN ('retired')`,
+      ]
+      const args: Array<string | number> = [channelId]
+      const scopes: string[] = [`(m.scope_kind = 'channel')`]
+      if (opts.lineId) {
+        scopes.push(`(m.scope_kind = 'line' AND m.scope_key = ?)`)
+        args.push(opts.lineId)
+      }
+      if (opts.productId) {
+        scopes.push(`(m.scope_kind = 'product' AND m.scope_key = ?)`)
+        args.push(opts.productId)
+      }
+      where.push(`(${scopes.join(' OR ')})`)
+      const limit = Math.min(Math.max(opts.limit ?? 2, 1), 5)
+      return db.prepare(
+        `SELECT ${COLS} FROM agent_memories m WHERE ${where.join(' AND ')}
+          ORDER BY m.pinned DESC, m.updated_at DESC LIMIT ?`,
+      ).all(...args, limit) as unknown as MemoryRow[]
     },
 
     listByAgent(agentId: string, limit: number): MemoryRow[] {

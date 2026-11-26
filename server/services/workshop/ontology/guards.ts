@@ -18,7 +18,7 @@ export interface GuardEvaluationInput {
   /** 本次候选动作的增量(变量 key → 增量;缺省视为无动作) */
   deltas?: Record<string, number>
   /** 作用域(与守卫 scope 比对;任一侧缺省则不约束该维) */
-  scope?: { lineId?: string, recipeId?: string, conditionId?: string }
+  scope?: { lineId?: string, productId?: string, recipeId?: string, conditionId?: string }
 }
 
 export interface GuardViolation {
@@ -43,6 +43,7 @@ function scopeMatches(guard: ControlGuard, scope: GuardEvaluationInput['scope'])
   if (!scope) return true
   const pairs: Array<[string, string | undefined]> = [
     [guard.scope.lineId, scope.lineId],
+    [(guard.scope as { productId?: string }).productId ?? '', scope.productId],
     [guard.scope.recipeId, scope.recipeId],
     [guard.scope.conditionId, scope.conditionId],
   ]

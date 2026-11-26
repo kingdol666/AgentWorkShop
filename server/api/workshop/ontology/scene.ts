@@ -18,17 +18,18 @@ export default defineApiHandler(async (event) => {
   const query = getQuery(event)
   const lineId = typeof query.lineId === 'string' ? query.lineId : ''
   if (!lineId) throw new AppError(422, 'LINE_REQUIRED', 'lineId 必填')
+  const productId = typeof query.productId === 'string' ? query.productId : ''
 
   // 子图模式:仅显式给出 entity 时启用,旧调用零漂移
   if (query.entity !== undefined) {
     const entityKey = requireEntityKey(query.entity)
     const opts = parseSubgraphOptions(query)
     const subgraph = subgraphAroundForLine(lineId, entityKey, opts)
-    if (!subgraph) return { lineId, active: false, subgraph: null }
-    return { lineId, active: true, subgraph }
+    if (!subgraph) return { lineId, productId, active: false, subgraph: null }
+    return { lineId, productId, active: true, subgraph }
   }
 
-  const graph = sceneSubgraph(lineId, { limit: query.limit !== undefined ? Math.min(500, Math.max(1, Number(query.limit))) : 200 })
-  if (!graph) return { lineId, active: false, graph: null }
-  return { lineId, active: true, graph }
+  const graph = sceneSubgraph(lineId, { limit: query.limit !== undefined ? Math.min(500, Math.max(1, Number(query.limit))) : 200, productId })
+  if (!graph) return { lineId, productId, active: false, graph: null }
+  return { lineId, productId, active: true, graph }
 })

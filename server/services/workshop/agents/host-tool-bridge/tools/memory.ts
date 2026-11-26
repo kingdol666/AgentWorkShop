@@ -21,7 +21,7 @@ export async function handleSearchMemory(args: Record<string, unknown>, ws: Agen
   if (recallScope === 'session' && !sessionId) {
     return { text: '当前回合没有 session 上下文,scope=session 不可用;请改用 auto/private/shared。' }
   }
-  const snippets = await ws.recallMemory({ query, scope: recallScope, limit: args.limit as number | undefined, sessionId })
+  const snippets = await ws.recallMemory({ query, scope: recallScope, limit: args.limit as number | undefined, sessionId, asOf: typeof args.as_of === 'string' ? args.as_of : undefined })
   if (snippets.length === 0) {
     return { text: `记忆检索无命中(query="${query}", scope=${scope})。可尝试更换关键词或放宽 scope。` }
   }

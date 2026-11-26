@@ -481,6 +481,10 @@
         "scope_key": {
           "type": "string",
           "description": "scope=product 时的产品 id(其余档忽略)"
+        },
+        "as_of": {
+          "type": "string",
+          "description": "as-of 回看时间(ISO 8601；缺省=当前)。失效事实默认不返回，as_of 可查历史时刻有效的事实"
         }
       },
       "required": [
@@ -4423,6 +4427,67 @@
       ],
       "readableLineNodes": true
     }
+  },
+  {
+    "name": "param_proposal",
+    "label": "Parameter Proposal",
+    "description": "生成工况参数建议(只读建议,绝不下发)。硬过滤:validated+deployed、line 匹配、product 匹配或空、node/variable 匹配、recipeRevision 兼容、≥2 独立证据、无 stale/expired/全 refute;输出 1–3 条(方向/from→to/期望效应/CI/置信/证据深链)+必带 doNothing;无经验走 cold_start 并明确标注。下发仍必须走 recipe_trial/recipe_update/recipe_apply + HITL + 本体护栏。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": { "type": "string", "description": "产线 id(会话固定产线时可省略)" },
+        "product_id": { "type": "string", "description": "产品 id(会话固定产品时不可跨产品)" },
+        "recipe_id": { "type": "string", "description": "配方 id(可选;用于修订兼容校验)" },
+        "recipe_revision": { "type": "string", "description": "配方修订号(缺省取当前配方版本)" },
+        "node_ids": { "type": "string", "description": "限定节点 id(逗号分隔;缺省=全部有证据节点)" },
+        "current_values": { "type": "object", "description": "当前值映射 {nodeId: value};缺少当前值时不硬编 from→to" },
+        "target_metric": { "type": "string", "description": "目标指标(如 wall_thickness)" }
+      }
+    },
+    "references": {
+      "refs": [
+        { "param": "line_id", "kind": "line", "mode": "read" }
+      ],
+      "readableLineNodes": true
+    }
+  },
+  {
+    "name": "memory_blocks",
+    "label": "Memory Blocks",
+    "description": "核心记忆块(批次 J,只读写平台记忆库):read/append/replace/lock/revisions/rollback。每块有 label/value/limit_chars/description/locked/revision;超限截断;locked 块 Agent 不可改写(人工可)。适合存稳定的长期约定/口径,不要把临时过程写进块。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "description": "read|append|replace|lock|revisions|rollback" },
+        "scope": { "type": "string", "description": "channel(默认)|session" },
+        "label": { "type": "string", "description": "块名(≤80 字符)" },
+        "value": { "type": "string", "description": "块内容" },
+        "limit_chars": { "type": "number", "description": "字符上限(100–20000,默认 2000)" },
+        "description": { "type": "string", "description": "块用途说明" },
+        "locked": { "type": "boolean", "description": "lock 动作:true 锁定/false 解锁" },
+        "revision": { "type": "number", "description": "rollback 目标版本" }
+      }
+    },
+    "noRefs": true
+  },
+  {
+    "name": "memory_files",
+    "label": "Memory Files",
+    "description": "记忆文件 /memories 六命令(批次 J):view/create/insert/str_replace/rename/delete(另支持 restore/revisions/index)。路径必须 /memories/<scope>/...;拒绝 ..、反斜杠、编码穿越与绝对盘符;单文件 ≤64KB、每作用域 ≤200 个;删除为软删可恢复;每次写入留 revision。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "description": "view|create|insert|str_replace|rename|delete|restore|revisions|index" },
+        "scope": { "type": "string", "description": "channel(默认)|session" },
+        "path": { "type": "string", "description": "文件路径(/memories/<scope>/<file>)" },
+        "old_path": { "type": "string", "description": "rename 源路径" },
+        "new_path": { "type": "string", "description": "rename 目标路径" },
+        "content": { "type": "string", "description": "写入内容" },
+        "old_text": { "type": "string", "description": "str_replace 目标文本" },
+        "after_line": { "type": "number", "description": "insert 行号(0 基,缺省追加)" }
+      }
+    },
+    "noRefs": true
   },
   {
     "name": "project_get_status",

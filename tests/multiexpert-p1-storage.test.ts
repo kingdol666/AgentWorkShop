@@ -209,10 +209,10 @@ test('D-P1-2:带 owner FK 的老库升级后:外键消失、列集不变、业�
   initWorkshopDb(db)
 
   assert.deepEqual(userFkTables(db), [], '升级后不得再持有 users 外键')
-  // 既有列不得漂移；channels 仅允许增加本次的 channel_mode 列。
+  // 既有列不得漂移；channels 仅允许增加本次的 channel_mode + memory_access_mode（批次 I）。
   for (const t of ['workspaces', 'channels', 'agents', 'teams']) {
     const expected = [...(beforeCols[t] ?? [])]
-    if (t === 'channels') expected.push('channel_mode')
+    if (t === 'channels') expected.push('channel_mode', 'memory_access_mode')
     assert.deepEqual(colNames(db, t), expected.sort(), `${t} 列集在升级中漂移`)
   }
   // 业务数据逐列保留(审查原缺陷:scenario_prompt/llm_json 被静默清空)

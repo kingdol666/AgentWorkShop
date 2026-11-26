@@ -109,6 +109,8 @@ export interface SubgraphOptions {
   /** null = 不过滤(与 parseSubgraphOptions 的解析结果可直接互传) */
   kinds?: OntologyRelationKind[] | null
   limit?: number
+  /** 产品域（批次 C）：空/缺省 = 产线通用版本 */
+  productId?: string
 }
 
 /** 已解析、已校验的选项(缺省值已落地) */

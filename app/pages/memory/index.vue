@@ -40,6 +40,11 @@ interface MemoryItem {
 interface MemoryDetail extends MemoryItem {
   annotations: Array<{ id: string, body: string, authorId: string, createdAt: string }>
   revisions: Array<{ revision: number, title: string, content: string, authorKind: string, authorId: string, reason: string, createdAt: string }>
+  effect: { uses: number, successes: number, failures: number, flagged: boolean, restoredAt: string | null } | null
+}
+interface CurationInfo {
+  sources: Array<{ memoryId: string, title: string, kind: string, status: string, updatedAt: string }>
+  runs: Array<{ id: string, mode: string, status: string, sourceCount: number, revision: number, fallbackReason: string, startedAt: string }>
 }
 
 const loading = ref(false)
@@ -47,12 +52,13 @@ const busy = ref(false)
 const items = ref<MemoryItem[]>([])
 const total = ref(0)
 const facets = ref<{ byScope: Record<string, number>, byStatus: Record<string, number>, deleted: number }>({ byScope: {}, byStatus: {}, deleted: 0 })
-const filters = ref<{ q: string, scopeKind: string, status: string, includeDeleted: boolean }>({ q: '', scopeKind: '', status: '', includeDeleted: false })
+const filters = ref<{ q: string, scopeKind: string, status: string, kind: string, includeDeleted: boolean }>({ q: '', scopeKind: '', status: '', kind: '', includeDeleted: false })
 const page = ref(1)
 const pageSize = 20
 
 const detail = ref<MemoryDetail | null>(null)
 const drawerOpen = ref(false)
+const curationInfo = ref<CurationInfo | null>(null)
 
 const editing = ref(false)
 const editForm = ref({ title: '', content: '', reason: '' })
@@ -99,6 +105,16 @@ const operationAttempts = ref<OperationAttempt[]>([])
 const operationCoverage = ref<Record<string, number> | null>(null)
 const handbookMarkdown = ref('')
 const handbookStats = ref<{ claimCount: number, sourceCount: number } | null>(null)
+const proposals = ref<Array<Record<string, unknown>>>([])
+const accessMode = ref('inherit')
+const accessModes = ['inherit', 'isolated', 'disabled', 'readonly']
+const fabricBlocks = ref<Array<Record<string, unknown>>>([])
+const fabricFiles = ref<Array<Record<string, unknown>>>([])
+const newBlockLabel = ref('')
+const newBlockValue = ref('')
+const newFilePath = ref('')
+const newFileContent = ref('')
+const openFile = ref<Record<string, unknown> | null>(null)
 
 async function loadIndustryChannels() {
   try {
@@ -126,6 +142,19 @@ async function loadIndustryData() {
     operationCoverage.value = ops.coverage ?? null
     handbookMarkdown.value = book.markdown ?? ''
     handbookStats.value = { claimCount: book.claimCount ?? 0, sourceCount: book.sourceCount ?? 0 }
+    const [props, mode] = await Promise.all([
+      api<{ items: Array<Record<string, unknown>> }>(`${base}/parameter-proposals?limit=20`).catch(() => ({ items: [] })),
+      api<{ mode: string }>(`${base}/memory-access-mode`).catch(() => ({ mode: 'inherit' })),
+    ])
+    proposals.value = props.items ?? []
+    accessMode.value = mode.mode ?? 'inherit'
+    const [blocks, files] = await Promise.all([
+      api<{ items: Array<Record<string, unknown>> }>(`${base}/memory-blocks`).catch(() => ({ items: [] })),
+      api<{ items: Array<Record<string, unknown>> }>(`${base}/memory-files`).catch(() => ({ items: [] })),
+    ])
+    fabricBlocks.value = blocks.items ?? []
+    fabricFiles.value = files.items ?? []
+    openFile.value = null
   }
   catch (err) {
     message.error(apiErrorMessage(err))
@@ -156,11 +185,79 @@ const toggleIndustry = async () => {
   }
 }
 
+const updateAccessMode = async (mode: string) => {
+  if (!industryChannelId.value) return
+  await api(`/api/workshop/channels/${industryChannelId.value}/memory-access-mode`, { method: 'PATCH', body: { mode } })
+  accessMode.value = mode
+  message.success(t('memoryCenter.industry.accessUpdated'))
+}
+
+const generateProposals = async () => {
+  if (!industryChannelId.value) return
+  const currentValues: Record<string, number> = {}
+  for (const row of operationRows.value) currentValues[row.nodeId] = row.toValue
+  await api(`/api/workshop/channels/${industryChannelId.value}/parameter-proposals`, {
+    method: 'POST',
+    body: { currentValues },
+  })
+  await loadIndustryData()
+  message.success(t('memoryCenter.industry.proposalGenerated'))
+}
+
+const saveBlock = async () => {
+  if (!industryChannelId.value || !newBlockLabel.value.trim()) return
+  await api(`/api/workshop/channels/${industryChannelId.value}/memory-blocks`, {
+    method: 'POST',
+    body: { action: 'replace', label: newBlockLabel.value.trim(), value: newBlockValue.value },
+  })
+  newBlockLabel.value = ''
+  newBlockValue.value = ''
+  await loadIndustryData()
+  message.success(t('memoryCenter.fabric.saved'))
+}
+
+const lockBlock = async (block: Record<string, unknown>) => {
+  if (!industryChannelId.value) return
+  await api(`/api/workshop/channels/${industryChannelId.value}/memory-blocks`, {
+    method: 'POST',
+    body: { action: 'lock', label: block.label, locked: !block.locked },
+  })
+  await loadIndustryData()
+}
+
+const saveFile = async () => {
+  if (!industryChannelId.value || !newFilePath.value.trim()) return
+  await api(`/api/workshop/channels/${industryChannelId.value}/memory-files`, {
+    method: 'POST',
+    body: { command: 'create', path: newFilePath.value.trim(), content: newFileContent.value },
+  })
+  newFilePath.value = ''
+  newFileContent.value = ''
+  await loadIndustryData()
+  message.success(t('memoryCenter.fabric.saved'))
+}
+
+const viewFile = async (file: Record<string, unknown>) => {
+  if (!industryChannelId.value) return
+  const res = await api<{ document: Record<string, unknown> }>(`/api/workshop/channels/${industryChannelId.value}/memory-files?path=${encodeURIComponent(String(file.path))}`)
+  openFile.value = res.document
+}
+
+const deleteFile = async (file: Record<string, unknown>) => {
+  if (!industryChannelId.value) return
+  await api(`/api/workshop/channels/${industryChannelId.value}/memory-files`, {
+    method: 'POST',
+    body: { command: 'delete', path: file.path },
+  })
+  await loadIndustryData()
+}
+
 const scopes = ['global', 'line', 'product', 'channel', 'session']
 const statuses = ['active', 'candidate', 'validated', 'contested', 'retired']
 
 const scopeLabel = (s: string) => t(`memoryCenter.scope.${s}`)
 const isExperience = computed(() => detail.value?.kind === 'experience')
+const isCurated = computed(() => detail.value?.kind === 'curated')
 
 /**
  * 统一 API 客户端：解析 {code,message,data} 信封并抛 ApiError。
@@ -187,6 +284,7 @@ async function load() {
     if (filters.value.q) query.set('q', filters.value.q)
     if (filters.value.scopeKind) query.set('scopeKind', filters.value.scopeKind)
     if (filters.value.status) query.set('status', filters.value.status)
+    if (filters.value.kind) query.set('kind', filters.value.kind)
     if (filters.value.includeDeleted) query.set('includeDeleted', '1')
     query.set('limit', String(pageSize))
     query.set('offset', String((page.value - 1) * pageSize))
@@ -214,11 +312,23 @@ async function open(id: string) {
     annotating.value = ''
     rollbackTo.value = null
     deleteReason.value = ''
+    curationInfo.value = null
+    if (detail.value.kind === 'curated') {
+      try {
+        curationInfo.value = await api<CurationInfo>(`/api/workshop/memory/curations/${id}`)
+      }
+      catch { /* 来源/运行历史读取失败不影响正文查看 */ }
+    }
   }
   catch (err) {
     message.error(apiErrorMessage(err))
   }
 }
+
+const regenerateCuration = () => act(async () => {
+  if (!detail.value) return
+  await api(`/api/workshop/memory/curations/${detail.value.id}/regenerate`, { method: 'POST', body: {} })
+}, t('memoryCenter.curation.regenerated'))
 
 async function act(fn: () => Promise<unknown>, okText?: string) {
   busy.value = true
@@ -381,6 +491,20 @@ onMounted(load)
           >
             {{ t('memoryCenter.industry.refresh') }}
           </a-button>
+          <a-select
+            :value="accessMode"
+            style="width: 150px"
+            data-testid="memory-access-mode"
+            @change="(v: unknown) => updateAccessMode(String(v))"
+          >
+            <a-select-option
+              v-for="m in accessModes"
+              :key="m"
+              :value="m"
+            >
+              {{ t(`memoryCenter.industry.access.${m}`) }}
+            </a-select-option>
+          </a-select>
           <span
             v-if="operationCoverage"
             class="mono"
@@ -433,6 +557,141 @@ onMounted(load)
             </ul>
           </div>
           <div class="mt">
+            <strong>{{ t('memoryCenter.industry.proposals') }}</strong>
+            <a-button
+              size="small"
+              class="mt"
+              data-testid="memory-generate-proposals"
+              :loading="industryLoading"
+              @click="generateProposals"
+            >
+              {{ t('memoryCenter.industry.generateProposals') }}
+            </a-button>
+            <ul
+              v-if="proposals.length > 0"
+              class="notes mt"
+            >
+              <li
+                v-for="p in proposals"
+                :key="String(p.id)"
+              >
+                <span class="mono">{{ p.status }} / {{ p.mode }}</span>
+                {{ p.nodeName || p.nodeId }} {{ p.fromValue ?? '?' }} → {{ p.toValue }} ·
+                期望 {{ Number(p.expectedEffect ?? 0).toPrecision(4) }} · 置信 {{ Math.round(Number(p.confidence ?? 0) * 100) }}%
+              </li>
+            </ul>
+            <p
+              v-else
+              class="hint"
+            >
+              {{ t('memoryCenter.industry.empty') }}
+            </p>
+          </div>
+          <div class="mt">
+            <strong>{{ t('memoryCenter.fabric.blocks') }}</strong>
+            <ul
+              v-if="fabricBlocks.length > 0"
+              class="notes mt"
+            >
+              <li
+                v-for="b in fabricBlocks"
+                :key="String(b.id)"
+              >
+                <span class="mono">[{{ b.label }}] r{{ b.revision }}{{ b.locked ? ' 🔒' : '' }}</span>
+                {{ String(b.value).slice(0, 160) }}
+                <a-button
+                  size="small"
+                  type="link"
+                  @click="lockBlock(b)"
+                >
+                  {{ b.locked ? t('memoryCenter.fabric.unlock') : t('memoryCenter.fabric.lock') }}
+                </a-button>
+              </li>
+            </ul>
+            <p
+              v-else
+              class="hint"
+            >
+              {{ t('memoryCenter.industry.empty') }}
+            </p>
+            <a-space class="mt">
+              <a-input
+                v-model:value="newBlockLabel"
+                :placeholder="t('memoryCenter.fabric.blockLabel')"
+                style="width: 180px"
+              />
+              <a-input
+                v-model:value="newBlockValue"
+                :placeholder="t('memoryCenter.fabric.blockValue')"
+                style="width: 320px"
+                @press-enter="saveBlock"
+              />
+              <a-button
+                size="small"
+                @click="saveBlock"
+              >
+                {{ t('memoryCenter.save') }}
+              </a-button>
+            </a-space>
+          </div>
+          <div class="mt">
+            <strong>{{ t('memoryCenter.fabric.files') }}</strong>
+            <ul
+              v-if="fabricFiles.length > 0"
+              class="notes mt"
+            >
+              <li
+                v-for="f in fabricFiles"
+                :key="String(f.id)"
+              >
+                <span class="mono">{{ f.path }} ({{ f.size }}B, r{{ f.revision }})</span>
+                <a-button
+                  size="small"
+                  type="link"
+                  @click="viewFile(f)"
+                >
+                  {{ t('memoryCenter.open') }}
+                </a-button>
+                <a-button
+                  size="small"
+                  type="link"
+                  danger
+                  @click="deleteFile(f)"
+                >
+                  {{ t('memoryCenter.softDelete') }}
+                </a-button>
+              </li>
+            </ul>
+            <p
+              v-else
+              class="hint"
+            >
+              {{ t('memoryCenter.industry.empty') }}
+            </p>
+            <a-space class="mt">
+              <a-input
+                v-model:value="newFilePath"
+                placeholder="/memories/channel/note.md"
+                style="width: 260px"
+              />
+              <a-input
+                v-model:value="newFileContent"
+                :placeholder="t('memoryCenter.fabric.fileContent')"
+                style="width: 280px"
+              />
+              <a-button
+                size="small"
+                @click="saveFile"
+              >
+                {{ t('memoryCenter.save') }}
+              </a-button>
+            </a-space>
+            <pre
+              v-if="openFile"
+              class="handbook mt"
+            >{{ openFile.content }}</pre>
+          </div>
+          <div class="mt">
             <strong>{{ t('memoryCenter.industry.handbook') }}</strong>
             <span
               v-if="handbookStats"
@@ -478,6 +737,23 @@ onMounted(load)
           :value="s"
         >
           {{ s }}（{{ facets.byStatus[s] ?? 0 }}）
+        </a-select-option>
+      </a-select>
+      <a-select
+        v-model:value="filters.kind"
+        allow-clear
+        :placeholder="t('memoryCenter.curation.kind')"
+        style="width: 150px"
+        @change="load"
+      >
+        <a-select-option value="semantic">
+          {{ t('memoryCenter.curation.semantic') }}
+        </a-select-option>
+        <a-select-option value="experience">
+          {{ t('memoryCenter.curation.experience') }}
+        </a-select-option>
+        <a-select-option value="curated">
+          {{ t('memoryCenter.curation.curated') }}
         </a-select-option>
       </a-select>
       <a-checkbox v-model:checked="filters.includeDeleted">
@@ -582,6 +858,13 @@ onMounted(load)
             {{ detail.authorKind }}{{ detail.authorId ? ` / ${detail.authorId.slice(0, 8)}` : '' }}
           </a-descriptions-item>
         </a-descriptions>
+        <p
+          v-if="detail.effect"
+          class="hint mono"
+          data-testid="memory-effect"
+        >
+          {{ t('memoryCenter.effect', { uses: detail.effect.uses, successes: detail.effect.successes, failures: detail.effect.failures }) }}
+        </p>
 
         <div class="block">
           <template v-if="!editing">
@@ -638,6 +921,56 @@ onMounted(load)
               </a-button>
             </a-space>
           </template>
+        </div>
+
+        <a-divider
+          v-if="isCurated"
+          orientation="left"
+        >
+          {{ t('memoryCenter.curation.title') }}
+        </a-divider>
+        <div v-if="isCurated">
+          <a-space wrap>
+            <span
+              v-if="curationInfo"
+              class="mono"
+            >{{ curationInfo.sources.length }} {{ t('memoryCenter.curation.sources') }} · {{ curationInfo.runs[0]?.mode || '—' }} · {{ curationInfo.runs[0]?.status || '—' }}</span>
+            <a-button
+              size="small"
+              data-testid="memory-curation-regenerate"
+              :loading="busy"
+              @click="regenerateCuration"
+            >
+              {{ t('memoryCenter.curation.regenerate') }}
+            </a-button>
+          </a-space>
+          <ul
+            v-if="curationInfo && curationInfo.sources.length > 0"
+            class="notes mt"
+          >
+            <li
+              v-for="s in curationInfo.sources.slice(0, 20)"
+              :key="s.memoryId"
+            >
+              <span class="mono">{{ s.kind }}</span>
+              {{ s.title }}
+            </li>
+          </ul>
+          <ul
+            v-if="curationInfo && curationInfo.runs.length > 0"
+            class="notes"
+          >
+            <li
+              v-for="r in curationInfo.runs.slice(0, 5)"
+              :key="r.id"
+            >
+              <span class="mono">{{ r.startedAt.slice(0, 16).replace('T', ' ') }}</span>
+              {{ r.status }} · {{ r.mode }} · {{ r.sourceCount }} sources
+              <template v-if="r.fallbackReason">
+                · {{ r.fallbackReason }}
+              </template>
+            </li>
+          </ul>
         </div>
 
         <a-divider orientation="left">

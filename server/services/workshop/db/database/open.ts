@@ -15,6 +15,12 @@ import { migrateSessionRuntimeOverrides } from './migrations-session-runtime'
 import { migrateSessionBindingOverrides } from './migrations-session-binding'
 import { migrateExperienceVersionStore } from './migrations-experience-versions'
 import { migrateMemoryAdminColumns, migrateExperienceChannelStatus } from './migrations-memory-admin'
+import { migrateMemoryCuration } from './migrations-memory-curation'
+import { migrateMemoryEffect } from './migrations-memory-effect'
+import { migrateParameterProposals } from './migrations-parameter-proposal'
+import { migrateMemoryAccessMode } from './migrations-memory-policy'
+import { migrateMemoryBlocks } from './migrations-memory-blocks'
+import { migrateMemoryValidity } from './migrations-memory-validity'
 import { migrateOntologyProductScope } from './migrations-ontology-product'
 import { migrateOntologyEvidenceVocabulary } from './migrations-ontology-evidence'
 import { migrateOperationProvenance } from './migrations-provenance'
@@ -101,6 +107,17 @@ export function initWorkshopDb(db: DatabaseSync): void {
   // 批次 N/M(2026-11-26):操作台账上下文/写尝试载荷/DAQ 证据快照/结构化参数主张。
   // 必须在 experience_versions 建表之后（claims 侧表引用版本维度），且在写路径使用前。
   migrateOperationProvenance(db)
+  // 批次 E(2026-11-27):Curator 汇整运行/来源/水位表（只建表，幂等）。
+  migrateMemoryCuration(db)
+  // 批次 H(2026-11-27):注入留痕/效果统计/归因（只建表，幂等）。
+  migrateMemoryEffect(db)
+  // 批次 M2(2026-11-27):参数建议台账（只建表，幂等）。
+  migrateParameterProposals(db)
+  // 批次 I(2026-11-27):Memory Fabric 访问策略在 legacy channels 重建之后补列（见文件尾部）。
+  // 批次 J(2026-11-27):Core Blocks / 记忆文件 / Runtime Working Memory（只建表，幂等）。
+  migrateMemoryBlocks(db)
+  // 批次 K(2026-11-27):时序有效性 + 记忆链接（additive）。
+  migrateMemoryValidity(db)
   // 9003(一次性,ledger 守卫)：channel 档经验 active → candidate。
   // 必须与 reflector 的 producer 修复同批，否则批次边界会持续产生永不晋升/永不注入的 active 行。
   migrateExperienceChannelStatus(db)
@@ -172,6 +189,9 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateOptimizerFoundationColumns(db)
   // v30:双驱动收敛列(下发状态机/谱系/多工况 hash/资格谱系;总计划 SW2–SW5)
   migrateDualDriveColumns(db)
+  // 批次 I(2026-11-27):访问策略列必须在 legacy channels 重建（migrateLegacySchema）之后补，
+  // 否则重建会丢列；放这里保证 fresh/旧库/二次启动列集一致。
+  migrateMemoryAccessMode(db)
   // v31(WP3):agent token 轮换宽限列(prev_token/prev_token_until;既有库补列)
   migrateAgentTokenGraceColumns(db)
   // v33(2026-10-28):频道执行模式列(observe/manual/auto;NULL 按 auto 中性生效,零行为变化)

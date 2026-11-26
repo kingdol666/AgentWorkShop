@@ -13,6 +13,7 @@ import { createMemoryRepo, type MemoryActor } from '../db/memory.repo'
 import type { MemoryKind, MemoryScopeKind, MemoryStatus } from '../db/database'
 import { segmentCJK, unsegmentCJK, vectorizeMemory } from '../runtime/memory/helpers'
 import { invalidateHarnessOverlayCache } from '../experience/overlay'
+import { effectStatsOf, markMemoryRestored } from './effect'
 
 export class MemoryAdminError extends Error {
   constructor(public statusCode: number, public code: string, message: string) {
@@ -146,7 +147,11 @@ export function memoryFacets(db: DatabaseSync, opts: { ownerUserId?: string | nu
   return { byScope: group('scope_kind'), byStatus: group('status'), byKind: group('kind'), deleted }
 }
 
-export function getMemory(db: DatabaseSync, id: string, opts: { includeDeleted?: boolean } = {}): MemoryListItem & { annotations: Array<Record<string, unknown>>, revisions: Array<Record<string, unknown>> } {
+export function getMemory(db: DatabaseSync, id: string, opts: { includeDeleted?: boolean } = {}): MemoryListItem & {
+  annotations: Array<Record<string, unknown>>
+  revisions: Array<Record<string, unknown>>
+  effect: { uses: number, successes: number, failures: number, flagged: boolean, restoredAt: string | null } | null
+} {
   const repo = createMemoryRepo(db)
   const state = repo.stateById(id)
   if (!state || (state.deletedAt && !opts.includeDeleted)) throw new MemoryAdminError(404, 'NOT_FOUND', '记忆不存在')
@@ -165,6 +170,7 @@ export function getMemory(db: DatabaseSync, id: string, opts: { includeDeleted?:
     pinned: Number(row.pinned ?? 0) === 1,
     annotations: repo.listAnnotations(id),
     revisions: repo.listRevisions(id),
+    effect: effectStatsOf(db, id),
   }
 }
 
@@ -316,7 +322,11 @@ export function restoreMemory(db: DatabaseSync, id: string): { ok: boolean } {
   const state = repo.stateById(id)
   if (!state) throw new MemoryAdminError(404, 'NOT_FOUND', '记忆不存在')
   const ok = repo.restore(id)
-  if (ok) invalidateHarnessOverlayCache(state.channelId)
+  if (ok) {
+    // 批次 H：人工恢复后 30 天内不再自动退役（防抖动）
+    markMemoryRestored(db, id)
+    invalidateHarnessOverlayCache(state.channelId)
+  }
   return { ok }
 }
 

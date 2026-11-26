@@ -130,6 +130,8 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
         const recall = this.deps.memory?.recall(partsToText(msg.parts), {
           relatedTaskIds: this.relatedTaskIdsOf(taskId),
           sessionId,
+          // 批次 H：注入留痕；任务终态按同一 taskId 归因
+          trace: { taskId: taskId ?? null },
           signal: runSignal,
         })
         if (recall) {
@@ -423,6 +425,12 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       // 记忆沉淀:终态任务 harvest;无 taskId 的点对点消息记协作(异常不阻塞)
       if (!interruptedWithoutSettlement(runSignal) && this.deps.memory) {
         try {
+          // 批次 J：每回合落定写 runtime working memory（24h TTL）
+          this.deps.memory.recordWorkingTurn?.({
+            taskId: taskId ?? null,
+            sessionId,
+            text: relayText.trim() || replyText,
+          })
           const task = taskId ? this.deps.taskEngine.get(taskId) : undefined
           if (task && TERMINAL_TASK_STATES[task.state]) {
             await this.deps.memory.recordTaskOutcome(task)
