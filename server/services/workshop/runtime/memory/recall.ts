@@ -50,6 +50,8 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     signal?.throwIfAborted()
     const rrf = new Map<string, { row: MemoryRow, score: number }>()
     const addRank = (row: MemoryRow, rank: number): void => {
+      // 人类对话摘要只供显式检索，不进自动注入（批次 B / M4）
+      if (automatic && row.kind === 'episodic-dialog') return
       if (!this.inScope(row, scope, sessionId, scopeContext, automatic)) return
       const inc = 1 / (RRF_K + rank + 1)
       const cur = rrf.get(row.id)
@@ -111,6 +113,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
         if (!this.inScope(row, scope, sessionId, scopeContext, automatic)) continue
         if (row.deletedAt) continue
         if (CURATED_KINDS.has(row.kind)) continue
+        if (row.kind === 'episodic-dialog') continue
         // RSI(WP-A3):时近兜底同样排除退休经验(兜底路径不经 inScope)
         if (row.status === 'retired') continue
         if (!hits.has(row.id)) hits.set(row.id, { row, relevance: 0.15 })

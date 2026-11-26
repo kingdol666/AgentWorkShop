@@ -46,6 +46,39 @@ export interface ExperienceClaim {
   polarity: 'support' | 'refute'
 }
 
+/**
+ * 参数域主张（批次 M）：一次干预 = 一条事实单元。
+ *
+ * `claimStatus`：
+ *  - structured：有判定/完整上下文的参数主张；
+ *  - unverified：干预尚无 verdict（仍可用于检索/复盘，不参与提议）；
+ *  - legacy-unverified：历史空 claim 回填（不参与提议）。
+ */
+export interface ParameterClaim extends ExperienceClaim {
+  domain: 'parameter' | 'generic'
+  lineId: string
+  nodeId: string
+  nodeName: string
+  recipeId: string
+  fromValue: number | null
+  toValue: number
+  targetMetric: string
+  targetDirection: 'increase' | 'decrease' | 'stable' | 'unknown'
+  targetNodeId: string
+  interventionId: string
+  daqEvidenceId: string
+  runId: string
+  taskId: string
+  effect: number | null
+  ciLow: number | null
+  ciHigh: number | null
+  mde: number | null
+  verdict: 'identifiable_effect' | 'no_resolvable_effect' | 'underpowered' | 'confounded' | 'unassessed' | 'pending'
+  environment: LearningEnvironment
+  observedAt: string
+  claimStatus: 'structured' | 'unverified' | 'legacy-unverified'
+}
+
 /** 宿主认证的可信上下文(宿主构造,不信 prompt) */
 export interface TrustedLearningContext {
   actor: string
@@ -103,6 +136,12 @@ export interface VersionDraft {
   evidence: readonly EvidenceRef[]
   idempotencyKey: string
   betaAncestors?: readonly string[]
+  /**
+   * 证据追加专用：新版本继承当前 head 的 lifecycle/deployment。
+   * 默认 false（新主张一律 candidate/none）；追加既有经验的观测必须为 true，
+   * 否则 validated/active 会被打回 candidate/none，注入直接消失。
+   */
+  preserveHeadState?: boolean
 }
 
 /** 不可变经验版本 */

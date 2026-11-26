@@ -546,6 +546,14 @@ export function createMemoryRepo(db: DatabaseSync) {
       ) > 0
     },
 
+    /** 设置过期时间（对话摘要 = 30 天；维护任务 expireSweep 到期转 retired，不硬删） */
+    setExpiresAt(id: string, expiresAt: string | null): boolean {
+      return Number(
+        db.prepare('UPDATE agent_memories SET expires_at = ?, updated_at = ? WHERE id = ?')
+          .run(expiresAt, new Date().toISOString(), id).changes ?? 0,
+      ) > 0
+    },
+
     /**
      * 按作用域取**经验行**（跨 Channel 共享检索 / 晋升门 / 看板的数据面）。
      * 恒过滤 kind='experience' —— 普通记忆（episodic/semantic）也有 scope_kind 默认值，

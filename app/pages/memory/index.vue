@@ -8,9 +8,10 @@
  *
  * 纪律：所有判定由服务端裁决（409/422 原样展示）；危险动作就地二次确认。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { apiErrorMessage } from '@/app/utils/api-error'
+import { apiFetch } from '~/composables/workshop/apiClient'
 
 const { t } = useI18n()
 
@@ -58,6 +59,102 @@ const editForm = ref({ title: '', content: '', reason: '' })
 const annotating = ref('')
 const rollbackTo = ref<number | null>(null)
 const deleteReason = ref('')
+const rejecting = ref(false)
+const rejectReason = ref('')
+
+/** 产线追溯（批次 N/M）：频道 → 操作+DAQ 事实 / 参数经验手册 */
+interface OperationRow {
+  id: string
+  ts: string
+  nodeName: string
+  nodeId: string
+  fromValue: number | null
+  toValue: number
+  path: string
+  contextSource: string
+  productId: string
+  recipeId: string
+  recipeRevision: string
+  recipeRunId: string | null
+  verdict: string
+  effect: number | null
+  attemptId: string
+  approvalId: string | null
+  daq: { joinQuality: string, pre: { mean?: number | null }, post: { mean?: number | null }, sampleCount: number, rawAvailable: boolean } | null
+}
+interface OperationAttempt {
+  id: string
+  nodeId: string
+  state: string
+  payload: Record<string, unknown>
+  productId: string
+  runId: string
+}
+const industryOpen = ref(false)
+const industryLoading = ref(false)
+const industryChannels = ref<Array<{ id: string, name: string, lineId?: string }>>([])
+const industryChannelId = ref('')
+const operationRows = ref<OperationRow[]>([])
+const operationAttempts = ref<OperationAttempt[]>([])
+const operationCoverage = ref<Record<string, number> | null>(null)
+const handbookMarkdown = ref('')
+const handbookStats = ref<{ claimCount: number, sourceCount: number } | null>(null)
+
+async function loadIndustryChannels() {
+  try {
+    // apiFetch 已解包信封：data 就是频道数组
+    const res = await api<Array<{ id: string, name: string, lineId?: string }>>('/api/workshop/channels')
+    industryChannels.value = (Array.isArray(res) ? res : []).filter(c => Boolean(c.lineId))
+    if (!industryChannelId.value && industryChannels.value[0]) industryChannelId.value = industryChannels.value[0].id
+  }
+  catch (err) {
+    message.error(apiErrorMessage(err))
+  }
+}
+
+async function loadIndustryData() {
+  if (!industryChannelId.value) return
+  industryLoading.value = true
+  try {
+    const base = `/api/workshop/channels/${industryChannelId.value}`
+    const [ops, book] = await Promise.all([
+      api<{ items: OperationRow[], attempts: OperationAttempt[], coverage: Record<string, number> }>(`${base}/operations?limit=50`),
+      api<{ markdown: string, claimCount: number, sourceCount: number }>(`${base}/parameter-handbook`),
+    ])
+    operationRows.value = ops.items ?? []
+    operationAttempts.value = ops.attempts ?? []
+    operationCoverage.value = ops.coverage ?? null
+    handbookMarkdown.value = book.markdown ?? ''
+    handbookStats.value = { claimCount: book.claimCount ?? 0, sourceCount: book.sourceCount ?? 0 }
+  }
+  catch (err) {
+    message.error(apiErrorMessage(err))
+  }
+  finally {
+    industryLoading.value = false
+  }
+}
+
+const operationColumns = computed(() => [
+  { title: t('memoryCenter.industry.time'), dataIndex: 'ts', key: 'ts', width: 170 },
+  { title: t('memoryCenter.industry.node'), key: 'node', width: 150 },
+  { title: t('memoryCenter.industry.change'), key: 'change', width: 130 },
+  { title: t('memoryCenter.industry.context'), key: 'context', width: 230 },
+  { title: t('memoryCenter.industry.daq'), key: 'daq', width: 190 },
+  { title: t('memoryCenter.industry.verdict'), dataIndex: 'verdict', key: 'verdict', width: 140 },
+])
+
+watch(industryChannelId, () => {
+  if (industryOpen.value) void loadIndustryData()
+})
+
+const toggleIndustry = async () => {
+  industryOpen.value = !industryOpen.value
+  if (industryOpen.value) {
+    if (industryChannels.value.length === 0) await loadIndustryChannels()
+    await loadIndustryData()
+  }
+}
 
 const scopes = ['global', 'line', 'product', 'channel', 'session']
 const statuses = ['active', 'candidate', 'validated', 'contested', 'retired']
@@ -66,11 +163,22 @@ const scopeLabel = (s: string) => t(`memoryCenter.scope.${s}`)
 const isExperience = computed(() => detail.value?.kind === 'experience')
 
 /**
- * 动态 URL 会触发 Nuxt 生成式路由的深层类型推导（TS2589）。
- * 这里把 `$fetch` 收敛到宽签名：URL 是运行时拼接的字符串，路由类型没有增益。
+ * 统一 API 客户端：解析 {code,message,data} 信封并抛 ApiError。
+ * 旧实现直接用 `$fetch` 读 `list.items`，拿到的是信封 → 列表恒空（2026-11-27 实机验收发现）。
  */
 type ApiOptions = { method?: string, body?: unknown }
-const api = $fetch as unknown as <T = unknown>(url: string, opts?: ApiOptions) => Promise<T>
+const api = <T = unknown>(url: string, opts?: ApiOptions): Promise<T> =>
+  apiFetch<T>({
+    base: '',
+    path: url,
+    retries: 1,
+    init: opts
+      ? {
+          method: opts.method ?? 'GET',
+          ...(opts.body === undefined ? {} : { body: JSON.stringify(opts.body) }),
+        }
+      : undefined,
+  })
 
 async function load() {
   loading.value = true
@@ -208,6 +316,17 @@ const deploy = (target: 'active' | 'withdrawn') => act(async () => {
   if (!res.ok) throw new Error(res.reasons.join('；'))
 }, target === 'active' ? t('memoryCenter.deployed') : t('memoryCenter.withdrawn'))
 
+const reject = () => act(async () => {
+  if (!detail.value) return
+  if (!rejectReason.value.trim()) return
+  await api(`/api/workshop/memory/${detail.value.id}/reject`, {
+    method: 'POST',
+    body: { reason: rejectReason.value.trim() },
+  })
+  rejecting.value = false
+  rejectReason.value = ''
+}, t('memoryCenter.rejected'))
+
 const columns = computed(() => [
   { title: t('memoryCenter.col.title'), dataIndex: 'title', key: 'title', ellipsis: true },
   { title: t('memoryCenter.col.scope'), key: 'scope', width: 130 },
@@ -228,6 +347,102 @@ onMounted(load)
         {{ t('memoryCenter.subtitle') }}
       </p>
     </header>
+
+    <section class="industry">
+      <a-button
+        size="small"
+        data-testid="memory-industry-toggle"
+        @click="toggleIndustry"
+      >
+        {{ industryOpen ? t('memoryCenter.industry.hide') : t('memoryCenter.industry.show') }}
+      </a-button>
+      <div
+        v-if="industryOpen"
+        class="industry-body"
+      >
+        <a-space wrap>
+          <a-select
+            v-model:value="industryChannelId"
+            :placeholder="t('memoryCenter.industry.selectChannel')"
+            style="width: 320px"
+          >
+            <a-select-option
+              v-for="c in industryChannels"
+              :key="c.id"
+              :value="c.id"
+            >
+              {{ c.name }} · {{ c.lineId }}
+            </a-select-option>
+          </a-select>
+          <a-button
+            size="small"
+            :loading="industryLoading"
+            @click="loadIndustryData"
+          >
+            {{ t('memoryCenter.industry.refresh') }}
+          </a-button>
+          <span
+            v-if="operationCoverage"
+            class="mono"
+          >
+            exact {{ operationCoverage.exact }} / run {{ operationCoverage.run }} / time-window {{ operationCoverage.timeWindow }} / unknown {{ operationCoverage.unknown }} / raw过期 {{ operationCoverage.rawExpired }}
+          </span>
+        </a-space>
+        <a-spin :spinning="industryLoading">
+          <a-table
+            :columns="operationColumns"
+            :data-source="operationRows"
+            :pagination="false"
+            row-key="id"
+            size="small"
+            class="mt"
+            data-testid="memory-industry-operations"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'ts'">
+                {{ String(record.ts).slice(0, 19).replace('T', ' ') }}
+              </template>
+              <template v-else-if="column.key === 'node'">
+                {{ record.nodeName || record.nodeId }}
+              </template>
+              <template v-else-if="column.key === 'change'">
+                {{ record.fromValue ?? '?' }} → {{ record.toValue }}
+              </template>
+              <template v-else-if="column.key === 'context'">
+                {{ record.productId || '?' }} / {{ record.recipeId || '?' }}@v{{ record.recipeRevision || '?' }} · {{ record.contextSource }}
+              </template>
+              <template v-else-if="column.key === 'daq'">
+                <span v-if="record.daq">前 {{ record.daq.pre?.mean ?? '?' }} / 后 {{ record.daq.post?.mean ?? '?' }} (n={{ record.daq.sampleCount }}{{ record.daq.rawAvailable ? '' : ', raw过期' }})</span>
+                <span v-else>—</span>
+              </template>
+            </template>
+          </a-table>
+          <div
+            v-if="operationAttempts.length > 0"
+            class="mt"
+          >
+            <strong>{{ t('memoryCenter.industry.rejected') }}</strong>
+            <ul class="notes">
+              <li
+                v-for="a in operationAttempts"
+                :key="a.id"
+              >
+                <span class="mono">{{ a.state }}</span>
+                {{ a.nodeId }} · 想写值 {{ a.payload.eng ?? '?' }} · {{ a.productId || '?' }}{{ a.runId ? ` · run=${a.runId}` : '' }}
+              </li>
+            </ul>
+          </div>
+          <div class="mt">
+            <strong>{{ t('memoryCenter.industry.handbook') }}</strong>
+            <span
+              v-if="handbookStats"
+              class="mono"
+            >{{ handbookStats.claimCount }} claims / {{ handbookStats.sourceCount }} sources</span>
+            <pre class="handbook">{{ handbookMarkdown || t('memoryCenter.industry.empty') }}</pre>
+          </div>
+        </a-spin>
+      </div>
+    </section>
 
     <section class="toolbar">
       <a-input
@@ -527,6 +742,16 @@ onMounted(load)
           >
             {{ t('memoryCenter.withdraw') }}
           </a-button>
+          <a-button
+            v-if="detail.status !== 'retired' && !detail.deletedAt"
+            size="small"
+            danger
+            data-testid="memory-reject"
+            :loading="busy"
+            @click="rejecting = !rejecting"
+          >
+            {{ t('memoryCenter.reject') }}
+          </a-button>
           <a-popconfirm
             v-if="!detail.deletedAt"
             :title="t('memoryCenter.confirmSoftDelete')"
@@ -566,6 +791,35 @@ onMounted(load)
             </a-button>
           </a-popconfirm>
         </a-space>
+        <div
+          v-if="rejecting"
+          class="block"
+        >
+          <a-textarea
+            v-model:value="rejectReason"
+            :rows="2"
+            :placeholder="t('memoryCenter.rejectReason')"
+          />
+          <a-space class="mt">
+            <a-button
+              type="primary"
+              danger
+              size="small"
+              data-testid="memory-reject-confirm"
+              :disabled="!rejectReason.trim()"
+              :loading="busy"
+              @click="reject"
+            >
+              {{ t('memoryCenter.reject') }}
+            </a-button>
+            <a-button
+              size="small"
+              @click="rejecting = false"
+            >
+              {{ t('memoryCenter.cancel') }}
+            </a-button>
+          </a-space>
+        </div>
       </template>
     </a-drawer>
   </div>
@@ -582,6 +836,8 @@ onMounted(load)
 .content { white-space: pre-wrap; line-height: 1.6; }
 .mt { margin-top: 8px; }
 .notes { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; font-size: 13px; }
-.notes li { border-bottom: 1px dashed var(--aw-border, #eee); padding-bottom: 6px; }
+.industry { margin: 8px 0 12px; }
+.industry-body { margin-top: 10px; padding: 12px; border: 1px solid var(--aw-border, #e5e5e5); border-radius: 8px; }
+.handbook { max-height: 320px; overflow: auto; background: var(--aw-bg-2, #fafafa); padding: 10px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; }.notes li { border-bottom: 1px dashed var(--aw-border, #eee); padding-bottom: 6px; }
 @media (max-width: 760px) { .aw-memory-page { padding: 12px; } }
 </style>

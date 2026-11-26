@@ -15,6 +15,9 @@ import { migrateSessionRuntimeOverrides } from './migrations-session-runtime'
 import { migrateSessionBindingOverrides } from './migrations-session-binding'
 import { migrateExperienceVersionStore } from './migrations-experience-versions'
 import { migrateMemoryAdminColumns, migrateExperienceChannelStatus } from './migrations-memory-admin'
+import { migrateOntologyProductScope } from './migrations-ontology-product'
+import { migrateOntologyEvidenceVocabulary } from './migrations-ontology-evidence'
+import { migrateOperationProvenance } from './migrations-provenance'
 import { migrateHitlExecutionRefColumns } from './migrations-hitl-ref'
 import { migrateImprovementProposals } from './migrations-improvement'
 import { migrateHarnessProfiles } from './migrations-harness-profile'
@@ -86,11 +89,18 @@ export function initWorkshopDb(db: DatabaseSync): void {
   // RSI 经验层(2026-11-09)：agent_memories 证据链/作用域/生命周期列 + analysis_reports.recipe_run_id。
   // 只加列不重建；必须在 ensureExperienceIndexes 之前(缺列建索引会中断)。
   migrateExperienceColumns(db)
+  // 批次 4：本体产品域（product_id='' = 产线通用；非空 = 产品独立版本，不隐式继承）
+  migrateOntologyProductScope(db)
+  // 批次 D：历史非法证据等级映射到合法枚举（幂等；修复 rank=-1 导致的验证死路）
+  migrateOntologyEvidenceVocabulary(db)
   // 记忆中心(HITL 管理面)：owner/author/revision/pinned/updated_at/soft-delete + 批注/版本表。
   // 必须在 ensureExperienceIndexes 之前（idx_memories_kind_status 依赖 updated_at）。
   migrateMemoryAdminColumns(db)
   // Task 2:旧经验行 → 不可变版本(幂等回填;失败即中止初始化,不暴露半迁移状态)。
   migrateExperienceVersionStore(db)
+  // 批次 N/M(2026-11-26):操作台账上下文/写尝试载荷/DAQ 证据快照/结构化参数主张。
+  // 必须在 experience_versions 建表之后（claims 侧表引用版本维度），且在写路径使用前。
+  migrateOperationProvenance(db)
   // 9003(一次性,ledger 守卫)：channel 档经验 active → candidate。
   // 必须与 reflector 的 producer 修复同批，否则批次边界会持续产生永不晋升/永不注入的 active 行。
   migrateExperienceChannelStatus(db)

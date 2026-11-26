@@ -82,6 +82,15 @@ export interface InterventionFact {
   criterion?: Record<string, unknown> | null
   lineId?: string
   productId?: string
+  /** 批次 M/N：结构化参数主张所需的操作上下文 */
+  nodeId?: string
+  targetNodeId?: string
+  recipeId?: string
+  recipeRevision?: string
+  attemptId?: string
+  taskId?: string
+  sessionId?: string
+  unit?: string
 }
 
 export type ExperienceFact = TaskFact | ReviewFact | InterventionFact

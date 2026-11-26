@@ -244,11 +244,15 @@ export type MemoryKind
     | 'episodic-peer'
     | 'episodic-session'
     | 'episodic-team-task'
+    /** 人类↔Agent 对话回合摘要（回合零 LLM；会话域，可检索，默认不进自动注入） */
+    | 'episodic-dialog'
     | 'semantic'
     | 'experience'
     | 'brief'
     | 'chronicle'
     | 'reflection'
+    /** Curator 汇整出的连续结构化文档（知识手册/参数手册） */
+    | 'curated'
 
 /** 经验结果极性:positive/negative=有 verdict 背书;unknown=无证据叙述(anecdotal);neutral=未评估 */
 export type MemoryOutcome = 'positive' | 'negative' | 'neutral' | 'unknown'

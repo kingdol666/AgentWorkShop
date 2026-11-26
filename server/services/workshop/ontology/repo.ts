@@ -11,6 +11,7 @@ import { AppError } from '../../../utils/errors'
 import { getAmlRuntime } from '../aml/runtime'
 import { withTransaction } from '../db/transaction'
 import type { ControlGuard, OntologyDraftDoc, OntologyEntity, OntologyRelation, OntologyRule, OntologyRuleTrace, BindingDraft } from './contracts'
+import { evidenceLevelRank } from './contracts'
 
 export type VersionStatus = 'draft' | 'published' | 'retired'
 
@@ -355,6 +356,10 @@ export function createOntologyRepo(db: DatabaseSync) {
 
     // ===== 证据 =====
     appendEvidence(row: EvidenceRow): void {
+      // 只接受合法证据等级：历史 observed/observed_weak 会让 rank=-1，规则永远过不了 validated
+      if (evidenceLevelRank(row.level as never) < 0) {
+        throw new AppError(422, 'INVALID_EVIDENCE_LEVEL', `非法证据等级：${String(row.level)}`)
+      }
       db.prepare(`INSERT INTO ontology_evidence
         (id, ontology_id, target_kind, target_key, level, source_type, source_ref, source_ref_hash, detail_json, created_by, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)

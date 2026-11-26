@@ -233,6 +233,18 @@ function compileBaseTier(tier: Exclude<ScopeTier, 'all'>, ctx: MemoryCtx, alias:
     // 自动注入：所有档位的 experience 都必须是 validated + 已部署（显式检索保持宽松）
     where.push(experienceGateSql(alias))
   }
+  // 自动注入的 auto 档必须按会话隔离（2026-11-26 批次 A）：
+  //  - 当前会话行 + 无会话归属行（session_id='' 的频道级/团队级沉淀）可见；
+  //  - 其他会话的行不得进入本会话 prompt（显式检索仍可跨会话）。
+  if (ctx.automatic && tier === 'auto') {
+    if (ctx.sessionId) {
+      where.push(`(${alias}.session_id = ? OR ${alias}.session_id = '')`)
+      params.push(ctx.sessionId)
+    }
+    else {
+      where.push(`${alias}.session_id = ''`)
+    }
+  }
   // 非工业频道：line/product/global 经验一律不可见（不论自动还是显式；承接 state.ts:48-49）
   if (!ctx.industrial) {
     where.push(`NOT (${alias}.kind = 'experience' AND ${alias}.scope_kind IN ('line', 'product', 'global'))`)
@@ -264,7 +276,14 @@ export function rowMatchesTier(
       const r = SCOPE_RULES[t]
       // auto 分支只含 auto/line/product；workspace 只在 all 档出现
       const crossChannelScope = r.crossChannelAware && ctx.crossChannel
-      return matchRule(r, row, ctx, deploymentOf, crossChannelScope)
+      if (!matchRule(r, row, ctx, deploymentOf, crossChannelScope)) return false
+      // 自动注入的 auto 档按会话隔离（SQL 侧同规则；line/product 不受影响）
+      if (ctx.automatic && t === 'auto') {
+        const sid = row.sessionId ?? ''
+        if (ctx.sessionId) return sid === ctx.sessionId || sid === ''
+        return sid === ''
+      }
+      return true
     })
   }
   const rule = SCOPE_RULES[tier]

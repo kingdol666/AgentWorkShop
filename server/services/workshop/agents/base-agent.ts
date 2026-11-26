@@ -181,6 +181,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
     const scope: ExecutionScope = Object.freeze({
       agentId: ctx.agentId,
       channelId: ctx.channelId,
+      sessionId: this.bridgeCtx.channelSessionScope?.sessionId,
       ...(hasLease ? { taskId, assignmentGeneration: generation, executionLeaseId: leaseId } : {}),
       signal,
       assertActive: () => {

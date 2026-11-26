@@ -26,6 +26,26 @@ export function resetHarnessOverlayCache(): void {
   cache.clear()
 }
 
+/**
+ * 部署/撤下/人工覆写/软删后按频道失效（批次 A）。
+ * 缓存键首元素即 channelId；不推进授权 epoch（那是撤权/切产品语义，另有发布门使用）。
+ */
+export function invalidateHarnessOverlayCache(channelId?: string): void {
+  if (!channelId) {
+    cache.clear()
+    return
+  }
+  for (const key of cache.keys()) {
+    try {
+      const parsed = JSON.parse(key) as unknown[]
+      if (parsed[0] === channelId) cache.delete(key)
+    }
+    catch {
+      cache.delete(key)
+    }
+  }
+}
+
 export function channelOverlayText(channelId: string, agentId?: string): string {
   if (!channelId) return ''
   if (agentId ? channelModeForAgent(agentId) !== 'production_line_integrated' : channelModeOf(channelId) !== 'production_line_integrated') return ''

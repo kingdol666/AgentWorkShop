@@ -227,6 +227,44 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     await this.vectorize(content, `peer:${msg.messageId}`)
   }
 
+  /**
+   * 人类↔Agent 对话回合沉淀（批次 B / W1c）。
+   *
+   * 纪律：
+   *  - 回合零 LLM（直接用问/答原文摘要，不调用模型）；
+   *  - 会话域（session_id 必填；无会话不写），30 天后 expireSweep 转 retired；
+   *  - 不进自动注入（kind=episodic-dialog 不在 auto 档的 curated/brief 面）；
+   *  - 幂等键 `dialog:<messageId>`：重放同一消息不新增行。
+   */
+  async recordDialog(msg: A2AMessage, replyText: string, sessionId?: string | null): Promise<void> {
+    const ask = partsText(msg.parts).trim()
+    const answer = replyText.trim()
+    if (!ask || !answer) return
+    const dedupKey = `dialog:${msg.messageId}`
+    const title = `对话:${ask.replace(/\s+/g, ' ').slice(0, 40)}`
+    const content = `问:${ask.slice(0, 800)}\n答:${answer.slice(0, 1200)}`
+    const write = this.repo.upsert({
+      channelId: this.opts.channelId,
+      agentId: this.opts.agentId,
+      kind: 'episodic-dialog',
+      title,
+      titleFts: segmentCJK(title),
+      content: segmentCJK(content).slice(0, CONTENT_STORE_LIMIT),
+      importance: 0.4,
+      taskId: msg.taskId ?? null,
+      sessionId: sessionId ?? '',
+      dedupKey,
+    })
+    if (write.outcome === 'protected') return
+    // 30 天过期（维护任务 expireSweep → retired；保留行与审计，不硬删）
+    const expiresAt = new Date(Date.now() + 30 * 86_400_000).toISOString()
+    try {
+      this.repo.setExpiresAt(write.id, expiresAt)
+    }
+    catch { /* 过期标记失败不阻断沉淀 */ }
+    await this.vectorize(content, dedupKey)
+  }
+
   /** 写入后向量化(委托模块级 vectorizeMemory;未切分原文,失败静默留 FTS) */
   protected async vectorize(plainContent: string, dedupKey: string): Promise<void> {
     await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, this.opts.agentId, dedupKey, plainContent)

@@ -19,7 +19,7 @@ import { channelModeOf } from '../../channel-mode'
 export function isProductionTool(name: string, plugin?: string | null): boolean {
   return plugin === 'diag-bridge' || plugin === 'serial-bridge'
     || /^(?:my_industrial_|industrial_|daq_|dcw_|param_|recipe_|line_|mes_|aml_|twin_|optimizer_|ontology_|diag_|serial_|exp_|analysis_)/.test(name)
-    || new Set(['ops_log', 'intervention_history', 'optimization_explore', 'mpc_optimize', 'team_grant_nodes', 'team_revoke_nodes']).has(name)
+    || new Set(['ops_log', 'intervention_history', 'operation_provenance', 'optimization_explore', 'mpc_optimize', 'team_grant_nodes', 'team_revoke_nodes']).has(name)
 }
 
 /** host tool 定义(外置 .AgentWorkShop/prompts/host-tools.json;加载器缓存) */
@@ -83,6 +83,7 @@ export const OBSERVER_READ_TOOL_NAMES = new Set([
   'daq_query',
   'daq_identifiability',
   'intervention_history',
+  'operation_provenance',
   'exp_collect',
   'analysis_save',
   'analysis_query',

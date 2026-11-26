@@ -12,6 +12,7 @@ import type { EmbeddingProvider } from '../runtime/embedding-provider'
 import { createMemoryRepo, type MemoryActor } from '../db/memory.repo'
 import type { MemoryKind, MemoryScopeKind, MemoryStatus } from '../db/database'
 import { segmentCJK, unsegmentCJK, vectorizeMemory } from '../runtime/memory/helpers'
+import { invalidateHarnessOverlayCache } from '../experience/overlay'
 
 export class MemoryAdminError extends Error {
   constructor(public statusCode: number, public code: string, message: string) {
@@ -246,6 +247,7 @@ export async function updateMemory(
     const dedupKey = current.dedupKey ?? ''
     await vectorizeMemory(repo, deps.embedder, current.channelId, current.agentId, dedupKey, content).catch(() => {})
   }
+  invalidateHarnessOverlayCache(current.channelId)
   return { revision: revision + 1 }
 }
 
@@ -285,6 +287,7 @@ export function rollbackMemory(db: DatabaseSync, input: {
   if (changed === 0) throw new MemoryAdminError(409, 'REVISION_CONFLICT', '并发更新冲突')
   const rowidRow = db.prepare('SELECT rowid FROM agent_memories WHERE id = ?').get(input.id) as { rowid: number | bigint } | undefined
   if (rowidRow) repo.vecDelete(Number(rowidRow.rowid))
+  invalidateHarnessOverlayCache(current.channelId)
   return { revision: revision + 1 }
 }
 
@@ -303,14 +306,18 @@ export function softDeleteMemory(db: DatabaseSync, input: { id: string, reason: 
   if (ok) {
     const rowidRow = db.prepare('SELECT rowid FROM agent_memories WHERE id = ?').get(input.id) as { rowid: number | bigint } | undefined
     if (rowidRow) repo.vecDelete(Number(rowidRow.rowid))
+    invalidateHarnessOverlayCache(state.channelId)
   }
   return { ok }
 }
 
 export function restoreMemory(db: DatabaseSync, id: string): { ok: boolean } {
   const repo = createMemoryRepo(db)
-  if (!repo.stateById(id)) throw new MemoryAdminError(404, 'NOT_FOUND', '记忆不存在')
-  return { ok: repo.restore(id) }
+  const state = repo.stateById(id)
+  if (!state) throw new MemoryAdminError(404, 'NOT_FOUND', '记忆不存在')
+  const ok = repo.restore(id)
+  if (ok) invalidateHarnessOverlayCache(state.channelId)
+  return { ok }
 }
 
 /** 硬删：仅 owner 调用方允许（权限由 REST 层判定）；联动 vec，FTS 由 DELETE 触发器清理 */
@@ -321,11 +328,68 @@ export function purgeMemory(db: DatabaseSync, id: string): { ok: boolean } {
   if (!state.deletedAt) throw new MemoryAdminError(409, 'NOT_SOFT_DELETED', '硬删前必须先软删')
   const res = repo.purge(id)
   if (res.rowid !== null) repo.vecDelete(res.rowid)
+  invalidateHarnessOverlayCache(state.channelId)
   return { ok: res.ok }
 }
 
 export function setMemoryPinned(db: DatabaseSync, id: string, pinned: boolean): { ok: boolean } {
   const repo = createMemoryRepo(db)
-  if (!repo.stateById(id)) throw new MemoryAdminError(404, 'NOT_FOUND', '记忆不存在')
-  return { ok: repo.setPinned(id, pinned) }
+  const state = repo.stateById(id)
+  if (!state) throw new MemoryAdminError(404, 'NOT_FOUND', '记忆不存在')
+  const ok = repo.setPinned(id, pinned)
+  if (ok) invalidateHarnessOverlayCache(state.channelId)
+  return { ok }
+}
+
+/**
+ * 人工裁定「不成立」（批次 B / W5）：
+ *  - 原行退役（保留正文/证据/审计，不硬删）；
+ *  - 生成一条负向 candidate（有证据锚点 traceId，避免"无证据经验"），供后续检索/学习；
+ *  - 原因必填，写入批注与运维审计（REST 层补 recordOps）。
+ */
+export function rejectMemory(db: DatabaseSync, input: { id: string, reason: string, actor: MemoryActor }): { ok: boolean, retired: boolean, negativeId: string | null } {
+  const reason = input.reason.trim()
+  if (!reason) throw new MemoryAdminError(400, 'INVALID', '裁定不成立必须填写原因（审计要求）')
+  const repo = createMemoryRepo(db)
+  const state = repo.stateById(input.id)
+  if (!state) throw new MemoryAdminError(404, 'NOT_FOUND', '记忆不存在')
+  if (state.deletedAt) throw new MemoryAdminError(409, 'DELETED', '已软删条目不可裁定，请先恢复')
+  const now = new Date().toISOString()
+  const wasRetired = state.status === 'retired'
+  const retired = wasRetired
+    ? true
+    : Number(db.prepare(`UPDATE agent_memories SET status = 'retired', updated_at = ? WHERE id = ?`).run(now, input.id).changes ?? 0) > 0
+  let negativeId: string | null = null
+  if (state.kind === 'experience' && !wasRetired) {
+    // 已是 retired 不重复生成负向候选；dedupKey 固定保证重复裁定幂等
+    try {
+      const negative = repo.upsertExperience({
+        channelId: state.channelId,
+        agentId: state.agentId,
+        kind: 'experience',
+        title: `[人工否定] ${state.id.slice(0, 8)}`,
+        titleFts: segmentCJK(`人工否定 ${state.id.slice(0, 8)}`),
+        content: segmentCJK(`人工裁定原经验不成立。原因：${reason.slice(0, 500)}`),
+        importance: 0.6,
+        taskId: null,
+        sessionId: '',
+        dedupKey: `exp:human-reject:${state.id}`,
+        outcome: 'negative',
+        evidence: { traceId: `human-reject:${state.id}` },
+        scopeKind: 'channel',
+        scopeKey: '',
+        status: 'candidate',
+      })
+      negativeId = negative.id
+    }
+    catch {
+      negativeId = null
+    }
+  }
+  try {
+    repo.annotate(input.id, `人工裁定不成立：${reason.slice(0, 800)}`, input.actor.id)
+  }
+  catch { /* 批注失败不影响退役 */ }
+  invalidateHarnessOverlayCache(state.channelId)
+  return { ok: true, retired, negativeId }
 }

@@ -1,0 +1,29 @@
+{
+  "automaticBlock": {
+    "hasOwnSession": true,
+    "leaksOtherSession": false,
+    "hasChannelLevel": true,
+    "block": "## 相关记忆(自动召回的高相关/最近线索摘要;与当前任务冲突时,以当前任务为准)\n- [2小时前·共享] 本会话保压参数结论:本会话结论：保压压力 62.0 MPa 时壁厚 3.12 mm 合格。\n- [2小时前·共享] 频道级通用约定:频道级通用约定 777：首件必须做壁厚检测。\n记忆使用提示:\n- 以上只是线索级摘要。开工前先判断是否需要更多上下文:历史结论/团队约定/相似任务经验 → 调 search_memory(query, scope) 主动检索(覆盖私有+共享域)。\n- 作业中发现可复用的结论、约定、教训 → 立即 save_memory 沉淀:scope=private 存个人经验,scope=shared 发布到 Channel 公共记忆供全员复用。"
+  },
+  "explicitSearch": [
+    {
+      "id": "mem-accept-s1",
+      "kind": "semantic",
+      "content": "本会话结论：保压压力 62.0 MPa 时壁厚 3.12 mm 合格。"
+    },
+    {
+      "id": "3034ff55-83e9-4f79-a068-15db4a954298",
+      "kind": "episodic-dialog",
+      "content": "问:保压压力 62 后壁厚 3.12，下一批要不要继续上调？答:先保持 62，再看 3 个批次的壁厚趋势；低于 3.05 回调。"
+    }
+  ],
+  "dialogRows": [
+    {
+      "id": "3034ff55-83e9-4f79-a068-15db4a954298",
+      "kind": "episodic-dialog",
+      "sessionId": "cs-04ac4a5a",
+      "expiresAt": "2026-12-26T16:40:09.765Z"
+    }
+  ],
+  "now": "2026-11-26T16:40:09.772Z"
+}

@@ -30,7 +30,7 @@ export const SAME_LINE_BOOST = 0.2
 /** RSI 经验作用域加分(WP-A3):同产品经验排序偏好(弱于产线:产线粒度更贴工况) */
 export const SAME_PRODUCT_BOOST = 0.1
 /** 策展层 kind(确定性 L0/按 key 直取;不进 L1 排名防双份注入,search_memory 仍可命中) */
-export const CURATED_KINDS = new Set(['brief', 'chronicle', 'reflection'])
+export const CURATED_KINDS = new Set(['brief', 'chronicle', 'reflection', 'curated'])
 /** kind 感知时近衰减半衰期(天;0 = 不衰减) */
 export const RECENCY_HALF_LIFE_DAYS: Record<string, number> = {
   'episodic-peer': 3,

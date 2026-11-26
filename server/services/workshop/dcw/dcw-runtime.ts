@@ -29,6 +29,8 @@ export interface DcwWriteOutcome {
   anchorId?: string
   /** 调控闭环:Agent/回退路径开出的优化记录 id(manual/recipe 路径无) */
   recordId?: string
+  /** 写尝试账本 id（批次 N：把 accepted 干预与尝试载荷/上下文闭环） */
+  attemptId?: string
 }
 
 export interface DcwRuntimeHost {

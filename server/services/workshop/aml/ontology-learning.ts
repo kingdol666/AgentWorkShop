@@ -14,11 +14,10 @@ function hashOf(s: string): string {
   return createHash('sha256').update(s).digest('hex').slice(0, 32)
 }
 
-/** 干预判定 → 证据等级(观测证据,不是人工断言) */
-function evidenceLevelOf(verdict: string): string {
-  if (verdict === 'identifiable_effect' || verdict === 'no_resolvable_effect') return 'observed'
-  if (verdict === 'underpowered' || verdict === 'confounded') return 'observed_weak'
-  return 'observed_unassessed'
+/** 干预判定 → 证据等级(观测证据,不是人工断言;必须落在 EVIDENCE_LEVELS 内) */
+function evidenceLevelOf(verdict: string): 'observed_correlation' | 'candidate_influence' {
+  if (verdict === 'identifiable_effect' || verdict === 'no_resolvable_effect') return 'observed_correlation'
+  return 'candidate_influence'
 }
 
 export interface BackfillResult {

@@ -99,7 +99,11 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
         ...snapshot.tasks.filter(t => t.state === 'SUBMITTED' || t.state === 'FAILED' || t.state === 'WAITING').map(t => t.title),
         ...snapshot.members.map(m => m.name),
       ].join(' ')
-      const recall = this.deps.memory?.recall(query, { touch: false, signal: controller.signal })
+      const recall = this.deps.memory?.recall(query, {
+        touch: false,
+        sessionId: this.deps.trustedSessionId ?? null,
+        signal: controller.signal,
+      })
       if (recall) {
         let onAbort!: () => void
         const aborted = new Promise<undefined>((resolve) => {

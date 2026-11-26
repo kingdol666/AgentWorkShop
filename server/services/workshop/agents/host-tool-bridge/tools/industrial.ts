@@ -18,6 +18,8 @@ import { toolAmlActivity } from '../../industrial/aml-activity'
 import { toolOptimizerCancel, toolOptimizerCapabilities, toolOptimizerPlanGet, toolOptimizerProfilePropose, toolOptimizerSolve, toolOptimizerStatus } from '../../industrial/optimizer-tools'
 import { toolIndustrialResources } from '../../industrial/resources-tools'
 import { toolOntologyCompilePreview, toolOntologyDraftAutofix, toolOntologyDraftCreate, toolOntologyDraftUpdate, toolOntologyDraftValidate, toolOntologyNodeNeighbors, toolOntologyPublishPropose, toolOntologyRuleExplain, toolOntologySceneInspect, toolOntologyVersionCompare } from '../../industrial/ontology-tools'
+import { toolOperationProvenance } from '../../industrial/provenance-tools'
+import { toolParamExperienceQuery } from '../../industrial/param-experience-tools'
 
 type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string, sessionScope?: ChannelSessionExecutionScope) => Promise<HostToolResult>
 
@@ -64,6 +66,9 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   // P1/P2(科学探索计划):可辨识性预检与干预台账查询(全只读)
   ['daq_identifiability', (agentId, args) => toolDaqIdentifiability(agentId, args as Parameters<typeof toolDaqIdentifiability>[1])],
   ['intervention_history', (agentId, args) => toolInterventionHistory(agentId, args as Parameters<typeof toolInterventionHistory>[1])],
+  // 批次 N3:操作+数采全量追溯(只读;设定/上下文/DAQ 前后值/判定/拒绝尝试)
+  ['operation_provenance', (agentId, args, _channelId, sessionScope) => toolOperationProvenance(agentId, args as Parameters<typeof toolOperationProvenance>[1], sessionScope as DaqQueryExecutionScope | undefined)],
+  ['param_experience_query', (agentId, args, _channelId, sessionScope) => toolParamExperienceQuery(agentId, args as Parameters<typeof toolParamExperienceQuery>[1], sessionScope as DaqQueryExecutionScope | undefined)],
   ['dcw_judge', (agentId, args) => toolDcwJudge(agentId, args as { record_id?: string, verdict?: string, reason?: string })],
   ['dcw_rollback', (agentId, args) => toolDcwRollback(agentId, args as { record_id?: string, node_id?: string, to?: string })],
   ['dcw_journal', (agentId, args) => toolDcwJournal(agentId, args as { node_id?: string, recipe_id?: string, limit?: number | string })],

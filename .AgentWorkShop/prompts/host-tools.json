@@ -4365,6 +4365,66 @@
     }
   },
   {
+    "name": "operation_provenance",
+    "label": "Operation Provenance",
+    "description": "操作与数采全量追溯(只读,批次 N)。给定产线/产品/配方/修订/批次/节点/时间窗,列出每一次已受理下发(手动/Agent/配方/回退)的 from→to、实写/回读、路径/操作者/HITL 审批/任务/会话,以及对应数采前后窗统计、≤120 点降采样序列、原始样本是否仍可用、可辨识性判定(effect/CI/MDE/verdict);同时列出被拒绝/未发送/结果未知的写尝试及其“想写什么值”。上下文来源 exact/run/time-window/unknown 原样标注,raw 过期不插值。研究历史调参、复盘失败方向、生成新建议前应先用本工具取事实。可见性=可读产线 ∪ 绑定节点,越界 fail-closed。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": { "type": "string", "description": "产线 id(可先用 line_context 取)" },
+        "product_id": { "type": "string", "description": "产品 id(会话固定产品时不可跨产品)" },
+        "recipe_id": { "type": "string", "description": "配方 id" },
+        "recipe_revision": { "type": "string", "description": "配方修订号(版本)" },
+        "run_id": { "type": "string", "description": "批次 run id" },
+        "node_id": { "type": "string", "description": "控制节点或判读目标节点 id" },
+        "from": { "type": "string", "description": "起始时间(ISO 8601 或 epoch ms)" },
+        "to": { "type": "string", "description": "结束时间(ISO 8601 或 epoch ms)" },
+        "actor": { "type": "string", "description": "操作者 id 或姓名" },
+        "path": { "type": "string", "description": "下发路径 manual|agent|recipe|rollback" },
+        "verdict": { "type": "string", "description": "判定 pending|unassessed|identifiable_effect|no_resolvable_effect|underpowered|confounded" },
+        "has_daq": { "type": "boolean", "description": "true=只要已有 DAQ 快照的;false=只要缺快照的" },
+        "attempt_id": { "type": "string", "description": "写尝试账本 id" },
+        "proposal_id": { "type": "string", "description": "参数建议 id(批次 M 归因)" },
+        "limit": { "type": "number", "description": "返回条数(1–200,缺省 50)" },
+        "before_ts": { "type": "string", "description": "游标:上一页 nextCursor.ts" },
+        "before_id": { "type": "string", "description": "游标:上一页 nextCursor.id" }
+      }
+    },
+    "references": {
+      "refs": [
+        { "param": "node_id", "kind": "node", "mode": "read" },
+        { "param": "line_id", "kind": "line", "mode": "read" }
+      ],
+      "readableLineNodes": true
+    }
+  },
+  {
+    "name": "param_experience_query",
+    "label": "Parameter Experience Query",
+    "description": "参数经验检索(只读,批次 M)。按产线/产品/节点/变量/配方修订/判定过滤结构化参数主张:方向、from→to、effect/CI/MDE、verdict、memory 状态与部署状态,并回指 intervention_id/daq_evidence_id/run_id。deployed_only=true 只看 validated+active/canary(可用于生成建议);默认包含 candidate/未部署但明确标注,不得当作已生效结论。历史空 claim 默认排除(include_legacy=true 才返回,且不参与建议)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": { "type": "string", "description": "产线 id" },
+        "product_id": { "type": "string", "description": "产品 id(会话固定产品时不可跨产品)" },
+        "node_id": { "type": "string", "description": "控制/目标节点 id" },
+        "variable": { "type": "string", "description": "变量名(默认按节点名)" },
+        "recipe_revision": { "type": "string", "description": "配方修订号" },
+        "verdict": { "type": "string", "description": "identifiable_effect|no_resolvable_effect|underpowered|confounded|unassessed" },
+        "deployed_only": { "type": "boolean", "description": "true=只返回 validated+已部署(active/canary)" },
+        "include_legacy": { "type": "boolean", "description": "true=包含 legacy-unverified 历史空主张(默认排除)" },
+        "limit": { "type": "number", "description": "返回条数(1–200,缺省 50)" }
+      }
+    },
+    "references": {
+      "refs": [
+        { "param": "node_id", "kind": "node", "mode": "read" },
+        { "param": "line_id", "kind": "line", "mode": "read" }
+      ],
+      "readableLineNodes": true
+    }
+  },
+  {
     "name": "project_get_status",
     "label": "Project Get Status",
     "description": "(Project leader only) 读取项目全景：目标/成功标准/状态/plan 版本/交付物/工作项/待审批。只读；用于提案前的先读后写。非项目总工调用会被执行层拒绝。",

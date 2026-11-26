@@ -72,6 +72,11 @@ export abstract class AgentMemoryState extends AgentMemoryContracts {
       if (row.sessionId !== sessionId) return false
       return isTeam || row.agentId === this.opts.agentId
     }
+    // 批次 A：自动注入按会话隔离（当前会话 + 无会话归属的频道级行；显式检索不拦）
+    if (automatic && scope === 'auto') {
+      const sid = row.sessionId ?? ''
+      if (sessionId ? (sid !== sessionId && sid !== '') : sid !== '') return false
+    }
     return scope === 'auto'
       ? (isTeam || row.agentId === this.opts.agentId)
       : scope === 'shared'

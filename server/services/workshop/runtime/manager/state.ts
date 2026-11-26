@@ -28,6 +28,8 @@ import { platformNoticeKey, newPlatformNoticeId, setPlatformNoticeSink, type Pla
 import { memorySettings, retentionSettings, channelMemoryDigestEnabled } from '../../settings'
 import { parseJson } from '../../db/database'
 import { reflectExperience } from '../memory/reflector'
+import { recordParameterClaim } from '../../experience/claims'
+import { backfillOperationEvidence } from '../../daq/provenance-evidence'
 import { collectInterventionFact, collectTaskFact, listUnreflectedInterventions } from '../memory/reflect-collector'
 import { registerInterventionAssessmentHook } from '../../aml/intervention-ledger'
 import { getDcwController } from '../../dcw/dcw-controller'
@@ -223,9 +225,21 @@ export abstract class ManagerState extends ManagerContracts {
       try {
         const fact = collectInterventionFact(this.deps.db, eventId)
         if (!fact) return
-        void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch((err) => {
-          log.warn('[memory] 干预经验反射失败:', err instanceof Error ? err.message : err)
-        })
+        void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact)
+          .then((result) => {
+            // 批次 M：经验行落定后写结构化参数主张（版本继承 head 状态，证据回指干预/DAQ）
+            if (result.written && result.id) {
+              try {
+                recordParameterClaim(this.deps.db, { memoryId: result.id, fact })
+              }
+              catch (err) {
+                log.warn('[memory] 参数主张写入失败:', err instanceof Error ? err.message : err)
+              }
+            }
+          })
+          .catch((err) => {
+            log.warn('[memory] 干预经验反射失败:', err instanceof Error ? err.message : err)
+          })
         // WP-D2:显著正效应 → 产出「配方固化」改进提案(只描述,执行仍走 recipe_update HITL)
         this.maybeProposeImprovement(fact)
       }
@@ -262,6 +276,11 @@ export abstract class ManagerState extends ManagerContracts {
       catch (err) {
         log.error('[memory] 干预经验补扫异常', err)
       }
+      // 批次 N2：对已过判读窗且缺快照的干预补采 DAQ 证据（限流；raw 过期如实标）
+      try {
+        void backfillOperationEvidence(this.deps.db, { limit: 10 }).catch(() => {})
+      }
+      catch { /* 补采失败不阻断维护 */ }
       // RSI 独立回读验证(WP-C1):对未验证的写入台账做设备侧复读(match/mismatch/inconclusive)
       try {
         verifyAllPending(this.deps.db, { perChannel: 20 })
@@ -566,7 +585,16 @@ export abstract class ManagerState extends ManagerContracts {
       try {
         const fact = collectInterventionFact(this.deps.db, eventId)
         if (!fact) continue
-        void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch(() => {})
+        void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact)
+          .then((result) => {
+            if (result.written && result.id) {
+              try {
+                recordParameterClaim(this.deps.db, { memoryId: result.id, fact })
+              }
+              catch { /* 主张写入失败不影响补扫 */ }
+            }
+          })
+          .catch(() => {})
         this.maybeProposeImprovement(fact)
       }
       catch { /* 单行失败不阻断批量 */ }

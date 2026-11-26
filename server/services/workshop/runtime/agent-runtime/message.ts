@@ -429,7 +429,15 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
           }
           else if (!taskId) {
             const fromAgentId = (msg.metadata?.['x-aw-from-agent'] as string | undefined) ?? null
-            if (fromAgentId) await this.deps.memory.recordPeerExchange(msg, replyText, sessionId)
+            const fromUserId = (msg.metadata?.['x-aw-from-user-id'] as string | undefined) ?? null
+            const systemNotice = Boolean(msg.metadata?.['x-aw-system'])
+            if (fromAgentId) {
+              await this.deps.memory.recordPeerExchange(msg, replyText, sessionId)
+            }
+            else if (fromUserId && !systemNotice && msg.role === 'ROLE_USER') {
+              // 批次 B(W1c)：人类↔Agent 对话回合沉淀（会话域、零 LLM、30 天过期、不自动注入）
+              await this.deps.memory.recordDialog(msg, relayText.trim() || replyText, sessionId)
+            }
           }
         }
         catch (err) {
