@@ -9,6 +9,7 @@ import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { checkAllHarnessAvailability } from '@/server/services/workshop/agents/harness-availability'
 import { harnessMetas } from '@/server/services/workshop/agents/registry'
+import { profileSupportOf } from '@/server/services/workshop/agent-prefabs/profile'
 
 export default defineApiHandler(async (event) => {
   resolveUser(event)
@@ -19,6 +20,7 @@ export default defineApiHandler(async (event) => {
   return {
     harnesses: harnessMetas().map(m => ({
       ...m,
+      profile: profileSupportOf(m.id),
       ...(byId.get(m.id) ?? { available: false, inprocess: false, command: null, resolvedPath: null, error: '探测失败' }),
     })),
   }

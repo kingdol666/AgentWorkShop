@@ -17,6 +17,8 @@ interface ErrLike {
   status?: number
   message?: string
   code?: string | number
+  /** axios 形态:服务端信封在 response.data,HTTP 码在 response.status */
+  response?: { status?: number, data?: unknown }
 }
 
 /** i18n 取不到时的内置回退(与 locales errors.* 保持一致,zh 优先项目) */
@@ -57,10 +59,12 @@ function statusKey(status: number): keyof typeof FALLBACK | null {
 export function apiErrorMessage(err: unknown, fallback?: string): string {
   const e = (err ?? {}) as ErrLike
   // 1. 服务端信封(ofetch: err.data = {code,message};axios: err.response.data)
+  const axiosData = (e.response?.data ?? null) as { message?: unknown } | null
+  if (axiosData && typeof axiosData.message === 'string' && axiosData.message.trim()) return axiosData.message.trim()
   const data = (e.data ?? null) as { message?: unknown } | null
   if (data && typeof data.message === 'string' && data.message.trim()) return data.message.trim()
   // 2. HTTP 状态码 → 本地化映射
-  const status = Number(e.statusCode ?? e.status ?? 0)
+  const status = Number(e.response?.status ?? e.statusCode ?? e.status ?? 0)
   const key = statusKey(status)
   if (key) return tt(`errors.${key}`) ?? FALLBACK[key]
   // 3. 网络层失败(fetch failed / ECONNREFUSED / 超时)
@@ -72,4 +76,13 @@ export function apiErrorMessage(err: unknown, fallback?: string): string {
   const cleaned = raw.replace(/^Error:\s*/, '').trim()
   if (cleaned) return cleaned
   return fallback ?? tt('errors.fallback') ?? FALLBACK.fallback
+}
+
+/** 业务错误码(axios: response.data.code;ofetch: data.code;不把 Axios 的 ERR_* 当业务码)。 */
+export function apiErrorCode(err: unknown): string {
+  const e = (err ?? {}) as ErrLike
+  const axiosCode = (e.response?.data as { code?: unknown } | undefined)?.code
+  const fetchCode = (e.data as { code?: unknown } | undefined)?.code
+  const code = axiosCode ?? fetchCode
+  return code === undefined || code === null ? '' : String(code)
 }

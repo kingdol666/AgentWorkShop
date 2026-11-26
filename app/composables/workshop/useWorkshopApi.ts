@@ -58,6 +58,8 @@ export interface HarnessMetaDto {
   }
   /** 环境探测:引擎可立即使用(进程内引擎恒 true;进程型引擎 = CLI 在 PATH 中) */
   available?: boolean
+  /** 该 harness 原生支持的运行 profile 控件 */
+  profile?: { provider: boolean, model: boolean, effort: boolean }
   /** 工具面接入方式:bridge=平台自动挂;manual=需仓库外手工配置;none=无工具 */
   toolSurface?: 'bridge' | 'manual' | 'none'
   /** manual 模式是否检测到已接入;null=无法机器判定 */
@@ -112,6 +114,137 @@ export interface ChannelSessionProductSnapshotDto {
 }
 
 /** 频道多会话(S1):一条会话 = 从基础成员克隆出的独立 agent 实例组(独立 runtime/记忆域) */
+export interface SessionRuntimePrefabDto {
+  prefabId: string
+  revision: number
+  slotValues: Record<string, string>
+  bindingVersion: string
+  contentHash: string
+  name: string | null
+}
+
+/** 单个 session runtime 的有效元数据（不含 token/env/command 等启动面） */
+export interface SessionRuntimeDto {
+  runtimeObjectId: string
+  sessionId: string
+  baseAgentId: string
+  agentId: string
+  name: string
+  role: string
+  /** 有效 harness（覆盖优先） */
+  harness: string
+  /** clone 行原始 harness */
+  baseHarness: string
+  enabled: number
+  revision: number
+  customized: boolean
+  effective: {
+    provider?: string
+    model?: string
+    effort?: string
+    runtimePrompt?: string
+    prefab: SessionRuntimePrefabDto | null
+  }
+  /** 已持久化覆盖值；无键 = 继承，空串 = 显式不指定 */
+  overrides: {
+    harness?: string
+    provider?: string
+    model?: string
+    effort?: string
+    runtimePrompt?: string
+    prefabBinding?: { prefabId: string, revision: number }
+  }
+  profileSupport: { provider: boolean, model: boolean, effort: boolean }
+  channelMode: ChannelMode
+  warnings: Array<{ code: string, message: string }>
+  updatedAt: string | null
+  updatedBy: string | null
+  manageable: boolean
+  active: boolean
+  editableFields: string[]
+}
+
+export type RuntimeBindingKindDto = 'daq' | 'dcw' | 'recipe' | 'line-recipe'
+
+export interface SessionRuntimeBindingDto {
+  id: string
+  kind: RuntimeBindingKindDto
+  nodeId: string
+  name: string
+  unit: string
+  lineId: string | null
+  mode: 'auto' | 'manual'
+}
+
+export interface SessionRuntimeBindingsDto {
+  channelId: string
+  sessionId: string
+  runtimeObjectId: string
+  harness: string
+  channelMode: ChannelMode
+  lineId: string | null
+  productId: string | null
+  bindingSnapshotRevision: number
+  scopeRecipes: Array<{ id: string, name: string, version: number }>
+  scopeMutable: boolean
+  scopeSource: 'override' | 'snapshot' | 'none'
+  bindings: SessionRuntimeBindingDto[]
+  resources: {
+    daqNodes: Array<{ id: string, name: string, unit: string, lineId: string | null }>
+    dcwNodes: Array<{ id: string, name: string, unit: string, lineId: string | null }>
+    recipes: Array<{ id: string, name: string, version: number, lineId: string | null, productId: string | null }>
+    lines: Array<{ id: string, name: string }>
+  }
+  toolRefresh: 'native' | 'list_changed' | 'per_turn'
+  effectiveAt: 'next_turn'
+}
+
+export interface SessionBindingDto {
+  channelId: string
+  sessionId: string
+  channelMode: ChannelMode
+  productId: string | null
+  lineId: string | null
+  revision: number
+  overrideRevision: number
+  source: 'override' | 'snapshot' | 'none'
+  mutable: boolean
+  recipes: Array<{ id: string, name: string, version: number }>
+  products: Array<{ id: string, name: string, lineId: string }>
+  recipesByProduct: Record<string, Array<{ id: string, name: string, version: number }>>
+  effectiveAt: 'next_turn'
+}
+
+export interface AgentPrefabSlotDto {
+  key: string
+  label: string
+  defaultValue?: string
+  required?: boolean
+  allowMemberOverride?: boolean
+  maxLength?: number
+}
+
+export interface AgentPrefabSummaryDto {
+  id: string
+  name: string
+  description?: string
+  visibility: 'private' | 'public'
+  headRevision: number
+  archivedAt: string | null
+  draft?: { prompt?: { slots?: AgentPrefabSlotDto[] } } | null
+}
+
+export interface AgentPrefabDetailDto extends AgentPrefabSummaryDto {
+  revisions: Array<{ revision: number, contentHash: string, createdAt: string, createdBy: string }>
+}
+
+export interface AgentPrefabRevisionDto {
+  prefabId: string
+  revision: number
+  contentHash: string
+  draft: { prompt?: { slots?: AgentPrefabSlotDto[] } }
+}
+
 export interface ChannelSessionDto extends ChannelSessionProductSnapshotDto {
   channelMode: ChannelMode
   id: string
@@ -284,6 +417,46 @@ export function useWorkshopApi() {
     listChannelSessions: (id: string) => http.get<{ data: ChannelSessionSummaryDto[] }>(`/workshop/channels/${id}/sessions`),
     /** 单会话详情(sid 不属于该频道 → 404) */
     getChannelSession: (id: string, sid: string) => http.get<{ data: ChannelSessionDto }>(`/workshop/channels/${id}/sessions/${sid}`),
+    /** 会话 runtime 对象清单（runtimeObjectId = clone agentId；未自定义也返回 revision=0） */
+    listSessionRuntime: (id: string, sid: string) =>
+      http.get<{ data: { sessionId: string, items: SessionRuntimeDto[] } }>(`/workshop/channels/${id}/sessions/${sid}/runtime`),
+    /** 单 runtime 对象 */
+    getSessionRuntime: (id: string, sid: string, agentId: string) =>
+      http.get<{ data: { runtime: SessionRuntimeDto } }>(`/workshop/channels/${id}/sessions/${sid}/runtime/${agentId}`),
+    /** 修改单 runtime：expectedRevision CAS；next_turn 生效（当前回合不打断） */
+    updateSessionRuntime: (id: string, sid: string, agentId: string, body: {
+      expectedRevision: number
+      reset?: boolean
+      overrides?: {
+        harness?: string | null
+        provider?: string | null
+        model?: string | null
+        effort?: string | null
+        runtimePrompt?: string | null
+        prefabBinding?: { prefabId: string, revision: number, slotValues?: Record<string, string> } | null
+      }
+    }) =>
+      http.patch<{ data: { runtime: SessionRuntimeDto, effectiveAt: 'next_turn' } }>(`/workshop/channels/${id}/sessions/${sid}/runtime/${agentId}`, body),
+    /** 工业绑定摘要（只读；写入走 agent-tools/bindings，同一 agentId） */
+    getSessionRuntimeBindings: (id: string, sid: string, agentId: string) =>
+      http.get<{ data: SessionRuntimeBindingsDto }>(`/workshop/channels/${id}/sessions/${sid}/runtime/${agentId}/bindings`),
+    /** 会话绑定范围（product/line/recipes）：创建快照基线 + 运行期覆盖 */
+    getSessionBinding: (id: string, sid: string) =>
+      http.get<{ data: SessionBindingDto }>(`/workshop/channels/${id}/sessions/${sid}/binding`),
+    updateSessionBinding: (id: string, sid: string, body: { expectedRevision: number, reset?: boolean, productId?: string, recipeIds?: string[] }) =>
+      http.patch<{ data: { binding: SessionBindingDto, effectiveAt: 'next_turn' } }>(`/workshop/channels/${id}/sessions/${sid}/binding`, body),
+    /** 请求下一回合重建该运行实例（刷新装配期提示/工具面） */
+    rebuildSessionRuntime: (id: string, sid: string, agentId: string) =>
+      http.post<{ data: { queued: boolean, effectiveAt: 'next_turn' } }>(`/workshop/channels/${id}/sessions/${sid}/runtime/${agentId}/rebuild`, {}),
+    /** Agent 工业绑定（与 town 页同一 REST 面） */
+    listAgentBindings: (agentId: string) =>
+      http.get<{ data: { bindings: Array<{ id: string, agentId: string, nodeId: string, kind: RuntimeBindingKindDto, mode: 'auto' | 'manual' }> } }>('/workshop/agent-tools/bindings', { agentId }),
+    addAgentBinding: (body: { agentId: string, nodeId: string, kind: RuntimeBindingKindDto, mode?: 'auto' | 'manual' }) =>
+      http.post<{ data: { binding: { id: string }, modeForced?: string, notice?: string } }>('/workshop/agent-tools/bindings', body),
+    updateAgentBinding: (bindingId: string, body: { mode?: 'auto' | 'manual', confirm?: boolean }) =>
+      http.patch<{ data: { binding: { id: string, mode: string } } }>(`/workshop/agent-tools/bindings/${bindingId}`, body),
+    removeAgentBinding: (bindingId: string) =>
+      http.delete<{ data: unknown }>(`/workshop/agent-tools/bindings/${bindingId}`),
     createChannelSession: (id: string, body: { title?: string, productId?: string }) =>
       http.post<{ data: { sessionId: string, title: string, members: SessionCloneMemberDto[] } }>(`/workshop/channels/${id}/sessions`, body),
     /** 关闭会话(级联:在飞任务按树取消 + clone 实例停用;幂等) */
@@ -318,8 +491,8 @@ export function useWorkshopApi() {
     listChannelAgents: (id: string) => http.get<{ data: AgentInfoDto[] }>(`/workshop/channels/${id}/agents`),
     addChannelAgent: (id: string, body: { agentId?: string, name?: string, harness?: string, role?: 'lead' | 'worker', config?: Record<string, unknown> }) =>
       http.post<{ data: AgentInfoDto }>(`/workshop/channels/${id}/agents`, body),
-    updateChannelAgent: (id: string, agentId: string, body: { name?: string, config?: Record<string, unknown>, enabled?: 0 | 1, reason?: string }) =>
-      http.request<{ data: { agentId: string, name: string } }>({ method: 'PATCH', url: `/workshop/channels/${id}/agents/${agentId}`, data: body }),
+    updateChannelAgent: (id: string, agentId: string, body: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: 0 | 1, reason?: string }) =>
+      http.request<{ data: { agentId: string, name: string, harness: string } }>({ method: 'PATCH', url: `/workshop/channels/${id}/agents/${agentId}`, data: body }),
     removeChannelAgent: (id: string, agentId: string) => http.delete<{ data: unknown }>(`/workshop/channels/${id}/agents/${agentId}`),
     /** HITL:独立中断指定成员运行时(worker/lead 均可;lead 停止同时停调度,下次任务提交自动重激活) */
     stopChannelAgent: (id: string, agentId: string) =>
@@ -373,6 +546,13 @@ export function useWorkshopApi() {
     // 已删除以免后人误用。新增群聊端点请加到对应 store,不要再回到本文件。
     // agent 模板库(P1;v10 用户隔离:private 仅本人,public 全员可用,内置只读)
     listTemplates: () => http.get<{ data: AgentTemplateDto[] }>('/workshop/agents'),
+    /** AgentPrefab 可见清单（会话 runtime 编辑器的 prefab 下拉） */
+    listAgentPrefabs: () => http.get<{ data: { prefabs: AgentPrefabSummaryDto[] } }>('/workshop/agent-prefabs'),
+    /** 草稿 + 发布 revision 列表 */
+    getAgentPrefab: (id: string) => http.get<{ data: AgentPrefabDetailDto }>(`/workshop/agent-prefabs/${id}`),
+    /** 指定不可变 revision 的 prompt slots（绑定历史 revision 前展示） */
+    getAgentPrefabRevision: (id: string, revision: number) =>
+      http.get<{ data: AgentPrefabRevisionDto }>(`/workshop/agent-prefabs/${id}/revisions/${revision}`),
     createTemplate: (body: { name: string, harness: string, config?: Record<string, unknown>, visibility?: 'private' | 'public' }) =>
       http.post<{ data: AgentTemplateDto }>('/workshop/agents', body),
     updateTemplate: (id: string, body: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number, visibility?: 'private' | 'public' }) =>

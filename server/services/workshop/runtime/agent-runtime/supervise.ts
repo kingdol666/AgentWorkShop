@@ -314,6 +314,30 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
         this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
         break
       }
+      // 会话级 runtime 覆盖：在消息执行前检查 revision；有变化则把消息放回队列，
+      // 由 manager 先装新 runtime 再异步停旧 runtime，当前回合不执行旧配置。
+      // 成功切换后旧消费循环退出；新 runtime 的 wakeMailbox 消费放回的消息（恰好一次）。
+      if (this.deps.runtimeReloadRequested?.() && this.deps.hotReloadRuntime) {
+        // 用 releaseClaim（不计 attempts）而不是 requeue（执行失败重试预算）：
+        // 配置热切换不是这条消息的失败，不能把它推向 dead-letter。
+        const released = this.deps.mailbox.releaseClaim(msg.messageId, claimToken)
+        if (!released) {
+          log.warn(`[AgentRuntime:${this.agentId}] 热切换前释放 claim 失败，跳过本次重载并重新取队: ${msg.messageId}`)
+          continue
+        }
+        try {
+          const swapped = await this.deps.hotReloadRuntime()
+          if (swapped !== false) return
+          log.warn(`[AgentRuntime:${this.agentId}] 热切换未安装新 runtime（成员已停用/删除？），保留旧循环继续重试`)
+        }
+        catch (err) {
+          log.error(`[AgentRuntime:${this.agentId}] 会话 runtime 热切换失败，保留旧 runtime 并在下一拍重试:`, err)
+        }
+        // 消息已回到 pending（保留 FIFO 与 attempts）；短暂退避后重试，
+        // 否则 revision 未变会让循环空转。
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        continue
+      }
       // 单条 run 抛错不阻塞下一条。
       // 看门狗必须在拿到 execLock **之后**才起表(2026-11-16 复现):否则前一条消息的
       // 长回合会吃掉本消息的整个排队窗口,fire 时杀的是别人的回合、重投的是还没开跑的消息。

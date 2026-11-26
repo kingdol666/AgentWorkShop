@@ -28,35 +28,45 @@ export abstract class AgentRuntimeLifecycle extends AgentRuntimeState {
     return this.stopPromise
   }
 
-  private async stopInternal(): Promise<void> {
+  /** 会话 runtime 热切换专用：不收敛新实例共享 agentId 的挂起审批，也不广播 stopped。 */
+  async stopForHotSwap(): Promise<void> {
+    if (this.stopPromise) return this.stopPromise
+    this.stopPromise = this.stopInternal({ hotSwap: true })
+    return this.stopPromise
+  }
+
+  private async stopInternal(options: { hotSwap?: boolean } = {}): Promise<void> {
     log.warn(`[AgentRuntime:${this.agentId}] runtime.stop() 调用(卸载/停用)`)
     this.state = 'stopped'
     // 挂起审批先收敛再停:回合被中止后,等待中的审批单若不落定会变成悬空
     // Promise——人类稍后的批准/拒绝无人接收,附言蒸发。收敛为拒绝(绝不自动批准)
     // 并经平台通告补送说明,Agent 下次装配即可从信箱得知发生了什么。
-    try {
-      const settled = getToolApprovals().cancelAllForAgent(this.agentId, '回合已被中止(运行时停止),审批失效,指令未执行')
-      if (settled.length > 0) {
-        sendHitlNote({
-          agentId: this.agentId,
-          title: '运行时中止,挂起审批已收敛',
-          summary: `本次停止时有 ${settled.length} 条挂起审批随回合中止被收敛为拒绝(未执行、未自动批准):\n- ${settled.join('\n- ')}\n如仍需执行请重新发起,人类的新决议会随新审批单实时回流。`,
-        })
+    // 热切换例外：新旧 runtime 共享 agentId，旧实例收尾绝不能取消新实例的审批卡。
+    if (!options.hotSwap) {
+      try {
+        const settled = getToolApprovals().cancelAllForAgent(this.agentId, '回合已被中止(运行时停止),审批失效,指令未执行')
+        if (settled.length > 0) {
+          sendHitlNote({
+            agentId: this.agentId,
+            title: '运行时中止,挂起审批已收敛',
+            summary: `本次停止时有 ${settled.length} 条挂起审批随回合中止被收敛为拒绝(未执行、未自动批准):\n- ${settled.join('\n- ')}\n如仍需执行请重新发起,人类的新决议会随新审批单实时回流。`,
+          })
+        }
       }
-    }
-    catch (err) {
-      log.error(`[AgentRuntime:${this.agentId}] 挂起审批收敛失败(继续停止):`, err)
+      catch (err) {
+        log.error(`[AgentRuntime:${this.agentId}] 挂起审批收敛失败(继续停止):`, err)
+      }
     }
     this.abortCurrent('runtime stop')
     this.deps.mailbox.close()
-    // 状态广播:前端经 WS agent.status 实时反映 stopped
-    this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'stopped', ...this.queueContext() })
+    // 状态广播:前端经 WS agent.status 实时反映 stopped（热切换由新实例接管，不广播 stopped）
+    if (!options.hotSwap) this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'stopped', ...this.queueContext() })
 
-    await this.disposeInBackground()
+    await this.disposeInBackground(options)
   }
 
   /** stop() 等待的收尾屏障：消费循环、回合收尾和 harness dispose 全部完成后返回。 */
-  private async disposeInBackground(): Promise<void> {
+  private async disposeInBackground(options: { hotSwap?: boolean } = {}): Promise<void> {
     try {
       // 消费循环退出前，当前消息的 finally 仍可能写 messages/聊天回执。
       await this.loopPromise?.catch((err) => {
@@ -76,10 +86,12 @@ export abstract class AgentRuntimeLifecycle extends AgentRuntimeState {
       log.error(`[AgentRuntime:${this.agentId}] dispose 失败:`, err)
     }
     finally {
-      try {
-        this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'stopped', ...this.queueContext() })
+      if (!options.hotSwap) {
+        try {
+          this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'stopped', ...this.queueContext() })
+        }
+        catch { /* 广播失败不影响收尾 */ }
       }
-      catch { /* 广播失败不影响收尾 */ }
     }
   }
 

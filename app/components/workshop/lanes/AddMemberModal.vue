@@ -6,27 +6,33 @@
  */
 import { message } from 'ant-design-vue'
 import { useWorkshopApi } from '@/app/composables/workshop/useWorkshopApi'
+import { useAgentHarnessOptions } from '@/app/pages/workshop/composables/useAgentHarnessOptions'
 
 const props = defineProps<{ channelId: string }>()
 const open = defineModel<boolean>('open', { default: false })
 
 const { t } = useI18n()
 const api = useWorkshopApi()
+const { harnessOptions, harnesses } = useAgentHarnessOptions()
 
 const memberSubmitting = ref(false)
 /** 添加模式:从零创建 / 从模板克隆 / 部署编组(批量) */
 const addMode = ref<'create' | 'template' | 'team'>('create')
 const memberForm = reactive({
   name: '',
-  harness: 'omp' as 'omp' | 'mock' | 'claude',
+  harness: 'omp',
   role: 'worker' as 'lead' | 'worker',
   systemPrompt: '',
+  provider: '',
+  model: '',
+  effort: '',
 })
 /** 模板克隆 / 编组部署选项(弹窗打开时懒加载) */
 const templates = ref<Array<{ id: string, name: string, harness: string, enabled: number }>>([])
 const teams = ref<Array<{ id: string, name: string, memberCount: number, hasLead: boolean }>>([])
 const selectedTemplateId = ref<string>('')
 const selectedTeamId = ref<string>('')
+const harnessTouched = ref(false)
 
 const loadCatalog = async (): Promise<void> => {
   try {
@@ -49,11 +55,39 @@ watch(open, (v) => {
   memberForm.harness = 'omp'
   memberForm.role = 'worker'
   memberForm.systemPrompt = ''
+  memberForm.provider = ''
+  memberForm.model = ''
+  memberForm.effort = ''
+  harnessTouched.value = false
   addMode.value = 'create'
   selectedTemplateId.value = ''
   selectedTeamId.value = ''
   void loadCatalog()
 })
+
+/** 模板克隆时按模板 harness 展示模型目录（克隆的 harness 不可改）。 */
+const profileHarness = computed(() => {
+  if (addMode.value === 'create') return memberForm.harness
+  return templates.value.find(t => t.id === selectedTemplateId.value)?.harness ?? memberForm.harness
+})
+
+function profileConfig(): Record<string, string> {
+  const config: Record<string, string> = {}
+  if (memberForm.provider.trim()) config.provider = memberForm.provider.trim()
+  if (memberForm.model.trim()) config.model = memberForm.model.trim()
+  if (memberForm.effort.trim()) config.effort = memberForm.effort.trim()
+  return config
+}
+
+function onTemplateChange(): void {
+  harnessTouched.value = true
+}
+
+function memberConfig(): Record<string, unknown> | undefined {
+  const config: Record<string, unknown> = profileConfig()
+  if (memberForm.systemPrompt.trim()) config.systemPromptPrefix = memberForm.systemPrompt.trim()
+  return Object.keys(config).length > 0 ? config : undefined
+}
 
 const submitMember = async (): Promise<void> => {
   if (addMode.value === 'create') {
@@ -68,9 +102,7 @@ const submitMember = async (): Promise<void> => {
         name,
         harness: memberForm.harness,
         role: memberForm.role,
-        config: memberForm.systemPrompt.trim()
-          ? { systemPromptPrefix: memberForm.systemPrompt.trim() }
-          : undefined,
+        config: memberConfig(),
       })
       message.success(t('agentLanesView.k1g5ykr3046', { p0: name }))
       open.value = false
@@ -94,9 +126,7 @@ const submitMember = async (): Promise<void> => {
       await api.addChannelAgent(props.channelId, {
         agentId: selectedTemplateId.value,
         role: memberForm.role,
-        config: memberForm.systemPrompt.trim()
-          ? { systemPromptPrefix: memberForm.systemPrompt.trim() }
-          : undefined,
+        config: memberConfig(),
       })
       message.success(t('agentLanesView.kk3uwzo048', { p0: memberForm.role, p1: tpl?.name ?? '' }))
       open.value = false
@@ -171,17 +201,14 @@ const submitMember = async (): Promise<void> => {
         />
       </a-form-item>
       <a-form-item label="harness">
-        <a-radio-group v-model:value="memberForm.harness">
-          <a-radio value="omp">
-            {{ $t('agentLanesView.ompFull') }}
-          </a-radio>
-          <a-radio value="mock">
-            {{ $t('agentLanesView.kqg6783027') }}
-          </a-radio>
-          <a-radio value="claude">
-            claude
-          </a-radio>
-        </a-radio-group>
+        <a-select
+          v-model:value="memberForm.harness"
+          :options="harnessOptions"
+          show-search
+          option-filter-prop="label"
+          data-testid="add-member-harness"
+          @change="harnessTouched = true"
+        />
       </a-form-item>
       <a-form-item :label="$t('agentLanesView.k479op006')">
         <a-radio-group v-model:value="memberForm.role">
@@ -193,6 +220,16 @@ const submitMember = async (): Promise<void> => {
           </a-radio>
         </a-radio-group>
       </a-form-item>
+      <a-divider>{{ $t('runtimeProfile.section') }}</a-divider>
+      <workshop-runtime-profile-fields
+        v-model:provider="memberForm.provider"
+        v-model:model="memberForm.model"
+        v-model:effort="memberForm.effort"
+        :harness="profileHarness"
+        :harnesses="harnesses"
+        :harness-touched="harnessTouched"
+        testid-prefix="add-member-profile"
+      />
       <a-form-item :label="$t('agentLanesView.kaogfp007')">
         <a-textarea
           v-model:value="memberForm.systemPrompt"
@@ -213,6 +250,7 @@ const submitMember = async (): Promise<void> => {
           v-model:value="selectedTemplateId"
           :placeholder="$t('agentLanesView.kung925009')"
           :options="templates.map(t => ({ value: t.id, label: `${t.name}(${t.harness})${t.enabled === 0 ? $t('agentLanesView.tplDisabled') : ''}` }))"
+          @change="onTemplateChange"
         />
       </a-form-item>
       <a-form-item :label="$t('agentLanesView.k1bl78fu010')">
@@ -225,6 +263,18 @@ const submitMember = async (): Promise<void> => {
           </a-radio>
         </a-radio-group>
       </a-form-item>
+      <template v-if="selectedTemplateId">
+        <a-divider>{{ $t('runtimeProfile.section') }}</a-divider>
+        <workshop-runtime-profile-fields
+          v-model:provider="memberForm.provider"
+          v-model:model="memberForm.model"
+          v-model:effort="memberForm.effort"
+          :harness="profileHarness"
+          :harnesses="harnesses"
+          :harness-touched="harnessTouched"
+          testid-prefix="add-member-profile"
+        />
+      </template>
       <a-form-item :label="$t('agentLanesView.k1vhvbz7011')">
         <a-textarea
           v-model:value="memberForm.systemPrompt"

@@ -11,6 +11,7 @@ import { buildCapabilityRegistry } from './registry'
 import { resolveAgentCapabilitySet } from './resolution'
 import { getPolicySnapshot } from '../tools/policy'
 import type { AgentCapabilityResolution, AgentPrefabBinding, AgentPrefabDraft } from './types'
+import { readSessionRuntimeOverrides, type SessionRuntimeOverrides } from '../sessions/runtime-overrides'
 
 export interface ResolvedAgentRuntime {
   member: ChannelAgentRow
@@ -18,6 +19,8 @@ export interface ResolvedAgentRuntime {
   resolution: AgentCapabilityResolution
   draft: AgentPrefabDraft | null
   bindingError?: string
+  /** 会话级 runtime 覆盖（无行则 {}；wire 据此应用 model/prompt） */
+  overrides?: SessionRuntimeOverrides
 }
 
 function emptyPrefabResolution(reason: string): AgentCapabilityResolution {
@@ -44,23 +47,33 @@ export function resolveRuntimeForAgent(db: DatabaseSync, agentId: string): Resol
 }
 
 /** Resolve capabilities from a member already read from the workshop DB. */
-export function resolveRuntimeForMember(db: DatabaseSync, memberRow: ChannelAgentRow): ResolvedAgentRuntime {
+export function resolveRuntimeForMember(
+  db: DatabaseSync,
+  memberRow: ChannelAgentRow,
+  options?: { ignoreStoredOverrides?: boolean },
+): ResolvedAgentRuntime {
+  const overrides = options?.ignoreStoredOverrides ? {} : readSessionRuntimeOverrides(db, memberRow.id)
+  const effectiveMember: ChannelAgentRow = {
+    ...memberRow,
+    ...(overrides.harness ? { harness: overrides.harness } : {}),
+    ...(overrides.prefabBinding ? { prefabBindingJson: JSON.stringify(overrides.prefabBinding) } : {}),
+  }
   let binding: AgentPrefabBinding | null = null
   let bindingError: string | undefined
   try {
-    binding = parseAgentPrefabBinding(memberRow.prefabBindingJson)
+    binding = parseAgentPrefabBinding(effectiveMember.prefabBindingJson)
   }
   catch (err) {
     bindingError = err instanceof Error ? err.message : String(err)
   }
   if (bindingError) {
-    return { member: memberRow, binding: null, resolution: emptyPrefabResolution(bindingError), draft: null, bindingError }
+    return { member: effectiveMember, binding: null, resolution: emptyPrefabResolution(bindingError), draft: null, bindingError, overrides }
   }
 
   const loaded = binding ? createAgentPrefabService(db).loadRevision(binding.prefabId, binding.revision) : null
   if (binding && loaded && binding.contentHash !== loaded.revision.contentHash) {
     const bindingError = 'AgentPrefab 绑定 contentHash 与发布 revision 不匹配'
-    return { member: memberRow, binding, resolution: emptyPrefabResolution(bindingError), draft: null, bindingError }
+    return { member: effectiveMember, binding, resolution: emptyPrefabResolution(bindingError), draft: null, bindingError, overrides }
   }
   const bundle = binding && loaded ? buildCapabilityRegistry(memberRow.channelId) : null
   const policy = bundle ? getPolicySnapshot(memberRow.channelId) : null
@@ -77,7 +90,7 @@ export function resolveRuntimeForMember(db: DatabaseSync, memberRow: ChannelAgen
       id: memberRow.id,
       channelId: memberRow.channelId,
       role: memberRow.role === 'lead' ? 'lead' : 'worker',
-      harness: memberRow.harness,
+      harness: effectiveMember.harness,
     },
     channelPolicy,
     projectScope: null,
@@ -85,7 +98,7 @@ export function resolveRuntimeForMember(db: DatabaseSync, memberRow: ChannelAgen
     registry: bundle?.registry ?? {},
     prefab: loaded?.draft ?? null,
   })
-  return { member: memberRow, binding, resolution, draft: loaded?.draft ?? null }
+  return { member: effectiveMember, binding, resolution, draft: loaded?.draft ?? null, overrides }
 }
 
 /** 供 host-tool 目录/dispatch 使用的全局入口（manager 尚未初始化时返回 null）。 */

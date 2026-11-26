@@ -150,6 +150,16 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
         reason: string
         at: string
       }) => void
+      /**
+       * 会话级 runtime 覆盖：下一回合消息入口检查 revision。
+       * 返回 true 时 consumeLoop 把当前消息放回队列后热切换，当前回合不执行旧配置。
+       */
+      runtimeReloadRequested?: () => boolean
+      /**
+       * 会话级 runtime 热切换（manager 单飞）。
+       * true=新 runtime 已接管；false=没有替换（旧循环必须继续/重试）。
+       */
+      hotReloadRuntime?: () => Promise<boolean>
     },
   ) {
     super()

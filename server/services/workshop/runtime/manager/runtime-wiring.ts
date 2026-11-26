@@ -15,13 +15,14 @@ import { isRecoveryBlockedMessage } from '../../db/message.repo'
 import { SchedulerLoop } from '../scheduler-loop'
 import { buildMessage, instanceToAgentInfo, log, parseChannelLlm, rowToChannelMail, runtimeKey } from './helpers'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
+import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { harnessContinuityEnabled, rootQueueEnabled, workshopSettings } from '../../settings'
 import { TERMINAL_TASK_STATES, type TaskState } from '../../types/task'
 import { composeChannelSystemPrompt } from '../../aml/twin/prompt-composer'
 import { createChannelSessionRepo } from '../../db/channel-session.repo'
 import { activeSessionOfMember } from '../../agents/session-clone'
 import type { ChannelSessionExecutionScope } from '../../agents/host-tool-bridge'
-import { trustedSessionBindingIdentity } from '../../agents/session-snapshot'
+import { resolveTrustedSessionBinding } from '../../agents/session-snapshot'
 import { shouldRescueBusyStuck } from './rescue-policy'
 import { channelRecycleDecision } from './recycle-policy'
 import { SessionContextService, formatBriefText } from '../../sessions/context'
@@ -31,64 +32,15 @@ import { isLegacyRecoveryHeld } from '../task-engine/legacy-recovery'
 import { AppError } from '../../../../utils/errors'
 import { prefabPromptText } from '../../agent-prefabs/prompt'
 import { prefabBlockedReason, resolveRuntimeForAgent } from '../../agent-prefabs/runtime'
-import type { PrefabRuntimeProfile } from '../../agent-prefabs/types'
+import { applyPrefabProfile } from '../../agent-prefabs/profile'
+import { applySessionRuntimeOverrides, readSessionRuntimeOverrides } from '../../sessions/runtime-overrides'
+import { createSessionRuntimeOverrideRepo } from '../../db/session-runtime.repo'
 
 /**
  * 有原生会话持久化的引擎 → session 注入用 brief 档（只注身份+关键事实，历史归引擎）。
  * 未知引擎缺省 full：平台三层装配是无持久化引擎的安全缺省。
  */
 const SESSION_BRIEF_PROFILE_ENGINES = new Set(['claude'])
-
-// Only adapters that consume these model selectors may receive them from a Prefab.
-const PREFAB_PROVIDER_HARNESSES = new Set(['omp', 'opencode', 'dsh', 'goose', 'pi', 'hermes'])
-const PREFAB_MODEL_HARNESSES = new Set([...PREFAB_PROVIDER_HARNESSES, 'codex', 'claude', 'gemini', 'copilot', 'cursor', 'crush', 'qwen'])
-const PREFAB_EFFORT_SETTINGS = new Map([['omp', 'thinkingLevel'], ['opencode', 'variant'], ['pi', 'thinking']])
-const PREFAB_EFFORT_HARNESSES = new Set([...PREFAB_EFFORT_SETTINGS.keys(), 'codex'])
-const PREFAB_SETTING_ID = /^[a-z0-9][a-z0-9_.-]*$/i
-const PREFAB_MODEL_ID = /^[a-z0-9_@][a-z0-9_.:@+/-]*$/i
-const OMP_EFFORT_LEVELS = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'auto'])
-
-function applyPrefabProfile(config: Record<string, unknown>, harness: string, profile: PrefabRuntimeProfile): void {
-  const { provider, model } = profile
-  const effortSetting = PREFAB_EFFORT_SETTINGS.get(harness)
-  const unsupported = (field: string) => new AppError(409, 'PREFAB_PROFILE_UNSUPPORTED', `AgentPrefab profile.${field} 不受 ${harness} 支持或值无效`)
-  const validEffort = (value: unknown): value is string => typeof value === 'string'
-    && (harness === 'omp' ? OMP_EFFORT_LEVELS.has(value) : PREFAB_SETTING_ID.test(value))
-  for (const [key, value] of Object.entries(profile.settings ?? {})) {
-    if (key !== effortSetting || !validEffort(value)) throw unsupported(`settings.${key}`)
-  }
-  if (provider && (!PREFAB_PROVIDER_HARNESSES.has(harness) || !PREFAB_SETTING_ID.test(provider))) throw unsupported('provider')
-  if (model && (!PREFAB_MODEL_HARNESSES.has(harness) || !PREFAB_MODEL_ID.test(model))) throw unsupported('model')
-  if (profile.effort && (!PREFAB_EFFORT_HARNESSES.has(harness) || !validEffort(profile.effort))) throw unsupported('effort')
-
-  // 逐字段优先级：已发布的 Prefab > 成员配置 > Channel 默认值。
-  if (harness === 'opencode' && (provider || model)) {
-    // OpenCode reads provider from its qualified model. Keep that selector in sync.
-    const fallbackModel = typeof config.model === 'string' ? config.model : ''
-    const fallbackSlash = fallbackModel.indexOf('/')
-    const selectedModel = model || fallbackModel.slice(fallbackSlash + 1)
-    const slash = selectedModel.indexOf('/')
-    const modelProvider = model && slash >= 0 ? model.slice(0, slash) : undefined
-    const modelId = modelProvider !== undefined ? selectedModel.slice(slash + 1) : selectedModel
-    const fallbackProvider = fallbackSlash >= 0 ? fallbackModel.slice(0, fallbackSlash) : config.provider
-    const selectedProvider = provider || modelProvider || fallbackProvider
-    if (!modelId || (modelProvider !== undefined && (!PREFAB_SETTING_ID.test(modelProvider) || (provider && provider !== modelProvider)))) {
-      throw new AppError(409, 'PREFAB_PROFILE_CONFLICT', 'AgentPrefab OpenCode profile 需要有效且一致的 provider/model')
-    }
-    config.model = typeof selectedProvider === 'string' && selectedProvider ? `${selectedProvider}/${modelId}` : modelId
-    if (provider || modelProvider) config.provider = selectedProvider
-  }
-  else {
-    if (provider) config.provider = provider
-    if (model) config.model = model
-  }
-  // effort 与 adapter 原生别名是同一设置：同一 profile 中顶层 effort 优先。
-  const effort = profile.effort || (effortSetting ? profile.settings?.[effortSetting] : undefined)
-  if (effort) {
-    config.effort = effort
-    if (effortSetting) config[effortSetting] = effort
-  }
-}
 
 function memberMapContains(memberMapJson: string, memberId: string): boolean {
   const map = parseJson<unknown>(memberMapJson, null)
@@ -101,6 +53,14 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
   protected readonly channelUnloads = new Map<string, Promise<boolean>>()
   protected readonly channelRemovals = new Map<string, Promise<void>>()
   protected readonly channelAgentStops = new Map<string, Set<Promise<void>>>()
+  /** runtime 对象当前已装配的 session override revision（key = runtimeKey） */
+  protected readonly appliedRuntimeRevisions = new Map<string, number>()
+  /** 已装配的会话绑定范围指纹（product/line/recipes；空串=无工业范围） */
+  protected readonly appliedScopeFingerprints = new Map<string, string>()
+  /** 单实例热切换进行中的 promise（按 runtimeKey 单飞；true=已接管） */
+  protected readonly runtimeHotSwaps = new Map<string, Promise<boolean>>()
+  /** 显式“重建运行实例”请求（按 runtimeKey；下一回合入口消费后清除） */
+  protected readonly pendingRuntimeRebuilds = new Map<string, string>()
 
   /** Session Context 单例（按需建；repo 持有 db，不额外连接） */
   protected getSessionContextService(): SessionContextService {
@@ -115,13 +75,18 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
 
   /** 按实例装配 AgentRuntime(每个实例一个独立运行时) */
   protected wireMember(m: ChannelAgentRow): AgentRuntime {
-    const agent = instanceToAgentInfo(m)
+    // 会话级 harness 覆盖必须先于 AgentInfo 构造生效：harness 决定 implFactory、
+    // Prefab 能力交集与会话上下文 profile，不能等到 applySessionRuntimeOverrides 之后。
+    let runtimeOverrides: import('../../sessions/runtime-overrides').SessionRuntimeOverrides = readSessionRuntimeOverrides(this.deps.db, m.id)
+    const agent = instanceToAgentInfo(runtimeOverrides.harness ? { ...m, harness: runtimeOverrides.harness } : m)
     const cr = this.ensureChannelRuntime(m.channelId)
     const bus = this.buses.get(m.channelId)!
     const mailbox = new Mailbox(this.deps.repos.messages, m.channelId, agent.id, () => cr.wakeScheduler(),
       row => isRecoveryBlockedMessage(row, id => this.getTaskEngine().isLegacyRecoveryBlocked(id)))
     const sessionRow = activeSessionOfMember(createChannelSessionRepo(this.deps.db).listByChannel(m.channelId), agent.id)
-    const trustedSession = sessionRow ? trustedSessionBindingIdentity(sessionRow) : null
+    const trustedSession = sessionRow
+      ? resolveTrustedSessionBinding(this.deps.db, sessionRow, { recipeLookup: id => getDcwRecipeRepo().byId(id) })
+      : null
     const channelSessionScope: ChannelSessionExecutionScope | null = trustedSession
       ? { sessionId: trustedSession.sessionId, productId: trustedSession.productId, lineId: trustedSession.lineId, bindingSnapshotHash: trustedSession.bindingSnapshotHash, bindingSnapshotRevision: trustedSession.bindingSnapshotRevision, recipes: trustedSession.recipes }
       : null
@@ -172,6 +137,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // 无绑定的旧成员保持 legacy 行为；resolver 读失败且有绑定时不静默回落 legacy。
     try {
       const prefabRuntime = resolveRuntimeForAgent(this.deps.db, agent.id)
+      runtimeOverrides = prefabRuntime?.overrides ?? runtimeOverrides
       if (prefabRuntime?.resolution.mode === 'prefab') {
         const blocked = prefabBlockedReason(prefabRuntime.resolution)
         if (blocked) throw new AppError(409, 'PREFAB_REQUIRED_CAPABILITY_MISSING', blocked)
@@ -188,6 +154,8 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
         throw new AppError(500, 'PREFAB_RESOLUTION_FAILED', `AgentPrefab 解析失败：${err instanceof Error ? err.message : String(err)}`)
       }
     }
+    // 会话级 runtime 覆盖最后生效：prefab profile 之后应用，runtimePrompt 作为低信任附加段。
+    applySessionRuntimeOverrides(configWithCtx, agent.harness, runtimeOverrides)
     const agentWithCtx: AgentInfo = { ...agent, config: configWithCtx }
     const impl = this.deps.implFactory(agentWithCtx)
     // 必须保留接收者调用:setChannelSessionScope 是原型方法,解构后裸调用会丢 this,
@@ -276,9 +244,14 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       // 必须落 Channel 共享记忆 —— watchdog 只在内存态可见等于"零观测"。
       onSupervisionSignal: e => this.recordSupervisionSignal(e),
       onHarnessRestart: e => this.recordHarnessRestartEvent(e),
+      // 会话级 runtime 覆盖：只在下一回合消息入口触发单实例热切换；当前回合不打断。
+      runtimeReloadRequested: () => this.runtimeRevisionChanged(m.channelId, agent.id),
+      hotReloadRuntime: () => this.hotReloadRuntime(m.channelId, agent.id),
     })
     cr.addAgent(runtime)
     this.agentIndex.set(runtimeKey(m.channelId, agent.id), runtime)
+    this.appliedRuntimeRevisions?.set(runtimeKey(m.channelId, agent.id), this.sessionRuntimeRevisionOf(agent.id))
+    this.appliedScopeFingerprints?.set(runtimeKey(m.channelId, agent.id), trustedSession?.fingerprint ?? '')
     runtime.start()
     // lead 惰性重组时复活调度器:lead 曾因 120s 空闲被清扫卸载(stopAndDetach 会把
     // cr.scheduler 置 null)后,若无人重建调度循环,频道进入"worker 活着、lead 不派活"
@@ -301,6 +274,9 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       if (String(existing.getState?.() ?? '') !== 'stopped') return existing
       log.warn(`[AgentChannelManager] 命中已停止的运行时,摘除后重装配 ${channelId.slice(0, 8)}/${agentId.slice(0, 8)}`)
       this.agentIndex.delete(key)
+      this.appliedRuntimeRevisions?.delete(key)
+      this.appliedScopeFingerprints?.delete(key)
+      this.pendingRuntimeRebuilds?.delete(key)
       this.channels.get(channelId)?.detachAgent(agentId)
     }
     const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
@@ -330,6 +306,95 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
 
   protected runtimeOf(channelId: string, agentId: string): AgentRuntime | undefined {
     return this.agentIndex.get(runtimeKey(channelId, agentId))
+  }
+
+  /** 该 runtime 对象当前持久化的 session override revision（无行/读失败 = 0）。 */
+  protected sessionRuntimeRevisionOf(agentId: string): number {
+    try {
+      return createSessionRuntimeOverrideRepo(this.deps.db).findByAgent(agentId)?.revision ?? 0
+    }
+    catch (err) {
+      log.warn(`[AgentChannelManager] 读取 session runtime revision 失败(按 0 处理) agent=${agentId.slice(0, 8)}:`, err)
+      return 0
+    }
+  }
+
+  /** 已装配 revision 与持久化 revision / 会话范围指纹的差异；下一回合入口据此决定是否热切换。 */
+  protected runtimeRevisionChanged(channelId: string, agentId: string): boolean {
+    const key = runtimeKey(channelId, agentId)
+    if (!this.agentIndex.has(key)) return false
+    if (this.pendingRuntimeRebuilds?.has(key)) return true
+    if (this.sessionRuntimeRevisionOf(agentId) !== (this.appliedRuntimeRevisions?.get(key) ?? 0)) return true
+    const appliedScope = this.appliedScopeFingerprints?.get(key)
+    if (appliedScope !== undefined && this.sessionScopeFingerprintOf(channelId, agentId) !== appliedScope) return true
+    return false
+  }
+
+  /**
+   * 当前有效会话范围指纹。覆盖行按“当前 recipe 定义”计算，所以 recipe 改版/新增/删除
+   * 也会改变指纹 → 下一回合自动热切换；创建快照会话返回 snapshot hash（保持原语义）。
+   */
+  protected sessionScopeFingerprintOf(channelId: string, agentId: string): string {
+    try {
+      const sessions = createChannelSessionRepo(this.deps.db).listByChannel(channelId)
+      const session = activeSessionOfMember(sessions, agentId)
+      if (!session) return ''
+      return resolveTrustedSessionBinding(this.deps.db, session, { recipeLookup: id => getDcwRecipeRepo().byId(id) })?.fingerprint ?? ''
+    }
+    catch (err) {
+      log.warn(`[AgentChannelManager] 读取会话范围指纹失败(按空处理) ${channelId.slice(0, 8)}/${agentId.slice(0, 8)}:`, err)
+      return ''
+    }
+  }
+
+  /**
+   * 显式请求重建一个已装配的运行实例（节点/配方绑定或频道上下文变化的“应用”按钮）。
+   * 只对已装配 worker 生效；lead 的调度器持有旧 runtime 引用，换实例会破坏派发，
+   * 因此拒绝（lead 走自然重装配）。真正的重建仍由下一回合入口执行，避免打断当前回合。
+   */
+  requestRuntimeRebuild(channelId: string, agentId: string, reason = 'manual'): boolean {
+    const key = runtimeKey(channelId, agentId)
+    if (!this.agentIndex.has(key)) return false
+    const row = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+    if (!row || row.role !== 'worker' || row.agentKind === 'project_leader') return false
+    this.pendingRuntimeRebuilds?.set(key, reason)
+    return true
+  }
+
+  /**
+   * 单实例热切换：先装配新 runtime 并接管 map，再异步停旧 runtime。
+   * 不经过 stopAndDetach 的“先摘索引”窗口，因此路由始终能拿到旧或新 runtime；
+   * 调用方（AgentRuntime.consumeLoop）已把当前消息放回 pending，新 runtime 恰好消费一次。
+   * 返回 true=新 runtime 已接管；false=没有替换（旧循环必须继续，不能退出）。
+   */
+  protected async hotReloadRuntime(channelId: string, agentId: string): Promise<boolean> {
+    const key = runtimeKey(channelId, agentId)
+    const inFlight = this.runtimeHotSwaps?.get(key)
+    if (inFlight) return inFlight
+    const old = this.agentIndex.get(key)
+    if (!old) return false
+    const work = (async (): Promise<boolean> => {
+      const row = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+      if (!row || row.enabled !== 1) return false
+      // 必须使用 current row 重新解析（session overrides/prefab 已由 resolver 读取）。
+      const fresh = this.wireMember(row)
+      // 只有成功装配后才消费重建请求；wire 失败保留标记，下一回合继续重试。
+      this.pendingRuntimeRebuilds?.delete(key)
+      // 新 runtime 已在 agentIndex/cr.agents 中接管；旧 runtime 只停，不 detach 新实例。
+      void old.stopForHotSwap().catch((err) => {
+        log.warn(`[AgentChannelManager] 会话 runtime 旧实例停止失败(新实例已接管): ${channelId.slice(0, 8)}/${agentId.slice(0, 8)}`, err)
+      })
+      fresh.wakeMailbox()
+      log.info(`[AgentChannelManager] 会话 runtime 热切换完成: ${channelId.slice(0, 8)}/${agentId.slice(0, 8)} rev=${this.sessionRuntimeRevisionOf(agentId)} scope=${(this.sessionScopeFingerprintOf(channelId, agentId) || '-').slice(0, 8)}`)
+      return true
+    })()
+    this.runtimeHotSwaps.set(key, work)
+    try {
+      return await work
+    }
+    finally {
+      this.runtimeHotSwaps.delete(key)
+    }
   }
 
   /** 激活 channel:装配 lead 运行时 + 装配并启动 SchedulerLoop(幂等) */
@@ -441,6 +506,8 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const cr = this.channels.get(channelId)
     this.stoppingAgents.add(key)
     this.agentIndex.delete(key)
+    this.appliedRuntimeRevisions?.delete(key)
+    this.pendingRuntimeRebuilds?.delete(key)
     cr?.detachAgent(agentId)
     this.clearInvocationScope(agentId)
     const stops = this.channelAgentStops.get(channelId) ?? new Set<Promise<void>>()
@@ -654,6 +721,9 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       cr.detachAgent(agent.agentId)
       if (this.agentIndex.get(runtimeKey(channelId, agent.agentId)) === agent) {
         this.agentIndex.delete(runtimeKey(channelId, agent.agentId))
+        this.appliedRuntimeRevisions?.delete(runtimeKey(channelId, agent.agentId))
+        this.appliedScopeFingerprints?.delete(runtimeKey(channelId, agent.agentId))
+        this.pendingRuntimeRebuilds?.delete(runtimeKey(channelId, agent.agentId))
       }
       this.clearInvocationScope(agent.agentId)
     }

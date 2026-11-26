@@ -5,15 +5,17 @@
 import { ManagerNotifications } from './notifications'
 import type { ActingUser, AgentTemplateDetail } from './types'
 import type { AgentInfo } from '../../agents/agent-interface'
-import { trustedSessionBindingIdentity } from '../../agents/session-snapshot'
+import { resolveTrustedSessionBinding } from '../../agents/session-snapshot'
 import type { AgentRow, ChannelRow, WorkspaceRow } from '../../db/database'
 import type { ChannelAgentCreationSource, ChannelMode } from '../../db/database/rows'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { log } from './helpers'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
+import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { getToolRegistryRepo } from '../../db/tool-registry.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
+import { applyProfileToConfig, profileSelectionChanged } from '../../agent-prefabs/profile'
 import { assertChannelWorkspaceAllowed, assertSpawnConfigAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
 import { mkdirSync } from 'node:fs'
 import { parseJson } from '../../db/database'
@@ -322,7 +324,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
       const sessions = createChannelSessionRepo(this.deps.db).listByChannel(member.channelId)
       const session = activeSessionOfMember(sessions, agentId)
       if (session) {
-        return trustedSessionBindingIdentity(session)?.lineId ?? null
+        return resolveTrustedSessionBinding(this.deps.db, session, { recipeLookup: id => getDcwRecipeRepo().byId(id) })?.lineId ?? null
       }
       // Stale or ambiguous clones must never inherit the mutable channel binding.
       if (String(member.name ?? '').includes(SESSION_MARKER)
@@ -445,7 +447,9 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
   }): Promise<AgentTemplateDetail> {
     // 执行前强校验:引擎未安装的模板不允许落库(前端下拉已禁用未安装项,此处兜底)
     assertHarnessUsable(input.harness, input.config)
-    const row = this.deps.repos.agents.create({ name: input.name, harness: input.harness, config: input.config, visibility: input.visibility, ownerUserId: input.ownerUserId ?? null })
+    // 结构校验 + 原生别名归一（provider/model/effort → 该引擎真实读取的键）。
+    const config = input.config ? applyProfileToConfig(input.harness, input.config) : undefined
+    const row = this.deps.repos.agents.create({ name: input.name, harness: input.harness, config, visibility: input.visibility, ownerUserId: input.ownerUserId ?? null })
     return this.templateDetailOf(row)
   }
 
@@ -478,8 +482,16 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
   async updateAgent(agentId: string, patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number, visibility?: string }): Promise<AgentTemplateDetail> {
     const row = this.deps.repos.agents.findById(agentId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${agentId}`)
-    if (patch.harness) assertHarnessUsable(patch.harness, patch.config ?? parseJson<Record<string, unknown>>(row.configJson, {}))
-    const updated = this.deps.repos.agents.update(agentId, patch)
+    let nextPatch = patch
+    const currentConfig = parseJson<Record<string, unknown>>(row.configJson, {})
+    const profileTouched = Boolean(patch.harness) || (patch.config ? profileSelectionChanged(currentConfig, patch.config) : false)
+    if (profileTouched) {
+      const targetHarness = patch.harness ?? row.harness
+      const nextConfig = applyProfileToConfig(targetHarness, patch.config ?? currentConfig)
+      if (patch.harness) assertHarnessUsable(patch.harness, nextConfig)
+      nextPatch = { ...patch, config: nextConfig }
+    }
+    const updated = this.deps.repos.agents.update(agentId, nextPatch)
     if (!updated) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${agentId}`)
     return this.templateDetailOf(updated)
   }

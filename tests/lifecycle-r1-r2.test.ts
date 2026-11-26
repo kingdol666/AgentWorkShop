@@ -36,7 +36,7 @@ test('shutdown waits for runtime cleanup before database close', () => {
   const lifecycle = readFileSync(new URL('../server/services/workshop/runtime/agent-runtime/lifecycle.ts', import.meta.url), 'utf8')
   const observe = readFileSync(new URL('../server/services/workshop/runtime/manager/runtime-observe.ts', import.meta.url), 'utf8')
   const plugin = readFileSync(new URL('../server/plugins/workshop.ts', import.meta.url), 'utf8')
-  assert.match(lifecycle, /await this\.disposeInBackground\(\)/)
+  assert.match(lifecycle, /await this\.disposeInBackground\(options\)/)
   assert.match(lifecycle, /await this\.loopPromise/)
   assert.match(lifecycle, /await this\.postSettlePromise/)
   assert.match(observe, /await Promise\.all\(\[\.\.\.this\.agentIndex\.values\(\)\]\.map\(a => a\.stop\(\)\)\)/)

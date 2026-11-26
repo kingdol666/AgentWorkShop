@@ -24,14 +24,17 @@ export function liveAgents(): Set<LiveOmpAgent> {
   return gLive.__ompLiveAgents ??= new Set()
 }
 
-// 工具注册表变更 → 全部在跑会话热更新工具面
-onPluginToolsChange(() => {
+/** 工具注册表/绑定面变更 → 全部在跑会话热更新工具面（失败互不影响）。 */
+export function refreshLiveOmpToolSurfaces(): void {
   for (const impl of liveAgents()) {
     try {
       impl.refreshPluginTools()
     }
     catch { /* 单实例失败不影响其他 */ }
   }
-})
+}
+
+// 工具注册表变更 → 全部在跑会话热更新工具面
+onPluginToolsChange(() => refreshLiveOmpToolSurfaces())
 
 // ===== OmpRpcAgentImpl =====

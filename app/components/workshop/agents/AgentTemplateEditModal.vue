@@ -42,12 +42,17 @@ const { form, save } = useAgentTemplateForm({
   >
     <a-form layout="vertical">
       <a-form-item :label="$t('agents.k3xhia001')">
-        <a-input v-model:value="form.name" />
+        <a-input
+          v-model:value="form.name"
+          data-testid="agent-template-name"
+        />
       </a-form-item>
       <a-form-item label="harness">
         <a-select
           v-model:value="form.harness"
           :options="harnessOptions"
+          data-testid="agent-template-harness"
+          @change="form.harnessTouched = true"
         >
           <template #option="{ value, label }">
             <span
@@ -91,6 +96,16 @@ const { form, save } = useAgentTemplateForm({
           >{{ b }}</span>
         </div>
       </a-form-item>
+      <a-divider>{{ $t('runtimeProfile.section') }}</a-divider>
+      <workshop-runtime-profile-fields
+        v-model:provider="form.provider"
+        v-model:model="form.model"
+        v-model:effort="form.effort"
+        :harness="form.harness"
+        :harnesses="harnesses"
+        :harness-touched="form.harnessTouched"
+        testid-prefix="agent-template-profile"
+      />
       <a-form-item :label="$t('agents.k3lrqn0002')">
         <a-radio-group v-model:value="form.visibility">
           <a-radio value="private">

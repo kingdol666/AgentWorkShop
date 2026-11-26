@@ -1,6 +1,7 @@
 import { recipeDefinitionHash } from './industrial/recipe-snapshot'
 import { canonicalHash, canonicalJson } from '@/shared/context/hash'
 import { parseJson } from '../db/database'
+import { createSessionBindingOverrideRepo } from '../db/session-binding.repo'
 
 export interface SessionRecipeSnapshotInput {
   id: string
@@ -9,6 +10,20 @@ export interface SessionRecipeSnapshotInput {
   version: number
   params: unknown[]
   daqWindows: unknown[]
+}
+
+/** 运行期可变范围用：按 id 读取当前 recipe 定义（缺失返回 undefined）。 */
+export interface SessionBindingRecipeView {
+  id: string
+  productId: string
+  lineId: string
+  version?: number
+  params?: unknown[]
+  daqWindows?: unknown[]
+}
+
+export interface SessionBindingRecipeLookup {
+  (id: string): SessionBindingRecipeView | undefined
 }
 
 export interface SessionAgentBindingSnapshotInput {
@@ -45,6 +60,10 @@ export interface TrustedSessionBindingIdentity {
   bindingSnapshotRevision: number
   recipes: Array<{ id: string, version: number, contentHash: string }>
   channelMode: 'generic' | 'production_line_integrated'
+  /** true = 覆盖行生效（product/line/recipe 可运行期修改，recipe 版本按当前定义解析） */
+  mutable: boolean
+  /** 范围指纹：覆盖行按当前 recipes 计算；创建快照用 snapshot hash。manager 据此触发热切换。 */
+  fingerprint: string
 }
 
 /** Validate persisted industrial authorization against its immutable canonical snapshot. */
@@ -80,6 +99,79 @@ export function trustedSessionBindingIdentity(row: {
       bindingSnapshotRevision: row.bindingSnapshotRevision,
       recipes,
       channelMode: 'production_line_integrated',
+      mutable: false,
+      fingerprint: row.bindingSnapshotHash,
+    }
+  }
+  catch {
+    return null
+  }
+}
+
+/**
+ * 运行期有效绑定范围：有覆盖行时以覆盖为准（product/line/recipe 可改，recipe 版本按当前定义解析）；
+ * 无覆盖行时回落到创建快照。
+ *
+ * `recipeLookup` 由调用方注入（避免 session-snapshot 在模块加载期拉起 DCW JSON 仓库）。
+ * 覆盖行存在但未提供 lookup / JSON/hash 不自洽 → 返回 null（fail closed）。
+ */
+export function resolveTrustedSessionBinding(
+  db: Parameters<typeof createSessionBindingOverrideRepo>[0],
+  row: {
+    id: string
+    channelId: string
+    channelMode: string
+    productId: string | null
+    lineId: string | null
+    bindingSnapshotJson: string
+    bindingSnapshotHash: string
+    bindingSnapshotRevision: number
+  },
+  opts?: { recipeLookup?: SessionBindingRecipeLookup },
+): TrustedSessionBindingIdentity | null {
+  let override
+  try {
+    override = createSessionBindingOverrideRepo(db).get(row.id)
+  }
+  catch {
+    return null
+  }
+  if (!override) return trustedSessionBindingIdentity(row)
+  try {
+    if (row.channelMode !== 'production_line_integrated') return null
+    const parsed = parseJson<Record<string, unknown> | null>(override.bindingJson, null)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    const productId = typeof parsed.productId === 'string' ? parsed.productId : ''
+    const lineId = typeof parsed.lineId === 'string' ? parsed.lineId : ''
+    const revision = Number(parsed.revision)
+    if (parsed.schemaVersion !== 1 || parsed.channelId !== row.channelId || !productId || !lineId) return null
+    if (!Number.isSafeInteger(revision) || revision < 1 || revision !== override.revision) return null
+    if (canonicalJson(parsed) !== override.bindingJson || canonicalHash(parsed) !== override.bindingHash) return null
+    if (!Array.isArray(parsed.recipeIds) || !parsed.recipeIds.every(id => typeof id === 'string')) return null
+    if (!opts?.recipeLookup) return null
+    const recipes = (parsed.recipeIds as string[])
+      .map(id => opts.recipeLookup!(id))
+      .flatMap((recipe) => {
+        if (!recipe || recipe.productId !== productId || recipe.lineId !== lineId) return []
+        return [{
+          id: recipe.id,
+          version: recipe.version ?? 1,
+          contentHash: recipeDefinitionHash({ params: recipe.params ?? [], daqWindows: recipe.daqWindows ?? [] }),
+        }]
+      })
+      .sort((a, b) => a.id.localeCompare(b.id))
+    const fingerprint = canonicalHash({ productId, lineId, recipes })
+    return {
+      channelId: row.channelId,
+      sessionId: row.id,
+      productId,
+      lineId,
+      bindingSnapshotHash: override.bindingHash,
+      bindingSnapshotRevision: override.revision,
+      recipes,
+      channelMode: 'production_line_integrated',
+      mutable: true,
+      fingerprint,
     }
   }
   catch {

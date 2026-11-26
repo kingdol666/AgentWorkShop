@@ -11,6 +11,8 @@ import { migrateProjectColumns, ensureProjectIndexes, migrateApprovedSlotScope }
 import { migrateSessionContextColumns, migrateSessionChannelModeColumn, ensureSessionIndexes } from './migrations-session'
 import { migrateExperienceColumns, ensureExperienceIndexes } from './migrations-experience'
 import { migratePrefabColumns } from './migrations-prefab'
+import { migrateSessionRuntimeOverrides } from './migrations-session-runtime'
+import { migrateSessionBindingOverrides } from './migrations-session-binding'
 import { migrateExperienceVersionStore } from './migrations-experience-versions'
 import { migrateHitlExecutionRefColumns } from './migrations-hitl-ref'
 import { migrateImprovementProposals } from './migrations-improvement'
@@ -76,6 +78,10 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateApprovedSlotScope(db)
   // Session Context：同样必须先于 tasks legacy rebuild 补列；rebuild 列清单已带 session_id。
   migrateSessionContextColumns(db)
+  // 会话级 runtime 覆盖（additive 新表；不改 SCHEMA_SQL 契约，无行 = 继承成员配置）
+  migrateSessionRuntimeOverrides(db)
+  // 会话绑定范围覆盖（product/line/recipes 运行期可改；无行 = 创建快照）
+  migrateSessionBindingOverrides(db)
   // RSI 经验层(2026-11-09)：agent_memories 证据链/作用域/生命周期列 + analysis_reports.recipe_run_id。
   // 只加列不重建；必须在 ensureExperienceIndexes 之前(缺列建索引会中断)。
   migrateExperienceColumns(db)

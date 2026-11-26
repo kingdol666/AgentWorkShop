@@ -714,6 +714,12 @@ defineExpose({
                 class="sm-member-empty"
               >{{ t('sessionManage.noMembers') }}</span>
             </div>
+
+            <workshop-session-runtime-panel
+              :channel-id="channelId"
+              :session-id="activeSession.id"
+              @changed="emit('sessions-changed')"
+            />
           </div>
 
           <div class="sm-msgs-head">

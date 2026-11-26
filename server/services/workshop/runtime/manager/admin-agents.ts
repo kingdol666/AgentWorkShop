@@ -10,10 +10,13 @@ import { AgentMemory, runMemoryMaintenance, segmentCJK, unsegmentCJK, vectorizeM
 import { AppError } from '../../../../utils/errors'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
+import { harnessToolSurface } from '../../agents/registry'
 import { assertSpawnConfigAllowed, assertSpawnConfigPatchAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
+import { applyProfileToConfig, profileSelectionChanged } from '../../agent-prefabs/profile'
+import { validateMemberHarnessChange } from '../../sessions/member-harness'
 import { instanceToAgentInfo, log } from './helpers'
 import { createChannelSession, closeChannelSession, reconcileClosingSessions, activeSessionIdOfMember, activeSessionOfMember, frozenBindingMembers, isUnclosedSessionClone, SESSION_MARKER } from '../../agents/session-clone'
-import { createChannelSessionBindingSnapshot, trustedSessionBindingIdentity } from '../../agents/session-snapshot'
+import { createChannelSessionBindingSnapshot, resolveTrustedSessionBinding } from '../../agents/session-snapshot'
 import { createChannelProductBindingRepo } from '../../db/channel-product-binding.repo'
 import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
@@ -31,6 +34,9 @@ import { workshopSettings } from '../../settings'
 import { selectBroadcastTargets } from './broadcast-targets'
 import { ensurePrefabBindingVersion } from '../../db/channel-agent.repo'
 import { randomUUID } from 'node:crypto'
+import { createSessionRuntimeService, type SessionRuntimeView } from '../../sessions/runtime-service'
+import { createSessionBindingService, type SessionBindingView } from '../../sessions/session-binding-service'
+import type { ActingUser } from './types'
 
 export function assertPrefabBindingActiveAtWrite(db: Parameters<typeof withTransaction>[0], raw: string | undefined): void {
   if (!raw) return
@@ -68,7 +74,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
   protected insertChannelAgent(input: AddChannelAgentInput): ChannelAgentRow {
     const tpl = this.deps.repos.agents.findById(input.agentId)
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${input.agentId}`)
-    const instConfig = { ...parseJson<Record<string, unknown>>(tpl.configJson, {}), ...input.configOverride }
+    const instConfig = applyProfileToConfig(tpl.harness, { ...parseJson<Record<string, unknown>>(tpl.configJson, {}), ...input.configOverride })
     // 服务层收权：不能只在 REST 入口校验，lead/MCP/模板/调度路径也必须过同一门。
     assertSpawnConfigAllowed(tpl.harness, instConfig, input.actor ?? { role: 'user' })
     // 绑定即执行入口:引擎未安装的模板不许入 channel(deploy/加成员在此失败,不产生半成品实例)
@@ -403,9 +409,31 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       assertPrefabBindingActiveAtWrite(this.deps.db, patch.prefabBindingJson)
     }
     if (bindingChange) await this.assertPrefabBindingChangeSafe(m)
-    const nextConfig = patch.config ?? parseJson<Record<string, unknown>>(m.configJson, {})
-    assertSpawnConfigPatchAllowed(patch.harness ?? m.harness, parseJson<Record<string, unknown>>(m.configJson, {}), nextConfig, meta?.actor ?? { role: 'user' })
+    const targetHarness = patch.harness ?? m.harness
+    const currentConfig = parseJson<Record<string, unknown>>(m.configJson, {})
+    // harness/config 变更时把 provider/model/effort 归一成目标引擎真实读取的键
+    // （omp thinkingLevel / opencode variant+限定 model / pi thinking）。
+    const changedProfile = Boolean(patch.harness && patch.harness !== m.harness)
+      || (patch.config ? profileSelectionChanged(currentConfig, patch.config) : false)
+    if (changedProfile) {
+      // 活动会话的 clone：runtime 元数据必须走会话级覆盖（CAS + dry-run + 下一回合热切换）。
+      // 直接改 clone 行会绕开会话覆盖并造成 wire 期冲突。
+      const activeSession = activeSessionOfMember(createChannelSessionRepo(this.deps.db).listByChannel(m.channelId), m.id)
+      if (activeSession) {
+        throw new AppError(409, 'SESSION_RUNTIME_API_REQUIRED',
+          `该成员属于活动会话（${activeSession.id.slice(0, 8)}）：请在会话详情「运行实例」中修改 harness/模型；直接改成员行会与会话覆盖冲突`)
+      }
+    }
+    const nextConfig = changedProfile
+      ? applyProfileToConfig(targetHarness, patch.config ?? currentConfig)
+      : (patch.config ?? currentConfig)
+    const effectivePatch = changedProfile ? { ...patch, config: nextConfig } : patch
+    assertSpawnConfigPatchAllowed(targetHarness, currentConfig, nextConfig, meta?.actor ?? { role: 'user' })
     if (patch.harness) assertHarnessUsable(patch.harness, nextConfig)
+    if (patch.harness && patch.harness !== m.harness) {
+      // 预检必须在事务之前：否则 PATCH 成功、下一回合装配才 409（旧实现的实际缺陷）。
+      validateMemberHarnessChange(this.deps.db, m, patch.harness, nextConfig)
+    }
     if (bindingChange) {
       const current = this.deps.repos.channelAgents.findById(instanceId)
       if (current) this.assertPrefabBindingChangeSafeSync(current)
@@ -417,18 +445,18 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       if (bindingChange) this.assertPrefabBindingChangeSafeSync(current)
       // Binding mutations have their own SQLite CAS. Never route them through the
       // generic member UPDATE, which would permit replacing a pinned revision.
-      if (patch.prefabBindingJson !== undefined) {
-        if (patch.prefabBindingJson) assertPrefabBindingActiveAtWrite(this.deps.db, patch.prefabBindingJson)
+      if (effectivePatch.prefabBindingJson !== undefined) {
+        if (effectivePatch.prefabBindingJson) assertPrefabBindingActiveAtWrite(this.deps.db, effectivePatch.prefabBindingJson)
         this.deps.repos.channelAgents.setPrefabBinding(
           current.channelId,
           instanceId,
-          patch.prefabBindingJson,
-          patch.expectedBindingVersion,
+          effectivePatch.prefabBindingJson,
+          effectivePatch.expectedBindingVersion,
         )
       }
-      const memberPatch = patch.prefabBindingJson === undefined
-        ? patch
-        : { ...patch, prefabBindingJson: undefined }
+      const memberPatch = effectivePatch.prefabBindingJson === undefined
+        ? effectivePatch
+        : { ...effectivePatch, prefabBindingJson: undefined }
       this.deps.repos.channelAgents.update(instanceId, memberPatch)
       return this.deps.repos.channelAgents.findById(instanceId)!
     })
@@ -902,6 +930,146 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     return createChannelSessionRepo(this.deps.db).findById(sessionId)
   }
 
+  /** 会话 runtime 对象列表（manual/task 均可读；task/project 只读由 service 返回 manageable=false）。 */
+  listSessionRuntime(channelId: string, sessionId: string, user: ActingUser): SessionRuntimeView[] {
+    this.getChannelForUser(channelId, user.id)
+    return createSessionRuntimeService(this.deps.db, { toolSurface: harnessToolSurface }).list(channelId, sessionId)
+  }
+
+  getSessionRuntime(channelId: string, sessionId: string, agentId: string, user: ActingUser): SessionRuntimeView {
+    this.getChannelForUser(channelId, user.id)
+    return createSessionRuntimeService(this.deps.db, { toolSurface: harnessToolSurface }).get(channelId, sessionId, agentId)
+  }
+
+  /**
+   * 修改单个 manual session runtime 的元数据（provider/model/effort/runtimePrompt/prefab）。
+   * 持久化 revision CAS；下一回合消息入口由 runtime 热切换生效，当前回合不打断。
+   */
+  async updateSessionRuntime(
+    channelId: string,
+    sessionId: string,
+    agentId: string,
+    input: { expectedRevision: number, reset?: boolean, overrides?: unknown },
+    user: ActingUser & { name?: string },
+  ): Promise<SessionRuntimeView> {
+    const channel = this.getChannelForUser(channelId, user.id)
+    this.requireWritable(channel.ownerUserId, user, 'channel')
+    const runtimeService = createSessionRuntimeService(this.deps.db, { toolSurface: harnessToolSurface })
+    const before = runtimeService.get(channelId, sessionId, agentId)
+    const view = await runtimeService.update({
+      channelId,
+      sessionId,
+      agentId,
+      expectedRevision: input.expectedRevision,
+      reset: input.reset,
+      overrides: input.overrides,
+      actor: { id: user.id, role: user.role },
+    })
+    const changedKeys = input.reset === true
+      ? ['reset']
+      : Object.keys((input.overrides ?? {}) as Record<string, unknown>)
+    try {
+      const { recordOps } = await import('../../ops/ops')
+      recordOps({
+        actor: user.id,
+        actorName: user.name ?? '',
+        actorKind: 'user',
+        action: input.reset === true ? 'channel.session.runtime.reset' : 'channel.session.runtime.update',
+        kind: 'manual',
+        targetKind: 'session_runtime',
+        targetId: view.runtimeObjectId,
+        lineId: '',
+        summary: `${input.reset === true ? '重置' : '修改'}会话 runtime「${view.name}」(${view.runtimeObjectId.slice(0, 8)}) revision ${view.revision}`,
+        detail: {
+          sessionId,
+          agentId,
+          revision: view.revision,
+          changedKeys,
+          before: {
+            harness: before.harness,
+            provider: before.effective.provider ?? null,
+            model: before.effective.model ?? null,
+            effort: before.effective.effort ?? null,
+            runtimePromptLength: before.effective.runtimePrompt?.length ?? 0,
+            prefabId: before.effective.prefab?.prefabId ?? null,
+            prefabRevision: before.effective.prefab?.revision ?? null,
+            revision: before.revision,
+          },
+          after: {
+            harness: view.harness,
+            provider: view.effective.provider ?? null,
+            model: view.effective.model ?? null,
+            effort: view.effective.effort ?? null,
+            runtimePromptLength: view.effective.runtimePrompt?.length ?? 0,
+            prefabId: view.effective.prefab?.prefabId ?? null,
+            prefabRevision: view.effective.prefab?.revision ?? null,
+            revision: view.revision,
+          },
+        },
+      })
+    }
+    catch (err) {
+      // 审计面失败不改变已提交的 runtime 覆盖；留错误日志供运维补记。
+      log.error('[session-runtime] 审计写入失败:', err)
+    }
+    return view
+  }
+
+  /**
+   * 显式“重建运行实例”：只入队，真正的重建在下一回合消息入口执行（不打断当前回合）。
+   * 未装配的 runtime 无需重建（下一条消息会按最新 DB 装配）。
+   */
+  requestSessionRuntimeRebuild(
+    channelId: string,
+    sessionId: string,
+    agentId: string,
+    user: ActingUser,
+  ): { queued: boolean, effectiveAt: 'next_turn' } {
+    const channel = this.getChannelForUser(channelId, user.id)
+    this.requireWritable(channel.ownerUserId, user, 'channel')
+    const session = createChannelSessionRepo(this.deps.db).findById(sessionId)
+    if (!session || session.channelId !== channelId) throw new AppError(404, 'NOT_FOUND', `会话不存在: ${sessionId}`)
+    if (session.instanceKind !== 'manual') throw new AppError(409, 'SESSION_MANAGED', '仅手工会话可重建运行实例')
+    if (session.status !== 'active') throw new AppError(409, 'SESSION_NOT_ACTIVE', '会话已关闭，不能重建运行实例')
+    const map = parseJson<Record<string, string>>(session.memberMapJson, {})
+    if (!Object.values(map).includes(agentId)) {
+      throw new AppError(404, 'NOT_FOUND', `会话 runtime 不存在: ${agentId}`)
+    }
+    const member = this.deps.repos.channelAgents.findById(agentId)
+    if (!member || member.role !== 'worker') {
+      throw new AppError(409, 'RUNTIME_REBUILD_LEAD_UNSUPPORTED', 'lead 运行实例不支持手动重建（调度器持有其引用）；请等待自然重装配')
+    }
+    return { queued: this.requestRuntimeRebuild(channelId, agentId, 'manual'), effectiveAt: 'next_turn' }
+  }
+
+  /**
+   * 会话绑定范围（product/line/recipes）：创建快照是基线，覆盖行让运行期可改。
+   * 写入后在下一回合由 manager 的 scope fingerprint 检测并热切换。
+   */
+  getSessionBinding(channelId: string, sessionId: string, user: ActingUser): SessionBindingView {
+    this.getChannelForUser(channelId, user.id)
+    return createSessionBindingService(this.deps.db).get(channelId, sessionId)
+  }
+
+  async updateSessionBinding(
+    channelId: string,
+    sessionId: string,
+    input: { expectedRevision: number, reset?: boolean, productId?: string, recipeIds?: string[] },
+    user: ActingUser & { name?: string },
+  ): Promise<SessionBindingView> {
+    const channel = this.getChannelForUser(channelId, user.id)
+    this.requireWritable(channel.ownerUserId, user, 'channel')
+    return createSessionBindingService(this.deps.db).update({
+      channelId,
+      sessionId,
+      expectedRevision: input.expectedRevision,
+      reset: input.reset,
+      productId: input.productId,
+      recipeIds: input.recipeIds,
+      actor: { id: user.id, role: user.role, name: user.name },
+    })
+  }
+
   channelModeForAgent(agentId: string): import('../../db/database/rows').ChannelMode {
     try {
       const agent = this.deps.repos.channelAgents.findById(agentId)
@@ -916,7 +1084,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       if (matches.length === 1) {
         const session = matches[0]!
         if (session.channelMode !== 'production_line_integrated') return 'generic'
-        return trustedSessionBindingIdentity(session)?.channelMode ?? 'generic'
+        return resolveTrustedSessionBinding(this.deps.db, session, { recipeLookup: id => getDcwRecipeRepo().byId(id) })?.channelMode ?? 'generic'
       }
       if (agent.name.includes(SESSION_MARKER) || agent.name.includes('·任务·')) return 'generic'
       return this.channelModeOf(agent.channelId)
@@ -930,7 +1098,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
   channelSessionScopeOfAgent(channelId: string, agentId: string): import('../../agents/host-tool-bridge').ChannelSessionExecutionScope | null {
     const session = activeSessionOfMember(createChannelSessionRepo(this.deps.db).listByChannel(channelId), agentId)
     if (!session) return null
-    const trusted = trustedSessionBindingIdentity(session)
+    const trusted = resolveTrustedSessionBinding(this.deps.db, session, { recipeLookup: id => getDcwRecipeRepo().byId(id) })
     if (!trusted) return null
     return {
       sessionId: trusted.sessionId,
