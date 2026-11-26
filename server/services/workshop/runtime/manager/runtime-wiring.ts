@@ -92,7 +92,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       : null
     const integrated = channelModeForAgent(agent.id) === 'production_line_integrated' && (!sessionRow || !!trustedSession)
     const channelLineId = integrated && !sessionRow ? this.deps.repos.channels.findById(m.channelId)?.lineId ?? null : null
-    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id, lineId: channelSessionScope?.lineId ?? channelLineId, productId: channelSessionScope?.productId ?? null, sessionId: sessionRow?.id ?? null, industrialScopeEnabled: integrated, embedder: this.memoryEmbedder ?? undefined })
+    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id, ownerUserId: this.deps.repos.channels.findById(m.channelId)?.ownerUserId ?? null, lineId: channelSessionScope?.lineId ?? channelLineId, productId: channelSessionScope?.productId ?? null, sessionId: sessionRow?.id ?? null, industrialScopeEnabled: integrated, embedder: this.memoryEmbedder ?? undefined })
     const workspace = this.buildWorkspace(agent, memory)
     const chWorkspace = this.channelWorkspace(m.channelId)
     // channel 级作业场景 prompt 注入 harness config(用户场景 × 系统设计组合的入口;

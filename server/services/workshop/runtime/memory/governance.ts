@@ -25,7 +25,7 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
     if (typeof input.tokensAfter === 'number') meta.push(`压缩后约 ${input.tokensAfter} tok`)
     if (input.reason) meta.push(`触发=${input.reason}`)
     const head = meta.length > 0 ? `[会话压缩摘要 · ${meta.join(' · ')}]\n` : '[会话压缩摘要]\n'
-    this.repo.upsert({
+    const write = this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: this.opts.agentId,
       kind: 'episodic-session',
@@ -37,6 +37,7 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       sessionId: input.sessionId ?? '',
       dedupKey,
     })
+    if (write.outcome === 'protected') return { dedupKey }
     await this.vectorize(input.summary, dedupKey)
     return { dedupKey }
   }
@@ -81,7 +82,7 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
    */
   async appendTeamTaskRecord(input: { taskId: string, title: string, content: string, importance: number }): Promise<void> {
     const dedupKey = `team-task:${input.taskId}`
-    this.repo.upsert({
+    const write = this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: TEAM_AGENT_ID,
       kind: 'episodic-team-task',
@@ -92,6 +93,7 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       taskId: input.taskId,
       dedupKey,
     })
+    if (write.outcome === 'protected') return
     await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, TEAM_AGENT_ID, dedupKey, input.content)
   }
 
@@ -139,7 +141,7 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
     ].filter(Boolean)
     const plain = lines.join('；')
     const content = plain.length > DIGEST_TEXT_LIMIT ? `${plain.slice(0, DIGEST_TEXT_LIMIT)}…` : plain
-    this.repo.upsert({
+    const write = this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: TEAM_AGENT_ID,
       kind: 'episodic-team-task',
@@ -150,6 +152,7 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       taskId: input.taskId,
       dedupKey: input.dedupKey,
     })
+    if (write.outcome === 'protected') return
     await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, TEAM_AGENT_ID, input.dedupKey, plain)
   }
 

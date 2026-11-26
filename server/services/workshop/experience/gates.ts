@@ -11,13 +11,21 @@ import type { HarnessProfileRow } from './harness-profile'
 
 /** 经验晋级阈值（代码常量；改动走评审） */
 export const EXPERIENCE_GATE = {
-  /** 晋级 validated 所需的独立任务样本（证据里 taskIds 去重数） */
+  /**
+   * 晋级 validated 所需的**独立观测单元**数（2026-11-26）。
+   * 任务事实、干预台账事件都算独立观测；同一 `recipeRunId` 的多个事件只算 1。
+   * `minIndependentTasks` 保留为兼容别名（旧调用方/文档引用），语义与新值一致。
+   */
+  minIndependentEvidence: 2,
   minIndependentTasks: 2,
   /** 晋级的证据锚点最低数（任一锚点） */
   minAnchors: 1,
   /** contested 永不自动晋级 */
   contestedBlocksPromotion: true,
 } as const
+
+/** 可证伪的判读：underpowered/confounded/pending 不能作为晋升证据 */
+const USABLE_VERDICTS = new Set(['identifiable_effect', 'no_resolvable_effect'])
 
 /** Profile 晋升阈值（bench 结果由 WP-B2 产出后传入；缺 bench 数据 → 不得登 shadow） */
 export const PROFILE_GATE = {
@@ -61,10 +69,21 @@ export function evaluateExperienceTaskEvidence(
   return { valid: reasons.length === 0, reasons }
 }
 
-/** 解析证据 JSON（失败 → 空对象；门按"无锚点"处理） */
+export interface ExperienceSupportUnit {
+  id: string
+  kind: 'run' | 'task' | 'event' | 'review'
+  verdict?: string
+}
+
+/**
+ * 解析证据 JSON（失败 → 空对象；门按"无锚点"处理）。
+ * `supportUnits` 缺省时从锚点派生：任务事实只产 `task:*`（即使同一行还带 interventionEventId，
+ * 也仍是一次观测）；没有任务锚点时才用 run/event/result 之一 —— 保证"单观测不得自证两次"。
+ */
 export function evidenceOf(row: Pick<MemoryRow, 'evidenceJson'>): {
   taskIds: string[]
   anchors: string[]
+  supportUnits: ExperienceSupportUnit[]
   metrics?: Record<string, number>
 } {
   let obj: Record<string, unknown> = {}
@@ -81,10 +100,46 @@ export function evidenceOf(row: Pick<MemoryRow, 'evidenceJson'>): {
   return {
     taskIds: [...new Set(taskIds)],
     anchors,
+    supportUnits: deriveSupportUnits(obj, taskIds),
     ...(obj.metrics && typeof obj.metrics === 'object' && !Array.isArray(obj.metrics)
       ? { metrics: obj.metrics as Record<string, number> }
       : {}),
   }
+}
+
+function deriveSupportUnits(obj: Record<string, unknown>, taskIds: string[]): ExperienceSupportUnit[] {
+  if (Array.isArray(obj.supportUnits)) {
+    const units: ExperienceSupportUnit[] = []
+    for (const raw of obj.supportUnits) {
+      if (!raw || typeof raw !== 'object') continue
+      const u = raw as Record<string, unknown>
+      if (typeof u.id !== 'string' || u.id.length === 0) continue
+      if (u.kind !== 'run' && u.kind !== 'task' && u.kind !== 'event' && u.kind !== 'review') continue
+      units.push({ id: u.id, kind: u.kind, ...(typeof u.verdict === 'string' ? { verdict: u.verdict } : {}) })
+    }
+    if (units.length > 0) return dedupeUnits(units)
+  }
+  const fromTasks = taskIds.map(id => ({ id: `task:${id}`, kind: 'task' as const }))
+  if (fromTasks.length > 0) return dedupeUnits(fromTasks)
+  const run = typeof obj.recipeRunId === 'string' && obj.recipeRunId.length > 0 ? obj.recipeRunId : ''
+  if (run) return [{ id: `run:${run}`, kind: 'run' }]
+  const event = typeof obj.interventionEventId === 'string' && obj.interventionEventId.length > 0 ? obj.interventionEventId : ''
+  if (event) return [{ id: `event:${event}`, kind: 'event' }]
+  const result = typeof obj.resultId === 'string' && obj.resultId.length > 0 ? obj.resultId : ''
+  if (result) return [{ id: `review:${result}`, kind: 'review' }]
+  return []
+}
+
+/** 同 id 只保留一个（同 run 的多个事件不得重复计数） */
+export function dedupeUnits(units: readonly ExperienceSupportUnit[]): ExperienceSupportUnit[] {
+  const byId = new Map<string, ExperienceSupportUnit>()
+  for (const u of units) if (!byId.has(u.id)) byId.set(u.id, u)
+  return [...byId.values()]
+}
+
+/** 可用于晋升的单元（verdict 缺失视为未判读，按可用计；明确不可证伪的判读被剔除） */
+export function usableUnits(units: readonly ExperienceSupportUnit[]): ExperienceSupportUnit[] {
+  return dedupeUnits(units.filter(u => !u.verdict || USABLE_VERDICTS.has(u.verdict)))
 }
 
 /**
@@ -113,14 +168,15 @@ export function evaluateExperienceGate(
   }
   const ev = evidenceOf(row)
   const reasons: string[] = []
-  if (ev.taskIds.length + ev.anchors.length < EXPERIENCE_GATE.minAnchors) {
+  const usable = usableUnits(ev.supportUnits)
+  if (ev.supportUnits.length + ev.anchors.length < EXPERIENCE_GATE.minAnchors) {
     reasons.push('证据锚点缺失')
   }
-  if (ev.taskIds.length < EXPERIENCE_GATE.minIndependentTasks) {
-    reasons.push(`独立任务样本不足：${ev.taskIds.length}/${EXPERIENCE_GATE.minIndependentTasks}`)
+  if (usable.length < EXPERIENCE_GATE.minIndependentEvidence) {
+    reasons.push(`独立观测证据不足：${usable.length}/${EXPERIENCE_GATE.minIndependentEvidence}（同一次运行/同一任务只算一次）`)
   }
   if (reasons.length > 0) return { allowed: false, reasons }
-  return { allowed: true, next: 'validated', reasons: [`证据充分（${ev.taskIds.length} 任务 / ${ev.anchors.length} 锚点）`] }
+  return { allowed: true, next: 'validated', reasons: [`证据充分（${usable.length} 个独立观测 / ${ev.anchors.length} 锚点）`] }
 }
 
 /** bench 配对结果（WP-B2 产出；门只消费结构化字段） */

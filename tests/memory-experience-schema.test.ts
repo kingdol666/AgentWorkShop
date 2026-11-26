@@ -168,7 +168,7 @@ test('生命周期：markStatus 迁移 + expireSweep 退休过期行', () => {
     const future = new Date(Date.now() + 86_400_000).toISOString()
     const a = repo.upsertExperience({ ...baseExp, dedupKey: 'exp:a', expiresAt: past })
     const b = repo.upsertExperience({ ...baseExp, dedupKey: 'exp:b', status: 'candidate', expiresAt: future })
-    assert.equal(repo.getById(a.id)!.status, 'active', '写入不自动退休')
+    assert.equal(repo.getById(a.id)!.status, 'candidate', '写入默认 candidate（先验证再晋级）')
 
     assert.equal(repo.expireSweep(), 1, '仅过期行迁移')
     assert.equal(repo.getById(a.id)!.status, 'retired')

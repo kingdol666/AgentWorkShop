@@ -14,6 +14,7 @@ import { migratePrefabColumns } from './migrations-prefab'
 import { migrateSessionRuntimeOverrides } from './migrations-session-runtime'
 import { migrateSessionBindingOverrides } from './migrations-session-binding'
 import { migrateExperienceVersionStore } from './migrations-experience-versions'
+import { migrateMemoryAdminColumns, migrateExperienceChannelStatus } from './migrations-memory-admin'
 import { migrateHitlExecutionRefColumns } from './migrations-hitl-ref'
 import { migrateImprovementProposals } from './migrations-improvement'
 import { migrateHarnessProfiles } from './migrations-harness-profile'
@@ -85,8 +86,14 @@ export function initWorkshopDb(db: DatabaseSync): void {
   // RSI 经验层(2026-11-09)：agent_memories 证据链/作用域/生命周期列 + analysis_reports.recipe_run_id。
   // 只加列不重建；必须在 ensureExperienceIndexes 之前(缺列建索引会中断)。
   migrateExperienceColumns(db)
+  // 记忆中心(HITL 管理面)：owner/author/revision/pinned/updated_at/soft-delete + 批注/版本表。
+  // 必须在 ensureExperienceIndexes 之前（idx_memories_kind_status 依赖 updated_at）。
+  migrateMemoryAdminColumns(db)
   // Task 2:旧经验行 → 不可变版本(幂等回填;失败即中止初始化,不暴露半迁移状态)。
   migrateExperienceVersionStore(db)
+  // 9003(一次性,ledger 守卫)：channel 档经验 active → candidate。
+  // 必须与 reflector 的 producer 修复同批，否则批次边界会持续产生永不晋升/永不注入的 active 行。
+  migrateExperienceChannelStatus(db)
   // Task 8:HITL 执行关联(task/代次/lease/载荷)补列;旧批准对不上当前上下文即拒绝复用。
   migrateHitlExecutionRefColumns(db)
   migrateLegacySchema(db)

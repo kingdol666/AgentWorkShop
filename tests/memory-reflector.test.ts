@@ -50,7 +50,8 @@ test('任务蒸馏：完成+判据通过 → positive/active/channel；证据含
     const row = repo.getById(r.id!)!
     assert.equal(row.kind, 'experience')
     assert.equal(row.outcome, 'positive')
-    assert.equal(row.status, 'active')
+    // 2026-11-26：channel 档统一 candidate（原先写 active 会造出既不可晋升也不可注入的死行）
+    assert.equal(row.status, 'candidate')
     assert.equal(row.scopeKind, 'channel')
     assert.equal(row.dedupKey, 'exp:task:t-1')
     assert.deepEqual(JSON.parse(row.evidenceJson!).taskIds, ['t-1'])
@@ -134,7 +135,7 @@ test('评审蒸馏：通过/驳回 → positive/negative + 作用域映射（pro
   })
   assert.equal(bad.outcome, 'negative')
   assert.equal(bad.scopeKind, 'channel')
-  assert.equal(bad.status, 'active')
+  assert.equal(bad.status, 'candidate')
   assert.equal(bad.dedupKey, 'exp:review:r-1:rejected', '不同结论各自成行，负面信号不被覆盖')
 })
 

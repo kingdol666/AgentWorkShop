@@ -19,6 +19,18 @@ const { ManagerA2A } = await import('../server/services/workshop/runtime/manager
 const { configureAmlRuntime } = await import('../server/services/workshop/aml/runtime')
 const { createHarnessProfileRepo } = await import('../server/services/workshop/experience/harness-profile')
 const { channelOverlayText, resetHarnessOverlayCache } = await import('../server/services/workshop/experience/overlay')
+const { ensureLegacyVersion, setVersionState } = await import('../server/services/workshop/experience/versions')
+
+/**
+ * 2026-11-26：validated 经验默认不再注入（deployment fail-closed）。
+ * 期望"能注入/能出 pin"的用例必须显式部署——这正是产品的新语义：晋升 ≠ 部署。
+ */
+function activate(db: ReturnType<typeof openWorkshopDb>, ids: string[]): void {
+  for (const id of ids) {
+    const v = ensureLegacyVersion(db, id)
+    if (v) setVersionState(db, v, { lifecycle: 'validated', deployment: 'active' }, 'test')
+  }
+}
 
 function fixture() {
   const db = openWorkshopDb(':memory:')
@@ -55,6 +67,7 @@ test('generic recall excludes all industrial scope, including explicit product c
   const { db, repo } = fixture()
   try {
     for (const scope of ['line', 'product', 'global', 'channel'] as const) exp(repo, scope, scope)
+    activate(db, repo.listByAgentChannel('ch', 'agent', 20).map(r => r.id))
     const mem = new AgentMemory(repo, { channelId: 'ch', agentId: 'agent' })
     const rows = await mem.recallRows('unique', { limit: 20, scopeContext: { lineId: 'line', productId: 'prod' } })
     assert.deepEqual(rows.map(r => r.scopeKind), ['channel'])
@@ -181,6 +194,7 @@ test('overlay pins use each agent session snapshot and never reuse another sessi
     const line = exp(repo, 'line-pin', 'line')
     const product = exp(repo, 'product-pin', 'product')
     const channel = exp(repo, 'channel-pin', 'channel')
+    activate(db, [line.id, product.id, channel.id])
     createHarnessProfileRepo(db).create({ channelId: 'ch', status: 'active', layers: { pins: [line.id, product.id, channel.id] } })
     resetHarnessOverlayCache()
     const first = channelOverlayText('ch', 'agent')

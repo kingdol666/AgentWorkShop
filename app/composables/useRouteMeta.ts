@@ -42,6 +42,7 @@ export function useRouteMeta() {
     '/studio/pipeline': { key: 'studio.pipeline.title', icon: 'i-tabler-route' },
     '/optimizer': { key: 'menu.optimizer', icon: 'i-tabler-math-function' },
     '/ontology': { key: 'menu.ontology', icon: 'i-tabler-sitemap' },
+    '/memory': { key: 'menu.memory', icon: 'i-tabler-brain' },
     '/tools': { key: 'menu.tools', icon: 'i-tabler-tools' },
     '/logs': { key: 'menu.logs', icon: 'i-tabler-list-details' },
     '/analysis': { key: 'menu.analysis', icon: 'i-tabler-report-analytics' },

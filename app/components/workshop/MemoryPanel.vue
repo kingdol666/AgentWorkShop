@@ -177,6 +177,14 @@ const loadGov = async (memoryId: string): Promise<void> => {
 <template>
   <div class="memory-panel">
     <div class="toolbar">
+      <a-button
+        size="small"
+        type="link"
+        data-testid="memory-center-entry"
+        @click="navigateTo('/memory')"
+      >
+        {{ $t('memoryCenter.title') }}
+      </a-button>
       <a-radio-group
         v-model:value="domain"
         size="small"

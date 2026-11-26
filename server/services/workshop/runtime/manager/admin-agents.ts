@@ -145,7 +145,8 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
   listMemories(channelId: string, agentId: string, limit = 50): MemoryRow[] {
     const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
     if (!m) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${agentId}`)
-    return this.deps.repos.memories.listByAgent(agentId, limit)
+    // 与 delete 路径同口径：按 channel 过滤（旧实现用 listByAgent，会跨 channel 返回该 agent 全部私有记忆）
+    return this.deps.repos.memories.listByAgentChannel(channelId, agentId, limit)
       .map(r => ({ ...r, content: unsegmentCJK(r.content) }))
   }
 
@@ -190,7 +191,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       if (!caller || caller.role !== 'lead') throw new AppError(403, 'SCOPE_VIOLATION', '仅 lead 可写团队记忆')
     }
     const dedupKey = input.dedupKey ?? `manual:${randomUUID()}`
-    this.deps.repos.memories.upsert({
+    const write = this.deps.repos.memories.upsert({
       channelId,
       agentId: TEAM_AGENT_ID,
       kind: 'semantic',
@@ -200,10 +201,12 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       importance: input.importance ?? 0.9,
       taskId: null,
       dedupKey,
-    })
-    // 策展行同样入向量域(未切分原文;provider 未配置/失败 → 静默留 FTS)
-    void vectorizeMemory(this.deps.repos.memories, this.memoryEmbedder, channelId, TEAM_AGENT_ID, dedupKey, input.content).catch(() => {})
-    this.buses.get(channelId)?.notifyMemory({ agentId: callerAgentId, scope: 'shared', title: input.title, dedupKey })
+    }, opts.byOwner ? { kind: 'human', id: callerAgentId } : { kind: 'agent', id: callerAgentId })
+    // 受保护行(人工/已验证)不改写：跳过向量化与"已更新"事件，避免正文与向量不一致
+    if (write.outcome !== 'protected') {
+      void vectorizeMemory(this.deps.repos.memories, this.memoryEmbedder, channelId, TEAM_AGENT_ID, dedupKey, input.content).catch(() => {})
+      this.buses.get(channelId)?.notifyMemory({ agentId: callerAgentId, scope: 'shared', title: input.title, dedupKey })
+    }
     return this.listTeamMemories(channelId)
   }
 
@@ -317,7 +320,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在: ${targetAgentId}`)
     }
     const dedupKey = input.dedupKey ?? `manual:${randomUUID()}`
-    this.deps.repos.memories.upsert({
+    const write = this.deps.repos.memories.upsert({
       channelId,
       agentId: targetAgentId,
       kind: 'semantic',
@@ -327,7 +330,8 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       importance: input.importance ?? 0.9,
       taskId: null,
       dedupKey,
-    })
+    }, opts.byOwner ? { kind: 'human', id: callerAgentId } : { kind: 'agent', id: callerAgentId })
+    if (write.outcome === 'protected') return
     // 策展行同样入向量域(未切分原文;provider 未配置/失败 → 静默留 FTS)
     void vectorizeMemory(this.deps.repos.memories, this.memoryEmbedder, channelId, targetAgentId, dedupKey, input.content).catch(() => {})
     this.buses.get(channelId)?.notifyMemory({ agentId: targetAgentId, scope: 'private', title: input.title, dedupKey })
@@ -341,8 +345,8 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
         throw new AppError(403, 'SCOPE_VIOLATION', '仅本人或 lead 可删除 Agent 记忆')
       }
     }
-    const row = this.deps.repos.memories.listByAgent(targetAgentId, 10_000)
-      .find(r => r.id === memoryId && r.channelId === channelId && r.agentId === targetAgentId)
+    const row = this.deps.repos.memories.listByAgentChannel(channelId, targetAgentId, 10_000)
+      .find(r => r.id === memoryId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `记忆不存在: ${memoryId}`)
     this.deps.repos.memories.delete(memoryId)
   }

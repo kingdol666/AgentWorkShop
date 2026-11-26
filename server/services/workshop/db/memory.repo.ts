@@ -33,7 +33,22 @@ export interface MemoryUpsertInput {
   /** 诞生时的 session 作用域(''=channel 级;recall 的 session 档按此过滤) */
   sessionId?: string | null
   dedupKey: string
+  /**
+   * 归属用户(NULL=遗留公共)。共享区/产线/产品档的可见性以 owner 为界:
+   * strict owner 下不落库 = 写入后永久查不到,所以所有生产写入点都必须传。
+   */
+  ownerUserId?: string | null
+  /** 来源深链(task/run/intervention/ontology 的 JSON 引用) */
+  originRef?: string
 }
+
+/** 写入者身份:human 可覆盖人工行/已验证行(并留版本);agent/system 遇到受保护行返回 protected */
+export interface MemoryActor {
+  kind: 'human' | 'agent' | 'system'
+  id: string
+}
+
+export type MemoryWriteOutcome = 'inserted' | 'updated' | 'protected' | 'revived'
 
 export type MemoryRepo = ReturnType<typeof createMemoryRepo>
 
@@ -42,6 +57,18 @@ export type MemoryRepo = ReturnType<typeof createMemoryRepo>
  * 至少一个锚点必填 —— 无锚点的因果断言只允许以 anecdotal/unknown 形式进入(调用方决定)。
  * 解析失败/空对象的事件由 upsertExperience 直接拒绝(fail-closed)。
  */
+/**
+ * 独立观测单元（2026-11-26）：一次观测 = 一个单元。
+ * `id` 取最强锚：run（recipeRunId）> task > event > review —— 同一任务同时带
+ * interventionEventId 时仍只算 1 个单元（旧实现按 taskIds ∪ eventId 计数会在单观测上自证过门）。
+ * `verdict` 来自可辨识性判定；underpowered/confounded 不计入可用证据。
+ */
+export interface SupportUnit {
+  id: string
+  kind: 'run' | 'task' | 'event' | 'review'
+  verdict?: string
+}
+
 export interface ExperienceEvidence {
   /** 任务锚点(任务终态触发) */
   taskIds?: string[]
@@ -57,6 +84,8 @@ export interface ExperienceEvidence {
   metrics?: Record<string, number>
   /** 机器可读判据(metric/op/threshold/mde) */
   criterion?: Record<string, unknown>
+  /** 独立观测单元（晋升门按它计数；缺省时由 gates 从上面的锚点派生） */
+  supportUnits?: SupportUnit[]
 }
 
 /** 经验条目写入入参(区别于普通 upsert:强制证据校验与生命周期字段) */
@@ -71,7 +100,7 @@ export interface ExperienceUpsertInput extends MemoryUpsertInput {
 }
 
 /** 证据对象里"至少一个"的锚点键(空值不计) */
-const EVIDENCE_ANCHOR_KEYS = ['taskIds', 'traceId', 'runId', 'recipeRunId', 'interventionEventId', 'resultId'] as const
+const EVIDENCE_ANCHOR_KEYS = ['taskIds', 'traceId', 'runId', 'recipeRunId', 'interventionEventId', 'resultId', 'supportUnits'] as const
 
 /**
  * 规范化并校验证据 JSON:非法 JSON / 非对象 / 无任何锚点 → 抛错(fail-closed)。
@@ -109,77 +138,89 @@ const COLS = `m.id, m.channel_id AS channelId, m.agent_id AS agentId, m.kind, m.
   m.importance, m.task_id AS taskId, m.session_id AS sessionId, m.access_count AS accessCount,
   m.last_accessed_at AS lastAccessedAt, m.created_at AS createdAt,
   m.outcome, m.evidence_json AS evidenceJson, m.scope_kind AS scopeKind, m.scope_key AS scopeKey,
-  m.status, m.expires_at AS expiresAt`
+  m.status, m.expires_at AS expiresAt,
+  m.owner_user_id AS ownerUserId, m.author_kind AS authorKind, m.author_id AS authorId,
+  m.revision, m.pinned, m.updated_at AS updatedAt,
+  m.deleted_at AS deletedAt, m.deleted_by AS deletedBy, m.delete_reason AS deleteReason,
+  m.origin_ref AS originRef`
 
 export function createMemoryRepo(db: DatabaseSync) {
   const upsertStmt = db.prepare(
     `INSERT INTO agent_memories
-       (id, channel_id, agent_id, kind, title, title_fts, content, importance, task_id, session_id, dedup_key, access_count, last_accessed_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?)
+       (id, channel_id, agent_id, kind, title, title_fts, content, importance, task_id, session_id, dedup_key,
+        access_count, last_accessed_at, created_at, owner_user_id, author_kind, author_id, revision, pinned, updated_at, origin_ref)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?, 0, ?, ?)
     ON CONFLICT(agent_id, dedup_key, channel_id) DO UPDATE SET
       channel_id = excluded.channel_id, kind = excluded.kind, title = excluded.title, title_fts = excluded.title_fts,
-      content = excluded.content, importance = excluded.importance, created_at = excluded.created_at`,
+      content = excluded.content, importance = excluded.importance, created_at = excluded.created_at,
+      owner_user_id = COALESCE(excluded.owner_user_id, agent_memories.owner_user_id),
+      author_kind = excluded.author_kind, author_id = excluded.author_id,
+      revision = agent_memories.revision + 1, updated_at = excluded.updated_at,
+      origin_ref = CASE WHEN excluded.origin_ref != '' THEN excluded.origin_ref ELSE agent_memories.origin_ref END,
+      deleted_at = NULL, deleted_by = NULL, delete_reason = NULL`,
+  )
+  // 冲突前置读:判别 protected/revived/updated 与作者、版本。findByDedup/kindByKey 故意不过滤 tombstone
+  // ——否则软删后用同键重写会被唯一键静默吞掉(plan G10)。
+  const stateByKeyStmt = db.prepare(
+    `SELECT id, kind, status, author_kind AS authorKind, author_id AS authorId, revision,
+            deleted_at AS deletedAt
+       FROM agent_memories WHERE agent_id = ? AND dedup_key = ? AND channel_id = ?`,
   )
   const searchStmt = db.prepare(
     `SELECT ${COLS}, f.rank AS bm25
      FROM agent_memories_fts f
      JOIN agent_memories m ON m.rowid = f.memory_rowid
-     WHERE agent_memories_fts MATCH ? AND m.agent_id IN (?, ?)
+     WHERE agent_memories_fts MATCH ? AND m.deleted_at IS NULL AND m.agent_id IN (?, ?)
      ORDER BY f.rank LIMIT ?`,
   )
   const searchInSessionStmt = db.prepare(
     `SELECT ${COLS}, f.rank AS bm25
      FROM agent_memories_fts f
      JOIN agent_memories m ON m.rowid = f.memory_rowid
-     WHERE agent_memories_fts MATCH ? AND m.agent_id IN (?, ?) AND m.session_id = ?
+     WHERE agent_memories_fts MATCH ? AND m.deleted_at IS NULL AND m.agent_id IN (?, ?) AND m.session_id = ?
      ORDER BY f.rank LIMIT ?`,
   )
   const searchInChannelStmt = db.prepare(
     `SELECT ${COLS}, f.rank AS bm25
      FROM agent_memories_fts f
      JOIN agent_memories m ON m.rowid = f.memory_rowid
-     WHERE agent_memories_fts MATCH ? AND m.agent_id IN (?, ?) AND m.channel_id = ?
+     WHERE agent_memories_fts MATCH ? AND m.deleted_at IS NULL AND m.agent_id IN (?, ?) AND m.channel_id = ?
      ORDER BY f.rank LIMIT ?`,
   )
   const searchInSessionChannelStmt = db.prepare(
     `SELECT ${COLS}, f.rank AS bm25
      FROM agent_memories_fts f
      JOIN agent_memories m ON m.rowid = f.memory_rowid
-     WHERE agent_memories_fts MATCH ? AND m.agent_id IN (?, ?) AND m.session_id = ? AND m.channel_id = ?
+     WHERE agent_memories_fts MATCH ? AND m.deleted_at IS NULL AND m.agent_id IN (?, ?) AND m.session_id = ? AND m.channel_id = ?
      ORDER BY f.rank LIMIT ?`,
   )
   const listRecentStmt = db.prepare(
-    `SELECT ${COLS} FROM agent_memories m WHERE m.agent_id = ? ORDER BY m.created_at DESC LIMIT ?`,
+    `SELECT ${COLS} FROM agent_memories m WHERE m.agent_id = ? AND m.deleted_at IS NULL ORDER BY m.created_at DESC LIMIT ?`,
   )
   const listRecentInChannelStmt = db.prepare(
-    `SELECT ${COLS} FROM agent_memories m WHERE m.agent_id = ? AND m.channel_id = ? ORDER BY m.created_at DESC LIMIT ?`,
+    `SELECT ${COLS} FROM agent_memories m WHERE m.agent_id = ? AND m.channel_id = ? AND m.deleted_at IS NULL ORDER BY m.created_at DESC LIMIT ?`,
   )
   const findByDedupStmt = db.prepare(
     `SELECT id, rowid FROM agent_memories WHERE channel_id = ? AND agent_id = ? AND dedup_key = ?`,
   )
   const listByAgentChannelStmt = db.prepare(
-    `SELECT ${COLS} FROM agent_memories m WHERE m.channel_id = ? AND m.agent_id = ? ORDER BY m.created_at DESC LIMIT ?`,
+    `SELECT ${COLS} FROM agent_memories m WHERE m.channel_id = ? AND m.agent_id = ? AND m.deleted_at IS NULL ORDER BY m.created_at DESC LIMIT ?`,
   )
   const listByAgentRowidStmt = db.prepare(
-    `SELECT m.rowid, ${COLS} FROM agent_memories m WHERE m.agent_id = ? ORDER BY m.created_at DESC LIMIT ?`,
+    `SELECT m.rowid, ${COLS} FROM agent_memories m WHERE m.agent_id = ? AND m.deleted_at IS NULL ORDER BY m.created_at DESC LIMIT ?`,
   )
   const touchStmt = db.prepare(
-    `UPDATE agent_memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`,
+    `UPDATE agent_memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ? AND deleted_at IS NULL`,
   )
   const deleteStmt = db.prepare(`DELETE FROM agent_memories WHERE id = ?`)
   const agentIdsStmt = db.prepare(
-    `SELECT DISTINCT agent_id FROM agent_memories WHERE agent_id != ?`,
+    `SELECT DISTINCT agent_id FROM agent_memories WHERE agent_id != ? AND deleted_at IS NULL`,
   )
   const channelIdsStmt = db.prepare(
-    `SELECT DISTINCT channel_id AS channelId FROM agent_memories`,
+    `SELECT DISTINCT channel_id AS channelId FROM agent_memories WHERE deleted_at IS NULL`,
   )
   const getByIdStmt = db.prepare(
-    `SELECT ${COLS} FROM agent_memories m WHERE m.id = ?`,
-  )
-  // kind 隔离(Task 2):普通记忆与经验共用 (agent, dedup, channel) 键空间;
-  // 跨 kind 同键必须显式拒绝,不允许静默把经验转成普通记忆(或反之)。
-  const kindByKeyStmt = db.prepare(
-    `SELECT kind FROM agent_memories WHERE agent_id = ? AND dedup_key = ? AND channel_id = ?`,
+    `SELECT ${COLS} FROM agent_memories m WHERE m.id = ? AND m.deleted_at IS NULL`,
   )
   const deploymentOfStmt = db.prepare(
     `SELECT v.deployment AS deployment
@@ -193,12 +234,13 @@ export function createMemoryRepo(db: DatabaseSync) {
   // **正文不漂移**(2026-11-23 发版审查):dedup_key 是 `exp:task:<id>` 这类来源键、不含内容哈希,
   // 同一任务重跑会产出新正文;受保护行的正文/标题/结论/范围/权重一并不许被重放覆盖,
   // 否则「已验证」名下会出现未经人工策展的新文本。
-  const protectedRow = `agent_memories.status IN ('validated', 'retired')`
+  const protectedRow = `(agent_memories.status IN ('validated', 'retired') OR agent_memories.author_kind = 'human')`
   const upsertExperienceStmt = db.prepare(
     `INSERT INTO agent_memories
        (id, channel_id, agent_id, kind, title, title_fts, content, importance, task_id, session_id, dedup_key,
-        access_count, last_accessed_at, created_at, outcome, evidence_json, scope_kind, scope_key, status, expires_at)
-     VALUES (?, ?, ?, 'experience', ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?, ?, ?)
+        access_count, last_accessed_at, created_at, outcome, evidence_json, scope_kind, scope_key, status, expires_at,
+        owner_user_id, author_kind, author_id, revision, pinned, updated_at, origin_ref)
+     VALUES (?, ?, ?, 'experience', ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
     ON CONFLICT(agent_id, dedup_key, channel_id) DO UPDATE SET
       channel_id = excluded.channel_id, kind = 'experience',
       title = CASE WHEN ${protectedRow} THEN agent_memories.title ELSE excluded.title END,
@@ -212,13 +254,85 @@ export function createMemoryRepo(db: DatabaseSync) {
       scope_kind = CASE WHEN ${protectedRow} THEN agent_memories.scope_kind ELSE excluded.scope_kind END,
       scope_key = CASE WHEN ${protectedRow} THEN agent_memories.scope_key ELSE excluded.scope_key END,
       status = CASE WHEN ${protectedRow} THEN agent_memories.status ELSE excluded.status END,
-      expires_at = excluded.expires_at, created_at = excluded.created_at`,
+      expires_at = excluded.expires_at, created_at = excluded.created_at,
+      owner_user_id = COALESCE(excluded.owner_user_id, agent_memories.owner_user_id),
+      author_kind = CASE WHEN ${protectedRow} THEN agent_memories.author_kind ELSE excluded.author_kind END,
+      author_id = CASE WHEN ${protectedRow} THEN agent_memories.author_id ELSE excluded.author_id END,
+      revision = CASE WHEN ${protectedRow} THEN agent_memories.revision ELSE excluded.revision END,
+      updated_at = CASE WHEN ${protectedRow} THEN agent_memories.updated_at ELSE excluded.updated_at END,
+      origin_ref = CASE WHEN ${protectedRow} THEN agent_memories.origin_ref ELSE excluded.origin_ref END,
+      deleted_at = NULL, deleted_by = NULL, delete_reason = NULL`,
   )
   const markStatusStmt = db.prepare(`UPDATE agent_memories SET status = ? WHERE id = ? AND status = ?`)
   const expireSweepStmt = db.prepare(
     `UPDATE agent_memories SET status = 'retired'
       WHERE expires_at IS NOT NULL AND expires_at != '' AND expires_at <= ? AND status != 'retired'`,
   )
+  // ===== HITL 管理面(2026-11-26):软删/恢复/硬删/版本/批注/证据合并 =====
+  const softDeleteStmt = db.prepare(
+    `UPDATE agent_memories SET deleted_at = ?, deleted_by = ?, delete_reason = ?, updated_at = ?
+      WHERE id = ? AND deleted_at IS NULL`,
+  )
+  const restoreStmt = db.prepare(
+    `UPDATE agent_memories SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL, updated_at = ?
+      WHERE id = ? AND deleted_at IS NOT NULL`,
+  )
+  const rowidByIdStmt = db.prepare(`SELECT rowid FROM agent_memories WHERE id = ?`)
+  const updateEvidenceStmt = db.prepare(
+    `UPDATE agent_memories SET evidence_json = ?, updated_at = ?, revision = revision + 1 WHERE id = ?`,
+  )
+  const insertRevisionStmt = db.prepare(
+    `INSERT OR IGNORE INTO memory_revisions
+       (id, memory_id, revision, title, content, evidence_json, author_kind, author_id, reason, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+  const listRevisionsStmt = db.prepare(
+    `SELECT id, memory_id AS memoryId, revision, title, content, evidence_json AS evidenceJson,
+            author_kind AS authorKind, author_id AS authorId, reason, created_at AS createdAt
+       FROM memory_revisions WHERE memory_id = ? ORDER BY revision DESC`,
+  )
+  const getRevisionStmt = db.prepare(
+    `SELECT id, memory_id AS memoryId, revision, title, content, evidence_json AS evidenceJson,
+            author_kind AS authorKind, author_id AS authorId, reason, created_at AS createdAt
+       FROM memory_revisions WHERE memory_id = ? AND revision = ?`,
+  )
+  const insertAnnotationStmt = db.prepare(
+    `INSERT INTO memory_annotations(id, memory_id, body, author_id, created_at, updated_at, status)
+     VALUES (?, ?, ?, ?, ?, ?, 'active')`,
+  )
+  const listAnnotationsStmt = db.prepare(
+    `SELECT id, memory_id AS memoryId, body, author_id AS authorId, created_at AS createdAt,
+            updated_at AS updatedAt, status
+       FROM memory_annotations WHERE memory_id = ? AND status = 'active' ORDER BY created_at ASC`,
+  )
+  const deleteAnnotationStmt = db.prepare(
+    `UPDATE memory_annotations SET status = 'deleted', updated_at = ? WHERE id = ? AND memory_id = ?`,
+  )
+  const dueForPurgeStmt = db.prepare(
+    `SELECT id, rowid FROM agent_memories
+      WHERE deleted_at IS NOT NULL AND deleted_at <= ? ORDER BY deleted_at ASC LIMIT ?`,
+  )
+  const stateByIdStmt = db.prepare(
+    `SELECT id, channel_id AS channelId, agent_id AS agentId, kind, status, author_kind AS authorKind,
+            author_id AS authorId, revision, pinned, owner_user_id AS ownerUserId,
+            deleted_at AS deletedAt, updated_at AS updatedAt
+       FROM agent_memories WHERE id = ?`,
+  )
+  const channelOwnerStmt = db.prepare(`SELECT owner_user_id AS owner FROM channels WHERE id = ?`)
+  /**
+   * 归属解析：显式入参优先；缺省时从所属 channel 解析。
+   * strict owner 下 owner 为 NULL 的行不会进入 workspace/line/product —— 写入侧必须尽量落值，
+   * 否则"共享区写进去永远查不到"。解析失败（旧库/跨库测试）返回 null，不阻断写入。
+   */
+  function ownerFor(channelId: string, explicit?: string | null): string | null {
+    if (explicit !== undefined) return explicit
+    try {
+      return (channelOwnerStmt.get(channelId) as { owner?: string | null } | undefined)?.owner ?? null
+    }
+    catch {
+      return null
+    }
+  }
   // ===== 向量方法(P1;vec0 分区表 + mem_rowid 辅助列映射)=====
   // 已实测事实:
   // - vec0 分区表不支持显式 rowid 插入 → 以 +mem_rowid 辅助列映射 agent_memories.rowid
@@ -254,39 +368,182 @@ export function createMemoryRepo(db: DatabaseSync) {
   }
 
   return {
-    upsert(input: MemoryUpsertInput): void {
-      const existing = kindByKeyStmt.get(input.agentId, input.dedupKey, input.channelId) as { kind?: string } | undefined
+    upsert(input: MemoryUpsertInput, actor?: MemoryActor): { outcome: MemoryWriteOutcome, id: string } {
+      const existing = stateByKeyStmt.get(input.agentId, input.dedupKey, input.channelId) as {
+        id: string
+        kind?: string
+        status?: string
+        authorKind?: string
+        authorId?: string
+        revision?: number
+        deletedAt?: string | null
+      } | undefined
       if (existing?.kind === 'experience' && input.kind !== 'experience') {
         throw new AppError(409, 'EXPERIENCE_KEY_CONFLICT', '同键经验条目不可被普通记忆覆盖(请换 dedupKey)')
       }
+      const humanActor = actor?.kind === 'human'
+      // protected 优先于 tombstone 复活：人工行/已验证行不会被 agent 的重放"顺手复活并覆写"。
+      // 人类 actor 可写（覆写走 memory-admin 的版本快照路径）。
+      if (existing && !humanActor
+        && (existing.authorKind === 'human' || existing.status === 'validated' || existing.status === 'retired')) {
+        return { outcome: 'protected', id: existing.id }
+      }
+      const now = new Date().toISOString()
       upsertStmt.run(
         randomUUID(), input.channelId, input.agentId, input.kind,
         input.title, input.titleFts, input.content, input.importance,
-        input.taskId ?? null, input.sessionId ?? '', input.dedupKey, new Date().toISOString(),
+        input.taskId ?? null, input.sessionId ?? '', input.dedupKey, now,
+        ownerFor(input.channelId, input.ownerUserId),
+        humanActor ? 'human' : (existing?.authorKind ?? 'agent'),
+        humanActor ? (actor?.id ?? '') : (existing?.authorId ?? ''),
+        (existing?.revision ?? 0) + 1, now, input.originRef ?? '',
       )
+      const at = findByDedupStmt.get(input.channelId, input.agentId, input.dedupKey) as { id: string } | undefined
+      return {
+        outcome: existing ? (existing.deletedAt ? 'revived' : 'updated') : 'inserted',
+        id: at?.id ?? '',
+      }
     },
 
     /**
      * 经验条目写入(WP-A1;RSI 证据链唯一写入口)。
      * 强制证据锚点校验:非法 JSON / 无锚点 → 抛错且不落行(fail-closed,绝不产生无证据经验)。
      * conflict 语义:同 (agent, dedup, channel) 刷新证据与生命周期,access_count 保留。
+     * 受保护行(validated/retired/human)对 agent/system 返回 `protected`，调用方必须据此跳过
+     * 向量化与"写入成功"文案（G9：旧实现丢正文却上报成功）。
      */
-    upsertExperience(input: ExperienceUpsertInput): { id: string } {
+    upsertExperience(input: ExperienceUpsertInput, actor?: MemoryActor): { id: string, outcome: MemoryWriteOutcome } {
       const evidenceJson = normalizeExperienceEvidence(input.evidence)
-      const existing = kindByKeyStmt.get(input.agentId, input.dedupKey, input.channelId) as { kind?: string } | undefined
+      const existing = stateByKeyStmt.get(input.agentId, input.dedupKey, input.channelId) as {
+        id: string
+        kind?: string
+        status?: string
+        authorKind?: string
+        authorId?: string
+        revision?: number
+        deletedAt?: string | null
+      } | undefined
       if (existing?.kind && existing.kind !== 'experience') {
         throw new AppError(409, 'EXPERIENCE_KEY_CONFLICT', '同键普通记忆不可被经验覆盖(请换 dedupKey)')
       }
+      const humanActor = actor?.kind === 'human'
+      if (existing && !humanActor
+        && (existing.authorKind === 'human' || existing.status === 'validated' || existing.status === 'retired')) {
+        return { id: existing.id, outcome: 'protected' }
+      }
+      const now = new Date().toISOString()
       upsertExperienceStmt.run(
         randomUUID(), input.channelId, input.agentId,
         input.title, input.titleFts, input.content, input.importance,
-        input.taskId ?? null, input.sessionId ?? '', input.dedupKey, new Date().toISOString(),
+        input.taskId ?? null, input.sessionId ?? '', input.dedupKey, now,
         input.outcome ?? 'neutral', evidenceJson,
         input.scopeKind ?? 'session', input.scopeKey ?? '',
-        input.status ?? 'active', input.expiresAt ?? null,
+        // 默认 candidate：channel 档此前默认 active 会造出"既不可晋升也不可注入"的死行（G1）
+        input.status ?? 'candidate', input.expiresAt ?? null,
+        ownerFor(input.channelId, input.ownerUserId),
+        humanActor ? 'human' : (existing?.authorKind ?? 'agent'),
+        humanActor ? (actor?.id ?? '') : (existing?.authorId ?? ''),
+        (existing?.revision ?? 0) + 1, now, input.originRef ?? '',
       )
       const at = findByDedupStmt.get(input.channelId, input.agentId, input.dedupKey) as { id: string } | undefined
-      return { id: at?.id ?? '' }
+      return {
+        id: at?.id ?? '',
+        outcome: existing ? (existing.deletedAt ? 'revived' : 'updated') : 'inserted',
+      }
+    },
+
+    /** 单行治理态(含软删/版本/作者；管理面无 COLS 投影时用它判权限与 CAS) */
+    stateById(id: string): {
+      id: string
+      channelId: string
+      agentId: string
+      kind: string
+      status?: string
+      authorKind?: string
+      authorId?: string
+      revision?: number
+      pinned?: number
+      ownerUserId?: string | null
+      deletedAt?: string | null
+      updatedAt?: string
+    } | null {
+      return (stateByIdStmt.get(id) as never) ?? null
+    },
+
+    /** 只改证据（merge 到受保护基行时用：不再静默丢证据、也不改正文/状态/时间线） */
+    updateEvidence(id: string, evidence: ExperienceEvidence | string): boolean {
+      const json = normalizeExperienceEvidence(evidence)
+      return Number(updateEvidenceStmt.run(json, new Date().toISOString(), id).changes ?? 0) > 0
+    },
+
+    /** 覆盖前快照(幂等:同 revision 只写一次) */
+    snapshotRevision(input: {
+      memoryId: string
+      revision: number
+      title: string
+      content: string
+      evidenceJson?: string
+      authorKind?: string
+      authorId?: string
+      reason?: string
+    }): void {
+      insertRevisionStmt.run(
+        randomUUID(), input.memoryId, input.revision, input.title,
+        input.content, input.evidenceJson ?? '', input.authorKind ?? 'human',
+        input.authorId ?? '', input.reason ?? '', new Date().toISOString(),
+      )
+    },
+
+    listRevisions(memoryId: string): Array<Record<string, unknown>> {
+      return listRevisionsStmt.all(memoryId) as Array<Record<string, unknown>>
+    },
+
+    getRevision(memoryId: string, revision: number): Record<string, unknown> | null {
+      return (getRevisionStmt.get(memoryId, revision) as Record<string, unknown> | undefined) ?? null
+    },
+
+    annotate(memoryId: string, body: string, authorId: string): string {
+      const id = `anno-${randomUUID()}`
+      const now = new Date().toISOString()
+      insertAnnotationStmt.run(id, memoryId, body, authorId, now, now)
+      return id
+    },
+
+    listAnnotations(memoryId: string): Array<Record<string, unknown>> {
+      return listAnnotationsStmt.all(memoryId) as Array<Record<string, unknown>>
+    },
+
+    deleteAnnotation(memoryId: string, annotationId: string): boolean {
+      return Number(deleteAnnotationStmt.run(new Date().toISOString(), annotationId, memoryId).changes ?? 0) > 0
+    },
+
+    softDelete(id: string, actorId: string, reason: string): boolean {
+      const now = new Date().toISOString()
+      return Number(softDeleteStmt.run(now, actorId, reason, now, id).changes ?? 0) > 0
+    },
+
+    restore(id: string): boolean {
+      return Number(restoreStmt.run(new Date().toISOString(), id).changes ?? 0) > 0
+    },
+
+    /** 硬删(物理):返回 rowid 供调用方 vecDelete；FTS 由 DELETE 触发器清理 */
+    purge(id: string): { ok: boolean, rowid: number | null } {
+      const row = rowidByIdStmt.get(id) as { rowid?: number | bigint } | undefined
+      const ok = Number(deleteStmt.run(id).changes ?? 0) > 0
+      return { ok, rowid: row?.rowid === undefined ? null : Number(row.rowid) }
+    },
+
+    /** 30 天到期清理的候选（维护定时器用） */
+    dueForPurge(beforeIso: string, limit = 200): Array<{ id: string, rowid: number }> {
+      return (dueForPurgeStmt.all(beforeIso, limit) as Array<{ id: string, rowid: number | bigint }>)
+        .map(r => ({ id: r.id, rowid: Number(r.rowid) }))
+    },
+
+    setPinned(id: string, pinned: boolean): boolean {
+      return Number(
+        db.prepare('UPDATE agent_memories SET pinned = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL')
+          .run(pinned ? 1 : 0, new Date().toISOString(), id).changes ?? 0,
+      ) > 0
     },
 
     /**
@@ -302,7 +559,7 @@ export function createMemoryRepo(db: DatabaseSync) {
       statuses?: MemoryStatus[]
       limit?: number
     }): Array<MemoryRow & { rowid: number }> {
-      const where: string[] = [`m.kind = 'experience'`, 'm.scope_kind = ?']
+      const where: string[] = [`m.kind = 'experience'`, 'm.scope_kind = ?', 'm.deleted_at IS NULL']
       const args: Array<string | number> = [opts.scopeKind]
       if (opts.scopeKey !== undefined) {
         where.push('m.scope_key = ?')
@@ -340,9 +597,9 @@ export function createMemoryRepo(db: DatabaseSync) {
     /** 经验状态分布(看板/门统计;可按作用域收窄) */
     experienceStats(opts: { scopeKind?: MemoryScopeKind } = {}): Array<{ status: string, n: number }> {
       const rows = opts.scopeKind
-        ? db.prepare(`SELECT status, COUNT(*) AS n FROM agent_memories WHERE kind = 'experience' AND scope_kind = ? GROUP BY status`)
+        ? db.prepare(`SELECT status, COUNT(*) AS n FROM agent_memories WHERE kind = 'experience' AND deleted_at IS NULL AND scope_kind = ? GROUP BY status`)
             .all(opts.scopeKind)
-        : db.prepare(`SELECT status, COUNT(*) AS n FROM agent_memories WHERE kind = 'experience' GROUP BY status`).all()
+        : db.prepare(`SELECT status, COUNT(*) AS n FROM agent_memories WHERE kind = 'experience' AND deleted_at IS NULL GROUP BY status`).all()
       return (rows as Array<{ status: string, n: number }>).map(r => ({ status: r.status, n: Number(r.n) }))
     },
 
@@ -372,6 +629,57 @@ export function createMemoryRepo(db: DatabaseSync) {
       }
     },
 
+    /**
+     * 分区上下文原料：owner + 绑线 + 产品集（频道路由的权威来源）。
+     * 解析失败（旧库/极端半初始化）返回空集，不阻断召回。
+     */
+    contextFor(channelId: string): { ownerUserId: string | null, lineIds: string[], productIds: string[] } {
+      const empty = { ownerUserId: null as string | null, lineIds: [] as string[], productIds: [] as string[] }
+      try {
+        const ch = db.prepare(`SELECT owner_user_id AS ownerUserId, line_id AS lineId FROM channels WHERE id = ?`)
+          .get(channelId) as { ownerUserId?: string | null, lineId?: string | null } | undefined
+        const lineIds = ch?.lineId ? [ch.lineId] : []
+        let productIds: string[] = []
+        try {
+          productIds = (db.prepare(`SELECT product_id AS productId FROM channel_product_bindings
+                                      WHERE channel_id = ? AND product_id IS NOT NULL`)
+            .all(channelId) as Array<{ productId: string }>).map(r => r.productId)
+        }
+        catch { productIds = [] }
+        return { ownerUserId: ch?.ownerUserId ?? null, lineIds, productIds }
+      }
+      catch {
+        return empty
+      }
+    },
+
+    /**
+     * 共享区（owner 级）检索：`scope_kind='global'` + 严格 owner，跨 Channel。
+     * 注入门槛：人工行恒可见；经验需 validated + 已部署（无版本头 = none，fail-closed）；
+     * 普通语义行按 active/validated 放行。排序：pin 优先 → bm25。
+     */
+    searchWorkspaceShared(matchQuery: string, ownerUserId: string, limit: number): Array<MemoryRow & { bm25: number }> {
+      if (!ownerUserId) return []
+      return db.prepare(
+        `SELECT ${COLS}, f.rank AS bm25
+           FROM agent_memories_fts f
+           JOIN agent_memories m ON m.rowid = f.memory_rowid
+          WHERE agent_memories_fts MATCH ?
+            AND m.scope_kind = 'global'
+            AND m.owner_user_id = ?
+            AND m.deleted_at IS NULL
+            AND m.status != 'retired'
+            AND (
+              m.author_kind = 'human'
+              OR (m.kind = 'experience' AND m.status = 'validated' AND COALESCE((
+                    SELECT v.deployment FROM experience_heads h JOIN experience_versions v ON v.version_id = h.version_id
+                     WHERE h.experience_id = m.id), 'none') IN ('active', 'canary'))
+              OR (m.kind != 'experience' AND m.status IN ('active', 'validated'))
+            )
+          ORDER BY m.pinned DESC, f.rank LIMIT ?`,
+      ).all(matchQuery, ownerUserId, limit) as unknown as Array<MemoryRow & { bm25: number }>
+    },
+
     /** bm25 检索(恒含 team 共享行;matchQuery 为 OR 连接切分词;sessionId 给定→仅该 session 作用域行) */
     search(agentId: string, matchQuery: string, limit: number, opts: { sessionId?: string, channelId?: string } = {}): Array<MemoryRow & { bm25: number }> {
       if (opts.sessionId && opts.channelId) {
@@ -399,6 +707,7 @@ export function createMemoryRepo(db: DatabaseSync) {
          FROM agent_memories_fts f
          JOIN agent_memories m ON m.rowid = f.memory_rowid
          WHERE agent_memories_fts MATCH ? AND m.agent_id = ? AND m.channel_id IN (${placeholders})
+           AND m.deleted_at IS NULL
          ORDER BY f.rank LIMIT ?`,
       )
       return stmt.all(matchQuery, TEAM_AGENT_ID, ...channelIds, limit) as unknown as Array<MemoryRow & { bm25: number }>
@@ -407,7 +716,7 @@ export function createMemoryRepo(db: DatabaseSync) {
     /** 某 channel 团队共享域的行数(跨团队概览的"知识量"指标) */
     countTeamShared(channelId: string): number {
       return Number(
-        db.prepare(`SELECT COUNT(*) AS c FROM agent_memories WHERE channel_id = ? AND agent_id = ?`)
+        db.prepare(`SELECT COUNT(*) AS c FROM agent_memories WHERE channel_id = ? AND agent_id = ? AND deleted_at IS NULL`)
           .get(channelId, TEAM_AGENT_ID)?.c ?? 0,
       )
     },
@@ -429,6 +738,7 @@ export function createMemoryRepo(db: DatabaseSync) {
         `agent_memories_fts MATCH ?`,
         `m.kind = 'experience'`,
         `m.status IN ('active', 'validated')`,
+        `m.deleted_at IS NULL`,
         `m.scope_kind IN (${opts.scopeKinds.map(() => '?').join(', ')})`,
         `m.channel_id IN (${channelIds.map(() => '?').join(', ')})`,
       ]
@@ -482,7 +792,7 @@ export function createMemoryRepo(db: DatabaseSync) {
       if (rowids.length === 0) return []
       const placeholders = rowids.map(() => '?').join(', ')
       return db.prepare(
-        `SELECT m.rowid, ${COLS} FROM agent_memories m WHERE m.rowid IN (${placeholders})`,
+        `SELECT m.rowid, ${COLS} FROM agent_memories m WHERE m.rowid IN (${placeholders}) AND m.deleted_at IS NULL`,
       ).all(...rowids.map(BigInt)) as unknown as Array<MemoryRow & { rowid: number }>
     },
 
@@ -511,7 +821,7 @@ export function createMemoryRepo(db: DatabaseSync) {
     listByAgentKindMonth(agentId: string, kind: MemoryKind, month: string): MemoryRow[] {
       return db.prepare(
         `SELECT ${COLS} FROM agent_memories m
-          WHERE m.agent_id = ? AND m.kind = ?
+          WHERE m.agent_id = ? AND m.kind = ? AND m.deleted_at IS NULL
             AND m.created_at >= ? AND m.created_at < ?
           ORDER BY m.created_at ASC`,
       ).all(agentId, kind, `${month}-01`, `${nextMonth(month)}-01`) as unknown as MemoryRow[]
@@ -521,7 +831,7 @@ export function createMemoryRepo(db: DatabaseSync) {
     countByAgentKindMonth(agentId: string, kind: MemoryKind, month: string): number {
       const row = db.prepare(
         `SELECT COUNT(*) AS c FROM agent_memories
-          WHERE agent_id = ? AND kind = ? AND created_at >= ? AND created_at < ?`,
+          WHERE agent_id = ? AND kind = ? AND deleted_at IS NULL AND created_at >= ? AND created_at < ?`,
       ).get(agentId, kind, `${month}-01`, `${nextMonth(month)}-01`) as { c: number } | undefined
       return Number(row?.c ?? 0)
     },
@@ -567,14 +877,16 @@ export function createMemoryRepo(db: DatabaseSync) {
     },
 
     /**
-     * 经验行的部署状态(Task 4:自动注入只认 validated + canary/active)。
-     *  - 有版本指针:以版本 deployment 为准(回填的旧行=legacy-unverified/none → 不可自动注入);
-     *  - 无版本指针:迁移前的既有行,视为祖父条款 'active'(保持既有手动策展行为),
-     *    Task 6 起发布门会为所有新经验建版本,该分支只承接历史手工行。
+     * 经验行的部署状态(自动注入只认 validated + canary/active)。
+     *  - 有版本指针:以版本 deployment 为准;
+     *  - **无版本指针:fail-closed 'none'**（2026-11-26）。
+     *    旧实现回落 'active'，而启动回填 `migrateExperienceVersionStore` 会给所有无头行补
+     *    `legacy-unverified/none` —— 于是"新建到重启前"与"重启后"的注入状态会翻转。
+     *    统一为 none 后注入命运由显式部署决定（晋升 → 部署两步），不再随重启变化。
      */
     experienceDeployment(id: string): 'none' | 'shadow' | 'canary' | 'active' | 'withdrawn' {
       const row = deploymentOfStmt.get(id) as { deployment?: string } | undefined
-      if (!row) return 'active'
+      if (!row) return 'none'
       const value = row.deployment ?? 'none'
       return value === 'shadow' || value === 'canary' || value === 'active' || value === 'withdrawn'
         ? value

@@ -20,6 +20,15 @@ const { createHarnessProfileRepo } = await import('../server/services/workshop/e
 const { recordBenchRun } = await import('../server/services/workshop/experience/bench-run')
 const { mergeExperiences, promoteExperience } = await import('../server/services/workshop/experience/promote')
 const { configureAmlRuntime } = await import('../server/services/workshop/aml/runtime')
+const { ensureLegacyVersion, setVersionState } = await import('../server/services/workshop/experience/versions')
+
+/** 2026-11-26：validated 经验默认不注入；需要出 pin 的用例必须显式部署（晋升 ≠ 部署）。 */
+function activate(db: ReturnType<typeof openWorkshopDb>, ids: string[]): void {
+  for (const id of ids) {
+    const v = ensureLegacyVersion(db, id)
+    if (v) setVersionState(db, v, { lifecycle: 'validated', deployment: 'active' }, 'test')
+  }
+}
 const { channelOverlayText, resetHarnessOverlayCache } = await import('../server/services/workshop/experience/overlay')
 
 // This suite exercises the existing industrial gates in an explicitly integrated environment.
@@ -98,6 +107,7 @@ test('RSI overlay renders only validated same-line experience pins', () => {
     const foreignChannel = channels.create({ name: 'B' })
     const foreign = experience(repo, foreignChannel.id, 'foreign', ['t-3'], 'validated')
     const profiles = createHarnessProfileRepo(db)
+    activate(db, [valid.id, expired.id, foreign.id])
     profiles.create({ channelId: a.id, status: 'active', layers: { pins: [candidate.id, valid.id, expired.id, foreign.id] } })
     resetHarnessOverlayCache()
     const text = channelOverlayText(a.id)

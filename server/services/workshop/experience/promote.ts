@@ -11,7 +11,9 @@ import { createMemoryRepo, type MemoryRepo } from '../db/memory.repo'
 import { createImprovementActionRepo } from '../db/improvement-action.repo'
 import { recordOps } from '../ops/ops'
 import { createHarnessProfileRepo } from './harness-profile'
-import { evaluateExperienceGate, evaluateExperienceTaskEvidence, evidenceOf, evaluateProfileGate, rollbackTarget, type PairedBenchResult } from './gates'
+import { evaluateExperienceGate, evaluateExperienceTaskEvidence, evidenceOf, evaluateProfileGate, rollbackTarget, usableUnits, dedupeUnits, type PairedBenchResult } from './gates'
+import { ensureLegacyVersion, setVersionState } from './versions'
+import { withTransaction } from '../db/transaction'
 import { resolveBenchRunForPromote } from './bench-run'
 import { channelModeOf } from '../channel-mode'
 
@@ -41,9 +43,10 @@ function stalePromotionFailure(next: 'validated' | 'retired'): PromoteResult<'va
   return { ok: false, reasons: [`PROMOTION_CAS_FAILED: 经验状态迁移未命中（目标 ${next}，条目已被并发更新）`] }
 }
 
-function validateTaskEvidence(db: DatabaseSync, channelId: string, taskIds: string[]): string[] {
+function validateTaskEvidence(db: DatabaseSync, channelId: string, taskIds: string[], opts: { required?: boolean } = {}): string[] {
   const ids = [...new Set(taskIds.filter(id => typeof id === 'string' && id.length > 0))]
-  if (ids.length === 0) return ['经验必须包含至少一个任务证据']
+  // 干预类经验没有任务锚点：只在"存在任务单元"时校验任务存在性/归属/完成态
+  if (ids.length === 0) return opts.required === false ? [] : ['经验必须包含至少一个任务证据']
   const placeholders = ids.map(() => '?').join(', ')
   const rows = db.prepare(
     `SELECT id, channel_id AS channelId, project_id AS projectId, state FROM tasks WHERE id IN (${placeholders})`,
@@ -76,34 +79,20 @@ export function mergeExperiences(
     return { ok: false, reasons: [INDUSTRIAL_MODE_REQUIRED] }
   }
   const base = rows[0]!
-  const taskIds = [...new Set(rows.flatMap((r) => {
-    const ev = evidenceOf(r!)
-    return ev.taskIds
-  }))]
-  const evidenceReasons = validateTaskEvidence(db, input.channelId, taskIds)
+  const perRow = rows.map(r => evidenceOf(r!))
+  const taskIds = [...new Set(perRow.flatMap(ev => ev.taskIds))]
+  // 证据并集：以独立观测单元为准（任务事实/干预台账各算一次；同 run 去重）
+  const supportUnits = dedupeUnits(perRow.flatMap(ev => ev.supportUnits))
+  const usable = usableUnits(supportUnits)
+  const evidenceReasons = validateTaskEvidence(db, input.channelId, taskIds, { required: false })
   if (evidenceReasons.length > 0) return { ok: false, reasons: evidenceReasons }
-  if (taskIds.length < 2) return { ok: false, reasons: [`合并后独立任务样本仍不足（${taskIds.length} < 2）`] }
+  if (usable.length < 2) return { ok: false, reasons: [`合并后独立观测证据仍不足（${usable.length} < 2）`] }
 
   const baseEvidence = JSON.parse(String(base.evidenceJson || '{}')) as Record<string, unknown>
-  repo.upsertExperience({
-    channelId: base.channelId,
-    agentId: base.agentId,
-    kind: 'experience',
-    title: base.title,
-    titleFts: base.titleFts ?? '',
-    content: base.content,
-    importance: base.importance,
-    taskId: base.taskId ?? null,
-    sessionId: base.sessionId ?? '',
-    dedupKey: base.dedupKey ?? '',
-    outcome: base.outcome ?? 'neutral',
-    evidence: { ...baseEvidence, taskIds },
-    scopeKind: base.scopeKind,
-    scopeKey: base.scopeKey,
-    // 单调性:已晋级/退休的行保持原状态(upsert 也不会降级,这里显式传原值)
-    status: base.status,
-    expiresAt: base.expiresAt ?? null,
-  })
+  // 只写证据、不动正文/状态/时间线：旧实现走 upsertExperience，遇到 validated 基行会被
+  // protected 分支静默丢弃，却仍然上报"已合并"（G9）
+  const merged = repo.updateEvidence(base.id, { ...baseEvidence, taskIds, supportUnits })
+  if (!merged) return { ok: false, reasons: ['证据合并未落库(条目已不存在)'] }
   try {
     recordOps({
       actor: input.actor, actorName: input.actorName ?? input.actor, actorKind: 'agent',
@@ -130,17 +119,41 @@ export function promoteExperience(db: DatabaseSync,
     return { ok: false, reasons: [INDUSTRIAL_MODE_REQUIRED] }
   }
   if (input.to === 'validated') {
-    const taskIds = evidenceOf(row).taskIds
-    const evidenceReasons = validateTaskEvidence(db, input.channelId, taskIds)
+    const ev = evidenceOf(row)
+    // 干预类经验没有任务锚点：只在存在任务单元时校验任务存在性（required=false）
+    const evidenceReasons = validateTaskEvidence(db, input.channelId, ev.taskIds, { required: false })
     if (evidenceReasons.length > 0) return { ok: false, reasons: evidenceReasons }
   }
   const decision = evaluateExperienceGate(row, input.to)
   if (!decision.allowed || !decision.next) return { ok: false, reasons: decision.reasons }
+  const next = decision.next
   const expectedStatus = row.status ?? 'active'
   if (input.to === 'validated' && expectedStatus !== 'candidate') {
     return { ok: false, reasons: [`仅 candidate 可晋级 validated（当前 ${expectedStatus}）`] }
   }
-  if (!repo.markStatus(input.memoryId, decision.next, expectedStatus)) return stalePromotionFailure(decision.next)
+  // 晋升 = 版本头(deployment=none) + status 同一事务：先落版本再改状态，杜绝"未部署即注入"窗口；
+  // markStatus 的 CAS 失败必须 throw 才能回滚已写入的版本状态。
+  // 注：测试注入 `deps.memoryRepo` 时其 CAS 桩依赖"同连接立即可见"，不额外包事务。
+  const apply = (): boolean => {
+    if (next === 'validated') {
+      const versionId = ensureLegacyVersion(db, input.memoryId)
+      if (versionId) setVersionState(db, versionId, { lifecycle: 'validated', deployment: 'none' }, input.actor)
+    }
+    return repo.markStatus(input.memoryId, next, expectedStatus)
+  }
+  if (deps.memoryRepo) {
+    if (!apply()) return stalePromotionFailure(next)
+  }
+  else {
+    try {
+      withTransaction(db, () => {
+        if (!apply()) throw new Error(stalePromotionFailure(next).reasons.join('；'))
+      })
+    }
+    catch (err) {
+      return { ok: false, reasons: [err instanceof Error ? err.message : String(err)] }
+    }
+  }
   // WP-C3:元层成效入表(哪类改进动作有效,由事实计数回答)
   createImprovementActionRepo(db).record({
     actionKind: 'experience_promote',

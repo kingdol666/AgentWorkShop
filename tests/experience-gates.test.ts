@@ -54,7 +54,7 @@ test('经验门：证据充分 → validated；样本不足/contested/已 retire
 
   const few = evaluateExperienceGate({ status: 'candidate', outcome: 'positive', evidenceJson: '{"taskIds":["t-1"]}' }, 'validated')
   assert.equal(few.allowed, false)
-  assert.match(few.reasons.join(), /独立任务样本不足：1\/2/)
+  assert.match(few.reasons.join(), /独立观测证据不足：1\/2/)
 
   const contested = evaluateExperienceGate({ status: 'contested', outcome: 'positive', evidenceJson: '{"taskIds":["t-1","t-2"]}' }, 'validated')
   assert.equal(contested.allowed, false)

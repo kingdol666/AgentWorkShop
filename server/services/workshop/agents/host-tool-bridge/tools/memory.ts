@@ -60,7 +60,7 @@ export async function handleSaveMemory(args: Record<string, unknown>, ws: AgentW
   const sessionIdToStamp = sessionScope ? (sessionId ?? null) : null
   // WP-A4:跨频道经验必须带证据锚点(任务 id),无锚点自述不得进入共享经验层
   const taskId = typeof args.task_id === 'string' && args.task_id.trim() ? args.task_id.trim() : null
-  let saved: { scope: 'private' | 'shared' | 'line' | 'global', dedupKey: string }
+  let saved: { scope: 'private' | 'shared' | 'line' | 'global', dedupKey: string, outcome?: string }
   try {
     saved = await ws.saveMemory({
       title,
@@ -75,6 +75,11 @@ export async function handleSaveMemory(args: Record<string, unknown>, ws: AgentW
   catch (err) {
     // 策略/绑定/证据门拒绝:原文回给 Agent(可据此改档位重试),不伪装成功
     return { text: `记忆写入被拒绝: ${err instanceof Error ? err.message : String(err)}`, isError: true } as HostToolResult
+  }
+  if (saved.outcome === 'protected') {
+    return {
+      text: `未写入：同名条目已被人工修订或已验证(受保护),本次内容未覆盖原文。如需更新请由人类在记忆中心覆写或先退役该条目。dedupKey=${saved.dedupKey}`,
+    }
   }
   if (scope === 'line' || scope === 'global') {
     return { text: `已沉淀${scope === 'line' ? '同产线共享经验(跨频道可检索)' : '全局共享经验(跨频道可检索)'}: "${title}"(status=candidate,待验证后晋级; dedupKey=${saved.dedupKey})` }

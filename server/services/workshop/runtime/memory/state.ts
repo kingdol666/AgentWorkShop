@@ -34,10 +34,20 @@ export abstract class AgentMemoryState extends AgentMemoryContracts {
     if (dims && !this.repo.vecInit(dims)) this.embedder = null
   }
 
-  /** scope 过滤:private 仅本人行;shared 仅本 channel 的 team 行;session 仅本人/本 channel 的当前会话行;auto 双域 */
+  /**
+   * scope 过滤：private 仅本人行；shared 仅本 channel 的 team 行；session 仅当前会话行；auto 双域。
+   *
+   * 说明（2026-11-26）：`memory-scopes.ts` 的规则表 + 双编译器是**新增档位（workspace/line/product/all）**
+   * 与管理面列表的唯一口径；本方法保留原有四档的逐条语义（差分测试覆盖二者在四档上的等价性）。
+   * 之所以不直接把此处换成表驱动：`private` 档历史上还要包含"可信 product/line 经验"
+   * （见 tests/memory-private-channel-isolation），而表中该档限定 scopeKind=session|channel。
+   */
   protected inScope(row: MemoryRow, scope: MemoryScope, sessionId?: string | null, scopeContext?: ScopeContext, automatic = false): boolean {
     // RSI(WP-A3):retired 经验不参与任何档位检索/注入(过期或劣化回滚后的行只保留审计价值)
     if (row.status === 'retired') return false
+    // 软删行：检索/注入/统计一律不可见（FTS 触发器对任意 UPDATE 都会重建索引，
+    // 因此删除不能依赖物理清理，必须由读侧统一过滤）
+    if (row.deletedAt) return false
     // Task 4:自动注入只认 validated + 已获准部署(canary/active)。candidate、shadow、
     // legacy-unverified(旧行回填)一律不进提示,堵住「未验证内容有资格入词」。
     if (automatic && row.kind === 'experience') {

@@ -6,6 +6,8 @@ import type { EmbeddingProvider } from '../embedding-provider'
 export interface AgentMemoryOptions {
   channelId: string
   agentId: string
+  /** 归属用户（channels.owner_user_id）；共享区/产线/产品可见性以它为界，缺省时由 repo 解析 */
+  ownerUserId?: string | null
   /** Server-trusted immutable scope; never populate from tool arguments. */
   lineId?: string | null
   productId?: string | null

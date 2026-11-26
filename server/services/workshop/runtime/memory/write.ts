@@ -7,6 +7,7 @@ import type { A2AMessage } from '../../types/a2a'
 import type { WorkspaceTask } from '../../types/task'
 import { CONTENT_STORE_LIMIT, buildMatchQuery, partsText, segmentCJK, unsegmentCJK, vectorizeMemory } from './helpers'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
+import type { MemoryWriteOutcome } from '../../db/memory.repo'
 import { randomUUID } from 'node:crypto'
 
 export abstract class AgentMemoryWrite extends AgentMemoryRecall {
@@ -30,7 +31,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     sessionId?: string | null
     /** 跨频道经验的证据锚点(scope=line|global 必填) */
     taskId?: string | null
-  }): Promise<{ scope: 'private' | 'shared' | 'line' | 'global', dedupKey: string }> {
+  }): Promise<{ scope: 'private' | 'shared' | 'line' | 'global', dedupKey: string, outcome: MemoryWriteOutcome }> {
     if (input.scope === 'line' || input.scope === 'global') {
       const expScope: 'line' | 'global' = input.scope
       return this.saveExperience({ ...input, scope: expScope })
@@ -77,7 +78,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
           const merged = `${oldContent}${confirmNote}`
           const mergedTitleFts = row.titleFts ?? segmentCJK(row.title)
           const mergedDedup = row.dedupKey ?? `legacy:${row.id}`
-          this.repo.upsert({
+          const write = this.repo.upsert({
             channelId: row.channelId,
             agentId: row.agentId,
             kind: row.kind,
@@ -88,15 +89,19 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
             taskId: row.taskId,
             dedupKey: mergedDedup,
           })
+          // 受保护行(validated/retired/human)不会被改写正文；不得再按新文本向量化
+          if (write.outcome === 'protected') {
+            return { scope: input.scope, dedupKey: mergedDedup, outcome: 'protected' }
+          }
           await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, row.agentId, mergedDedup, merged)
-          return { scope: input.scope, dedupKey: mergedDedup }
+          return { scope: input.scope, dedupKey: mergedDedup, outcome: write.outcome }
         }
         title = `[contested:${row.id.slice(0, 8)}] ${title}`
         finalKey = `${dedupKey}:contested`
         break
       }
     }
-    this.repo.upsert({
+    const write = this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: owner,
       kind: 'semantic',
@@ -108,10 +113,13 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       sessionId: input.sessionId ?? '',
       dedupKey: finalKey,
     })
+    if (write.outcome === 'protected') {
+      return { scope: input.scope, dedupKey: finalKey, outcome: 'protected' }
+    }
     await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, owner, finalKey, content)
     // 共享约定进入简报"团队共享约定"行
     if (shared) await this.updateBrief()
-    return { scope: input.scope, dedupKey: finalKey }
+    return { scope: input.scope, dedupKey: finalKey, outcome: write.outcome }
   }
 
   /**
@@ -126,7 +134,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     dedupKey?: string
     sessionId?: string | null
     taskId?: string | null
-  }): Promise<{ scope: 'line' | 'global', dedupKey: string }> {
+  }): Promise<{ scope: 'line' | 'global', dedupKey: string, outcome: MemoryWriteOutcome }> {
     if (this.opts.industrialScopeEnabled !== true) {
       throw new Error('industrial experience requires production_line_integrated mode')
     }
@@ -144,7 +152,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     }
     const rawKey = input.dedupKey?.trim() || `agent-save:${randomUUID().slice(0, 8)}`
     const dedupKey = `exp:${input.scope}:${this.opts.agentId}:${rawKey}`
-    this.repo.upsertExperience({
+    const write = this.repo.upsertExperience({
       channelId: this.opts.channelId,
       agentId: this.opts.agentId,
       kind: 'experience',
@@ -161,8 +169,11 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       scopeKey,
       status: 'candidate',
     })
+    if (write.outcome === 'protected') {
+      return { scope: input.scope, dedupKey, outcome: 'protected' }
+    }
     await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, this.opts.agentId, dedupKey, input.content)
-    return { scope: input.scope, dedupKey }
+    return { scope: input.scope, dedupKey, outcome: write.outcome }
   }
 
   /** run 后(任务路径;仅终态调用):harvest TaskEngine 终态 + deliverable,并刷新 L0 简报 */
@@ -176,7 +187,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       .join(' ')
       .trim()
     const content = deliverable || task.description || task.title
-    this.repo.upsert({
+    const write = this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: this.opts.agentId,
       kind: 'episodic-task',
@@ -189,6 +200,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       sessionId: task.sessionId || this.opts.sessionId || '',
       dedupKey: `task:${task.id}`,
     })
+    if (write.outcome === 'protected') return
     await this.vectorize(content, `task:${task.id}`)
     await this.updateBrief()
   }
@@ -199,7 +211,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     const content = replyText ? `问:${ask} 答:${replyText.slice(0, 250)}` : ask
     const fromId = (msg.metadata?.['x-aw-from-agent'] as string | undefined) ?? 'unknown'
     const title = `来自 ${fromId} 的消息`
-    this.repo.upsert({
+    const write = this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: this.opts.agentId,
       kind: 'episodic-peer',
@@ -211,6 +223,7 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       sessionId: sessionId ?? (msg.metadata?.['x-aw-session-id'] as string | undefined) ?? '',
       dedupKey: `peer:${msg.messageId}`,
     })
+    if (write.outcome === 'protected') return
     await this.vectorize(content, `peer:${msg.messageId}`)
   }
 

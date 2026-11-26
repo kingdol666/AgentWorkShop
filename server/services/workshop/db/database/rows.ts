@@ -288,6 +288,22 @@ export interface MemoryRow {
   scopeKey?: string
   status?: MemoryStatus
   expiresAt?: string | null
+  /** 归属（NULL=遗留公共；共享区/产线/产品可见性以 owner 为界） */
+  ownerUserId?: string | null
+  /** 作者：agent 自产 / human 人工 / system 治理 */
+  authorKind?: 'agent' | 'human' | 'system'
+  authorId?: string
+  /** 乐观锁版本（人工覆写/回滚/证据合并 +1） */
+  revision?: number
+  /** 置顶（人工条目的注入优先级） */
+  pinned?: number
+  updatedAt?: string
+  /** 软删（NULL=未删；30 天后可硬删） */
+  deletedAt?: string | null
+  deletedBy?: string | null
+  deleteReason?: string | null
+  /** 来源深链（task/run/intervention/ontology 的 JSON 引用） */
+  originRef?: string
 }
 export interface ChannelAgentCreationSource {
   createdByKind: 'system' | 'user' | 'leader'

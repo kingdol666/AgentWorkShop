@@ -8,6 +8,18 @@ import type { MemoryScope, MemorySnippet, RecallOptions, ScopeContext } from './
 import { CURATED_KINDS, FTS_POOL, MMR_LAMBDA, RECENT_FALLBACK, RELATED_TASK_BOOST, RRF_K, SAME_LINE_BOOST, SAME_PRODUCT_BOOST, SESSION_RELEVANCE_BOOST, buildMatchQuery, estimateTokens, memoryCfg, unsegmentCJK } from './helpers'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 
+/** 共享区自动注入条数（0=关闭；默认 3，上限 10） */
+function memorySharedTopN(): number {
+  const raw = Number(process.env.AW_MEMORY_SHARED_TOP_N ?? '3')
+  return Number.isFinite(raw) ? Math.max(0, Math.min(10, Math.floor(raw))) : 3
+}
+
+/** 共享区块 token 预算（默认 150；与 L1/brief 同属 inject_total 总额，不额外加总） */
+function memorySharedTokens(): number {
+  const raw = Number(process.env.AW_MEMORY_SHARED_TOKENS ?? '150')
+  return Number.isFinite(raw) ? Math.max(0, Math.min(400, Math.floor(raw))) : 150
+}
+
 export abstract class AgentMemoryRecall extends AgentMemoryState {
   /**
    * 作用域上下文(WP-A3):显式入参优先;缺省按频道产线绑定解析(lineId)。
@@ -97,6 +109,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     if (scope !== 'shared' && scope !== 'session') {
       for (const row of this.repo.listRecent(this.opts.agentId, RECENT_FALLBACK, { channelId: this.opts.channelId })) {
         if (!this.inScope(row, scope, sessionId, scopeContext, automatic)) continue
+        if (row.deletedAt) continue
         if (CURATED_KINDS.has(row.kind)) continue
         // RSI(WP-A3):时近兜底同样排除退休经验(兜底路径不经 inScope)
         if (row.status === 'retired') continue
@@ -219,6 +232,33 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
       lines.push(line)
       selectedTokens.push(bestTokens!)
       if (doTouch) touched.push(c!.row.id)
+    }
+    // L2 共享区（owner 级 `scope_kind='global'`）：独立预算 ≤150 tok，计入 inject_total 总额。
+    // 只取人工行 / 已验证经验 / active 语义行；pin 优先（repo 内 ORDER BY）。
+    const sharedLimit = memorySharedTopN()
+    if (sharedLimit > 0) {
+      const owner = this.opts.ownerUserId ?? this.repo.contextFor(this.opts.channelId).ownerUserId
+      const matchQuery = buildMatchQuery(query)
+      if (owner && matchQuery) {
+        const sharedBudget = memorySharedTokens()
+        let sharedUsed = 0
+        let sharedCount = 0
+        for (const row of this.repo.searchWorkspaceShared(matchQuery, owner, sharedLimit + 2)) {
+          if (sharedCount >= sharedLimit) break
+          const tag = row.authorKind === 'human' ? '[人工]' : (row.kind === 'experience' && row.status === 'validated' ? '[已验证]' : '')
+          const title = row.title
+          const body = unsegmentCJK(String(row.content ?? '')).slice(0, 160)
+          const line = `  [共享区${tag ? ` ${tag}` : ''} · ${row.pinned ? 'pin · ' : ''}${row.scopeKind ?? 'global'}] ${title}：${body}`
+          const cost = estimateTokens(line)
+          if (sharedUsed + cost > sharedBudget) continue
+          if (usedTotal + cost + tipsCost + headerCost > totalBudget) continue
+          sharedUsed += cost
+          usedTotal += cost
+          sharedCount += 1
+          lines.push(line)
+          if (lines.length >= 15) break
+        }
+      }
     }
     if (lines.length === 0) return null
     for (const id of touched) this.repo.touch(id)

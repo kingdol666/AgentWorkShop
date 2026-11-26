@@ -13,6 +13,7 @@
  */
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
+import { withTransaction } from '../db/transaction'
 import {
   EXPERIENCE_VERSION_CONFLICT,
   ExperienceVersionConflictError,
@@ -70,21 +71,8 @@ const evidenceSnapshot = (evidence: readonly EvidenceRef[]): string => canonical
     .sort((a, b) => a.id.localeCompare(b.id)),
 )
 
-function tx<T>(db: DatabaseSync, fn: () => T): T {
-  db.exec('BEGIN IMMEDIATE')
-  try {
-    const out = fn()
-    db.exec('COMMIT')
-    return out
-  }
-  catch (err) {
-    try {
-      db.exec('ROLLBACK')
-    }
-    catch { /* 已回滚 */ }
-    throw err
-  }
-}
+/** 事务：统一走可重入入口（SAVEPOINT），避免与 promote/release 的外层事务嵌套抛错 */
+const tx = <T>(db: DatabaseSync, fn: () => T): T => withTransaction(db, fn)
 
 export function headVersionId(db: DatabaseSync, experienceId: string): string | null {
   const row = db.prepare('SELECT version_id AS versionId FROM experience_heads WHERE experience_id = ?')
@@ -96,6 +84,65 @@ export function getVersion(db: DatabaseSync, versionId: string): ExperienceVersi
   const row = db.prepare(`SELECT ${VERSION_COLS} FROM experience_versions WHERE version_id = ?`)
     .get(versionId) as VersionRow | undefined
   return row ? toVersion(row) : null
+}
+
+/**
+ * 确保某条经验有版本头（幂等）。
+ *
+ * 为什么需要它：晋升/部署要读 `experience_heads.deployment` 才能决定是否注入，
+ * 而自由文本经验没有结构化 `VersionDraft`（variable/unit/direction/polarity）。
+ * 这里复用启动回填（migrations-experience-versions.ts）的**同一 stable id 与空 claim**，
+ * 不伪造主张；新版本的生命周期/部署由 promote/deploy 随后显式推进。
+ *
+ * 已有 head → 原样返回（不覆盖更丰富的结构化版本）。
+ */
+export function ensureLegacyVersion(db: DatabaseSync, experienceId: string): string | null {
+  const existing = headVersionId(db, experienceId)
+  if (existing) return existing
+  const row = db.prepare(
+    `SELECT id, content, evidence_json AS evidenceJson, scope_kind AS scopeKind, scope_key AS scopeKey,
+            created_at AS createdAt, outcome
+       FROM agent_memories WHERE id = ? AND kind = 'experience' AND deleted_at IS NULL`,
+  ).get(experienceId) as {
+    id: string
+    content: string
+    evidenceJson?: string
+    scopeKind?: string
+    scopeKey?: string
+    createdAt: string
+    outcome?: string
+  } | undefined
+  if (!row) return null
+  const evidence = row.evidenceJson || '[]'
+  const claim = {
+    productId: '',
+    recipeRevision: '',
+    variable: '',
+    unit: '',
+    direction: 'stable',
+    condition: '',
+    polarity: row.outcome === 'negative' ? 'refute' : 'support',
+  }
+  const versionId = `ev-legacy-${row.id}`
+  tx(db, () => {
+    db.prepare(
+      `INSERT INTO experience_versions
+        (version_id, experience_id, claim_origin_id, scope_kind, scope_key, claim_json, content, content_hash,
+         evidence_json, evidence_snapshot_hash, lifecycle, deployment, claim_origin_time, beta_ancestors_json,
+         idempotency_key, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'candidate', 'none', ?, '[]', ?, ?)
+       ON CONFLICT(version_id) DO NOTHING`,
+    ).run(
+      versionId, row.id, `co-legacy-${row.id}`, row.scopeKind || 'session', row.scopeKey || '',
+      JSON.stringify(claim), row.content, sha256(row.content), evidence, sha256(evidence),
+      row.createdAt, `legacy-backfill:${row.id}`, row.createdAt,
+    )
+    db.prepare(
+      `INSERT INTO experience_heads(experience_id, version_id, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(experience_id) DO NOTHING`,
+    ).run(row.id, versionId, row.createdAt)
+  })
+  return headVersionId(db, experienceId) ?? versionId
 }
 
 export function listVersions(db: DatabaseSync, experienceId: string): ExperienceVersion[] {

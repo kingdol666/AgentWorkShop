@@ -121,12 +121,17 @@ function criterionText(c: Record<string, unknown> | null | undefined): string {
   return `${metric}${op}${threshold ?? '?'}`
 }
 
-/** 作用域与状态：line/product 一律 candidate（ADR-7），其余 active */
+/**
+ * 作用域与状态：一律 candidate。
+ *
+ * 此前 line/product 是 candidate、其余返回 `active` —— 但自动注入只认 validated（state.ts:43-46）、
+ * 晋升只收 candidate（gates/promote），于是 channel 档经验既不可晋升也不可注入，形成永久死行。
+ */
 function scopeOf(kind: MemoryScopeKind, key: string): { scopeKind: MemoryScopeKind, scopeKey: string, status: MemoryStatus } {
   if ((kind === 'line' || kind === 'product') && key) {
     return { scopeKind: kind, scopeKey: key, status: 'candidate' }
   }
-  return { scopeKind: 'channel', scopeKey: '', status: 'active' }
+  return { scopeKind: 'channel', scopeKey: '', status: 'candidate' }
 }
 
 /**
@@ -163,6 +168,8 @@ export function distillTaskFact(f: TaskFact): DistilledExperience | null {
 
   const evidence: ExperienceEvidence = {
     taskIds: [f.taskId],
+    // 一次任务 = 一个观测单元（即使同行还带 interventionEventId，也不得自证两次）
+    supportUnits: [{ id: `task:${f.taskId}`, kind: 'task' }],
     ...(f.intervention?.eventId ? { interventionEventId: f.intervention.eventId } : {}),
     ...(f.intervention?.recipeRunId ? { recipeRunId: f.intervention.recipeRunId } : {}),
     ...(f.intervention?.effect !== null && f.intervention?.effect !== undefined ? { metrics: { effect: f.intervention.effect } } : {}),
@@ -195,6 +202,7 @@ export function distillReviewFact(f: ReviewFact): DistilledExperience {
   ].filter(Boolean)
   const evidence: ExperienceEvidence = {
     resultId: f.resultId,
+    supportUnits: [{ id: `review:${f.resultId}`, kind: 'review' }],
     ...(f.taskId ? { taskIds: [f.taskId] } : {}),
     ...(f.traceId ? { traceId: f.traceId } : {}),
   }
@@ -247,6 +255,12 @@ export function distillInterventionFact(f: InterventionFact): DistilledExperienc
   const scope = scopeOf(f.lineId ? 'line' : 'channel', f.lineId ?? '')
   const evidence: ExperienceEvidence = {
     interventionEventId: f.eventId,
+    // 独立观测单元：同一次配方运行（recipeRunId）的多个事件只算一个
+    supportUnits: [{
+      id: f.recipeRunId ? `run:${f.recipeRunId}` : `event:${f.eventId}`,
+      kind: f.recipeRunId ? 'run' : 'event',
+      verdict: f.verdict,
+    }],
     ...(f.recipeRunId ? { recipeRunId: f.recipeRunId } : {}),
     ...(Object.keys(metrics).length > 0 ? { metrics } : {}),
     ...(f.criterion ? { criterion: f.criterion } : {}),
@@ -299,7 +313,9 @@ export async function reflectExperience(
   if (!industrialEnabled && (distilled.scopeKind === 'line' || distilled.scopeKind === 'product' || distilled.scopeKind === 'global')) {
     distilled.scopeKind = 'channel'
     distilled.scopeKey = ''
-    distilled.status = 'active'
+    // 降级到 channel 档也必须是 candidate：注入要 validated、晋升要 candidate，
+    // 写 'active' 会造出既不可晋升也不可注入的死行（G1）
+    distilled.status = 'candidate'
   }
   try {
     if (!industrialEnabled) {
@@ -309,7 +325,7 @@ export async function reflectExperience(
         return { written: false, reason: 'industrial experience requires production_line_integrated mode' }
       }
     }
-    const { id } = repo.upsertExperience({
+    const { id, outcome } = repo.upsertExperience({
       channelId: fact.channelId,
       agentId: fact.agentId,
       kind: 'experience',
@@ -327,6 +343,9 @@ export async function reflectExperience(
       status: distilled.status,
       expiresAt: null,
     })
+    // 受保护行(validated/retired/human)不落新正文与证据，也不得向量化：
+    // 否则会出现"正文没变、向量按新文本算、却上报写入成功"（G9）
+    if (outcome === 'protected') return { written: false, reason: 'protected-experience-row' }
     await vectorizeMemory(repo, embedder, fact.channelId, fact.agentId, distilled.dedupKey, distilled.content)
     return { written: true, id, dedupKey: distilled.dedupKey }
   }
