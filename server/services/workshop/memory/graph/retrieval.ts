@@ -9,6 +9,7 @@
  * 降级：任何异常/超时（>60ms）返回空；不影响 FTS/向量。
  */
 import { buildMatchQuery } from '../../runtime/memory/helpers'
+import { TEAM_SENTINEL } from '../../runtime/memory/memory-scopes'
 import type { MemoryScopeKind } from '../../db/database'
 import { normalizeEntityKey } from './normalize'
 import type { GraphRepo } from './repo'
@@ -44,6 +45,13 @@ export interface GraphRetrievalOptions {
   maxHops?: number
   alpha?: number
   maxIterations?: number
+  /**
+   * viewer agent（2026-11-28 审核轮缺口收口）：给定时，session/channel 分区的实体必须
+   * 有 ≥1 条存活 mention 来自 viewer 本人或 __team__ 才可见 —— 与 inScope 的 agent 归属
+   * 过滤对齐；line/product/global 是显式跨 agent 共享档（agentIn=any），不过滤。
+   * 零 mention 实体 fail-closed。REST（owner 面）不传，保持全量。
+   */
+  viewerAgentId?: string
 }
 
 function cjkBigrams(text: string): string[] {
@@ -85,6 +93,38 @@ function scopeAllowed(entity: GraphEntity, allowed: Set<string>, keys?: string[]
 export function usableEntity(entity: GraphEntity | null | undefined): entity is GraphEntity {
   return Boolean(entity && !entity.deletedAt && !entity.mergedInto
     && (entity.status === 'active' || entity.status === 'provisional'))
+}
+
+/**
+ * Agent 视角的图可见性（与 inScope 的 agent 归属过滤对齐）。
+ * session/channel 分区的实体可能由同会话/同频道**其他 agent** 的私有记忆派生
+ * （物化源 SQL 只按分区过滤）。原始记忆在 FTS 面有 agent 过滤，图谱派生面
+ * （实体名/事实/社区摘要）此前没有对应物。viewer 给定时：
+ *  - session/channel 分区：≥1 条存活 mention 来自 viewer 或 __team__ 才可见；
+ *  - 其余分区（line/product/global）：显式跨 agent 共享档，不过滤；
+ *  - 零 mention 实体：fail-closed 不可见。
+ */
+export function filterEntitiesForViewer(
+  repo: GraphRepo,
+  entities: GraphEntity[],
+  viewerAgentId: string | undefined,
+): Set<string> {
+  const visible = new Set<string>()
+  if (!viewerAgentId) {
+    for (const e of entities) visible.add(e.id)
+    return visible
+  }
+  const scoped = entities.filter(e => e.scopeKind === 'session' || e.scopeKind === 'channel')
+  const agentsByEntity = scoped.length > 0 ? repo.mentionAgentsByEntity(scoped.map(e => e.id)) : new Map()
+  for (const e of entities) {
+    if (e.scopeKind !== 'session' && e.scopeKind !== 'channel') {
+      visible.add(e.id)
+      continue
+    }
+    const agents = agentsByEntity.get(e.id)
+    if (agents && (agents.has(viewerAgentId) || agents.has(TEAM_SENTINEL))) visible.add(e.id)
+  }
+  return visible
 }
 
 export function findSeeds(
@@ -296,11 +336,17 @@ export function graphRetrieve(
       return { memoryScores: new Map(), entityScores: new Map(), edges: [], seedIds: [], durationMs: Date.now() - started }
     }
     const expanded = expandGraph(repo, channelId, seeds, opts)
-    const memoryScores = projectToMemories(repo, expanded.entityScores, expanded.edges)
+    // viewer 过滤（先于记忆投影）：隐藏实体的 mention/证据不得把他人私有记忆带进投影。
+    const visible = filterEntitiesForViewer(repo, repo.listEntitiesByIds([...expanded.entityScores.keys()]), opts.viewerAgentId)
+    const entityScores = new Map([...expanded.entityScores].filter(([id]) => visible.has(id)))
+    const edges = opts.viewerAgentId
+      ? expanded.edges.filter(e => visible.has(e.srcId) && visible.has(e.dstId))
+      : expanded.edges
+    const memoryScores = projectToMemories(repo, entityScores, edges)
     return {
       memoryScores,
-      entityScores: expanded.entityScores,
-      edges: expanded.edges,
+      entityScores,
+      edges,
       seedIds: seeds.map(s => s.entityId),
       durationMs: Date.now() - started,
     }
@@ -349,8 +395,13 @@ export function buildGraphDigest(
   }
   const community = repo.communityForEntity(topEntities[0]!)
   if (community) {
-    lines.push(`- 社区：${community.title}（${community.memberCount} 个实体）`)
-    refs.push({ id: community.id, kind: 'graph-community', scopeKind: community.scopeKind, scopeKey: community.scopeKey })
+    // viewer 给定时，社区摘要也来自成员记忆的改写：至少一个可见成员才随 digest 出去。
+    const members = repo.communityMembers(community.id)
+    const visibleMembers = filterEntitiesForViewer(repo, members, opts.viewerAgentId)
+    if (visibleMembers.size > 0) {
+      lines.push(`- 社区：${community.title}（${community.memberCount} 个实体）`)
+      refs.push({ id: community.id, kind: 'graph-community', scopeKind: community.scopeKind, scopeKey: community.scopeKey })
+    }
   }
   return { text: lines.join('\n').slice(0, 420), refs }
 }
@@ -369,6 +420,8 @@ export interface GraphSubgraphOptions {
   limit?: number
   /** 是否显示 episode（记忆片段）节点；默认 false，实体网络更清晰 */
   includeEpisodes?: boolean
+  /** viewer agent（session/channel 分区按 mention 归属过滤；见 GraphRetrievalOptions.viewerAgentId） */
+  viewerAgentId?: string
 }
 
 /** UI 子图：有 q/entity 走种子扩展；否则取显著实体 + 1 跳。 */
@@ -388,6 +441,7 @@ export function loadSubgraph(repo: GraphRepo, channelId: string, opts: GraphSubg
   else if (query) {
     seeds = findSeeds(repo, channelId, query, {
       asOf, scopeKinds: opts.scopeKinds, scopeKeys: opts.scopeKeys, ownerUserId: opts.ownerUserId, seedLimit: 8,
+      viewerAgentId: opts.viewerAgentId,
     })
   }
   let nodes: GraphEntity[]
@@ -397,6 +451,7 @@ export function loadSubgraph(repo: GraphRepo, channelId: string, opts: GraphSubg
       asOf, scopeKinds: opts.scopeKinds, scopeKeys: opts.scopeKeys, ownerUserId: opts.ownerUserId,
       limitNodes: limit, limitEdges: Math.max(limit * 3, 300),
       maxHops: Math.max(1, Math.min(2, opts.depth ?? 2)),
+      viewerAgentId: opts.viewerAgentId,
     })
     const ids = [...expanded.entityScores.keys()]
     nodes = repo.listEntitiesByIds(ids)
@@ -427,6 +482,11 @@ export function loadSubgraph(repo: GraphRepo, channelId: string, opts: GraphSubg
   if (opts.types?.length) nodes = nodes.filter(e => opts.types!.includes(e.entityType))
   if (opts.relations?.length) edges = edges.filter(e => opts.relations!.includes(e.relation))
   if (!opts.includeEpisodes) nodes = nodes.filter(n => n.entityType !== 'episode')
+  // viewer 过滤：session/channel 分区的他人派生实体不出子图（与 graphRetrieve 同口径）。
+  const visibleNodes = filterEntitiesForViewer(repo, nodes, opts.viewerAgentId)
+  if (opts.viewerAgentId) {
+    nodes = nodes.filter(n => visibleNodes.has(n.id))
+  }
   const nodeIds = new Set(nodes.map(n => n.id))
   edges = edges.filter(e => nodeIds.has(e.srcId) && nodeIds.has(e.dstId)).slice(0, limit * 4)
   const degree = new Map<string, number>()
@@ -434,9 +494,16 @@ export function loadSubgraph(repo: GraphRepo, channelId: string, opts: GraphSubg
     degree.set(e.srcId, (degree.get(e.srcId) ?? 0) + 1)
     degree.set(e.dstId, (degree.get(e.dstId) ?? 0) + 1)
   }
-  const communities = repo.listCommunities(channelId, {
+  let communities = repo.listCommunities(channelId, {
     limit: 50, scopeKinds: opts.scopeKinds, scopeKeys: opts.scopeKeys,
   })
+  if (opts.viewerAgentId) {
+    // 社区摘要来自成员记忆改写：没有可见成员的社区不展示。
+    communities = communities.filter((c) => {
+      const members = repo.communityMembers(c.id)
+      return filterEntitiesForViewer(repo, members, opts.viewerAgentId).size > 0
+    })
+  }
   const communityByEntity = new Map<string, string>()
   for (const c of communities.slice(0, 20)) {
     for (const m of repo.communityMembers(c.id)) communityByEntity.set(m.id, c.id)

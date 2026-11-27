@@ -731,9 +731,12 @@ export function createMemoryRepo(db: DatabaseSync) {
      * 跨团队共享域检索(hardening 后的协作扩展;只读):仅 __team__ 行,
      * 限定目标 channel 集合(调用方保证同主/启用),按 bm25 排序。
      * matchQuery 为 OR 连接的切分词(与 search 同规约)。
+     * ownerUserId（2026-11-28 审核轮）：行级 owner 严格匹配 —— 频道所有权转移后，
+     * 老行仍挂着前任 owner，只靠频道列表会把前任 owner 的共享行读给新 owner。
+     * 不传 owner 一律空集（fail-closed）。
      */
-    searchTeamSharedAcross(matchQuery: string, channelIds: string[], limit: number): Array<MemoryRow & { bm25: number }> {
-      if (channelIds.length === 0) return []
+    searchTeamSharedAcross(matchQuery: string, channelIds: string[], limit: number, ownerUserId?: string): Array<MemoryRow & { bm25: number }> {
+      if (channelIds.length === 0 || !ownerUserId) return []
       const placeholders = channelIds.map(() => '?').join(', ')
       const stmt = db.prepare(
         `SELECT ${COLS}, f.rank AS bm25
@@ -742,9 +745,10 @@ export function createMemoryRepo(db: DatabaseSync) {
          WHERE agent_memories_fts MATCH ? AND m.agent_id = ? AND m.channel_id IN (${placeholders})
            AND m.deleted_at IS NULL
            AND m.status != 'retired'
+           AND m.owner_user_id = ?
          ORDER BY f.rank LIMIT ?`,
       )
-      return stmt.all(matchQuery, TEAM_AGENT_ID, ...channelIds, limit) as unknown as Array<MemoryRow & { bm25: number }>
+      return stmt.all(matchQuery, TEAM_AGENT_ID, ...channelIds, ownerUserId, limit) as unknown as Array<MemoryRow & { bm25: number }>
     },
 
     /** 某 channel 团队共享域的行数(跨团队概览的"知识量"指标) */

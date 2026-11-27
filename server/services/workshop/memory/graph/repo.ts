@@ -295,6 +295,8 @@ export interface GraphRepo {
   listMentions(entityId: string, limit?: number): GraphMention[]
   listMentionsByMemory(memoryId: string): GraphMention[]
   countMentions(entityId: string): number
+  /** 批量取实体的存活 mention 来源 agent 集合（viewer 可见性过滤用；软删/retired 不计） */
+  mentionAgentsByEntity(entityIds: string[]): Map<string, Set<string>>
 
   getEdge(id: string): GraphEdge | null
   listEdges(channelId: string, opts?: { srcId?: string, dstId?: string, relations?: string[], statuses?: string[], asOf?: string | null, limit?: number, offset?: number } & GraphQueryScope): GraphEdge[]
@@ -863,6 +865,29 @@ export function createMemoryGraphRepo(db: DatabaseSync): GraphRepo {
         JOIN agent_memories m ON m.id = x.memory_id
         WHERE x.entity_id = ? AND m.deleted_at IS NULL AND m.status != 'retired'`).get(entityId) as { n: number }
       return Number(row.n)
+    },
+    mentionAgentsByEntity(entityIds) {
+      const out = new Map<string, Set<string>>()
+      for (let i = 0; i < entityIds.length; i += 100) {
+        const chunk = entityIds.slice(i, i + 100)
+        if (chunk.length === 0) continue
+        const rows = db.prepare(
+          `SELECT x.entity_id AS entityId, m.agent_id AS agentId
+             FROM memory_entity_mentions x
+             JOIN agent_memories m ON m.id = x.memory_id
+            WHERE x.entity_id IN (${chunk.map(() => '?').join(', ')})
+              AND m.deleted_at IS NULL AND m.status != 'retired'`,
+        ).all(...chunk) as Array<{ entityId: string, agentId: string }>
+        for (const r of rows) {
+          let set = out.get(r.entityId)
+          if (!set) {
+            set = new Set()
+            out.set(r.entityId, set)
+          }
+          set.add(r.agentId)
+        }
+      }
+      return out
     },
 
     getEdge(id) {

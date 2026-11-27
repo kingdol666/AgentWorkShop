@@ -173,6 +173,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
         if (graphScope && (graphScope.scopeKeys.some(Boolean) || graphScope.scopeKinds.includes('channel'))) {
           const graph = graphRetrieve(this.repo.graph, this.opts.channelId, query, {
             asOf, qv, ...graphScope, seedLimit: 8, limitNodes: 300, limitEdges: 1200,
+            viewerAgentId: this.opts.agentId,
           })
           if (graph.durationMs <= GRAPH_DEADLINE_MS && graph.memoryScores.size > 0) {
             const ranked = [...graph.memoryScores.entries()]
@@ -367,6 +368,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
               asOf: recallOpts.asOf ?? null, ...graphScope, seedLimit: 8, limitNodes: 300, limitEdges: 1200,
               // L0.5 与知识手册共用 200 tok；单条事实 + 社区才放得下。
               maxFacts: 1,
+              viewerAgentId: this.opts.agentId,
             })
             if (digest) {
               const cost = estimateTokens(digest.text)

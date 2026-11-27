@@ -198,6 +198,9 @@ export async function toolMemoryGraphQuery(agentId: string, args: Record<string,
       relations: relation ? [relation] : undefined,
       limit,
       ...graphScope,
+      // session/channel 分区按 viewer agent 过滤（与 inScope 对齐）；line/product/global
+      // 是显式跨 agent 共享档（agentIn=any），不传 viewer。
+      viewerAgentId: scope === 'session' || scope === 'channel' ? agentId : undefined,
     })
     if (graph.nodes.length === 0) return { text: '知识网络中未找到相关实体；可先让后台整理或扩大关键词。' }
     const nameOf = new Map(graph.nodes.map(n => [n.id, n.canonicalName]))

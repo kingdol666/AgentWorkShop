@@ -92,3 +92,63 @@ test('recall injects graph digest and logs graph refs; disable switch degrades',
     delete process.env.AW_MEMORY_GRAPH_RETRIEVAL
   }
 })
+
+// ── viewer 隔离（2026-11-28 审核轮缺口 B 回归）───────────────────────────────
+// session 分区物化源只按 (scope_kind, session_id) 过滤、不按 agent：同一会话里
+// agent B 的私有记忆派生出的实体/事实/社区，此前能经 digest 或 memory_graph_query
+// 被同会话的 agent A 读到（原始记忆在 FTS 面明明有 agent 过滤）。读取侧现在按
+// viewer agent 过滤：session/channel 分区实体必须有 ≥1 条存活 mention 归属
+// viewer 本人或 __team__；line/product/global 共享档不过滤；零 mention fail-closed。
+
+const { loadSubgraph } = await import('../server/services/workshop/memory/graph/retrieval')
+
+// 同一会话两个 agent 各自的私有语义行（用词表内彼此独立的领域词，保证各自成实体+共现边；
+// 团队行 m1-m3 用的是保压压力/冷却水流量/壁厚/良率，这里刻意避开）
+db.prepare(`INSERT INTO channel_sessions (id, channel_id, title, status, instance_kind, member_map_json, memory_policy, created_at)
+  VALUES ('sessv', 'c1', 'viewer 隔离验收会话', 'active', 'manual', '{}', 'session', ?)`).run(now)
+semantic('mA1', 'A 会话转速结论', '螺杆转速 120 会话记录：模温 68 稳定。', 'sessv', 'a1')
+semantic('mB1', 'B 会话锁模结论', '锁模力 800 会话记录：注射速度 45 稳定。', 'sessv', 'a2')
+// semantic() 助手默认 scope_kind='channel'；会话分区物化源只认 scope_kind='session' 的行
+db.prepare(`UPDATE agent_memories SET scope_kind = 'session', scope_key = 'sessv' WHERE id IN ('mA1', 'mB1')`).run()
+
+test('session partition materializes both agents but hides the other agent derivation per viewer', async () => {
+  const run = await runMemoryGraphConsolidation(db, 'c1', { partition: { scopeKind: 'session', scopeKey: 'sessv' } })
+  assert.equal(run.status, 'ok', run.error)
+  const sessionEntities = repo.graph.listEntities('c1', { scopeKinds: ['session'], scopeKeys: ['sessv'], limit: 200 })
+  const names = sessionEntities.map(e => e.canonicalName)
+  assert.ok(names.some(n => n.includes('螺杆转速') || n.includes('模温')), `A 的实体应已物化:${names.join(',')}`)
+  assert.ok(names.some(n => n.includes('锁模力')), `B 的实体应已物化:${names.join(',')}`)
+
+  // viewer=a1：B 专属派生实体不可见；mention 归属是不变量（不依赖抽取风格）
+  const mentionAgents = repo.graph.mentionAgentsByEntity(sessionEntities.map(e => e.id))
+  const onlyB = sessionEntities.filter((e) => {
+    const agents = mentionAgents.get(e.id)
+    return agents && agents.size > 0 && [...agents].every(a => a === 'a2')
+  }).map(e => e.id)
+  assert.ok(onlyB.length > 0, '夹具应产生至少一个仅由 B 记忆派生的实体')
+
+  const subA = loadSubgraph(repo.graph, 'c1', { scopeKinds: ['session'], scopeKeys: ['sessv'], limit: 200, viewerAgentId: 'a1' })
+  assert.ok(!subA.nodes.some(n => onlyB.includes(n.id)), 'viewer=a1 的子图不得含仅 B 派生实体')
+  const subB = loadSubgraph(repo.graph, 'c1', { scopeKinds: ['session'], scopeKeys: ['sessv'], limit: 200, viewerAgentId: 'a2' })
+  assert.ok(subB.nodes.some(n => onlyB.includes(n.id)), 'viewer=a2 应看到自己的派生实体')
+  // owner 面（无 viewer）保持全量
+  const subOwner = loadSubgraph(repo.graph, 'c1', { scopeKinds: ['session'], scopeKeys: ['sessv'], limit: 200 })
+  assert.ok(subOwner.nodes.some(n => onlyB.includes(n.id)))
+})
+
+test('digest for viewer a1 must not leak b-only facts; viewer a2 sees them', () => {
+  const digestA = buildGraphDigest(repo.graph, 'c1', '锁模力 注射速度', { scopeKinds: ['session'], scopeKeys: ['sessv'], viewerAgentId: 'a1' })
+  if (digestA) assert.ok(!digestA.text.includes('锁模力'), `a1 的 digest 不得出现 B 专属词:${digestA.text}`)
+  const digestB = buildGraphDigest(repo.graph, 'c1', '锁模力 注射速度', { scopeKinds: ['session'], scopeKeys: ['sessv'], viewerAgentId: 'a2' })
+  assert.ok(digestB, 'a2 查自己的词应有 digest')
+  assert.match(digestB.text, /锁模力/)
+})
+
+test('recall for agent a1 never injects agent b session derivation', async () => {
+  const memoryA = new AgentMemory(repo, { channelId: 'c1', agentId: 'a1', sessionId: 'sessv' })
+  const block = String(await memoryA.recall('锁模力 注射速度 稳定', {}) ?? '')
+  assert.ok(!block.includes('锁模力'), `a1 的注入块不得含 B 的派生词:${block.slice(0, 200)}`)
+  const memoryB = new AgentMemory(repo, { channelId: 'c1', agentId: 'a2', sessionId: 'sessv' })
+  const blockB = String(await memoryB.recall('锁模力 注射速度 稳定', {}) ?? '')
+  assert.ok(blockB.includes('锁模力') || blockB.includes('相关记忆'), 'a2 仍能正常召回自己的内容')
+})

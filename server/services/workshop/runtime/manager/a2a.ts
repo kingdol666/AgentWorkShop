@@ -120,7 +120,12 @@ export abstract class ManagerA2A extends ManagerTasks {
     if (hasFromAgent) metadata['x-aw-from-agent'] = input.fromAgentId
     if (input.fromLabel) metadata['x-aw-from-label'] = input.fromLabel
     if (input.requireReply) metadata['x-aw-require-reply'] = 'true'
-    const message = buildMessage(input.channelId, 'ROLE_AGENT', input.parts, metadata)
+    // 人类直发（actorUserId 盖章、无 agent 身份）= ROLE_USER：时间线"用户章"语义 +
+    // 回合落定的 recordDialog 沉淀门（message.ts 只认 ROLE_USER）。此前会话人工消息
+    // 也是 ROLE_AGENT，导致 W1c 的"人类↔Agent 对话沉淀"在会话路径从未触发
+    // （群聊路径 chat.ts 一直是 ROLE_USER）。agent/内核消息保持 ROLE_AGENT 不变。
+    const humanSender = !hasFromAgent && !!input.actorUserId
+    const message = buildMessage(input.channelId, humanSender ? 'ROLE_USER' : 'ROLE_AGENT', input.parts, metadata)
     const delivered = this.route(input.channelId, message)
     if (!delivered.includes(input.toAgentId)) {
       throw new AppError(502, 'DELIVERY_FAILED', `消息未能投递到 ${input.toAgentId} 的信箱,请重试`)
@@ -345,6 +350,8 @@ export abstract class ManagerA2A extends ManagerTasks {
       matchQuery,
       others.map(c => c.id),
       Math.min(Math.max(input.limit ?? 5, 1), 20),
+      // 行级 owner 严格匹配（与 searchExperienceAcross 同口径）：频道所有权转移后老行不外泄
+      this.deps.repos.channels.findById(channelId)?.ownerUserId ?? undefined,
     )
     // 触摸命中行(access_count/last_accessed_at):与 recallRows 同信号,强化后续召回排序
     for (const r of rows) this.deps.repos.memories.touch(r.id)
