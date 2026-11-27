@@ -18,7 +18,7 @@ import type { ScheduleRuntime } from '../schedule-runtime'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { TaskEngine as TaskEngineImpl } from '../task-engine'
-import { createEnvEmbeddingProvider } from '../embedding-provider'
+import { getEmbeddingProvider } from '../embedding-provider'
 import { log, buildMessage } from './helpers'
 import { toolActivityAt } from '../../agents/host-tool-bridge'
 import { settleInvocationScope } from '../permission-scope'
@@ -38,6 +38,7 @@ import { registerInterventionAssessmentHook } from '../../aml/intervention-ledge
 import { getDcwController } from '../../dcw/dcw-controller'
 import { verifyAllPending, verifyPendingInterventions } from '../../verify/blind-verifier'
 import { harvestTerminalTaskMemory } from './terminal-harvest'
+import { scheduleCuratorAfterTask } from '../../memory/curator/after-task'
 
 /** §7.1 事件名 → 展示标签(tasks 状态机 → 设计文档事件契约) */
 const EVENT_LABELS: Record<string, string> = {
@@ -144,8 +145,18 @@ export abstract class ManagerState extends ManagerContracts {
   /** §7.3 outbox 独立补偿定时器(短周期重试;与记忆维护 6h 周期解耦) */
   protected outboxTimer: NodeJS.Timeout | null = null
   protected chatDeliveryTimer: NodeJS.Timeout | null = null
-  /** 全 manager 共享的 env 向量 provider(未配置 → null 纯 FTS;熔断/维度全体实例共享) */
-  protected readonly memoryEmbedder = createEnvEmbeddingProvider()
+  /**
+   * 全 manager 共享的向量 provider（本地 ONNX 模型优先，其次 HTTP 端点；未配置 → null 纯 FTS）。
+   *
+   * 必须是 getter 而不是构造期常量（2026-11-28）：记忆中心"下载→启用"本地模型是 live 操作，
+   * 构造期快照会让已存活的 manager/runtime 永远持有旧 provider（实测：模型启用、回填成功，
+   * 但召回仍走纯 FTS —— 向量榜一次都没参与）。getEmbeddingProvider() 按配置指纹缓存，
+   * 启用/删除后自动重建。
+   */
+  protected get memoryEmbedder() {
+    return getEmbeddingProvider()
+  }
+
   /** 反思游标:每 agent 上次聚合的当月任务数(月度幂等增量判定) */
   protected readonly reflectCounts = new Map<string, number>()
   /** shared task digest 节流：channel/task/event bucket -> last write time */
@@ -543,6 +554,16 @@ export abstract class ManagerState extends ManagerContracts {
           // 重复触发无害）。判定与运行时解析抽在 terminal-harvest.ts（可单测）。
           if (e.task && (e.state === 'FAILED' || e.state === 'CANCELED')) {
             harvestTerminalTaskMemory(this.channels.get(e.channelId)?.getAgents(), e.task, e.state)
+          }
+          // 知识汇整的"最佳时机"（2026-11-28）：任务成功收口后 45s 内安排一次去抖的
+          // 即时汇整 —— 默认 Curator 30 分钟一轮 + 图谱 60s 首轮延迟意味着首个真实
+          // 任务之后的下一次作业拿不到 L0.5 手册。代价有界：单频道去抖、仅当无手册或
+          // 手册超 10 分钟时才触发、单飞由 runCuratorForChannel 保证、异常全静默。
+          if (e.state === 'COMPLETED' && e.channelId) {
+            try {
+              scheduleCuratorAfterTask(this.deps.db, e.channelId)
+            }
+            catch { /* 汇整调度失败不影响任务状态机 */ }
           }
           // 事件驱动调度:任务状态变化即唤醒该频道调度循环(空闲退避即刻恢复快节奏)。
           //

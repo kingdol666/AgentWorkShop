@@ -8,6 +8,7 @@ import { AppError } from '../../../../utils/errors'
 import { hasTerminalSession, sweepTerminalSessions } from '../../agents/harness-terminal'
 import { killHarnessProcess, listAliveHarnessProcessesByAgent, listHarnessProcesses, sweepHarnessProcesses } from '../../agents/harness-process'
 import { log, resolveOwnerName } from './helpers'
+import { stopCuratorAfterTaskTimers } from '../../memory/curator/after-task'
 
 export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
   runtimeStatus(): { wiredAgents: string[], activeChannels: string[] } {
@@ -287,6 +288,11 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
     this.graphScheduler = null
     this.curatorScheduler?.stop()
     this.curatorScheduler = null
+    // 任务后即时汇整的去抖定时器:停机必须清(否则停服后 45s 仍会跑一次汇整)
+    try {
+      stopCuratorAfterTaskTimers()
+    }
+    catch { /* 清理失败不阻断停机 */ }
     if (this.outboxTimer) {
       clearInterval(this.outboxTimer)
       this.outboxTimer = null

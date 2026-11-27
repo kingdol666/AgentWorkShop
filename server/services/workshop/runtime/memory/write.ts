@@ -47,7 +47,15 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     const shared = input.scope === 'shared'
     // undefined = 沿用运行时会话；显式 null = 调用方要求频道级（session_scope=false），不得回退。
     const sid = input.sessionId !== undefined ? input.sessionId : (this.opts.sessionId ?? null)
-    const rawKey = input.dedupKey?.trim() || `agent-save:${randomUUID().slice(0, 8)}`
+    let rawKey = input.dedupKey?.trim() || `agent-save:${randomUUID().slice(0, 8)}`
+    // 私有键命名空间守卫(2026-11-28):save_memory 的 dedupKey 由调用方给,而平台内部
+    // 键(task:/peer:/dialog:/brief:/chronicle:/reflection:/session:/team-task:/exp:/curated:/manual:)
+    // 共享同一 (agent_id, dedup_key, channel_id) 唯一空间。一个 agent 传 `task:<id>` 就能
+    // 改写/顶掉自己的任务沉淀行(kind 翻转),传 `exp:*` 则让经验写入撞 EXPERIENCE_KEY_CONFLICT
+    // 而被静默丢弃。此处统一收进 agent-save: 命名空间,内部键永远只由平台写。
+    if (/^(?:task|peer|dialog|brief|chronicle|reflection|session|team-task|exp|curated|manual):/i.test(rawKey)) {
+      rawKey = `agent-save:${rawKey}`
+    }
     // 共享域命名空间:同 channel 多 agent 各自的沉淀互不覆盖
     const dedupKey = shared ? `agent:${this.opts.agentId}:${rawKey}` : rawKey
     const owner = shared ? TEAM_AGENT_ID : this.opts.agentId

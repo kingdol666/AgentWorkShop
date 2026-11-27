@@ -13,6 +13,15 @@ import { buildGraphDigest, graphRetrieve } from '../../memory/graph/retrieval'
 const GRAPH_WEIGHT = 0.8
 const GRAPH_POOL = 10
 const GRAPH_DEADLINE_MS = 75
+/**
+ * 向量榜的 RRF 权重（2026-11-28：1.0 → 1.6）。
+ *
+ * 语义命中是最强的相关性信号，但 RRF(k=60) 把名次差压到 ~1.6%：权重 1.0 时，一条
+ * 向量 rank0 的知识行（≈0.0164）抵不过"FTS rank0 + 二元榜 rank0"的时近播报行
+ * （≈0.039），知识行被挤出注入窗。提到 1.6 后单靠语义榜即可与双 FTS 榜持平，
+ * 叠加时近/重要度后知识行稳定进前列（实测：同义改写查询知识行 rank1/14）。
+ */
+const VECTOR_BOARD_WEIGHT = 1.6
 
 /** 共享区自动注入条数（0=关闭；默认 3，上限 10） */
 function memorySharedTopN(): number {
@@ -118,7 +127,11 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     let qv: Float32Array | null = null
     if (this.embedder) {
       try {
-        const [v] = await this.embedder.embed([query])
+        // 本地 ONNX 模型对 query 用检索指令前缀、对 passage 用文档前缀（BGE/E5 口径）；
+        // 提供 embedQuery 的 provider 走 query 语义，其余（HTTP OpenAI 兼容）保持原样。
+        const [v] = this.embedder.embedQuery
+          ? await this.embedder.embedQuery([query])
+          : await this.embedder.embed([query])
         qv = v ?? null
       }
       catch { qv = null }
@@ -146,7 +159,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
         this.repo.listByRowids(rowids).forEach((row, i) => {
           // 所有权守卫 + channel 隔离(脏 rowid/rowid 复用反查到他人行一律丢弃)
           if (row.agentId !== this.opts.agentId && row.agentId !== TEAM_AGENT_ID) return
-          addRank(row, i)
+          addRank(row, i, VECTOR_BOARD_WEIGHT)
         })
       }
       catch { /* 向量不可用退化为 FTS */ }
@@ -212,6 +225,11 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     const scopeCtx = this.resolveScopeContext(opts.scopeContext)
     return [...hits.values()]
       .filter(h => !opts.excludeCurated || !CURATED_KINDS.has(h.row.kind))
+      // 团队任务流水不进自动注入（2026-11-28）：`episodic-team-task` 是"根任务激活/子任务已指派/
+      // 根任务完成"这类作业播报 —— 时近、句短、条数多，在 300 token 的 L1 预算里必然把真正的
+      // 语义知识挤出去（实测：3 条知识 + 6 条播报，primer 只剩播报）。它们对追溯有价值，对
+      // 正在干活的 agent 没有；显式检索（search_memory）仍然命中。
+      .filter(h => !opts.automatic || h.row.kind !== 'episodic-team-task')
       .map((h) => {
         let score = this.score(h.row, h.relevance)
         if (related && h.row.taskId && related.has(h.row.taskId)) {

@@ -79,6 +79,8 @@ export interface MemorySettings {
   embed_base_url: string
   embed_model: string
   embed_api_key: string
+  /** 本地向量模型 id（记忆中心下载并启用；空=不启用本地推理） */
+  embed_local_model: string
 }
 export interface OmpSettings {
   compact_enabled: boolean

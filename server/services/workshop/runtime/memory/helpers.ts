@@ -166,16 +166,31 @@ export function runMemoryMaintenance(
   const expireMsFor = (kind: string): number =>
     (kind === 'episodic-session' ? sessionExpireDays : expireDays) * 86_400_000
 
-  /** 对一组行执行 ①过期 ②容量淘汰(仅传入选定行;调用方负责 kind 圈定) */
+  /**
+   * 对一组行执行 ①过期 ②容量淘汰(仅传入选定行;调用方负责 kind 圈定)。
+   *
+   * 保护位(2026-11-28):维护任务是唯一会**物理删除**记忆的路径,但它此前只看 kind。
+   * 记忆中心里被人工置顶 / 覆写(author_kind='human')/ 已验证 / 已退役的过程行会被
+   * 一并处决,连带留下孤儿版本与批注。人工权威必须优先于容量治理:
+   *  - pinned → 永不物理删除;
+   *  - author_kind='human' → 只允许过期判定跳过(保留人工内容);
+   *  - status ∈ {validated, retired} → 同上(退役行保留审计价值)。
+   */
+  const isProtected = (r: MemoryRow): boolean =>
+    Number(r.pinned ?? 0) === 1
+    || (r.authorKind ?? 'agent') === 'human'
+    || r.status === 'validated'
+    || r.status === 'retired'
   const expireAndEvict = (rows: Array<MemoryRow & { rowid: number }>): void => {
     for (const r of rows) {
+      if (isProtected(r)) continue
       if (now - Date.parse(r.lastAccessedAt ?? r.createdAt) > expireMsFor(r.kind)) {
         repo.vecDelete(r.rowid)
         repo.delete(r.id)
         deletedExpired++
       }
     }
-    const remaining = rows.filter(r => repo.getById(r.id) !== null)
+    const remaining = rows.filter(r => !isProtected(r) && repo.getById(r.id) !== null)
     if (remaining.length > cap) {
       const sorted = remaining
         .map(r => ({ r, s: r.importance + r.accessCount * 0.05 }))

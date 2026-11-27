@@ -268,6 +268,57 @@ export async function updateMemory(
   return { revision: revision + 1 }
 }
 
+/**
+ * 解除人工保护（2026-11-28）：覆写/回滚会把行标成 `author_kind='human'`，此后运行时
+ * 对该 key 的所有自动写入（简报刷新、编年史滚动、任务进展、经验再蒸馏）都会拿到
+ * `protected` 而静默停摆 —— 这是"人工权威"的代价，但必须给一条回退通道，否则记忆
+ * 中心一次误编辑会永久冻结 AgentRuntime 的记忆模块。
+ *
+ * 语义：把行交还给自动维护（author_kind='agent'），旧版正文先入 versions 便于追溯。
+ * 不允许对 validated 行使用（已验证条目要改只能退役重建）。
+ */
+export function unprotectMemory(db: DatabaseSync, input: {
+  id: string
+  expectedRevision: number
+  reason: string
+  actor: MemoryActor
+}): { revision: number } {
+  const repo = createMemoryRepo(db)
+  const current = repo.getById(input.id)
+  if (!current) throw new MemoryAdminError(404, 'NOT_FOUND', '记忆不存在')
+  if (current.deletedAt) throw new MemoryAdminError(409, 'DELETED', '已软删条目不可解除保护，请先恢复')
+  if ((current.authorKind ?? 'agent') !== 'human') {
+    throw new MemoryAdminError(409, 'NOT_PROTECTED', '该条目当前不是人工保护状态')
+  }
+  if (current.status === 'validated') {
+    throw new MemoryAdminError(409, 'MEMORY_IMMUTABLE', '已验证条目不可解除保护：请退役后重建')
+  }
+  if (!input.reason.trim()) throw new MemoryAdminError(400, 'INVALID', '解除保护必须填写理由（审计要求）')
+  const revision = current.revision ?? 1
+  if (revision !== input.expectedRevision) {
+    throw new MemoryAdminError(409, 'REVISION_CONFLICT', `版本冲突：当前 revision=${revision}`)
+  }
+  repo.snapshotRevision({
+    memoryId: input.id,
+    revision,
+    title: current.title,
+    content: current.content,
+    evidenceJson: current.evidenceJson ?? '',
+    authorKind: 'human',
+    authorId: current.authorId ?? '',
+    reason: `unprotect: ${input.reason}`,
+  })
+  const now = new Date().toISOString()
+  const changed = Number(db.prepare(
+    `UPDATE agent_memories
+        SET author_kind = 'agent', author_id = ?, revision = revision + 1, updated_at = ?
+      WHERE id = ? AND revision = ? AND deleted_at IS NULL`,
+  ).run(input.actor.id, now, input.id, revision).changes ?? 0)
+  if (changed === 0) throw new MemoryAdminError(409, 'REVISION_CONFLICT', '并发更新冲突，请刷新后重试')
+  invalidateHarnessOverlayCache(current.channelId)
+  return { revision: revision + 1 }
+}
+
 export function rollbackMemory(db: DatabaseSync, input: {
   id: string
   revision: number
@@ -380,6 +431,13 @@ export function rejectMemory(db: DatabaseSync, input: { id: string, reason: stri
   const state = repo.stateById(input.id)
   if (!state) throw new MemoryAdminError(404, 'NOT_FOUND', '记忆不存在')
   if (state.deletedAt) throw new MemoryAdminError(409, 'DELETED', '已软删条目不可裁定，请先恢复')
+  // 自动维护型条目（知识手册/简报/编年史/反思）不能"裁定不成立"：retired 会被
+  // repo.upsert 视为受保护，而整理侧的 force 只认人工编辑行 —— 一条被 retired 的
+  // 知识手册将永远无法再生（记忆中心也点不动）。这类条目要做的是软删或重新汇整。
+  if (state.kind === 'curated' || state.kind === 'brief' || state.kind === 'chronicle' || state.kind === 'reflection') {
+    throw new MemoryAdminError(409, 'AGENT_MAINTAINED',
+      `「${state.kind}」由平台自动维护，不能裁定不成立：如需停用请软删，知识手册请走"重新汇整"`)
+  }
   const now = new Date().toISOString()
   const wasRetired = state.status === 'retired'
   const retired = wasRetired

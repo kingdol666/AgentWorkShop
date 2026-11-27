@@ -88,6 +88,7 @@
     { "key": "memory.embed_base_url", "type": "string", "group": "memory", "label": "Embedding 端点", "labelKey": "settings.runtime.memory.embedBaseUrl", "description": "OpenAI 兼容 /embeddings 基址(空=向量分支关闭,纯 FTS 检索)", "applies": "restart", "default": "" },
     { "key": "memory.embed_model", "type": "string", "group": "memory", "label": "Embedding 模型", "labelKey": "settings.runtime.memory.embedModel", "description": "向量编码模型名", "applies": "restart", "default": "" },
     { "key": "memory.embed_api_key", "type": "string", "group": "memory", "label": "Embedding 密钥", "labelKey": "settings.runtime.memory.embedApiKey", "description": "Embedding 端点鉴权密钥(Bearer)", "applies": "restart", "default": "" },
+    { "key": "memory.embed_local_model", "type": "string", "group": "memory", "label": "本地向量模型", "labelKey": "settings.runtime.memory.embedLocalModel", "description": "记忆中心下载并启用的本地向量模型 id(空=不启用本地推理;启用后优先于 HTTP 端点)", "applies": "live", "default": "" },
 
     { "key": "omp.compact_enabled", "type": "boolean", "group": "omp", "label": "上下文自动压缩", "labelKey": "settings.runtime.omp.compactEnabled", "description": "上下文越过阈值时自动压缩(可被 env 显式关闭)", "applies": "restart", "default": true },
     { "key": "omp.compact_threshold", "type": "number", "group": "omp", "label": "压缩阈值", "labelKey": "settings.runtime.omp.compactThreshold", "description": "触发压缩的上下文占用比例(0~1)", "applies": "restart", "default": 0.7, "min": 0.3, "max": 0.95 },

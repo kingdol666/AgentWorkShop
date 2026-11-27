@@ -49,7 +49,7 @@ interface CurationInfo {
 
 const loading = ref(false)
 const busy = ref(false)
-const view = ref<'list' | 'graph' | 'injections' | 'health'>('list')
+const view = ref<'list' | 'graph' | 'injections' | 'health' | 'models'>('list')
 const items = ref<MemoryItem[]>([])
 const total = ref(0)
 const facets = ref<{ byScope: Record<string, number>, byStatus: Record<string, number>, deleted: number }>({ byScope: {}, byStatus: {}, deleted: 0 })
@@ -471,6 +471,15 @@ const reject = () => act(async () => {
   rejectReason.value = ''
 }, t('memoryCenter.rejected'))
 
+/** 解除人工保护：把行交还自动维护（简报/编年史/任务进展恢复刷新） */
+const unprotect = () => act(async () => {
+  if (!detail.value) return
+  await api(`/api/workshop/memory/${detail.value.id}/unprotect`, {
+    method: 'POST',
+    body: { expectedRevision: detail.value.revision, reason: t('memoryCenter.unprotectReason') },
+  })
+}, t('memoryCenter.unprotected'))
+
 const columns = computed(() => [
   { title: t('memoryCenter.col.title'), dataIndex: 'title', key: 'title', ellipsis: true },
   { title: t('memoryCenter.col.scope'), key: 'scope', width: 130 },
@@ -480,7 +489,28 @@ const columns = computed(() => [
   { title: '', key: 'actions', width: 90 },
 ])
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  void loadProviderHint()
+})
+
+/**
+ * 检索模型提示（2026-11-28）：未启用向量模型时在页面顶部给一条可操作提示 ——
+ * 记忆检索当前只是字面匹配，装本地模型可升级为语义检索。点"去配置"切到检索模型视图。
+ */
+const providerKind = ref<'local' | 'http' | 'none' | ''>('')
+const providerModel = ref('')
+const hintDismissed = ref(false)
+async function loadProviderHint(): Promise<void> {
+  try {
+    const res = await apiFetch<{ provider: { kind: 'local' | 'http' | 'none', model?: string } }>({
+      base: '', path: '/api/workshop/memory/embedding/models',
+    })
+    providerKind.value = res.provider.kind
+    providerModel.value = res.provider.model ?? ''
+  }
+  catch { /* 提示失败不影响页面主流程 */ }
+}
 </script>
 
 <template>
@@ -501,9 +531,35 @@ onMounted(load)
           { label: t('memoryCenter.views.graph'), value: 'graph' },
           { label: t('memoryCenter.views.injections'), value: 'injections' },
           { label: t('memoryCenter.views.health'), value: 'health' },
+          { label: t('memoryCenter.views.models'), value: 'models' },
         ]"
       />
     </div>
+
+    <a-alert
+      v-if="providerKind === 'none' && !hintDismissed && view !== 'models'"
+      class="provider-hint"
+      type="info"
+      show-icon
+      data-testid="memory-provider-hint"
+      closable
+      @close="hintDismissed = true"
+    >
+      <template #message>
+        {{ t('memoryCenter.models.hintTitle') }}
+      </template>
+      <template #description>
+        <span>{{ t('memoryCenter.models.hintBody') }}</span>
+        <a-button
+          size="small"
+          type="link"
+          data-testid="memory-provider-hint-action"
+          @click="view = 'models'"
+        >
+          {{ t('memoryCenter.models.hintAction') }}
+        </a-button>
+      </template>
+    </a-alert>
 
     <template v-if="view === 'list'">
       <section class="industry">
@@ -918,10 +974,11 @@ onMounted(load)
       @open-memory="openMemoryFromGraph"
     />
     <MemoryHealthPanel
-      v-else
+      v-else-if="view === 'health'"
       :channels="industryChannels"
       :initial-channel-id="industryChannelId"
     />
+    <MemoryEmbeddingModelPanel v-else />
 
     <a-drawer
       v-model:open="drawerOpen"
@@ -1196,6 +1253,23 @@ onMounted(load)
               danger
             >
               {{ t('memoryCenter.softDelete') }}
+            </a-button>
+          </a-popconfirm>
+          <!-- 解除人工保护：覆写/回滚会把行锁成人工所有，运行时自动写入从此停摆；
+               这是唯一的回退通道（旧正文先入版本链）。 -->
+          <a-popconfirm
+            v-if="detail.authorKind === 'human' && !detail.deletedAt && detail.status !== 'validated'"
+            :title="t('memoryCenter.unprotectConfirm')"
+            :ok-text="t('memoryCenter.unprotect')"
+            :cancel-text="t('memoryCenter.cancel')"
+            @confirm="unprotect"
+          >
+            <a-button
+              size="small"
+              :loading="busy"
+              data-testid="memory-unprotect"
+            >
+              {{ t('memoryCenter.unprotect') }}
             </a-button>
           </a-popconfirm>
           <a-button

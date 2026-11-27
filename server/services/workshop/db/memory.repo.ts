@@ -995,6 +995,29 @@ export function createMemoryRepo(db: DatabaseSync) {
       return true
     },
 
+    /**
+     * 换模型重建向量层(2026-11-28):维度不符时丢弃旧表按新维度重建。
+     * 语义边界:向量是派生索引(事实源是 agent_memories 正文),切换 embedding 模型
+     * 后旧向量与新空间不可比 —— 只能全量重算,不能混用。调用方负责随后回填。
+     */
+    vecReset(dims: number): boolean {
+      if (vecDims === dims) return true
+      try {
+        db.exec('DROP TABLE IF EXISTS agent_memories_vec')
+      }
+      catch { /* 表不存在/被占用:下面 vecEnsureTable 会再试一次 */ }
+      vecFindRowStmt = vecDeleteRowStmt = vecInsertStmt = vecSearchStmt = null
+      vecDims = null
+      if (!vecEnsureTable(dims)) return false
+      vecDims = dims
+      return true
+    },
+
+    /** 当前向量维度(未建表 → null) */
+    get vecDims(): number | null {
+      return vecDims
+    },
+
     /** 向量层是否可用(建表成功即 true) */
     get vecReady(): boolean {
       return vecDims !== null

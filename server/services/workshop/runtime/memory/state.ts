@@ -5,12 +5,28 @@
 import { AgentMemoryContracts } from './contracts'
 import type { AgentMemoryOptions, MemoryScope, ScopeContext } from './types'
 import type { EmbeddingProvider } from '../embedding-provider'
+import { getEmbeddingProvider } from '../embedding-provider'
 import type { MemoryRepo } from '../../db/memory.repo'
 import type { MemoryRow } from '../../db/database'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 
 export abstract class AgentMemoryState extends AgentMemoryContracts {
-  protected embedder: EmbeddingProvider | null
+  /** 显式注入的 provider（测试/特殊实例）；未注入时按进程级配置动态解析 */
+  private embedderOverride: EmbeddingProvider | null
+  /** 向量层一次性禁用（维度冲突/建表失败），避免每次调用都重试 */
+  private vectorDisabled = false
+
+  /**
+   * 当前生效的向量 provider。
+   *
+   * 必须是动态解析（2026-11-28）：记忆中心"下载→启用"本地模型是 live 操作，而
+   * AgentMemory 实例随 runtime 常驻。构造期快照会让已装配的 agent 永远持有旧
+   * provider（实测：模型启用、回填成功，但召回仍纯 FTS）。
+   */
+  protected get embedder(): EmbeddingProvider | null {
+    if (this.vectorDisabled) return null
+    return this.embedderOverride ?? getEmbeddingProvider()
+  }
 
   protected trustedScopeContext: ScopeContext
 
@@ -19,7 +35,7 @@ export abstract class AgentMemoryState extends AgentMemoryContracts {
     protected opts: AgentMemoryOptions,
   ) {
     super()
-    this.embedder = opts.embedder ?? null
+    this.embedderOverride = opts.embedder ?? null
     const channelScope = repo.channelScope(opts.channelId)
     this.trustedScopeContext = {
       lineId: opts.lineId ?? channelScope.lineId,
@@ -27,11 +43,11 @@ export abstract class AgentMemoryState extends AgentMemoryContracts {
     }
   }
 
-  /** 向量层惰性初始化(vecReady 后 no-op;建表失败一次性禁用 embedder) */
+  /** 向量层惰性初始化(vecReady 后 no-op;建表失败一次性禁用) */
   protected ensureVec(): void {
     if (this.repo.vecReady) return
     const dims = this.embedder?.dims()
-    if (dims && !this.repo.vecInit(dims)) this.embedder = null
+    if (dims && !this.repo.vecInit(dims)) this.vectorDisabled = true
   }
 
   /**
