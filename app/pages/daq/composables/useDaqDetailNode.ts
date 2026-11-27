@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDcwStream } from '@/app/composables/workshop/useDcwStream'
 import { useDaqStream } from '@/app/composables/workshop/useDaqStream'
@@ -17,7 +17,6 @@ export function useDaqDetailNode() {
   const nodeId = computed(() => String(route.params.id ?? ''))
   const daq = useDaqStream()
   const dcw = useDcwStream()
-  void dcw.load()
   const deviceTwins = useDeviceTwins()
 
   const node = computed(() => daq.nodeById(nodeId.value) ?? null)
@@ -41,13 +40,25 @@ export function useDaqDetailNode() {
     return daq.meta.drivers.find(d => d.kind === kind)?.status === 'planned'
   }
 
+  const snapshotPending = ref(true)
+  async function loadSnapshot(): Promise<void> {
+    snapshotPending.value = true
+    try {
+      await daq.load()
+    }
+    finally {
+      snapshotPending.value = false
+    }
+  }
+
   let unsub: (() => void) | null = null
   onMounted(() => {
     unsub = daq.ensureWsFeed()
-    void daq.load()
+    void loadSnapshot()
+    void dcw.load()
     void deviceTwins.load()
   })
   onBeforeUnmount(() => unsub?.())
 
-  return { daq, dcw, deviceTwins, nodeId, node, tpl, signalKind, isFrameNode, stateLabel, effectiveState, driverPlanned }
+  return { daq, dcw, deviceTwins, nodeId, node, tpl, signalKind, isFrameNode, stateLabel, effectiveState, driverPlanned, snapshotPending, loadSnapshot }
 }

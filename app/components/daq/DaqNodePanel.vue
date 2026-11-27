@@ -307,6 +307,7 @@ const tableEl = defineModel<HTMLTableElement | null>('tableEl', { required: true
       </div>
       <table
         ref="tableEl"
+        :aria-label="$t('daq.k45uio067')"
         class="nodes-table daq-node-table"
       >
         <thead>
@@ -339,7 +340,7 @@ const tableEl = defineModel<HTMLTableElement | null>('tableEl', { required: true
             aria-hidden="true"
           >
             <td
-              :colspan="11"
+              :colspan="12"
               :style="{ height: padTopPx + 'px' }"
             />
           </tr>
@@ -355,24 +356,21 @@ const tableEl = defineModel<HTMLTableElement | null>('tableEl', { required: true
             aria-hidden="true"
           >
             <td
-              :colspan="11"
+              :colspan="12"
               :style="{ height: padBottomPx + 'px' }"
             />
           </tr>
           <tr v-if="loaded && totalCount === 0">
-            <td colspan="11">
-              <div
-                class="pane-empty"
-                style="min-height: 120px;"
-              >
-                <p class="pe-sub">
-                  {{ $t('daq.kvhjyc3075') }}
-                </p>
-              </div>
+            <td colspan="12">
+              <AwStateBlock
+                state="empty"
+                :title="$t('daq.kvhjyc3075')"
+                compact
+              />
             </td>
           </tr>
           <tr v-else-if="loaded && filteredCount === 0">
-            <td colspan="11">
+            <td colspan="12">
               <div
                 class="pane-empty"
                 style="min-height: 90px;"

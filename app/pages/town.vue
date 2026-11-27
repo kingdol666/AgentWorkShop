@@ -131,88 +131,108 @@ const hasChannels = computed(() => allChannelIds.value.length > 0)
 
 <template>
   <div class="town-page">
-    <!-- 未进入 3D 场景(加载/无频道空态)时没有 TownTopNav:单独提供返回主界面入口,
-         否则桌面端会停在全屏空态里无路可回。 -->
-    <AppBackToMain
+    <!-- 路由负责加载/空态；3D 进入后由 TownView 接管场景与导航。 -->
+    <main
       v-if="!authReady || !hasChannels || !focusedChannelId"
-      class="town-state-back"
-    />
-    <!-- 无频道:诚实空态 -->
-    <div
-      v-if="authReady && !hasChannels"
-      data-hud="town-empty"
-      class="pane-empty"
+      class="town-state"
     >
-      <span class="pe-icon i-tabler-map-2" />
-      <div class="pe-title">
-        {{ $t('town.k1wm8wtr001') }}
+      <header class="town-state-header">
+        <AppBackToMain v-if="!authReady || !hasChannels || !focusedChannelId" />
+        <span>{{ $t('menu.town') }}</span>
+      </header>
+      <section
+        v-if="authReady && !hasChannels"
+        data-hud="town-empty"
+        class="town-state-card"
+      >
+        <span
+          class="town-state-icon i-tabler-map-2"
+          aria-hidden="true"
+        />
+        <h1>{{ $t('town.k1wm8wtr001') }}</h1>
+        <p>
+          {{ $t('town.k47e4s002') }} <b>Agent {{ $t('town.k3n4mae005') }}</b> {{ $t('town.k17rerba003') }}
+        </p>
+        <NuxtLink
+          class="pill-btn"
+          to="/workshop"
+        >{{ $t('menu.workshop') }}</NuxtLink>
+      </section>
+      <div
+        v-else
+        data-hud="town-loading"
+        class="town-state-card"
+        role="status"
+      >
+        <span
+          class="town-state-icon town-loading-icon i-tabler-loader-2"
+          aria-hidden="true"
+        />
+        <p>{{ $t('town.k1uc5mup004') }}</p>
       </div>
-      <div class="pe-sub">
-        {{ $t('town.k47e4s002') }} <b>Agent {{ $t('town.k3n4mae005') }}</b> {{ $t('town.k17rerba003') }}
-      </div>
-    </div>
-    <!-- 孪生空间(复用 TownView:内部自建 2D/3D 场景 + 全频道铺放 + 模型库/数字孪生/缩放) -->
-    <workshop-town-view
-      v-else-if="focusedChannelId"
-      :channel-id="focusedChannelId"
-      :all-channels="true"
-    />
-    <!-- 加载态 -->
-    <div
-      v-else
-      data-hud="town-loading"
-      class="pane-loading"
-    >
-      {{ $t('town.k1uc5mup004') }}
-    </div>
+    </main>
+    <template v-else>
+      <AppBackToMain
+        v-if="!authReady"
+        class="town-scene-back"
+      />
+      <workshop-town-view
+        :channel-id="focusedChannelId"
+        :all-channels="true"
+      />
+    </template>
   </div>
 </template>
 
 <style scoped>
 .town-page {
-  /* 独立全屏布局(town.vue):占据整个视口,无侧栏/顶栏/页脚的穿插 */
   position: relative;
-  width: 100vw;
+  width: 100%;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
-  /* 赛博小镇背景贴图(3D 场景地面同源;低对比,不影响前景) */
-  background: var(--paper) url('/scene/background/cyber-town-background.svg') center / cover no-repeat fixed;
+  background: var(--paper) url('/scene/background/cyber-town-background.svg') center / cover no-repeat;
 }
-/* 空态/加载态下的返回入口:位于全屏面板之上;3D 场景态由 TownTopNav 承担 */
-.town-state-back {
+.town-state {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(32px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow: auto;
+  background: var(--frost-bg);
+}
+.town-state-header { display: flex; gap: 12px; align-items: center; color: var(--ink); font-weight: 600; }
+.town-scene-back {
   position: absolute;
-  top: 16px;
-  left: 16px;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
   z-index: 30;
   color: var(--ink);
 }
-.pane-empty {
+.town-state-card {
+  box-sizing: border-box;
   display: flex;
+  flex: none;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--ink-faint);
-  background: var(--frost-bg);
-  backdrop-filter: var(--frost-blur);
-  border: 1px solid var(--glass-line);
+  width: min(100%, 30rem);
+  margin: auto;
+  padding: clamp(16px, 4vw, 28px);
+  text-align: center;
+  overflow-wrap: anywhere;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel);
 }
-.pe-icon { font-size: 30px; opacity: 0.6; }
-.pe-title { font-size: 14px; font-weight: 600; color: var(--ink-soft); }
-.pe-sub { font-size: 12px; color: var(--ink-faint); }
-.pane-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  font-size: 12px;
-  color: var(--ink-faint);
-  background: var(--frost-bg);
-  backdrop-filter: var(--frost-blur);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-panel);
+.town-state-icon { color: var(--accent); font-size: 28px; }
+.town-state-card h1 { margin: 0; color: var(--ink); font-size: 18px; font-weight: 600; }
+.town-state-card p { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+@media (prefers-reduced-motion: no-preference) {
+  .town-loading-icon { animation: town-shell-spin 1.2s linear infinite; }
 }
+@keyframes town-shell-spin { to { transform: rotate(360deg); } }
 </style>

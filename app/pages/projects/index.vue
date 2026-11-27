@@ -76,9 +76,12 @@ const projects = ref<ProjectDto[]>([])
 const blueprints = ref<BlueprintDto[]>([])
 const harnesses = ref<HarnessMeta[]>([])
 const loading = ref(false)
+const loaded = ref(false)
 const error = ref('')
 const keyword = ref('')
-const statusFilter = ref<'all' | 'active' | 'draft' | 'completed' | 'archived'>('all')
+const projectStatuses = ['active', 'draft', 'paused', 'completed', 'archived'] as const
+type ProjectStatus = typeof projectStatuses[number]
+const statusFilter = ref<'all' | ProjectStatus>('all')
 
 const createOpen = ref(false)
 const creating = ref(false)
@@ -101,11 +104,13 @@ const errMsg = (e: unknown): string =>
 /* ── 数据 ─────────────────────────────────────────────────────────────── */
 
 async function load(): Promise<void> {
+  if (loading.value) return
   loading.value = true
   error.value = ''
   try {
     const res = await http.get<{ data: ProjectDto[] }>('/workshop/projects')
     projects.value = res.data ?? []
+    loaded.value = true
   }
   catch (e) {
     error.value = errMsg(e)
@@ -152,12 +157,14 @@ const stats = computed(() => {
   }
 })
 
-const filters = computed(() => ([
-  { key: 'all', label: '全部', n: projects.value.length },
-  { key: 'active', label: '进行中', n: projects.value.filter(p => p.status === 'active').length },
-  { key: 'draft', label: '草稿', n: projects.value.filter(p => p.status === 'draft').length },
-  { key: 'completed', label: '已完成', n: projects.value.filter(p => p.status === 'completed').length },
-] as const))
+const filters = computed(() => [
+  { key: 'all' as const, label: '全部', n: projects.value.length },
+  ...projectStatuses.map(key => ({
+    key,
+    label: statusLabel(key),
+    n: projects.value.filter(p => p.status === key).length,
+  })),
+])
 
 const filtered = computed(() => {
   const q = keyword.value.trim().toLowerCase()
@@ -168,7 +175,8 @@ const filtered = computed(() => {
   })
 })
 
-const pct = (v: number | undefined): number => Math.round(Number(v ?? 0) * 100)
+const pct = (v: number | undefined): number =>
+  Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round((v ?? 0) * 100))) : 0
 
 function relTime(iso: string | null | undefined): string {
   if (!iso) return '—'
@@ -318,15 +326,14 @@ async function instantiate(): Promise<void> {
       </label>
       <div
         class="seg"
-        role="tablist"
+        role="group"
         aria-label="按状态筛选"
       >
         <button
           v-for="f in filters"
           :key="f.key"
           type="button"
-          role="tab"
-          :aria-selected="statusFilter === f.key ? 'true' : 'false'"
+          :aria-pressed="statusFilter === f.key"
           class="seg-item"
           :class="{ active: statusFilter === f.key }"
           @click="statusFilter = f.key"
@@ -334,10 +341,7 @@ async function instantiate(): Promise<void> {
           {{ f.label }}<span class="seg-n">{{ f.n }}</span>
         </button>
       </div>
-      <span
-        class="toolbar-count"
-        :aria-live="loading ? 'polite' : undefined"
-      >
+      <span class="toolbar-count">
         <span
           v-if="loading && projects.length"
           class="toolbar-sync"
@@ -348,7 +352,7 @@ async function instantiate(): Promise<void> {
           />
           同步中
         </span>
-        <span>显示 {{ filtered.length }} / {{ projects.length }}</span>
+        <span role="status">{{ loaded ? `显示 ${filtered.length} / ${projects.length}` : '' }}</span>
       </span>
     </div>
 
@@ -373,7 +377,7 @@ async function instantiate(): Promise<void> {
 
     <!-- 骨架屏：首载才有，刷新时保留旧卡片避免闪白 -->
     <div
-      v-if="loading && !projects.length"
+      v-if="!loaded && !error"
       class="grid"
       aria-busy="true"
     >
@@ -434,7 +438,12 @@ async function instantiate(): Promise<void> {
             <span>工作项 {{ p.summary?.completedWorkItems ?? 0 }}/{{ p.summary?.workItems ?? 0 }}</span>
             <b>{{ pct(p.summary?.progress) }}%</b>
           </div>
-          <div class="bar">
+          <div
+            class="bar"
+            role="progressbar"
+            aria-label="工作项"
+            :aria-valuenow="pct(p.summary?.progress)"
+          >
             <i :style="{ width: `${pct(p.summary?.progress)}%` }" />
           </div>
         </div>
@@ -474,7 +483,7 @@ async function instantiate(): Promise<void> {
 
     <!-- 空态：区分"还没项目"与"筛不出来" -->
     <section
-      v-else-if="!loading && projects.length"
+      v-else-if="loaded && projects.length"
       class="empty"
     >
       <span class="empty-icon i-tabler-filter-off" />
@@ -489,7 +498,7 @@ async function instantiate(): Promise<void> {
     </section>
 
     <section
-      v-else-if="!loading"
+      v-else-if="loaded && !error"
       class="empty"
       data-testid="projects-empty"
     >
@@ -910,7 +919,7 @@ async function instantiate(): Promise<void> {
 /* ── 卡片栅格 ── */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
   gap: 14px;
 }
 
@@ -981,7 +990,7 @@ async function instantiate(): Promise<void> {
 }
 .pc-title strong {
   overflow: hidden;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   color: var(--ink);
   text-overflow: ellipsis;
@@ -1017,7 +1026,8 @@ async function instantiate(): Promise<void> {
   min-height: 36px;
   margin: 0;
   overflow: hidden;
-  font-size: 12.5px;
+  overflow-wrap: anywhere;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--ink-soft);
   text-overflow: ellipsis;
@@ -1272,8 +1282,8 @@ async function instantiate(): Promise<void> {
   .stat-band { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .stat:nth-child(4), .stat:nth-child(5) { border-top: 1px solid var(--line); }
   .stat:nth-child(4) { border-left: 0; }
-  .grid { grid-template-columns: 1fr; }
-  .toolbar-count { display: none; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+  .toolbar-count { margin-left: 0; }
   .form-grid { grid-template-columns: 1fr; }
 }
 
@@ -1295,11 +1305,22 @@ async function instantiate(): Promise<void> {
   .toolbar { align-items: stretch; }
   .toolbar::before { display: none; }
   .search { flex-basis: 100%; max-width: none; }
-  .seg { flex: 1 1 100%; }
+  .seg {
+    display: grid;
+    flex: 1 1 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .seg-item {
+    justify-content: center;
+    min-height: 40px;
+    padding-inline: 4px;
+  }
+  .seg-item:focus-visible { outline-offset: -2px; }
   .pcard { padding: 15px 15px 13px; }
   .pc-head { gap: 8px; }
   .pc-icon { width: 28px; height: 28px; }
-  .pc-title strong { font-size: 13.5px; }
+  .pc-title strong { font-size: 14px; }
   .pill { padding-inline: 7px; }
   .pc-foot { align-items: flex-start; }
 }

@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref } from 'vue'
 
 /**
  * 图表主题桥 —— ECharts(zrender)无法消费 CSS 变量与现代 color 语法,
@@ -31,7 +31,9 @@ const CHART_VARS = [
 
 /** 模块级单例:所有图表消费同一份令牌快照,主题切换统一失效重读 */
 const vars = ref<Record<string, string>>({})
-let installed = false
+let consumers = 0
+let themeObserver: MutationObserver | undefined
+let readFrame: number | undefined
 
 function readVars(): void {
   if (typeof document === 'undefined')
@@ -61,12 +63,25 @@ export function chartColorAlpha(color: string | undefined, alpha: number): strin
 
 export function useChartTheme() {
   const store = useAppStore()
-  if (!installed && typeof window !== 'undefined') {
-    installed = true
-    readVars()
-    watch(() => store.isDark, () => {
-      // html.dark 类在 store 翻转的同一同步周期内更新,下一帧读到的即新令牌
-      requestAnimationFrame(readVars)
+  if (typeof window !== 'undefined') {
+    if (++consumers === 1) {
+      readVars()
+      // Unhead writes both the dark class and accent style here, including live config updates.
+      themeObserver = new MutationObserver(() => {
+        if (readFrame !== undefined) return
+        readFrame = requestAnimationFrame(() => {
+          readFrame = undefined
+          readVars()
+        })
+      })
+      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] })
+    }
+    onScopeDispose(() => {
+      if (--consumers !== 0) return
+      themeObserver?.disconnect()
+      themeObserver = undefined
+      if (readFrame !== undefined) cancelAnimationFrame(readFrame)
+      readFrame = undefined
     })
   }
 

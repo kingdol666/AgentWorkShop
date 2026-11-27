@@ -27,12 +27,15 @@ const { t } = useI18n()
         </h1>
         <span
           class="sb-state"
-          :class="{ warn: alarmCount > 0 }"
+          :class="alarmCount > 0 ? 'warn' : 'neutral'"
           role="status"
           aria-live="polite"
         >
-          <i aria-hidden="true" />
-          {{ alarmCount > 0 ? t('home.shift.needAttention', { p0: alarmCount }) : t('home.shift.allNormal') }}
+          <i
+            v-if="alarmCount > 0"
+            aria-hidden="true"
+          />
+          {{ alarmCount > 0 ? t('home.shift.needAttention', { p0: alarmCount }) : `${t('home.shift.queue')} · ${alarmCount}` }}
         </span>
       </div>
       <p class="sb-sub">
@@ -42,10 +45,7 @@ const { t } = useI18n()
 
     <div class="sb-right">
       <span class="sb-live">
-        <span
-          class="live-dot"
-          aria-hidden="true"
-        />{{ t('home.live') }}
+        {{ t('home.kpi.lines') }}
         <span class="sb-lines mono">{{ linesActive }}/{{ linesTotal }}</span>
       </span>
       <div class="sb-acts">
@@ -107,6 +107,12 @@ const { t } = useI18n()
   line-height: 1.2;
   letter-spacing: -0.01em;
   color: var(--ink);
+}
+
+.sb-state.neutral {
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border-color: var(--line);
 }
 
 .sb-state {

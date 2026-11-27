@@ -29,39 +29,48 @@ const channelColumns = useChannelColumns()
     <template #extra>
       <span class="aw-mono count-extra">{{ rows.length }} wired</span>
     </template>
-    <a-table
-      :columns="channelColumns"
-      :data-source="rows"
-      :pagination="false"
-      :loading="loading"
-      row-key="channelId"
-      size="small"
-      :scroll="{ x: 720 }"
+    <div
+      class="table-scroll"
+      role="region"
+      :aria-label="t('monitor.channelRuntimes')"
+      tabindex="0"
     >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'channelId'">
-          <span class="aw-mono">{{ shortId(record.channelId) }}</span>
+      <a-table
+        :columns="channelColumns"
+        :data-source="rows"
+        :pagination="false"
+        :loading="loading"
+        row-key="channelId"
+        size="small"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'channelId'">
+            <span class="aw-mono">{{ shortId(record.channelId) }}</span>
+          </template>
+          <template v-else-if="column.key === 'hasScheduler'">
+            <a-tag
+              v-if="record.hasScheduler"
+              color="purple"
+            >
+              {{ t('monitor.scheduling') }}
+            </a-tag>
+            <a-tag v-else>
+              –
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'leadAgentId'">
+            <span class="aw-mono">{{ shortId(record.leadAgentId) }}</span>
+          </template>
         </template>
-        <template v-else-if="column.key === 'hasScheduler'">
-          <a-tag
-            v-if="record.hasScheduler"
-            color="purple"
-          >
-            {{ t('monitor.scheduling') }}
-          </a-tag>
-          <a-tag v-else>
-            –
-          </a-tag>
-        </template>
-        <template v-else-if="column.key === 'leadAgentId'">
-          <span class="aw-mono">{{ shortId(record.leadAgentId) }}</span>
-        </template>
-      </template>
-    </a-table>
+      </a-table>
+    </div>
   </a-card>
 </template>
 
 <style scoped>
+.table-scroll { overflow: auto; }
+.table-scroll :deep(.ant-table) { min-width: 720px; }
+.table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 卡片右上角计数:tabular mono 数据(非眉题)。
    同一规则在 MonitorAgentTable / MonitorProcessTable 的 scoped 块里逐字复制
    (样式随标记走,不抽公共 css):有意重复,改一处同步所有副本。 */

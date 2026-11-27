@@ -30,12 +30,25 @@ const hintText = computed(() => props.hint
     v-if="state === 'loading'"
     class="aw-state-skeleton"
     :class="{ compact }"
-    aria-busy="true"
+    role="status"
   >
-    <span class="sk-line w40" />
-    <span class="sk-line w90" />
-    <span class="sk-line w70" />
-    <span class="sk-line w55" />
+    <span class="state-announcement">{{ titleText }}</span>
+    <span
+      class="sk-line w40"
+      aria-hidden="true"
+    />
+    <span
+      class="sk-line w90"
+      aria-hidden="true"
+    />
+    <span
+      class="sk-line w70"
+      aria-hidden="true"
+    />
+    <span
+      class="sk-line w55"
+      aria-hidden="true"
+    />
   </div>
   <div
     v-else
@@ -70,22 +83,37 @@ const hintText = computed(() => props.hint
   padding: 28px 0;
 }
 .aw-state-skeleton.compact { padding: 16px 0; gap: 7px; }
+.state-announcement {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .sk-line {
+  position: relative;
+  overflow: hidden;
   height: 10px;
   border-radius: 6px;
-  background: linear-gradient(90deg, var(--hover-tint), var(--paper-tint), var(--hover-tint));
-  background-size: 200% 100%;
-  animation: sk-sweep 1.4s ease-in-out infinite;
+  background: var(--hover-tint);
+}
+.sk-line::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--paper-tint), transparent);
+  content: '';
+  animation: sk-sweep 1.6s ease-in-out infinite;
 }
 .sk-line.w40 { width: 40%; }
 .sk-line.w90 { width: 90%; }
 .sk-line.w70 { width: 70%; }
 .sk-line.w55 { width: 55%; }
 @keyframes sk-sweep {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sk-line { animation: none; }
+  .sk-line::after { animation: none; }
 }
 </style>

@@ -10,6 +10,7 @@
           v-model="filter"
           class="input"
           :placeholder="$t('data.mes.filter')"
+          :aria-label="$t('data.mes.filter')"
         >
         <span class="hint">{{ points.length }}</span>
       </div>
@@ -21,7 +22,9 @@
           v-for="p in filtered"
           :key="p.id"
           class="ptCard"
+          type="button"
           :class="{ on: p.id === picked }"
+          :aria-pressed="p.id === picked"
           @click="pick(p)"
         >
           <span class="ptName">{{ p.name }}</span>

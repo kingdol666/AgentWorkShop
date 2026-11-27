@@ -22,6 +22,7 @@
       :loading="feed.loading.value"
       :error="feed.error.value"
       :admin="userStore.isAdmin"
+      :retry="feed.doQuery"
       @toggle="toggleRow"
       @remove="removeReport"
       @edit="openEdit"

@@ -67,6 +67,7 @@ const drawerOpen = computed(() => Boolean(selectedEntity.value))
 const neighborNodes = computed(() => (neighbors.value?.nodes ?? []).filter(n => n.hop > 0))
 const entityOptions = computed(() => (doc.value?.entities ?? []).map(e => ({ value: e.key, label: `${e.key} · ${e.name}` })))
 const largeGraph = computed(() => (doc.value?.entities.length ?? 0) > 60)
+const graphFocusMode = computed(() => graphView.value === 'graph' && largeGraph.value)
 const draftOptions = computed(() => overview.value.drafts.map(d => ({
   value: d.id,
   label: `${d.ontologyId} · rev ${d.rev}${d.baseVersion ? ` · ${t('ontology.graph.baseline')} v${d.baseVersion}` : ''}`,
@@ -539,8 +540,9 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
       <button
         v-for="key in tabs"
         :key="key"
-        class="pill-btn"
-        :class="{ active: tab === key }"
+        class="ontology-tab"
+        type="button"
+        :aria-pressed="tab === key"
         @click="switchTab(key)"
       >
         {{ t(`ontology.tab.${key}`) }}
@@ -646,35 +648,50 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
           size="small"
           :options="graphViewOptions"
         />
-        <span class="hint">{{ t('ontology.graph.hint') }}</span>
-        <a-select
-          :value="selectedKey || undefined"
-          :options="entityOptions"
-          show-search
-          allow-clear
-          :placeholder="t('ontology.graph.searchEntity')"
-          class="node-search"
-          @change="(v: unknown) => { const key = String(v ?? ''); if (key) openNode(key); else closeDrawer() }"
-        />
+        <span
+          v-if="graphView === 'graph' && !largeGraph"
+          class="hint"
+        >{{ t('ontology.graph.hint') }}</span>
+        <div
+          class="graph-entry"
+          :class="{ 'graph-entry-focus': graphFocusMode }"
+        >
+          <p
+            v-if="graphFocusMode"
+            class="graph-focus-hint"
+          >
+            {{ t('ontology.graph.largeGraph', { n: doc?.entities.length ?? 0 }) }}
+          </p>
+          <a-select
+            :value="selectedKey || undefined"
+            :options="entityOptions"
+            :disabled="!entityOptions.length"
+            option-filter-prop="label"
+            show-search
+            allow-clear
+            :placeholder="t('ontology.graph.searchEntity')"
+            :aria-label="t('ontology.graph.searchEntity')"
+            class="node-search"
+            @change="(v: unknown) => { const key = String(v ?? ''); if (key) openNode(key); else closeDrawer() }"
+          />
+          <a-button
+            v-if="graphFocusMode"
+            @click="graphView = 'table'"
+          >
+            {{ t('ontology.graph.viewTable') }}
+          </a-button>
+        </div>
       </div>
 
-      <template v-if="graphView === 'graph'">
-        <p
-          v-if="largeGraph"
-          class="muted"
-        >
-          {{ t('ontology.graph.largeGraph', { n: doc?.entities.length ?? 0 }) }}
-        </p>
-        <OntologyGraph
-          v-else
-          :entities="doc?.entities ?? []"
-          :relations="doc?.relations ?? []"
-          :selected-key="selectedKey"
-          @select="openNode"
-        />
-      </template>
+      <OntologyGraph
+        v-if="graphView === 'graph' && !largeGraph"
+        :entities="doc?.entities ?? []"
+        :relations="doc?.relations ?? []"
+        :selected-key="selectedKey"
+        @select="openNode"
+      />
 
-      <template v-else>
+      <template v-if="graphView === 'table'">
         <h2>{{ t('ontology.section.entities') }}</h2>
         <a-table
           data-testid="entity-table"
@@ -683,7 +700,19 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
           row-key="key"
           size="small"
           :pagination="{ pageSize: 12 }"
-        />
+          :scroll="{ x: 660 }"
+        >
+          <template #bodyCell="{ column, record }">
+            <button
+              v-if="column.key === 'key'"
+              class="entity-link"
+              type="button"
+              @click="openNode(record.key)"
+            >
+              {{ record.key }}
+            </button>
+          </template>
+        </a-table>
         <h2>{{ t('ontology.section.relations') }}</h2>
         <a-table
           data-testid="relation-table"
@@ -692,6 +721,7 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
           row-key="id"
           size="small"
           :pagination="{ pageSize: 12 }"
+          :scroll="{ x: 780 }"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'edge'">
@@ -712,12 +742,20 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
 
       <a-drawer
         :open="drawerOpen"
-        width="560"
-        :title="selectedEntity ? `${selectedEntity.name} · ${selectedEntity.key}` : ''"
+        width="min(560px, 100vw)"
         @close="closeDrawer"
       >
+        <template #title>
+          <span
+            v-if="selectedEntity"
+            class="node-drawer-title"
+          >{{ selectedEntity.name }} · {{ selectedEntity.key }}</span>
+        </template>
         <template v-if="selectedEntity">
-          <div data-testid="node-drawer">
+          <div
+            class="node-drawer"
+            data-testid="node-drawer"
+          >
             <dl class="node-detail">
               <dt>kind</dt><dd>{{ selectedEntity.kind }}</dd>
               <dt>role</dt><dd>{{ selectedEntity.role || '—' }}</dd>
@@ -1096,6 +1134,26 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
 }
 .hint { color: var(--ink-faint); font-size: 12px; }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.ontology-tab {
+  min-height: 36px;
+  padding: 6px 12px;
+  color: var(--ink-soft);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ontology-tab:hover { color: var(--ink); background: var(--hover-tint); }
+.ontology-tab[aria-pressed='true'] {
+  color: var(--ink);
+  background: var(--hover-tint);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.ontology-tab:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .ontology-tab { min-height: 44px; }
+}
 .panel { display: flex; flex-direction: column; gap: 14px; }
 .panel h2 { font-size: 14px; margin: 8px 0 0; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
 .stats { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -1118,11 +1176,31 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
 .chip { margin-right: 6px; }
 .retire { margin-left: 8px; }
 .graph-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.node-search { min-width: min(300px, 100%); max-width: 100%; }
-.node-detail { display: grid; grid-template-columns: 96px 1fr; gap: 6px 12px; margin: 0 0 14px; }
+.graph-entry { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; max-width: 100%; }
+.graph-entry-focus {
+  flex: 1 1 100%;
+  padding: 14px;
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel-sm, 10px);
+}
+.graph-focus-hint { flex: 1 0 100%; margin: 0 0 2px; font-size: 13px; color: var(--ink-soft); }
+.node-search { width: 300px; max-width: 100%; }
+.entity-link {
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  text-align: start;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.node-drawer, .node-drawer-title { overflow-wrap: anywhere; }
+.node-detail { display: grid; grid-template-columns: minmax(64px, 96px) minmax(0, 1fr); gap: 6px 12px; margin: 0 0 14px; }
 .node-detail dt { color: var(--ink-faint); font-size: 12px; }
 .node-detail dd { margin: 0; font-size: 13px; }
-.panel h4 { margin: 16px 0 8px; font-size: 13px; color: var(--ink-soft); }
+.panel h4, .node-drawer h4 { margin: 16px 0 8px; font-size: 13px; color: var(--ink-soft); }
 .plain.edges li { border-color: var(--line); background: transparent; }
 /* 新建草稿表单(a-modal 内) */
 .draft-form { display: grid; gap: 10px; }

@@ -1,6 +1,6 @@
-import { computed, onBeforeUnmount, onMounted, ref, watch, type ComputedRef } from 'vue'
+import { computed, onMounted, ref, watch, type ComputedRef } from 'vue'
 import { useStorage } from '@vueuse/core'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 /** 中部视图(P1 三视图 + P2 多通道同屏 + P5 RPG 小镇 + v17 人类群聊) */
 export type CenterView = 'timeline' | 'chat' | 'lanes' | 'board' | 'split' | 'town' | 'inspector'
@@ -24,10 +24,7 @@ const VIEW_VALUES = new Set(['timeline', 'chat', 'lanes', 'board', 'split', 'tow
 /**
  * 控制台外壳层:视口档位(窄屏形态)/ 侧栏折叠与宽度拖拽 / 中部视图切换(含数字快捷键)。
  *
- * 这三件事合成一个 composable 而非再拆,是因为它们之间有真实耦合,拆开只会退化成一串
- * 互穿的回调:
- *  - applyTier 回到桌面档时要把窄屏第 4 区(inspector)复位成中部自己的区;
- *  - 数字快捷键的 Esc 分支要收起窄屏抽屉(leftOpen)。
+ * 外壳状态在此统一：视口档位、侧栏状态与宽度、可分享视图和数字快捷键。
  *
  * 依赖由页面注入(isDesktop:唯一判据;channelId:聚焦频道),本层**不重复**调用
  * useResponsive / useWorkspaceChannels —— 档位监听与 WS 订阅因此各自只有一份。
@@ -38,6 +35,20 @@ export function useWorkspaceShell(
 ) {
   const { t } = useI18n()
   const route = useRoute()
+  const router = useRouter()
+  const inspecting = ref(false)
+
+  // 地址是可分享视图的事实源；读旧链接时不重写，也不碰频道/会话等其它参数。
+  const sharedView = computed<Exclude<CenterView, 'inspector'>>(() => {
+    const initView = route.query.view
+    if (initView === 'sessions') return 'chat'
+    return typeof initView === 'string' && VIEW_VALUES.has(initView)
+      ? initView as Exclude<CenterView, 'inspector'>
+      : 'chat'
+  })
+  watch(() => route.fullPath, () => {
+    inspecting.value = false
+  })
 
   // 视口档位(唯一判据;SSR 期返回桌面档)——
   // 窄屏(≤1023)三栏仪表台只剩 ~460px 画布,必须换成「单通道示波器」形态
@@ -59,8 +70,7 @@ export function useWorkspaceShell(
     leftOpen.value = desktop
     // 对话优先:右侧检查器默认收起,把宽度让给阅读列;需要时一键展开
     rightOpen.value = false
-    // 检查器只是窄屏的第 4 区:回桌面后它回到右栏,中部得有自己的区(否则中部空白)
-    if (desktop && view.value === 'inspector') view.value = 'timeline'
+    if (desktop) inspecting.value = false
   }
   onMounted(() => {
     if (!isDesktop.value) applyTier(false)
@@ -86,14 +96,18 @@ export function useWorkspaceShell(
   resizeLeft(0)
   resizeRight(0)
 
-  // 视图切换(见文件头 CenterView):深链初始值 + 切换条选项 + 数字快捷键
-  const initView = route.query.view
-  // 兼容旧书签/通知:多会话页面已并入 chat，不再渲染独立 sessions 视图。
-  const view = ref<CenterView>(
-    initView === 'sessions'
-      ? 'chat'
-      : typeof initView === 'string' && VIEW_VALUES.has(initView) ? initView as CenterView : 'chat',
-  )
+  // 轨道、窄屏切换条、会话入口和命令面板共用这个写入口；replace 不刷屏也不堆历史。
+  const view = computed<CenterView>({
+    get: () => narrowUI.value && inspecting.value ? 'inspector' : sharedView.value,
+    set: (next) => {
+      if (next === 'inspector') {
+        inspecting.value = narrowUI.value
+        return
+      }
+      inspecting.value = false
+      void router.replace({ path: route.path, hash: route.hash, query: { ...route.query, view: next } })
+    },
+  })
   const viewOptions = computed(() => {
     const base = [
       { value: 'timeline', label: t('wsView.k3otu32010') },
@@ -107,21 +121,14 @@ export function useWorkspaceShell(
     return narrowUI.value ? [...base, { value: 'inspector', label: t('wsView.inspector') }] : base
   })
   const onViewKey = (ev: KeyboardEvent): void => {
-    // 窄屏抽屉:Esc 收起(与全站侧栏抽屉一致)
-    if (ev.key === 'Escape' && narrowUI.value && leftOpen.value) {
-      leftOpen.value = false
-      return
-    }
-    if (ev.metaKey || ev.ctrlKey || ev.altKey) return
-    const t = ev.target as HTMLElement | null
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+    if (ev.defaultPrevented || ev.isComposing || ev.keyCode === 229 || ev.metaKey || ev.ctrlKey || ev.altKey) return
+    const target = ev.target
+    if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, [role="combobox"]'))) return
     const next = VIEW_KEYS[ev.key]
     if (!next || !channelId.value) return
     ev.preventDefault()
     view.value = next
   }
-  onMounted(() => window.addEventListener('keydown', onViewKey))
-  onBeforeUnmount(() => window.removeEventListener('keydown', onViewKey))
 
   return {
     mounted,

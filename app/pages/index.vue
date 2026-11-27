@@ -75,81 +75,94 @@ const onAckAlarm = (id: string): void => {
 
 <template>
   <div class="home">
-    <!-- 状态带:现在是否正常 + 去哪里处理;读数交给下方量规带 -->
-    <DashboardStatusBand
-      :mode="site.mode"
-      :lines-active="linesActive.length"
-      :lines-total="dcw.lines.length"
-      :alarm-count="alarmCount"
+    <AwStateBlock
+      v-if="daq.error || dcw.error"
+      state="error"
+      :hint="daq.error || dcw.error"
+      compact
+    />
+    <AwStateBlock
+      v-else-if="!daq.loaded || !dcw.loaded"
+      state="loading"
     />
 
-    <!-- 量规统计带:一块仪表盘,不是一排各自为政的卡(底部量程刻度是签名) -->
-    <DashboardGaugeBand
-      :lines-active="linesActive.length"
-      :lines-total="dcw.lines.length"
-      :dcw-online="dcw.controller.nodesOnline"
-      :dcw-total="dcw.controller.nodesTotal"
-      :daq-online="daqOnline"
-      :daq-total="daqTotal"
-      :samples-stored="daq.meta.samplesStored ?? 0"
-      :write-rate="writeRate"
-      :alarm-count="alarmCount"
-    />
-
-    <!-- 大屏图阵 -->
-    <!-- 执行引擎可用性(Harness CLI 环境探测;未安装不可选,派工前强校验;API 失联显式报错) -->
-    <section
-      v-if="harnessError"
-      class="home-harness-error"
-    >
-      <div class="aw-bench">
-        <header class="aw-bench-hd">
-          <h3 class="aw-bench-title">
-            {{ $t('home.harness.title') }}
-          </h3>
-        </header>
-        <AwStateBlock
-          state="error"
-          :retry="loadHarnesses"
-        />
-      </div>
-    </section>
-    <DashboardHarnessPanel
-      v-else-if="harnesses.length > 0"
-      :harnesses="harnesses"
-      :ok-count="harnessOk"
-    />
-
-    <DashboardAlarmQueue
-      :alarms="daq.alarms"
-      :units="alarmUnits"
-      @ack="onAckAlarm"
-    />
-
-    <div class="grid aw-stagger">
-      <DashboardTrendPanel
-        :option="trendOpt"
-        :has-data="trendHasData"
-      />
-      <DashboardLineStatePanel
-        :option="lineStateOpt"
+    <template v-if="daq.loaded && dcw.loaded">
+      <!-- 状态带:现在是否正常 + 去哪里处理;读数交给下方量规带 -->
+      <DashboardStatusBand
+        :mode="site.mode"
         :lines-active="linesActive.length"
         :lines-total="dcw.lines.length"
+        :alarm-count="alarmCount"
       />
-      <DashboardPipelinePanel :option="pipelineOpt" />
-      <DashboardWritePanel
-        :option="writeOpt"
-        :writes-total="dcw.controller.writesTotal"
-        :writes-failed="dcw.controller.writesFailed"
-      />
-      <DashboardNodeStatePanel :option="nodeStateOpt" />
-    </div>
 
-    <DashboardFleetPanel
-      :lines="fleetShown"
-      :total="lineCards.length"
-      :overflow="fleetOverflow"
-    />
+      <!-- 量规统计带:一块仪表盘,不是一排各自为政的卡(底部量程刻度是签名) -->
+      <DashboardGaugeBand
+        :lines-active="linesActive.length"
+        :lines-total="dcw.lines.length"
+        :dcw-online="dcw.controller.nodesOnline"
+        :dcw-total="dcw.controller.nodesTotal"
+        :daq-online="daqOnline"
+        :daq-total="daqTotal"
+        :samples-stored="daq.meta.samplesStored ?? 0"
+        :write-rate="dcw.controller.writesTotal > 0 ? writeRate : null"
+        :alarm-count="alarmCount"
+      />
+
+      <!-- 大屏图阵 -->
+      <!-- 执行引擎可用性(Harness CLI 环境探测;未安装不可选,派工前强校验;API 失联显式报错) -->
+      <section
+        v-if="harnessError"
+        class="home-harness-error"
+      >
+        <div class="aw-bench">
+          <header class="aw-bench-hd">
+            <h3 class="aw-bench-title">
+              {{ $t('home.harness.title') }}
+            </h3>
+          </header>
+          <AwStateBlock
+            state="error"
+            :retry="loadHarnesses"
+          />
+        </div>
+      </section>
+      <DashboardHarnessPanel
+        v-else-if="harnesses.length > 0"
+        :harnesses="harnesses"
+        :ok-count="harnessOk"
+      />
+
+      <DashboardAlarmQueue
+        :alarms="daq.alarms"
+        :units="alarmUnits"
+        @ack="onAckAlarm"
+      />
+
+      <div class="grid aw-stagger">
+        <DashboardTrendPanel
+          :option="trendOpt"
+          :has-data="trendHasData"
+        />
+        <DashboardLineStatePanel
+          :option="lineStateOpt"
+          :lines-active="linesActive.length"
+          :lines-total="dcw.lines.length"
+        />
+        <DashboardPipelinePanel :option="pipelineOpt" />
+        <DashboardWritePanel
+          :option="writeOpt"
+          :writes-total="dcw.controller.writesTotal"
+          :writes-failed="dcw.controller.writesFailed"
+        />
+        <DashboardNodeStatePanel :option="nodeStateOpt" />
+      </div>
+
+      <DashboardFleetPanel
+        :lines="fleetShown"
+        :total="lineCards.length"
+        :overflow="fleetOverflow"
+      />
+    </template>
 
     <!-- 插件 UI 注入区:client 面板经 ctx.ui.registerPanel({slot:'dashboard.widgets'}) 注入 -->
     <ClientOnly>
@@ -164,7 +177,7 @@ const onAckAlarm = (id: string): void => {
 /* ---------- 大屏图阵 ---------- */
 .grid {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--gap-block);
   margin-bottom: var(--gap-block);
 }

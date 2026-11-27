@@ -332,6 +332,7 @@ const chatMessages = ref<AepChatMessage[]>([])
 const chatText = ref('')
 const chatLoading = ref(false)
 const chatSending = ref(false)
+const chatHistoryError = ref('')
 const chatError = ref('')
 const chatNotice = ref('')
 const chatThread = ref<HTMLElement | null>(null)
@@ -340,6 +341,7 @@ const chatInitialized = ref(false)
 /** 服务端 access.canManage：只有 owner/admin 可继续开发；加载前默认关闭，避免非 owner 闪现可提交入口 */
 const canManageProject = ref(false)
 let chatTimer: ReturnType<typeof setInterval> | null = null
+let chatLoadSeq = 0
 
 const canContinueProject = computed(() => Boolean(
   canManageProject.value
@@ -354,13 +356,10 @@ function formatChatTime(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function scrollChatToBottom(force = false): void {
+function scrollChatToBottom(): void {
   void nextTick(() => {
     const el = chatThread.value
-    if (!el) return
-    // 轮询刷新时，用户可能正在往上读历史；只有本来就在底部才跟随新消息。
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-    if (force || nearBottom) el.scrollTop = el.scrollHeight
+    if (el) el.scrollTop = el.scrollHeight
   })
 }
 
@@ -377,22 +376,26 @@ function focusContinue(): void {
 async function loadChat(): Promise<void> {
   const officeChannelId = project.value?.officeChannelId
   if (!officeChannelId) return
+  const seq = ++chatLoadSeq
   chatLoading.value = true
   try {
     const res = await http.get<{ data: { messages?: AepChatMessage[] } }>(
       `/workshop/channels/${officeChannelId}/chat/messages?limit=100`,
     )
+    if (seq !== chatLoadSeq || project.value?.officeChannelId !== officeChannelId) return
+    const el = chatThread.value
+    const follow = !chatInitialized.value || (el != null && el.scrollHeight - el.scrollTop - el.clientHeight < 80)
     // 服务端返回新→旧；对话区按时间正序渲染。
     chatMessages.value = [...(res.data?.messages ?? [])].reverse()
-    chatError.value = ''
-    scrollChatToBottom(!chatInitialized.value)
+    chatHistoryError.value = ''
+    if (follow) scrollChatToBottom()
     chatInitialized.value = true
   }
   catch (e) {
-    if (!chatMessages.value.length) chatError.value = errMsg(e)
+    if (seq === chatLoadSeq && project.value?.officeChannelId === officeChannelId) chatHistoryError.value = errMsg(e)
   }
   finally {
-    chatLoading.value = false
+    if (seq === chatLoadSeq) chatLoading.value = false
   }
 }
 
@@ -422,7 +425,7 @@ async function sendContinuation(): Promise<void> {
       ? `项目已重新打开；需求已发给 Project Leader（已投递 ${delivered} 个目标），批准增量计划后继续派发。`
       : `需求已发给 Project Leader（已投递 ${delivered} 个目标）。`
     await Promise.all([load(), loadChat(), loadObservability(), loadActivity(true)])
-    scrollChatToBottom(true)
+    scrollChatToBottom()
   }
   catch (e) {
     chatError.value = errMsg(e)
@@ -1018,7 +1021,7 @@ onMounted(async () => {
     void loadObservability()
   }, 5000)
   chatTimer = setInterval(() => {
-    if (!chatSending.value) void loadChat()
+    if (!chatSending.value && !chatLoading.value) void loadChat()
   }, 5000)
 })
 onUnmounted(() => {
@@ -1082,7 +1085,7 @@ onUnmounted(() => {
           >v{{ project.planVersion }}</span>
         </div>
         <p
-          v-if="project?.objective"
+          v-if="activeTab !== 'overview' && project?.objective"
           class="proj-obj"
         >
           {{ project.objective }}
@@ -1091,6 +1094,7 @@ onUnmounted(() => {
 
       <nav
         class="side-nav"
+        aria-label="项目导航"
         data-testid="project-tabs"
       >
         <div class="side-label">
@@ -1101,6 +1105,8 @@ onUnmounted(() => {
           :key="t.key"
           class="side-item"
           :class="{ active: activeTab === t.key }"
+          type="button"
+          :aria-current="activeTab === t.key ? 'page' : undefined"
           :data-testid="`tab-${t.key}`"
           @click="activeTab = t.key"
         >
@@ -1249,12 +1255,18 @@ onUnmounted(() => {
         <div class="sk-card short" />
       </div>
 
-      <!-- ══ 概览 ══ -->
-      <template v-else>
+      <!-- 项目加载成功后才展示各工作区，避免错误时出现全零假数据。 -->
+      <template v-else-if="project">
         <section
           v-show="activeTab === 'overview'"
           class="hero"
         >
+          <div class="hero-identity">
+            <h2>{{ project.name }}</h2>
+            <p v-if="project.objective">
+              {{ project.objective }}
+            </p>
+          </div>
           <div class="hero-ring">
             <svg
               viewBox="0 0 44 44"
@@ -1356,7 +1368,7 @@ onUnmounted(() => {
               <button
                 type="button"
                 class="btn small ghost"
-                :disabled="chatLoading"
+                :disabled="chatLoading || !project.officeChannelId"
                 @click="loadChat"
               >
                 刷新
@@ -1389,17 +1401,24 @@ onUnmounted(() => {
             data-testid="project-leader-thread"
           >
             <div
-              v-if="!chatMessages.length && !chatLoading"
+              v-if="!project.officeChannelId"
+              class="chat-empty"
+            >
+              <span>{{ $t('common.stateEmpty') }}</span>
+            </div>
+            <div
+              v-else-if="!chatMessages.length && !chatInitialized && !chatHistoryError"
+              class="chat-empty"
+              role="status"
+            >
+              <span>{{ $t('chat.loading') }}</span>
+            </div>
+            <div
+              v-else-if="!chatMessages.length && !chatHistoryError"
               class="chat-empty"
             >
               <strong>还没有对话</strong>
               <span>可以直接描述 bug、复现步骤或下一轮需求。</span>
-            </div>
-            <div
-              v-else-if="chatLoading && !chatMessages.length"
-              class="chat-empty"
-            >
-              <span class="muted">正在同步对话…</span>
             </div>
             <div
               v-for="m in chatMessages"
@@ -1459,9 +1478,24 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <div
+            v-if="chatHistoryError && project.officeChannelId"
+            class="error inline chat-history-error"
+          >
+            <span role="status">{{ chatHistoryError }}</span>
+            <button
+              type="button"
+              class="btn small ghost"
+              :disabled="chatLoading"
+              @click="loadChat"
+            >
+              {{ $t('common.stateRetry') }}
+            </button>
+          </div>
           <p
             v-if="chatError"
             class="error inline"
+            role="alert"
           >
             {{ chatError }}
           </p>
@@ -3283,6 +3317,8 @@ onUnmounted(() => {
   border-radius: 9px;
 }
 .error.inline { margin-top: 8px; }
+.chat-history-error { flex-wrap: wrap; justify-content: space-between; overflow-wrap: anywhere; }
+.side-item:focus-visible { outline: 2px solid var(--chat-accent); outline-offset: -2px; }
 
 /* 卡片 */
 .card {
@@ -3350,6 +3386,27 @@ h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--chat-in
   background: var(--chat-surface);
   border: 1px solid var(--chat-line);
   border-radius: 16px;
+}
+.hero-identity {
+  flex: 1 0 100%;
+  min-width: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--chat-line);
+  overflow-wrap: anywhere;
+}
+.hero-identity h2 {
+  margin: 0;
+  font-size: clamp(18px, 2.5vw, 24px);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+.hero-identity p {
+  max-width: 66ch;
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--chat-ink-soft);
 }
 .hero-ring { position: relative; flex: 0 0 auto; width: 76px; height: 76px; }
 .hero-ring svg { width: 76px; height: 76px; transform: rotate(-90deg); }

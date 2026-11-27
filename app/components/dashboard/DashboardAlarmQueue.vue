@@ -20,9 +20,12 @@ const emit = defineEmits<{ (e: 'ack', id: string): void }>()
 const { t } = useI18n()
 /** 相对时间每 30s 重算,避免“5 分钟前”停住不动 */
 const now = ref(Date.now())
-const ageTimer = setInterval(() => {
-  now.value = Date.now()
-}, 30_000)
+let ageTimer: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  ageTimer = setInterval(() => {
+    now.value = Date.now()
+  }, 30_000)
+})
 onBeforeUnmount(() => clearInterval(ageTimer))
 const visible = computed(() => props.alarms.slice(0, 4))
 const overflow = computed(() => Math.max(props.alarms.length - visible.value.length, 0))
@@ -151,19 +154,12 @@ function fullTime(iso: string): string {
       </NuxtLink>
     </div>
 
-    <div
+    <AwStateBlock
       v-else
-      class="aq-empty"
-      role="status"
-      aria-live="polite"
-    >
-      <span
-        class="i-tabler-circle-check aq-ok"
-        aria-hidden="true"
-      />
-      <b>{{ t('home.shift.empty') }}</b>
-      <span>{{ t('home.shift.emptySub') }}</span>
-    </div>
+      state="empty"
+      :title="t('home.alarm.noDisplayed')"
+      compact
+    />
   </section>
 </template>
 

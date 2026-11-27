@@ -32,6 +32,7 @@ const { terminalOpen, terminalPid, terminalAgentId, terminalChannelId, terminalS
 // 成对注册(页面不再自行注册任何 setInterval/onUnmounted,避免多份订阅)
 const {
   snapshot,
+  snapshotError,
   loading,
   autoRefresh,
   lastUpdated,
@@ -82,6 +83,21 @@ watch(
     <MonitorLoginGate v-if="!userStore.isLoggedIn" />
 
     <template v-else>
+      <AwStateBlock
+        v-if="snapshotError"
+        state="error"
+        :title="$t('monitor.loadFailed')"
+        :hint="snapshotError === $t('monitor.loadFailed') ? undefined : snapshotError"
+        :retry="loading ? undefined : poll"
+        compact
+      />
+      <AwStateBlock
+        v-else-if="!snapshot"
+        state="loading"
+      />
+    </template>
+
+    <template v-if="userStore.isLoggedIn && snapshot">
       <!-- 概要统计 -->
       <MonitorStatGrid
         :counts="snapshot?.counts"
@@ -115,16 +131,17 @@ watch(
         @open-terminal="openTerminal"
         @terminate="doTerminatePid"
       />
-
-      <!-- harness 原生终端(omp rpc-ui 镜像 · 实时 TUI 渲染 + HITL 控制) -->
-      <OmpTerminalPanel
-        v-model:open="terminalOpen"
-        :pid="terminalPid"
-        :agent-id="terminalAgentId"
-        :channel-id="terminalChannelId"
-        :subtitle="terminalSubtitle"
-      />
     </template>
+
+    <!-- 深链允许在快照不可用时按 agentId/channelId 解析终端 -->
+    <OmpTerminalPanel
+      v-if="userStore.isLoggedIn"
+      v-model:open="terminalOpen"
+      :pid="terminalPid"
+      :agent-id="terminalAgentId"
+      :channel-id="terminalChannelId"
+      :subtitle="terminalSubtitle"
+    />
   </div>
 </template>
 

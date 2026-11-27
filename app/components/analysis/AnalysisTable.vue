@@ -13,6 +13,7 @@ const props = defineProps<{
   rows: AnalysisReportView[]
   loading: boolean
   error: string
+  retry?: () => void
   /** 管理面:admin 可见删除(清污数据;台账 Agent 面无删) */
   admin: boolean
 }>()
@@ -74,13 +75,30 @@ watch(() => props.rows.length, (n) => {
       <span class="count">{{ $t('analysis.count', { p0: rows.length }) }}</span>
       <span class="hint">{{ $t('analysis.ledgerHint') }}</span>
     </div>
-    <p
+    <AwStateBlock
       v-if="error"
-      class="err"
+      state="error"
+      :hint="error"
+      :retry="retry"
+      compact
+    />
+    <AwStateBlock
+      v-else-if="loading && !rows.length"
+      state="loading"
+      compact
+    />
+    <AwStateBlock
+      v-else-if="!rows.length"
+      state="empty"
+      :title="$t('analysis.empty')"
+      compact
+    />
+    <table
+      v-if="rows.length"
+      class="ar-table"
+      :aria-label="$t('analysis.ledgerHint')"
+      :aria-busy="loading"
     >
-      {{ error }}
-    </p>
-    <table class="ar-table">
       <thead>
         <tr>
           <th class="th-time">
@@ -105,22 +123,6 @@ watch(() => props.rows.length, (n) => {
         </tr>
       </thead>
       <tbody>
-        <tr v-if="loading && rows.length === 0">
-          <td
-            colspan="7"
-            class="empty"
-          >
-            {{ $t('analysis.loading') }}
-          </td>
-        </tr>
-        <tr v-else-if="rows.length === 0">
-          <td
-            colspan="7"
-            class="empty"
-          >
-            {{ $t('analysis.empty') }}
-          </td>
-        </tr>
         <template
           v-for="row in pagedRows"
           :key="row.id"
@@ -156,6 +158,8 @@ watch(() => props.rows.length, (n) => {
               <button
                 v-if="hasDetail(row)"
                 class="mini-btn"
+                type="button"
+                :aria-expanded="expandedId === row.id"
                 @click="emit('toggle', row)"
               >
                 {{ expandedId === row.id ? $t('analysis.fold') : $t('analysis.expand') }}
@@ -167,7 +171,9 @@ watch(() => props.rows.length, (n) => {
               <button
                 v-if="row.canEdit"
                 class="mini-btn"
+                type="button"
                 :title="$t('analysis.editTitle')"
+                :aria-label="$t('analysis.editTitle')"
                 @click="emit('edit', row)"
               >
                 <span class="i-tabler-pencil" />
@@ -183,7 +189,9 @@ watch(() => props.rows.length, (n) => {
               >
                 <button
                   class="mini-btn danger"
+                  type="button"
                   :title="$t('analysis.remove')"
+                  :aria-label="$t('analysis.remove')"
                 >
                   <span class="i-tabler-trash" />
                 </button>
@@ -300,6 +308,9 @@ watch(() => props.rows.length, (n) => {
 .card-meta .hint { margin-left: auto; }
 .mini-btn.danger { color: var(--tone-danger-dot, #ff6b6b); margin-left: 4px; }
 .err { margin: 0; padding: 10px 14px; font-size: 12.5px; color: var(--tone-danger-dot, #ff6b6b); }
+.table-card .mini-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.title-cell, .summary, .src, .td-line, .td-recipe { overflow-wrap: anywhere; }
+
 .ar-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .ar-table thead th {
   position: sticky; top: 0; z-index: 1;

@@ -11,7 +11,7 @@ defineProps<{
   daqOnline: number
   daqTotal: number
   samplesStored: number
-  writeRate: number
+  writeRate: number | null
   alarmCount: number
 }>()
 
@@ -48,7 +48,15 @@ const { t } = useI18n()
     <div class="aw-gauge">
       <span class="aw-gauge-label">{{ t('home.kpi.writeRate') }}</span>
       <span class="aw-gauge-value">
-        <span class="aw-readout">{{ writeRate }}<small>%</small></span>
+        <span
+          v-if="writeRate !== null"
+          class="aw-readout"
+        >{{ writeRate }}<small>%</small></span>
+        <span
+          v-else
+          class="aw-readout"
+          :aria-label="t('home.noWriteAttempts')"
+        >—</span>
       </span>
     </div>
     <div

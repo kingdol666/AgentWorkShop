@@ -1,13 +1,5 @@
 <template>
   <div class="ledger">
-    <!-- 错误条:此前 error 赋值但模板无渲染位,静默失败(2026-11-06 修复) -->
-    <p
-      v-if="error"
-      class="err"
-      role="alert"
-    >
-      {{ error }}
-    </p>
     <!-- 导出任务台账 -->
     <div class="card">
       <div class="row">
@@ -22,9 +14,29 @@
           {{ $t('data.ledger.refresh') }}
         </button>
       </div>
+      <AwStateBlock
+        v-if="jobsError"
+        state="error"
+        :hint="jobsError"
+        compact
+      />
+      <AwStateBlock
+        v-else-if="jobsLoading && !jobs.length"
+        state="loading"
+        compact
+      />
+      <AwStateBlock
+        v-else-if="!jobs.length"
+        state="empty"
+        :title="$t('data.ledger.empty')"
+        compact
+      />
       <div
         v-if="jobs.length"
         class="tblWrap"
+        role="region"
+        :aria-label="$t('data.ledger.jobs')"
+        tabindex="0"
       >
         <table
           class="tbl"
@@ -80,12 +92,6 @@
           </tbody>
         </table>
       </div>
-      <p
-        v-else
-        class="empty"
-      >
-        {{ $t('data.ledger.empty') }}
-      </p>
     </div>
 
     <!-- 批次(run)台账 -->
@@ -94,8 +100,12 @@
         <h3 class="sec">
           {{ $t('data.ledger.runs') }}
         </h3>
-        <label class="lbl">{{ $t('data.ledger.outcome') }}</label>
+        <label
+          class="lbl"
+          for="ledger-outcome"
+        >{{ $t('data.ledger.outcome') }}</label>
         <select
+          id="ledger-outcome"
           v-model="outcome"
           class="input sel"
           @change="loadRuns"
@@ -123,9 +133,29 @@
           {{ $t('data.ledger.refresh') }}
         </button>
       </div>
+      <AwStateBlock
+        v-if="runsError"
+        state="error"
+        :hint="runsError"
+        compact
+      />
+      <AwStateBlock
+        v-else-if="runsLoading && !runs.length"
+        state="loading"
+        compact
+      />
+      <AwStateBlock
+        v-else-if="!runs.length"
+        state="empty"
+        :title="$t('data.ledger.runsEmpty')"
+        compact
+      />
       <div
         v-if="runs.length"
         class="tblWrap"
+        role="region"
+        :aria-label="$t('data.ledger.runs')"
+        tabindex="0"
       >
         <table
           class="tbl"
@@ -169,12 +199,6 @@
           </tbody>
         </table>
       </div>
-      <p
-        v-else
-        class="empty"
-      >
-        {{ $t('data.ledger.runsEmpty') }}
-      </p>
     </div>
   </div>
 </template>
@@ -195,7 +219,10 @@ const { t } = useI18n()
 const jobs = ref<ExportJob[]>([])
 const runs = ref<RunRow[]>([])
 const outcome = ref('')
-const error = ref('')
+const jobsLoading = ref(true)
+const runsLoading = ref(true)
+const jobsError = ref('')
+const runsError = ref('')
 let timer: ReturnType<typeof setInterval> | null = null
 
 const shortTs = (ms?: number): string => (ms ? new Date(ms).toISOString().slice(5, 16).replace('T', ' ') : '-')
@@ -206,23 +233,33 @@ function fileUrl(jobId: string, rel: string): string {
 }
 
 async function loadJobs(): Promise<void> {
+  jobsLoading.value = true
   try {
     const r = await apiFetch<{ jobs: ExportJob[] }>({ base: '/api/workshop/daq/export', retries: 1 })
     jobs.value = r.jobs ?? []
+    jobsError.value = ''
   }
   catch (e) {
-    error.value = apiErrorMessage(e)
+    jobsError.value = apiErrorMessage(e)
+  }
+  finally {
+    jobsLoading.value = false
   }
 }
 
 async function loadRuns(): Promise<void> {
+  runsLoading.value = true
   try {
     const p = outcome.value ? `?outcome=${encodeURIComponent(outcome.value)}` : ''
     const r = await apiFetch<{ runs: RunRow[] }>({ base: `/api/workshop/eda/runs${p}`, retries: 1 })
     runs.value = r.runs ?? []
+    runsError.value = ''
   }
   catch (e) {
-    error.value = apiErrorMessage(e)
+    runsError.value = apiErrorMessage(e)
+  }
+  finally {
+    runsLoading.value = false
   }
 }
 
@@ -247,7 +284,8 @@ onUnmounted(() => {
 .lbl { font-size: 12px; color: var(--ink-soft, #666); }
 .input { border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
 .empty { color: var(--ink-faint, #999); font-size: 12px; }
-.err { color: var(--tone-danger-dot); font-size: 12px; margin: 0 0 10px; white-space: pre-wrap; }
+.tblWrap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tblWrap th { position: sticky; top: 0; z-index: 1; background: var(--paper-raised); }
 .tblWrap { max-height: 360px; overflow: auto; margin-top: 8px; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
 .tbl th, .tbl td { border-bottom: 1px solid var(--line); padding: 3px 8px; text-align: left; white-space: nowrap; }

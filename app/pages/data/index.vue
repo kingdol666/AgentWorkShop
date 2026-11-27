@@ -12,35 +12,33 @@
     </header>
 
     <nav
-      class="tabs"
+      class="tabs aw-seg"
+      :aria-label="$t('data.page.title')"
       data-test="data-tabs"
     >
       <button
+        v-for="view in views"
+        :key="view"
+        type="button"
         class="tab"
-        :class="{ on: tab === 'mirror' }"
-        @click="tab = 'mirror'"
+        :class="{ on: tab === view }"
+        :aria-pressed="tab === view"
+        aria-controls="data-view"
+        @click="tab = view"
       >
-        {{ $t('data.tab.mirror') }}
-      </button>
-      <button
-        class="tab"
-        :class="{ on: tab === 'mes' }"
-        @click="tab = 'mes'"
-      >
-        {{ $t('data.tab.mes') }}
-      </button>
-      <button
-        class="tab"
-        :class="{ on: tab === 'ledger' }"
-        @click="tab = 'ledger'"
-      >
-        {{ $t('data.tab.ledger') }}
+        {{ $t(`data.tab.${view}`) }}
       </button>
     </nav>
 
-    <DataMirrorPanel v-if="tab === 'mirror'" />
-    <DataMesPanel v-else-if="tab === 'mes'" />
-    <DataLedgerPanel v-else />
+    <section
+      id="data-view"
+      class="view"
+      :aria-label="$t(`data.tab.${tab}`)"
+    >
+      <DataMirrorPanel v-if="tab === 'mirror'" />
+      <DataMesPanel v-else-if="tab === 'mes'" />
+      <DataLedgerPanel v-else />
+    </section>
   </div>
 </template>
 
@@ -52,15 +50,17 @@
  *  - 台账:导出任务 + 批次 run 台账。
  * 与 /daq(监控控制台)分工:/data 面向业务取数与分析准备。
  */
-const tab = ref<'mirror' | 'mes' | 'ledger'>('mirror')
+const views = ['mirror', 'mes', 'ledger'] as const
+const tab = ref<(typeof views)[number]>('mirror')
 </script>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
+.page { display: flex; flex-direction: column; gap: var(--gap-block); min-width: 0; padding: 4px; }
 .head { display: flex; justify-content: space-between; align-items: flex-end; }
-.title { font-size: 18px; font-weight: 700; margin: 0; }
-.sub { font-size: 12px; color: var(--ink-faint, #888); margin: 2px 0 0; }
-.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 0; }
-.tab { border: none; background: transparent; padding: 6px 14px; font-size: 13px; cursor: pointer; color: var(--ink-soft, #666); border-bottom: 2px solid transparent; }
-.tab.on { color: var(--ink, #222); font-weight: 600; border-bottom-color: #4a6b57; }
+.title { font-size: 24px; font-weight: 650; margin: 0; }
+.sub { font-size: 13px; color: var(--ink-soft); margin: 4px 0 0; }
+.tabs { align-self: flex-start; display: flex; flex-wrap: wrap; max-width: 100%; }
+.tab { min-height: 36px; }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.view { min-width: 0; }
 </style>

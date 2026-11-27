@@ -28,6 +28,7 @@ interface UserRow {
 const lines = ref<LineView[]>([])
 const users = ref<UserRow[]>([])
 const loading = ref(false)
+const loadError = ref('')
 const keyword = ref('')
 const drawerOpen = ref(false)
 const current = ref<UserRow | null>(null)
@@ -42,6 +43,7 @@ function authHeaders(): Record<string, string> {
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     const d = await narrowFetch<{ code: number, data?: { lines: LineView[], users: UserRow[] } }>('/api/workshop/permissions', { headers: authHeaders() })
     if (d.code !== 0 || !d.data) throw new Error('load fail')
@@ -49,7 +51,8 @@ async function load() {
     users.value = d.data.users ?? []
   }
   catch (err) {
-    message.error(apiErrorMessage(err, t('permissions.loadFail')))
+    loadError.value = apiErrorMessage(err, t('permissions.loadFail'))
+    message.error(loadError.value)
   }
   finally {
     loading.value = false
@@ -171,9 +174,20 @@ onMounted(load)
         v-model:value="keyword"
         :placeholder="$t('permissions.search')"
         style="max-width: 260px"
+        :aria-label="$t('permissions.search')"
         allow-clear
       />
     </header>
+
+    <a-alert
+      v-if="loadError"
+      type="error"
+      show-icon
+      class="perm-error"
+      :message="loadError"
+      closable
+      @close="loadError = ''"
+    />
 
     <a-card
       :bordered="false"

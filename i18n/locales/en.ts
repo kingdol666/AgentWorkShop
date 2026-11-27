@@ -66,6 +66,7 @@ export default {
     collapse: 'Collapse menu',
     expand: 'Expand menu',
     openNav: 'Open navigation',
+    skipToContent: 'Skip to main content',
     closeNav: 'Close navigation',
     language: 'Language',
     theme: 'Theme',
@@ -88,6 +89,7 @@ export default {
     heroSub: 'Write control and data acquisition resonate on one screen: recipe starts, setpoints, live conditions and limit alarms — the twin stays in step with real PLCs.',
     ctaTown: 'Open Digital Twin',
     ctaLine: 'Line Operations',
+    noWriteAttempts: 'No write attempts yet',
     live: 'LIVE',
     kpi: {
       lines: 'Running Lines',
@@ -108,6 +110,7 @@ export default {
       more: 'View all',
     },
     alarm: {
+      noDisplayed: 'No alarms shown in this queue',
       high: 'above max',
       low: 'below min',
       now: 'just now',
@@ -973,6 +976,8 @@ export default {
     k1evt004: 'No events yet — waiting for activity…',
   },
   daqDetail: {
+    nodeNotFound: 'DAQ node not found',
+    historyBucket: 'History aggregation interval',
     bucket1s: '1s bucket',
     bucket5s: '5s bucket',
     bucket15s: '15s bucket (default)',
@@ -2667,8 +2672,8 @@ export default {
     kmf7lcc027: 'Target runtime stopped: the message is safely queued and processed after re-enabling',
     k1tet5df028: 'Idle · a turn starts immediately to handle it',
     kn600in029: 'Target idle: processing starts right after delivery',
-    k2h5jwc030: 'Type a task (first line = title, {\'@\'} to target a member, defaults to lead)…  ⌘/Ctrl+Enter to submit',
-    k15mwzt7031: 'Type a message/notice ({\'@\'} to target a member, defaults to lead)…  ⌘/Ctrl+Enter to send',
+    k2h5jwc030: 'Write a task. Use the first line as its title…',
+    k15mwzt7031: 'Write a message to the team…',
   },
   deviceTwinPanel: {
     armDelete: 'Click again to confirm deleting this device instance',
@@ -3903,8 +3908,10 @@ export default {
   },
   memoryCenter: {
     title: 'Memory Center',
-    subtitle: 'Human management for all persisted memory and experience: overwrite with original kept, annotations, version rollback, soft delete/restore, promotion and deployment.',
-    searchPlaceholder: 'Search title/content',
+    subtitle: 'Find and review what agents remember. Edit an entry, add context, or manage when verified experience can be reused.',
+    searchPlaceholder: 'Search titles or contents…',
+    results: '{count} entries',
+    noMatches: 'No entries match these filters',
     search: 'Search',
     includeDeleted: 'Include deleted',
     deleted: 'deleted',

@@ -131,6 +131,8 @@ function createStore() {
   }
 
   async function load(): Promise<void> {
+    // This live snapshot belongs to the authenticated browser, not the SSR process.
+    if (import.meta.server) return
     try {
       const data = await api<{ controller: AepDcwControllerState, nodes: DcwNodeView[], templates?: DcwTemplateDef[], drivers?: DaqDriverCatalogEntry[], recipes?: RecipeView[], runs?: RecipeRunView[], history?: DcwWriteHistoryEntry[], products?: ProductView[], lines?: LineView[], lineStates?: LineRunState[] }>('')
       nodes.splice(0, nodes.length, ...data.nodes)

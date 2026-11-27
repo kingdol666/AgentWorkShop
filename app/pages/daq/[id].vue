@@ -17,10 +17,10 @@ import { useDaqDetailParams } from './composables/useDaqDetailParams'
 
 definePageMeta({ layout: 'default' })
 
-const { daq, dcw, nodeId, node, tpl, signalKind, isFrameNode, stateLabel, effectiveState, driverPlanned } = useDaqDetailNode()
+const { daq, dcw, nodeId, node, tpl, signalKind, isFrameNode, stateLabel, effectiveState, driverPlanned, snapshotPending, loadSnapshot } = useDaqDetailNode()
 const { form, driverCatalog, driverCfg, driverFields, testing, testResult, saving, doTest, saveParams } = useDaqDetailParams(nodeId, node)
 const { bindDeviceId, boundDeviceName, onBindToggle, availableDevices } = useDaqDetailBinding(nodeId, node)
-const { historyPoints, bucketMs, BUCKETS, loadHistory, chartCanvas, liveCanvas, refreshOverrideMs } = useDaqDetailHistory(nodeId, node)
+const { historyPoints, histError, histLoading, bucketMs, BUCKETS, loadHistory, chartCanvas, liveCanvas, refreshOverrideMs } = useDaqDetailHistory(nodeId, node)
 const { frames, loadFrames, vecPath } = useDaqDetailFrames(nodeId, isFrameNode)
 </script>
 
@@ -35,21 +35,33 @@ const { frames, loadFrames, vecPath } = useDaqDetailFrames(nodeId, isFrameNode)
     <div class="aw-page-head">
       <h1>{{ node?.name ?? nodeId }}</h1>
       <span
+        v-if="node"
         class="st-pill"
         :class="[effectiveState()]"
       >{{ stateLabel[effectiveState()] }}</span>
     </div>
 
-    <p
-      v-if="!node && daq.error"
-      class="err"
-    >
-      {{ daq.error }}(<NuxtLink to="/workshop">{{ $t('daqDetail.k1bhhheq002') }}</NuxtLink>)
-    </p>
-
+    <AwStateBlock
+      v-if="!node && snapshotPending"
+      state="loading"
+    />
+    <AwStateBlock
+      v-else-if="!node && daq.error"
+      state="error"
+      :hint="daq.error"
+      :retry="loadSnapshot"
+    />
     <AwStateBlock
       v-else-if="!node"
-      state="loading"
+      state="empty"
+      :title="$t('daqDetail.nodeNotFound')"
+    />
+    <AwStateBlock
+      v-else-if="daq.error"
+      state="error"
+      :hint="daq.error"
+      :retry="loadSnapshot"
+      compact
     />
 
     <div
@@ -93,6 +105,9 @@ const { frames, loadFrames, vecPath } = useDaqDetailFrames(nodeId, isFrameNode)
         :tsdb="daq.meta.tsdb"
         :buckets="BUCKETS"
         :history-points="historyPoints"
+        :loading="histLoading"
+        :error="histError"
+        :unit="node.unit"
         :decimals="node.decimals"
         :min-query-ms="daq.controller.minQueryDisplayIntervalMs ?? 500"
         :default-query-ms="daq.controller.queryDisplayIntervalMs ?? 5000"
@@ -115,8 +130,8 @@ const { frames, loadFrames, vecPath } = useDaqDetailFrames(nodeId, isFrameNode)
 .page { padding: 4px; }
 .back { color: var(--ink-faint); text-decoration: none; }
 .back:hover { color: var(--accent); }
-.aw-page-head h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.022em; }
-.err { margin-top: 14px; font-size: 13px; color: var(--tone-danger-dot); }
+.back:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.aw-page-head h1 { min-width: 0; overflow-wrap: anywhere; margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.022em; }
 .grid {
   display: grid;
   gap: 14px;

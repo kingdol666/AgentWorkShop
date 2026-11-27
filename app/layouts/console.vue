@@ -19,7 +19,7 @@ useResponsive()
     <a
       class="console-skip-link"
       href="#console-main"
-    >跳到主要内容</a>
+    >{{ $t('header.skipToContent') }}</a>
     <main
       id="console-main"
       class="console-main"
