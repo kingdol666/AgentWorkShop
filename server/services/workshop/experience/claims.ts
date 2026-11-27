@@ -187,11 +187,24 @@ export interface ParameterExperienceFilter {
   /** 默认排除 legacy-unverified */
   includeLegacy?: boolean
   limit?: number
+  /**
+   * 作用域白名单（2026-11-28 审核轮，fail-closed）：
+   *  - 频道档主张（无 line/product 锚点）只允许来自 `scopeChannelIds` 里的频道；
+   *  - 产线档按 `scopeLineIds` 跨频道共享（RLS 语义），产品档同理；
+   *  - **三个都不给 = 编译成 (1=0)**：忘传不会退化成"查全库"。
+   * 加这个字段的根因：`experience_claims` 没有 channel 列，之前只按主张级条件过滤，
+   * 任意外部入口都能读到全库所有 owner 的经验正文（REST 端点只校验 URL 频道归属）。
+   */
+  scopeChannelIds?: string[]
+  scopeLineIds?: string[]
+  scopeProductIds?: string[]
 }
 
 export interface ParameterExperienceItem {
   claimId: string
   memoryId: string
+  /** 主张所属记忆行的频道（作用域白名单与工具侧二次校验用） */
+  channelId: string
   versionId: string
   title: string
   content: string
@@ -240,9 +253,30 @@ export function queryParameterExperience(db: DatabaseSync, filter: ParameterExpe
   if (filter.recipeRevision) add('(c.recipe_revision = ? OR c.recipe_revision = \'\')', filter.recipeRevision)
   if (filter.verdict) add('c.verdict = ?', filter.verdict)
   if (filter.deployedOnly) where.push(`m.status = 'validated' AND COALESCE(v.deployment, 'none') IN ('active','canary')`)
+  // 作用域白名单（fail-closed）：三个维度都没给 → (1=0)，绝不退化成全库。
+  // 必须在其它条件之后 append，args 顺序与 WHERE 文本顺序一一对应。
+  {
+    const chs = filter.scopeChannelIds ?? []
+    const lns = filter.scopeLineIds ?? []
+    const prs = filter.scopeProductIds ?? []
+    const ors: string[] = []
+    if (chs.length > 0) {
+      ors.push(`(COALESCE(c.line_id, '') = '' AND COALESCE(c.product_id, '') = '' AND m.channel_id IN (${chs.map(() => '?').join(', ')}))`)
+      args.push(...chs)
+    }
+    if (lns.length > 0) {
+      ors.push(`(COALESCE(c.line_id, '') != '' AND c.line_id IN (${lns.map(() => '?').join(', ')}))`)
+      args.push(...lns)
+    }
+    if (prs.length > 0) {
+      ors.push(`(COALESCE(c.line_id, '') = '' AND COALESCE(c.product_id, '') != '' AND c.product_id IN (${prs.map(() => '?').join(', ')}))`)
+      args.push(...prs)
+    }
+    where.push(ors.length > 0 ? `(${ors.join(' OR ')})` : '(1=0)')
+  }
   const limit = Math.min(Math.max(filter.limit ?? 50, 1), 200)
   const rows = db.prepare(
-    `SELECT c.*, m.title, m.content, m.status AS memory_status,
+    `SELECT c.*, m.title, m.content, m.channel_id AS channelId, m.status AS memory_status,
             v.lifecycle, v.deployment,
             d.pre_stats_json, d.post_stats_json, d.sample_count, d.raw_available, d.join_quality
        FROM experience_claims c
@@ -268,6 +302,7 @@ export function queryParameterExperience(db: DatabaseSync, filter: ParameterExpe
     return {
       claimId: String(r.claim_id ?? ''),
       memoryId: String(r.memory_id ?? ''),
+      channelId: String(r.channelId ?? ''),
       versionId: String(r.version_id ?? ''),
       title: String(r.title ?? ''),
       content: String(r.content ?? ''),

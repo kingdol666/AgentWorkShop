@@ -8,7 +8,7 @@ import { readBody, getRouterParam } from 'h3'
 import { defineApiHandler } from '@/server/utils/response'
 import { AppError } from '@/server/utils/errors'
 import { getAmlRuntime } from '@/server/services/workshop/aml/runtime'
-import { rejectMemory } from '@/server/services/workshop/memory/memory-admin'
+import { MemoryAdminError, rejectMemory } from '@/server/services/workshop/memory/memory-admin'
 import { assertMemoryWritable, requireMemoryUser } from '@/server/services/workshop/memory/memory-access'
 import { recordOps } from '@/server/services/workshop/ops/ops'
 
@@ -20,11 +20,20 @@ export default defineApiHandler(async (event) => {
   const body = await readBody<Record<string, unknown>>(event) ?? {}
   const reason = typeof body.reason === 'string' ? body.reason.trim() : ''
   if (!reason) throw new AppError(422, 'REASON_REQUIRED', '裁定不成立必须填写原因')
-  const result = rejectMemory(getAmlRuntime().db, {
-    id,
-    reason,
-    actor: { kind: 'human', id: user.id },
-  })
+  let result: ReturnType<typeof rejectMemory>
+  try {
+    result = rejectMemory(getAmlRuntime().db, {
+      id,
+      reason,
+      actor: { kind: 'human', id: user.id },
+    })
+  }
+  catch (err) {
+    // MemoryAdminError 自带状态码与业务码（409 AGENT_MAINTAINED / 409 DELETED / 404 NOT_FOUND）：
+    // 不翻译就一律塌成 500 INTERNAL_ERROR，前端拿不到"为什么不能裁定"。
+    if (err instanceof MemoryAdminError) throw new AppError(err.statusCode, err.code, err.message)
+    throw err
+  }
   try {
     recordOps({
       actor: user.id,

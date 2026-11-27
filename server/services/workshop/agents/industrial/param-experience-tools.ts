@@ -8,8 +8,10 @@
  * operation_provenance / daq_query 下钻原始事实。
  */
 import { getAmlRuntime } from '../../aml/runtime'
+import { createMemoryRepo } from '../../db/memory.repo'
 import { queryParameterExperience } from '../../experience/claims'
 import { resolveRefFaces } from './tool-verify'
+import { channelIdOfAgent } from './ops-tools'
 import type { DaqQueryExecutionScope } from './daq-tools'
 
 export async function toolParamExperienceQuery(agentId: string, args: {
@@ -36,6 +38,11 @@ export async function toolParamExperienceQuery(agentId: string, args: {
     const lineId = String(args.line_id ?? '').trim() || trusted?.lineId || ''
     const productId = String(args.product_id ?? '').trim() || trusted?.productId || ''
     const faces = resolveRefFaces(agentId)
+    // 作用域（fail-closed）：频道档只读本 agent 所属频道；产线档按可读产线跨频道共享。
+    // 旧实现完全不带频道条件，只靠 `!item.lineId || readableLines…` 在结果层过滤 ——
+    // 没有产线锚点的 channel 档主张（任意频道、任意 owner）对所有人可见。
+    const ownChannelId = channelIdOfAgent(agentId)
+    const ownBindings = ownChannelId ? createMemoryRepo(getAmlRuntime().db).contextFor(ownChannelId) : { lineIds: [], productIds: [] }
     const items = queryParameterExperience(getAmlRuntime().db, {
       lineId: lineId || undefined,
       productId: productId || undefined,
@@ -46,7 +53,12 @@ export async function toolParamExperienceQuery(agentId: string, args: {
       deployedOnly: args.deployed_only === true || args.deployed_only === 'true' || args.deployed_only === '1',
       includeLegacy: args.include_legacy === true || args.include_legacy === 'true' || args.include_legacy === '1',
       limit: Number(args.limit ?? 50),
-    }).filter(item => !item.lineId || faces.readableLines.has(item.lineId) || faces.boundNodes.has(item.nodeId))
+      scopeChannelIds: ownChannelId ? [ownChannelId] : [],
+      scopeLineIds: [...new Set([...faces.readableLines, ...ownBindings.lineIds])],
+      scopeProductIds: ownBindings.productIds,
+    }).filter(item => !item.channelId || item.channelId === ownChannelId
+      || (item.lineId !== '' && faces.readableLines.has(item.lineId))
+      || (item.lineId === '' && item.productId !== '' && faces.boundNodes.has(item.nodeId)))
     if (items.length === 0) {
       return { text: '没有匹配的参数经验主张（可能需要更多判定/部署，或先用 operation_provenance 查看事实）。' }
     }

@@ -91,7 +91,7 @@ test('intervention verdict becomes a structured claim with evidence links', () =
   assert.ok(String(row.version_id).startsWith('ev-'))
   assert.ok(getVersion(db, String(row.version_id)))
 
-  const items = queryParameterExperience(db, { lineId: 'L1', productId: 'P1', nodeId: 'dcw-hold' })
+  const items = queryParameterExperience(db, { lineId: 'L1', productId: 'P1', nodeId: 'dcw-hold', scopeChannelIds: ['c1'], scopeLineIds: ['L1'] })
   assert.equal(items.length, 1)
   assert.equal(items[0]!.interventionId, 'intv-1')
   assert.equal(items[0]!.memoryStatus, 'candidate')
@@ -111,13 +111,13 @@ test('appending evidence preserves validated/active head state', () => {
   assert.equal(version.lifecycle, 'validated', '追加证据不得把 validated 打回 candidate')
   assert.equal(version.deployment, 'active', '追加证据不得把 active 打回 none')
 
-  const deployed = queryParameterExperience(db, { lineId: 'L1', deployedOnly: true })
+  const deployed = queryParameterExperience(db, { lineId: 'L1', deployedOnly: true, scopeChannelIds: ['c1'], scopeLineIds: ['L1'] })
   assert.ok(deployed.length >= 1)
   assert.ok(deployed.every(i => i.deployment === 'active' || i.deployment === 'canary'))
 })
 
 test('parameter handbook is structured and cites interventions', () => {
-  const handbook = buildParameterHandbook(db, { lineId: 'L1' })
+  const handbook = buildParameterHandbook(db, { lineId: 'L1', scopeChannelIds: ['c1'], scopeLineIds: ['L1'] })
   assert.ok(handbook.claimCount >= 1)
   assert.ok(handbook.markdown.includes('## 1. 当前推荐'))
   assert.ok(handbook.markdown.includes('## 6. 来源'))

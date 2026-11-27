@@ -112,6 +112,9 @@ export function proposeParameterAdjustment(db: DatabaseSync, input: ProposalInpu
     recipeRevision: input.recipeRevision || undefined,
     deployedOnly: true,
     limit: 200,
+    // 作用域（fail-closed）：建议只能基于本频道经验 + 本产线经验（与推荐/手册同口径）。
+    scopeChannelIds: [input.channelId],
+    scopeLineIds: input.lineId ? [input.lineId] : [],
   }).filter(item => !input.nodeIds || input.nodeIds.length === 0 || input.nodeIds.includes(item.nodeId))
     .filter(item => item.claimStatus === 'structured' && (item.verdict === 'identifiable_effect' || item.verdict === 'no_resolvable_effect'))
 

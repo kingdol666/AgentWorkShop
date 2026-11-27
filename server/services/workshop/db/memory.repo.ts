@@ -686,8 +686,11 @@ export function createMemoryRepo(db: DatabaseSync) {
      * 注入门槛：人工行恒可见；经验需 validated + 已部署（无版本头 = none，fail-closed）；
      * 普通语义行按 active/validated 放行。排序：pin 优先 → bm25。
      */
-    searchWorkspaceShared(matchQuery: string, ownerUserId: string, limit: number): Array<MemoryRow & { bm25: number }> {
+    searchWorkspaceShared(matchQuery: string, ownerUserId: string, limit: number, at?: string | null): Array<MemoryRow & { bm25: number }> {
       if (!ownerUserId) return []
+      // 生命周期窗口（2026-11-28 审核轮）：L2 直接拼进提示，之前不过 valid_from/valid_to，
+      // 已失效的 global 经验仍会被自动注入。asOf 缺省取当前时刻，与 inScope 同口径。
+      const asOf = at ?? new Date().toISOString()
       return db.prepare(
         `SELECT ${COLS}, f.rank AS bm25
            FROM agent_memories_fts f
@@ -697,6 +700,8 @@ export function createMemoryRepo(db: DatabaseSync) {
             AND m.owner_user_id = ?
             AND m.deleted_at IS NULL
             AND m.status != 'retired'
+            AND (m.valid_from IS NULL OR m.valid_from = '' OR m.valid_from <= ?)
+            AND (m.valid_to IS NULL OR m.valid_to = '' OR m.valid_to > ?)
             AND (
               m.author_kind = 'human'
               OR (m.kind = 'experience' AND m.status = 'validated' AND COALESCE((
@@ -705,7 +710,7 @@ export function createMemoryRepo(db: DatabaseSync) {
               OR (m.kind != 'experience' AND m.status IN ('active', 'validated'))
             )
           ORDER BY m.pinned DESC, f.rank LIMIT ?`,
-      ).all(matchQuery, ownerUserId, limit) as unknown as Array<MemoryRow & { bm25: number }>
+      ).all(matchQuery, ownerUserId, asOf, asOf, limit) as unknown as Array<MemoryRow & { bm25: number }>
     },
 
     /** bm25 检索(恒含 team 共享行;matchQuery 为 OR 连接切分词;sessionId 给定→仅该 session 作用域行) */
@@ -736,6 +741,7 @@ export function createMemoryRepo(db: DatabaseSync) {
          JOIN agent_memories m ON m.rowid = f.memory_rowid
          WHERE agent_memories_fts MATCH ? AND m.agent_id = ? AND m.channel_id IN (${placeholders})
            AND m.deleted_at IS NULL
+           AND m.status != 'retired'
          ORDER BY f.rank LIMIT ?`,
       )
       return stmt.all(matchQuery, TEAM_AGENT_ID, ...channelIds, limit) as unknown as Array<MemoryRow & { bm25: number }>
@@ -759,18 +765,23 @@ export function createMemoryRepo(db: DatabaseSync) {
     searchExperienceAcross(
       matchQuery: string,
       channelIds: string[],
-      opts: { scopeKinds: MemoryScopeKind[], scopeKey?: string, limit?: number },
+      opts: { scopeKinds: MemoryScopeKind[], scopeKey?: string, limit?: number, ownerUserId?: string },
     ): Array<MemoryRow & { bm25: number }> {
       if (channelIds.length === 0 || opts.scopeKinds.length === 0) return []
+      // owner 严格匹配（2026-11-28 审核轮）：频道列表由调用方按「同 owner」给出，但行的
+      // owner 在频道所有权转移后会与频道当前 owner 不一致 —— 只靠频道列表，新 owner 能
+      // 读到前任 owner 的 global/line 经验正文。缺 owner 一律空集（fail-closed）。
+      if (!opts.ownerUserId) return []
       const where: string[] = [
         `agent_memories_fts MATCH ?`,
         `m.kind = 'experience'`,
         `m.status IN ('active', 'validated')`,
         `m.deleted_at IS NULL`,
+        `m.owner_user_id = ?`,
         `m.scope_kind IN (${opts.scopeKinds.map(() => '?').join(', ')})`,
         `m.channel_id IN (${channelIds.map(() => '?').join(', ')})`,
       ]
-      const args: Array<string | number> = [matchQuery, ...opts.scopeKinds, ...channelIds]
+      const args: Array<string | number> = [matchQuery, opts.ownerUserId, ...opts.scopeKinds, ...channelIds]
       // line/product 是带锚点的作用域:无锚点即无命中(global 不需要 key)
       const keyedScopes = opts.scopeKinds.filter(s => s === 'line' || s === 'product')
       if (keyedScopes.length > 0) {

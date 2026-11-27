@@ -422,7 +422,13 @@ export abstract class ManagerA2A extends ManagerTasks {
     const rows = this.deps.repos.memories.searchExperienceAcross(
       matchQuery,
       others.map(c => c.id),
-      { scopeKinds: [input.scope], scopeKey: scopeKey || undefined, limit: input.limit },
+      {
+        scopeKinds: [input.scope],
+        scopeKey: scopeKey || undefined,
+        limit: input.limit,
+        // 行级 owner 必须与本次检索的频道 owner 一致（频道所有权转移后仍按行归属判定）
+        ownerUserId: this.deps.repos.channels.findById(channelId)?.ownerUserId ?? undefined,
+      },
     )
     for (const r of rows) this.deps.repos.memories.touch(r.id)
     return rows.map(r => ({

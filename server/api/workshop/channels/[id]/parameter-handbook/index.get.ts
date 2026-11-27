@@ -42,5 +42,10 @@ export default defineApiHandler(async (event) => {
     productId: str(q.product_id) ?? str(q.productId),
     nodeId: str(q.node_id) ?? str(q.nodeId),
     recipeRevision: str(q.recipe_revision) ?? str(q.recipeRevision),
+    // 与 /parameter-experience 同一作用域口径（fail-closed）：未绑定产线时也不能
+    // 退化成"全库汇总"，否则手册会把别的 owner 的经验拼进来。
+    scopeChannelIds: [channelId],
+    scopeLineIds: manager.deps.repos.memories.contextFor(channelId).lineIds,
+    scopeProductIds: manager.deps.repos.memories.contextFor(channelId).productIds,
   })
 })

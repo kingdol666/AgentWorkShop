@@ -383,8 +383,45 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
       }
     }
     catch { /* 汇整层故障不阻断召回 */ }
+    // L2 共享区（owner 级 `scope_kind='global'`）：独立预算 ≤150 tok，计入 inject_total 总额。
+    // 只取人工行 / 已验证经验 / active 语义行；pin 优先（repo 内 ORDER BY）。
+    //
+    // **先选 L2，再从 L1 候选里摘掉**（2026-11-28 审核轮）：运行期 inScope 的 auto 档只按
+    // agent 归属判断、不看 scope_kind，一条 global 行会同时以 primer 与 shared 两个身份进入
+    // 同一条提示（实机 8 refs / 7 unique：正文重复、白烧一份预算）。L2 的层语义更明确
+    // （带「共享区」标注、独立预算），保留 L2、把它从 L1 候选中剔除；提示里的顺序不变
+    // （L2 行仍在 L1 之后追加）。
+    const sharedLines: string[] = []
+    const sharedRefs: InjectionRef[] = []
+    const sharedIdSet = new Set<string>()
+    const sharedLimit = memorySharedTopN()
+    if (sharedLimit > 0 && accessMode === 'inherit') {
+      const owner = this.opts.ownerUserId ?? this.repo.contextFor(this.opts.channelId).ownerUserId
+      const matchQuery = buildMatchQuery(query)
+      if (owner && matchQuery) {
+        const sharedBudget = memorySharedTokens()
+        let sharedUsed = 0
+        let sharedCount = 0
+        for (const row of this.repo.searchWorkspaceShared(matchQuery, owner, sharedLimit + 2, recallOpts.asOf ?? null)) {
+          if (sharedCount >= sharedLimit) break
+          const tag = row.authorKind === 'human' ? '[人工]' : (row.kind === 'experience' && row.status === 'validated' ? '[已验证]' : '')
+          const title = row.title
+          const body = unsegmentCJK(String(row.content ?? '')).slice(0, 160)
+          const line = `  [共享区${tag ? ` ${tag}` : ''} · ${row.pinned ? 'pin · ' : ''}${row.scopeKind ?? 'global'}] ${title}：${body}`
+          const cost = estimateTokens(line)
+          if (sharedUsed + cost > sharedBudget) continue
+          if (usedTotal + cost + tipsCost + headerCost > totalBudget) continue
+          sharedUsed += cost
+          usedTotal += cost
+          sharedCount += 1
+          sharedLines.push(line)
+          sharedIdSet.add(row.id)
+          sharedRefs.push({ id: row.id, kind: row.kind, source: 'shared', scopeKind: row.scopeKind, scopeKey: row.scopeKey })
+        }
+      }
+    }
     // MMR 装配:逐条贪心选 λ×相关性 − (1−λ)×与已选集最大相似 的最大者(多样性,防近重复挤占)
-    const candidates = scored.slice()
+    const candidates = scored.filter(c => !sharedIdSet.has(c.row.id))
     const tokenSet = (row: MemoryRow): Set<string> =>
       new Set(unsegmentCJK(`${row.title} ${row.content.slice(0, 200)}`).toLowerCase().split(/\s+/).filter(Boolean))
     const selectedTokens: Set<string>[] = []
@@ -424,33 +461,13 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
       selectedTokens.push(bestTokens!)
       if (doTouch) touched.push(c!.row.id)
     }
-    // L2 共享区（owner 级 `scope_kind='global'`）：独立预算 ≤150 tok，计入 inject_total 总额。
-    // 只取人工行 / 已验证经验 / active 语义行；pin 优先（repo 内 ORDER BY）。
-    const sharedLimit = memorySharedTopN()
-    if (sharedLimit > 0 && accessMode === 'inherit') {
-      const owner = this.opts.ownerUserId ?? this.repo.contextFor(this.opts.channelId).ownerUserId
-      const matchQuery = buildMatchQuery(query)
-      if (owner && matchQuery) {
-        const sharedBudget = memorySharedTokens()
-        let sharedUsed = 0
-        let sharedCount = 0
-        for (const row of this.repo.searchWorkspaceShared(matchQuery, owner, sharedLimit + 2)) {
-          if (sharedCount >= sharedLimit) break
-          const tag = row.authorKind === 'human' ? '[人工]' : (row.kind === 'experience' && row.status === 'validated' ? '[已验证]' : '')
-          const title = row.title
-          const body = unsegmentCJK(String(row.content ?? '')).slice(0, 160)
-          const line = `  [共享区${tag ? ` ${tag}` : ''} · ${row.pinned ? 'pin · ' : ''}${row.scopeKind ?? 'global'}] ${title}：${body}`
-          const cost = estimateTokens(line)
-          if (sharedUsed + cost > sharedBudget) continue
-          if (usedTotal + cost + tipsCost + headerCost > totalBudget) continue
-          sharedUsed += cost
-          usedTotal += cost
-          sharedCount += 1
-          lines.push(line)
-          injectedRefs.push({ id: row.id, kind: row.kind, source: 'shared', scopeKind: row.scopeKind, scopeKey: row.scopeKey })
-          if (lines.length >= 15) break
-        }
-      }
+    // L2 行在 L1 之后追加（选择已在 L1 之前完成）：保持「共享区在提示末尾」的阅读顺序。
+    // refs 与行同步入账 —— 被行数上限截掉的不算注入。
+    for (const [i, line] of sharedLines.entries()) {
+      if (lines.length >= 15) break
+      lines.push(line)
+      const ref = sharedRefs[i]
+      if (ref) injectedRefs.push(ref)
     }
     if (lines.length === 0) return null
     for (const id of touched) this.repo.touch(id)
