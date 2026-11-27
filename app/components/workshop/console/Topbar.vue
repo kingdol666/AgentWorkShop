@@ -31,9 +31,14 @@ const leftOpen = defineModel<boolean>('leftOpen', { required: true })
 const rightOpen = defineModel<boolean>('rightOpen', { required: true })
 
 const emit = defineEmits<{
-  (e: 'viewKey', ev: KeyboardEvent): void
   (e: 'openA2a' | 'openPalette'): void
 }>()
+
+const drawerTrigger = ref<HTMLButtonElement | null>(null)
+function focusDrawerTrigger(): void {
+  drawerTrigger.value?.focus({ preventScroll: true })
+}
+defineExpose({ focusDrawerTrigger })
 
 const entities = useEntitiesStore()
 /** 标题文字:实体基线未到时退化为 id 前 8 位(可读占位,不是第二个名字来源) */
@@ -49,11 +54,7 @@ const toggleRight = (): void => {
 
 <template>
   <div class="topbar">
-    <div
-      class="left"
-      tabindex="-1"
-      @keydown="emit('viewKey', $event)"
-    >
+    <div class="left">
       <!-- 裸控制台布局没有全局侧栏:固定提供返回主界面(仪表盘)的入口 -->
       <AppBackToMain />
       <span
@@ -75,10 +76,15 @@ const toggleRight = (): void => {
       </ClientOnly>
       <!-- 窄屏:频道会话列表入口(覆盖式抽屉;该页一次只看一区) -->
       <button
+        v-if="narrow"
+        ref="drawerTrigger"
+        type="button"
         class="pane-toggle im toggle-left-narrow"
         :class="{ off: !leftOpen }"
         :aria-label="$t('wsView.channelListTitle')"
-        :aria-pressed="leftOpen"
+        :aria-expanded="leftOpen"
+        :aria-controls="leftOpen ? 'workspace-channel-drawer' : undefined"
+        aria-haspopup="dialog"
         :title="$t('wsView.channelListTitle')"
         @click="leftOpen = !leftOpen"
       >
@@ -130,8 +136,6 @@ const toggleRight = (): void => {
       :options="viewOptions"
       class="view-switch"
       :aria-label="$t('wsView.kqwckjr001')"
-      :title="$t('wsView.kqwckjr001')"
-      @keydown="emit('viewKey', $event)"
     />
   </div>
 </template>
@@ -282,13 +286,10 @@ const toggleRight = (): void => {
   .toggle-left-narrow { display: inline-flex; }
 }
 
-/* 手机(≤640):seq 让位(标题优先)。连接态仍可见。 */
+/* 手机：弱化诊断读数，但不裁掉末尾视图。 */
 @media (max-width: 640px) {
-  .seq { display: none; }
-
-  .view-switch {
-    -webkit-mask-image: linear-gradient(90deg, #000 0 90%, transparent 100%);
-    mask-image: linear-gradient(90deg, #000 0 90%, transparent 100%);
-  }
+  .seq, .right-rule { display: none; }
+  .right { gap: 4px; }
+  .pane-toggle.off { opacity: 0.75; }
 }
 </style>

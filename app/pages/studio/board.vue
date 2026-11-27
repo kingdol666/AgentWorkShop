@@ -14,6 +14,7 @@
       <select
         v-model="boardId"
         class="input sel"
+        :aria-label="$t('board.pick')"
         data-test="board-sel"
       >
         <option value="">
@@ -34,8 +35,12 @@
         {{ $t('data.ledger.refresh') }}
       </button>
       <span class="grow" />
-      <label class="lbl">{{ $t('board.windowOverride') }}</label>
+      <label
+        for="board-window"
+        class="lbl"
+      >{{ $t('board.windowOverride') }}</label>
       <select
+        id="board-window"
         v-model="windowPreset"
         class="input sel"
         data-test="board-window"
@@ -113,71 +118,84 @@
     <!-- 看板画布:12 栅格 + 逐卡查询(全局时间覆盖) -->
     <div
       v-if="detail"
-      class="grid"
-      data-test="board-grid"
+      class="board-scroll"
+      role="region"
+      tabindex="0"
+      :aria-label="detail.dashboard.title || $t('board.title')"
     >
       <div
-        v-for="item in detail.charts"
-        :key="item.gridPos?.chartId ?? item.chart?.id ?? JSON.stringify(item.gridPos)"
-        class="cell"
-        :style="{ gridColumn: `${(item.gridPos?.x ?? 0) + 1} / span ${item.gridPos?.w ?? 4}`, gridRow: `${(item.gridPos?.y ?? 0) + 1} / span ${item.gridPos?.h ?? 3}` }"
+        class="grid"
+        data-test="board-grid"
       >
-        <div class="cellHead">
-          <span class="cTitle">{{ item.chart?.title ?? (item.inaccessible ? $t('board.inaccessible') : '?') }}</span>
-          <button
-            class="mini"
-            @click="move(item.gridPos!, -1, 0)"
-          >
-            ←
-          </button>
-          <button
-            class="mini"
-            @click="move(item.gridPos!, 1, 0)"
-          >
-            →
-          </button>
-          <button
-            class="mini"
-            @click="move(item.gridPos!, 0, -1)"
-          >
-            ↑
-          </button>
-          <button
-            class="mini"
-            @click="move(item.gridPos!, 0, 1)"
-          >
-            ↓
-          </button>
-          <button
-            class="mini"
-            @click="resize(item.gridPos!, -1)"
-          >
-            －
-          </button>
-          <button
-            class="mini"
-            @click="resize(item.gridPos!, 1)"
-          >
-            ＋
-          </button>
-        </div>
-        <div class="cellChart">
-          <ClientOnly>
-            <AwChart
-              v-if="item.chart && !item.inaccessible"
-              :key="cardKey(item)"
-              :option="cardOption(item)"
-              :height="Math.max(240, (item.gridPos?.h ?? 3) * 60)"
-              style="width: 100%"
-            />
-          </ClientOnly>
-        </div>
-        <p
-          v-if="item.inaccessible"
-          class="empty"
+        <div
+          v-for="item in detail.charts"
+          :key="item.gridPos?.chartId ?? item.chart?.id ?? JSON.stringify(item.gridPos)"
+          class="cell"
+          :style="{ gridColumn: `${(item.gridPos?.x ?? 0) + 1} / span ${item.gridPos?.w ?? 4}`, gridRow: `${(item.gridPos?.y ?? 0) + 1} / span ${item.gridPos?.h ?? 3}` }"
         >
-          {{ $t('board.noReadChart') }}
-        </p>
+          <div class="cellHead">
+            <span class="cTitle">{{ item.chart?.title ?? (item.inaccessible ? $t('board.inaccessible') : '?') }}</span>
+            <div
+              v-if="item.gridPos"
+              class="cellControls"
+            >
+              <button
+                class="mini"
+                @click="move(item.gridPos, -1, 0)"
+              >
+                ←
+              </button>
+              <button
+                class="mini"
+                @click="move(item.gridPos, 1, 0)"
+              >
+                →
+              </button>
+              <button
+                class="mini"
+                @click="move(item.gridPos, 0, -1)"
+              >
+                ↑
+              </button>
+              <button
+                class="mini"
+                @click="move(item.gridPos, 0, 1)"
+              >
+                ↓
+              </button>
+              <button
+                class="mini"
+                @click="resize(item.gridPos, -1)"
+              >
+                －
+              </button>
+              <button
+                class="mini"
+                @click="resize(item.gridPos, 1)"
+              >
+                ＋
+              </button>
+            </div>
+          </div>
+          <div
+            v-if="item.chart && !item.inaccessible"
+            class="cellChart"
+          >
+            <ClientOnly>
+              <AwChart
+                :key="cardKey(item)"
+                :option="cardOption(item)"
+                :height="Math.max(240, (item.gridPos?.h ?? 3) * 60)"
+              />
+            </ClientOnly>
+          </div>
+          <p
+            v-else-if="item.inaccessible"
+            class="empty"
+          >
+            {{ $t('board.noReadChart') }}
+          </p>
+        </div>
       </div>
     </div>
 
@@ -346,12 +364,14 @@ async function createBoard(): Promise<void> {
   }
 }
 
-function move(pos: GridPos, dx: number, dy: number): void {
+function move(pos: GridPos | null, dx: number, dy: number): void {
+  if (!pos) return
   pos.x = Math.min(Math.max(pos.x + dx, 0), 11)
   pos.y = Math.max(pos.y + dy, 0)
 }
 
-function resize(pos: GridPos, dw: number): void {
+function resize(pos: GridPos | null, dw: number): void {
+  if (!pos) return
   pos.w = Math.min(Math.max(pos.w + dw, 1), 12)
 }
 
@@ -383,8 +403,8 @@ watch(windowPreset, () => {
 </script>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; }
-.head { display: flex; justify-content: space-between; align-items: baseline; }
+.page { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 16px 20px; }
+.head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
 .title { font-size: 18px; font-weight: 700; margin: 0; }
 .back {
   display: inline-flex;
@@ -402,16 +422,26 @@ watch(windowPreset, () => {
 .sec { font-size: 12px; font-weight: 700; margin: 0 0 8px; }
 .lbl { font-size: 12px; color: var(--ink-soft, #666); }
 .input { border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
-.input.w { min-width: 240px; }
-.sel { max-width: 160px; }
-.chk { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
-.grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: minmax(220px, auto); gap: 8px; }
-.cell { background: var(--surface-card); border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-height: 200px; display: flex; flex-direction: column; }
-.cellChart { flex: 1; min-height: 120px; }
-.cellHead { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
-.cTitle { font-size: 12px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mini { border: 1px solid var(--line-strong); background: transparent; border-radius: 4px; font-size: 10px; padding: 0 5px; cursor: pointer; }
-.empty { color: var(--ink-faint, #999); font-size: 12px; }
+.input.w { width: min(240px, 100%); }
+.sel { max-width: min(220px, 100%); }
+.chk { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; cursor: pointer; overflow-wrap: anywhere; }
+.board-scroll { min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 4px; }
+.board-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.grid {
+  display: grid;
+  min-width: 54rem;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-rows: minmax(76px, auto);
+  gap: 8px;
+}
+.cell { background: var(--surface-card); border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-width: 0; display: flex; flex-direction: column; }
+.cellChart { flex: 1; min-width: 0; overflow: hidden; }
+.cellHead { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; margin-bottom: 8px; }
+.cellControls { display: flex; flex-wrap: wrap; gap: 4px; }
+.cTitle { font-size: 12px; font-weight: 600; flex: 1 1 80px; min-width: 0; overflow-wrap: anywhere; }
+.mini { border: 1px solid var(--line-strong); background: transparent; border-radius: 4px; min-inline-size: 24px; min-block-size: 24px; font-size: 12px; padding: 0 4px; cursor: pointer; }
+.empty { color: var(--ink-faint, #999); font-size: 12px; overflow-wrap: anywhere; }
 .hint { font-size: 12px; color: var(--ink-faint, #888); }
 .err { font-size: 12px; color: #b3403a; white-space: pre-wrap; }
 </style>

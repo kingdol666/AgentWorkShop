@@ -92,15 +92,17 @@ async function submitDsForm(): Promise<void> {
 </script>
 
 <template>
-  <div
-    v-if="open"
-    class="modal-mask"
-    @click.self="open = false"
+  <a-modal
+    v-model:open="open"
+    :title="$t('aml.k1amlx050')"
+    :width="760"
+    :body-style="{ maxHeight: 'min(65dvh, calc(100dvh - 9rem))', overflowY: 'auto', overscrollBehavior: 'contain' }"
+    :mask-closable="!dsSaving"
+    :keyboard="!dsSaving"
+    :closable="!dsSaving"
+    centered
   >
-    <div class="modal">
-      <h3 class="m-title">
-        {{ $t('aml.k1amlx050') }}
-      </h3>
+    <div class="dataset-form">
       <div class="f-grid">
         <label class="f">
           <span>{{ $t('aml.k1amlx051') }}<em>*</em></span>
@@ -254,26 +256,29 @@ async function submitDsForm(): Promise<void> {
       <p
         v-if="dsFormError"
         class="m-err"
+        role="alert"
       >
         {{ dsFormError }}
       </p>
+    </div>
+    <template #footer>
       <div class="m-actions">
-        <button
-          class="ghost-btn"
+        <a-button
+          :disabled="dsSaving"
           @click="open = false"
         >
           {{ $t('aml.k1amlx071') }}
-        </button>
-        <button
-          class="pill-btn"
-          :disabled="dsSaving"
+        </a-button>
+        <a-button
+          type="primary"
+          :loading="dsSaving"
           @click="submitDsForm"
         >
           {{ dsSaving ? $t('aml.k1amlx070') : $t('aml.k1amlx072') }}
-        </button>
+        </a-button>
       </div>
-    </div>
-  </div>
+    </template>
+  </a-modal>
 </template>
 
 <style scoped src="../../pages/aml/styles.css"></style>

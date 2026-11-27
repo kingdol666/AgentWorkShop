@@ -147,6 +147,7 @@
       <p
         v-if="error"
         class="err"
+        role="alert"
         data-test="data-error"
       >
         {{ error }}
@@ -162,12 +163,15 @@
           style="height: 340px; width: 100%"
         />
       </ClientOnly>
-      <p
-        v-if="!series.length && !querying"
-        class="empty big"
-      >
-        {{ t('data.mirror.empty') }}
-      </p>
+      <AwStateBlock
+        v-if="querying && !totalPoints"
+        state="loading"
+      />
+      <AwStateBlock
+        v-else-if="!totalPoints && !error"
+        state="empty"
+        :title="t('data.mirror.empty')"
+      />
       <p
         v-if="truncatedNote"
         class="hint"
@@ -184,7 +188,12 @@
       <h3 class="sec">
         {{ t('data.mirror.preview') }}
       </h3>
-      <div class="tblWrap">
+      <div
+        class="tblWrap"
+        role="region"
+        :aria-label="t('data.mirror.preview')"
+        tabindex="0"
+      >
         <table
           class="tbl"
           data-test="data-preview"
@@ -616,6 +625,8 @@ onMounted(async () => {
 .sec { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
 .mono { font-variant-numeric: tabular-nums; font-size: 12px; }
 .tblWrap { max-height: 300px; overflow: auto; }
+.tblWrap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tblWrap th { position: sticky; top: 0; z-index: 1; background: var(--paper-raised); }
 .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
 .tbl th, .tbl td { border-bottom: 1px solid var(--line); padding: 3px 8px; text-align: left; white-space: nowrap; }
 .modalMask { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 60; }

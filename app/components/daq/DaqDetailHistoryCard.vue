@@ -7,10 +7,13 @@
 import type { DaqTsdbPoint } from '@/app/composables/workshop/useDaqStream'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
-defineProps<{
+const props = defineProps<{
   tsdb: string
   buckets: Array<{ label: string, ms: number }>
   historyPoints: DaqTsdbPoint[]
+  loading: boolean
+  error: string
+  unit: string
   decimals: number | null
   /** 拉取间隔下限(ms;提示文案用) */
   minQueryMs: number
@@ -23,6 +26,10 @@ const emit = defineEmits<{ reload: [] }>()
 const bucketMs = defineModel<number>('bucketMs', { required: true })
 const refreshOverrideMs = defineModel<number>('refreshOverrideMs', { required: true })
 const canvasEl = defineModel<HTMLCanvasElement | null>('canvasEl', { required: true })
+const visiblePoints = computed(() => props.historyPoints
+  .filter(p => Number.isFinite(p.at) && (p.value != null || p.avg != null))
+  .slice(-12)
+  .reverse())
 </script>
 
 <template>
@@ -35,6 +42,7 @@ const canvasEl = defineModel<HTMLCanvasElement | null>('canvasEl', { required: t
         <select
           v-model.number="bucketMs"
           class="input"
+          :aria-label="$t('daqDetail.historyBucket')"
         >
           <option
             v-for="b in buckets"
@@ -60,28 +68,64 @@ const canvasEl = defineModel<HTMLCanvasElement | null>('canvasEl', { required: t
         </label>
         <button
           class="pill-btn"
+          type="button"
+          :disabled="loading"
           @click="emit('reload')"
         >
           {{ $t('daqDetail.k3x1jg022') }}
         </button>
       </div>
     </div>
+    <AwStateBlock
+      v-if="error"
+      state="error"
+      :hint="error"
+      :retry="loading ? undefined : () => emit('reload')"
+      compact
+    />
+    <AwStateBlock
+      v-else-if="loading && !visiblePoints.length"
+      state="loading"
+      compact
+    />
+    <AwStateBlock
+      v-else-if="!visiblePoints.length"
+      state="empty"
+      compact
+    />
     <canvas
+      v-if="visiblePoints.length > 1"
       ref="canvasEl"
       class="hist-canvas"
+      aria-hidden="true"
     />
-    <table class="raw-table mono">
+    <table
+      v-if="visiblePoints.length"
+      class="raw-table mono"
+    >
       <thead>
-        <tr><th>{{ $t('daqDetail.k40vsf023') }}</th><th>{{ $t('daqDetail.k48v5024') }}</th><th>{{ $t('daqDetail.k4bza025') }}</th></tr>
+        <tr>
+          <th scope="col">
+            {{ $t('daqDetail.k40vsf023') }}
+          </th>
+          <th scope="col">
+            {{ $t('daqDetail.k48v5024') }}<template v-if="unit">
+              ({{ unit }})
+            </template>
+          </th>
+          <th scope="col">
+            {{ $t('daqDetail.k4bza025') }}
+          </th>
+        </tr>
       </thead>
       <tbody>
         <tr
-          v-for="(p, i) in historyPoints.filter(r => r.value != null).slice(-12).reverse()"
-          :key="i"
+          v-for="(p, i) in visiblePoints"
+          :key="`${p.at}:${i}`"
         >
           <td>{{ formatLocalClock(new Date(p.at).toISOString()) }}</td>
-          <td>{{ p.value!.toFixed(decimals ?? 2) }}</td>
-          <td>{{ p.state }}</td>
+          <td>{{ (p.value ?? p.avg)?.toFixed(decimals ?? 2) }}</td>
+          <td>{{ p.state || '—' }}</td>
         </tr>
       </tbody>
     </table>

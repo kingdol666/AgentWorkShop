@@ -20,7 +20,9 @@ import './dcw-page.css'
 const { t } = useI18n()
 
 const dcw = useDcwStream()
-void dcw.load()
+onMounted(() => {
+  void dcw.load()
+})
 
 // ---------- 产线总览(卡片/未归属计数) ----------
 const { cards, unassignedCount, recipesOf } = useDcwCards()
@@ -87,19 +89,25 @@ const tplOpen = ref(false)
     <div class="fleet-filter">
       <div class="aw-seg">
         <button
+          type="button"
           :class="{ on: filterState === 'all' }"
+          :aria-pressed="filterState === 'all'"
           @click="filterState = 'all'"
         >
           {{ $t('common.all') }} {{ cards.length }}
         </button>
         <button
+          type="button"
           :class="{ on: filterState === 'running' }"
+          :aria-pressed="filterState === 'running'"
           @click="filterState = 'running'"
         >
           {{ $t('dcw.k1eox1el055') }} {{ runningCount }}
         </button>
         <button
+          type="button"
           :class="{ on: filterState === 'idle' }"
+          :aria-pressed="filterState === 'idle'"
           @click="filterState = 'idle'"
         >
           {{ $t('dcw.k149r6y7059') }} {{ cards.length - runningCount }}
@@ -110,6 +118,7 @@ const tplOpen = ref(false)
         class="inp fleet-search"
         type="search"
         :placeholder="$t('dcw.filterSearchPh')"
+        :aria-label="$t('dcw.filterSearchPh')"
       >
     </div>
 
@@ -141,18 +150,24 @@ const tplOpen = ref(false)
       </button>
     </div>
 
-    <p
-      v-if="dcw.loaded && dcw.lines.length === 0"
-      class="banner"
-    >
-      {{ $t('dcw.k1sk85vs018') }}
-    </p>
-    <p
-      v-else-if="dcw.loaded && shownCards.length === 0"
-      class="banner"
-    >
-      {{ $t('dcw.filterEmpty') }}
-    </p>
+    <AwStateBlock
+      v-if="dcw.error"
+      state="error"
+      :hint="dcw.error"
+      :retry="dcw.load"
+      compact
+    />
+    <AwStateBlock
+      v-else-if="!dcw.loaded"
+      state="loading"
+      compact
+    />
+    <AwStateBlock
+      v-else-if="!shownCards.length"
+      state="empty"
+      :title="$t(dcw.lines.length ? 'dcw.filterEmpty' : 'dcw.k1sk85vs018')"
+      compact
+    />
 
     <DcwCreateLineModal
       v-model:open="createOpen"
@@ -184,12 +199,5 @@ const tplOpen = ref(false)
     />
 
     <DcwTemplateModal v-model:open="tplOpen" />
-
-    <p
-      v-if="dcw.error"
-      class="banner bad"
-    >
-      {{ dcw.error }}
-    </p>
   </div>
 </template>

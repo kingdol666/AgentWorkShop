@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch, type ComputedRef } from 'vue'
 import { useDaqStream, type DaqNodeLive, type DaqTsdbPoint } from '@/app/composables/workshop/useDaqStream'
+import { apiErrorMessage } from '@/app/utils/api-error'
 
 /**
  * 历史(时序库)与 live 趋势 —— 两张画布 + 拉取节拍 + resize/可见性补绘。
@@ -17,6 +18,7 @@ export function useDaqDetailHistory(nodeId: ComputedRef<string>, node: ComputedR
   const historyPoints = ref<ChartRow[]>([])
   const bucketMs = ref<number>(15000)
   const histLoading = ref(false)
+  const histError = ref('')
   const BUCKETS = computed(() => [
     { label: t('daqDetail.bucket1s'), ms: 1000 },
     { label: t('daqDetail.bucket5s'), ms: 5000 },
@@ -35,6 +37,10 @@ export function useDaqDetailHistory(nodeId: ComputedRef<string>, node: ComputedR
       })
       // 时序库契约:时间正序(ASC,queryTagged 同款);图表直接绘制
       historyPoints.value = pts as ChartRow[]
+      histError.value = ''
+    }
+    catch (err) {
+      histError.value = apiErrorMessage(err)
     }
     finally {
       histLoading.value = false
@@ -192,8 +198,9 @@ export function useDaqDetailHistory(nodeId: ComputedRef<string>, node: ComputedR
     resizeObs = null
   })
 
+  watch([chartCanvas, historyPoints], drawChart, { flush: 'post' })
   watch(bucketMs, () => void loadHistory())
   watch(effectiveRefreshMs, () => armHistTimer())
 
-  return { historyPoints, bucketMs, histLoading, BUCKETS, loadHistory, chartCanvas, liveCanvas, refreshOverrideMs }
+  return { historyPoints, bucketMs, histLoading, histError, BUCKETS, loadHistory, chartCanvas, liveCanvas, refreshOverrideMs }
 }

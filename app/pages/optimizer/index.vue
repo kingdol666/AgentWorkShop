@@ -13,6 +13,29 @@ import { optimizerApi, processModelApi } from './api'
 
 definePageMeta({ layout: 'default' })
 const { t } = useI18n()
+const { t: ui } = useI18n({
+  useScope: 'local',
+  messages: {
+    'en': {
+      optimizerUi: {
+        predictionYes: 'Prediction eligible', predictionNo: 'Not prediction eligible',
+        scope: 'Evidence scope', simulation: 'Simulation', real: 'Real operation',
+        condition: 'Operating condition', evidenceVersion: 'Evidence version', dataset: 'Evaluated dataset',
+        gaps: 'Evidence gaps', noGaps: 'No evidence gaps reported', metrics: 'Raw metrics',
+        solveStatus: 'Solver status', validUntil: 'Valid until', noRecommendation: 'No recommendation',
+      },
+    },
+    'zh-CN': {
+      optimizerUi: {
+        predictionYes: '具备预测资格', predictionNo: '不具备预测资格',
+        scope: '证据范围', simulation: '仿真', real: '真实工况',
+        condition: '工况', evidenceVersion: '证据版本', dataset: '评估数据集',
+        gaps: '证据缺口', noGaps: '未报告证据缺口', metrics: '原始指标',
+        solveStatus: '求解状态', validUntil: '有效期至', noRecommendation: '无建议',
+      },
+    },
+  },
+})
 useHead({ title: () => t('menu.optimizer') })
 
 type Tab = 'spec' | 'eligibility' | 'profile' | 'binding' | 'runs'
@@ -28,13 +51,31 @@ const busyOf = reactive<Record<Tab, boolean>>({ spec: false, eligibility: false,
 interface SpecRow { id: string, version: number, status: string, lineId: string, recipeId: string, contentHash: string, spec?: Record<string, unknown> }
 interface ProfileRow { id: string, version: number, name?: string, description?: string, status: string, modelRef: string, solverRef: string, profile?: Record<string, unknown> }
 interface BindingRow { id: string, channelId: string, channelAgentId: string, profileVersion: string, mode: string, revision: number }
-interface RunRow { id: string, status: string, profileId: string, problemIrHash: string, startedAt: string, recommendation?: { status: string, statusLabel: string, validUntil: string } | null }
+interface RunRow { id: string, status: string, profileId: string, problemIrHash: string, startedAt: string, recommendation?: { status: 'verified' | 'unverified' | 'expired', statusLabel: string, validUntil: string } | null }
+interface EligibilityReport {
+  predictionEligible: boolean
+  optimizationEligible: boolean
+  scope: 'simulation' | 'real'
+  conditionId: string
+  evidenceVersion: string
+  gaps: Array<{ code: string, message: string }>
+  metrics: Record<string, number | string | boolean | null>
+  createdAt: string
+}
 
 const specs = ref<SpecRow[]>([])
 const profiles = ref<ProfileRow[]>([])
 const bindings = ref<BindingRow[]>([])
 const runs = ref<RunRow[]>([])
-const eligibility = ref<Record<string, unknown> | null>(null)
+const eligibility = ref<{ report: EligibilityReport, datasetId: string } | null>(null)
+const recommendationColors = { verified: 'green', unverified: 'orange', expired: 'default' }
+
+function solveStatusColor(status: string) {
+  if (status === 'optimal' || status === 'feasible') return 'green'
+  if (status === 'infeasible' || status === 'unbounded' || status === 'numerical_error') return 'red'
+  if (status === 'timeout' || status === 'unsupported') return 'orange'
+  return 'default'
+}
 
 const variable = reactive({ id: 'mv1', nodeId: '', role: 'mv' as 'mv' | 'cv' | 'md' | 'feature', unit: '', scale: 1, offset: 0, delayMs: 0, min: 0, max: 100, maxStep: undefined as number | undefined })
 const variables = ref<Array<typeof variable>>([])
@@ -183,11 +224,12 @@ async function evaluateEligibility() {
 
   error.value = ''
   try {
-    if (!datasetId.value) throw new Error(t('optimizer.datasetRequired'))
-    const res = await processModelApi<{ report: Record<string, unknown> }>('/eligibility', {
-      method: 'POST', body: { specId: specForm.id, specVersion: specForm.version, datasetId: datasetId.value, scope: 'simulation' },
+    const evaluatedDatasetId = datasetId.value
+    if (!evaluatedDatasetId) throw new Error(t('optimizer.datasetRequired'))
+    const res = await processModelApi<{ report: EligibilityReport }>('/eligibility', {
+      method: 'POST', body: { specId: specForm.id, specVersion: specForm.version, datasetId: evaluatedDatasetId, scope: 'simulation' },
     })
-    eligibility.value = res.report
+    eligibility.value = { report: res.report, datasetId: evaluatedDatasetId }
     flash(t('optimizer.eligibilityDone'))
   }
   catch (err) { fail(err) }
@@ -587,22 +629,65 @@ onMounted(() => {
             {{ t('optimizer.eligibility.evaluate') }}
           </a-button>
         </div>
-        <template v-if="eligibility">
-          <p>
-            <strong :class="(eligibility.optimizationEligible as boolean) ? 'ok-text' : 'warn-hint'">{{ (eligibility.optimizationEligible as boolean) ? t('optimizer.eligibility.yes') : t('optimizer.eligibility.no') }}</strong>
-            · scope={{ eligibility.scope }} · {{ eligibility.evidenceVersion }}
-          </p>
-          <ul class="list">
+        <div
+          v-if="eligibility"
+          :key="eligibility.report.createdAt"
+          class="eligibility-report"
+        >
+          <div class="report-verdicts">
+            <a-tag :color="eligibility.report.optimizationEligible ? 'green' : 'orange'">
+              {{ t(eligibility.report.optimizationEligible ? 'optimizer.eligibility.yes' : 'optimizer.eligibility.no') }}
+            </a-tag>
+            <a-tag :color="eligibility.report.predictionEligible ? 'green' : 'orange'">
+              {{ ui(eligibility.report.predictionEligible ? 'optimizerUi.predictionYes' : 'optimizerUi.predictionNo') }}
+            </a-tag>
+          </div>
+          <dl class="report-evidence">
+            <div>
+              <dt>{{ ui('optimizerUi.scope') }}</dt>
+              <dd>{{ ui(eligibility.report.scope === 'simulation' ? 'optimizerUi.simulation' : 'optimizerUi.real') }}</dd>
+            </div>
+            <div>
+              <dt>{{ ui('optimizerUi.condition') }}</dt>
+              <dd><code>{{ eligibility.report.conditionId }}</code></dd>
+            </div>
+            <div>
+              <dt>{{ ui('optimizerUi.evidenceVersion') }}</dt>
+              <dd><code>{{ eligibility.report.evidenceVersion }}</code></dd>
+            </div>
+            <div>
+              <dt>{{ ui('optimizerUi.dataset') }}</dt>
+              <dd><code>{{ eligibility.datasetId }}</code></dd>
+            </div>
+          </dl>
+          <h3>{{ ui('optimizerUi.gaps') }} ({{ eligibility.report.gaps.length }})</h3>
+          <ul
+            v-if="eligibility.report.gaps.length"
+            class="list"
+          >
             <li
-              v-for="(gap, i) in (eligibility.gaps as Array<{ code: string, message: string }>) || []"
-              :key="i"
-              class="gap"
+              v-for="(gap, i) in eligibility.report.gaps"
+              :key="`${gap.code}-${i}`"
+              class="evidence-gap"
             >
-              <code>{{ gap.code }}</code> {{ gap.message }}
+              <code>{{ gap.code }}</code>
+              <span>{{ gap.message }}</span>
             </li>
           </ul>
-          <pre class="json">{{ JSON.stringify(eligibility.metrics, null, 2) }}</pre>
-        </template>
+          <p
+            v-else
+            class="hint"
+          >
+            {{ ui('optimizerUi.noGaps') }}
+          </p>
+          <details class="report-metrics">
+            <summary>{{ ui('optimizerUi.metrics') }}</summary>
+            <pre
+              class="json"
+              tabindex="0"
+            >{{ JSON.stringify(eligibility.report.metrics, null, 2) }}</pre>
+          </details>
+        </div>
         <AwStateBlock
           v-else
           state="empty"
@@ -864,21 +949,33 @@ onMounted(() => {
           :pagination="{ pageSize: 12, hideOnSinglePage: true }"
           :columns="[
             { title: 'run', dataIndex: 'id', key: 'id' },
-            { title: 'status', dataIndex: 'status', key: 'status', width: 100 },
+            { title: ui('optimizerUi.solveStatus'), key: 'status', width: 140 },
             { title: 'profile', dataIndex: 'profileId', key: 'profile', width: 150 },
             { title: 'IR hash', key: 'ir', width: 120 },
             { title: t('optimizer.runs.recommendation'), key: 'rec' },
-            { title: 'validUntil', key: 'valid', width: 180 },
+            { title: ui('optimizerUi.validUntil'), key: 'valid', width: 180 },
           ]"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'ir'">
               <span class="mono">{{ (record as RunRow).problemIrHash?.slice(0, 10) }}</span>
             </template>
+            <template v-else-if="column.key === 'status'">
+              <a-tag :color="solveStatusColor((record as RunRow).status)">
+                {{ (record as RunRow).status }}
+              </a-tag>
+            </template>
             <template v-else-if="column.key === 'rec'">
-              <span :class="{ unverified: (record as RunRow).recommendation?.status === 'unverified' }">
-                {{ (record as RunRow).recommendation?.statusLabel ?? '—' }}
-              </span>
+              <a-tag
+                v-if="(record as RunRow).recommendation"
+                :color="recommendationColors[(record as RunRow).recommendation!.status]"
+              >
+                {{ (record as RunRow).recommendation!.statusLabel }}
+              </a-tag>
+              <span
+                v-else
+                class="dim"
+              >{{ ui('optimizerUi.noRecommendation') }}</span>
             </template>
             <template v-else-if="column.key === 'valid'">
               {{ (record as RunRow).recommendation?.validUntil ?? '—' }}
@@ -928,14 +1025,30 @@ label.block { margin-top: 10px; }
 .tbl th, .tbl td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .tbl th { color: var(--ink-faint); font-weight: 500; }
 .list { list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
-.list .gap { color: var(--accent-amber); }
+.eligibility-report { min-width: 0; }
+.report-verdicts { display: flex; flex-wrap: wrap; gap: 6px; }
+.report-verdicts :deep(.ant-tag) { margin-inline-end: 0; }
+.report-evidence {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px 16px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--paper-deep);
+}
+.report-evidence dt { color: var(--ink-faint); font-size: 12px; }
+.report-evidence dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+.evidence-gap { display: flex; flex-wrap: wrap; gap: 4px 8px; overflow-wrap: anywhere; }
+.evidence-gap code { color: var(--accent-amber); }
+.report-metrics { margin-top: 14px; border-top: 1px solid var(--line); }
+.report-metrics summary { padding: 10px 0; color: var(--ink-soft); cursor: pointer; }
 .hint { color: var(--ink-faint); font-size: 12.5px; }
 .warn-hint { color: var(--accent-amber); }
-.ok-text { color: var(--tone-success-dot); }
 .dim { color: var(--ink-faint); }
-pre.json { background: var(--paper-deep); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 12px; overflow: auto; color: var(--ink); }
+pre.json { max-height: 16rem; margin: 0; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 12px; overflow: auto; color: var(--ink); }
 textarea, pre, code, .mono { font-family: var(--font-mono); }
-.unverified { color: var(--accent-amber); font-weight: 600; }
 /* a-steps 在暗阶下的令牌适配 */
 .flow-steps :deep(.ant-steps-item-title) { color: var(--ink-soft) !important; font-size: 13px !important; }
 .flow-steps :deep(.ant-steps-item-wait .ant-steps-item-title) { color: var(--ink-faint) !important; }

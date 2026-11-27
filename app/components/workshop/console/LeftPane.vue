@@ -17,16 +17,76 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'openAgent', target: { channelId: string, agentId: string }): void
-  (e: 'openPalette'): void
+  (e: 'openPalette' | 'close'): void
   (e: 'openSession', sessionId: string | null): void
 }>()
+
+const pane = ref<HTMLElement | null>(null)
+const closeButton = ref<HTMLButtonElement | null>(null)
+
+function focusDrawer(): void {
+  closeButton.value?.focus({ preventScroll: true })
+}
+
+function onDrawerKey(ev: KeyboardEvent): void {
+  const el = pane.value
+  if (!el || ev.defaultPrevented || ev.isComposing || ev.keyCode === 229) return
+  const target = ev.target
+  // Teleported modals/select menus own their keyboard events, even if opened from this pane.
+  if (target instanceof Node && target !== document.body && !el.contains(target)) return
+  if (ev.key === 'Escape') {
+    if (target instanceof Element && target.closest('[role="combobox"][aria-expanded="true"]')) return
+    ev.preventDefault()
+    emit('close')
+  }
+  else if (ev.key === 'Tab') {
+    const stops = [...el.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, summary, [tabindex], [contenteditable="true"]')]
+      .filter(node => node.tabIndex >= 0 && !node.matches(':disabled') && !node.closest('[inert], [aria-hidden="true"]')
+        && node.getClientRects().length > 0 && getComputedStyle(node).visibility === 'visible')
+    const active = document.activeElement
+    const edge = ev.shiftKey ? stops[stops.length - 1] : stops[0]
+    if (!stops.some(node => node === active) || active === (ev.shiftKey ? stops[0] : stops[stops.length - 1])) {
+      ev.preventDefault()
+      const next = edge ?? el
+      next.focus()
+    }
+  }
+}
+
+defineExpose({ focusDrawer, onDrawerKey })
 </script>
 
 <template>
   <div
+    id="workspace-channel-drawer"
+    ref="pane"
     class="left-pane"
     :style="{ flexBasis: narrow ? 'auto' : `${leftWidth}px` }"
+    :role="narrow ? 'dialog' : undefined"
+    :aria-modal="narrow ? 'true' : undefined"
+    :aria-labelledby="narrow ? 'workspace-channel-drawer-title' : undefined"
+    :tabindex="narrow ? -1 : undefined"
   >
+    <div
+      v-if="narrow"
+      class="drawer-head"
+    >
+      <h2 id="workspace-channel-drawer-title">
+        {{ $t('wsView.channelListTitle') }}
+      </h2>
+      <button
+        ref="closeButton"
+        class="drawer-close"
+        type="button"
+        :aria-label="$t('common.close')"
+        @click="emit('close')"
+      >
+        <span
+          class="i-tabler-x"
+          aria-hidden="true"
+        />
+      </button>
+    </div>
     <div class="left-scroll">
       <workshop-channel-session-list
         :ws-id="wsId"
@@ -56,7 +116,38 @@ const emit = defineEmits<{
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden auto;
+  overscroll-behavior: contain;
 }
+.drawer-head {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px 5px 16px;
+  border-bottom: 1px solid var(--chat-line);
+}
+.drawer-head h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--chat-ink);
+}
+.drawer-close {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  font-size: 19px;
+  color: var(--chat-ink);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+.drawer-close:hover { background: var(--chat-surface); }
+.drawer-close:focus-visible { outline: 2px solid var(--chat-accent); }
 
 /* ══════════════════════════════════════════════════════════════════════════
    窄屏形态 · 左栏部分(≤1023px) —— 完整设计说明见页面

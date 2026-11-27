@@ -57,8 +57,9 @@ watch(() => props.rows, () => {
   <!-- 结果表:时间/来源/操作者/分类/摘要/归属维度/详情 -->
   <section class="table-card">
     <p
-      v-if="error"
+      v-if="error && rows.length"
       class="err"
+      role="status"
     >
       {{ error }}
     </p>
@@ -145,6 +146,9 @@ watch(() => props.rows, () => {
               <button
                 v-if="hasDetail(row)"
                 class="mini-btn"
+                type="button"
+                :aria-expanded="expandedId === row.id"
+                :aria-label="`${expandedId === row.id ? $t('logs.fold') : $t('logs.expand')} · ${row.summary}`"
                 @click="$emit('toggle', row)"
               >
                 {{ expandedId === row.id ? $t('logs.fold') : $t('logs.expand') }}
@@ -185,6 +189,9 @@ watch(() => props.rows, () => {
           >
             <template v-if="loading">
               {{ $t('logs.loading') }}
+            </template>
+            <template v-else-if="error">
+              {{ error }}
             </template>
             <template v-else>
               {{ $t('logs.empty') }}

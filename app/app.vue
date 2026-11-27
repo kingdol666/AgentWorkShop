@@ -101,7 +101,7 @@ const themeConfig = computed(() => {
       colorBgElevated: elevated,
       colorText: inkText,
       colorTextSecondary: inkSoft,
-      colorTextPlaceholder: dark ? 'rgba(95, 110, 132, 0.6)' : 'rgba(119, 113, 105, 0.6)',
+      colorTextPlaceholder: dark ? '#93a3b8' : '#5d6b80',
       colorBorder: borderLine,
       colorBorderSecondary: borderSoft,
       colorFillQuaternary: fillFaint,

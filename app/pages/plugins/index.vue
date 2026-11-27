@@ -39,6 +39,8 @@ interface PluginInfo {
 const plugins = ref<PluginInfo[]>([])
 const failures = ref<Array<{ source: string, error: string }>>([])
 const loading = ref(false)
+const loadError = ref('')
+const search = ref('')
 const busyName = ref('')
 const drawerOpen = ref(false)
 const current = ref<PluginInfo | null>(null)
@@ -51,6 +53,7 @@ function authHeaders(): Record<string, string> {
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     // 统一信封(narrowFetch 不解包):{ code, message, data: { plugins, failures } }
     const d = await narrowFetch<{ code: number, message: string, data: { plugins: PluginInfo[], failures: Array<{ source: string, error: string }> } }>('/api/workshop/plugins', { headers: authHeaders() })
@@ -58,7 +61,8 @@ async function load() {
     failures.value = d.data?.failures ?? []
   }
   catch (err) {
-    message.error(apiErrorMessage(err, t('plugins.loadFail')))
+    loadError.value = apiErrorMessage(err, t('plugins.loadFail'))
+    message.error(loadError.value)
   }
   finally {
     loading.value = false
@@ -111,6 +115,10 @@ async function doToggle(p: PluginInfo) {
 
 const enabledCount = computed(() => plugins.value.filter(p => p.enabled).length)
 const clientCount = computed(() => plugins.value.filter(p => p.hasClient).length)
+const visiblePlugins = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  return plugins.value.filter(p => !q || `${p.name} ${p.description} ${p.version} ${p.tools?.map(tool => tool.name).join(' ') ?? ''}`.toLowerCase().includes(q))
+})
 
 function scopeLabel(scope: string) {
   return scope === 'project' ? t('plugins.scopeProject') : t('plugins.scopeUser')
@@ -154,6 +162,14 @@ onMounted(load)
     </header>
 
     <a-alert
+      v-if="loadError"
+      type="error"
+      show-icon
+      class="pg-failures"
+      :message="loadError"
+    />
+
+    <a-alert
       v-if="failures.length"
       type="error"
       show-icon
@@ -171,9 +187,24 @@ onMounted(load)
       </template>
     </a-alert>
 
+    <a-input
+      v-model:value="search"
+      allow-clear
+      class="pg-search"
+      :aria-label="$t('plugins.title')"
+    >
+      <template #prefix>
+        <span
+          class="i-tabler-search"
+          aria-hidden="true"
+        />
+      </template>
+    </a-input>
+
     <div
-      v-if="!plugins.length && !loading"
+      v-if="visiblePlugins.length === 0 && !loading && !loadError"
       class="pg-empty"
+      role="status"
     >
       <span class="i-tabler-puzzle pg-empty-ico" />
       <p class="pg-empty-t">
@@ -189,11 +220,16 @@ onMounted(load)
 
     <div class="pg-grid aw-stagger">
       <article
-        v-for="p in plugins"
+        v-for="p in visiblePlugins"
         :key="`${p.scope}:${p.name}`"
         class="pg-card aw-liftable"
         :class="{ 'is-off': !p.enabled }"
+        role="group"
+        tabindex="0"
+        :aria-label="p.name"
         @click="openDetail(p)"
+        @keydown.enter.self="openDetail(p)"
+        @keydown.space.self.prevent="openDetail(p)"
       >
         <div class="card-head">
           <span class="card-name">{{ p.name }}</span>
@@ -242,7 +278,7 @@ onMounted(load)
     <a-drawer
       v-model:open="drawerOpen"
       :title="current?.name"
-      width="460"
+      width="min(460px, 100vw)"
     >
       <template v-if="current">
         <dl class="detail">
@@ -306,6 +342,8 @@ onMounted(load)
 .pg-stats { display: flex; align-items: center; gap: 14px; font-size: 12px; opacity: .85; }
 .pg-stats b { font-size: 15px; }
 .pg-failures { margin-bottom: 16px; }
+.pg-search { max-width: 420px; }
+.pg-card:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .fail-line { font-family: ui-monospace, monospace; font-size: 11px; }
 .pg-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 56px 24px;
   text-align: center; border: 1px dashed var(--line-strong); border-radius: var(--radius-panel);

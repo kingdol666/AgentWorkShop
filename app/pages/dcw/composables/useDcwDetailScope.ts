@@ -1,4 +1,4 @@
-import { computed, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDcwStream } from '~/composables/workshop/useDcwStream'
 import { useDaqStream } from '~/composables/workshop/useDaqStream'
@@ -20,17 +20,20 @@ export function useDcwDetailScope() {
   const dcw = useDcwStream()
   const daq = useDaqStream()
   const deviceTwins = useDeviceTwins()
-  void daq.load()
 
   /** 路由产线 id;总览页「产线管理」进入 */
   const lineId = computed(() => String(route.params.id ?? ''))
   const line = computed(() => dcw.lines.find(l => l.id === lineId.value))
   const ls = computed(() => dcw.lineStateOf(lineId.value))
 
-  void dcw.load()
-  /** WS 喂帧:节点变更(dcw.node.changed)/写 ACK 实时收敛 —— 本页状态同步的通道 */
-  const unsubDcw = dcw.ensureWsFeed()
-  onUnmounted(() => unsubDcw())
+  // Shared live stores belong to the browser, not the SSR process.
+  let unsubDcw: (() => void) | undefined
+  onMounted(() => {
+    void daq.load()
+    void dcw.load()
+    unsubDcw = dcw.ensureWsFeed()
+  })
+  onUnmounted(() => unsubDcw?.())
 
   const nodeDeviceNames = (n: { deviceIds?: string[], deviceBindingId?: string | null }): string =>
     (n.deviceIds ?? (n.deviceBindingId ? [n.deviceBindingId] : []))

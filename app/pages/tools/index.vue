@@ -13,6 +13,7 @@ const api = useWorkshopApi()
 
 const view = ref<GlobalToolViewDto | null>(null)
 const loading = ref(false)
+const loadError = ref('')
 const syncing = ref(false)
 const query = ref('')
 const sourceFilter = ref<'all' | 'builtin' | 'plugin'>('all')
@@ -39,12 +40,14 @@ const filtered = computed(() => {
 
 async function load(): Promise<void> {
   loading.value = true
+  loadError.value = ''
   try {
     const res = await api.listTools()
     view.value = res?.data ?? null
   }
   catch (e) {
-    message.error(apiErrorMessage(e, t('toolsPage.loadFail')))
+    loadError.value = apiErrorMessage(e, t('toolsPage.loadFail'))
+    message.error(loadError.value)
   }
   finally {
     loading.value = false
@@ -128,6 +131,14 @@ onMounted(load)
       </div>
     </header>
 
+    <a-alert
+      v-if="loadError"
+      type="error"
+      show-icon
+      :message="loadError"
+      class="tp-error"
+    />
+
     <div
       v-if="view"
       class="tp-stats"
@@ -156,11 +167,13 @@ onMounted(load)
       <a-input-search
         v-model:value="query"
         allow-clear
+        :aria-label="$t('toolsPage.search')"
         :placeholder="$t('toolsPage.search')"
       />
       <a-select
         v-model:value="sourceFilter"
         style="width: 140px"
+        :aria-label="$t('toolsPage.source')"
         :options="[
           { value: 'all', label: $t('toolsPage.sourceAll') },
           { value: 'builtin', label: $t('toolsPage.sourceBuiltin') },
@@ -170,11 +183,16 @@ onMounted(load)
       <a-select
         v-model:value="pluginFilter"
         style="width: 180px"
+        :aria-label="$t('toolsPage.pluginCol')"
         :options="pluginOptions"
       />
       <a-checkbox v-model:checked="availableOnly">
         {{ $t('toolsPage.availableOnly') }}
       </a-checkbox>
+      <span
+        class="tp-filter-count"
+        :aria-label="$t('toolsPage.total')"
+      >{{ filtered.length }} / {{ tools.length }}</span>
     </div>
 
     <a-table
@@ -256,7 +274,7 @@ onMounted(load)
     <a-drawer
       v-model:open="drawerOpen"
       :title="selected?.name"
-      width="560"
+      width="min(560px, 100vw)"
     >
       <template v-if="selected">
         <div class="tp-detail">
@@ -313,6 +331,7 @@ onMounted(load)
 
 <style scoped>
 .tools-page {
+  min-width: 0;
   padding: 20px 24px 40px;
   display: flex;
   flex-direction: column;
@@ -356,6 +375,8 @@ onMounted(load)
 .tp-filters :deep(.ant-input-search) {
   width: 280px;
 }
+.tp-error { margin-bottom: 2px; }
+.tp-filter-count { margin-left: auto; color: var(--ink-faint); font-family: var(--font-mono); font-size: 11px; font-variant-numeric: tabular-nums; }
 .tp-name {
   display: flex;
   flex-direction: column;

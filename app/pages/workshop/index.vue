@@ -80,7 +80,10 @@ useHead({ title: () => t('titles.workshop') })
       />
 
       <a-spin :spinning="!ready">
-        <div class="grid">
+        <div
+          class="grid"
+          :aria-busy="!ready"
+        >
           <WorkspaceCard
             v-for="ws in wsStore.workspaces"
             :key="ws.id"
@@ -128,7 +131,7 @@ useHead({ title: () => t('titles.workshop') })
    这里只剩页面自己的外壳类。 */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(336px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 336px), 1fr));
   gap: 18px;
 }
 
@@ -161,6 +164,11 @@ useHead({ title: () => t('titles.workshop') })
   color: var(--ink-soft);
   background: var(--hover-tint);
   border-color: color-mix(in srgb, var(--line-strong) 55%, var(--accent) 45%);
+}
+
+.ws-add:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--accent));
+  outline-offset: 2px;
 }
 
 .ws-add-plus {

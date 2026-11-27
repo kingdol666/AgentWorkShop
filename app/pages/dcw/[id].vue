@@ -77,28 +77,30 @@ const { items: rdItems, comments: rdComments, decidingId: rdDecidingId, decideEr
 
 <template>
   <div
-    v-if="dcw.loaded && !line"
+    v-if="!line"
     class="page"
   >
-    <p class="banner bad">
-      {{ $t('dcwDetail.k19337yp018') }}
-    </p>
+    <AwStateBlock
+      v-if="dcw.error"
+      state="error"
+      :hint="dcw.error"
+      :retry="dcw.load"
+    />
+    <AwStateBlock
+      v-else-if="!dcw.loaded"
+      state="loading"
+    />
+    <AwStateBlock
+      v-else
+      state="empty"
+      :title="$t('dcwDetail.k19337yp018')"
+    />
     <NuxtLink
       class="pill-btn"
       to="/dcw"
     >
       {{ $t('dcwDetail.kllwu1c019') }}
     </NuxtLink>
-  </div>
-  <div
-    v-else-if="!dcw.loaded"
-    class="page"
-  >
-    <!-- 页面级骨架:此前 line=undefined 时整页裸渲染,各子组件自兜底(交互宪法 §2-3) -->
-    <AwStateBlock
-      state="loading"
-      :compact="false"
-    />
   </div>
   <div
     v-else
@@ -128,6 +130,7 @@ const { items: rdItems, comments: rdComments, decidingId: rdDecidingId, decideEr
       v-if="writeError || writeOk"
       class="banner"
       :class="writeError ? 'bad' : 'good'"
+      :role="writeError ? 'alert' : 'status'"
     >
       {{ writeError || writeOk }}
     </p>

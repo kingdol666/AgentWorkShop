@@ -27,7 +27,7 @@ const { t } = useI18n()
     <a
       class="app-skip-link"
       href="#main-content"
-    >跳到主要内容</a>
+    >{{ t('header.skipToContent') }}</a>
     <AppSidebar />
 
     <a-layout

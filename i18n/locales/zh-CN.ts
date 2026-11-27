@@ -66,6 +66,7 @@ export default {
     collapse: '折叠菜单',
     expand: '展开菜单',
     openNav: '打开导航',
+    skipToContent: '跳到主要内容',
     closeNav: '关闭导航',
     language: '语言',
     theme: '主题',
@@ -88,6 +89,7 @@ export default {
     heroSub: '智控下发与数采回流同屏共振:配方开跑、参数设定、实时工况、越限告警一屏尽览,孪生界面与真实 PLC 同拍运行。',
     ctaTown: '进入数字孪生',
     ctaLine: '产线运营管理',
+    noWriteAttempts: '暂无写入尝试',
     live: 'LIVE',
     kpi: {
       lines: '运行产线',
@@ -108,6 +110,7 @@ export default {
       more: '查看全部',
     },
     alarm: {
+      noDisplayed: '当前队列未显示告警',
       high: '高于上限',
       low: '低于下限',
       now: '刚刚',
@@ -973,6 +976,8 @@ export default {
     k1evt004: '暂无事件,等待操作…',
   },
   daqDetail: {
+    nodeNotFound: '未找到此数采节点',
+    historyBucket: '历史聚合间隔',
     bucket1s: '1s 桶',
     bucket5s: '5s 桶',
     bucket15s: '15s 桶(默认)',
@@ -2667,8 +2672,8 @@ export default {
     kmf7lcc027: '目标运行时已停止:消息安全入队,重新启用后自动处理',
     k1tet5df028: '空闲 · 将立即起回合处理',
     kn600in029: '目标空闲:消息投递后立即开始处理',
-    k2h5jwc030: '输入任务下发(首行标题,{\'@\'} 成员直发,缺省 lead)…  ⌘/Ctrl+Enter 提交',
-    k15mwzt7031: '输入消息/通知({\'@\'} 成员指定目标,缺省 lead)…  ⌘/Ctrl+Enter 发送',
+    k2h5jwc030: '输入任务，首行为标题…',
+    k15mwzt7031: '给团队写一条消息…',
   },
   deviceTwinPanel: {
     armDelete: '再次点击确认删除该设备实例',
@@ -3902,8 +3907,10 @@ export default {
   },
   memoryCenter: {
     title: '记忆中心',
-    subtitle: '人工管理所有持久化记忆与经验：覆写留原文、批注、版本回滚、软删恢复、晋升与部署。',
-    searchPlaceholder: '搜索标题/正文',
+    subtitle: '查阅 Agent 保存的记忆，补充上下文，或管理已验证经验何时可以复用。',
+    searchPlaceholder: '搜索标题或正文…',
+    results: '共 {count} 条记忆',
+    noMatches: '没有符合当前条件的记忆',
     search: '查询',
     includeDeleted: '含已删除',
     deleted: '已删除',

@@ -30,7 +30,17 @@ export const VISUAL_USER = {
 
 export const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-/** 站点全部页面(与 app/pages 一一对应) —— 自适应审计矩阵的行 */
+const detailRoutes = [
+  { env: 'AW_UI_WORKSPACE_ID', base: '/workshop/w/', name: 'workspace', title: '工作区控制台' },
+  { env: 'AW_UI_PROJECT_ID', base: '/projects/', name: 'project-detail', title: '项目详情' },
+  { env: 'AW_UI_DAQ_ID', base: '/daq/', name: 'daq-detail', title: '数采节点详情' },
+  { env: 'AW_UI_LINE_ID', base: '/dcw/', name: 'line-detail', title: '产线详情' },
+].flatMap(({ env, base, name, title }) => {
+  const id = process.env[env]
+  return id ? [{ path: base + encodeURIComponent(id), name, title }] : []
+})
+
+/** 静态页面，以及由隔离验收数据提供真实 ID 的动态页面。 */
 export const ROUTES = [
   { path: '/', name: 'dashboard', title: '仪表盘' },
   { path: '/workshop', name: 'workshop', title: 'Agent 工作台' },
@@ -48,6 +58,7 @@ export const ROUTES = [
   { path: '/aml', name: 'aml', title: '自动建模实验室' },
   { path: '/optimizer', name: 'optimizer', title: '治理优化' },
   { path: '/ontology', name: 'ontology', title: '工业本体' },
+  { path: '/memory', name: 'memory', title: '记忆中心' },
   { path: '/studio', name: 'studio', title: '建模工作室' },
   { path: '/studio/board', name: 'studio-board', title: '工作室看板' },
   { path: '/studio/pipeline', name: 'studio-pipeline', title: '工作室管道' },
@@ -59,6 +70,7 @@ export const ROUTES = [
   { path: '/settings', name: 'settings', title: '设置' },
   { path: '/tokens', name: 'tokens', title: 'API Token' },
   { path: '/users', name: 'users', title: '用户' },
+  ...detailRoutes,
 ]
 
 /** 自适应验收视口矩阵:从 iPhone SE 到超宽屏,含横屏与平板 */

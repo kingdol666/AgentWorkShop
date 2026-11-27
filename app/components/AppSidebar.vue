@@ -85,13 +85,16 @@ const menuGroups = computed<MenuGroup[]>(() => [
   .map(g => ({ ...g, items: g.items.filter(m => !m.adminOnly || (navHydrated.value && userStore.isAdmin)) }))
   .filter(g => g.items.length > 0))
 
-const isActive = (key: string): boolean =>
-  key === '/' ? route.path === '/' : route.path.startsWith(key)
+const isCurrent = (key: string): boolean => route.path === key
 
-const go = (key: string) => {
-  // 抽屉是浮层:点完必须收起来,否则用户看到的是"导航没反应"(内容被浮层盖着)
-  if (isDrawer.value) store.closeMobileNav()
-  if (!isActive(key)) navigateTo(key)
+const isActive = (key: string): boolean =>
+  isCurrent(key) || (key !== '/' && route.path.startsWith(`${key}/`))
+
+function onMenuClick(event: MouseEvent) {
+  // Modified clicks are opening another tab, not leaving the current workspace.
+  if (isDrawer.value && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+    store.closeMobileNav()
+  }
 }
 
 /* ── 响应式形态 ──────────────────────────────────────────────────────────
@@ -278,25 +281,27 @@ onBeforeUnmount(() => {
           class="menu-group-sep"
           aria-hidden="true"
         />
-        <button
+        <NuxtLink
           v-for="item in group.items"
           :key="item.key"
-          type="button"
+          :to="item.key"
           class="menu-item im"
           :class="{ active: isActive(item.key) }"
-          :aria-current="isActive(item.key) ? 'page' : undefined"
+          :aria-current="isCurrent(item.key) ? 'page' : undefined"
+          :aria-label="!showLabels ? item.label : undefined"
           :title="!showLabels ? item.label : undefined"
-          @click="go(item.key)"
+          @click="onMenuClick"
         >
           <span
             class="menu-icon"
             :class="[item.icon, item.motion]"
+            aria-hidden="true"
           />
           <span
             v-show="showLabels"
             class="menu-label"
           >{{ item.label }}</span>
-        </button>
+        </NuxtLink>
       </div>
     </nav>
 

@@ -119,35 +119,43 @@
       <h2><span class="stepNo">2</span>{{ $t('studio.pipeline.s2') }}</h2>
       <div
         v-if="viewRows.length"
-        class="tableWrap"
+        class="tableResult"
         data-test="pipeline-table"
       >
-        <table class="grid">
-          <thead>
-            <tr>
-              <th
-                v-for="c in tableCols"
-                :key="c"
+        <div
+          class="tableWrap"
+          role="region"
+          tabindex="0"
+          :aria-label="$t('studio.pipeline.s2')"
+        >
+          <table class="grid">
+            <thead>
+              <tr>
+                <th
+                  v-for="c in tableCols"
+                  :key="c"
+                  scope="col"
+                >
+                  {{ c }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(r, i) in viewRows.slice(0, 8)"
+                :key="i"
               >
-                {{ c }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(r, i) in viewRows.slice(0, 8)"
-              :key="i"
-            >
-              <td
-                v-for="c in tableCols"
-                :key="c"
-              >
-                {{ r[c] }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="hint">
+                <td
+                  v-for="c in tableCols"
+                  :key="c"
+                >
+                  {{ r[c] }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="hint rows-info">
           {{ $t('studio.pipeline.rowsInfo', { n: viewRows.length, show: Math.min(viewRows.length, 8) }) }}
         </p>
       </div>
@@ -450,10 +458,14 @@
         v-if="hasDrawn"
         class="chartHost"
         data-test="pipeline-chart"
+        role="region"
+        tabindex="0"
+        :aria-label="cfg.title || $t('studio.pipeline.chartTitle')"
       >
         <ClientOnly>
           <AwChart
             ref="chartRef"
+            class="chartCanvas"
             :option="option"
             :height="380"
           />
@@ -483,14 +495,21 @@
             <button
               class="pill-btn outline"
               data-test="pipeline-viewer-close"
+              :aria-label="$t('common.close')"
               @click="viewerOpen = false"
             >
               ✕
             </button>
           </div>
-          <div class="viewerChart">
+          <div
+            class="viewerChart"
+            role="region"
+            tabindex="0"
+            :aria-label="cfg.title || $t('studio.pipeline.chartTitle')"
+          >
             <ClientOnly>
               <AwChart
+                class="chartCanvas"
                 :option="viewerOption"
                 :height="420"
               />
@@ -777,10 +796,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 14px; padding-bottom: 40px }
-.aw-page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px }
+.page { display: flex; flex-direction: column; gap: 14px; min-width: 0; padding-bottom: 40px }
+.aw-page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px }
 .sub { color: var(--ink-soft); font-size: 12px; margin-top: 4px }
-.cardBlock { background: var(--surface-card); border: 1px solid var(--line, rgba(255,255,255,.08)); border-radius: 12px; padding: 14px 16px }
+.cardBlock { min-width: 0; background: var(--surface-card); border: 1px solid var(--line, rgba(255,255,255,.08)); border-radius: 12px; padding: 14px 16px }
 .cardBlock h2 { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 10px }
 .stepNo { width: 20px; height: 20px; border-radius: 6px; background: var(--accent, #35e0a0); color: #06121c; font-size: 12px; display: inline-flex; align-items: center; justify-content: center }
 .row { display: flex; gap: 8px; align-items: center; margin: 6px 0 }
@@ -795,24 +814,28 @@ onMounted(async () => {
 .chip.tpl .del { margin-left: 6px; opacity: .5 }
 .chip.tpl .del:hover { opacity: 1; color: #e57373 }
 .unit { opacity: .65; font-size: 11px }
-.tableWrap { overflow: auto; max-height: 240px; border: 1px solid var(--line, rgba(255,255,255,.08)); border-radius: 8px }
-.grid { border-collapse: collapse; width: 100%; font-size: 12px }
-.grid th { text-align: left; position: sticky; top: 0; background: var(--paper-deep); padding: 6px 10px; border-bottom: 1px solid var(--line, rgba(255,255,255,.1)) }
-.grid td { padding: 4px 10px; border-bottom: 1px solid var(--line, rgba(255,255,255,.05)); white-space: nowrap }
+.tableWrap { overflow: auto; max-height: min(240px, 48dvh); border: 1px solid var(--line); border-radius: 8px }
+.grid { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 12px }
+.grid th { text-align: left; white-space: nowrap; position: sticky; top: 0; background: var(--paper-deep); padding: 6px 10px; border-bottom: 1px solid var(--line) }
+.grid td { padding: 4px 10px; border-bottom: 1px solid var(--line); white-space: nowrap }
+.rows-info { margin: 6px 0 0 }
 .hint { color: var(--ink-soft); font-size: 12px }
 .err { color: #e57373; font-size: 12px }
 .codeRow { display: flex; gap: 12px; align-items: flex-start; margin-top: 8px }
 .importRow { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px }
 .importRow .import { flex: 1; max-width: 640px }
-.code { flex: 1; font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--paper-deep); border: 1px solid var(--line, rgba(255,255,255,.1)); border-radius: 8px; color: inherit; padding: 8px 10px; resize: vertical }
+.code { flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 12px; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 8px; color: inherit; padding: 8px 10px; resize: vertical }
 .codeSide { display: flex; flex-direction: column; gap: 8px; max-width: 220px }
-.chartHost { margin-top: 10px; border: 1px solid var(--line, rgba(255,255,255,.08)); border-radius: 10px; padding: 8px }
-.viewer { position: fixed; inset: 0; z-index: 90; background: rgba(4,8,12,.78); display: flex; align-items: center; justify-content: center; padding: 4vh 4vw }
-.viewerBody { width: 100%; max-width: 1100px; background: var(--surface-card); border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 14px; overflow: hidden }
-.viewerBar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)) }
-.viewerBar b { font-size: 13px }
+.chartHost { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 8px; overflow-x: auto }
+.chartCanvas { min-width: 24rem }
+.tableWrap:focus-visible, .chartHost:focus-visible, .viewerChart:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.viewer { position: fixed; inset: 0; z-index: 90; background: rgba(4,8,12,.78); display: flex; align-items: center; justify-content: center; padding: 4dvh 4vw }
+.viewerBody { display: flex; flex-direction: column; width: 100%; max-width: 1100px; max-height: 92dvh; background: var(--surface-card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden }
+.viewerBar { display: flex; flex-wrap: wrap; flex: none; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line) }
+.viewerBar b { font-size: 13px; overflow-wrap: anywhere }
 .viewerBar .unit { flex: 1 }
-.viewerChart { padding: 8px 12px 12px }
+.viewerChart { min-height: 0; overflow: auto; padding: 8px 12px 12px }
+.viewerChart:focus-visible { outline-offset: -2px }
 
 @media (max-width: 640px) {
   .aw-page-head { align-items: flex-start }

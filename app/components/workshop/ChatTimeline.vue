@@ -13,7 +13,7 @@
  * 引用链:replyToId → 气泡上方"↪ 回复 <发送者>";悬停出现「回复」动作 →
  * 写入 chat store 的 replyTarget,由 Composer 转成 replyToId 发出。
  */
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useChatStore } from '@/app/stores/workshop/chat'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
@@ -82,7 +82,10 @@ const messages = computed<AepChatMessage[]>(() => chat.messages[props.channelId]
 const visibleMessages = computed(() => hydrated.value ? messages.value : [])
 /** 已加载过更早历史且上一页拉满 → 可能还有(按钮据此显示) */
 const hasMore = computed(() => chat.hasMoreHistory[props.channelId] !== false)
-const loading = computed(() => chat.loadingHistory[props.channelId] === true)
+const latestState = ref<'loading' | 'ready' | 'error'>('loading')
+const loadingEarlier = ref(false)
+const earlierError = ref(false)
+let historyScope = 0
 
 /** 正文里的 @Agent 高亮(只掩 agent 名:用户 @ 不做可点 pill,避免误跳 Agent) */
 const mentionMembers = computed<MentionMember[]>(() =>
@@ -217,9 +220,9 @@ function onTextClick(ev: MouseEvent): void {
 const scroller = ref<HTMLElement | null>(null)
 const atBottom = ref(true)
 
-function scrollToBottom(): void {
+function scrollToBottom(behavior: ScrollBehavior = 'auto'): void {
   const el = scroller.value
-  if (el) el.scrollTop = el.scrollHeight
+  el?.scrollTo({ top: el.scrollHeight, behavior })
 }
 
 function onScroll(): void {
@@ -229,10 +232,11 @@ function onScroll(): void {
 }
 
 watch(() => messages.value.length, async (n, prev) => {
-  if (prev !== undefined && n <= prev) return
-  if (!atBottom.value) return
+  if (n <= prev || !atBottom.value || loadingEarlier.value) return
+  const scope = historyScope
   await nextTick()
-  scrollToBottom()
+  if (scope !== historyScope || !atBottom.value || loadingEarlier.value) return
+  scrollToBottom('instant')
   // 正在看群聊 → 该频道未读收敛为已读(服务端按 recipient 记,不接受他人 userId)
   void markChannelRead()
 })
@@ -249,33 +253,67 @@ async function markChannelRead(): Promise<void> {
 
 /** 加载更早一页(锚定滚动位置,不让视口跳走) */
 async function loadEarlier(): Promise<void> {
+  const channelId = props.channelId
+  const oldest = messages.value[0]?.id
+  if (!oldest || loadingEarlier.value || latestState.value !== 'ready') return
+  const scope = historyScope
   const el = scroller.value
   const before = el ? el.scrollHeight - el.scrollTop : 0
-  const oldest = messages.value[0]?.id
+  loadingEarlier.value = true
+  earlierError.value = false
   try {
-    await chat.loadHistory(props.channelId, { before: oldest })
+    await chat.loadHistory(channelId, { before: oldest })
+    await nextTick()
+    if (el && scope === historyScope && channelId === props.channelId) {
+      el.scrollTo({ top: el.scrollHeight - before, behavior: 'instant' })
+    }
   }
-  catch { /* 失败保持原状(按钮可重试) */ }
-  await nextTick()
-  if (el) el.scrollTop = el.scrollHeight - before
+  catch {
+    if (scope === historyScope && channelId === props.channelId) earlierError.value = true
+  }
+  finally {
+    if (scope === historyScope) loadingEarlier.value = false
+  }
 }
 
-onMounted(async () => {
-  hydrated.value = true
+async function loadLatest(): Promise<void> {
+  const channelId = props.channelId
+  const scope = ++historyScope
+  latestState.value = 'loading'
   try {
-    await chat.loadHistory(props.channelId)
+    await chat.loadHistory(channelId)
+    if (scope !== historyScope || channelId !== props.channelId) return
+    latestState.value = 'ready'
   }
-  catch { /* 历史失败不阻塞实时帧 */ }
+  catch {
+    if (scope !== historyScope || channelId !== props.channelId) return
+    latestState.value = 'error'
+  }
   await nextTick()
-  scrollToBottom()
-  await markChannelRead()
+  if (scope !== historyScope || channelId !== props.channelId) return
+  if (!visibleMessages.value.length) scroller.value?.scrollTo({ top: 0, behavior: 'instant' })
+  else if (atBottom.value) scrollToBottom('instant')
+  void markChannelRead()
+}
+
+onMounted(() => {
+  hydrated.value = true
+  void loadLatest()
+})
+onBeforeUnmount(() => {
+  historyScope++
 })
 
-// 频道切换:重置到底部
 watch(() => props.channelId, async () => {
   atBottom.value = true
+  loadingEarlier.value = false
+  earlierError.value = false
+  void loadLatest()
+  const scope = historyScope
   await nextTick()
-  scrollToBottom()
+  if (scope !== historyScope) return
+  if (visibleMessages.value.length) scrollToBottom('instant')
+  else scroller.value?.scrollTo({ top: 0, behavior: 'instant' })
 })
 </script>
 
@@ -284,23 +322,60 @@ watch(() => props.channelId, async () => {
     <!-- 2026-11-07 ChatGPT 化:内嵌大头部(orb+标题)撤除 —— 频道名上移中央列
          标题条(console/Topbar),对话流像 ChatGPT 一样从内容直接开始。 -->
     <div
+      v-if="latestState === 'error' && visibleMessages.length"
+      class="ct-history-banner"
+    >
+      <span role="status">{{ $t('common.stateError') }}</span>
+      <button
+        type="button"
+        class="ct-retry"
+        @click="loadLatest"
+      >
+        {{ $t('common.stateRetry') }}
+      </button>
+    </div>
+    <div
       ref="scroller"
       class="ct-scroll"
       @scroll.passive="onScroll"
     >
       <div class="ct-thread">
-        <button
-          v-if="hasMore && visibleMessages.length > 0"
-          type="button"
-          class="ct-earlier"
-          :disabled="loading"
-          @click="loadEarlier"
+        <div
+          v-if="hasMore && visibleMessages.length > 0 && latestState === 'ready'"
+          class="ct-history-controls"
         >
-          {{ loading ? $t('chat.loading') : $t('chat.loadEarlier') }}
-        </button>
+          <span
+            v-if="earlierError"
+            role="status"
+          >{{ $t('common.stateError') }}</span>
+          <button
+            type="button"
+            class="ct-earlier"
+            :disabled="loadingEarlier"
+            @click="loadEarlier"
+          >
+            {{ loadingEarlier ? $t('chat.loading') : earlierError ? $t('common.stateRetry') : $t('chat.loadEarlier') }}
+          </button>
+        </div>
 
         <div
-          v-if="visibleMessages.length === 0"
+          v-if="!visibleMessages.length && latestState !== 'ready'"
+          class="ct-state"
+        >
+          <p role="status">
+            {{ latestState === 'loading' ? $t('chat.loading') : $t('common.stateError') }}
+          </p>
+          <button
+            v-if="latestState === 'error'"
+            type="button"
+            class="ct-retry"
+            @click="loadLatest"
+          >
+            {{ $t('common.stateRetry') }}
+          </button>
+        </div>
+        <div
+          v-else-if="visibleMessages.length === 0"
           class="ct-empty"
         >
           <div class="ct-empty-eyebrow">
@@ -646,9 +721,33 @@ watch(() => props.channelId, async () => {
   padding: 26px 0 120px;
   margin: 0 auto;
 }
-.ct-earlier {
-  display: block;
-  margin: 0 auto 18px;
+.ct-history-controls,
+.ct-history-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--chat-ink-soft);
+}
+.ct-history-controls { margin-bottom: 18px; }
+.ct-history-banner {
+  padding: 6px 12px;
+  background: var(--chat-surface-raised);
+  border-bottom: 1px solid var(--chat-line);
+}
+.ct-state {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  padding: clamp(24px, 7vh, 64px) 8px;
+  text-align: center;
+  color: var(--chat-ink-soft);
+}
+.ct-state p { margin: 0; }
+.ct-earlier,
+.ct-retry {
   padding: 5px 14px;
   font-family: var(--font-body);
   font-size: 11.5px;
@@ -659,7 +758,11 @@ watch(() => props.channelId, async () => {
   border-radius: var(--radius-pill);
   transition: color var(--transition-fast), border-color var(--transition-fast);
 }
-.ct-earlier:hover { color: var(--chat-ink); border-color: var(--chat-line-strong); }
+.ct-earlier:hover,
+.ct-retry:hover { color: var(--chat-ink); border-color: var(--chat-line-strong); }
+.ct-earlier:focus-visible,
+.ct-retry:focus-visible,
+.ct-suggestion:focus-visible { outline: 2px solid var(--chat-accent); outline-offset: 2px; }
 .ct-earlier:disabled { opacity: 0.5; cursor: default; }
 
 /* ── 空态:不是"没有消息",而是一个可行动的开始 ────────────────── */

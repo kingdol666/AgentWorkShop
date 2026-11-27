@@ -247,6 +247,19 @@ const opt = useDaqOptimizations()
       @rollback="opt.rollbackRecord"
     />
 
+    <AwStateBlock
+      v-if="daq.error"
+      state="error"
+      :hint="daq.error"
+      :retry="daq.load"
+      compact
+    />
+    <AwStateBlock
+      v-else-if="!daq.loaded"
+      state="loading"
+      compact
+    />
+
     <DaqNodePanel
       v-model:table-el="nodesTableRef"
       v-model:filters="filters"
@@ -269,12 +282,5 @@ const opt = useDaqOptimizations()
       :error="daq.error"
       @clear-filters="clearFilters"
     />
-
-    <p
-      v-if="daq.error"
-      class="err"
-    >
-      {{ daq.error }}(<NuxtLink to="/workshop">{{ $t('daq.k1bhhheq077') }}</NuxtLink>)
-    </p>
   </div>
 </template>

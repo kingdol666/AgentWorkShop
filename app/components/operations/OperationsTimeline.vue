@@ -6,7 +6,7 @@
  * 写控行带结构化变更(prevValue → eng),行内可展开完整详情 JSON。
  * 数据由页面传入(REST 快照 + WS 实时帧合并后的同一数组)。
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { classifyOpsRow, CATEGORY_ICONS, diffOf, type OperationCategory } from '@/app/pages/operations/composables/useOperationsFeed'
 import type { OpsLogRow } from '@/app/composables/workshop/useOpsLog'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
@@ -17,6 +17,7 @@ const props = defineProps<{
   error: string
   /** 当前激活的分类筛选(统计 chip 高亮;空 = 未筛选) */
   activeKind?: string
+  retry?: () => void
 }>()
 
 const expandedId = ref<number | null>(null)
@@ -28,6 +29,10 @@ const page = ref(1)
 const pagedRows = computed(() =>
   props.rows.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE),
 )
+
+watch([() => props.activeKind, () => props.rows.length], ([kind, count], [previousKind]) => {
+  if (kind !== previousKind || (page.value - 1) * PAGE_SIZE >= count) page.value = 1
+})
 
 function toggle(row: OpsLogRow): void {
   expandedId.value = expandedId.value === row.id ? null : row.id
@@ -77,6 +82,7 @@ function onStatClick(key: OperationCategory): void {
         type="button"
         class="stream-stat"
         :class="[{ active: activeKind === s.key }, s.key]"
+        :aria-pressed="activeKind === s.key"
         :title="$t('operations.filterByCat', { cat: $t(`operations.cat.${s.key}`) })"
         @click="onStatClick(s.key)"
       >
@@ -86,30 +92,27 @@ function onStatClick(key: OperationCategory): void {
       </button>
     </div>
 
-    <div
+    <AwStateBlock
       v-if="error"
-      class="stream-state error"
-    >
-      <span class="i-tabler-alert-circle" />
-      {{ error }}
-    </div>
-    <div
-      v-else-if="loading && rows.length === 0"
-      class="stream-state"
-    >
-      <span class="i-tabler-loader-2 spin" />
-      {{ $t('operations.loading') }}
-    </div>
-    <div
-      v-else-if="rows.length === 0"
-      class="stream-state"
-    >
-      <span class="i-tabler-activity-heartbeat" />
-      {{ $t('operations.empty') }}
-    </div>
+      state="error"
+      :hint="error"
+      :retry="retry"
+      compact
+    />
+    <AwStateBlock
+      v-else-if="loading && !rows.length"
+      state="loading"
+      compact
+    />
+    <AwStateBlock
+      v-else-if="!rows.length"
+      state="empty"
+      :title="$t('operations.empty')"
+      compact
+    />
 
     <ol
-      v-else
+      v-if="rows.length"
       class="stream-list"
     >
       <li
@@ -119,8 +122,10 @@ function onStatClick(key: OperationCategory): void {
         :class="[catOf(row), { open: expandedId === row.id }]"
       >
         <button
+          type="button"
           class="op-main"
           :disabled="!row.detailJson"
+          :aria-expanded="row.detailJson ? expandedId === row.id : undefined"
           @click="toggle(row)"
         >
           <span class="op-icon">
@@ -153,11 +158,15 @@ function onStatClick(key: OperationCategory): void {
               <span class="op-action mono">{{ row.action }}</span>
             </span>
           </span>
-          <time class="op-time mono">{{ formatLocalClock(row.at, true) }}</time>
+          <time
+            class="op-time mono"
+            :datetime="row.at"
+          >{{ formatLocalClock(row.at, true) }}</time>
         </button>
         <pre
           v-if="expandedId === row.id && row.detailJson"
           class="op-detail mono"
+          tabindex="0"
         >{{ detailOf(row) || $t('operations.noDetail') }}</pre>
       </li>
     </ol>
@@ -205,10 +214,10 @@ function onStatClick(key: OperationCategory): void {
 .stream-stat.rollback span:first-child { color: var(--accent-vermilion); }
 .stream-stat.recipe span:first-child { color: var(--accent-cobalt); }
 
-.stream-state { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 120px; font-size: 12px; color: var(--ink-faint); }
-.stream-state.error { color: var(--tone-danger-dot); }
-.spin { animation: opsSpin 1.1s linear infinite; }
-@keyframes opsSpin { to { transform: rotate(360deg); } }
+.op-main:focus-visible, .stream-stat:focus-visible, .op-detail:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.stream-foot { flex-wrap: wrap; }
+.op-summary, .op-action { overflow-wrap: anywhere; white-space: normal; }
+.op-diff { flex-wrap: wrap; overflow-wrap: anywhere; }
 
 .stream-list { list-style: none; margin: 0; padding: 0; }
 .op-row { border-left: 2px solid var(--line-strong); margin: 0 0 4px; border-radius: 6px; background: color-mix(in srgb, var(--paper-deep) 40%, transparent); }

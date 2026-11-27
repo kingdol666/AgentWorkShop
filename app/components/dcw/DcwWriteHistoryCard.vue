@@ -4,6 +4,7 @@
  * 渲染开关(有历史才显示)在页面。
  */
 import type { DcwWriteHistoryEntry } from '~/composables/workshop/useDcwStream'
+import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 
 defineProps<{
   lineHistory: DcwWriteHistoryEntry[]
@@ -12,38 +13,77 @@ defineProps<{
 
 <template>
   <section class="aw-tile table-card">
-    <p class="sec-label">
-      {{ $t('dcwDetail.kw7ym9b148') }} {{ lineHistory.length }} {{ $t('dcwDetail.k40bfz150') }}
+    <p
+      id="dcw-write-history-title"
+      class="sec-label"
+    >
+      {{ $t('dcwDetail.kw7ym9b148') }} {{ Math.min(lineHistory.length, 12) }} / {{ lineHistory.length }} {{ $t('dcwDetail.k40bfz150') }}
     </p>
-    <table class="nodes-table">
-      <tbody>
-        <tr
-          v-for="h in lineHistory.slice(0, 12)"
-          :key="h.id"
-        >
-          <td class="mono dim">
-            {{ h.at.slice(5, 19) }}
-          </td>
-          <td>{{ h.param }}</td>
-          <td>{{ h.nodeName }}</td>
-          <td class="mono">
-            {{ h.eng }}
-          </td>
-          <td class="mono dim">
-            raw {{ h.raw ?? '-' }}
-          </td>
-          <td>
-            <span
-              class="st-pill"
-              :class="h.ok ? 'ok' : 'alarm'"
-            >{{ h.ok ? 'ACK' : $t('dcwDetail.k3yit7139') }}</span>
-          </td>
-          <td class="dim">
-            {{ h.recipeRunId ? $t('dcwDetail.k6vgks7181', { p0: h.recipeRunId }) : $t('dcwDetail.manualTag') }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div
+      class="history-scroll"
+      role="region"
+      aria-labelledby="dcw-write-history-title"
+      tabindex="0"
+    >
+      <table class="nodes-table">
+        <thead>
+          <tr>
+            <th scope="col">
+              {{ $t('daqDetail.k40vsf023') }}
+            </th>
+            <th scope="col">
+              {{ $t('dcwDetail.k3xbjr088') }}
+            </th>
+            <th scope="col">
+              {{ $t('dcwDetail.k45uio082') }}
+            </th>
+            <th scope="col">
+              {{ $t('dcwDetail.k3ncbsh089') }}
+            </th>
+            <th scope="col">
+              {{ $t('dcwDetail.k3lh3mz090') }}
+            </th>
+            <th scope="col">
+              {{ $t('dcwDetail.k1bqhtmu077') }}
+            </th>
+            <th scope="col">
+              {{ $t('dcwDetail.k400lb075') }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="h in lineHistory.slice(0, 12)"
+            :key="h.id"
+          >
+            <td class="mono dim">
+              <time :datetime="h.at">{{ formatLocalClock(h.at, true) }}</time>
+            </td>
+            <td>{{ h.param }}</td>
+            <td>{{ h.nodeName }}</td>
+            <td class="mono">
+              {{ h.eng }}
+            </td>
+            <td class="mono dim">
+              {{ h.raw ?? '—' }}
+            </td>
+            <td>
+              <span
+                class="st-pill"
+                :class="h.ok ? 'ok' : 'alarm'"
+              >{{ h.ok ? 'ACK' : $t('dcwDetail.k3yit7139') }}</span>
+              <small
+                v-if="h.message"
+                class="receipt-detail"
+              >{{ h.message }}</small>
+            </td>
+            <td class="dim">
+              {{ h.recipeRunId ? $t('dcwDetail.k6vgks7181', { p0: h.recipeRunId }) : $t('dcwDetail.manualTag') }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 </template>
 
@@ -55,10 +95,13 @@ defineProps<{
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .dim { opacity: 0.55; }
 
-.table-card { overflow-x: auto; margin-bottom: 14px; }
+.table-card { min-width: 0; margin-bottom: 14px; }
+.history-scroll { overflow: auto; max-height: 34rem; }
+.history-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.receipt-detail { display: block; min-width: 12ch; max-width: 34ch; margin-top: 3px; overflow-wrap: anywhere; white-space: normal; color: var(--ink-soft); }
 .nodes-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .nodes-table th, .nodes-table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--divider-hair); }
-.nodes-table th { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); border-bottom: 1px solid var(--line-strong); }
+.nodes-table th { position: sticky; top: 0; z-index: 1; background: var(--paper-raised); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); border-bottom: 1px solid var(--line-strong); }
 .nodes-table td b { margin-left: 8px; }
 
 .st-pill { display: inline-block; padding: 3px 9px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.04em; border-radius: var(--radius-pill); }

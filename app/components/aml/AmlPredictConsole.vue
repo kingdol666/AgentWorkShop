@@ -38,6 +38,7 @@ const { fmtNum, shortId } = useAmlFormat()
       <select
         v-if="productionModels.length"
         v-model="predModelId"
+        :aria-label="$t('aml.k1amlx134')"
         class="inp-sel"
       >
         <option value="">
@@ -131,56 +132,78 @@ const { fmtNum, shortId } = useAmlFormat()
         >
           {{ predError }}
         </p>
-        <template v-if="predResult">
-          <p class="det-title">
+        <section
+          v-if="predResult"
+          class="forecast-result"
+          :aria-label="$t('aml.k1amlx150')"
+        >
+          <h3 class="det-title">
             {{ $t('aml.k1amlx150') }}
-          </p>
-          <table class="sub-tbl">
-            <thead>
-              <tr>
-                <th class="num">
-                  {{ $t('aml.k1amlx151') }}
-                </th>
-                <th class="num">
-                  {{ $t('aml.k1amlx152') }}
-                </th>
-                <th
-                  v-for="(n, i) in predResult.targetNodes"
-                  :key="n"
-                  class="num"
+          </h3>
+          <div
+            class="forecast-scroll"
+            tabindex="0"
+            role="region"
+            :aria-label="$t('aml.k1amlx150')"
+          >
+            <table class="sub-tbl forecast-table">
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    class="num"
+                  >
+                    {{ $t('aml.k1amlx151') }}
+                  </th>
+                  <th
+                    scope="col"
+                    class="num"
+                  >
+                    {{ $t('aml.k1amlx152') }}
+                  </th>
+                  <th
+                    v-for="(n, i) in predResult.targetNodes"
+                    :key="n"
+                    scope="col"
+                    class="num"
+                    :title="n"
+                  >
+                    {{ shortId(n) }}<small
+                      v-if="i === 0"
+                      class="dim"
+                    > ({{ $t('aml.k1amlx041') }})</small>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, ri) in predResult.forecast"
+                  :key="ri"
                 >
-                  {{ shortId(n) }}<small
-                    v-if="i === 0"
-                    class="dim"
-                  > ({{ $t('aml.k1amlx041') }})</small>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(row, ri) in predResult.forecast"
-                :key="ri"
-              >
-                <td class="mono num">
-                  {{ ri + 1 }}
-                </td>
-                <td class="mono num dim">
-                  {{ fmtNum(((ri + 1) * predResult.beatMs) / 1000, 1) }}
-                </td>
-                <td
-                  v-for="(v, ci) in row"
-                  :key="ci"
-                  class="mono num"
-                >
-                  {{ fmtNum(v, 3) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  <th
+                    scope="row"
+                    class="mono num"
+                  >
+                    {{ ri + 1 }}
+                  </th>
+                  <td class="mono num dim">
+                    {{ fmtNum(((ri + 1) * predResult.beatMs) / 1000, 1) }}
+                  </td>
+                  <td
+                    v-for="(v, ci) in row"
+                    :key="ci"
+                    class="mono num"
+                  >
+                    {{ fmtNum(v, 3) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <p class="mono dim gate-detail">
-            {{ $t('aml.k1amlx155') }}:{{ predResult.assumptions }}
+            {{ $t('aml.k1amlx155') }}: {{ predResult.assumptions }}
           </p>
-        </template>
+        </section>
       </div>
       <p
         v-else

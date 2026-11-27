@@ -11,8 +11,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { apiErrorMessage } from '@/app/utils/api-error'
+import { apiFetch } from '~/composables/workshop/apiClient'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const { isMobile } = useResponsive()
+const mounted = ref(false)
+const compactList = computed(() => mounted.value && isMobile.value)
 
 interface MemoryItem {
   id: string
@@ -41,12 +45,16 @@ interface MemoryDetail extends MemoryItem {
   revisions: Array<{ revision: number, title: string, content: string, authorKind: string, authorId: string, reason: string, createdAt: string }>
 }
 
-const loading = ref(false)
+const loading = ref(true)
+const listError = ref('')
 const busy = ref(false)
+let listRequest = 0
+let detailRequest = 0
 const items = ref<MemoryItem[]>([])
 const total = ref(0)
 const facets = ref<{ byScope: Record<string, number>, byStatus: Record<string, number>, deleted: number }>({ byScope: {}, byStatus: {}, deleted: 0 })
-const filters = ref<{ q: string, scopeKind: string, status: string, includeDeleted: boolean }>({ q: '', scopeKind: '', status: '', includeDeleted: false })
+const filters = ref<{ q: string, scopeKind?: string, status?: string, includeDeleted: boolean }>({ q: '', includeDeleted: false })
+const appliedFilters = ref({ ...filters.value })
 const page = ref(1)
 const pageSize = 20
 
@@ -65,42 +73,76 @@ const statuses = ['active', 'candidate', 'validated', 'contested', 'retired']
 const scopeLabel = (s: string) => t(`memoryCenter.scope.${s}`)
 const isExperience = computed(() => detail.value?.kind === 'experience')
 
-/**
- * 动态 URL 会触发 Nuxt 生成式路由的深层类型推导（TS2589）。
- * 这里把 `$fetch` 收敛到宽签名：URL 是运行时拼接的字符串，路由类型没有增益。
- */
-type ApiOptions = { method?: string, body?: unknown }
-const api = $fetch as unknown as <T = unknown>(url: string, opts?: ApiOptions) => Promise<T>
+const memoryPath = '/api/workshop/memory'
+const api = <T = unknown>(url: string, opts?: { method: string, body?: unknown }) => apiFetch<T>({
+  base: url,
+  init: opts && { method: opts.method, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) },
+})
+const dateFormat = computed(() => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }))
 
-async function load() {
+function formatDate(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : dateFormat.value.format(date)
+}
+
+async function load(): Promise<void> {
+  const request = ++listRequest
   loading.value = true
+  listError.value = ''
   try {
     const query = new URLSearchParams()
-    if (filters.value.q) query.set('q', filters.value.q)
-    if (filters.value.scopeKind) query.set('scopeKind', filters.value.scopeKind)
-    if (filters.value.status) query.set('status', filters.value.status)
-    if (filters.value.includeDeleted) query.set('includeDeleted', '1')
+    const { q, scopeKind, status, includeDeleted } = appliedFilters.value
+    if (q.trim()) query.set('q', q.trim())
+    if (scopeKind) query.set('scopeKind', scopeKind)
+    if (status) query.set('status', status)
+    if (includeDeleted) query.set('includeDeleted', '1')
     query.set('limit', String(pageSize))
     query.set('offset', String((page.value - 1) * pageSize))
-    const [list, f] = await Promise.all([
-      api(`/api/workshop/memory?${query.toString()}`) as Promise<{ items: MemoryItem[], total: number }>,
-      api(`/api/workshop/memory?facets=1`) as Promise<{ byScope: Record<string, number>, byStatus: Record<string, number>, deleted: number }>,
+    const [list, counts] = await Promise.all([
+      api<{ items: MemoryItem[], total: number }>(`${memoryPath}?${query}`),
+      api<typeof facets.value>(`${memoryPath}?facets=1`),
     ])
-    items.value = list?.items ?? []
-    total.value = list?.total ?? 0
-    facets.value = f ?? facets.value
+    if (request !== listRequest) return
+    const lastPage = Math.max(1, Math.ceil(list.total / pageSize))
+    if (page.value > lastPage) {
+      page.value = lastPage
+      return await load()
+    }
+    items.value = list.items
+    total.value = list.total
+    facets.value = counts
   }
   catch (err) {
-    message.error(apiErrorMessage(err))
+    if (request === listRequest) listError.value = apiErrorMessage(err)
   }
   finally {
-    loading.value = false
+    if (request === listRequest) loading.value = false
   }
 }
 
+function changePage(next: number) {
+  page.value = next
+  void load()
+}
+
+function search() {
+  appliedFilters.value = { ...filters.value }
+  changePage(1)
+}
+
+function statusColor(status: string) {
+  if (status === 'validated') return 'green'
+  if (status === 'candidate') return 'gold'
+  if (status === 'retired') return 'default'
+  return 'blue'
+}
+
 async function open(id: string) {
+  const request = ++detailRequest
   try {
-    detail.value = await api(`/api/workshop/memory/${id}?includeDeleted=1`) as MemoryDetail
+    const result = await api<MemoryDetail>(`${memoryPath}/${encodeURIComponent(id)}?includeDeleted=1`)
+    if (request !== detailRequest) return
+    detail.value = result
     drawerOpen.value = true
     editing.value = false
     annotating.value = ''
@@ -108,17 +150,20 @@ async function open(id: string) {
     deleteReason.value = ''
   }
   catch (err) {
-    message.error(apiErrorMessage(err))
+    if (request === detailRequest) message.error(apiErrorMessage(err))
   }
 }
 
 async function act(fn: () => Promise<unknown>, okText?: string) {
+  if (busy.value) return
+  const request = detailRequest
+  const id = detail.value?.id
   busy.value = true
   try {
     await fn()
     message.success(okText ?? t('memoryCenter.actionDone'))
     await load()
-    if (detail.value) await open(detail.value.id)
+    if (drawerOpen.value && id && request === detailRequest) await open(id)
   }
   catch (err) {
     message.error(apiErrorMessage(err))
@@ -217,134 +262,246 @@ const columns = computed(() => [
   { title: '', key: 'actions', width: 90 },
 ])
 
-onMounted(load)
+onMounted(() => {
+  mounted.value = true
+  void load()
+})
 </script>
 
 <template>
   <div class="aw-memory-page">
-    <header class="head">
-      <h1>{{ t('memoryCenter.title') }}</h1>
-      <p class="hint">
-        {{ t('memoryCenter.subtitle') }}
-      </p>
+    <header class="aw-page-head memory-head">
+      <div>
+        <h1>{{ t('memoryCenter.title') }}</h1>
+        <p class="hint">
+          {{ t('memoryCenter.subtitle') }}
+        </p>
+      </div>
     </header>
 
-    <section class="toolbar">
-      <a-input
-        v-model:value="filters.q"
-        allow-clear
-        :placeholder="t('memoryCenter.searchPlaceholder')"
-        style="max-width: 260px"
-        @press-enter="load"
-      />
-      <a-select
-        v-model:value="filters.scopeKind"
-        allow-clear
-        :placeholder="t('memoryCenter.col.scope')"
-        style="width: 140px"
-      >
-        <a-select-option
-          v-for="s in scopes"
-          :key="s"
-          :value="s"
-        >
-          {{ scopeLabel(s) }}（{{ facets.byScope[s] ?? 0 }}）
-        </a-select-option>
-      </a-select>
-      <a-select
-        v-model:value="filters.status"
-        allow-clear
-        :placeholder="t('memoryCenter.col.status')"
-        style="width: 130px"
-      >
-        <a-select-option
-          v-for="s in statuses"
-          :key="s"
-          :value="s"
-        >
-          {{ s }}（{{ facets.byStatus[s] ?? 0 }}）
-        </a-select-option>
-      </a-select>
-      <a-checkbox v-model:checked="filters.includeDeleted">
-        {{ t('memoryCenter.includeDeleted') }}（{{ facets.deleted }}）
-      </a-checkbox>
-      <a-button
-        type="primary"
-        data-testid="memory-search"
-        @click="load"
-      >
-        {{ t('memoryCenter.search') }}
-      </a-button>
-    </section>
-
-    <a-table
-      :columns="columns"
-      :data-source="items"
-      :loading="loading"
-      row-key="id"
-      size="small"
-      :pagination="{ current: page, pageSize, total, onChange: (p: number) => { page = p; load() } }"
+    <section
+      class="library"
+      :aria-label="t('memoryCenter.title')"
     >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'scope'">
-          <a-tag color="blue">
-            {{ scopeLabel(record.scopeKind) }}
-          </a-tag>
-          <span
-            v-if="record.scopeKey"
-            class="mono"
-          >{{ record.scopeKey.slice(0, 10) }}</span>
-        </template>
-        <template v-else-if="column.key === 'status'">
-          <a-tag :color="record.status === 'validated' ? 'green' : record.status === 'candidate' ? 'gold' : record.status === 'retired' ? 'default' : 'blue'">
-            {{ record.status }}
-          </a-tag>
-        </template>
-        <template v-else-if="column.key === 'author'">
-          <a-tag :color="record.authorKind === 'human' ? 'purple' : 'default'">
-            {{ record.authorKind }}
-          </a-tag>
-        </template>
-        <template v-else-if="column.key === 'title'">
-          <span
-            v-if="record.pinned"
-            title="pinned"
-          >📌</span>
-          <a
-            class="link"
-            @click="open(record.id)"
-          >{{ record.title }}</a>
-          <a-tag
-            v-if="record.deletedAt"
-            color="red"
+      <form
+        class="toolbar"
+        role="search"
+        @submit.prevent="search"
+      >
+        <a-input
+          v-model:value="filters.q"
+          allow-clear
+          :aria-label="t('memoryCenter.search')"
+          :placeholder="t('memoryCenter.searchPlaceholder')"
+          class="search-input"
+        />
+        <a-select
+          v-model:value="filters.scopeKind"
+          allow-clear
+          :aria-label="t('memoryCenter.col.scope')"
+          :placeholder="t('memoryCenter.col.scope')"
+          class="filter-input"
+        >
+          <a-select-option
+            v-for="s in scopes"
+            :key="s"
+            :value="s"
           >
-            {{ t('memoryCenter.deleted') }}
-          </a-tag>
-        </template>
-        <template v-else-if="column.key === 'updatedAt'">
-          <span class="mono">{{ String(record.updatedAt || record.createdAt).slice(0, 16).replace('T', ' ') }}</span>
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <a-button
-            size="small"
-            type="link"
-            data-testid="memory-open"
-            @click="open(record.id)"
+            {{ scopeLabel(s) }}（{{ facets.byScope[s] ?? 0 }}）
+          </a-select-option>
+        </a-select>
+        <a-select
+          v-model:value="filters.status"
+          allow-clear
+          :aria-label="t('memoryCenter.col.status')"
+          :placeholder="t('memoryCenter.col.status')"
+          class="filter-input"
+        >
+          <a-select-option
+            v-for="s in statuses"
+            :key="s"
+            :value="s"
           >
-            {{ t('memoryCenter.open') }}
-          </a-button>
-        </template>
+            {{ s }}（{{ facets.byStatus[s] ?? 0 }}）
+          </a-select-option>
+        </a-select>
+        <a-checkbox v-model:checked="filters.includeDeleted">
+          {{ t('memoryCenter.includeDeleted') }}（{{ facets.deleted }}）
+        </a-checkbox>
+        <a-button
+          type="primary"
+          html-type="submit"
+          data-testid="memory-search"
+          :loading="loading"
+        >
+          {{ t('memoryCenter.search') }}
+        </a-button>
+      </form>
+
+      <div
+        v-if="!loading && !listError"
+        class="result-bar"
+        role="status"
+      >
+        {{ t('memoryCenter.results', { count: total }) }}
+      </div>
+      <AwStateBlock
+        v-if="listError"
+        state="error"
+        :hint="listError"
+        :retry="load"
+      />
+      <AwStateBlock
+        v-if="loading && !items.length"
+        state="loading"
+      />
+      <AwStateBlock
+        v-else-if="!listError && !items.length"
+        state="empty"
+        :title="t('memoryCenter.noMatches')"
+      />
+
+      <template v-if="compactList && items.length">
+        <ul
+          class="memory-list"
+          :aria-busy="loading"
+        >
+          <li
+            v-for="record in items"
+            :key="record.id"
+          >
+            <button
+              class="record-link memory-list-link"
+              type="button"
+              @click="open(record.id)"
+            >
+              <span class="memory-list-title">
+                <span
+                  v-if="record.pinned"
+                  class="i-tabler-pin"
+                  role="img"
+                  :aria-label="t('memoryCenter.pin')"
+                />
+                {{ record.title }}
+              </span>
+              <span
+                class="i-tabler-chevron-right"
+                aria-hidden="true"
+              />
+            </button>
+            <div class="memory-list-meta">
+              <a-tag color="blue">
+                {{ scopeLabel(record.scopeKind) }}
+              </a-tag>
+              <a-tag :color="statusColor(record.status)">
+                {{ record.status }}
+              </a-tag>
+              <a-tag
+                v-if="record.deletedAt"
+                color="red"
+              >
+                {{ t('memoryCenter.deleted') }}
+              </a-tag>
+              <time
+                class="mono"
+                :datetime="record.updatedAt || record.createdAt"
+              >{{ formatDate(record.updatedAt || record.createdAt) }}</time>
+            </div>
+          </li>
+        </ul>
+        <a-pagination
+          v-if="total > pageSize"
+          class="memory-list-pagination"
+          size="small"
+          :current="page"
+          :page-size="pageSize"
+          :total="total"
+          :show-size-changer="false"
+          :disabled="loading"
+          @change="changePage"
+        />
       </template>
-    </a-table>
+      <a-table
+        v-else-if="items.length"
+        :columns="columns"
+        :data-source="items"
+        :loading="loading"
+        :scroll="{ x: 720 }"
+        row-key="id"
+        size="middle"
+        :pagination="{ current: page, pageSize, total, showSizeChanger: false, onChange: changePage }"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'scope'">
+            <a-tag color="blue">
+              {{ scopeLabel(record.scopeKind) }}
+            </a-tag>
+            <span
+              v-if="record.scopeKey"
+              class="mono"
+            >{{ record.scopeKey.slice(0, 10) }}</span>
+          </template>
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="statusColor(record.status)">
+              {{ record.status }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'author'">
+            <a-tag :color="record.authorKind === 'human' ? 'purple' : 'default'">
+              {{ record.authorKind }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'title'">
+            <button
+              class="record-link"
+              type="button"
+              @click="open(record.id)"
+            >
+              <span
+                v-if="record.pinned"
+                class="i-tabler-pin"
+                :title="t('memoryCenter.pin')"
+                :aria-label="t('memoryCenter.pin')"
+                role="img"
+              />
+              {{ record.title }}
+            </button>
+            <a-tag
+              v-if="record.deletedAt"
+              color="red"
+            >
+              {{ t('memoryCenter.deleted') }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'updatedAt'">
+            <time
+              class="mono"
+              :datetime="record.updatedAt || record.createdAt"
+            >{{ formatDate(record.updatedAt || record.createdAt) }}</time>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <a-button
+              size="small"
+              type="link"
+              data-testid="memory-open"
+              @click="open(record.id)"
+            >
+              {{ t('memoryCenter.open') }}
+            </a-button>
+          </template>
+        </template>
+      </a-table>
+    </section>
 
     <a-drawer
       v-model:open="drawerOpen"
-      :width="620"
+      width="min(100vw, 620px)"
       :title="detail?.title ?? t('memoryCenter.detail')"
+      @close="detailRequest++"
     >
       <template v-if="detail">
         <a-descriptions
-          :column="2"
+          :column="compactList ? 1 : 2"
           size="small"
           bordered
         >
@@ -527,24 +684,29 @@ onMounted(load)
           >
             {{ t('memoryCenter.withdraw') }}
           </a-button>
-          <a-popconfirm
+          <a-input
+            v-if="!detail.deletedAt"
+            v-model:value="deleteReason"
+            :aria-label="t('memoryCenter.field.reason')"
+            :placeholder="t('memoryCenter.field.reason')"
+            size="small"
+            class="delete-reason"
+          />
+          <ConfirmPopover
             v-if="!detail.deletedAt"
             :title="t('memoryCenter.confirmSoftDelete')"
+            :ok-text="t('memoryCenter.softDelete')"
+            :disabled="busy"
             @confirm="softDelete"
           >
-            <a-input
-              v-model:value="deleteReason"
-              :placeholder="t('memoryCenter.field.reason')"
-              size="small"
-              style="width: 180px"
-            />
             <a-button
               size="small"
               danger
+              :disabled="busy"
             >
               {{ t('memoryCenter.softDelete') }}
             </a-button>
-          </a-popconfirm>
+          </ConfirmPopover>
           <a-button
             v-if="detail.deletedAt"
             size="small"
@@ -553,18 +715,21 @@ onMounted(load)
           >
             {{ t('memoryCenter.restore') }}
           </a-button>
-          <a-popconfirm
+          <ConfirmPopover
             v-if="detail.deletedAt"
             :title="t('memoryCenter.confirmPurge')"
+            :ok-text="t('memoryCenter.purge')"
+            :disabled="busy"
             @confirm="purge"
           >
             <a-button
               size="small"
               danger
+              :disabled="busy"
             >
               {{ t('memoryCenter.purge') }}
             </a-button>
-          </a-popconfirm>
+          </ConfirmPopover>
         </a-space>
       </template>
     </a-drawer>
@@ -572,16 +737,55 @@ onMounted(load)
 </template>
 
 <style scoped>
-.aw-memory-page { padding: 20px 24px 40px; }
-.head h1 { margin: 0; font-size: 20px; }
-.hint { margin: 4px 0 16px; color: var(--aw-text-3, #888); font-size: 13px; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
-.link { cursor: pointer; }
-.mono { font-family: var(--aw-font-mono, ui-monospace, monospace); font-size: 12px; color: var(--aw-text-3, #888); margin-left: 6px; }
-.block { margin-top: 14px; }
-.content { white-space: pre-wrap; line-height: 1.6; }
+.aw-memory-page { min-width: 0; padding-bottom: 32px; }
+.memory-head { align-items: flex-start; }
+.hint { max-width: 70ch; margin: 6px 0 0; color: var(--ink-soft); font-size: 14px; line-height: 1.6; }
+.library { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-raised); }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px; }
+.search-input { flex: 1 1 240px; min-width: 0; }
+.filter-input { flex: 0 1 148px; min-width: 112px; }
+.result-bar { padding: 4px 16px 12px; color: var(--ink-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
+.library :deep(.aw-state-skeleton) { margin-inline: 16px; }
+.library :deep(.ant-pagination) { padding-inline: 16px; }
+.record-link {
+  max-width: 100%;
+  border: 0;
+  padding: 3px 0;
+  color: var(--ink);
+  background: transparent;
+  font-weight: 600;
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.record-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.memory-list { margin: 0; padding: 0; list-style: none; }
+.memory-list > li { padding: 6px 12px 13px; border-top: 1px solid var(--line); }
+.memory-list-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding-block: 8px;
+  line-height: 1.4;
+}
+.memory-list-title { min-width: 0; }
+.memory-list-link > .i-tabler-chevron-right { flex: none; color: var(--ink-soft); }
+.memory-list-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.memory-list-meta :deep(.ant-tag) { margin-inline-end: 0; }
+.memory-list-pagination { margin-block: 12px; }
+.mono { font-size: 12px; color: var(--ink-faint); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.block { margin-top: 18px; }
+.content { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
 .mt { margin-top: 8px; }
-.notes { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; font-size: 13px; }
-.notes li { border-bottom: 1px dashed var(--aw-border, #eee); padding-bottom: 6px; }
-@media (max-width: 760px) { .aw-memory-page { padding: 12px; } }
+.delete-reason { width: min(180px, 100%); }
+.notes { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 8px; font-size: 14px; }
+.notes li { border-bottom: 1px solid var(--line); padding-bottom: 8px; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .toolbar { gap: 10px; padding: 12px; }
+  .search-input { flex-basis: 100%; }
+  .filter-input { flex: 1 1 120px; }
+}
 </style>

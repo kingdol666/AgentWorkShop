@@ -34,7 +34,12 @@ const { t } = useI18n()
         >{{ t('home.writeFailing') }}</span>
       </span>
     </header>
-    <ClientOnly>
+    <AwStateBlock
+      v-if="writesTotal === 0"
+      state="empty"
+      :title="t('home.noWriteAttempts')"
+    />
+    <ClientOnly v-else>
       <AwChart
         :option="option"
         class="chart h240"

@@ -286,6 +286,7 @@ tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 
 /* ── 预测控制台 ── */
 .inp-sel {
+  max-width: 100%;
   padding: 5px 10px;
   font-size: 12px;
   color: var(--ink);
@@ -293,13 +294,28 @@ tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-chip);
 }
-.pc-body { margin-top: 4px; }
+.pc-body { min-width: 0; margin-top: 4px; }
 .io-grid { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 10px; font-size: 11.5px; color: var(--ink-soft); }
 .io-item b { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
-.pc-form { display: grid; grid-template-columns: minmax(300px, 3fr) minmax(220px, 2fr); gap: 12px 18px; }
+.pc-form { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px 18px; }
 @media (max-width: 1100px) {
-  .pc-form { grid-template-columns: 1fr; }
+  .pc-form { grid-template-columns: minmax(0, 1fr); }
 }
+.forecast-result { margin-top: 14px; border-top: 1px solid var(--line); }
+.forecast-scroll {
+  max-height: min(26rem, 55dvh);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+}
+.forecast-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.forecast-table { border-collapse: separate; border-spacing: 0; }
+.forecast-table :is(th, td) { white-space: nowrap; }
+.forecast-table thead th { position: sticky; top: 0; z-index: 2; background: var(--paper-deep); }
+.forecast-table tr > th:first-child { position: sticky; inset-inline-start: 0; background: var(--paper-raised); }
+.forecast-table thead th:first-child { z-index: 3; }
+.forecast-table tbody th { z-index: 1; font-weight: 500; }
+.forecast-result .gate-detail { overflow-wrap: anywhere; }
 .pc-field { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; font-size: 12px; color: var(--ink-soft); }
 .pc-side { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 .pc-side .ghost-btn { align-self: flex-start; margin-top: 8px; }
@@ -317,29 +333,9 @@ tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .inp:focus { outline: none; border-color: var(--accent); }
 .hint { margin: 8px 0 0; font-size: 11.5px; line-height: 1.6; }
 
-/* ── 新建数据集弹窗(工业风:纸面 + 发丝线,与 daq 向导同语) ── */
-.modal-mask {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 8vh 16px 16px;
-  background: color-mix(in srgb, var(--ink) 45%, transparent);
-  backdrop-filter: blur(3px);
-}
-.modal {
-  width: min(760px, 100%);
-  max-height: 84vh;
-  padding: 18px 22px 16px;
-  overflow-y: auto;
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: 14px;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
-}
-.m-title { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+/* ── 新建数据集弹窗 ── */
+.dataset-form { min-width: 0; }
+.dataset-form .inp { min-width: 0; }
 .f-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; margin-bottom: 10px; }
 @media (max-width: 720px) {
   .f-grid { grid-template-columns: 1fr; }
@@ -353,7 +349,8 @@ tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .node-row .grow { flex: 1 1 auto; }
 .node-row .sel { flex: 0 0 220px; }
 .m-err { margin: 6px 0; font-size: 12.5px; color: var(--tone-danger-dot); }
-.m-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
+.m-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.m-actions :deep(.ant-btn + .ant-btn) { margin-inline-start: 0; }
 
 .empty { margin: 6px 0; padding: 18px 0; font-size: 12.5px; color: var(--ink-faint); text-align: center; }
 
@@ -412,12 +409,10 @@ tr.best td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   .zone { padding: 12px 12px 14px; }
   .f-grid { grid-template-columns: 1fr; }
   .det-grid { grid-template-columns: 1fr; }
-  .mx-actions,
-  .m-actions { flex-wrap: wrap; }
-  .modal { padding: 16px; }
+  .mx-actions { flex-wrap: wrap; }
   .node-row { flex-wrap: wrap; }
-  .node-row .sel { flex: 1 1 100%; }
-  .modal-mask { padding: 4vh 10px 12px; }
+  .node-row .grow { flex-basis: 100%; }
+  .node-row .sel { flex: 1 1 0; }
 }
 
 @media (max-width: 640px) {

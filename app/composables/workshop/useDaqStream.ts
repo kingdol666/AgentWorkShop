@@ -269,6 +269,8 @@ const createStore = () => {
   }
 
   async function load(): Promise<void> {
+    // This live snapshot belongs to the authenticated browser, not the SSR process.
+    if (import.meta.server) return
     try {
       const data = await api<{ controller: DaqControllerState, nodes: DaqNodeView[], meta: DaqBackendMeta, driverAvailable?: Record<string, boolean>, drivers?: DaqDriverCatalogEntry[], infra?: DaqInfraState, templates?: DaqTemplateDef[] }>('')
       // 快照合并:hist 是客户端读数流资产,轮询重载不得清零;

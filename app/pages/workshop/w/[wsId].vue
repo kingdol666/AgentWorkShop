@@ -64,6 +64,7 @@ const chatSessionId = ref<string | null>(null)
 function openChatSession(sessionId: string | null): void {
   chatSessionId.value = sessionId
   view.value = 'chat'
+  if (narrowUI.value) leftOpen.value = false
 }
 // 切频道 = 切会话上下文：回到群聊，避免把 A 频道的会话选中带到 B 频道。
 watch(channelId, () => {
@@ -83,14 +84,59 @@ const {
   openTask,
 } = useWorkspacePanels(wsId)
 
+const harness = ref<HTMLElement | null>(null)
+const topbar = ref<InstanceType<typeof ConsoleTopbar> | null>(null)
+const leftPane = ref<InstanceType<typeof ConsoleLeftPane> | null>(null)
+const drawerOpen = computed(() => narrowUI.value && leftOpen.value)
+const overlayOpen = computed(() => agentDrawerOpen.value || taskDrawerOpen.value || paletteOpen.value || a2aDebugOpen.value)
+let restoreTriggerAfterOverlay = false
+
+function closeChannelDrawer(): void {
+  leftOpen.value = false
+}
+
+watch(drawerOpen, (open) => {
+  restoreTriggerAfterOverlay = !open && narrowUI.value && overlayOpen.value
+  if (overlayOpen.value) return
+  if (open) leftPane.value?.focusDrawer()
+  else if (narrowUI.value) topbar.value?.focusDrawerTrigger()
+  else if (document.activeElement === document.body) harness.value?.focus({ preventScroll: true })
+}, { flush: 'post' })
+
+watch(overlayOpen, (open) => {
+  if (open) return
+  const focusOutside = !harness.value?.contains(document.activeElement)
+  if (focusOutside && drawerOpen.value) leftPane.value?.focusDrawer()
+  else if (focusOutside && restoreTriggerAfterOverlay && narrowUI.value) topbar.value?.focusDrawerTrigger()
+  restoreTriggerAfterOverlay = false
+}, { flush: 'post' })
+
+function onShellKey(ev: KeyboardEvent): void {
+  // Palette pops out to body; Escape must still dismiss it if its input didn't take focus.
+  if (paletteOpen.value && ev.key === 'Escape' && !ev.defaultPrevented && !ev.isComposing && ev.keyCode !== 229) {
+    ev.preventDefault()
+    paletteOpen.value = false
+    return
+  }
+  if (overlayOpen.value) return
+  if (drawerOpen.value) {
+    leftPane.value?.onDrawerKey(ev)
+    return
+  }
+  if (ev.target instanceof Node && ev.target !== document.body && !harness.value?.contains(ev.target)) return
+  onViewKey(ev)
+}
+onMounted(() => window.addEventListener('keydown', onShellKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onShellKey))
+
 useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop` })
 </script>
 
 <template>
   <div
+    ref="harness"
     class="harness"
     tabindex="-1"
-    @keydown="onViewKey"
   >
     <div class="main">
       <!-- @提及悬停信息卡(文档级委托;时间线/lanes 全树生效) -->
@@ -106,14 +152,16 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         @open-palette="paletteOpen = true"
       />
 
-      <!-- 窄屏抽屉遮罩:点空白收起(不盖住底部 Composer,输入不被"锁在"抽屉后) -->
+      <!-- 窄屏抽屉是模态覆盖层；背景保持挂载，不重置 Composer 草稿或滚动。 -->
       <div
-        v-if="narrowUI && leftOpen"
+        v-if="drawerOpen"
         class="drawer-scrim"
-        @click="leftOpen = false"
+        aria-hidden="true"
+        @click="closeChannelDrawer"
       />
       <ConsoleLeftPane
         v-if="leftOpen"
+        ref="leftPane"
         :ws-id="wsId"
         :channel-id="channelId"
         :active-session-id="chatSessionId"
@@ -122,6 +170,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         @open-agent="openAgentInChannel"
         @open-palette="paletteOpen = true"
         @open-session="openChatSession"
+        @close="closeChannelDrawer"
       />
       <workshop-pane-splitter
         v-if="leftOpen && !narrowUI"
@@ -131,8 +180,12 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
       />
 
       <!-- 中央列:标题条 + 中部视图 + Composer(对话语义的主轴,ChatGPT 同构) -->
-      <section class="center-col">
+      <section
+        class="center-col"
+        :inert="drawerOpen"
+      >
         <ConsoleTopbar
+          ref="topbar"
           v-model:view="view"
           v-model:left-open="leftOpen"
           v-model:right-open="rightOpen"
@@ -143,7 +196,6 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
           :state-color="stateColor"
           :conn-state="conn.state"
           :last-seq="lastSeq"
-          @view-key="onViewKey"
           @open-a2a="a2aDebugOpen = true"
           @open-palette="paletteOpen = true"
         />
@@ -222,8 +274,8 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
    所以窄屏换一台仪器,而不是把应用框缩小:
 
      · 中部视图(时间线 / lanes / 任务板 / 检查器)→ 由顶栏切换条承载,
-       一次只挂载一区,顶部切换条独占一行、可横扫;
-     · 频道会话列表 → 覆盖式抽屉(点遮罩/Esc/选中频道收起),不再占位;
+       一次只挂载一区,顶部切换条独占一行、按可用宽度换行;
+     · 频道会话列表 → 模态抽屉(遮罩/Esc/选中频道或会话收起),不再占位;
      · 图标轨不渲染(视图切换并入顶栏);拖拽分隔条隐藏;
      · 触摸目标 ≥40px、标签 ≥11.5px。
 

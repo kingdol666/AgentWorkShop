@@ -21,6 +21,7 @@
       :loading="opsLog.loading.list"
       :error="opsLog.error.list"
       :active-kind="feed.q.kind"
+      :retry="feed.doQuery"
       @filter="onStatFilter"
     />
   </div>
@@ -65,5 +66,5 @@ export default { name: 'OperationsPage' }
 </script>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 12px; }
+.page { display: flex; flex-direction: column; gap: var(--gap-block); min-width: 0; }
 </style>
