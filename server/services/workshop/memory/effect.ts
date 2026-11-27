@@ -18,7 +18,7 @@ import { recordOps } from '../ops/ops'
 export interface InjectionRef {
   id: string
   kind: string
-  source: 'brief' | 'primer' | 'curated' | 'shared'
+  source: 'brief' | 'primer' | 'curated' | 'shared' | 'graph' | 'search'
   scopeKind?: string
   scopeKey?: string
 }

@@ -45,6 +45,8 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       return this.saveExperience({ ...input, scope: expScope })
     }
     const shared = input.scope === 'shared'
+    // undefined = 沿用运行时会话；显式 null = 调用方要求频道级（session_scope=false），不得回退。
+    const sid = input.sessionId !== undefined ? input.sessionId : (this.opts.sessionId ?? null)
     const rawKey = input.dedupKey?.trim() || `agent-save:${randomUUID().slice(0, 8)}`
     // 共享域命名空间:同 channel 多 agent 各自的沉淀互不覆盖
     const dedupKey = shared ? `agent:${this.opts.agentId}:${rawKey}` : rawKey
@@ -118,12 +120,16 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       content: segmentCJK(content).slice(0, CONTENT_STORE_LIMIT),
       importance: input.importance ?? (shared ? 0.85 : 0.7),
       taskId: null,
-      sessionId: input.sessionId ?? '',
+      sessionId: sid ?? '',
       dedupKey: finalKey,
     })
     if (write.outcome === 'protected') {
       return { scope: input.scope, dedupKey: finalKey, outcome: 'protected' }
     }
+    // 作用域必须落库：session 私有行 scope_kind=session；无会话的私有/共享行落 channel。
+    const scopeKind = shared ? 'channel' : (sid ? 'session' : 'channel')
+    const scopeKey = scopeKind === 'session' ? (sid ?? '') : ''
+    this.repo.setScope(write.id, scopeKind, scopeKey)
     await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, owner, finalKey, content)
     // 共享约定进入简报"团队共享约定"行
     if (shared) await this.updateBrief()
@@ -146,7 +152,8 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     if (this.opts.industrialScopeEnabled !== true) {
       throw new Error('industrial experience requires production_line_integrated mode')
     }
-    const policy = this.repo.sessionMemoryPolicy(input.sessionId ?? '')
+    const sid = input.sessionId !== undefined ? input.sessionId : (this.opts.sessionId ?? null)
+    const policy = this.repo.sessionMemoryPolicy(sid ?? '')
     if (policy !== 'shared') {
       throw new Error(`memory policy "${policy}" 不允许写入 ${input.scope} 作用域经验(需会话 memoryPolicy=shared)`)
     }
@@ -169,7 +176,8 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       content: segmentCJK(input.content).slice(0, CONTENT_STORE_LIMIT),
       importance: input.importance ?? 0.7,
       taskId: input.taskId,
-      sessionId: input.sessionId ?? '',
+      // line/global 是跨会话/跨频道经验：session_id 必须为空，否则自动注入会被会话过滤挡掉。
+      sessionId: '',
       dedupKey,
       outcome: 'unknown',
       evidence: { taskIds: [input.taskId] },
@@ -214,7 +222,18 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       .map(p => ('text' in p ? p.text : ''))
       .join(' ')
       .trim()
-    const content = deliverable || task.description || task.title
+    let content = deliverable || task.description || task.title
+    // 失败/取消终态:成功任务沉淀的是成果,失败任务沉淀的是教训 —— 没有收口原因的
+    // 失败行对整理与召回毫无价值。把 closeReason 与最近一条失败回执并入正文。
+    if (task.state === 'FAILED' || task.state === 'CANCELED') {
+      const notes: string[] = []
+      if (task.closeReason) notes.push(`收口原因:${task.closeReason}`)
+      const lastFailure = [...task.history].reverse().find(
+        h => h.metadata?.['x-aw-system'] === 'task-failure' || h.metadata?.['x-aw-error-code'],
+      )
+      if (lastFailure) notes.push(`失败回执:${partsText(lastFailure.parts).slice(0, 300)}`)
+      if (notes.length > 0) content = `${notes.join(';')}\n${content}`
+    }
     const write = this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: this.opts.agentId,
@@ -229,6 +248,9 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       dedupKey: `task:${task.id}`,
     })
     if (write.outcome === 'protected') return
+    // 任务过程记忆必须落对作用域：有会话 → session 分区；无会话 → 频道过程记录。
+    const sid = task.sessionId || this.opts.sessionId || ''
+    this.repo.setScope(write.id, sid ? 'session' : 'channel', sid)
     await this.vectorize(content, `task:${task.id}`)
     await this.updateBrief()
   }
@@ -254,6 +276,8 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       dedupKey: `peer:${msg.messageId}`,
     })
     if (write.outcome === 'protected') return
+    const sid = sessionId ?? (msg.metadata?.['x-aw-session-id'] as string | undefined) ?? ''
+    this.repo.setScope(write.id, sid ? 'session' : 'channel', sid)
     await this.vectorize(content, `peer:${msg.messageId}`)
   }
 
@@ -269,6 +293,9 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
   async recordDialog(msg: A2AMessage, replyText: string, sessionId?: string | null): Promise<void> {
     const mode = this.repo.memoryAccessMode(this.opts.channelId, sessionId ?? this.opts.sessionId)
     if (mode === 'disabled' || mode === 'readonly') return
+    const sid = sessionId ?? this.opts.sessionId ?? ''
+    // 对话沉淀必须绑定会话；无会话的群聊内容不落库（避免以 '' 会话行跨会话注入）。
+    if (!sid) return
     const ask = partsText(msg.parts).trim()
     const answer = replyText.trim()
     if (!ask || !answer) return
@@ -284,10 +311,11 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
       content: segmentCJK(content).slice(0, CONTENT_STORE_LIMIT),
       importance: 0.4,
       taskId: msg.taskId ?? null,
-      sessionId: sessionId ?? '',
+      sessionId: sid,
       dedupKey,
     })
     if (write.outcome === 'protected') return
+    this.repo.setScope(write.id, 'session', sid)
     // 30 天过期（维护任务 expireSweep → retired；保留行与审计，不硬删）
     const expiresAt = new Date(Date.now() + 30 * 86_400_000).toISOString()
     try {

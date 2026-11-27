@@ -30,12 +30,14 @@ import { parseJson } from '../../db/database'
 import { reflectExperience } from '../memory/reflector'
 import { recordParameterClaim } from '../../experience/claims'
 import { backfillOperationEvidence } from '../../daq/provenance-evidence'
-import { runCuratorSweep } from '../../memory/curator'
+import { startCuratorScheduler, type CuratorScheduler } from '../../memory/curator/scheduler'
+import { startMemoryGraphScheduler, type MemoryGraphScheduler } from '../../memory/graph/scheduler'
 import { attributeMemoryInjection, cleanupInjectionLogs } from '../../memory/effect'
 import { collectInterventionFact, collectTaskFact, listUnreflectedInterventions } from '../memory/reflect-collector'
 import { registerInterventionAssessmentHook } from '../../aml/intervention-ledger'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { verifyAllPending, verifyPendingInterventions } from '../../verify/blind-verifier'
+import { harvestTerminalTaskMemory } from './terminal-harvest'
 
 /** §7.1 事件名 → 展示标签(tasks 状态机 → 设计文档事件契约) */
 const EVENT_LABELS: Record<string, string> = {
@@ -135,8 +137,10 @@ export abstract class ManagerState extends ManagerContracts {
    */
   protected readonly deferredChannelRecycles = new Map<string, string>()
   protected memoryTimer: NodeJS.Timeout | null = null
-  /** 批次 E：Curator 30min 单飞定时器（与 6h 维护解耦；失败只记日志） */
-  protected curatorTimer: NodeJS.Timeout | null = null
+  /** 批次 E：Curator 定时器（单飞/可停/可配 interval；默认 30min） */
+  protected curatorScheduler: CuratorScheduler | null = null
+  /** Memory Graph：知识网络整理定时器（单飞/可停；默认 30min） */
+  protected graphScheduler: MemoryGraphScheduler | null = null
   /** §7.3 outbox 独立补偿定时器(短周期重试;与记忆维护 6h 周期解耦) */
   protected outboxTimer: NodeJS.Timeout | null = null
   protected chatDeliveryTimer: NodeJS.Timeout | null = null
@@ -301,17 +305,19 @@ export abstract class ManagerState extends ManagerContracts {
       this.runGroupChatMaintenance()
     }, memorySettings().maintenance_ms)
     this.memoryTimer.unref?.()
-    // 批次 E：Curator 汇整（30min；单进程单飞；未配置/失败只记日志）
-    if (process.env.AW_MEMORY_CURATOR_DISABLED !== '1') {
-      this.curatorTimer = setInterval(() => {
-        void runCuratorSweep(this.deps.db, {
-          limit: 2,
-          useLlm: Boolean(process.env.AW_MEMORY_CURATOR_LLM_URL?.trim()),
-        }).catch((err) => {
-          log.warn('[memory] Curator 汇整失败:', err instanceof Error ? err.message : err)
-        })
-      }, 30 * 60_000)
-      this.curatorTimer.unref?.()
+    // 批次 E：Curator 汇整（默认 30min；单飞/可停/可配；未配置/失败只记日志）
+    try {
+      this.curatorScheduler = startCuratorScheduler(this.deps.db)
+    }
+    catch (err) {
+      log.warn('[memory] Curator 调度启动失败:', err instanceof Error ? err.message : err)
+    }
+    // Memory Graph：知识网络整理（默认 30min；单飞/可停/启动 stale run 回收）
+    try {
+      this.graphScheduler = startMemoryGraphScheduler(this.deps.db)
+    }
+    catch (err) {
+      log.warn('[memory-graph] 调度启动失败:', err instanceof Error ? err.message : err)
     }
     // §7.3 ④ outbox 独立短周期消费:重试节奏不能被 6h 的 memory.maintenance_ms 拖住
     this.outboxTimer = setInterval(() => {
@@ -528,6 +534,15 @@ export abstract class ManagerState extends ManagerContracts {
               this.projectTaskChangeSink?.({ taskId: e.taskId, channelId: e.channelId, state: e.state })
             }
             catch { /* 项目回调失败不得影响任务状态机 */ }
+          }
+          // 失败/取消终态的记忆沉淀兜底：worker 回合被中断（cancel/watchdog abort）时
+          // processMessage 的沉淀面整体被跳过，任务树取消 / ROOT_TIMEOUT / 成员裁撤收口
+          // 也根本不经过回合路径 —— 这些终态此前一条记忆行都不留，RSI 闭环里「失败
+          // 教训」一环缺失。在统一迁移钩子补齐 harvest（与 execute.ts complete 的
+          // recordTaskMemory 同语义；recordTaskOutcome 幂等 upsert，与回合落定路径
+          // 重复触发无害）。判定与运行时解析抽在 terminal-harvest.ts（可单测）。
+          if (e.task && (e.state === 'FAILED' || e.state === 'CANCELED')) {
+            harvestTerminalTaskMemory(this.channels.get(e.channelId)?.getAgents(), e.task, e.state)
           }
           // 事件驱动调度:任务状态变化即唤醒该频道调度循环(空闲退避即刻恢复快节奏)。
           //

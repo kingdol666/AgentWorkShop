@@ -17,9 +17,14 @@ export default defineApiHandler(async (event) => {
     const row = getAmlRuntime().db.prepare('SELECT owner_user_id AS owner FROM channels WHERE id = ?').get(channelId) as { owner?: string | null } | undefined
     if (!row || row.owner !== user.id) throw new AppError(403, 'FORBIDDEN', '仅频道 owner/管理员可导出')
   }
+  const sessionId = typeof q.sessionId === 'string' ? q.sessionId.trim() : ''
+  if (sessionId) {
+    const session = getAmlRuntime().db.prepare('SELECT id FROM channel_sessions WHERE id = ? AND channel_id = ?').get(sessionId, channelId)
+    if (!session) throw new AppError(404, 'SESSION_NOT_FOUND', '会话不存在或不属于该频道')
+  }
   const jsonl = exportMemoryJsonl(getAmlRuntime().db, {
     channelId,
-    sessionId: typeof q.sessionId === 'string' ? q.sessionId : null,
+    sessionId: sessionId || null,
     includeDeleted: q.includeDeleted === '1',
   })
   return { jsonl, bytes: Buffer.byteLength(jsonl, 'utf8') }

@@ -545,7 +545,7 @@
       "additionalProperties": false
     },
     "noRefs": true,
-    "riskClass": "read"
+    "riskClass": "write"
   },
   {
     "name": "improvement_list",
@@ -4468,7 +4468,8 @@
         "revision": { "type": "number", "description": "rollback 目标版本" }
       }
     },
-    "noRefs": true
+    "noRefs": true,
+    "riskClass": "write"
   },
   {
     "name": "memory_files",
@@ -4487,7 +4488,8 @@
         "after_line": { "type": "number", "description": "insert 行号(0 基,缺省追加)" }
       }
     },
-    "noRefs": true
+    "noRefs": true,
+    "riskClass": "write"
   },
   {
     "name": "project_get_status",
@@ -4999,6 +5001,51 @@
         "limit": {
           "type": "number",
           "description": "最多返回条数（默认 50，最大 200）"
+        }
+      }
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "memory_graph_query",
+    "label": "Memory Graph Query",
+    "description": "读取本频道知识网络（实体/关系/社区/证据）：按 query 做实体种子+多跳扩展，或按 entity 聚焦邻居。只读，不修改记忆/图谱/配方/设备。用于多跳研究、追溯经验来源与检查冲突。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "自然语言查询（可选；与 entity 二选一）"
+        },
+        "entity": {
+          "type": "string",
+          "description": "实体 id 或名称（可选；聚焦该实体）"
+        },
+        "hops": {
+          "type": "number",
+          "description": "扩展跳数 1-2（默认 2）"
+        },
+        "relation": {
+          "type": "string",
+          "description": "只保留某类关系（可选）"
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["channel", "session", "shared", "line", "product"],
+          "description": "图谱分区：channel(默认)/session/shared(共享区)/line/product"
+        },
+        "scope_key": {
+          "type": "string",
+          "description": "分区键：lineId / productId（shared 不需要；session 恒为当前执行会话，跨会话会被拒绝）"
+        },
+        "as_of": {
+          "type": "string",
+          "description": "按时间回看（ISO 时间；可选）"
+        },
+        "limit": {
+          "type": "number",
+          "description": "最多节点数（默认 60，最大 200）"
         }
       }
     },

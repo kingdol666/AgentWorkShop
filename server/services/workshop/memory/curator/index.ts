@@ -74,9 +74,13 @@ export function selectCuratorSources(db: DatabaseSync, channelId: string): Curat
                        WHERE h.experience_id = m.id), 'none') AS deployment
        FROM agent_memories m
       WHERE m.channel_id = ? AND m.deleted_at IS NULL
-        AND m.kind IN ('semantic', 'episodic-task', 'episodic-peer', 'experience')
+        AND m.kind IN ('semantic', 'episodic-task', 'episodic-peer', 'episodic-team-task', 'experience')
         AND m.status NOT IN ('retired')
-        AND (m.session_id = '' OR m.kind = 'experience')
+        AND (
+          (m.kind = 'semantic' AND m.agent_id = '__team__')
+          OR (m.kind IN ('episodic-task', 'episodic-peer', 'episodic-team-task') AND m.session_id = '')
+          OR m.kind = 'experience'
+        )
         AND (m.kind != 'experience' OR (m.status = 'validated' AND COALESCE(
               (SELECT v.deployment FROM experience_heads h JOIN experience_versions v ON v.version_id = h.version_id
                 WHERE h.experience_id = m.id), 'none') IN ('active', 'canary')))
@@ -211,6 +215,26 @@ function finishRun(db: DatabaseSync, runId: string, patch: {
  * 返回 run 结果；不抛错（失败记录在 run 行）。
  */
 export async function runCuratorForChannel(
+  db: DatabaseSync,
+  channelId: string,
+  opts: { force?: boolean, useLlm?: boolean, minSources?: number } = {},
+): Promise<CuratorResult> {
+  // 进程内单飞：定时 sweep 与人工 regenerate 不得并发改写同一频道手册。
+  if (curatorRunning.has(channelId)) {
+    return { status: 'skipped_noop', sourceCount: 0, mode: opts.useLlm ? 'llm' : 'template', fallbackReason: 'already_running', runId: '' }
+  }
+  curatorRunning.add(channelId)
+  try {
+    return await runCuratorForChannelInner(db, channelId, opts)
+  }
+  finally {
+    curatorRunning.delete(channelId)
+  }
+}
+
+const curatorRunning = new Set<string>()
+
+async function runCuratorForChannelInner(
   db: DatabaseSync,
   channelId: string,
   opts: { force?: boolean, useLlm?: boolean, minSources?: number } = {},
@@ -350,7 +374,7 @@ export async function runCuratorSweep(db: DatabaseSync, opts: { limit?: number, 
   const channels = db.prepare(
     `SELECT m.channel_id AS channelId, MAX(m.updated_at) AS lastAt FROM agent_memories m
       JOIN channels c ON c.id = m.channel_id
-      WHERE m.kind IN ('semantic','episodic-task','episodic-peer','experience') AND m.deleted_at IS NULL
+      WHERE m.kind IN ('semantic','episodic-task','episodic-peer','episodic-team-task','experience') AND m.deleted_at IS NULL
         AND c.memory_access_mode = 'inherit'
       GROUP BY m.channel_id ORDER BY lastAt DESC LIMIT ?`,
   ).all(Math.min(Math.max(opts.limit ?? 3, 1), 10)) as Array<{ channelId: string }>

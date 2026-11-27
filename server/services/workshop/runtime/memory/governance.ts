@@ -18,8 +18,13 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
    * 三路统一入口(平台主动 compact / omp 阈值自动 / overflow),dedupKey 含序号防互踩。
    */
   async recordSessionCompaction(input: { summary: string, tokensBefore?: number, tokensAfter?: number, reason?: string, sessionId?: string | null }): Promise<{ dedupKey: string }> {
+    const sid = input.sessionId ?? this.opts.sessionId ?? ''
+    const mode = this.repo.memoryAccessMode(this.opts.channelId, sid || null)
+    // 压缩摘要属于会话私域：无会话不写（否则 session_id='' 会跨会话注入），disabled/readonly 不写。
+    if (!sid || mode === 'disabled' || mode === 'readonly') return { dedupKey: '' }
     this.sessionSeq += 1
-    const dedupKey = `session:${this.opts.agentId}:c${this.sessionSeq}`
+    // 热切换会重建 AgentMemory 实例、sessionSeq 归零；带会话与时间片避免覆盖旧摘要。
+    const dedupKey = `session:${this.opts.agentId}:${sid}:c${this.sessionSeq}:${Date.now().toString(36)}`
     const meta: string[] = []
     if (typeof input.tokensBefore === 'number') meta.push(`压缩前 ${input.tokensBefore} tok`)
     if (typeof input.tokensAfter === 'number') meta.push(`压缩后约 ${input.tokensAfter} tok`)
@@ -34,10 +39,11 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       content: segmentCJK(`${head}${input.summary}`).slice(0, CONTENT_STORE_LIMIT),
       importance: 0.75,
       taskId: null,
-      sessionId: input.sessionId ?? '',
+      sessionId: sid,
       dedupKey,
     })
     if (write.outcome === 'protected') return { dedupKey }
+    this.repo.setScope(write.id, 'session', sid)
     await this.vectorize(input.summary, dedupKey)
     return { dedupKey }
   }
@@ -47,10 +53,15 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
    * 确定性层恒注入,无需被检索;FTS 仍可命中)。数据源=本人已有记忆行,零额外查询依赖。
    */
   async updateBrief(): Promise<void> {
+    const sid = this.opts.sessionId ?? ''
+    const mode = this.repo.memoryAccessMode(this.opts.channelId, sid || null)
+    if (mode === 'disabled' || mode === 'readonly') return
+    // 简报按会话隔离：只聚合当前会话与频道级行，避免会话 B 看到会话 A 的任务标题/结论。
+    const inScope = (r: { sessionId?: string | null }): boolean => (r.sessionId ?? '') === sid || (r.sessionId ?? '') === ''
     const own = this.repo.listByAgentChannel(this.opts.channelId, this.opts.agentId, 40)
-      .filter(r => r.kind === 'episodic-task')
+      .filter(r => r.kind === 'episodic-task' && inScope(r))
     const shared = this.repo.listByAgentChannel(this.opts.channelId, TEAM_AGENT_ID, 40)
-      .filter(r => r.kind === 'semantic')
+      .filter(r => r.kind === 'semantic' && inScope(r))
     const lines: string[] = []
     const done = own.filter(r => r.importance >= 0.75).slice(0, 3)
     if (done.length > 0) {
@@ -63,7 +74,8 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       lines.push(`团队共享约定:${shared.slice(0, 2).map(r => r.title).join(';')}`)
     }
     if (lines.length === 0) return
-    this.repo.upsert({
+    const briefKey = `brief:${this.opts.agentId}:${sid || 'channel'}`
+    const write = this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: this.opts.agentId,
       kind: 'brief',
@@ -72,8 +84,10 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       content: segmentCJK(lines.join('\n')),
       importance: 0.6,
       taskId: null,
-      dedupKey: `brief:${this.opts.agentId}`,
+      sessionId: sid,
+      dedupKey: briefKey,
     })
+    if (write.outcome !== 'protected') this.repo.setScope(write.id, sid ? 'session' : 'channel', sid)
   }
 
   /**
@@ -81,6 +95,8 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
    * 全员 search_memory(scope=shared) 即可命中"谁做完了什么/为什么失败"。
    */
   async appendTeamTaskRecord(input: { taskId: string, title: string, content: string, importance: number }): Promise<void> {
+    const mode = this.repo.memoryAccessMode(this.opts.channelId, this.opts.sessionId)
+    if (mode === 'disabled' || mode === 'readonly') return
     const dedupKey = `team-task:${input.taskId}`
     const write = this.repo.upsert({
       channelId: this.opts.channelId,
@@ -94,6 +110,7 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       dedupKey,
     })
     if (write.outcome === 'protected') return
+    this.repo.setScope(write.id, 'channel', '')
     await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, TEAM_AGENT_ID, dedupKey, input.content)
   }
 
@@ -125,6 +142,8 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
     nextStep?: string
     at?: string
   }): Promise<void> {
+    const mode = this.repo.memoryAccessMode(this.opts.channelId, this.opts.sessionId)
+    if (mode === 'disabled' || mode === 'readonly') return
     const at = input.at ?? new Date().toISOString()
     const lines = [
       `任务：${input.title}`,
@@ -153,12 +172,15 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       dedupKey: input.dedupKey,
     })
     if (write.outcome === 'protected') return
+    this.repo.setScope(write.id, 'channel', '')
     await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, TEAM_AGENT_ID, input.dedupKey, plain)
   }
 
   /** 团队编年史滚动重写(chronicle:<channelId> 幂等单行;免向量化;策展层豁免维护) */
   upsertChronicle(entriesText: string): void {
-    this.repo.upsert({
+    const mode = this.repo.memoryAccessMode(this.opts.channelId, this.opts.sessionId)
+    if (mode === 'disabled' || mode === 'readonly') return
+    const write = this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: TEAM_AGENT_ID,
       kind: 'chronicle',
@@ -169,11 +191,14 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       taskId: null,
       dedupKey: `chronicle:${this.opts.channelId}`,
     })
+    if (write.outcome !== 'protected') this.repo.setScope(write.id, 'channel', '')
   }
 
   /** 空闲反思行(reflection:<agentId>:<month> 幂等单行;免向量化;策展层豁免维护) */
   upsertReflection(input: { month: string, content: string }): void {
-    this.repo.upsert({
+    const mode = this.repo.memoryAccessMode(this.opts.channelId, this.opts.sessionId)
+    if (mode === 'disabled' || mode === 'readonly') return
+    const write = this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: this.opts.agentId,
       kind: 'reflection',
@@ -184,5 +209,9 @@ export abstract class AgentMemoryGovernance extends AgentMemoryWrite {
       taskId: null,
       dedupKey: `reflection:${this.opts.agentId}:${input.month}`,
     })
+    if (write.outcome !== 'protected') {
+      const sid = this.opts.sessionId ?? ''
+      this.repo.setScope(write.id, sid ? 'session' : 'channel', sid)
+    }
   }
 }

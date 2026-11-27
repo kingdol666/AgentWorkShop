@@ -79,6 +79,34 @@ export function buildMatchQuery(text: string): string | null {
   return terms.length > 0 ? terms.map(t => `"${t}"`).join(' OR ') : null
 }
 
+/** CJK 相邻二元短语词项上限(长查询截断,防 MATCH 串爆炸) */
+export const MAX_CJK_BIGRAMS = 8
+/** 二元短语精度榜的 RRF 榜权重(高于单字 OR 榜:命中即强信号) */
+export const BIGRAM_BOARD_WEIGHT = 1.4
+
+/**
+ * CJK 相邻二元短语查询(精度榜):从查询原文的连续汉字串提取相邻字对,
+ * 以 FTS5 短语语法 `"冷 却"` 匹配**单字切分索引**中的相邻出现。
+ *
+ * 为什么需要第二条 FTS 榜:单字 OR 榜的 bm25 对共享高频字(压/力/调/整)不设防,
+ * 新鲜过程行靠字面重叠就能把真含该词的知识行挤到 10+ 名;RRF(k=60) 又把名次差
+ * 压缩到 ~14%,叠加时近/重要度后知识行被挤出注入窗(实测:唯一中文词查询,
+ * 语义行排 11/20)。相邻字对只在「词真的出现」时命中 —— 给真实含词行一条独立的
+ * 高权重榜,把精确命中拉回前列;无需改存储/重建索引(单字索引上短语天然可用)。
+ */
+export function buildBigramQuery(text: string): string | null {
+  const runs = text.match(/[\u4e00-\u9fff]{2,}/g) ?? []
+  const pairs: string[] = []
+  for (const run of runs) {
+    for (let i = 0; i + 1 < run.length; i++) {
+      const pair = `${run[i]!} ${run[i + 1]!}`
+      if (!pairs.includes(pair)) pairs.push(pair)
+      if (pairs.length >= MAX_CJK_BIGRAMS) return pairs.map(q => `"${q}"`).join(' OR ')
+    }
+  }
+  return pairs.length > 0 ? pairs.map(q => `"${q}"`).join(' OR ') : null
+}
+
 export function estimateTokens(text: string): number {
   const cjk = (text.match(/[\u4e00-\u9fff]/g) ?? []).length
   return Math.ceil((text.length - cjk) / 4) + cjk

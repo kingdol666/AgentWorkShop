@@ -186,6 +186,9 @@ export function createMemory(db: DatabaseSync, input: {
   actor: MemoryActor
 }): { id: string } {
   if (!input.title.trim()) throw new MemoryAdminError(400, 'INVALID', '标题不能为空')
+  if (input.scopeKind === 'session' && !(input.scopeKey ?? '').trim()) {
+    throw new MemoryAdminError(400, 'INVALID', 'session 作用域必须提供 scopeKey=sessionId')
+  }
   const repo = createMemoryRepo(db)
   const write = repo.upsert({
     channelId: input.channelId,
@@ -193,11 +196,18 @@ export function createMemory(db: DatabaseSync, input: {
     kind: 'semantic',
     title: input.title,
     titleFts: segmentCJK(input.title),
-    content: input.content,
+    content: segmentCJK(input.content),
     importance: input.importance ?? 0.7,
     dedupKey: `manual:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`,
     ownerUserId: input.ownerUserId,
   }, { kind: 'human', id: input.actor.id })
+  // 手工新建必须落调用方声明的 scope；repo.upsert 不写 scope 列（默认 session 会漏检索）。
+  // session 档必须同步 session_id：检索的会话过滤、图谱 session 分区的来源 SQL 都读这一列。
+  const sessionId = input.scopeKind === 'session' ? (input.scopeKey ?? '').trim() : ''
+  db.prepare(`UPDATE agent_memories SET scope_kind = ?, scope_key = ?,
+      session_id = CASE WHEN ? = 'session' THEN ? ELSE session_id END,
+      owner_user_id = COALESCE(owner_user_id, ?) WHERE id = ?`)
+    .run(input.scopeKind, input.scopeKey ?? '', input.scopeKind, sessionId, input.ownerUserId ?? null, write.id)
   return { id: write.id }
 }
 
@@ -226,7 +236,8 @@ export async function updateMemory(
   }
   if (!input.reason.trim()) throw new MemoryAdminError(400, 'INVALID', '覆写必须填写理由（审计要求）')
   const title = input.title ?? current.title
-  const content = input.content ?? unsegmentCJK(current.content)
+  const plainContent = input.content ?? unsegmentCJK(current.content)
+  const storedContent = segmentCJK(plainContent)
   repo.snapshotRevision({
     memoryId: input.id,
     revision,
@@ -243,7 +254,7 @@ export async function updateMemory(
         SET title = ?, title_fts = ?, content = ?, importance = ?, author_kind = 'human', author_id = ?,
             revision = revision + 1, updated_at = ?
       WHERE id = ? AND revision = ? AND deleted_at IS NULL`,
-  ).run(title, segmentCJK(title), content, input.importance ?? current.importance, input.actor.id, now, input.id, revision).changes ?? 0)
+  ).run(title, segmentCJK(title), storedContent, input.importance ?? current.importance, input.actor.id, now, input.id, revision).changes ?? 0)
   if (changed === 0) throw new MemoryAdminError(409, 'REVISION_CONFLICT', '并发更新冲突，请刷新后重试')
 
   // 语义索引必须跟随正文：能算就重算，不能算就删掉旧向量（绝不留下"旧文本向量 + 新正文"）
@@ -251,7 +262,7 @@ export async function updateMemory(
   if (rowidRow) repo.vecDelete(Number(rowidRow.rowid))
   if (deps.embedder && rowidRow) {
     const dedupKey = current.dedupKey ?? ''
-    await vectorizeMemory(repo, deps.embedder, current.channelId, current.agentId, dedupKey, content).catch(() => {})
+    await vectorizeMemory(repo, deps.embedder, current.channelId, current.agentId, dedupKey, plainContent).catch(() => {})
   }
   invalidateHarnessOverlayCache(current.channelId)
   return { revision: revision + 1 }
@@ -267,6 +278,11 @@ export function rollbackMemory(db: DatabaseSync, input: {
   const repo = createMemoryRepo(db)
   const current = repo.getById(input.id)
   if (!current) throw new MemoryAdminError(404, 'NOT_FOUND', '记忆不存在')
+  // 与 updateMemory 同一不可变纪律：已验证/已退役条目不得用历史正文回滚，
+  // 否则会以 validated 名义把未经验证的旧文本重新投入自动注入。
+  if (current.status === 'validated' || current.status === 'retired') {
+    throw new MemoryAdminError(409, 'MEMORY_IMMUTABLE', '已验证/已退役条目不可回滚：请先退役或新建条目')
+  }
   const target = repo.getRevision(input.id, input.revision)
   if (!target) throw new MemoryAdminError(404, 'REVISION_NOT_FOUND', '目标版本不存在')
   const revision = current.revision ?? 1

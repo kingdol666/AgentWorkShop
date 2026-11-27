@@ -3,11 +3,16 @@
  * (拆分层,承 AgentMemoryState;方法体与原文件逐行一致)
  */
 import { AgentMemoryState } from './state'
-import type { MemoryRow } from '../../db/database'
+import type { MemoryRow, MemoryScopeKind } from '../../db/database'
 import type { MemoryScope, MemorySnippet, RecallOptions, ScopeContext } from './types'
-import { CURATED_KINDS, FTS_POOL, MMR_LAMBDA, RECENT_FALLBACK, RELATED_TASK_BOOST, RRF_K, SAME_LINE_BOOST, SAME_PRODUCT_BOOST, SESSION_RELEVANCE_BOOST, buildMatchQuery, estimateTokens, memoryCfg, unsegmentCJK } from './helpers'
+import { BIGRAM_BOARD_WEIGHT, CURATED_KINDS, FTS_POOL, MMR_LAMBDA, RECENT_FALLBACK, RELATED_TASK_BOOST, RRF_K, SAME_LINE_BOOST, SAME_PRODUCT_BOOST, SESSION_RELEVANCE_BOOST, buildBigramQuery, buildMatchQuery, estimateTokens, memoryCfg, unsegmentCJK } from './helpers'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import type { InjectionRef } from '../../memory/effect'
+import { buildGraphDigest, graphRetrieve } from '../../memory/graph/retrieval'
+
+const GRAPH_WEIGHT = 0.8
+const GRAPH_POOL = 10
+const GRAPH_DEADLINE_MS = 75
 
 /** 共享区自动注入条数（0=关闭；默认 3，上限 10） */
 function memorySharedTopN(): number {
@@ -42,6 +47,39 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     return 0
   }
 
+  /** 图谱检索分区：session/channel/line/product 分开，session 只取当前会话；isolated 不取 line/product。 */
+  protected graphScope(scope: MemoryScope, sessionId?: string | null): {
+    scopeKinds: MemoryScopeKind[]
+    scopeKeys: string[]
+  } | null {
+    const mode = this.repo.memoryAccessMode(this.opts.channelId, sessionId)
+    if (mode === 'disabled') return null
+    const sessionKey = sessionId ?? ''
+    if (scope === 'session') {
+      return sessionKey ? { scopeKinds: ['session'], scopeKeys: [sessionKey] } : null
+    }
+    if (scope === 'private') {
+      return sessionKey
+        ? { scopeKinds: ['session', 'channel'], scopeKeys: [sessionKey, ''] }
+        : { scopeKinds: ['channel'], scopeKeys: [''] }
+    }
+    if (scope === 'shared') return { scopeKinds: ['channel'], scopeKeys: [''] }
+    // auto：会话 + 频道 +（非 isolated 的工业上下文）line/product。
+    const kinds: MemoryScopeKind[] = ['session', 'channel']
+    const keys: string[] = [sessionKey, '']
+    if (mode !== 'isolated' && this.opts.industrialScopeEnabled === true) {
+      if (this.trustedScopeContext.lineId) {
+        kinds.push('line')
+        keys.push(this.trustedScopeContext.lineId)
+      }
+      if (this.trustedScopeContext.productId) {
+        kinds.push('product')
+        keys.push(this.trustedScopeContext.productId)
+      }
+    }
+    return { scopeKinds: kinds, scopeKeys: keys }
+  }
+
   /**
    * 混合检索原始命中(RRF 融合;不排序不 touch)。
    * FTS 榜与向量榜各按名次贡献 1/(k+rank) 累加,再按榜内最高分归一化到 0-1——
@@ -50,53 +88,91 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
   protected async collectHits(query: string, scope: MemoryScope, sessionId?: string | null, scopeContext?: ScopeContext, automatic = false, signal?: AbortSignal, asOf?: string | null): Promise<Map<string, { row: MemoryRow, relevance: number }>> {
     signal?.throwIfAborted()
     const rrf = new Map<string, { row: MemoryRow, score: number }>()
-    const addRank = (row: MemoryRow, rank: number): void => {
+    const addRank = (row: MemoryRow, rank: number, weight = 1): void => {
       // 人类对话摘要只供显式检索，不进自动注入（批次 B / M4）
       if (automatic && row.kind === 'episodic-dialog') return
       if (!this.inScope(row, scope, sessionId, scopeContext, automatic, asOf)) return
-      const inc = 1 / (RRF_K + rank + 1)
+      const inc = weight / (RRF_K + rank + 1)
       const cur = rrf.get(row.id)
       if (cur) cur.score += inc
       else rrf.set(row.id, { row, score: inc })
     }
     const match = buildMatchQuery(query)
-    if (match) {
-      const found = this.repo.search(this.opts.agentId, match, FTS_POOL, {
-        ...(sessionId && scope === 'session' ? { sessionId } : {}),
-        channelId: this.opts.channelId,
-      })
-      found.forEach((row, i) => addRank(row, i))
+    const searchOpts = {
+      ...(sessionId && scope === 'session' ? { sessionId } : {}),
+      channelId: this.opts.channelId,
     }
-    // 向量分支:查询向量 + 本人/team 双域 kNN,按距离名次参与 RRF(失败退化纯 FTS)
+    if (match) {
+      const found = this.repo.search(this.opts.agentId, match, FTS_POOL, searchOpts)
+      found.forEach((row, i) => addRank(row, i))
+      // 精度榜(二元短语):单字 OR 榜对共享高频字不设防,新鲜过程行靠字面重叠
+      // 就能把真含该词的知识行挤出前列(实测:唯一中文词查询语义行排 11/20)。
+      // 相邻字对短语只在「词真的出现」时命中,给精确命中一条独立高权重 RRF 榜。
+      const bigram = buildBigramQuery(query)
+      if (bigram) {
+        const precise = this.repo.search(this.opts.agentId, bigram, FTS_POOL, searchOpts)
+        precise.forEach((row, i) => addRank(row, i, BIGRAM_BOARD_WEIGHT))
+      }
+    }
+    // 查询向量只算一次：记忆向量榜与实体向量种子复用（失败退化纯 FTS）
+    let qv: Float32Array | null = null
     if (this.embedder) {
       try {
-        const [qv] = await this.embedder.embed([query])
-        signal?.throwIfAborted()
-        if (qv) {
-          this.ensureVec()
-          const ownDomains: string[]
-            = scope === 'shared'
-              ? [TEAM_AGENT_ID]
-              : scope === 'private' || scope === 'session'
-                ? [this.opts.agentId]
-                : [this.opts.agentId, TEAM_AGENT_ID]
-          const vAll = ownDomains.flatMap(d =>
-            this.repo.vecSearch(d, qv, d === TEAM_AGENT_ID ? 5 : 10))
-          // rowid → 最小距离(agent/team 分区不相交;防御性取 min),保持距离序作名次
-          const distByRowid = new Map<number, number>()
-          for (const { memRowid, distance } of vAll) {
-            const prev = distByRowid.get(memRowid)
-            if (prev === undefined || distance < prev) distByRowid.set(memRowid, distance)
-          }
-          const rowids = [...distByRowid.entries()].sort((a, b) => a[1] - b[1]).map(([rid]) => rid)
-          this.repo.listByRowids(rowids).forEach((row, i) => {
-            // 所有权守卫 + channel 隔离(脏 rowid/rowid 复用反查到他人行一律丢弃)
-            if (row.agentId !== this.opts.agentId && row.agentId !== TEAM_AGENT_ID) return
-            addRank(row, i)
-          })
+        const [v] = await this.embedder.embed([query])
+        qv = v ?? null
+      }
+      catch { qv = null }
+      signal?.throwIfAborted()
+    }
+    // 向量分支: 查询向量 + 本人/team 双域 kNN,按距离名次参与 RRF
+    if (qv) {
+      try {
+        this.ensureVec()
+        const ownDomains: string[]
+          = scope === 'shared'
+            ? [TEAM_AGENT_ID]
+            : scope === 'private' || scope === 'session'
+              ? [this.opts.agentId]
+              : [this.opts.agentId, TEAM_AGENT_ID]
+        const vAll = ownDomains.flatMap(d =>
+          this.repo.vecSearch(d, qv!, d === TEAM_AGENT_ID ? 5 : 10))
+        // rowid → 最小距离(agent/team 分区不相交;防御性取 min),保持距离序作名次
+        const distByRowid = new Map<number, number>()
+        for (const { memRowid, distance } of vAll) {
+          const prev = distByRowid.get(memRowid)
+          if (prev === undefined || distance < prev) distByRowid.set(memRowid, distance)
         }
+        const rowids = [...distByRowid.entries()].sort((a, b) => a[1] - b[1]).map(([rid]) => rid)
+        this.repo.listByRowids(rowids).forEach((row, i) => {
+          // 所有权守卫 + channel 隔离(脏 rowid/rowid 复用反查到他人行一律丢弃)
+          if (row.agentId !== this.opts.agentId && row.agentId !== TEAM_AGENT_ID) return
+          addRank(row, i)
+        })
       }
       catch { /* 向量不可用退化为 FTS */ }
+      signal?.throwIfAborted()
+    }
+    // 图谱分支（批次 Memory Graph）：实体种子 → PPR → 记忆投影 → RRF 加权并入。
+    // 只在 ENABLE 且 scope 允许时执行；超时/异常静默退化，不影响 FTS/向量。
+    if (process.env.AW_MEMORY_GRAPH_RETRIEVAL !== '0' && this.repo.graph.available) {
+      try {
+        const graphScope = this.graphScope(scope, sessionId)
+        if (graphScope && (graphScope.scopeKeys.some(Boolean) || graphScope.scopeKinds.includes('channel'))) {
+          const graph = graphRetrieve(this.repo.graph, this.opts.channelId, query, {
+            asOf, qv, ...graphScope, seedLimit: 8, limitNodes: 300, limitEdges: 1200,
+          })
+          if (graph.durationMs <= GRAPH_DEADLINE_MS && graph.memoryScores.size > 0) {
+            const ranked = [...graph.memoryScores.entries()]
+              .sort((a, b) => b[1].score - a[1].score)
+              .slice(0, GRAPH_POOL)
+            for (let i = 0; i < ranked.length; i++) {
+              const row = this.repo.getById(ranked[i]![0])
+              if (row) addRank(row, i, GRAPH_WEIGHT)
+            }
+          }
+        }
+      }
+      catch { /* 图谱不可用退化 FTS/向量 */ }
       signal?.throwIfAborted()
     }
     // 时近兜底仅对含私有域的 scope 生效(shared 域无"本人最近"语义);
@@ -180,9 +256,20 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     const injectedRefs: InjectionRef[] = []
     let usedTotal = 0
     // L0 会话简报置顶(幂等单行;确定性注入,不依赖检索命中;计费走总预算,不挤占 L1 引子预算)
-    const briefRef = this.repo.findByAgentDedup(this.opts.channelId, this.opts.agentId, `brief:${this.opts.agentId}`)
+    const briefKey = `brief:${this.opts.agentId}:${sessionId || 'channel'}`
+    let briefRef = this.repo.findByAgentDedup(this.opts.channelId, this.opts.agentId, briefKey)
+    // 兼容旧版频道级简报键；旧键若带其他会话戳则拒绝（只接受空会话/当前会话）。
+    if (!briefRef) {
+      const legacy = this.repo.findByAgentDedup(this.opts.channelId, this.opts.agentId, `brief:${this.opts.agentId}`)
+      const legacyRow = legacy ? this.repo.getById(legacy.id) : null
+      if (legacy && legacyRow && (!legacyRow.sessionId || legacyRow.sessionId === sessionId)) briefRef = legacy
+    }
     const briefRow = briefRef ? this.repo.getById(briefRef.id) : null
-    if (briefRow) {
+    const briefAt = recallOpts.asOf ? Date.parse(recallOpts.asOf) : Date.now()
+    const briefValid = briefRow && briefRow.status !== 'retired'
+      && (!briefRow.validFrom || Date.parse(briefRow.validFrom) <= briefAt)
+      && (!briefRow.validTo || Date.parse(briefRow.validTo) > briefAt)
+    if (briefRow && briefValid) {
       const briefText = `## 会话简报(自动维护)\n${unsegmentCJK(briefRow.content)}`
       const briefCost = estimateTokens(briefText)
       if (usedTotal + briefCost <= totalBudget) {
@@ -229,8 +316,9 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
     // 优先级：product > line > channel（repo 已按 scope/pin/新近排序）；完整文档在 /memory 查看。
     try {
       const curated = this.repo.listCuratedForInjection(this.opts.channelId, {
-        lineId: this.trustedScopeContext.lineId,
-        productId: this.trustedScopeContext.productId,
+        // isolated 策略不读 line/product 派生文档（与 inScope 的隔离语义一致）。
+        lineId: accessMode === 'isolated' ? null : this.trustedScopeContext.lineId,
+        productId: accessMode === 'isolated' ? null : this.trustedScopeContext.productId,
         limit: 2,
       })
       let curatedUsed = 0
@@ -242,7 +330,7 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
           .replace(/\n{2,}/g, '\n')
           .trim()
           // L0.5 只取摘要（≤200 tok；CJK 约 1 字/ token）
-          .slice(0, 120)
+          .slice(0, 100)
         const text = `## 知识手册（汇整摘要）\n${body}`
         const cost = estimateTokens(text)
         if (curatedUsed + cost > curatedBudget) continue
@@ -251,6 +339,29 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
         usedTotal += cost
         lines.push(text)
         injectedRefs.push({ id: row.id, kind: row.kind, source: 'curated', scopeKind: row.scopeKind, scopeKey: row.scopeKey })
+      }
+      // 知识网络摘要（GraphRAG 社区/事实）：与 curated 共用 200 tok 预算，不额外加总。
+      if (process.env.AW_MEMORY_GRAPH_RETRIEVAL !== '0' && this.repo.graph.available) {
+        try {
+          const graphScope = this.graphScope(scope, sessionId)
+          if (graphScope && (graphScope.scopeKeys.some(Boolean) || graphScope.scopeKinds.includes('channel'))) {
+            const digest = buildGraphDigest(this.repo.graph, this.opts.channelId, query, {
+              asOf: recallOpts.asOf ?? null, ...graphScope, seedLimit: 8, limitNodes: 300, limitEdges: 1200,
+              // L0.5 与知识手册共用 200 tok；单条事实 + 社区才放得下。
+              maxFacts: 1,
+            })
+            if (digest) {
+              const cost = estimateTokens(digest.text)
+              if (curatedUsed + cost <= curatedBudget && usedTotal + cost + tipsCost + headerCost <= totalBudget) {
+                curatedUsed += cost
+                usedTotal += cost
+                lines.push(digest.text)
+                for (const ref of digest.refs) injectedRefs.push({ ...ref, source: 'graph' })
+              }
+            }
+          }
+        }
+        catch { /* 图谱摘要失败不阻断召回 */ }
       }
     }
     catch { /* 汇整层故障不阻断召回 */ }

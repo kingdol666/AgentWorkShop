@@ -12,6 +12,7 @@ import { recordMemoryInjection, type InjectionTraceInput } from '../memory/effec
 import { listBlocks, type MemoryBlock } from '../memory/blocks'
 import { documentIndex } from '../memory/documents'
 import { loadWorkingMemory, upsertWorkingMemory, type WorkingMemoryRow } from '../memory/working'
+import { createMemoryGraphRepo } from '../memory/graph/repo'
 
 /** 团队共享记忆域 sentinel(单 channel 内全员可读) */
 export const TEAM_AGENT_ID = '__team__'
@@ -373,6 +374,7 @@ export function createMemoryRepo(db: DatabaseSync) {
   }
 
   return {
+    graph: createMemoryGraphRepo(db),
     upsert(input: MemoryUpsertInput, actor?: MemoryActor): { outcome: MemoryWriteOutcome, id: string } {
       const existing = stateByKeyStmt.get(input.agentId, input.dedupKey, input.channelId) as {
         id: string
@@ -556,6 +558,19 @@ export function createMemoryRepo(db: DatabaseSync) {
       return Number(
         db.prepare('UPDATE agent_memories SET expires_at = ?, updated_at = ? WHERE id = ?')
           .run(expiresAt, new Date().toISOString(), id).changes ?? 0,
+      ) > 0
+    },
+
+    /**
+     * 写入路径补作用域（repo.upsert 不负责 scope 列；session/channel 必须显式落库）。
+     * session 档同步 session_id：检索会话过滤与图谱 session 分区的来源 SQL 都读该列，
+     * 只写 scope_key 会让 session 记忆在检索/整理两侧都不可见。
+     */
+    setScope(id: string, scopeKind: MemoryScopeKind, scopeKey = ''): boolean {
+      return Number(
+        db.prepare(`UPDATE agent_memories SET scope_kind = ?, scope_key = ?,
+            session_id = CASE WHEN ? = 'session' THEN ? ELSE session_id END, updated_at = ? WHERE id = ?`)
+          .run(scopeKind, scopeKey, scopeKind, scopeKey, new Date().toISOString(), id).changes ?? 0,
       ) > 0
     },
 

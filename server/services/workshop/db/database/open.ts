@@ -21,6 +21,7 @@ import { migrateParameterProposals } from './migrations-parameter-proposal'
 import { migrateMemoryAccessMode } from './migrations-memory-policy'
 import { migrateMemoryBlocks } from './migrations-memory-blocks'
 import { migrateMemoryValidity } from './migrations-memory-validity'
+import { migrateMemoryGraph } from './migrations-memory-graph'
 import { migrateOntologyProductScope } from './migrations-ontology-product'
 import { migrateOntologyEvidenceVocabulary } from './migrations-ontology-evidence'
 import { migrateOperationProvenance } from './migrations-provenance'
@@ -118,6 +119,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateMemoryBlocks(db)
   // 批次 K(2026-11-27):时序有效性 + 记忆链接（additive）。
   migrateMemoryValidity(db)
+  // 记忆知识网络(2026-11-27):实体/事实边/社区/运行台账（只建表，幂等；派生可重建）。
+  migrateMemoryGraph(db)
   // 9003(一次性,ledger 守卫)：channel 档经验 active → candidate。
   // 必须与 reflector 的 producer 修复同批，否则批次边界会持续产生永不晋升/永不注入的 active 行。
   migrateExperienceChannelStatus(db)

@@ -30,11 +30,11 @@ db.prepare(`INSERT INTO channels (id, name, description, scenario_prompt, llm_js
 const repo = createMemoryRepo(db)
 
 let seq = 0
-function semantic(content: string, sessionId = '', title?: string) {
+function semantic(content: string, sessionId = '', title?: string, agent = '__team__') {
   seq++
   return repo.upsert({
     channelId: 'c1',
-    agentId: 'a1',
+    agentId: agent,
     kind: 'semantic',
     title: title ?? `约定 ${seq}`,
     titleFts: title ?? `约 定 ${seq}`,
@@ -48,8 +48,8 @@ function semantic(content: string, sessionId = '', title?: string) {
 
 for (let i = 0; i < 8; i++) semantic(`车间约定 ${i}：模温保持 85 度，首件必检。`)
 for (let i = 0; i < 4; i++) semantic(`流程 ${i}：换模后先空跑 3 模再取样。`)
-semantic('会话私有：不得进入频道手册', 's1')
-semantic('另一会话私有：也不得进入', 's2')
+semantic('会话私有：不得进入频道手册', 's1', undefined, 'a1')
+semantic('另一会话私有：也不得进入', 's2', undefined, 'a1')
 // candidate 经验（未部署）不得进手册
 repo.upsertExperience({
   channelId: 'c1', agentId: 'a1', kind: 'experience', title: '未验证经验', titleFts: '未 验 证 经 验',

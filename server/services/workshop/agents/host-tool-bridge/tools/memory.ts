@@ -5,6 +5,9 @@
  */
 import type { AgentWorkspace } from '../../agent-interface'
 import type { HostToolResult } from '../types'
+import { recordMemoryInjection } from '../../../memory/effect'
+import { getAmlRuntime } from '../../../aml/runtime'
+import { currentExecutionScope } from '../../execution-scope'
 
 type RecallScope = 'auto' | 'private' | 'shared' | 'session'
 type CrossScope = 'line' | 'product' | 'global'
@@ -22,6 +25,22 @@ export async function handleSearchMemory(args: Record<string, unknown>, ws: Agen
     return { text: '当前回合没有 session 上下文,scope=session 不可用;请改用 auto/private/shared。' }
   }
   const snippets = await ws.recallMemory({ query, scope: recallScope, limit: args.limit as number | undefined, sessionId, asOf: typeof args.as_of === 'string' ? args.as_of : undefined })
+  if (snippets.length > 0) {
+    try {
+      const exec = currentExecutionScope()
+      if (exec?.channelId) {
+        recordMemoryInjection(getAmlRuntime().db, {
+          channelId: exec.channelId, agentId: exec.agentId,
+          sessionId: exec.sessionId ?? sessionId ?? null, taskId: exec.taskId ?? null,
+          refs: snippets.slice(0, 20).map(s => ({
+            id: s.id, kind: s.kind, source: 'search' as const,
+            scopeKind: s.scopeKind, scopeKey: s.scopeKey,
+          })),
+        })
+      }
+    }
+    catch { /* 显式检索留痕失败不影响结果 */ }
+  }
   if (snippets.length === 0) {
     return { text: `记忆检索无命中(query="${query}", scope=${scope})。可尝试更换关键词或放宽 scope。` }
   }

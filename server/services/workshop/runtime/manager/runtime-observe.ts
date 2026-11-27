@@ -283,6 +283,10 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
       clearInterval(this.memoryTimer)
       this.memoryTimer = null
     }
+    this.graphScheduler?.stop()
+    this.graphScheduler = null
+    this.curatorScheduler?.stop()
+    this.curatorScheduler = null
     if (this.outboxTimer) {
       clearInterval(this.outboxTimer)
       this.outboxTimer = null

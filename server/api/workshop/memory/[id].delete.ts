@@ -18,7 +18,7 @@ export default defineApiHandler(async (event) => {
     const res = softDeleteMemory(getAmlRuntime().db, { id, reason, actor })
     if (res.ok) {
       recordOps({
-        actor: user.id, actorName: user.name, actorKind: 'agent',
+        actor: user.id, actorName: user.name, actorKind: 'user',
         action: 'memory.soft_delete', kind: 'system', targetKind: 'memory', targetId: id,
         summary: `软删记忆 ${id.slice(0, 8)}：${reason}`,
       })

@@ -49,6 +49,7 @@ interface CurationInfo {
 
 const loading = ref(false)
 const busy = ref(false)
+const view = ref<'list' | 'graph' | 'injections' | 'health'>('list')
 const items = ref<MemoryItem[]>([])
 const total = ref(0)
 const facets = ref<{ byScope: Record<string, number>, byStatus: Record<string, number>, deleted: number }>({ byScope: {}, byStatus: {}, deleted: 0 })
@@ -98,7 +99,7 @@ interface OperationAttempt {
 }
 const industryOpen = ref(false)
 const industryLoading = ref(false)
-const industryChannels = ref<Array<{ id: string, name: string, lineId?: string }>>([])
+const industryChannels = ref<Array<{ id: string, name: string, lineId?: string, ownerUserId?: string | null }>>([])
 const industryChannelId = ref('')
 const operationRows = ref<OperationRow[]>([])
 const operationAttempts = ref<OperationAttempt[]>([])
@@ -108,6 +109,9 @@ const handbookStats = ref<{ claimCount: number, sourceCount: number } | null>(nu
 const proposals = ref<Array<Record<string, unknown>>>([])
 const accessMode = ref('inherit')
 const accessModes = ['inherit', 'isolated', 'disabled', 'readonly']
+const accessScope = ref<'channel' | 'session'>('channel')
+const accessSessionId = ref('')
+const industrySessions = ref<Array<{ id: string, title: string, status?: string }>>([])
 const fabricBlocks = ref<Array<Record<string, unknown>>>([])
 const fabricFiles = ref<Array<Record<string, unknown>>>([])
 const newBlockLabel = ref('')
@@ -119,7 +123,7 @@ const openFile = ref<Record<string, unknown> | null>(null)
 async function loadIndustryChannels() {
   try {
     // apiFetch 已解包信封：data 就是频道数组
-    const res = await api<Array<{ id: string, name: string, lineId?: string }>>('/api/workshop/channels')
+    const res = await api<Array<{ id: string, name: string, lineId?: string, ownerUserId?: string | null }>>('/api/workshop/channels')
     industryChannels.value = (Array.isArray(res) ? res : []).filter(c => Boolean(c.lineId))
     if (!industryChannelId.value && industryChannels.value[0]) industryChannelId.value = industryChannels.value[0].id
   }
@@ -142,12 +146,14 @@ async function loadIndustryData() {
     operationCoverage.value = ops.coverage ?? null
     handbookMarkdown.value = book.markdown ?? ''
     handbookStats.value = { claimCount: book.claimCount ?? 0, sourceCount: book.sourceCount ?? 0 }
-    const [props, mode] = await Promise.all([
+    const [props, sessions] = await Promise.all([
       api<{ items: Array<Record<string, unknown>> }>(`${base}/parameter-proposals?limit=20`).catch(() => ({ items: [] })),
-      api<{ mode: string }>(`${base}/memory-access-mode`).catch(() => ({ mode: 'inherit' })),
+      api<Array<{ id: string, title: string, status?: string }>>(`${base}/sessions`).catch(() => []),
     ])
     proposals.value = props.items ?? []
-    accessMode.value = mode.mode ?? 'inherit'
+    industrySessions.value = Array.isArray(sessions) ? sessions : []
+    if (!industrySessions.value.some(s => s.id === accessSessionId.value)) accessSessionId.value = ''
+    await loadAccessMode()
     const [blocks, files] = await Promise.all([
       api<{ items: Array<Record<string, unknown>> }>(`${base}/memory-blocks`).catch(() => ({ items: [] })),
       api<{ items: Array<Record<string, unknown>> }>(`${base}/memory-files`).catch(() => ({ items: [] })),
@@ -185,9 +191,32 @@ const toggleIndustry = async () => {
   }
 }
 
+const loadAccessMode = async () => {
+  if (!industryChannelId.value) return
+  const sessionId = accessScope.value === 'session' ? accessSessionId.value : ''
+  const query = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''
+  const mode = await api<{ mode: string }>(`/api/workshop/channels/${industryChannelId.value}/memory-access-mode${query}`)
+    .catch(() => ({ mode: 'inherit' }))
+  accessMode.value = mode.mode ?? 'inherit'
+}
+
+const onAccessScopeChange = async (scope: unknown) => {
+  accessScope.value = scope === 'session' ? 'session' : 'channel'
+  if (accessScope.value === 'session' && !accessSessionId.value) accessSessionId.value = industrySessions.value[0]?.id ?? ''
+  await loadAccessMode()
+}
+
+const onAccessSessionChange = async () => {
+  await loadAccessMode()
+}
+
 const updateAccessMode = async (mode: string) => {
   if (!industryChannelId.value) return
-  await api(`/api/workshop/channels/${industryChannelId.value}/memory-access-mode`, { method: 'PATCH', body: { mode } })
+  const sessionId = accessScope.value === 'session' ? accessSessionId.value : ''
+  await api(`/api/workshop/channels/${industryChannelId.value}/memory-access-mode`, {
+    method: 'PATCH',
+    body: { mode, ...(sessionId ? { sessionId } : {}) },
+  })
   accessMode.value = mode
   message.success(t('memoryCenter.industry.accessUpdated'))
 }
@@ -325,6 +354,11 @@ async function open(id: string) {
   }
 }
 
+async function openMemoryFromGraph(id: string) {
+  view.value = 'list'
+  await open(id)
+}
+
 const regenerateCuration = () => act(async () => {
   if (!detail.value) return
   await api(`/api/workshop/memory/curations/${detail.value.id}/regenerate`, { method: 'POST', body: {} })
@@ -458,375 +492,436 @@ onMounted(load)
       </p>
     </header>
 
-    <section class="industry">
-      <a-button
-        size="small"
-        data-testid="memory-industry-toggle"
-        @click="toggleIndustry"
-      >
-        {{ industryOpen ? t('memoryCenter.industry.hide') : t('memoryCenter.industry.show') }}
-      </a-button>
-      <div
-        v-if="industryOpen"
-        class="industry-body"
-      >
-        <a-space wrap>
-          <a-select
-            v-model:value="industryChannelId"
-            :placeholder="t('memoryCenter.industry.selectChannel')"
-            style="width: 320px"
-          >
-            <a-select-option
-              v-for="c in industryChannels"
-              :key="c.id"
-              :value="c.id"
+    <div class="view-switch">
+      <a-segmented
+        v-model:value="view"
+        data-testid="memory-view-switch"
+        :options="[
+          { label: t('memoryCenter.views.list'), value: 'list' },
+          { label: t('memoryCenter.views.graph'), value: 'graph' },
+          { label: t('memoryCenter.views.injections'), value: 'injections' },
+          { label: t('memoryCenter.views.health'), value: 'health' },
+        ]"
+      />
+    </div>
+
+    <template v-if="view === 'list'">
+      <section class="industry">
+        <a-button
+          size="small"
+          data-testid="memory-industry-toggle"
+          @click="toggleIndustry"
+        >
+          {{ industryOpen ? t('memoryCenter.industry.hide') : t('memoryCenter.industry.show') }}
+        </a-button>
+        <div
+          v-if="industryOpen"
+          class="industry-body"
+        >
+          <a-space wrap>
+            <a-select
+              v-model:value="industryChannelId"
+              :placeholder="t('memoryCenter.industry.selectChannel')"
+              style="width: 320px"
             >
-              {{ c.name }} · {{ c.lineId }}
-            </a-select-option>
-          </a-select>
-          <a-button
-            size="small"
-            :loading="industryLoading"
-            @click="loadIndustryData"
-          >
-            {{ t('memoryCenter.industry.refresh') }}
-          </a-button>
-          <a-select
-            :value="accessMode"
-            style="width: 150px"
-            data-testid="memory-access-mode"
-            @change="(v: unknown) => updateAccessMode(String(v))"
-          >
-            <a-select-option
-              v-for="m in accessModes"
-              :key="m"
-              :value="m"
-            >
-              {{ t(`memoryCenter.industry.access.${m}`) }}
-            </a-select-option>
-          </a-select>
-          <span
-            v-if="operationCoverage"
-            class="mono"
-          >
-            exact {{ operationCoverage.exact }} / run {{ operationCoverage.run }} / time-window {{ operationCoverage.timeWindow }} / unknown {{ operationCoverage.unknown }} / raw过期 {{ operationCoverage.rawExpired }}
-          </span>
-        </a-space>
-        <a-spin :spinning="industryLoading">
-          <a-table
-            :columns="operationColumns"
-            :data-source="operationRows"
-            :pagination="false"
-            row-key="id"
-            size="small"
-            class="mt"
-            data-testid="memory-industry-operations"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'ts'">
-                {{ String(record.ts).slice(0, 19).replace('T', ' ') }}
-              </template>
-              <template v-else-if="column.key === 'node'">
-                {{ record.nodeName || record.nodeId }}
-              </template>
-              <template v-else-if="column.key === 'change'">
-                {{ record.fromValue ?? '?' }} → {{ record.toValue }}
-              </template>
-              <template v-else-if="column.key === 'context'">
-                {{ record.productId || '?' }} / {{ record.recipeId || '?' }}@v{{ record.recipeRevision || '?' }} · {{ record.contextSource }}
-              </template>
-              <template v-else-if="column.key === 'daq'">
-                <span v-if="record.daq">前 {{ record.daq.pre?.mean ?? '?' }} / 后 {{ record.daq.post?.mean ?? '?' }} (n={{ record.daq.sampleCount }}{{ record.daq.rawAvailable ? '' : ', raw过期' }})</span>
-                <span v-else>—</span>
-              </template>
-            </template>
-          </a-table>
-          <div
-            v-if="operationAttempts.length > 0"
-            class="mt"
-          >
-            <strong>{{ t('memoryCenter.industry.rejected') }}</strong>
-            <ul class="notes">
-              <li
-                v-for="a in operationAttempts"
-                :key="a.id"
+              <a-select-option
+                v-for="c in industryChannels"
+                :key="c.id"
+                :value="c.id"
               >
-                <span class="mono">{{ a.state }}</span>
-                {{ a.nodeId }} · 想写值 {{ a.payload.eng ?? '?' }} · {{ a.productId || '?' }}{{ a.runId ? ` · run=${a.runId}` : '' }}
-              </li>
-            </ul>
-          </div>
-          <div class="mt">
-            <strong>{{ t('memoryCenter.industry.proposals') }}</strong>
+                {{ c.name }} · {{ c.lineId }}
+              </a-select-option>
+            </a-select>
             <a-button
               size="small"
-              class="mt"
-              data-testid="memory-generate-proposals"
               :loading="industryLoading"
-              @click="generateProposals"
+              @click="loadIndustryData"
             >
-              {{ t('memoryCenter.industry.generateProposals') }}
+              {{ t('memoryCenter.industry.refresh') }}
             </a-button>
-            <ul
-              v-if="proposals.length > 0"
-              class="notes mt"
+            <a-select
+              :value="accessScope"
+              style="width: 110px"
+              data-testid="memory-access-scope"
+              @change="onAccessScopeChange"
             >
-              <li
-                v-for="p in proposals"
-                :key="String(p.id)"
+              <a-select-option value="channel">
+                频道
+              </a-select-option>
+              <a-select-option value="session">
+                会话
+              </a-select-option>
+            </a-select>
+            <a-select
+              v-if="accessScope === 'session'"
+              :value="accessSessionId"
+              style="width: 190px"
+              data-testid="memory-access-session"
+              @change="(v: unknown) => { accessSessionId = String(v); onAccessSessionChange() }"
+            >
+              <a-select-option
+                v-for="s in industrySessions"
+                :key="s.id"
+                :value="s.id"
               >
-                <span class="mono">{{ p.status }} / {{ p.mode }}</span>
-                {{ p.nodeName || p.nodeId }} {{ p.fromValue ?? '?' }} → {{ p.toValue }} ·
-                期望 {{ Number(p.expectedEffect ?? 0).toPrecision(4) }} · 置信 {{ Math.round(Number(p.confidence ?? 0) * 100) }}%
-              </li>
-            </ul>
-            <p
-              v-else
-              class="hint"
+                {{ s.title || s.id.slice(0, 8) }}
+              </a-select-option>
+            </a-select>
+            <a-select
+              :value="accessMode"
+              style="width: 150px"
+              data-testid="memory-access-mode"
+              @change="(v: unknown) => updateAccessMode(String(v))"
             >
-              {{ t('memoryCenter.industry.empty') }}
-            </p>
-          </div>
-          <div class="mt">
-            <strong>{{ t('memoryCenter.fabric.blocks') }}</strong>
-            <ul
-              v-if="fabricBlocks.length > 0"
-              class="notes mt"
-            >
-              <li
-                v-for="b in fabricBlocks"
-                :key="String(b.id)"
+              <a-select-option
+                v-for="m in accessModes"
+                :key="m"
+                :value="m"
               >
-                <span class="mono">[{{ b.label }}] r{{ b.revision }}{{ b.locked ? ' 🔒' : '' }}</span>
-                {{ String(b.value).slice(0, 160) }}
-                <a-button
-                  size="small"
-                  type="link"
-                  @click="lockBlock(b)"
-                >
-                  {{ b.locked ? t('memoryCenter.fabric.unlock') : t('memoryCenter.fabric.lock') }}
-                </a-button>
-              </li>
-            </ul>
-            <p
-              v-else
-              class="hint"
-            >
-              {{ t('memoryCenter.industry.empty') }}
-            </p>
-            <a-space class="mt">
-              <a-input
-                v-model:value="newBlockLabel"
-                :placeholder="t('memoryCenter.fabric.blockLabel')"
-                style="width: 180px"
-              />
-              <a-input
-                v-model:value="newBlockValue"
-                :placeholder="t('memoryCenter.fabric.blockValue')"
-                style="width: 320px"
-                @press-enter="saveBlock"
-              />
-              <a-button
-                size="small"
-                @click="saveBlock"
-              >
-                {{ t('memoryCenter.save') }}
-              </a-button>
-            </a-space>
-          </div>
-          <div class="mt">
-            <strong>{{ t('memoryCenter.fabric.files') }}</strong>
-            <ul
-              v-if="fabricFiles.length > 0"
-              class="notes mt"
-            >
-              <li
-                v-for="f in fabricFiles"
-                :key="String(f.id)"
-              >
-                <span class="mono">{{ f.path }} ({{ f.size }}B, r{{ f.revision }})</span>
-                <a-button
-                  size="small"
-                  type="link"
-                  @click="viewFile(f)"
-                >
-                  {{ t('memoryCenter.open') }}
-                </a-button>
-                <a-button
-                  size="small"
-                  type="link"
-                  danger
-                  @click="deleteFile(f)"
-                >
-                  {{ t('memoryCenter.softDelete') }}
-                </a-button>
-              </li>
-            </ul>
-            <p
-              v-else
-              class="hint"
-            >
-              {{ t('memoryCenter.industry.empty') }}
-            </p>
-            <a-space class="mt">
-              <a-input
-                v-model:value="newFilePath"
-                placeholder="/memories/channel/note.md"
-                style="width: 260px"
-              />
-              <a-input
-                v-model:value="newFileContent"
-                :placeholder="t('memoryCenter.fabric.fileContent')"
-                style="width: 280px"
-              />
-              <a-button
-                size="small"
-                @click="saveFile"
-              >
-                {{ t('memoryCenter.save') }}
-              </a-button>
-            </a-space>
-            <pre
-              v-if="openFile"
-              class="handbook mt"
-            >{{ openFile.content }}</pre>
-          </div>
-          <div class="mt">
-            <strong>{{ t('memoryCenter.industry.handbook') }}</strong>
+                {{ t(`memoryCenter.industry.access.${m}`) }}
+              </a-select-option>
+            </a-select>
             <span
-              v-if="handbookStats"
+              v-if="operationCoverage"
               class="mono"
-            >{{ handbookStats.claimCount }} claims / {{ handbookStats.sourceCount }} sources</span>
-            <pre class="handbook">{{ handbookMarkdown || t('memoryCenter.industry.empty') }}</pre>
-          </div>
-        </a-spin>
-      </div>
-    </section>
+            >
+              exact {{ operationCoverage.exact }} / run {{ operationCoverage.run }} / time-window {{ operationCoverage.timeWindow }} / unknown {{ operationCoverage.unknown }} / raw过期 {{ operationCoverage.rawExpired }}
+            </span>
+          </a-space>
+          <a-spin :spinning="industryLoading">
+            <a-table
+              :columns="operationColumns"
+              :data-source="operationRows"
+              :pagination="false"
+              row-key="id"
+              size="small"
+              class="mt"
+              data-testid="memory-industry-operations"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'ts'">
+                  {{ String(record.ts).slice(0, 19).replace('T', ' ') }}
+                </template>
+                <template v-else-if="column.key === 'node'">
+                  {{ record.nodeName || record.nodeId }}
+                </template>
+                <template v-else-if="column.key === 'change'">
+                  {{ record.fromValue ?? '?' }} → {{ record.toValue }}
+                </template>
+                <template v-else-if="column.key === 'context'">
+                  {{ record.productId || '?' }} / {{ record.recipeId || '?' }}@v{{ record.recipeRevision || '?' }} · {{ record.contextSource }}
+                </template>
+                <template v-else-if="column.key === 'daq'">
+                  <span v-if="record.daq">前 {{ record.daq.pre?.mean ?? '?' }} / 后 {{ record.daq.post?.mean ?? '?' }} (n={{ record.daq.sampleCount }}{{ record.daq.rawAvailable ? '' : ', raw过期' }})</span>
+                  <span v-else>—</span>
+                </template>
+              </template>
+            </a-table>
+            <div
+              v-if="operationAttempts.length > 0"
+              class="mt"
+            >
+              <strong>{{ t('memoryCenter.industry.rejected') }}</strong>
+              <ul class="notes">
+                <li
+                  v-for="a in operationAttempts"
+                  :key="a.id"
+                >
+                  <span class="mono">{{ a.state }}</span>
+                  {{ a.nodeId }} · 想写值 {{ a.payload.eng ?? '?' }} · {{ a.productId || '?' }}{{ a.runId ? ` · run=${a.runId}` : '' }}
+                </li>
+              </ul>
+            </div>
+            <div class="mt">
+              <strong>{{ t('memoryCenter.industry.proposals') }}</strong>
+              <a-button
+                size="small"
+                class="mt"
+                data-testid="memory-generate-proposals"
+                :loading="industryLoading"
+                @click="generateProposals"
+              >
+                {{ t('memoryCenter.industry.generateProposals') }}
+              </a-button>
+              <ul
+                v-if="proposals.length > 0"
+                class="notes mt"
+              >
+                <li
+                  v-for="p in proposals"
+                  :key="String(p.id)"
+                >
+                  <span class="mono">{{ p.status }} / {{ p.mode }}</span>
+                  {{ p.nodeName || p.nodeId }} {{ p.fromValue ?? '?' }} → {{ p.toValue }} ·
+                  期望 {{ Number(p.expectedEffect ?? 0).toPrecision(4) }} · 置信 {{ Math.round(Number(p.confidence ?? 0) * 100) }}%
+                </li>
+              </ul>
+              <p
+                v-else
+                class="hint"
+              >
+                {{ t('memoryCenter.industry.empty') }}
+              </p>
+            </div>
+            <div class="mt">
+              <strong>{{ t('memoryCenter.fabric.blocks') }}</strong>
+              <ul
+                v-if="fabricBlocks.length > 0"
+                class="notes mt"
+              >
+                <li
+                  v-for="b in fabricBlocks"
+                  :key="String(b.id)"
+                >
+                  <span class="mono">[{{ b.label }}] r{{ b.revision }}{{ b.locked ? ' 🔒' : '' }}</span>
+                  {{ String(b.value).slice(0, 160) }}
+                  <a-button
+                    size="small"
+                    type="link"
+                    @click="lockBlock(b)"
+                  >
+                    {{ b.locked ? t('memoryCenter.fabric.unlock') : t('memoryCenter.fabric.lock') }}
+                  </a-button>
+                </li>
+              </ul>
+              <p
+                v-else
+                class="hint"
+              >
+                {{ t('memoryCenter.industry.empty') }}
+              </p>
+              <a-space class="mt">
+                <a-input
+                  v-model:value="newBlockLabel"
+                  :placeholder="t('memoryCenter.fabric.blockLabel')"
+                  style="width: 180px"
+                />
+                <a-input
+                  v-model:value="newBlockValue"
+                  :placeholder="t('memoryCenter.fabric.blockValue')"
+                  style="width: 320px"
+                  @press-enter="saveBlock"
+                />
+                <a-button
+                  size="small"
+                  @click="saveBlock"
+                >
+                  {{ t('memoryCenter.save') }}
+                </a-button>
+              </a-space>
+            </div>
+            <div class="mt">
+              <strong>{{ t('memoryCenter.fabric.files') }}</strong>
+              <ul
+                v-if="fabricFiles.length > 0"
+                class="notes mt"
+              >
+                <li
+                  v-for="f in fabricFiles"
+                  :key="String(f.id)"
+                >
+                  <span class="mono">{{ f.path }} ({{ f.size }}B, r{{ f.revision }})</span>
+                  <a-button
+                    size="small"
+                    type="link"
+                    @click="viewFile(f)"
+                  >
+                    {{ t('memoryCenter.open') }}
+                  </a-button>
+                  <a-button
+                    size="small"
+                    type="link"
+                    danger
+                    @click="deleteFile(f)"
+                  >
+                    {{ t('memoryCenter.softDelete') }}
+                  </a-button>
+                </li>
+              </ul>
+              <p
+                v-else
+                class="hint"
+              >
+                {{ t('memoryCenter.industry.empty') }}
+              </p>
+              <a-space class="mt">
+                <a-input
+                  v-model:value="newFilePath"
+                  placeholder="/memories/channel/note.md"
+                  style="width: 260px"
+                />
+                <a-input
+                  v-model:value="newFileContent"
+                  :placeholder="t('memoryCenter.fabric.fileContent')"
+                  style="width: 280px"
+                />
+                <a-button
+                  size="small"
+                  @click="saveFile"
+                >
+                  {{ t('memoryCenter.save') }}
+                </a-button>
+              </a-space>
+              <pre
+                v-if="openFile"
+                class="handbook mt"
+              >{{ openFile.content }}</pre>
+            </div>
+            <div class="mt">
+              <strong>{{ t('memoryCenter.industry.handbook') }}</strong>
+              <span
+                v-if="handbookStats"
+                class="mono"
+              >{{ handbookStats.claimCount }} claims / {{ handbookStats.sourceCount }} sources</span>
+              <pre class="handbook">{{ handbookMarkdown || t('memoryCenter.industry.empty') }}</pre>
+            </div>
+          </a-spin>
+        </div>
+      </section>
 
-    <section class="toolbar">
-      <a-input
-        v-model:value="filters.q"
-        allow-clear
-        :placeholder="t('memoryCenter.searchPlaceholder')"
-        style="max-width: 260px"
-        @press-enter="load"
-      />
-      <a-select
-        v-model:value="filters.scopeKind"
-        allow-clear
-        :placeholder="t('memoryCenter.col.scope')"
-        style="width: 140px"
-      >
-        <a-select-option
-          v-for="s in scopes"
-          :key="s"
-          :value="s"
+      <section class="toolbar">
+        <a-input
+          v-model:value="filters.q"
+          allow-clear
+          :placeholder="t('memoryCenter.searchPlaceholder')"
+          style="max-width: 260px"
+          @press-enter="load"
+        />
+        <a-select
+          v-model:value="filters.scopeKind"
+          allow-clear
+          :placeholder="t('memoryCenter.col.scope')"
+          style="width: 140px"
         >
-          {{ scopeLabel(s) }}（{{ facets.byScope[s] ?? 0 }}）
-        </a-select-option>
-      </a-select>
-      <a-select
-        v-model:value="filters.status"
-        allow-clear
-        :placeholder="t('memoryCenter.col.status')"
-        style="width: 130px"
-      >
-        <a-select-option
-          v-for="s in statuses"
-          :key="s"
-          :value="s"
+          <a-select-option
+            v-for="s in scopes"
+            :key="s"
+            :value="s"
+          >
+            {{ scopeLabel(s) }}（{{ facets.byScope[s] ?? 0 }}）
+          </a-select-option>
+        </a-select>
+        <a-select
+          v-model:value="filters.status"
+          allow-clear
+          :placeholder="t('memoryCenter.col.status')"
+          style="width: 130px"
         >
-          {{ s }}（{{ facets.byStatus[s] ?? 0 }}）
-        </a-select-option>
-      </a-select>
-      <a-select
-        v-model:value="filters.kind"
-        allow-clear
-        :placeholder="t('memoryCenter.curation.kind')"
-        style="width: 150px"
-        @change="load"
-      >
-        <a-select-option value="semantic">
-          {{ t('memoryCenter.curation.semantic') }}
-        </a-select-option>
-        <a-select-option value="experience">
-          {{ t('memoryCenter.curation.experience') }}
-        </a-select-option>
-        <a-select-option value="curated">
-          {{ t('memoryCenter.curation.curated') }}
-        </a-select-option>
-      </a-select>
-      <a-checkbox v-model:checked="filters.includeDeleted">
-        {{ t('memoryCenter.includeDeleted') }}（{{ facets.deleted }}）
-      </a-checkbox>
-      <a-button
-        type="primary"
-        data-testid="memory-search"
-        @click="load"
-      >
-        {{ t('memoryCenter.search') }}
-      </a-button>
-    </section>
+          <a-select-option
+            v-for="s in statuses"
+            :key="s"
+            :value="s"
+          >
+            {{ s }}（{{ facets.byStatus[s] ?? 0 }}）
+          </a-select-option>
+        </a-select>
+        <a-select
+          v-model:value="filters.kind"
+          allow-clear
+          :placeholder="t('memoryCenter.curation.kind')"
+          style="width: 150px"
+          @change="load"
+        >
+          <a-select-option value="semantic">
+            {{ t('memoryCenter.curation.semantic') }}
+          </a-select-option>
+          <a-select-option value="experience">
+            {{ t('memoryCenter.curation.experience') }}
+          </a-select-option>
+          <a-select-option value="curated">
+            {{ t('memoryCenter.curation.curated') }}
+          </a-select-option>
+        </a-select>
+        <a-checkbox v-model:checked="filters.includeDeleted">
+          {{ t('memoryCenter.includeDeleted') }}（{{ facets.deleted }}）
+        </a-checkbox>
+        <a-button
+          type="primary"
+          data-testid="memory-search"
+          @click="load"
+        >
+          {{ t('memoryCenter.search') }}
+        </a-button>
+      </section>
 
-    <a-table
-      :columns="columns"
-      :data-source="items"
-      :loading="loading"
-      row-key="id"
-      size="small"
-      :pagination="{ current: page, pageSize, total, onChange: (p: number) => { page = p; load() } }"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'scope'">
-          <a-tag color="blue">
-            {{ scopeLabel(record.scopeKind) }}
-          </a-tag>
-          <span
-            v-if="record.scopeKey"
-            class="mono"
-          >{{ record.scopeKey.slice(0, 10) }}</span>
+      <a-table
+        :columns="columns"
+        :data-source="items"
+        :loading="loading"
+        row-key="id"
+        size="small"
+        :pagination="{ current: page, pageSize, total, onChange: (p: number) => { page = p; load() } }"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'scope'">
+            <a-tag color="blue">
+              {{ scopeLabel(record.scopeKind) }}
+            </a-tag>
+            <span
+              v-if="record.scopeKey"
+              class="mono"
+            >{{ record.scopeKey.slice(0, 10) }}</span>
+          </template>
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="record.status === 'validated' ? 'green' : record.status === 'candidate' ? 'gold' : record.status === 'retired' ? 'default' : 'blue'">
+              {{ record.status }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'author'">
+            <a-tag :color="record.authorKind === 'human' ? 'purple' : 'default'">
+              {{ record.authorKind }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'title'">
+            <span
+              v-if="record.pinned"
+              title="pinned"
+            >📌</span>
+            <a
+              class="link"
+              @click="open(record.id)"
+            >{{ record.title }}</a>
+            <a-tag
+              v-if="record.deletedAt"
+              color="red"
+            >
+              {{ t('memoryCenter.deleted') }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'updatedAt'">
+            <span class="mono">{{ String(record.updatedAt || record.createdAt).slice(0, 16).replace('T', ' ') }}</span>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <a-button
+              size="small"
+              type="link"
+              data-testid="memory-open"
+              @click="open(record.id)"
+            >
+              {{ t('memoryCenter.open') }}
+            </a-button>
+          </template>
         </template>
-        <template v-else-if="column.key === 'status'">
-          <a-tag :color="record.status === 'validated' ? 'green' : record.status === 'candidate' ? 'gold' : record.status === 'retired' ? 'default' : 'blue'">
-            {{ record.status }}
-          </a-tag>
-        </template>
-        <template v-else-if="column.key === 'author'">
-          <a-tag :color="record.authorKind === 'human' ? 'purple' : 'default'">
-            {{ record.authorKind }}
-          </a-tag>
-        </template>
-        <template v-else-if="column.key === 'title'">
-          <span
-            v-if="record.pinned"
-            title="pinned"
-          >📌</span>
-          <a
-            class="link"
-            @click="open(record.id)"
-          >{{ record.title }}</a>
-          <a-tag
-            v-if="record.deletedAt"
-            color="red"
-          >
-            {{ t('memoryCenter.deleted') }}
-          </a-tag>
-        </template>
-        <template v-else-if="column.key === 'updatedAt'">
-          <span class="mono">{{ String(record.updatedAt || record.createdAt).slice(0, 16).replace('T', ' ') }}</span>
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <a-button
-            size="small"
-            type="link"
-            data-testid="memory-open"
-            @click="open(record.id)"
-          >
-            {{ t('memoryCenter.open') }}
-          </a-button>
-        </template>
-      </template>
-    </a-table>
+      </a-table>
+    </template>
+
+    <MemoryGraphView
+      v-else-if="view === 'graph'"
+      :channels="industryChannels"
+      :initial-channel-id="industryChannelId"
+      @open-memory="openMemoryFromGraph"
+    />
+    <MemoryInjectionTracePanel
+      v-else-if="view === 'injections'"
+      :channels="industryChannels"
+      :initial-channel-id="industryChannelId"
+      @open-memory="openMemoryFromGraph"
+    />
+    <MemoryHealthPanel
+      v-else
+      :channels="industryChannels"
+      :initial-channel-id="industryChannelId"
+    />
 
     <a-drawer
       v-model:open="drawerOpen"
@@ -1161,16 +1256,35 @@ onMounted(load)
 <style scoped>
 .aw-memory-page { padding: 20px 24px 40px; }
 .head h1 { margin: 0; font-size: 20px; }
-.hint { margin: 4px 0 16px; color: var(--aw-text-3, #888); font-size: 13px; }
+.view-switch { margin: 0 0 14px; }
+.view-switch :deep(.ant-segmented-group) { flex-wrap: wrap; }
+.view-switch :deep(.ant-segmented-item) { display: inline-flex; align-items: center; min-height: 36px; }
+@media (pointer: coarse) {
+  .view-switch :deep(.ant-segmented-item) { min-height: 44px; }
+}
+@media (max-width: 640px) {
+  .view-switch :deep(.ant-segmented) { padding: 4px; }
+  .view-switch :deep(.ant-segmented-group) { gap: 4px; }
+  .view-switch :deep(.ant-segmented-item) { flex: 1 1 calc(50% - 4px); justify-content: center; }
+  /* 换行后 Ant 的单个绝对定位 thumb 会跨行形成大块白底；窄屏改为逐项选中底色。 */
+  .view-switch :deep(.ant-segmented-thumb) { display: none; }
+  .view-switch :deep(.ant-segmented-item-selected) {
+    background: var(--paper-raised);
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgb(12 10 9 / 8%);
+  }
+}
+.hint { margin: 4px 0 16px; color: var(--ink-faint); font-size: 13px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
 .link { cursor: pointer; }
-.mono { font-family: var(--aw-font-mono, ui-monospace, monospace); font-size: 12px; color: var(--aw-text-3, #888); margin-left: 6px; }
+.mono { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); margin-left: 6px; }
 .block { margin-top: 14px; }
 .content { white-space: pre-wrap; line-height: 1.6; }
 .mt { margin-top: 8px; }
 .notes { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; font-size: 13px; }
 .industry { margin: 8px 0 12px; }
-.industry-body { margin-top: 10px; padding: 12px; border: 1px solid var(--aw-border, #e5e5e5); border-radius: 8px; }
-.handbook { max-height: 320px; overflow: auto; background: var(--aw-bg-2, #fafafa); padding: 10px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; }.notes li { border-bottom: 1px dashed var(--aw-border, #eee); padding-bottom: 6px; }
+.industry-body { margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+.handbook { max-height: 320px; overflow: auto; background: var(--paper-deep); padding: 10px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; }
+.notes li { border-bottom: 1px dashed var(--line); padding-bottom: 6px; }
 @media (max-width: 760px) { .aw-memory-page { padding: 12px; } }
 </style>
