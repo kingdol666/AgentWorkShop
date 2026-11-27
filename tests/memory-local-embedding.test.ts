@@ -123,3 +123,55 @@ test('ONNX 本地推理（需真实模型，缺失则跳过）：维度 + L2 + �
   }
   assert.ok(dot(q!, related!) > dot(q!, unrelated!), '相关句相似度必须高于无关句')
 })
+
+// ── backfill 游标语义（评审发现 3/4 回归，2026-11-28）────────────────────────
+// 旧实现按 updated_at 固定窗口 + pending 空即报 0：rebuild 原地重编同一批、
+// eligible 超窗时窗口外永不回填。现在 rowid 游标翻页 + remaining=max(0, eligible-vectorRows)。
+test('backfill 游标：多轮覆盖全部行；rebuild 后向量行数=可编码行数', async () => {
+  process.env.AW_HOME = HOME
+  const { openWorkshopDb } = await import('../server/services/workshop/db/database')
+  const { TEAM_AGENT_ID } = await import('../server/services/workshop/db/memory.repo')
+  const { backfillEmbeddings } = await import('../server/services/workshop/memory/local-embedding/backfill')
+  const { invalidateRuntimeSettingsCache } = await import('../server/services/workshop/settings')
+  invalidateRuntimeSettingsCache()
+  const db = openWorkshopDb(':memory:')
+  const now = new Date().toISOString()
+  db.prepare(`INSERT INTO channels (id, name, description, scenario_prompt, llm_json, workspace, enabled, version, line_id, owner_user_id, memory_access_mode, created_at, updated_at)
+    VALUES ('c1', '回填游标验收', '', '', '', '{}', 1, 1, '', 'u1', 'inherit', ?, ?)`).run(now, now)
+  // 50 行、每轮 limit=8：旧实现按 updated_at 固定窗口会反复重编同一批；
+  // 新实现 rowid 游标必须恰好覆盖全部 50 行
+  const ins = db.prepare(`INSERT INTO agent_memories(id, channel_id, agent_id, kind, title, title_fts, content, importance,
+      task_id, session_id, dedup_key, status, created_at, updated_at)
+    VALUES (?, 'c1', ?, 'semantic', ?, ?, ?, 0.5, NULL, '', ?, 'active', ?, ?)`)
+  for (let i = 0; 50 > i; i++) {
+    ins.run(`bf-row-${i}`, TEAM_AGENT_ID, `回填行${i}`, `回 填 行 ${i}`, `回填正文${i}`, `bf:${i}`, now, now)
+  }
+  const stub = {
+    dims: () => 4,
+    describe: () => ({ model: 'stub' }),
+    embed: async (texts: string[]) => texts.map(() => new Float32Array([1, 0, 0, 0])),
+  } as never
+  const r1 = await backfillEmbeddings(db, { limit: 8, rebuild: true, provider: stub })
+  assert.equal(r1.embedded, 8, `单轮 limit=8 应只编 8 行，实际 ${r1.embedded}`)
+  assert.equal(r1.remaining, 42, `remaining 应为 42（50-8），实际 ${r1.remaining}（旧实现会报 0）`)
+  let total = r1.embedded
+  let rounds = 1
+  while (30 > rounds) {
+    const r = await backfillEmbeddings(db, { limit: 8, provider: stub })
+    if (r.embedded === 0) break
+    total += r.embedded
+    rounds++
+    if (r.remaining === 0) break
+  }
+  assert.equal(total, 50, `多轮游标应恰好覆盖全部 50 行，实际 ${total}（rounds=${rounds}）`)
+  const vecRows = Number((db.prepare('SELECT COUNT(*) AS n FROM agent_memories_vec').get() as { n: number }).n)
+  assert.equal(vecRows, 50, `向量行应为 50，实际 ${vecRows}`)
+  const rLast = await backfillEmbeddings(db, { limit: 8, provider: stub })
+  assert.equal(rLast.embedded, 0, '全部编完后应为 0 新增')
+  assert.equal(rLast.remaining, 0, '全部编完后 remaining=0')
+  // rebuild 全量语义：清空后重编同样游标推进，不原地打转
+  const rr = await backfillEmbeddings(db, { limit: 8, rebuild: true, provider: stub })
+  assert.equal(rr.embedded, 8)
+  assert.equal(rr.remaining, 42, `rebuild 后 remaining 应从 42 起，实际 ${rr.remaining}`)
+  db.close()
+})

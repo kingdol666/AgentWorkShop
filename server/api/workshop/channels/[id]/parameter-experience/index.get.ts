@@ -51,7 +51,8 @@ export default defineApiHandler(async (event) => {
       verdict: str(q.verdict),
       deployedOnly: bool(q.deployed_only ?? q.deployedOnly),
       includeLegacy: bool(q.include_legacy ?? q.includeLegacy),
-      limit: Number(q.limit ?? 50),
+      // NaN 兜底（评审发现 10）：`Number('abc')` 经 max/min 链仍是 NaN，node:sqlite 绑定 NaN 直接 500
+      limit: Number.isFinite(Number(q.limit)) ? Number(q.limit) : 50,
       // 作用域（fail-closed）：频道档只读本频道；产线/产品档按本频道的可信绑定跨频道共享。
       // 之前不带任何频道条件 —— 凭「URL 频道归你」就能读到全库所有 owner 的经验正文。
       scopeChannelIds: [channelId],

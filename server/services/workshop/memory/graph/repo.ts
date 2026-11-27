@@ -310,6 +310,8 @@ export interface GraphRepo {
   /** 关系证据中至少有一条来源记忆仍存活（或为非记忆锚点）。 */
   edgeEvidenceLive(edgeId: string): boolean
   evidenceCount(edgeId: string): number
+  /** 批量取边的证据来源记忆 agent 集合（viewer 过滤 fact 溯源用；软删/retired 不计） */
+  edgeEvidenceAgents(edgeIds: string[]): Map<string, Set<string>>
 
   listEdgesForSubgraph(q: GraphSubgraphQuery): GraphEdge[]
   listCommunities(channelId: string, opts?: { level?: number, limit?: number } & GraphQueryScope): GraphCommunity[]
@@ -1073,6 +1075,30 @@ export function createMemoryGraphRepo(db: DatabaseSync): GraphRepo {
           OR e.memory_id = '' OR e.memory_id LIKE 'ontology:%' OR e.memory_id LIKE 'claim:%'
         ) LIMIT 1`).get(edgeId)
       return Boolean(row)
+    },
+    edgeEvidenceAgents(edgeIds) {
+      const out = new Map<string, Set<string>>()
+      for (let i = 0; i < edgeIds.length; i += 100) {
+        const chunk = edgeIds.slice(i, i + 100)
+        if (chunk.length === 0) continue
+        // 非记忆锚点(ontology:/claim:/空)没有 agent 归属：归入 '__anon__'（视为共享面）
+        const rows = db.prepare(
+          `SELECT e.edge_id AS edgeId, COALESCE(m.agent_id, '__anon__') AS agentId
+             FROM memory_edge_evidence e
+             LEFT JOIN agent_memories m ON m.id = e.memory_id
+            WHERE e.edge_id IN (${chunk.map(() => '?').join(', ')})
+              AND (m.id IS NULL OR (m.deleted_at IS NULL AND m.status != 'retired'))`,
+        ).all(...chunk) as Array<{ edgeId: string, agentId: string }>
+        for (const r of rows) {
+          let set = out.get(r.edgeId)
+          if (!set) {
+            set = new Set()
+            out.set(r.edgeId, set)
+          }
+          set.add(r.agentId)
+        }
+      }
+      return out
     },
 
     listEdgesForSubgraph(q) {

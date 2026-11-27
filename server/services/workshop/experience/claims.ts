@@ -269,7 +269,9 @@ export function queryParameterExperience(db: DatabaseSync, filter: ParameterExpe
       args.push(...lns)
     }
     if (prs.length > 0) {
-      ors.push(`(COALESCE(c.line_id, '') = '' AND COALESCE(c.product_id, '') != '' AND c.product_id IN (${prs.map(() => '?').join(', ')}))`)
+      // 产品档不要求 line_id 为空（评审发现 8）：产品档主张常同时带产线锚点，
+      // 强制 line_id='' 会让双锚点主张落不进任何分支；归属仍由 product 白名单约束。
+      ors.push(`(COALESCE(c.product_id, '') != '' AND c.product_id IN (${prs.map(() => '?').join(', ')}))`)
       args.push(...prs)
     }
     where.push(ors.length > 0 ? `(${ors.join(' OR ')})` : '(1=0)')

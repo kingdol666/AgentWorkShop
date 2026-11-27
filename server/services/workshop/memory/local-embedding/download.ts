@@ -92,13 +92,28 @@ async function downloadFile(
 ): Promise<string> {
   let lastError: unknown = null
   for (const host of DOWNLOAD_HOSTS) {
-    const url = assertAllowedUrl(buildUrl(host, def.repo, file.path))
+    // 逐跳校验（评审发现 5，2026-11-28）：redirect:'follow' 会让白名单只约束首跳 ——
+    // 镜像 302 可把后续跳转引向任意地址（含私网）。manual + 逐跳 assertAllowedUrl，≤3 跳。
+    let url = assertAllowedUrl(buildUrl(host, def.repo, file.path))
     try {
-      const res = await fetch(url, {
-        signal: AbortSignal.any([signal, AbortSignal.timeout(PER_REQUEST_TIMEOUT_MS)]),
-        redirect: 'follow',
-        headers: { 'user-agent': 'AgentWorkShop/memory-embedding (+local model fetch)' },
-      })
+      let res: Response | null = null
+      for (let hop = 0; hop < 4; hop++) {
+        const r = await fetch(url, {
+          signal: AbortSignal.any([signal, AbortSignal.timeout(PER_REQUEST_TIMEOUT_MS)]),
+          redirect: 'manual',
+          headers: { 'user-agent': 'AgentWorkShop/memory-embedding (+local model fetch)' },
+        })
+        if (r.status >= 300 && r.status < 400) {
+          const loc = r.headers.get('location')
+          if (!loc) throw new Error(`HTTP ${r.status} 重定向缺 location`)
+          await r.body?.cancel()
+          url = assertAllowedUrl(new URL(loc, url).toString())
+          continue
+        }
+        res = r
+        break
+      }
+      if (!res) throw new Error('重定向次数超限（>3 跳）')
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
       const contentLength = Number(res.headers.get('content-length') ?? '0')
       job.source = host

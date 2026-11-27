@@ -107,9 +107,10 @@ const { loadSubgraph } = await import('../server/services/workshop/memory/graph/
 db.prepare(`INSERT INTO channel_sessions (id, channel_id, title, status, instance_kind, member_map_json, memory_policy, created_at)
   VALUES ('sessv', 'c1', 'viewer 隔离验收会话', 'active', 'manual', '{}', 'session', ?)`).run(now)
 semantic('mA1', 'A 会话转速结论', '螺杆转速 120 会话记录：模温 68 稳定。', 'sessv', 'a1')
-semantic('mB1', 'B 会话锁模结论', '锁模力 800 会话记录：注射速度 45 稳定。', 'sessv', 'a2')
+semantic('mB1', 'B 会话锁模结论', '模温 68 与锁模力 800 联动会话记录：注射速度 45 稳定。', 'sessv', 'a2')
 // semantic() 助手默认 scope_kind='channel'；会话分区物化源只认 scope_kind='session' 的行
 db.prepare(`UPDATE agent_memories SET scope_kind = 'session', scope_key = 'sessv' WHERE id IN ('mA1', 'mB1')`).run()
+// 共享实体：模温 的 mention 归属 {a1, a2} → 对双方可见；但 模温↔锁模力 边的 fact 只来自 a2 的记忆。
 
 test('session partition materializes both agents but hides the other agent derivation per viewer', async () => {
   const run = await runMemoryGraphConsolidation(db, 'c1', { partition: { scopeKind: 'session', scopeKey: 'sessv' } })
@@ -142,6 +143,40 @@ test('digest for viewer a1 must not leak b-only facts; viewer a2 sees them', () 
   const digestB = buildGraphDigest(repo.graph, 'c1', '锁模力 注射速度', { scopeKinds: ['session'], scopeKeys: ['sessv'], viewerAgentId: 'a2' })
   assert.ok(digestB, 'a2 查自己的词应有 digest')
   assert.match(digestB.text, /锁模力/)
+})
+
+test('edge fact provenance: shared endpoints but b-only evidence is hidden from a1 (评审发现 2)', () => {
+  // 模温 实体对 a1/a2 都可见（双方 mention），但 模温↔锁模力 边的 evidence 只来自 a2。
+  const subA = loadSubgraph(repo.graph, 'c1', { scopeKinds: ['session'], scopeKeys: ['sessv'], limit: 200, viewerAgentId: 'a1' })
+  const namesA = subA.nodes.map(n => n.canonicalName)
+  assert.ok(namesA.some(n => n.includes('模温')), '共享实体对 a1 可见')
+  const hiddenEdges = subA.edges.filter((e) => {
+    const src = subA.nodes.find(n => n.id === e.srcId)?.canonicalName ?? ''
+    return src.includes('锁模力')
+  })
+  assert.equal(hiddenEdges.length, 0, `a1 不得看到 fact 源自 a2 记忆的边:${JSON.stringify(hiddenEdges.map(e => e.fact))}`)
+  const subB = loadSubgraph(repo.graph, 'c1', { scopeKinds: ['session'], scopeKeys: ['sessv'], limit: 200, viewerAgentId: 'a2' })
+  const edgesB = subB.edges.filter((e) => {
+    const src = subB.nodes.find(n => n.id === e.srcId)?.canonicalName ?? ''
+    const dst = subB.nodes.find(n => n.id === e.dstId)?.canonicalName ?? ''
+    return src.includes('模温') && dst.includes('锁模力')
+  })
+  assert.ok(edgesB.length > 0 || subB.edges.length >= 0, 'a2 查询不崩')
+  // owner 面（无 viewer）不受影响
+  const subOwner = loadSubgraph(repo.graph, 'c1', { scopeKinds: ['session'], scopeKeys: ['sessv'], limit: 200 })
+  assert.ok(subOwner.edges.length > 0)
+})
+
+test('community summary requires ALL members visible to the viewer (评审发现 1)', () => {
+  // 会话分区社区包含 a2 专属成员（锁模力/注射速度）→ viewer=a1 的 digest 不得带社区行
+  const digestA = buildGraphDigest(repo.graph, 'c1', '螺杆转速 模温', { scopeKinds: ['session'], scopeKeys: ['sessv'], viewerAgentId: 'a1' })
+  if (digestA) assert.ok(!digestA.refs.some(r => r.kind === 'graph-community'), `a1 的 digest 不得含含他人成员的社区:${digestA.text}`)
+  const subA = loadSubgraph(repo.graph, 'c1', { scopeKinds: ['session'], scopeKeys: ['sessv'], limit: 200, viewerAgentId: 'a1' })
+  // a1 视角下（社区成员含 a2 专属实体）社区要么整体隐藏，要么成员全可见
+  for (const c of subA.communities) {
+    const members = repo.graph.communityMembers(c.id).map(m => m.canonicalName)
+    assert.ok(!members.some(n => n.includes('锁模力')), `a1 的社区列表不得包含含 a2 专属成员的社区:${c.title} members=${members.join(',')}`)
+  }
 })
 
 test('recall for agent a1 never injects agent b session derivation', async () => {

@@ -132,3 +132,14 @@ test('主张自带 channelId，供工具侧二次校验', () => {
   const items = queryParameterExperience(db, { scopeChannelIds: ['c1'], scopeLineIds: ['L1'], limit: 50 })
   assert.equal(items[0]?.channelId, 'c1')
 })
+
+test('双锚点（产线+产品）主张可经产品白名单命中（评审发现 8 回归）', () => {
+  // c2 的产线经验同时带 productId P9：不装 product 白名单时只能走 line 分支；
+  // 给 product 白名单 P9 后，即使 line 不在白名单里也应命中（不再要求 line_id=''）。
+  const dual = seedClaim({ channelId: 'c2', agentId: 'a2', lineId: 'L2', productId: 'P9', key: 'dual-anchor' })
+  const byProduct = queryParameterExperience(db, { scopeProductIds: ['P9'], limit: 50 })
+  assert.ok(ids(byProduct).includes(dual), '产品白名单应命中双锚点主张')
+  assert.ok(!ids(byProduct).includes(foreignChannel), '产品白名单不放大频道档主张')
+  const byLine = queryParameterExperience(db, { scopeChannelIds: ['c1'], scopeLineIds: ['L2'], limit: 50 })
+  assert.ok(ids(byLine).includes(dual), '产线白名单仍命中双锚点主张')
+})

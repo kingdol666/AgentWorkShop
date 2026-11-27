@@ -55,9 +55,9 @@ function countVecRows(db: DatabaseSync): number {
  */
 export async function backfillEmbeddings(
   db: DatabaseSync,
-  opts: { limit?: number, timeBudgetMs?: number, rebuild?: boolean } = {},
+  opts: { limit?: number, timeBudgetMs?: number, rebuild?: boolean, provider?: ReturnType<typeof getEmbeddingProvider> } = {},
 ): Promise<BackfillResult> {
-  const provider = getEmbeddingProvider()
+  const provider = opts.provider ?? getEmbeddingProvider()
   if (!provider) throw new Error('未启用向量模型：请先在记忆中心下载并启用本地模型，或配置 Embedding 端点')
   const limit = Math.max(1, Math.min(512, opts.limit ?? 64))
   const budget = Math.max(1000, Math.min(120_000, opts.timeBudgetMs ?? 25_000))
@@ -90,47 +90,59 @@ export async function backfillEmbeddings(
   }
   catch { /* 空表/首次建表：无既有向量 */ }
 
-  // 候选窗口：一次取够（记忆表有条目上限，几千行量级），再在内存里按"是否已有向量"过滤。
-  // 不用 OFFSET 分页：vec 是否存在无法在 SQL 侧与主表 join（vec0 虚拟表），窗口化最省心。
-  const scanWindow = Math.max(limit * 8, 2000)
-  const candidates = db.prepare(
-    `SELECT rowid, id, agent_id, title, content FROM agent_memories
-      WHERE deleted_at IS NULL AND COALESCE(status, 'active') != 'retired'
-      ORDER BY updated_at DESC, created_at DESC
-      LIMIT ?`,
-  ).all(scanWindow) as unknown as CandidateRow[]
-
-  const pending = candidates.filter(c => opts.rebuild || !have.has(Number(c.rowid))).slice(0, limit)
+  // 候选扫描：rowid 游标翻页（评审发现 3/4，2026-11-28）。旧实现按 updated_at 固定窗口 +
+  // pending 空即报 0：rebuild 时 vecSet 不更新主表 updated_at → 每轮原地重编同一批；
+  // eligible > 窗口且窗口内全有向量 → 窗口外行永远不回填。现在按 rowid 升序翻页，
+  // pending 稀缺时游标前移继续找，直到预算/条数/表尾。
+  const windowRows = Math.max(limit * 8, 2000)
+  const maxWindows = 64
+  let cursor = 0
+  let scanned = 0
   let embedded = 0
   let failed = 0
-  const model = provider.describe?.().model ?? 'unknown'
-  for (const row of pending) {
-    if (Date.now() - started > budget) break
-    try {
-      const [vec] = await provider.embed([embedText(row)])
-      if (!vec || vec.length !== dims) {
-        failed++
-        continue
+  const windowStmt = db.prepare(
+    `SELECT rowid, id, agent_id, title, content FROM agent_memories
+      WHERE deleted_at IS NULL AND COALESCE(status, 'active') != 'retired' AND rowid > ?
+      ORDER BY rowid LIMIT ?`,
+  )
+  for (let w = 0; w < maxWindows; w++) {
+    if (Date.now() - started > budget || embedded >= limit) break
+    const candidates = windowStmt.all(cursor, windowRows) as unknown as CandidateRow[]
+    if (candidates.length === 0) break
+    scanned += candidates.length
+    cursor = Number(candidates[candidates.length - 1]!.rowid)
+    for (const row of candidates) {
+      if (embedded >= limit || Date.now() - started > budget) break
+      if (!opts.rebuild && have.has(Number(row.rowid))) continue
+      try {
+        const [vec] = await provider.embed([embedText(row)])
+        if (!vec || vec.length !== dims) {
+          failed++
+          continue
+        }
+        repo.vecSet(Number(row.rowid), row.agent_id, vec)
+        have.add(Number(row.rowid))
+        embedded++
       }
-      repo.vecSet(Number(row.rowid), row.agent_id, vec)
-      embedded++
-    }
-    catch {
-      failed++
+      catch {
+        failed++
+      }
     }
   }
 
-  // 剩余量：以"可编码行数 − 现有向量行数"为准；本批没有待编码行时直接报 0
-  // （否则调用方会对同一窗口空转）。向量行可能多于可编码行（孤儿/退休残留），故取 max(0,·)。
+  // 剩余量：以"可编码行数 − 现有向量行数"为准（不依赖本批 pending——游标可能停在
+  // "本批已满"而表里仍有未编行，调用方按 remaining 继续调用）。向量行可能多于可编码行
+  // （孤儿/退休残留），故取 max(0,·)。
   const eligible = Number((db.prepare(
     `SELECT COUNT(*) AS n FROM agent_memories WHERE deleted_at IS NULL AND COALESCE(status, 'active') != 'retired'`,
   ).get() as { n: number }).n)
   const vectorRows = countVecRows(db)
-  const remaining = pending.length === 0 ? 0 : Math.max(0, eligible - vectorRows)
+  const remaining = Math.max(0, eligible - vectorRows)
+  const model = provider.describe?.().model ?? 'unknown'
   return {
     model,
     dims,
-    scanned: candidates.length,
+    scanned,
     embedded,
     failed,
     remaining,

@@ -43,6 +43,7 @@ export default defineApiHandler(async (event) => {
       where.push('status = ?')
       args.push(q.status)
     }
+    const requestedLimit = Number(q.limit ?? 50)
     const rows = db.prepare(
       `SELECT id, line_id AS lineId, product_id AS productId, recipe_id AS recipeId, recipe_revision AS recipeRevision,
               node_id AS nodeId, node_name AS nodeName, variable, from_value AS fromValue, to_value AS toValue,
@@ -50,7 +51,7 @@ export default defineApiHandler(async (event) => {
               confidence, mode, evidence_json AS evidenceJson, status, applied_recipe_revision AS appliedRecipeRevision,
               feedback_json AS feedbackJson, created_at AS createdAt
          FROM parameter_proposals WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ?`,
-    ).all(...args, Math.min(500, Math.max(1, Number(q.limit ?? 50)))) as Array<Record<string, unknown>>
+    ).all(...args, Math.min(500, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 50))) as Array<Record<string, unknown>>
     return {
       items: rows.map(r => ({
         ...r,
@@ -61,8 +62,14 @@ export default defineApiHandler(async (event) => {
     }
   }
   const body = await readBody<Record<string, unknown>>(event) ?? {}
-  const lineId = String(body.lineId ?? channel.lineId ?? '').trim()
-  if (!lineId) throw new AppError(422, 'LINE_REQUIRED', 'lineId 必填（或频道已绑定产线）')
+  // lineId 是 RLS 锚点，不允许客户端任意指定（评审发现 6）：只接受频道自身绑定的产线；
+  // 显式传入其他值一律 403 —— 与工具侧 readableLines 闸、GET 侧 contextFor 同口径。
+  const lineId = String(channel.lineId ?? '').trim()
+  if (!lineId) throw new AppError(422, 'LINE_REQUIRED', '频道未绑定产线（lineId 只取频道绑定，不收客户端输入）')
+  const requestedLine = String(body.lineId ?? '').trim()
+  if (requestedLine && requestedLine !== lineId) {
+    throw new AppError(403, 'SCOPE_VIOLATION', 'lineId 不在频道绑定范围（只能为本频道绑定产线生成建议）')
+  }
   const currentValues: Record<string, number> = {}
   if (body.currentValues && typeof body.currentValues === 'object') {
     for (const [k, v] of Object.entries(body.currentValues as Record<string, unknown>)) {
