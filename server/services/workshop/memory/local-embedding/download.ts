@@ -15,7 +15,7 @@
 import { createWriteStream, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { Readable } from 'node:stream'
+import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { randomUUID } from 'node:crypto'
 import { findLocalEmbeddingModel, localModelDir, totalModelBytes, type LocalEmbeddingModelDef } from './registry'
@@ -93,7 +93,14 @@ export function cancelDownloadJob(jobId: string): boolean {
   return true
 }
 
-async function downloadFile(
+/**
+ * 单文件下载（导出仅供测试；生产入口是 startModelDownload）。
+ *
+ * 进度语义（2026-11-28 实机修正）：`job.received` 必须**随字节推进**，而不是等整文件
+ * rename 后一次性 +24MB —— 24MB 模型在这种实现下全程显示 0%，进度条等于摆设。
+ * 现在用 Transform 计数流：每 chunk 累加；失败/取消回滚到本文件开始前的值（不虚报）。
+ */
+export async function downloadFile(
   def: LocalEmbeddingModelDef,
   file: { name: string, path: string },
   dir: string,
@@ -105,6 +112,7 @@ async function downloadFile(
     // 逐跳校验（评审发现 5，2026-11-28）：redirect:'follow' 会让白名单只约束首跳 ——
     // 镜像 302 可把后续跳转引向任意地址（含私网）。manual + 逐跳 assertAllowedUrl，≤3 跳。
     let url = assertAllowedUrl(buildUrl(host, def.repo, file.path))
+    const receivedBefore = job.received
     try {
       let res: Response | null = null
       for (let hop = 0; hop < 4; hop++) {
@@ -129,16 +137,26 @@ async function downloadFile(
       job.source = host
       job.currentFile = file.name
       const target = join(dir, `${file.name}.part`)
-      await pipeline(Readable.fromWeb(res.body as never), createWriteStream(target))
+      let written = 0
+      const counter = new Transform({
+        transform(chunk: Buffer, _enc, cb) {
+          written += chunk.length
+          job.received = receivedBefore + written
+          cb(null, chunk)
+        },
+      })
+      await pipeline(Readable.fromWeb(res.body as never), counter, createWriteStream(target))
       const size = (await stat(target)).size
       if (size === 0) throw new Error('下载内容为空')
       if (contentLength > 0 && size !== contentLength) throw new Error(`体积不符（${size}/${contentLength}）`)
       renameSync(target, join(dir, file.name))
-      job.received += size
+      job.received = receivedBefore + size
       return host
     }
     catch (err) {
       lastError = err
+      // 失败/取消：进度回滚到本文件开始前（跨源重试时也不累计失败字节）
+      job.received = receivedBefore
       if (signal.aborted) throw err
       // 换镜像重试；上一源的半截文件清掉
       try {
@@ -205,22 +223,21 @@ export function startModelDownload(modelId: string): DownloadJob {
     catch (err) {
       job.status = controller.signal.aborted ? 'canceled' : 'failed'
       job.error = String((err as Error)?.message ?? err).slice(0, 400)
-      // 失败清理：半截文件不留在目录里，避免 installedModel 误判
+      // 失败/取消清理：半截文件 + 已完成文件一并清掉（半套文件既不能启用也不能续传，
+      // 留着只会让 installedModel/用户误判）。失败与取消同口径，不再分叉。
+      // 每个 rm 独立兜错（评审 P2）：前一个删不掉不能连累后一个。
       for (const f of def.files) {
-        try {
-          rmSync(join(dir, `${f.name}.part`), { force: true })
-        }
-        catch { /* 忽略 */ }
-      }
-      if (job.status === 'failed') {
-        // 已成功落盘的文件也回滚：部分文件构成的"目录"没有使用价值
-        for (const f of def.files) {
+        for (const name of [`${f.name}.part`, f.name]) {
           try {
-            rmSync(join(dir, f.name), { force: true })
+            rmSync(join(dir, name), { force: true })
           }
           catch { /* 忽略 */ }
         }
       }
+      try {
+        rmSync(join(dir, 'manifest.json'), { force: true })
+      }
+      catch { /* 忽略 */ }
     }
     finally {
       job.finishedAt = new Date().toISOString()

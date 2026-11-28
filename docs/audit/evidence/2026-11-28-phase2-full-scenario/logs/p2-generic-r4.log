@@ -1,0 +1,17 @@
+PASS [G1] generic channel created, no line binding · mode=generic lineId= lead=2ec9f07f worker=06f07043
+PASS [G1] worker profile pinned to ustc/deepseek-flash on omp · {"rpcMode":"rpc","provider":"ustc","model":"deepseek-flash"}
+PASS [G2] real deepseek task reached terminal · state=COMPLETED
+PASS [G3] session human message accepted (schema {text}) · status=200 ok
+PASS [G3] human dialog recorded as episodic-dialog (session scope, clone-attributed) · search:1ee892d0 episodic-dialog scope=session 对话:请记住:我们车间夜班从 20:00 开始,点检必须在班
+PASS [G4] save_memory accepted on omp worker · 已沉淀到Channel 公共记忆(全员可检索): "点检经验 GENZ-65760"(dedupKey=agent:06f07043-8f05-443e-867
+FAIL [G4] saved memory immediately retrievable (exact token in top-10) · hits=10
+PASS [G5] handbook appears shortly after task (debounced) · lag=0s sources=30
+PASS [G5] next turn injected with curated + multi-driver, no per-injection duplicates · sources=["search","brief","curated","primer","shared"] items=3 maxRefsPerTurn=14 perItemDup=0
+PASS [G5] owner-global shared row auto-injects into the non-industrial channel (L2, source=shared) · sharedRefs=["5bb5d8f4-4b0b-4ffc-b8ba-459e950e4b24"]
+PASS [G6] graph run materializes nodes and edges · nodes=49 edges=42
+PASS [G7] cross-lingual (EN query → ZH memory) retrievable via vector layer · hits=10
+PASS [G7] human-created memory vectorized on write and retrievable without backfill · create=200
+
+1 FAILED (13 checks)
+  FAIL G4 saved memory immediately retrievable (exact token in top-10) :: hits=10
+P2_EXIT=1

@@ -1,0 +1,38 @@
+✅ 连通[P3环境温度PV(mqtt)](mqtt) — latency=1ms Broker 连接成功,aw/twin/b3-env-blow/p3-env-temp → scalar 26.4(jsonPath=data.p3-env-temp)(被动订阅:收到报文即入库)
+✅ 连通[S1模头温度SP(http写点读面)](http) — latency=2ms 接口可达,取值 = 185
+✅ 连通[S2吹气压力SP(mqtt写点)](mqtt) — latency=4078ms Broker 已连接并订阅 aw/twin/b3-env-blow/set(4s 内未收到消息;设备发布后由订阅回调直接入库)
+=== 连接性预检: 5 通过 / 0 失败 ===
+✅ 阶段1 连通性预检 — exit=0
+✅ 开跑批次(已运行复用) — 批次保持运行:产线「B3吹瓶模拟验收线(2026-11-28)」已在运行(批次 rr-d9b04d0f),请先停止当前数据采集
+✅ 采集总控启动 — running=true interval=5000ms
+{"lineId":"ln-4ed680cd","dcw":{"S1模头温度SP":"dw-509c5b79","S2吹气压力SP":"dw-a04b9fe6"},"daq":{"P1熔体压力PV":"dn-29a6c2ef","P2瓶坯温度PV":"dn-38afad4b","P5壁厚截面PV":"dn-c8f4fdaf","P3环境温度PV":"dn-67ece733","P4环境湿度PV":"dn-6cdc65ea","S2吹气压力SP回读":"dn-3d1f2ed9"},"recipeId":"rc-f1af79fd","reused":true}
+=== 产线供给: 21 通过 / 0 失败 ===
+✅ 阶段2 产线供给 — exit=0
+✅ 线域授权覆盖频道用户 — users=1(owner+members)
+✅ 种子任务已存在(同题跳过) — 4066b268-169a-4551-8338-cd3bb0d82875
+{"channelId":"64de4839-8264-44fc-9382-93e3aa73353a","scenario":"optimize"}
+=== 频道锻造: 11 通过 / 0 失败 ===
+✅ 阶段3 频道锻造 — exit=0
+✅ V5 插件隔离(未配置插件不得被默认启用) — 仅配置项启用(enabled=0, expected=0)
+⚠ V6 受保护线保留 journal 完整性 — SKIP: protected fixture absent before and after; 正式验收需在隔离测试环境预置受保护线和非空 journal 基线
+(V6 SKIP=1:该项不计入通过/失败)
+=== 接入验收: 15 通过 / 0 失败 ===
+✅ 阶段4 V1-V6 验收 — exit=0
+✅ 冒烟:持配方绑定 Agent — 051f1cd2
+✅ 冒烟目标在配方窗口内 — cur=189 target=190.5 window=180~210
+  ⏳ 治理窗(60s),等 70s 重提…
+  ⏳ 治理窗(228s),等 238s 重提…
+✅ 冒烟闭环步(自动 HITL):批准→下发→设备证实 — 方案「SM-冒烟步(3)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-4ccf4)。runId:rr-4ccf4103(后续轮次按此回访效果并回写经验) runId=rr-4ccf4103
+
+================ 交接声明(投用前必读)================
+落袋 id:线=ln-4ed680cd 配方=rc-f1af79fd 频道=64de4839-8264-44fc-9382-93e3aa73353a
+冒烟语义 = 测试(自动 HITL 裁决)。**投入使用前请产线负责人在界面上做 judge & taste**:
+  ① 复核绑定矩阵与 HITL 策略(配方绑定当前 manual,每步下发需人工批准);
+  ② 确认量程/步长/安全限与工艺规程一致;
+  ③ 由人裁决首批真实提案后,方可视为正式投用。
+(对产线负责:任何不确定 —— 量程/步限/SP-PV 判定/认证方式/场景目标 —— skill 必须先询问用户,禁止猜测。)
+=====================================================
+{"summary":true,"lineId":"ln-4ed680cd","recipeId":"rc-f1af79fd","channelId":"64de4839-8264-44fc-9382-93e3aa73353a","smokeRunId":"rr-4ccf4103","pass":7,"fail":0}
+
+======== 一键接入: 7 通过 / 0 失败 ========
+ONBOARD_EXIT=0

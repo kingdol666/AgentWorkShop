@@ -22,6 +22,13 @@ const GRAPH_DEADLINE_MS = 75
  * 叠加时近/重要度后知识行稳定进前列（实测：同义改写查询知识行 rank1/14）。
  */
 const VECTOR_BOARD_WEIGHT = 1.6
+/**
+ * team 向量榜的 k（2026-11-28）：5 → 40。
+ * `agent_memories_vec` 只按 agent_id 分区，`__team__` 行来自所有频道；k=5 时多频道 home
+ * 的 top-5 会被别的频道的 team 行占满，本频道行在 channel 过滤后一条不剩 —— 该频道的
+ * 向量榜恒空、语义相近但字面不重合的记忆搜不到（实机：低活动频道整轮没有注入留痕）。
+ */
+const TEAM_VEC_K = 40
 
 /** 共享区自动注入条数（0=关闭；默认 3，上限 10） */
 function memorySharedTopN(): number {
@@ -147,8 +154,9 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
             : scope === 'private' || scope === 'session'
               ? [this.opts.agentId]
               : [this.opts.agentId, TEAM_AGENT_ID]
+        // team 分区跨频道共享：k 必须大于"其他频道 team 行的占位"（原因见 TEAM_VEC_K 注释）。
         const vAll = ownDomains.flatMap(d =>
-          this.repo.vecSearch(d, qv!, d === TEAM_AGENT_ID ? 5 : 10))
+          this.repo.vecSearch(d, qv!, d === TEAM_AGENT_ID ? TEAM_VEC_K : 10))
         // rowid → 最小距离(agent/team 分区不相交;防御性取 min),保持距离序作名次
         const distByRowid = new Map<number, number>()
         for (const { memRowid, distance } of vAll) {
@@ -156,11 +164,21 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
           if (prev === undefined || distance < prev) distByRowid.set(memRowid, distance)
         }
         const rowids = [...distByRowid.entries()].sort((a, b) => a[1] - b[1]).map(([rid]) => rid)
-        this.repo.listByRowids(rowids).forEach((row, i) => {
+        // 名次必须按**距离序**给（评审 P1，2026-11-28）：listByRowids 的 SQL 没有 ORDER BY，
+        // 返回顺序恒为 rowid 升序 —— 旧写法用它当 RRF rank，等于把向量榜的名次换成 rowid 序；
+        // k 从 5 提到 40 后这种错序会贡献 40 条伪名次，把向量信号整体压平。这里按 rowid 建映射，
+        // 再沿距离序遍历；跨频道/非本人行直接跳过且**不占名次**（与 inScope 的 channel 约束一致）。
+        const rowById = new Map<number, MemoryRow & { rowid: number }>()
+        for (const row of this.repo.listByRowids(rowids)) rowById.set(Number(row.rowid), row)
+        let vecRank = 0
+        for (const rid of rowids) {
+          const row = rowById.get(rid)
+          if (!row) continue
+          if (row.channelId !== this.opts.channelId) continue
           // 所有权守卫 + channel 隔离(脏 rowid/rowid 复用反查到他人行一律丢弃)
-          if (row.agentId !== this.opts.agentId && row.agentId !== TEAM_AGENT_ID) return
-          addRank(row, i, VECTOR_BOARD_WEIGHT)
-        })
+          if (row.agentId !== this.opts.agentId && row.agentId !== TEAM_AGENT_ID) continue
+          addRank(row, vecRank++, VECTOR_BOARD_WEIGHT)
+        }
       }
       catch { /* 向量不可用退化为 FTS */ }
       signal?.throwIfAborted()

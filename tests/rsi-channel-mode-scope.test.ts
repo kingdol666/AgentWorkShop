@@ -244,7 +244,7 @@ test('cross-channel industrial search checks requester and source modes', () => 
     memories: { searchExperienceAcross: () => {
       searches++
       return []
-    }, channelScope: () => ({ lineId: 'line', productId: 'prod' }), touch: () => {} },
+    }, channelScope: () => ({ lineId: 'line', productId: 'prod' }), touch: () => {}, memoryAccessMode: () => 'inherit' },
   } }
   const query = { query: 'test', scope: 'line' as const }
   assert.deepEqual(inst.searchSharedExperience('ch', 'agent', query), [])

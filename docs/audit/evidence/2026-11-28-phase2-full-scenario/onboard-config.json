@@ -1,0 +1,275 @@
+{
+  "line": {
+    "name": "B3吹瓶模拟验收线(2026-11-28)",
+    "description": "依 docs/audit/2026-10-31-b3-blowline-protocol-manual.md v1.4 建的模拟接入线;孪生端点 127.0.0.1:4032/40830",
+    "simulated": true
+  },
+  "product": {
+    "name": "B3-500mL矿泉水瓶"
+  },
+  "nodes": [
+    {
+      "kind": "daq",
+      "name": "P1熔体压力PV",
+      "driver": "http",
+      "unit": "bar",
+      "min": 0,
+      "max": 50,
+      "decimals": 2,
+      "intervalMs": 1000,
+      "driverConfig": {
+        "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p1-melt-pressure",
+        "jsonPath": "value",
+        "allowPrivateHost": true
+      },
+      "templateRef": "pressure-tx"
+    },
+    {
+      "kind": "daq",
+      "name": "P2瓶坯温度PV",
+      "driver": "http",
+      "unit": "℃",
+      "min": 0,
+      "max": 300,
+      "decimals": 1,
+      "intervalMs": 5000,
+      "driverConfig": {
+        "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p2-preform-temp",
+        "jsonPath": "value",
+        "allowPrivateHost": true
+      },
+      "templateRef": "temp-tc"
+    },
+    {
+      "kind": "daq",
+      "name": "P5壁厚截面PV",
+      "driver": "http",
+      "unit": "mm",
+      "min": 0.8,
+      "max": 3,
+      "decimals": 3,
+      "intervalMs": 5000,
+      "driverConfig": {
+        "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p5-wall-profile",
+        "jsonPath": "points",
+        "allowPrivateHost": true
+      },
+      "templateRef": "thickness-scan"
+    },
+    {
+      "kind": "daq",
+      "name": "P3环境温度PV",
+      "driver": "mqtt",
+      "unit": "℃",
+      "min": 0,
+      "max": 60,
+      "decimals": 1,
+      "intervalMs": 2000,
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 40830,
+        "topic": "aw/twin/b3-env-blow/p3-env-temp",
+        "jsonPath": "data.p3-env-temp"
+      },
+      "templateRef": "temp-tc"
+    },
+    {
+      "kind": "daq",
+      "name": "P4环境湿度PV",
+      "driver": "mqtt",
+      "unit": "%RH",
+      "min": 0,
+      "max": 100,
+      "decimals": 1,
+      "intervalMs": 2000,
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 40830,
+        "topic": "aw/twin/b3-env-blow/p4-env-humidity",
+        "jsonPath": "data.p4-env-humidity"
+      },
+      "templateRef": "temp-tc"
+    },
+    {
+      "kind": "daq",
+      "name": "S2吹气压力SP回读",
+      "driver": "mqtt",
+      "unit": "bar",
+      "min": 0,
+      "max": 4,
+      "decimals": 2,
+      "intervalMs": 2000,
+      "warnLow": 0.5,
+      "warnHigh": 3,
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 40830,
+        "topic": "aw/twin/b3-env-blow/sp/s2-blow-pressure-sp",
+        "jsonPath": "setpoint"
+      },
+      "templateRef": "pressure-tx"
+    },
+    {
+      "kind": "dcw",
+      "name": "S1模头温度SP",
+      "driver": "http",
+      "unit": "℃",
+      "min": 150,
+      "max": 260,
+      "decimals": 1,
+      "stepLimit": 2,
+      "holdIntervalMs": 0,
+      "driverConfig": {
+        "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/s1-head-temp-sp",
+        "jsonPath": "value",
+        "allowPrivateHost": true
+      },
+      "templateRef": "temp-sp"
+    },
+    {
+      "kind": "dcw",
+      "name": "S2吹气压力SP",
+      "driver": "mqtt",
+      "unit": "bar",
+      "min": 0,
+      "max": 4,
+      "decimals": 2,
+      "stepLimit": 0.2,
+      "holdIntervalMs": 0,
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 40830,
+        "topic": "aw/twin/b3-env-blow/set",
+        "jsonKey": "setpoint",
+        "readTopic": "aw/twin/b3-env-blow/sp/s2-blow-pressure-sp",
+        "readJsonPath": "setpoint"
+      },
+      "templateRef": "pressure-sp",
+      "ackMode": "transport-ack",
+      "observeDaq": "S2吹气压力SP回读",
+      "observeTolerance": 0.1
+    }
+  ],
+  "recipe": {
+    "name": "B3 吹瓶基线配方",
+    "params": [
+      {
+        "node": "S1模头温度SP",
+        "value": 185,
+        "min": 180,
+        "max": 210,
+        "stepLimit": 2
+      },
+      {
+        "node": "S2吹气压力SP",
+        "value": 2.6,
+        "min": 1.5,
+        "max": 3,
+        "stepLimit": 0.2
+      }
+    ]
+  },
+  "startLine": true,
+  "connectivity": {
+    "tests": [
+      {
+        "label": "P1熔体压力PV(http)",
+        "driver": "http",
+        "driverConfig": {
+          "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p1-melt-pressure",
+          "jsonPath": "value",
+          "allowPrivateHost": true
+        }
+      },
+      {
+        "label": "P5壁厚截面PV(vector)",
+        "driver": "http",
+        "driverConfig": {
+          "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p5-wall-profile",
+          "jsonPath": "points",
+          "allowPrivateHost": true
+        }
+      },
+      {
+        "label": "P3环境温度PV(mqtt)",
+        "driver": "mqtt",
+        "driverConfig": {
+          "host": "127.0.0.1",
+          "port": 40830,
+          "topic": "aw/twin/b3-env-blow/p3-env-temp",
+          "jsonPath": "data.p3-env-temp"
+        }
+      },
+      {
+        "label": "S1模头温度SP(http写点读面)",
+        "driver": "http",
+        "driverConfig": {
+          "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/s1-head-temp-sp",
+          "jsonPath": "value",
+          "allowPrivateHost": true
+        }
+      },
+      {
+        "label": "S2吹气压力SP(mqtt写点)",
+        "driver": "mqtt",
+        "driverConfig": {
+          "host": "127.0.0.1",
+          "port": 40830,
+          "topic": "aw/twin/b3-env-blow/set",
+          "jsonKey": "setpoint"
+        }
+      }
+    ]
+  },
+  "channel": {
+    "scenario": "optimize",
+    "name": "B3吹瓶闭环优化频道",
+    "plugins": {},
+    "bindings": [
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:P1熔体压力PV",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:P2瓶坯温度PV",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:P5壁厚截面PV",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:S2吹气压力SP回读",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:2",
+        "kind": "recipe",
+        "nodeId": "$RECIPE",
+        "mode": "manual"
+      }
+    ],
+    "seedTask": {
+      "title": "B3 首轮基线巡检(零写)",
+      "description": "读取授权数采节点(P1熔体压力/P2瓶坯温度/P5壁厚截面/S2吹气压力SP回读),确认当前工况:熔体压力应在 18~25bar、瓶坯温度 100~115℃、壁厚截面均值 1.80~1.90mm。汇总各点读数与判定,不改任何设定值。数据分析师读数,lead 汇总结论。",
+      "budget_minutes": 30
+    },
+    "scene": {
+      "line": "3#吹瓶产线(BC-3)孪生",
+      "protocol_doc": "b3-blowline-protocol-manual v1.4",
+      "safety": "吹气压力≥3.6bar 高压联锁;远程设定不得越过 3.0bar 预警线;模头温度<180℃ 禁止高压吹气启动"
+    }
+  },
+  "smoke": {
+    "param": "S1模头温度SP",
+    "delta": 1.5
+  }
+}

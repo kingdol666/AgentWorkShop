@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "nonce": "8766beb8e7b292016b4a45c378389afef6037992b461513eebd7cc1bd17ae914",
+  "simBase": "http://127.0.0.1:4032",
+  "simPort": 4032,
+  "brokerPort": 40830,
+  "pid": 65844,
+  "shadowDir": "D:\\tmp\\aw-phase2-20261128\\sim-twin-4032b",
+  "endpoints": [
+    {
+      "kind": "api",
+      "port": 4032
+    },
+    {
+      "kind": "mqtt-broker",
+      "port": 40830
+    }
+  ],
+  "createdAt": "2026-11-28T08:38:09.861Z"
+}

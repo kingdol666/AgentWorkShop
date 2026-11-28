@@ -1,0 +1,40 @@
+{
+  "token": "ut-a554319b24d8460ab27dd7648e7977e0",
+  "email": "phase2-admin-1795853461783@aw.local",
+  "jobId": "dl-7123803f",
+  "integrated": {
+    "channelId": "64de4839-8264-44fc-9382-93e3aa73353a",
+    "lineId": "ln-4ed680cd",
+    "recipeId": "rc-f1af79fd",
+    "workers": [
+      "08c38601-b625-4df4-9656-4e7ce8502c7d",
+      "51771ec8-2377-4e73-b6cb-bb0b80b71b18",
+      "051f1cd2-4716-464d-b2dc-ca8e71cca532"
+    ],
+    "daq": {
+      "P1熔体压力PV": "dn-29a6c2ef",
+      "P2瓶坯温度PV": "dn-38afad4b",
+      "P5壁厚截面PV": "dn-c8f4fdaf",
+      "P3环境温度PV": "dn-67ece733",
+      "P4环境湿度PV": "dn-6cdc65ea",
+      "S2吹气压力SP回读": "dn-3d1f2ed9"
+    },
+    "dcw": {
+      "S1模头温度SP": "dw-509c5b79",
+      "S2吹气压力SP": "dw-a04b9fe6"
+    },
+    "seedTaskId": "4066b268-169a-4551-8338-cd3bb0d82875",
+    "loopTaskId": "7b79635a-f2b1-4a23-ba12-2879a3b7a2f7"
+  },
+  "shareStamp": "GLOBALZONE-41932",
+  "globalRowId": "5bb5d8f4-4b0b-4ffc-b8ba-459e950e4b24",
+  "gen": {
+    "channelId": "af8e6d3b-0233-4a08-9678-602595f20c65",
+    "leadId": "2ec9f07f-845d-4be2-a2aa-ac1d8f6a1a94",
+    "workerId": "06f07043-8f05-443e-8670-1d60c15a8927",
+    "taskId": "cfd7b02c-6a4b-4a70-899c-3b16b4620e1d",
+    "sessionId": "cs-3dbec950",
+    "verifyTaskId": "dc731aa4-bd14-4197-a94a-2b3e651ca276",
+    "dialogMsgId": "47ffb9ad-7de8-4cca-8176-fd200cef90c0"
+  }
+}

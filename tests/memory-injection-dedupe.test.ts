@@ -160,3 +160,23 @@ test('共享区检索遵守生命周期窗口：已失效的 global 行不再被
   const rowsLive = repo.searchWorkspaceShared(liveQuery!, 'u1', 10, null)
   assert.ok(rowsLive.some(r => r.id === globalId), '有效行必须仍能被共享区检索命中')
 })
+
+test('memory_access_mode=isolated：L2 共享区停止注入，inherit 恢复', async () => {
+  insertGlobal('隔离阀共享基线', 'ISOLATEDZONE 共享区基线：保压 88MPa，壁厚 2.18mm。', 'dedupe:isolated-gate')
+  const mem = () => new AgentMemory(repo, { channelId: 'c1', agentId: 'a1', ownerUserId: 'u1' })
+  const query = 'ISOLATEDZONE 保压 壁厚'
+  // 基线：inherit 下共享区注入（正向对照，避免"本来就没有"的假阳）
+  db.prepare(`UPDATE channels SET memory_access_mode = 'inherit' WHERE id = 'c1'`).run()
+  const inheritText = await mem().recall(query)
+  assert.ok(inheritText && inheritText.includes('共享区'), 'inherit 下应有共享区注入')
+  // isolated：L2 关闭
+  db.prepare(`UPDATE channels SET memory_access_mode = 'isolated' WHERE id = 'c1'`).run()
+  try {
+    const isolatedText = await mem().recall(query)
+    assert.equal(Boolean(isolatedText && isolatedText.includes('共享区')), false, 'isolated 下不得出现共享区注入')
+  }
+  finally {
+    // 恢复默认，避免影响同文件其他用例（本文件共用 db）
+    db.prepare(`UPDATE channels SET memory_access_mode = 'inherit' WHERE id = 'c1'`).run()
+  }
+})

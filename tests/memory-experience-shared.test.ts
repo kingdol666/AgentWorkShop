@@ -175,6 +175,7 @@ function shim(db: ReturnType<typeof fixture>['db'], repo: ReturnType<typeof fixt
     channelSessionScopeOfAgent: (channelId: string, agentId: string) => { sessionId: string, productId: string, lineId: string, bindingSnapshotHash: string, bindingSnapshotRevision: number } | null
     otherSameOwnerChannels: (channelId: string) => unknown[]
     searchSharedExperience: (channelId: string, agentId: string, input: { query: string, scope: 'line' | 'product' | 'global', scopeKey?: string, limit?: number }) => Array<Record<string, unknown>>
+    recallOtherTeamsMemory: (channelId: string, agentId: string, input: { query: string, limit?: number }) => Array<Record<string, unknown>>
   }
   ;(inst as unknown as { deps: unknown }).deps = {
     db,
@@ -347,6 +348,116 @@ test('global 档：仅 global 经验跨频道可见，line 经验不受 global �
     assert.equal(rows[0]!['scopeKind'], 'global')
   }
   finally {
+    db.close()
+  }
+})
+
+// ===== 2026-11-28 实机验收补正 =====
+
+test('跨频道团队检索：FTS 元字符必须被净化（BETA-222 不得抛 no such column）', () => {
+  const { db, repo } = fixture([
+    { id: 'ch-a', owner: 'u-1' },
+    { id: 'ch-b', owner: 'u-1' },
+  ])
+  try {
+    const id = repo.upsert({
+      channelId: 'ch-a', agentId: '__team__', kind: 'semantic',
+      title: 'B 区域暗号', titleFts: 'B 区 域 暗 号',
+      content: 'BETA-222 区域B 专用水温 47 度结论',
+      importance: 0.8, dedupKey: 'iso:same-key', sessionId: '',
+    }).id
+    repo.setScope(id, 'channel', '')
+    const mgr = shim(db, repo, { 'ch-b': [{ id: 'lead-1', role: 'lead' }] })
+    // 修复前：'BETA-222' → `BETA - 222` 交给 FTS5，'-' 当 NOT → no such column: 222
+    const rows = mgr.recallOtherTeamsMemory('ch-b', 'lead-1', { query: 'BETA-222', limit: 5 })
+    assert.equal(rows.length, 1, '带连字符的查询必须正常命中')
+    assert.equal(rows[0]!['channelId'], 'ch-a')
+    assert.equal(rows[0]!['visibility'], 'cross-channel')
+    // 其它 FTS 元字符同样不得炸
+    for (const q of ['BETA:222', 'BETA*222', '(BETA)', '"BETA"']) {
+      assert.doesNotThrow(() => mgr.recallOtherTeamsMemory('ch-b', 'lead-1', { query: q, limit: 5 }), `查询 ${q} 不得抛错`)
+    }
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('共享区显式检索：owner 级 global 人工行跨频道可读（非工业模式亦可），他人 owner 不可见', () => {
+  const { db, repo } = fixture([
+    { id: 'ch-a', owner: 'u-1' },
+    { id: 'ch-b', owner: 'u-1' },
+    { id: 'ch-c', owner: 'u-2' },
+  ])
+  try {
+    const mine = repo.upsert({
+      channelId: 'ch-a', agentId: '__team__', kind: 'semantic',
+      title: '全域共享基线', titleFts: '全 域 共 享 基 线',
+      content: 'GLOBALZONE777 全厂共享保压 88MPa 壁厚 2.18mm',
+      importance: 0.9, dedupKey: 'ws:mine', sessionId: '', ownerUserId: 'u-1',
+    }).id
+    db.prepare(`UPDATE agent_memories SET scope_kind='global' WHERE id=?`).run(mine)
+    const other = repo.upsert({
+      channelId: 'ch-c', agentId: '__team__', kind: 'semantic',
+      title: '别人的全域基线', titleFts: '别 人 的 全 域 基 线',
+      content: 'GLOBALZONE777 别人家的保压 70MPa',
+      importance: 0.9, dedupKey: 'ws:other', sessionId: '', ownerUserId: 'u-2',
+    }).id
+    db.prepare(`UPDATE agent_memories SET scope_kind='global' WHERE id=?`).run(other)
+
+    const mgr = shim(db, repo, {
+      'ch-b': [{ id: 'worker-1', role: 'worker' }],
+      'ch-c': [{ id: 'worker-2', role: 'worker' }],
+    })
+    // 非工业频道也能读共享区（修前：searchSharedExperience 一律 return []，与 L2 自动注入口径不一致）
+    Object.assign(mgr as unknown as Record<string, unknown>, { channelModeForAgent: () => 'generic', channelModeOf: () => 'generic' })
+    const rows = mgr.searchSharedExperience('ch-b', 'worker-1', { query: 'GLOBALZONE777', scope: 'global' })
+    assert.equal(rows.length, 1, `共享区应返回 1 条（实际 ${rows.length}）`)
+    assert.equal(rows[0]!['channelId'], 'ch-a')
+    assert.equal(rows[0]!['scopeKind'], 'global')
+    // 他人 owner：行级 owner 严格匹配 → 不可见
+    const foreign = mgr.searchSharedExperience('ch-c', 'worker-2', { query: 'GLOBALZONE777', scope: 'global' })
+    assert.equal(foreign.length, 1)
+    assert.equal(foreign[0]!['channelId'], 'ch-c', 'u-2 只能读到自己的共享行')
+    // line/product 在非工业模式仍 fail-closed
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: 'GLOBALZONE777', scope: 'line' }).length, 0)
+  }
+  finally {
+    db.close()
+  }
+})
+
+test('显式跨频道检索遵守 memory_access_mode：disabled 一律不读、isolated 不读共享区/经验', () => {
+  const { db, repo } = fixture([
+    { id: 'ch-a', owner: 'u-1' },
+    { id: 'ch-b', owner: 'u-1' },
+  ])
+  try {
+    const mine = repo.upsert({
+      channelId: 'ch-a', agentId: '__team__', kind: 'semantic',
+      title: '访问模式阀共享基线', titleFts: '访 问 模 式 阀 共 享 基 线',
+      content: 'MODEZONE777 共享区基线 保压 88MPa',
+      importance: 0.9, dedupKey: 'ws:mode', sessionId: '', ownerUserId: 'u-1',
+    }).id
+    db.prepare(`UPDATE agent_memories SET scope_kind='global' WHERE id=?`).run(mine)
+    const mgr = shim(db, repo, { 'ch-b': [{ id: 'worker-1', role: 'worker' }] })
+    Object.assign(mgr as unknown as Record<string, unknown>, { channelModeForAgent: () => 'generic', channelModeOf: () => 'generic' })
+
+    db.prepare(`UPDATE channels SET memory_access_mode = 'inherit' WHERE id = 'ch-b'`).run()
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: 'MODEZONE777', scope: 'global' }).length, 1, 'inherit 可读')
+    for (const mode of ['isolated', 'disabled']) {
+      db.prepare(`UPDATE channels SET memory_access_mode = ? WHERE id = 'ch-b'`).run(mode)
+      assert.equal(
+        mgr.searchSharedExperience('ch-b', 'worker-1', { query: 'MODEZONE777', scope: 'global' }).length,
+        0,
+        `${mode} 下不得显式读取 owner 共享区（评审 P1 回归）`,
+      )
+    }
+    db.prepare(`UPDATE channels SET memory_access_mode = 'readonly' WHERE id = 'ch-b'`).run()
+    assert.equal(mgr.searchSharedExperience('ch-b', 'worker-1', { query: 'MODEZONE777', scope: 'global' }).length, 1, 'readonly 只禁写，读应放行')
+  }
+  finally {
+    db.prepare(`UPDATE channels SET memory_access_mode = 'inherit'`).run()
     db.close()
   }
 })

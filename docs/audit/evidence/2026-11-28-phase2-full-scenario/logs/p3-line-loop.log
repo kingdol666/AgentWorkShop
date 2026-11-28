@@ -1,0 +1,17 @@
+PASS [L1] seed 基线巡检任务收口 · state=FAILED
+FAIL [L2] HITL 审批卡出现并批准(choice:0) · kind=dcw-approval id=ap-7c6b9732 detail=配方试验候选(整批 1 参数):S1模头温度SP 185→192.5℃ | 假设:单步 +2.0℃:S1 190.5→1
+FAIL [L2] HITL 审批卡出现并批准 · 15 分钟内未出现新审批卡(任务可能已直答或失败)
+FAIL [L2] 调参试验任务收口 · state=FAILED
+PASS [L2] S1 实际位移 Δ=2℃,P2 瓶坯温度跟随到 ≥103.2℃(因果耦合) · P2 latest=108.60 bucketAt=
+PASS [L3] dcw journal 留有 S1 写入锚(谁/何时/前值/后值) · [{"lineId":"ln-4ed680cd","nodeId":"dw-509c5b79","prevValue":null,"newValue":185,"source":"recipe","actor":"recipe","recipeRunId":"rr-d9b04d0f","id":"anc-33c3bb43","at":"2026-11-28T16:26:08.627+08:00"}
+PASS [L3] 配方版本演进(固化或回退后 v≥1 在册) · B3 吹瓶基线配方 v1 params=2
+PASS [L3] 操作溯源面可见(channel operations) · status=200 keys=items,attempts,coverage,nextCursor
+PASS [L3] 参数经验面可达(fail-closed 或已有 claims) · status=200
+PASS [L4] generic worker 的 line 档检索 fail-closed(不跨到产线经验) · 跨频道检索无命中(query="模头温度 保压 壁厚", scope=line)。global 档读同 owner 的共享区(人工发布 + 已部署经验，不要求工业模式);line/product 需工业模式且 status=active/v
+PASS [L4] generic worker 写 line 经验被拒 · 记忆写入被拒绝: industrial experience requires production_line_integrated mode
+
+3 FAILED (11 checks)
+  FAIL L2 HITL 审批卡出现并批准(choice:0) :: kind=dcw-approval id=ap-7c6b9732 detail=配方试验候选(整批 1 参数):S1模头温度SP 185→192.5℃ | 假设:单步 +2.0℃:S1 190.5→1
+  FAIL L2 HITL 审批卡出现并批准 :: 15 分钟内未出现新审批卡(任务可能已直答或失败)
+  FAIL L2 调参试验任务收口 :: state=FAILED
+P3_EXIT=1

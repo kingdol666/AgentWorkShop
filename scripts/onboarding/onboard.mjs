@@ -184,7 +184,15 @@ const verifyCfg = {
     const id = prov.dcw[n.name]
     const step = Number(n.stepLimit ?? Math.max(1, Math.round((n.max - n.min) / 20)))
     const probe = n.probeValue ?? Math.round(n.min + (n.max - n.min) * 0.35)
-    return { id, name: n.name, min: n.min, max: n.max, stepLimit: step, probeValue: probe }
+    // 命令通道无读能力的协议(mqtt commandTopic 等):透传 ACK 口径与独立 DAQ 观测节点,
+    // verify-line 据此按 transport-ack + 物理量跟随判定(回读证实走 recipe 路径的补验器)。
+    const observeDaqId = n.observeDaq ? prov.daq[n.observeDaq] : undefined
+    return {
+      id, name: n.name, min: n.min, max: n.max, stepLimit: step, probeValue: probe,
+      ...(n.ackMode ? { ackMode: n.ackMode } : {}),
+      ...(observeDaqId ? { observeDaqId } : {}),
+      ...(n.observeTolerance != null ? { observeTolerance: n.observeTolerance } : {}),
+    }
   }),
   daq: cfg.nodes.filter(n => n.kind === 'daq').map(n => prov.daq[n.name]).filter(Boolean),
   recipeParams: (cfg.recipe?.params ?? []).map(p => ({

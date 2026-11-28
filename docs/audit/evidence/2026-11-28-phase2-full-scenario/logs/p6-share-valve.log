@@ -1,0 +1,11 @@
+PASS [S2] explicit scope=global surfaces the owner shared row cross-channel · 跨频道检索结果(1 条, scope=global):
+  [cross-channel · B3吹瓶闭环优化频道 · scope=global · outcome=neutral · status=active · 2026-11-28 
+PASS [S3] lead reads other-team memory cross-channel · 其他团队共享记忆命中 5 条:
+- [泛作业验收-20261128] · 2026-11-28 · cross-channel 「点检经验 GENZ-98458」: 吹瓶车间模头温区 185℃  时瓶坯温度约 105℃;偏差超过 3℃  先
+PASS [S3] worker denied the lead-only cross-channel tool (fail-closed) · 工具执行异常(search_other_teams_memory): 跨 Channel 共享记忆仅限 Leader 查询
+PASS [S4] access-mode set to isolated · {"scope":"channel","mode":"isolated"}
+PASS [S4] isolated channel: explicit global search no longer reads the shared zone · 跨频道检索无命中(query="GLOBALZONE 点检作业共享基线", scope=global)。global 档读同 owner 的共享区(人工发布 + 已部署经验，不要求工业模式);line
+PASS [S4] restored inherit: shared zone readable again · 跨频道检索结果(1 条, scope=global):
+  [cross-channel · B3吹瓶闭环优化频道 · scope=global · outcome=neutral · status=
+
+ALL PASS (6 checks)

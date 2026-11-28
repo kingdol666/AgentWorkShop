@@ -190,6 +190,30 @@ async function remove(model: ModelItem): Promise<void> {
   }
 }
 
+/** 取消运行中的下载（2026-11-28）：AbortController 中断传输，服务端清理半截文件。
+ *  与"刚好下完"存在竞态，服务端会回报实际状态，按状态给提示。 */
+async function cancelDownload(model: ModelItem): Promise<void> {
+  const job = jobFor(model.id)
+  if (!job) return
+  busyModel.value = model.id
+  try {
+    const res = await apiFetch<{ canceled: boolean, status: string }>({
+      base: '',
+      path: `/api/workshop/memory/embedding/jobs/${encodeURIComponent(job.id)}/cancel`,
+      init: { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' },
+    })
+    if (res.canceled) message.info(t('memoryCenter.models.downloadCanceled', { name: model.name }))
+    else message.info(t('memoryCenter.models.downloadFinishedEarly', { name: model.name }))
+    await load()
+  }
+  catch (err) {
+    message.error(apiErrorMessage(err))
+  }
+  finally {
+    busyModel.value = ''
+  }
+}
+
 /** 回填：循环调用直到 remaining=0（每批 64 条/25s，UI 侧显示累计与剩余） */
 async function backfill(rebuild: boolean): Promise<void> {
   backfilling.value = true
@@ -354,6 +378,24 @@ onBeforeUnmount(() => {
             {{ jobFor(model.id)!.currentFile }} · {{ humanBytes(jobFor(model.id)!.received) }} / {{ humanBytes(jobFor(model.id)!.total) }}
             <template v-if="jobFor(model.id)!.source">· {{ jobFor(model.id)!.source }}</template>
           </span>
+          <a-popconfirm
+            :title="t('memoryCenter.models.cancelDownloadConfirm', { name: model.name })"
+            :ok-text="t('memoryCenter.models.cancelDownload')"
+            :cancel-text="t('memoryCenter.models.cancel')"
+            :disabled="!isAdmin"
+            @confirm="cancelDownload(model)"
+          >
+            <a-button
+              size="small"
+              danger
+              type="text"
+              :loading="busyModel === model.id"
+              :disabled="!isAdmin"
+              :data-testid="`memory-embedding-cancel-${model.id}`"
+            >
+              {{ t('memoryCenter.models.cancelDownload') }}
+            </a-button>
+          </a-popconfirm>
         </div>
 
         <div class="actions">

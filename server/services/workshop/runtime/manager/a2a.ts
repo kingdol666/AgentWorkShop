@@ -10,7 +10,7 @@ import { formatBriefText, type SessionBrief, type SessionCatalogItem, type Sessi
 import { AppError } from '../../../../utils/errors'
 import { WORKSHOP_PERMISSION_SCOPE_HEADER, intersectWorkshopPermissionScope, parseWorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
 import { buildMessage } from './helpers'
-import { segmentCJK, unsegmentCJK } from '../memory'
+import { buildMatchQuery, unsegmentCJK } from '../memory'
 import { createChannelSessionRepo } from '../../db/channel-session.repo'
 import { activeSessionOfMember, isUnclosedSessionClone, SESSION_MARKER } from '../../agents/session-clone'
 
@@ -345,7 +345,12 @@ export abstract class ManagerA2A extends ManagerTasks {
     if (!q) return []
     const others = this.otherSameOwnerChannels(channelId)
     if (others.length === 0) return []
-    const matchQuery = segmentCJK(q).split(/\s+/).filter(Boolean).join(' OR ')
+    // FTS 词项必须走统一的净化构造器（2026-11-28 实机抓到）：手写 `split(' OR ')` 会把
+    // `BETA-222` 里的 `-` 交给 FTS5 当 NOT 运算符，直接抛 `no such column: 222`，
+    // 让「跨频道团队检索」在带连字符/标点/冒号的普通查询上整条报错。buildMatchQuery
+    // 会剥掉 FTS 元字符、过滤停用词并把每项加引号。
+    const matchQuery = buildMatchQuery(q)
+    if (!matchQuery) return []
     const rows = this.deps.repos.memories.searchTeamSharedAcross(
       matchQuery,
       others.map(c => c.id),
@@ -369,11 +374,14 @@ export abstract class ManagerA2A extends ManagerTasks {
   }
 
   /**
-   * 跨 Channel 共享经验检索(WP-A4;**成员可调**,只读)。
-   * 与 recallOtherTeamsMemory(lead-only / __team__ 行)的分工:
-   *  - 这里读 **experience 行**(带证据与生命周期),按 scope_kind + scope_key 锚定产线/产品;
-   *  - 授权口径一致:仅**同 owner 且启用**的其他 channel(无主 channel 不参与);
-   *  - 只返回 status ∈ {active, validated} 的行(candidate 未经验证不外泄,retired 不返回)。
+   * 跨 Channel 共享检索(WP-A4;成员可调,只读)。
+   *   两路来源合并、按 bm25 统一排序后再截断（2026-11-28）：
+   *   1) 共享区(owner 级 `scope_kind='global'`)：人工发布 + 已部署经验 + active/validated 行。
+   *      **不要求工业模式**（owner 级租户共享区，不是产线概念）；停用频道的行排除。
+   *   2) 跨频道经验(仅工业模式)：按 scope_kind + scope_key 锚定产线/产品，
+   *      只返回 status ∈ {active, validated} 的行(candidate 未经验证不外泄)。
+   * 授权口径：仅**同 owner 且启用**的其他 channel(无主 channel 不参与)；owner 按行严格匹配。
+   * 访问模式闸：disabled 一律不读；isolated 不读共享区/跨频道经验；readonly/inherit 可读。
    */
   searchSharedExperience(channelId: string, agentId: string, input: {
     query: string
@@ -395,12 +403,80 @@ export abstract class ManagerA2A extends ManagerTasks {
     visibility: MemoryVisibility
   }> {
     this.requireMember(channelId, agentId)
+    const q = input.query.trim()
+    const matchQuery = q ? buildMatchQuery(q) : null
+    if (!matchQuery) return []
+    const limit = Math.min(Math.max(input.limit ?? 5, 1), 20)
+    const selfChannel = this.deps.repos.channels.findById(channelId)
+    const ownerUserId = selfChannel?.ownerUserId ?? undefined
+    // 访问模式闸（评审 P1，2026-11-28）：显式跨频道检索也必须遵守 memory_access_mode ——
+    // disabled（脱敏/停用）连读都不许，isolated（隔离）不许读跨频道经验/共享区；readonly 只禁写。
+    // 会话覆盖优先：用服务端可信会话快照，不接受调用方传 sessionId。
+    // 解析失败按 inherit（与 repo.memoryAccessMode 自身的 fail-open 口径一致；兼容旧/测试仓储）。
+    const accessSessionId = this.channelSessionScopeOfAgent(channelId, agentId)?.sessionId ?? null
+    let accessMode: string
+    try {
+      accessMode = this.deps.repos.memories.memoryAccessMode(channelId, accessSessionId)
+    }
+    catch { accessMode = 'inherit' }
+    if (accessMode === 'disabled') return []
+    const crossChannelReadable = accessMode === 'inherit' || accessMode === 'readonly'
+    const out: Array<{
+      id: string
+      channelId: string
+      channelName: string
+      title: string
+      content: string
+      outcome: string
+      status: string
+      scopeKind: string
+      scopeKey: string
+      importance: number
+      createdAt: string
+      taskId: string | null
+      visibility: MemoryVisibility
+    }> = []
+    const seen = new Set<string>()
+    const channelNameOf = (id: string): string => this.deps.repos.channels.findById(id)?.name ?? id
+    /** 合并排序键：两路查询都带 FTS bm25（越小越相关）；无 bm25 的行排后 */
+    const bm25Of = new Map<string, number>()
+    const rankOf = (id: string): number => bm25Of.get(id) ?? Number.MAX_SAFE_INTEGER
+
+    // ── 1) 共享区(owner 级 global)：与 L2 同口径，isolated/disabled 不读 ──
+    if (input.scope === 'global' && ownerUserId && crossChannelReadable) {
+      const wsRows = this.deps.repos.memories.searchWorkspaceShared(matchQuery, ownerUserId, limit)
+      for (const r of wsRows) {
+        if (seen.has(r.id)) continue
+        // 停用频道的行不得再浮出（owner 归属不变，但频道已下线）
+        if (this.deps.repos.channels.findById(r.channelId)?.enabled === 0) continue
+        seen.add(r.id)
+        bm25Of.set(r.id, Number(r.bm25 ?? Number.MAX_SAFE_INTEGER))
+        out.push({
+          id: r.id,
+          channelId: r.channelId,
+          channelName: channelNameOf(r.channelId),
+          title: r.title,
+          content: unsegmentCJK(r.content).slice(0, 400),
+          outcome: (r.kind === 'experience' ? (r.outcome ?? 'neutral') : 'neutral'),
+          status: r.status ?? 'active',
+          scopeKind: r.scopeKind ?? 'global',
+          scopeKey: r.scopeKey ?? '',
+          importance: r.importance,
+          createdAt: r.createdAt,
+          taskId: r.taskId ?? null,
+          visibility: 'cross-channel' as MemoryVisibility,
+        })
+      }
+    }
+
+    // ── 2) 跨频道经验(需工业模式 + 可信产线/产品锚点 + 可读访问模式) ──
     let others: ChannelRow[]
     let ownScope: ReturnType<typeof this.channelSessionScopeOfAgent> = null
     try {
-      if (this.channelModeForAgent(agentId) !== 'production_line_integrated') return []
+      if (!crossChannelReadable) return out
+      if (this.channelModeForAgent(agentId) !== 'production_line_integrated') return out
       ownScope = this.channelSessionScopeOfAgent(channelId, agentId)
-      if ((input.scope === 'line' || input.scope === 'product') && !ownScope) return []
+      if ((input.scope === 'line' || input.scope === 'product') && !ownScope) return out
       others = this.otherSameOwnerChannels(channelId).filter((c) => {
         if (this.channelModeOf(c.id) !== 'production_line_integrated') return false
         if (input.scope !== 'line') return true
@@ -408,50 +484,58 @@ export abstract class ManagerA2A extends ManagerTasks {
         return bindings.lineId === ownScope?.lineId
       })
     }
-    catch { return [] }
-    const q = input.query.trim()
-    if (!q || others.length === 0) return []
+    catch { return out }
+    if (others.length === 0) return out
     // line 档:未显式给 key 时用本 channel 的产线绑定;product 必须显式给 key;global 不需要 key
     let scopeKey = input.scopeKey?.trim() ?? ''
     if (input.scope === 'line') {
       const selfSession = this.channelSessionScopeOfAgent(channelId, agentId)
-      if (!selfSession || !selfSession.lineId || (scopeKey && scopeKey !== selfSession.lineId)) return []
+      if (!selfSession || !selfSession.lineId || (scopeKey && scopeKey !== selfSession.lineId)) return out
       scopeKey = selfSession.lineId
     }
     // A product selector is never authority: an integrated session can search
     // only the product frozen in its server-verified binding snapshot.
     else if (input.scope === 'product') {
-      if (!ownScope?.productId || (scopeKey && scopeKey !== ownScope.productId)) return []
+      if (!ownScope?.productId || (scopeKey && scopeKey !== ownScope.productId)) return out
       scopeKey = ownScope.productId
     }
-    const matchQuery = segmentCJK(q).split(/\s+/).filter(Boolean).join(' OR ')
-    if (!matchQuery) return []
     const rows = this.deps.repos.memories.searchExperienceAcross(
       matchQuery,
       others.map(c => c.id),
       {
         scopeKinds: [input.scope],
         scopeKey: scopeKey || undefined,
-        limit: input.limit,
+        limit,
         // 行级 owner 必须与本次检索的频道 owner 一致（频道所有权转移后仍按行归属判定）
-        ownerUserId: this.deps.repos.channels.findById(channelId)?.ownerUserId ?? undefined,
+        ownerUserId,
       },
     )
-    for (const r of rows) this.deps.repos.memories.touch(r.id)
-    return rows.map(r => ({
-      channelId: r.channelId,
-      channelName: others.find(c => c.id === r.channelId)?.name ?? r.channelId,
-      title: r.title,
-      content: unsegmentCJK(r.content).slice(0, 400),
-      outcome: r.outcome ?? 'neutral',
-      status: r.status ?? 'active',
-      scopeKind: r.scopeKind ?? input.scope,
-      scopeKey: r.scopeKey ?? '',
-      importance: r.importance,
-      createdAt: r.createdAt,
-      taskId: r.taskId ?? null,
-      visibility: 'cross-channel' as MemoryVisibility,
-    }))
+    for (const r of rows) {
+      if (seen.has(r.id)) continue
+      seen.add(r.id)
+      bm25Of.set(r.id, Number(r.bm25 ?? Number.MAX_SAFE_INTEGER))
+      out.push({
+        id: r.id,
+        channelId: r.channelId,
+        channelName: others.find(c => c.id === r.channelId)?.name ?? r.channelId,
+        title: r.title,
+        content: unsegmentCJK(r.content).slice(0, 400),
+        outcome: r.outcome ?? 'neutral',
+        status: r.status ?? 'active',
+        scopeKind: r.scopeKind ?? input.scope,
+        scopeKey: r.scopeKey ?? '',
+        importance: r.importance,
+        createdAt: r.createdAt,
+        taskId: r.taskId ?? null,
+        visibility: 'cross-channel' as MemoryVisibility,
+      })
+    }
+    // 两路合并按 bm25 排序后再截断（评审 P2：此前是"先到的源占满 limit，后到的全被 slice 丢掉"）；
+    // touch 只对最终入选行计数，避免给被丢弃的行刷 access_count。
+    out.sort((a, b) => rankOf(a.id) - rankOf(b.id))
+    const picked = out.slice(0, limit)
+    for (const r of picked) this.deps.repos.memories.touch(r.id)
+    return picked.map(({ id: _id, ...dto }) => dto)
   }
 
   /**

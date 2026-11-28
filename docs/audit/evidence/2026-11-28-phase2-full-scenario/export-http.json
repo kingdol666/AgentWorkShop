@@ -1,0 +1,62 @@
+[
+ {
+  "signal": "熔体压力",
+  "driver": "http",
+  "format": "scalar",
+  "description": "孪生:熔体压力",
+  "unit": "bar",
+  "min": 0,
+  "max": 50,
+  "decimals": 2,
+  "driverConfig": {
+   "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p1-melt-pressure",
+   "jsonPath": "value"
+  },
+  "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"http\",\"driverConfig\":{\"url\":\"http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p1-melt-pressure\",\"jsonPath\":\"value\"}}'"
+ },
+ {
+  "signal": "瓶坯温度",
+  "driver": "http",
+  "format": "scalar",
+  "description": "孪生:瓶坯温度",
+  "unit": "℃",
+  "min": 0,
+  "max": 300,
+  "decimals": 1,
+  "driverConfig": {
+   "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p2-preform-temp",
+   "jsonPath": "value"
+  },
+  "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"http\",\"driverConfig\":{\"url\":\"http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p2-preform-temp\",\"jsonPath\":\"value\"}}'"
+ },
+ {
+  "signal": "壁厚截面",
+  "driver": "http",
+  "format": "vector",
+  "description": "孪生:壁厚截面",
+  "unit": "mm",
+  "min": 0.8,
+  "max": 3,
+  "decimals": 3,
+  "driverConfig": {
+   "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p5-wall-profile",
+   "jsonPath": "points"
+  },
+  "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"http\",\"driverConfig\":{\"url\":\"http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/p5-wall-profile\",\"jsonPath\":\"points\"}}'"
+ },
+ {
+  "signal": "模头温度SP",
+  "driver": "http",
+  "format": "scalar",
+  "description": "孪生:模头温度SP",
+  "unit": "℃",
+  "min": 150,
+  "max": 260,
+  "decimals": 1,
+  "driverConfig": {
+   "url": "http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/s1-head-temp-sp",
+   "jsonPath": "value"
+  },
+  "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"http\",\"driverConfig\":{\"url\":\"http://127.0.0.1:4032/sim-http/b3-gw-extruder/api/s1-head-temp-sp\",\"jsonPath\":\"value\"}}'"
+ }
+]

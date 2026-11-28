@@ -1,0 +1,14 @@
+PASS [R0] generic channel session created · cs-3dbec950
+PASS [R2] session runtime list shows clone members · [{"id":"c8d55700-8f61-4104-88ab-c6246435475a","name":"泛作业工程师·session·2","rev":2},{"id":"1ee892d0-beb2-4888-94cc-a4e68f653ec2","name":"泛作业主管·session·1","rev":0}]
+PASS [R2] member is a clone instance id (≠ base agentId) · clone=1ee892d0 base=2ec9f07f
+PASS [R4] wrong expectedRevision rejected (CAS) · status=409 code=RUNTIME_REVISION_CONFLICT
+PASS [R1] runtime PATCH with CAS accepted, revision advanced · status=200 rev 0→1 effective=next_turn
+PASS [R1] message delivered into session · status=200 7f55ff7a-82d9-4c80-b1f4-0d0fc6086886
+PASS [R1] NEXT TURN obeys the patched runtimePrompt (hot reload proven) · ZIDIAN-R4-1029
+
+你好。我是「泛作业主管·session·1」（worker,channel `af8e6d3b-0233-4a08-9678-602595f20c65`），职责是承接点检/作业类任务、先用既有交付再动工；凡涉
+PASS [R3] channel member config PATCH accepted · status=200 ok
+PASS [R3] config persisted · 【热重载标记】回复第一行输出 CH-HOT-25187。
+
+ALL PASS (9 checks)
+P4_EXIT=0

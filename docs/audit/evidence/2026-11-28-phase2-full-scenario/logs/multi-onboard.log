@@ -1,0 +1,38 @@
+✅ 连通[P20炉膛温度PV(opcua)](opcua) — latency=72ms 会话建立成功,读取 ns=2;s=tmp-chamber.p20-chamber-temp = 63.6
+✅ 连通[S10绕包线速SP(modbus写点读面)](modbus-tcp) — latency=15ms 连接成功,读取 40003 = 42
+✅ 连通[S20炉膛温度SP(opcua写点读面)](opcua) — latency=2ms 会话建立成功,读取 ns=2;s=tmp-chamber.s20-temp-sp = 62
+=== 连接性预检: 4 通过 / 0 失败 ===
+✅ 阶段1 连通性预检 — exit=0
+✅ 开跑批次 — rr-eb273ba6
+✅ 采集总控启动 — running=true interval=5000ms
+{"lineId":"ln-ff324916","dcw":{"S10绕包线速SP":"dw-2fb8051e","S20炉膛温度SP":"dw-f694b4e8"},"daq":{"P10绕包线速PV":"dn-04eee7a5","P20炉膛温度PV":"dn-7f5e7129"},"recipeId":"rc-4693e891","reused":false}
+=== 产线供给: 10 通过 / 0 失败 ===
+✅ 阶段2 产线供给 — exit=0
+✅ 线域授权覆盖频道用户 — users=1(owner+members)
+✅ 种子任务派发 — bc19dced-427e-46ef-9c8f-dd4731865305
+{"channelId":"c66ebf6c-9112-4a7d-b255-ed71408ae1d8","scenario":"optimize"}
+=== 频道锻造: 9 通过 / 0 失败 ===
+✅ 阶段3 频道锻造 — exit=0
+✅ V5 插件隔离(未配置插件不得被默认启用) — 仅配置项启用(enabled=0, expected=0)
+⚠ V6 受保护线保留 journal 完整性 — SKIP: protected fixture absent before and after; 正式验收需在隔离测试环境预置受保护线和非空 journal 基线
+(V6 SKIP=1:该项不计入通过/失败)
+=== 接入验收: 11 通过 / 0 失败 ===
+✅ 阶段4 V1-V6 验收 — exit=0
+✅ 冒烟:持配方绑定 Agent — 9df3e30c
+✅ 冒烟目标在配方窗口内 — cur=44 target=45.5 window=40~60
+  ⏳ 治理窗(60s),等 70s 重提…
+  ⏳ 治理窗(228s),等 238s 重提…
+✅ 冒烟闭环步(自动 HITL):批准→下发→设备证实 — 方案「SM-冒烟步(3)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-4e950)。runId:rr-4e950d25(后续轮次按此回访效果并回写经验) runId=rr-4e950d25
+
+================ 交接声明(投用前必读)================
+落袋 id:线=ln-ff324916 配方=rc-4693e891 频道=c66ebf6c-9112-4a7d-b255-ed71408ae1d8
+冒烟语义 = 测试(自动 HITL 裁决)。**投入使用前请产线负责人在界面上做 judge & taste**:
+  ① 复核绑定矩阵与 HITL 策略(配方绑定当前 manual,每步下发需人工批准);
+  ② 确认量程/步长/安全限与工艺规程一致;
+  ③ 由人裁决首批真实提案后,方可视为正式投用。
+(对产线负责:任何不确定 —— 量程/步限/SP-PV 判定/认证方式/场景目标 —— skill 必须先询问用户,禁止猜测。)
+=====================================================
+{"summary":true,"lineId":"ln-ff324916","recipeId":"rc-4693e891","channelId":"c66ebf6c-9112-4a7d-b255-ed71408ae1d8","smokeRunId":"rr-4e950d25","pass":7,"fail":0}
+
+======== 一键接入: 7 通过 / 0 失败 ========
+MULTI_EXIT=0

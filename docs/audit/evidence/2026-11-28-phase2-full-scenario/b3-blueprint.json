@@ -1,0 +1,53 @@
+{
+  "sourceDoc": "docs/audit/2026-10-31-b3-blowline-protocol-manual.md",
+  "docVersion": "v1.4(2026-10-31)",
+  "adjudication": {
+    "note": "B-1..B-6 模拟验收线裁定(依厂家默认建议;真实接入须客户逐项确认)",
+    "B-1": "P2 采样周期=5000ms(厂家建议≤5s)",
+    "B-2": "S2 命令 QoS=1(厂家建议;平台写驱动默认 qos 1,模拟器订阅 qos1)",
+    "B-3": "S2 单步上限=0.2bar(模拟线工艺裁定;窗口 1.5~3.0,预警线 3.0,联锁 3.6 不越)",
+    "B-4": "S2 冷却不映射(平台无冷却字段,与附录 C-3 同口径;模拟器 tick 1s 天然限频)",
+    "B-5": "P5 一期接入(16 点,5s)",
+    "B-6": "线名=B3吹瓶模拟验收线(2026-11-28);端点=本机孪生 127.0.0.1:4032/19830;simulated=true"
+  },
+  "twinAliases": [
+    "T-1 P3/P4 同报文多字段 → 孪生为同设备两 topic(平台侧两节点各自记 ts;§7-2 判据适用网关面)",
+    "T-2 S2 确认报文键 sp → 孪生 state 主题用 setpoint(export 契约 readJsonPath 固定 setpoint)",
+    "T-3 S1 PUT → 平台 POST(模拟器 writable 端点语义等同,与附录 C-1 同口径)",
+    "T-4 S1 写应答信封 {code,data} → 孪生平铺 {value}(与附录 C-2 同口径)"
+  ],
+  "devices": [
+    {
+      "id": "b3-gw-extruder",
+      "protocol": "http",
+      "signals": [
+        { "id": "p1-melt-pressure", "name": "熔体压力", "unit": "bar", "min": 0, "max": 50, "decimals": 2, "kind": "pv",
+          "dynamics": { "base": 21.5, "tau": 12, "noise": 0.15 } },
+        { "id": "p2-preform-temp", "name": "瓶坯温度", "unit": "℃", "min": 0, "max": 300, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 105, "tau": 30, "noise": 1.0, "follows": [{ "sp": "s1-head-temp-sp", "gain": 0.6 }] } },
+        { "id": "p5-wall-profile", "name": "壁厚截面", "unit": "mm", "min": 0.8, "max": 3.0, "decimals": 3, "kind": "pv", "format": "vector",
+          "code": "const cur = Number.isFinite(state.v) ? state.v : 1.85; state.v = cur + (rand()-0.5)*0.003; const pts = []; for (let i=0;i<16;i++){ pts.push(+(cur + Math.sin((i/16)*Math.PI*2)*0.02 + (rand()-0.5)*0.006).toFixed(3)); } return { points: pts }" },
+        { "id": "s1-head-temp-sp", "name": "模头温度SP", "unit": "℃", "min": 150, "max": 260, "decimals": 1, "kind": "sp", "initial": 185 }
+      ]
+    },
+    {
+      "id": "b3-env-blow",
+      "protocol": "mqtt",
+      "config": {
+        "stateTopic": "aw/twin/b3-env-blow/sp/s2-blow-pressure-sp",
+        "topics": [
+          { "topic": "aw/twin/b3-env-blow/p3-env-temp", "signalId": "p3-env-temp", "payloadTemplate": "{\"data\":{\"p3-env-temp\":${value}}}", "qos": 0 },
+          { "topic": "aw/twin/b3-env-blow/p4-env-humidity", "signalId": "p4-env-humidity", "payloadTemplate": "{\"data\":{\"p4-env-humidity\":${value}}}", "qos": 0 },
+          { "topic": "aw/twin/b3-env-blow/sp/s2-blow-pressure-sp", "signalId": "s2-blow-pressure-sp", "payloadTemplate": "{\"setpoint\":${value},\"applied\":true}", "qos": 1 }
+        ]
+      },
+      "signals": [
+        { "id": "p3-env-temp", "name": "环境温度", "unit": "℃", "min": 0, "max": 60, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 22.5, "tau": 60, "noise": 0.2 } },
+        { "id": "p4-env-humidity", "name": "环境湿度", "unit": "%RH", "min": 0, "max": 100, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 52, "tau": 90, "noise": 0.5 } },
+        { "id": "s2-blow-pressure-sp", "name": "吹气压力SP", "unit": "bar", "min": 0, "max": 4, "decimals": 2, "kind": "sp", "initial": 2.6 }
+      ]
+    }
+  ]
+}

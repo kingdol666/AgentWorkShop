@@ -170,7 +170,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     if (!this.deps.repos.channelAgents.findByChannelAgent(channelId, targetAgentId)) {
       throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在: ${targetAgentId}`)
     }
-    const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: targetAgentId, embedder: this.memoryEmbedder ?? undefined })
+    const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: targetAgentId })
     return mem.recallRows(input.query, { scope: input.scope, limit: input.limit, sessionId: input.sessionId })
   }
 
@@ -306,7 +306,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     }
     if (input.scope === 'shared') {
       // 共享域:走 AgentMemory.save 同源路径(命名空间 dedup + 自动向量化)
-      const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: callerAgentId, embedder: this.memoryEmbedder ?? undefined })
+      const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: callerAgentId })
       void mem.save({
         title: input.title,
         content: input.content,

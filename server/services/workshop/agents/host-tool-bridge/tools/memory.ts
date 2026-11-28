@@ -122,7 +122,7 @@ async function searchCrossChannel(args: Record<string, unknown>, ws: AgentWorksp
   }
   const rows = await ws.searchSharedExperience({ query, scope, scopeKey, limit: args.limit as number | undefined })
   if (rows.length === 0) {
-    return { text: `跨频道经验检索无命中(query="${query}", scope=${scope}${scopeKey ? `:${scopeKey}` : ''})。仅同 owner 频道且 status=active/validated 的经验可命中。` }
+    return { text: `跨频道检索无命中(query="${query}", scope=${scope}${scopeKey ? `:${scopeKey}` : ''})。global 档读同 owner 的共享区(人工发布 + 已部署经验，不要求工业模式);line/product 需工业模式且 status=active/validated。` }
   }
   const lines = rows.map((r) => {
     const provenance = [
@@ -136,5 +136,5 @@ async function searchCrossChannel(args: Record<string, unknown>, ws: AgentWorksp
     ].filter(Boolean).join(' · ')
     return `  [${provenance}] ${r.title}\n    ${r.content}`
   })
-  return { text: `跨频道经验检索结果(${rows.length} 条, scope=${scope}):\n${lines.join('\n')}` }
+  return { text: `跨频道检索结果(${rows.length} 条, scope=${scope}):\n${lines.join('\n')}` }
 }

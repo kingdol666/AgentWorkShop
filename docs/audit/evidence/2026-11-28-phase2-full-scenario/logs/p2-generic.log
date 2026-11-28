@@ -1,0 +1,17 @@
+PASS [G1] generic channel created, no line binding · mode=generic lineId= lead=2ec9f07f worker=06f07043
+PASS [G1] worker profile pinned to ustc/deepseek-flash on omp · {"rpcMode":"rpc","provider":"ustc","model":"deepseek-flash"}
+PASS [G2] real deepseek task reached terminal · state=COMPLETED
+FAIL [G3] human dialog recorded as episodic (session scope) and searchable · [{"id":"762c537b-50b6-4eaf-a698-ba84289cff3a","kind":"episodic-team-task","title":"根任务完成 · 整理吹瓶车间设备点检清单模板","content":"任务
+PASS [G4] save_memory accepted on omp worker · 已沉淀到Channel 公共记忆(全员可检索): "点检经验 GENZ-75874"(dedupKey=agent:06f07043-8f05-443e-867
+PASS [G4] saved memory immediately searchable · [{"id":"505c48a6-4aca-40d3-badc-d061a6e79ff4","kind":"semantic","title":"点检经验 GENZ-75874","content":"吹瓶车间模头温区 185℃  时瓶坯温
+PASS [G5] handbook appears shortly after task (debounced) · lag=15s sources=10
+FAIL [G5] next turn injected with curated + multi-driver, no duplicate refs · sources=["search","brief","curated","primer","shared"] refs=30 dup=11
+PASS [G5] owner-global shared row auto-injects into the non-industrial channel (L2, source=shared) · sharedRefs=["5bb5d8f4-4b0b-4ffc-b8ba-459e950e4b24"]
+PASS [G6] graph run materializes nodes and edges · nodes=22 edges=16
+PASS [G7] cross-lingual (EN query → ZH memory) hit via vector layer · [{"id":"505c48a6-4aca-40d3-badc-d061a6e79ff4","kind":"semantic","title":"点检经验 GENZ-75874","content":"吹瓶车间模头温区 185℃  时瓶坯温度约 105℃;偏差超过 3℃  先查加热圈老化。标记 GENZ-75874。","importance":0.85,"createdAt":"2026-11-
+PASS [G7] human-created memory vectorized on write and hit without backfill · create=200
+
+2 FAILED (12 checks)
+  FAIL G3 human dialog recorded as episodic (session scope) and searchable :: [{"id":"762c537b-50b6-4eaf-a698-ba84289cff3a","kind":"episodic-team-task","title":"根任务完成 · 整理吹瓶车间设备点检清单模板","content":"任务
+  FAIL G5 next turn injected with curated + multi-driver, no duplicate refs :: sources=["search","brief","curated","primer","shared"] refs=30 dup=11
+P2_EXIT=1

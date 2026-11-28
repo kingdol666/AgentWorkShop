@@ -167,13 +167,14 @@ function currentVersion() {
   // Source-only display override; a packaged build always compares its real version.
   const test = app.isPackaged ? undefined : process.env.AW_UPDATE_TEST_VERSION?.trim()
   if (test && /^\d+\.\d+\.\d+$/.test(test)) return test
-  const version = app.getVersion()
-  if (version && version !== '0.0.0') return version
+  // 源码直启(electron desktop/main.mjs)时 app.getVersion() 回退到 Electron 运行时自身版本
+  // (如 45.4.1),不是应用版本 —— 源码模式必须以 backend package.json 为准;打包版才是真版本。
+  if (app.isPackaged) return app.getVersion()
   try {
-    return JSON.parse(readFileSync(join(backend, 'package.json'), 'utf8')).version || version
+    return JSON.parse(readFileSync(join(backend, 'package.json'), 'utf8')).version || app.getVersion()
   }
   catch {
-    return version
+    return app.getVersion()
   }
 }
 

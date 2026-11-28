@@ -1,0 +1,14 @@
+{
+  "sourceDoc": "V6 受保护基线夹具:独立小设备,供受保护线 journal 基线",
+  "devices": [
+    {
+      "id": "v6-fixture",
+      "protocol": "http",
+      "signals": [
+        { "id": "fixture-pv", "name": "夹具温度PV", "unit": "℃", "min": 0, "max": 100, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 40, "tau": 20, "noise": 0.3 } },
+        { "id": "fixture-sp", "name": "夹具温度SP", "unit": "℃", "min": 0, "max": 100, "decimals": 1, "kind": "sp", "initial": 40 }
+      ]
+    }
+  ]
+}

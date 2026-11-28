@@ -76,7 +76,7 @@ footer:
         14 个 harness（<code>agents/registry.ts</code>）/ 145 个设置项（<code>aw config list</code>）/ 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.22.0 · 已发布</i></span>
+        <span>版本 <i>v0.22.1 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -93,7 +93,7 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.22.0 (RELEASED 2026-11-28)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.22.1 (RELEASED 2026-11-28)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">

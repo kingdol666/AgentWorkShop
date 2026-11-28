@@ -9,6 +9,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 import type { EmbeddingProvider } from '../runtime/embedding-provider'
+import { getEmbeddingProvider } from '../runtime/embedding-provider'
 import { createMemoryRepo, type MemoryActor } from '../db/memory.repo'
 import type { MemoryKind, MemoryScopeKind, MemoryStatus } from '../db/database'
 import { segmentCJK, unsegmentCJK, vectorizeMemory } from '../runtime/memory/helpers'
@@ -190,17 +191,27 @@ export function createMemory(db: DatabaseSync, input: {
     throw new MemoryAdminError(400, 'INVALID', 'session 作用域必须提供 scopeKey=sessionId')
   }
   const repo = createMemoryRepo(db)
+  const dedupKey = `manual:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`
+  const agentId = input.agentId ?? '__team__'
   const write = repo.upsert({
     channelId: input.channelId,
-    agentId: input.agentId ?? '__team__',
+    agentId,
     kind: 'semantic',
     title: input.title,
     titleFts: segmentCJK(input.title),
     content: segmentCJK(input.content),
     importance: input.importance ?? 0.7,
-    dedupKey: `manual:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`,
+    dedupKey,
     ownerUserId: input.ownerUserId,
   }, { kind: 'human', id: input.actor.id })
+  // 手工新建同样要进向量层（2026-11-28 实机验收补正）：此前只有 updateMemory 会向量化，
+  // 记忆中心新建的行在下次回填前永远搜不到（FTS-only），与"写入即索引"不一致。
+  // 向量是派生索引，允许失败（vectorizeMemory 内部静默）；主表已落库。
+  // 解析 provider 本身也可能抛（配置异常）——必须兜住，否则主表已写入却把接口打成 500。
+  try {
+    void vectorizeMemory(repo, getEmbeddingProvider(), input.channelId, agentId, dedupKey, input.content)
+  }
+  catch { /* 派生索引失败不影响主表写入 */ }
   // 手工新建必须落调用方声明的 scope；repo.upsert 不写 scope 列（默认 session 会漏检索）。
   // session 档必须同步 session_id：检索的会话过滤、图谱 session 分区的来源 SQL 都读这一列。
   const sessionId = input.scopeKind === 'session' ? (input.scopeKey ?? '').trim() : ''
@@ -257,12 +268,14 @@ export async function updateMemory(
   ).run(title, segmentCJK(title), storedContent, input.importance ?? current.importance, input.actor.id, now, input.id, revision).changes ?? 0)
   if (changed === 0) throw new MemoryAdminError(409, 'REVISION_CONFLICT', '并发更新冲突，请刷新后重试')
 
-  // 语义索引必须跟随正文：能算就重算，不能算就删掉旧向量（绝不留下"旧文本向量 + 新正文"）
+  // 语义索引必须跟随正文：能算就重算，不能算就删掉旧向量（绝不留下"旧文本向量 + 新正文"）。
+  // 未显式注入 embedder 时按配置动态解析（评审 P2：REST PATCH 曾不传 deps → 编辑后向量被删且永不重算）。
   const rowidRow = db.prepare('SELECT rowid FROM agent_memories WHERE id = ?').get(input.id) as { rowid: number | bigint } | undefined
   if (rowidRow) repo.vecDelete(Number(rowidRow.rowid))
-  if (deps.embedder && rowidRow) {
+  const embedder = deps.embedder ?? getEmbeddingProvider()
+  if (embedder && rowidRow) {
     const dedupKey = current.dedupKey ?? ''
-    await vectorizeMemory(repo, deps.embedder, current.channelId, current.agentId, dedupKey, plainContent).catch(() => {})
+    await vectorizeMemory(repo, embedder, current.channelId, current.agentId, dedupKey, plainContent).catch(() => {})
   }
   invalidateHarnessOverlayCache(current.channelId)
   return { revision: revision + 1 }

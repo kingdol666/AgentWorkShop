@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.22.0)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.22.1)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>源码 v0.22.0（已发布，2026-11-28）</b> · 时序库就绪门 · Timescale 必需 schema 失败即止 · CI 生产启动冒烟 · 引擎子进程宿主密钥清洗 · 桌面更新由用户明确同意 · 系统/手动/直连三种更新线路 · 可恢复且校验的下载 · 全站统一工作台字标 · 一次性通电启动序列 · 脚本生成的桌面图标与随主题切换的托盘 · 重建关闭会话控件并清扫按钮族 · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
+<sub><b>源码 v0.22.1（已发布，2026-11-28）</b> · 时序库就绪门 · Timescale 必需 schema 失败即止 · CI 生产启动冒烟 · 引擎子进程宿主密钥清洗 · 桌面更新由用户明确同意 · 系统/手动/直连三种更新线路 · 可恢复且校验的下载 · 全站统一工作台字标 · 一次性通电启动序列 · 脚本生成的桌面图标与随主题切换的托盘 · 重建关闭会话控件并清扫按钮族 · 控制台按工作区建频道 · API 先验身份后查资源 · 产线查询有界时间窗 · 共享主题与无障碍刷新 · 桌面托盘与启动动画 · 一体化桌面壳与应用内更新 · 桌面/Web 共用 <code>~/.AgentWorkShop</code> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST（镜像与直连双路径）· **项目中心** · **RSI 经验演化** · **受治理产品经验** · **IDD/RAG 插件集成** · **AgentPrefab / Skill / MCP 能力供应链** · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[快速开始](#快速开始) · [看 90 秒系统片](#看-90-秒系统片) · [当前源码](#当前源码-v0-22-0) · [0.22.0 发布说明](#whats-new-in-0220) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
+[快速开始](#快速开始) · [看 90 秒系统片](#看-90-秒系统片) · [当前源码](#当前源码-v0-22-1) · [0.22.0 发布说明](#whats-new-in-0220) · [Agent 团队模型](#agent-团队模型) · [核心能力](#核心能力) · [设计架构](#设计架构) · [验证与验收](#验证与验收) · [文档站](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -59,7 +59,7 @@
 
 ## 当前源码 v0.22.0（已发布）
 
-当前源码版本为 **0.22.0**（npm + GitHub Release，2026-11-28）。本版补齐记忆中心：本地 ONNX 检索模型（BGE Small 中文 / MiniLM）在记忆中心界面下载、启用、回填，语义检索无字面重叠也能命中知识行；图谱派生面加 agent 视角隔离；参数经验查询作用域白名单 fail-closed（跨租户读取关闭）；人工会话消息修复对话沉淀；注入分层对 owner 共享区去重并校验生命周期窗口；任务收口后 45 秒即出知识手册；跨频道记忆检索加行级 owner 谓词。真实模型（ustc/deepseek-flash）在产线 Channel（仿真孪生产线，recipe_propose → HITL 审批 → 下发 → 回读 68 实证，操作追溯带审批锚）与非产线 Channel（沉淀 → 检索 score 0.99 → 一回合注入五路来源 → 手册 → 图谱节点/边/社区）全流程通过，Runtime 实例元数据热重载生效（CAS 版本、过期 409、下一回合按新提示词行动、记忆不受影响）。保留 0.21.0 的会话生命周期与全部既有加固。
+当前源码版本为 **0.22.1**（npm + GitHub Release，2026-11-28）。本补丁版发布桌面版本显示修复（源码直启托盘不再显示 Electron 运行时版本），并包含记忆/检索模型验收轮加固与四协议接入验收验证过的接入脚本改进。本版补齐记忆中心：本地 ONNX 检索模型（BGE Small 中文 / MiniLM）在记忆中心界面下载、启用、回填，语义检索无字面重叠也能命中知识行；图谱派生面加 agent 视角隔离；参数经验查询作用域白名单 fail-closed（跨租户读取关闭）；人工会话消息修复对话沉淀；注入分层对 owner 共享区去重并校验生命周期窗口；任务收口后 45 秒即出知识手册；跨频道记忆检索加行级 owner 谓词。真实模型（ustc/deepseek-flash）在产线 Channel（仿真孪生产线，recipe_propose → HITL 审批 → 下发 → 回读 68 实证，操作追溯带审批锚）与非产线 Channel（沉淀 → 检索 score 0.99 → 一回合注入五路来源 → 手册 → 图谱节点/边/社区）全流程通过，Runtime 实例元数据热重载生效（CAS 版本、过期 409、下一回合按新提示词行动、记忆不受影响）。保留 0.21.0 的会话生命周期与全部既有加固。
 
 ## What's new in 0.21.0
 
@@ -558,7 +558,7 @@ curl -X POST http://localhost:3001/api/workshop/projects/instantiate \
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前源码版本：**v0.22.0（已发布 2026-11-28）** —— [v0.22.0 发布页](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.22.0) · [桌面更新说明](./docs/desktop.md#更新通道) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前源码版本：**v0.22.1（已发布 2026-11-28）** —— [v0.22.1 发布页](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.22.1) · [桌面更新说明](./docs/desktop.md#更新通道) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

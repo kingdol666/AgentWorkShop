@@ -80,7 +80,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.22.0 · released</i></span>
+        <span>Version <i>v0.22.1 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -97,7 +97,7 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">New this month</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.22.0 (RELEASED 2026-11-28)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.22.1 (RELEASED 2026-11-28)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">

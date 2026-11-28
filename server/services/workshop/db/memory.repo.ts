@@ -1001,10 +1001,29 @@ export function createMemoryRepo(db: DatabaseSync) {
 
     // ===== vec:延迟建表(vecInit)/ 刷新写入(vecSet)/ 删除(vecDelete)/ 分区 kNN(vecSearch)=====
 
-    /** 首次调用按 dims 建表;同 dims 幂等 true;不同 dims 拒绝 false(禁用向量,绝不重建) */
+    /**
+     * 首次调用按 dims 建表;同 dims 幂等 true;不同 dims 拒绝 false(禁用向量,绝不重建)。
+     *
+     * 自愈(2026-11-28 实机验收补正):回填/换模型由**另一个 repo 实例**执行 vecReset
+     * (backfill 自己 createMemoryRepo),宿主实例(manager 常驻)缓存的 vecDims 会与真实表
+     * 脱节:此后 vecInit(新维度) 一律 false → vectorizeMemory 静默跳过,新记忆永远没有向量
+     * 直到进程重启。现在先用一条试写探测真实表:能按目标维度写入说明表已被外部重建,
+     * 再走建表路径重新 prepare 并放行;装不下才 false(不在此处静默重建/不丢旧向量)。
+     */
     vecInit(dims: number): boolean {
       if (vecDims === dims) return true
-      if (vecDims !== null) return false
+      if (vecDims !== null) {
+        // 只探测、不改语句:失败时既有(旧维度)语句仍然可用,旧向量检索不因此失效
+        try {
+          const probe = db.prepare(`INSERT INTO agent_memories_vec(embedding, agent_id, mem_rowid) VALUES (?, ?, ?)`)
+          probe.run(new Float32Array(dims), '__probe__', BigInt(-1))
+          db.prepare(`DELETE FROM agent_memories_vec WHERE mem_rowid = ?`).run(BigInt(-1))
+        }
+        catch { return false }
+        if (!vecEnsureTable(dims)) return false
+        vecDims = dims
+        return true
+      }
       if (!vecEnsureTable(dims)) return false
       vecDims = dims
       return true

@@ -1,0 +1,26 @@
+{
+  "sourceDoc": "Phase-2 多协议扩展:绕包机(Modbus-TCP) + 热处理炉(OPC-UA),与 B3(HTTP/MQTT)共同构成四协议接入矩阵",
+  "devices": [
+    {
+      "id": "wr-converter",
+      "protocol": "modbus-tcp",
+      "port": 4502,
+      "unitId": 1,
+      "signals": [
+        { "id": "p10-line-speed", "name": "绕包线速", "unit": "m/min", "min": 0, "max": 80, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 42, "tau": 15, "noise": 0.5, "follows": [{ "sp": "s10-speed-sp", "gain": 1.0 }] } },
+        { "id": "s10-speed-sp", "name": "绕包线速SP", "unit": "m/min", "min": 0, "max": 80, "decimals": 1, "kind": "sp", "initial": 42 }
+      ]
+    },
+    {
+      "id": "tmp-chamber",
+      "protocol": "opcua",
+      "port": 4841,
+      "signals": [
+        { "id": "p20-chamber-temp", "name": "炉膛温度", "unit": "℃", "min": 20, "max": 120, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 62, "tau": 20, "noise": 0.8, "follows": [{ "sp": "s20-temp-sp", "gain": 1.0 }] } },
+        { "id": "s20-temp-sp", "name": "炉膛温度SP", "unit": "℃", "min": 20, "max": 120, "decimals": 1, "kind": "sp", "initial": 62 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "line": { "name": "V6受保护基线夹具(2026-11-28)", "description": "V6 受保护基线夹具:事前建线+journal 基线,验收期零扰动;verify-line 经 protectedLineId 指向本线", "simulated": true },
+  "nodes": [
+    { "kind": "daq", "name": "夹具温度PV", "driver": "http", "templateRef": "temp-tc", "unit": "℃", "min": 0, "max": 100, "decimals": 1, "intervalMs": 5000,
+      "driverConfig": { "url": "http://127.0.0.1:4032/sim-http/v6-fixture/api/fixture-pv", "jsonPath": "value", "allowPrivateHost": true } },
+    { "kind": "dcw", "name": "夹具温度SP", "driver": "http", "templateRef": "temp-sp", "unit": "℃", "min": 0, "max": 100, "decimals": 1, "stepLimit": 2.0, "holdIntervalMs": 0,
+      "driverConfig": { "url": "http://127.0.0.1:4032/sim-http/v6-fixture/api/fixture-sp", "jsonPath": "value", "allowPrivateHost": true } }
+  ]
+}

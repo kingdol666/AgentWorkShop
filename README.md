@@ -10,7 +10,7 @@
 
 [![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
 [![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.22.0)
+[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.22.1)
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>source v0.22.0 (released 2026-11-28)</b> · DAQ readiness barrier · Timescale fail-closed required schema · CI production boot smoke · host-secret scrubbing across harnesses · explicit desktop update consent · system, manual and direct update routes · resumable verified downloads · one workshop mark across sidebar, rail, splash and icons · power-on boot sequence · generated desktop icon set with theme-aware tray · rebuilt close-session control and swept button family · console workspace-scoped channel creation · API identity-before-lookup hardening · bounded line queries · shared theme and accessibility refresh · desktop tray + boot splash · integrated desktop shell with in-app updates · shared <code>~/.AgentWorkShop</code> home · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
+<sub><b>source v0.22.1 (released 2026-11-28)</b> · DAQ readiness barrier · Timescale fail-closed required schema · CI production boot smoke · host-secret scrubbing across harnesses · explicit desktop update consent · system, manual and direct update routes · resumable verified downloads · one workshop mark across sidebar, rail, splash and icons · power-on boot sequence · generated desktop icon set with theme-aware tray · rebuilt close-session control and swept button family · console workspace-scoped channel creation · API identity-before-lookup hardening · bounded line queries · shared theme and accessibility refresh · desktop tray + boot splash · integrated desktop shell with in-app updates · shared <code>~/.AgentWorkShop</code> home · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST (mirror & live) · **Project center** · **RSI experience evolution** · **governed product experience** · **IDD/RAG plugin integration** · **AgentPrefab / Skills / MCP capability supply chain** · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -36,7 +36,7 @@
 
 </div>
 
-[Quick start](#quick-start) · [Watch the film](#watch-the-90-second-film) · [Current source](#current-source-v0-22-0) · [0.22.0 release notes](#whats-new-in-0220) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
+[Quick start](#quick-start) · [Watch the film](#watch-the-90-second-film) · [Current source](#current-source-v0-22-1) · [0.22.0 release notes](#whats-new-in-0220) · [Agent team model](#the-agent-team-model) · [Capabilities](#capabilities) · [Architecture](#architecture) · [Verification](#verification) · [Docs site](https://kingdol666.github.io/AgentWorkShop)
 
 ---
 
@@ -57,9 +57,9 @@ A configuration-driven platform where **AI agent teams** and industrial systems 
 - **Delivery is a first-class concept**: **Project mode** turns a blueprint into a plan, a WBS with dependencies, L1 technical review, L2 owner acceptance and real deliverables — the project closes only when the deliverables pass;
 - **The loop is implemented in governed stages**: read → analyze → propose → policy-controlled approval where required → write → readback/audit; the scope of each test and whether it used a simulator or physical equipment are stated with its evidence.
 
-## Current source: v0.22.0 (released)
+## Current source: v0.22.1 (released)
 
-The source version is **0.22.0** (npm + GitHub Release, 2026-11-28). This release completes the memory center: local ONNX retrieval models (BGE Small Chinese / MiniLM) download, activate and backfill from the memory-center UI, and semantic retrieval hits knowledge rows with near-zero lexical overlap. The graph derivation face gains agent-viewer isolation, parameter-experience queries take fail-closed scope whitelists (the cross-tenant read is closed), and human session messages sediment dialogs again (the ROLE_USER gate). Injection layers de-duplicate the owner shared zone and enforce lifecycle windows; the curator handbook lands 45 seconds after a task settles; cross-channel memory searches carry row-level owner predicates. Live acceptance with the real model ustc/deepseek-flash passed end to end on both a production-line Channel (sim-twin line, recipe_propose → HITL approval → dispatch → readback 68 verified, provenance with the approval anchor) and a normal Channel (sediment → retrieve with score 0.99 → inject five sources in one turn → handbook → graph nodes/edges/communities), plus runtime metadata hot-reload (CAS revision, stale CAS 409, the next real turn follows the new prompt, memory unaffected). It retains the 0.21.0 session lifecycle work and all earlier hardening.
+The source version is **0.22.1** (npm + GitHub Release, 2026-11-28). This patch releases the desktop version-display fix (source-run tray no longer shows the Electron runtime version) together with the memory/embedding acceptance round: local ONNX retrieval model self-heal, team vector channel ranking, download cancel/rollback hardening, and the onboarding verify/ack transparency improvements verified in the four-protocol acceptance. This release completes the memory center: local ONNX retrieval models (BGE Small Chinese / MiniLM) download, activate and backfill from the memory-center UI, and semantic retrieval hits knowledge rows with near-zero lexical overlap. The graph derivation face gains agent-viewer isolation, parameter-experience queries take fail-closed scope whitelists (the cross-tenant read is closed), and human session messages sediment dialogs again (the ROLE_USER gate). Injection layers de-duplicate the owner shared zone and enforce lifecycle windows; the curator handbook lands 45 seconds after a task settles; cross-channel memory searches carry row-level owner predicates. Live acceptance with the real model ustc/deepseek-flash passed end to end on both a production-line Channel (sim-twin line, recipe_propose → HITL approval → dispatch → readback 68 verified, provenance with the approval anchor) and a normal Channel (sediment → retrieve with score 0.99 → inject five sources in one turn → handbook → graph nodes/edges/communities), plus runtime metadata hot-reload (CAS revision, stale CAS 409, the next real turn follows the new prompt, memory unaffected). It retains the 0.21.0 session lifecycle work and all earlier hardening.
 
 ## What's new in 0.22.0
 
@@ -558,7 +558,7 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current source version: **v0.22.0 (released 2026-11-28)** — [Release v0.22.0](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.22.0) · [Desktop update notes](./docs/desktop.md#更新通道) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current source version: **v0.22.1 (released 2026-11-28)** — [Release v0.22.1](https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.22.1) · [Desktop update notes](./docs/desktop.md#更新通道) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 <a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
   <img src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" alt="Star history" width="70%" />

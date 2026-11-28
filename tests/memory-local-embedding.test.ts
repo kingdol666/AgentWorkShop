@@ -7,7 +7,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -20,7 +20,7 @@ process.env.AW_MEMORY_GRAPH_RETRIEVAL = '0'
 
 const { WordPieceTokenizer } = await import('../server/services/workshop/memory/local-embedding/tokenizer')
 const { installedModel, findLocalEmbeddingModel } = await import('../server/services/workshop/memory/local-embedding/registry')
-const { assertAllowedUrl } = await import('../server/services/workshop/memory/local-embedding/download')
+const { assertAllowedUrl, downloadFile, startModelDownload, listDownloadJobs, cancelDownloadJob } = await import('../server/services/workshop/memory/local-embedding/download')
 
 const SYNTH_VOCAB = [
   '[PAD]', '[UNK]', '[CLS]', '[SEP]',
@@ -101,6 +101,99 @@ test('下载安全边界：仅 https + 白名单域名，拒绝私网/任意站�
   assert.throws(() => assertAllowedUrl('https://127.0.0.1/x'), /不在白名单|私网/)
   assert.throws(() => assertAllowedUrl('https://localhost/x'), /不在白名单|私网/)
   assert.throws(() => assertAllowedUrl('https://192.168.1.10/x'), /不在白名单|私网/)
+})
+
+// ── 下载进度 / 取消（2026-11-28 实机补正回归）──────────────────────────────
+// 旧实现 received 只在整文件 rename 后 +size：24MB 主模型全程 0% 后一次跳到 100%。
+// 现在 Transform 逐 chunk 计数；失败/取消回滚到本文件起点（不虚报）。
+test('下载进度：received 随字节推进，失败回滚不虚报', async () => {
+  const def = findLocalEmbeddingModel('bge-small-zh-v1.5')!
+  const dir = mkdtempSync(join(tmpdir(), 'aw-embed-progress-'))
+  const realFetch = globalThis.fetch
+  const observations: number[] = []
+  const job = { received: 0 } as { received: number }
+  const total = 20 * 1024
+  const chunk = new Uint8Array(1024).fill(7)
+  let sent = 0
+  globalThis.fetch = (async () => new Response(new ReadableStream({
+    pull(c) {
+      // 每次拉取前记录一次进度：证明传输过程中 received 已经在涨
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          observations.push(job.received)
+          if (sent < total) {
+            sent += chunk.length
+            c.enqueue(new Uint8Array(chunk))
+          }
+          else {
+            c.close()
+          }
+          resolve()
+        }, 2)
+      })
+    },
+  }), { status: 200, headers: { 'content-length': String(total) } })) as typeof fetch
+  try {
+    const source = await downloadFile(def, { name: 'model_quantized.onnx', path: 'onnx/model_quantized.onnx' }, dir, job as never, new AbortController().signal)
+    assert.equal(source, 'huggingface.co')
+  }
+  finally { globalThis.fetch = realFetch }
+  assert.equal(job.received, total, '完成后 received == 总字节')
+  assert.ok(observations.some(v => v > 0 && v < total), `传输中必须出现中间进度，实测 ${observations.join(',')}`)
+  rmSync(dir, { recursive: true, force: true })
+})
+
+test('下载失败：进度回滚到本文件起点，且不留半截/最终文件', async () => {
+  const def = findLocalEmbeddingModel('bge-small-zh-v1.5')!
+  const dir = mkdtempSync(join(tmpdir(), 'aw-embed-fail-'))
+  const realFetch = globalThis.fetch
+  let pulls = 0
+  globalThis.fetch = (async () => new Response(new ReadableStream({
+    pull(c) {
+      pulls++
+      if (pulls === 1) c.enqueue(new Uint8Array(512).fill(1))
+      else c.error(new Error('boom'))
+    },
+  }), { status: 200, headers: { 'content-length': '4096' } })) as typeof fetch
+  const job = { received: 0 } as { received: number }
+  try {
+    await assert.rejects(
+      () => downloadFile(def, { name: 'model_quantized.onnx', path: 'onnx/model_quantized.onnx' }, dir, job as never, new AbortController().signal),
+      /boom|所有下载源均失败/,
+    )
+  }
+  finally { globalThis.fetch = realFetch }
+  assert.equal(job.received, 0, '失败后进度必须回滚到本文件起点（不虚报字节）')
+  assert.deepEqual(readdirSync(dir), [], '失败不得留下 .part 或最终文件')
+  rmSync(dir, { recursive: true, force: true })
+})
+
+test('取消下载：status=canceled 且半截/已完成文件都被清理', async () => {
+  const dir = join(HOME, 'models', 'embedding', 'all-MiniLM-L6-v2')
+  const realFetch = globalThis.fetch
+  let abortSignal: AbortSignal | undefined
+  globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+    abortSignal = init?.signal ?? undefined
+    return new Response(new ReadableStream({
+      start(c) {
+        c.enqueue(new Uint8Array(4096).fill(1))
+        abortSignal?.addEventListener('abort', () => c.error(new Error('aborted')))
+      },
+    }), { status: 200, headers: { 'content-length': '9999999' } })
+  }) as typeof fetch
+  const job = startModelDownload('all-MiniLM-L6-v2')
+  const deadline = Date.now() + 3000
+  while (job.received === 0 && Date.now() < deadline) await new Promise(r => setTimeout(r, 20))
+  assert.ok(job.received > 0, '取消前应已收到字节')
+  assert.ok(cancelDownloadJob(job.id), 'cancelDownloadJob 应返回 true')
+  const end = Date.now() + 5000
+  while (job.status === 'running' && Date.now() < end) await new Promise(r => setTimeout(r, 20))
+  globalThis.fetch = realFetch
+  assert.equal(job.status, 'canceled', `取消后状态应为 canceled，实际 ${job.status}`)
+  assert.equal(installedModel('all-MiniLM-L6-v2'), null, '取消后不得残留可判定的安装目录')
+  assert.deepEqual(existsSync(dir) ? readdirSync(dir) : [], [], '取消后目录里不得留下任何文件（含已完成的文件）')
+  assert.deepEqual(listDownloadJobs().filter(j => j.id === job.id).map(j => j.status), ['canceled'])
+  rmSync(dir, { recursive: true, force: true })
 })
 
 test('ONNX 本地推理（需真实模型，缺失则跳过）：维度 + L2 + 语义可分', async (t) => {

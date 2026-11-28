@@ -33,7 +33,9 @@ async function main() {
   const tok = await login()
 
   // Capture and validate the protected journal before any acceptance writes.
-  const PROTECTED_LINE = PROTECTED[0]
+  // protectedLineId:隔离环境可用自有基线夹具线(事前建好 + journal 非空)替代默认演示线;
+  // 缺省仍为受保护演示线(红线不变),仅当配置显式提供夹具线 ID 时才切换 V6 的评估对象。
+  const PROTECTED_LINE = typeof cfg.protectedLineId === 'string' && cfg.protectedLineId.trim() ? cfg.protectedLineId.trim() : PROTECTED[0]
   const JOURNAL_LIMIT = 500
   const snapshotOptions = { base: BASE, token: tok, lineId: PROTECTED_LINE, limit: JOURNAL_LIMIT }
   const protectedBefore = await readProtectedSnapshot(snapshotOptions)

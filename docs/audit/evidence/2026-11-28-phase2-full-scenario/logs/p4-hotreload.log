@@ -1,0 +1,16 @@
+PASS [R0] generic channel session created · cs-3dbec950
+PASS [R2] session runtime list shows clone members · [{"id":"c8d55700-8f61-4104-88ab-c6246435475a","name":"泛作业工程师·session·2","rev":0},{"id":"1ee892d0-beb2-4888-94cc-a4e68f653ec2","name":"泛作业主管·session·1","rev":0}]
+PASS [R2] member is a clone instance id (≠ base agentId) · clone=c8d55700 base=06f07043
+PASS [R4] wrong expectedRevision rejected (CAS) · status=409 code=RUNTIME_REVISION_CONFLICT
+PASS [R1] runtime PATCH with CAS accepted, revision advanced · status=200 rev 0→1 effective=next_turn
+FAIL [R1] message delivered into session · text: Required
+file:///D:/tmp/aw-phase2-20261128/lib.mjs:42
+  throw new Error(`${label} timeout ${timeout}ms (last=${String(last?.message ?? JSON.stringify(last)).slice(0, 250)})`)
+        ^
+
+Error: marked reply timeout 300000ms (last=null)
+    at waitFor (file:///D:/tmp/aw-phase2-20261128/lib.mjs:42:9)
+    at async file:///D:/tmp/aw-phase2-20261128/p4-runtime-hotreload.mjs:59:15
+
+Node.js v24.19.0
+P4_EXIT=1

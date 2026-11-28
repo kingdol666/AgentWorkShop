@@ -1,0 +1,55 @@
+[
+ {
+  "signal": "环境温度",
+  "driver": "mqtt",
+  "format": "scalar",
+  "description": "孪生:环境温度",
+  "unit": "℃",
+  "min": 0,
+  "max": 60,
+  "decimals": 1,
+  "driverConfig": {
+   "host": "127.0.0.1",
+   "port": 40830,
+   "topic": "aw/twin/b3-env-blow/p3-env-temp",
+   "jsonPath": "data.p3-env-temp"
+  },
+  "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"mqtt\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":40830,\"topic\":\"aw/twin/b3-env-blow/p3-env-temp\",\"jsonPath\":\"data.p3-env-temp\"}}'"
+ },
+ {
+  "signal": "环境湿度",
+  "driver": "mqtt",
+  "format": "scalar",
+  "description": "孪生:环境湿度",
+  "unit": "%RH",
+  "min": 0,
+  "max": 100,
+  "decimals": 1,
+  "driverConfig": {
+   "host": "127.0.0.1",
+   "port": 40830,
+   "topic": "aw/twin/b3-env-blow/p4-env-humidity",
+   "jsonPath": "data.p4-env-humidity"
+  },
+  "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"mqtt\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":40830,\"topic\":\"aw/twin/b3-env-blow/p4-env-humidity\",\"jsonPath\":\"data.p4-env-humidity\"}}'"
+ },
+ {
+  "signal": "吹气压力SP",
+  "driver": "mqtt",
+  "format": "scalar",
+  "description": "孪生:吹气压力SP",
+  "unit": "bar",
+  "min": 0,
+  "max": 4,
+  "decimals": 2,
+  "driverConfig": {
+   "host": "127.0.0.1",
+   "port": 40830,
+   "topic": "aw/twin/b3-env-blow/set",
+   "jsonKey": "setpoint",
+   "readTopic": "aw/twin/b3-env-blow/sp/s2-blow-pressure-sp",
+   "readJsonPath": "setpoint"
+  },
+  "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"mqtt\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":40830,\"topic\":\"aw/twin/b3-env-blow/set\",\"jsonKey\":\"setpoint\",\"readTopic\":\"aw/twin/b3-env-blow/sp/s2-blow-pressure-sp\",\"readJsonPath\":\"setpoint\"}}'"
+ }
+]

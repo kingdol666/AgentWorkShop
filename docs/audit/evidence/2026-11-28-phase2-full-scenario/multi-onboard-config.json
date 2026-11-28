@@ -1,0 +1,47 @@
+{
+  "line": { "name": "绕包多协议验收线(Modbus+OPC-UA)", "description": "Phase-2 多协议扩展:绕包机 Modbus-TCP:4502 + 热处理炉 OPC-UA:4841;与 B3(HTTP/MQTT)构成四协议矩阵", "simulated": true },
+  "product": { "name": "WR-120绕包产品" },
+  "nodes": [
+    { "kind": "daq", "name": "P10绕包线速PV", "driver": "modbus-tcp", "templateRef": "line-encoder", "unit": "m/min", "min": 0, "max": 80, "decimals": 1, "intervalMs": 2000,
+      "driverConfig": { "host": "127.0.0.1", "port": 4502, "unitId": 1, "register": 40001, "registerType": "holding", "dataType": "float32", "byteOrder": "big" } },
+    { "kind": "daq", "name": "P20炉膛温度PV", "driver": "opcua", "templateRef": "temp-tc", "unit": "℃", "min": 20, "max": 120, "decimals": 1, "intervalMs": 2000,
+      "driverConfig": { "endpoint": "opc.tcp://127.0.0.1:4841", "nodeId": "ns=2;s=tmp-chamber.p20-chamber-temp" } },
+    { "kind": "dcw", "name": "S10绕包线速SP", "driver": "modbus-tcp", "templateRef": "speed-sp", "unit": "m/min", "min": 0, "max": 80, "decimals": 1, "stepLimit": 2.0, "holdIntervalMs": 0,
+      "driverConfig": { "host": "127.0.0.1", "port": 4502, "unitId": 1, "register": 40003, "registerType": "holding", "dataType": "float32", "byteOrder": "big" } },
+    { "kind": "dcw", "name": "S20炉膛温度SP", "driver": "opcua", "templateRef": "temp-sp", "unit": "℃", "min": 20, "max": 120, "decimals": 1, "stepLimit": 2.0, "holdIntervalMs": 0,
+      "driverConfig": { "endpoint": "opc.tcp://127.0.0.1:4841", "nodeId": "ns=2;s=tmp-chamber.s20-temp-sp" } }
+  ],
+  "recipe": {
+    "name": "绕包多协议基线配方",
+    "params": [
+      { "node": "S10绕包线速SP", "value": 42, "min": 40, "max": 60, "stepLimit": 2.0 },
+      { "node": "S20炉膛温度SP", "value": 62, "min": 50, "max": 80, "stepLimit": 2.0 }
+    ]
+  },
+  "startLine": true,
+  "connectivity": {
+    "tests": [
+      { "label": "P10绕包线速PV(modbus-tcp)", "driver": "modbus-tcp", "driverConfig": { "host": "127.0.0.1", "port": 4502, "unitId": 1, "register": 40001, "registerType": "holding", "dataType": "float32", "byteOrder": "big" } },
+      { "label": "P20炉膛温度PV(opcua)", "driver": "opcua", "driverConfig": { "endpoint": "opc.tcp://127.0.0.1:4841", "nodeId": "ns=2;s=tmp-chamber.p20-chamber-temp" } },
+      { "label": "S10绕包线速SP(modbus写点读面)", "driver": "modbus-tcp", "driverConfig": { "host": "127.0.0.1", "port": 4502, "unitId": 1, "register": 40003, "registerType": "holding", "dataType": "float32", "byteOrder": "big" } },
+      { "label": "S20炉膛温度SP(opcua写点读面)", "driver": "opcua", "driverConfig": { "endpoint": "opc.tcp://127.0.0.1:4841", "nodeId": "ns=2;s=tmp-chamber.s20-temp-sp" } }
+    ]
+  },
+  "channel": {
+    "scenario": "optimize",
+    "name": "多协议闭环频道",
+    "plugins": {},
+    "bindings": [
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:P10绕包线速PV", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:P20炉膛温度PV", "mode": "auto" },
+      { "agentRole": "worker:2", "kind": "recipe", "nodeId": "$RECIPE", "mode": "manual" }
+    ],
+    "seedTask": {
+      "title": "多协议接入确认(零写)",
+      "description": "读取 P10/P20 数采节点确认 Modbus 与 OPC-UA 两台设备数据在采,汇报读数与判定,不下发任何参数。",
+      "budget_minutes": 15
+    },
+    "scene": { "line": "绕包机(Modbus-TCP)+热处理炉(OPC-UA)孪生", "protocols": "modbus-tcp / opcua", "note": "与 B3 线(HTTP/MQTT)共同验证四协议接入" }
+  },
+  "smoke": { "param": "S10绕包线速SP", "delta": 1.5 }
+}

@@ -92,7 +92,11 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       : null
     const integrated = channelModeForAgent(agent.id) === 'production_line_integrated' && (!sessionRow || !!trustedSession)
     const channelLineId = integrated && !sessionRow ? this.deps.repos.channels.findById(m.channelId)?.lineId ?? null : null
-    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id, ownerUserId: this.deps.repos.channels.findById(m.channelId)?.ownerUserId ?? null, lineId: channelSessionScope?.lineId ?? channelLineId, productId: channelSessionScope?.productId ?? null, sessionId: sessionRow?.id ?? null, industrialScopeEnabled: integrated, embedder: this.memoryEmbedder ?? undefined })
+    // 不把 provider 快照传给 AgentMemory（2026-11-28 实机验收补正）：实例随 runtime 常驻，
+    // 传值会把当时的 provider 钉死 —— 记忆中心切换本地模型后，写路径仍用旧模型编码，
+    // vecInit(新维度) 与真实表不符 → 新记忆静默没有向量（直到重启）。AgentMemory 内部
+    // 未注入时按配置动态解析（state.ts embedder getter），这里保持缺省即可。
+    const memory = new AgentMemory(this.deps.repos.memories, { channelId: m.channelId, agentId: agent.id, ownerUserId: this.deps.repos.channels.findById(m.channelId)?.ownerUserId ?? null, lineId: channelSessionScope?.lineId ?? channelLineId, productId: channelSessionScope?.productId ?? null, sessionId: sessionRow?.id ?? null, industrialScopeEnabled: integrated })
     const workspace = this.buildWorkspace(agent, memory)
     const chWorkspace = this.channelWorkspace(m.channelId)
     // channel 级作业场景 prompt 注入 harness config(用户场景 × 系统设计组合的入口;

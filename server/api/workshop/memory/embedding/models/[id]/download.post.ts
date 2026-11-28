@@ -6,8 +6,8 @@ import { getRouterParam } from 'h3'
 import { AppError } from '@/server/utils/errors'
 import { defineApiHandler } from '@/server/utils/response'
 import { requireMemoryUser } from '@/server/services/workshop/memory/memory-access'
-import { findLocalEmbeddingModel } from '@/server/services/workshop/memory/local-embedding/registry'
-import { startModelDownload } from '@/server/services/workshop/memory/local-embedding/download'
+import { findLocalEmbeddingModel, installedModel } from '@/server/services/workshop/memory/local-embedding/registry'
+import { activeJobForModel, startModelDownload } from '@/server/services/workshop/memory/local-embedding/download'
 import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
@@ -15,6 +15,11 @@ export default defineApiHandler(async (event) => {
   if (user.role !== 'admin') throw new AppError(403, 'FORBIDDEN', '仅管理员可下载检索模型')
   const id = getRouterParam(event, 'id')!
   if (!findLocalEmbeddingModel(id)) throw new AppError(404, 'NOT_FOUND', `未知模型: ${id}`)
+  // 已安装则拒绝重下（评审 P2，2026-11-28）：下载会在失败/取消时清理目标目录，
+  // 对已启用模型发起"重下后取消"会把正在用的文件删掉。要换版本请先删除再下载。
+  if (installedModel(id) && !activeJobForModel(id)) {
+    throw new AppError(409, 'MODEL_ALREADY_INSTALLED', `模型已安装：${id}（如需重下请先删除）`)
+  }
   const job = startModelDownload(id)
   try {
     recordOps({

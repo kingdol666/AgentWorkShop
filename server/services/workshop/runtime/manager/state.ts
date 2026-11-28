@@ -721,7 +721,7 @@ export abstract class ManagerState extends ManagerContracts {
     const dedupKey = typeof payload.dedupKey === 'string' ? payload.dedupKey : `team-task-event:${taskId}:${event}`
     const importance = typeof payload.importance === 'number' ? payload.importance : undefined
     if (!channelId || !taskId) return
-    const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: TEAM_AGENT_ID, embedder: this.memoryEmbedder ?? undefined })
+    const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: TEAM_AGENT_ID })
     await mem.appendTeamTaskProgress({
       taskId,
       title,
@@ -1024,7 +1024,7 @@ export abstract class ManagerState extends ManagerContracts {
       const content = completed
         ? (deliverable || title)
         : `任务「${title}」${e.state === 'CANCELED' ? '已取消' : '未完成'}${deliverable ? `;已有进展: ${deliverable.slice(0, 200)}` : ''}`
-      const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: TEAM_AGENT_ID, embedder: this.memoryEmbedder ?? undefined })
+      const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: TEAM_AGENT_ID })
       void mem.appendTeamTaskRecord({
         taskId: e.taskId,
         title,

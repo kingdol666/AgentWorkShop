@@ -1,0 +1,16 @@
+{
+  "lineId": "ln-4ed680cd",
+  "recipeId": "rc-f1af79fd",
+  "channelId": "64de4839-8264-44fc-9382-93e3aa73353a",
+  "protectedLineId": "ln-30a31e6b",
+  "dcw": [
+    { "id": "dw-509c5b79", "name": "S1模头温度SP", "min": 150, "max": 260, "stepLimit": 2.0 },
+    { "id": "dw-a04b9fe6", "name": "S2吹气压力SP", "min": 0, "max": 4, "stepLimit": 0.2, "ackMode": "transport-ack", "observeDaqId": "dn-3d1f2ed9", "observeTolerance": 0.1 }
+  ],
+  "daq": ["dn-29a6c2ef", "dn-38afad4b", "dn-c8f4fdaf", "dn-67ece733", "dn-6cdc65ea", "dn-3d1f2ed9"],
+  "recipeParams": [
+    { "nodeId": "dw-509c5b79", "value": 185, "min": 180, "max": 210, "stepLimit": 2.0 },
+    { "nodeId": "dw-a04b9fe6", "value": 2.6, "min": 1.5, "max": 3.0, "stepLimit": 0.2 }
+  ],
+  "plugins": []
+}
