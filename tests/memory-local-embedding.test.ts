@@ -91,6 +91,11 @@ test('注册表：文件齐全才算安装，截断文件不认', () => {
 test('下载安全边界：仅 https + 白名单域名，拒绝私网/任意站点', () => {
   assert.equal(assertAllowedUrl('https://huggingface.co/a/b/resolve/main/c').hostname, 'huggingface.co')
   assert.equal(assertAllowedUrl('https://hf-mirror.com/a/b').hostname, 'hf-mirror.com')
+  // HF 官方域族后缀匹配：Xet CAS 桥（实机 302 目标）必须可过，同形域必须被拒
+  assert.equal(assertAllowedUrl('https://cas-bridge.xethub.hf.co/x').hostname, 'cas-bridge.xethub.hf.co')
+  assert.equal(assertAllowedUrl('https://cdn-lfs.huggingface.co/x').hostname, 'cdn-lfs.huggingface.co')
+  assert.throws(() => assertAllowedUrl('https://evil-huggingface.co/x'), /不在白名单/, '同形域不得借后缀匹配混入')
+  assert.throws(() => assertAllowedUrl('https://evil.hf.co.evil.com/x'), /不在白名单/)
   assert.throws(() => assertAllowedUrl('http://huggingface.co/x'), /仅允许 https/)
   assert.throws(() => assertAllowedUrl('https://evil.example.com/x'), /不在白名单/)
   assert.throws(() => assertAllowedUrl('https://127.0.0.1/x'), /不在白名单|私网/)

@@ -38,7 +38,17 @@ export interface DownloadJob {
   finishedAt: string
 }
 
-const DOWNLOAD_HOSTS = ['huggingface.co', 'hf-mirror.com'] as const
+/**
+ * 下载源白名单（2026-11-28 实机更新）：HuggingFace 会把 /resolve 302 到 Xet CAS 桥
+ * （cas-bridge.xethub.hf.co 等 *.hf.co 官方子域），逐跳校验下精确主机名会误杀 ——
+ * 实机 deepseek 验收轮真实抓到。改为**注册域后缀匹配**：hostname 等于条目，或以
+ * '.'+条目 结尾（前导点防 evil-huggingface.co 这类同形域）；hf.co 与 huggingface.co
+ * 均为 HF 官方注册域，子域内容仍受 https + 非私网校验约束。
+ */
+const DOWNLOAD_HOSTS = ['huggingface.co', 'hf.co', 'hf-mirror.com'] as const
+function hostAllowed(hostname: string): boolean {
+  return (DOWNLOAD_HOSTS as readonly string[]).some(h => hostname === h || hostname.endsWith(`.${h}`))
+}
 const jobs = new Map<string, DownloadJob>()
 const controllers = new Map<string, AbortController>()
 const activeByModel = new Map<string, string>()
@@ -59,7 +69,7 @@ function buildUrl(host: string, repo: string, path: string): string {
 export function assertAllowedUrl(raw: string): URL {
   const url = new URL(raw)
   if (url.protocol !== 'https:') throw new Error(`仅允许 https 下载: ${url.protocol}`)
-  if (!(DOWNLOAD_HOSTS as readonly string[]).includes(url.hostname)) throw new Error(`下载源不在白名单: ${url.hostname}`)
+  if (!hostAllowed(url.hostname)) throw new Error(`下载源不在白名单: ${url.hostname}`)
   if (isPrivateHost(url.hostname)) throw new Error(`拒绝私网/环回地址: ${url.hostname}`)
   return url
 }
