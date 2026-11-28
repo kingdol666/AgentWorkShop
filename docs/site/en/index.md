@@ -80,7 +80,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 144 settings in 19 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.21.0 · released</i></span>
+        <span>Version <i>v0.22.0 · released</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -97,11 +97,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">New this month</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.21.0 (RELEASED 2026-11-26)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.22.0 (RELEASED 2026-11-28)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      v0.21.0 (2026-11-26) closes the session lifecycle and merges session management into the chat page: only manual sessions can be renamed, archived or restored; an archived session is purged after it is closed, and a busy close is bounded to 150 ms. Every ordinary delete/remove confirms in place (the shared <code>ConfirmPopover</code> around a standard <code>a-popconfirm</code>): cancelling sends no request and only confirming acts, and the AML delete no longer falls back to deleting when its dialog fails to load. The chat page holds 「group chat / session + create + session detail」, the standalone sessions view is removed, and old <code>?view=sessions</code> links resolve to <code>chat</code>; a project deep link selects its target once, stale list and context responses are discarded by generation and channel checks. Archived sessions are restored or purged in settings.
+      v0.22.0 (2026-11-28) completes the memory center: local ONNX retrieval models (BGE Small Chinese / MiniLM) download, activate and backfill from the UI, and semantic retrieval hits with near-zero lexical overlap; the graph derivation face gains agent-viewer isolation; parameter-experience scope whitelists fail closed and the cross-tenant read is closed; human session messages sediment dialogs again; injection layers de-duplicate and the curator handbook lands 45 s after a task. Real-model acceptance (ustc/deepseek-flash) passed end to end on production-line and normal Channels, and Runtime instance metadata hot-reload takes effect.
       Parameter dispatch and other writes still run after node authorization and recipe approval; simulation evidence is not physical HIL. See
       <a href="/AgentWorkShop/guide/line-governance">line governance</a>.
     </p>
@@ -127,7 +127,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">Verification</span>
-      <p>v0.21.0 (2026-11-26): on an isolated production build a real Chrome UI pass went green (group chat / create / session detail / message / rename / archive / delete confirm, narrow viewport with no overflow, 0 page errors / 0 failed requests); session contract <b>7/7</b>, full unit suite <b>2,371 tests / 2,370 pass / 0 fail / 1 skip</b>, eslint 0, typecheck, i18n 3,577/3,577 unresolved 0, docs 101/0 and build green. The Mimosa scan was not run this round and is <b>not</b> reported as a security pass. See the <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-26-chat-sessions/REPORT.md">session merge and delete confirmation report</a>.</p>
+      <p>v0.22.0 (2026-11-28): memory-center completion round. Isolated production-build acceptance — memory/knowledge/experience full chain (isolation matrix 53, retrieval models 19, timing 8), real-model scenarios (ustc/deepseek-flash: normal 15, production line 15, runtime metadata hot-reload 10) all green; full unit suite <b>2,542 tests / 2,540 pass / 0 fail / 2 skip</b>, eslint 0, typecheck, i18n 4,008/4,008, docs 101/0, build, boot-smoke 6/6. Mimosa deep scans (three) sealed; all 46 findings triaged to false positives / gitignored local artifacts (0 true positives on the production surface); the scanner coverage verdict stays inconclusive on this machine — <b>not</b> claimed as a full security pass. See <a href="https://github.com/kingdol666/AgentWorkShop/pull/306">PR #306</a>.</p>
     </div>
   </section>
 

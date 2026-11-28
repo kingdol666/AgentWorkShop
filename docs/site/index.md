@@ -76,7 +76,7 @@ footer:
         14 个 harness（<code>agents/registry.ts</code>）/ 145 个设置项（<code>aw config list</code>）/ 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.21.0 · 已发布</i></span>
+        <span>版本 <i>v0.22.0 · 已发布</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -93,11 +93,11 @@ footer:
     <div class="hw-sec-head">
       <span class="hw-sec-no">00</span>
       <h2 class="hw-sec-title">本月新增</h2>
-      <span class="hw-sec-en">CURRENT SOURCE · v0.21.0 (RELEASED 2026-11-26)</span>
+      <span class="hw-sec-en">CURRENT SOURCE · v0.22.0 (RELEASED 2026-11-28)</span>
     </div>
     <div class="hw-sec-rule"></div>
     <p class="hw-lead">
-      当前为 v0.21.0（2026-11-26）。这一版补齐会话生命周期，并把多会话并入对话页：手工会话可改名、归档、恢复；归档会话先关闭再永久清理，关闭最多等 150 ms。所有普通删除/移除在触发点确认（标准 <code>ConfirmPopover</code> 包装 <code>a-popconfirm</code>）：取消零请求，确认才执行；AML 删除不再因弹窗加载失败而放行。对话页自身持有「群聊 / 会话 + 新建 + 会话详情」，独立多会话视图移除，旧 <code>?view=sessions</code> 落到 <code>chat</code>；项目深链只选中目标一次，旧的列表与上下文响应由代次和频道校验丢弃。归档会话在设置页恢复或永久清理。
+      当前为 v0.22.0（2026-11-28）。这一版补齐记忆中心的检索模型与治理面：本地 ONNX 检索模型（BGE Small 中文 / MiniLM）可在界面下载、启用、回填，语义检索无字面重叠也能命中；图谱派生面加 agent 视角隔离；参数经验作用域白名单 fail-closed，跨租户读取关闭；人工会话消息修复对话沉淀；注入分层去重与任务后 45s 即时汇整。产线与非产线 Channel 的真实模型实机验收（ustc/deepseek-flash）全流程通过，Runtime 实例元数据热重载生效。
       参数下发等写操作仍在节点授权与配方审批之后执行；模拟证据不是物理 HIL，见
       <a href="/AgentWorkShop/guide/line-governance">产线治理指南</a>。
     </p>
@@ -123,7 +123,7 @@ footer:
     </div>
     <div class="hw-note">
       <span class="t">验证</span>
-      <p>v0.21.0（2026-11-26）：隔离生产构建上真实 Chrome UI 全流程通过（群聊/新建/会话详情/发消息/改名/归档/删除确认，窄屏无溢出，0 页面错误 / 0 失败请求）；契约 <b>7/7</b>、全量单测 <b>2,371 项 / 2,370 通过 / 0 失败 / 1 跳过</b>、eslint 0、typecheck、i18n 3,577/3,577 unresolved 0、docs 101/0、build 全绿。Mimosa 扫描本轮未运行，**不宣称安全通过**。详见 <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/audit/evidence/2026-11-26-chat-sessions/REPORT.md">会话合并与删除确认报告</a>。</p>
+      <p>v0.22.0（2026-11-28）：记忆中心完成轮。隔离生产构建实机验收——记忆/知识/经验全链（隔离矩阵 53、检索模型 19、时机 8）、真实模型场景（ustc/deepseek-flash：非产线 15、产线 15、Runtime 元数据热重载 10）全部通过；全量单测 <b>2,542 项 / 2,540 通过 / 0 失败 / 2 跳过</b>、eslint 0、typecheck、i18n 4,008/4,008、docs 101/0、build、boot-smoke 6/6 全绿。Mimosa 深扫三轮有 seal，46 项发现逐一甄别为误报 / gitignored 本地产物（生产面 0 真实漏洞）；扫描器 coverage 结论在本机为 inconclusive，<b>不宣称完整安全通过</b>。详见 <a href="https://github.com/kingdol666/AgentWorkShop/pull/306">PR #306</a>。</p>
     </div>
   </section>
 
