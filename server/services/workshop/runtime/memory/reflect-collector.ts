@@ -42,7 +42,9 @@ interface InterventionRowLite {
   id: string
   channel_id: string
   line_id: string
+  node_id: string
   node_name: string
+  target_node_id: string | null
   from_value: number | null
   to_value: number | null
   actual_value: number | null
@@ -55,6 +57,12 @@ interface InterventionRowLite {
   ci_low: number | null
   ci_high: number | null
   mde: number | null
+  product_id: string
+  recipe_id: string
+  recipe_revision: string
+  attempt_id: string
+  task_id: string
+  session_id: string
 }
 
 /** artifacts_json → 纯文本（优先 deliverable/summary 命名成果，其余兜底拼接） */
@@ -165,8 +173,9 @@ export function collectReviewFact(
 /** 干预 verdict 事实（verdict 回填后采集；pending/unassessed 由 reflector 过滤） */
 export function collectInterventionFact(db: DatabaseSync, eventId: string): InterventionFact | null {
   const row = db.prepare(
-    `SELECT id, channel_id, line_id, node_name, from_value, to_value, actual_value, ack, hypothesis,
-            recipe_run_id, criterion_json, verdict, effect, ci_low, ci_high, mde
+    `SELECT id, channel_id, line_id, node_id, node_name, target_node_id, from_value, to_value, actual_value, ack, hypothesis,
+            recipe_run_id, criterion_json, verdict, effect, ci_low, ci_high, mde,
+            product_id, recipe_id, recipe_revision, attempt_id, task_id, session_id
        FROM intervention_events WHERE id = ?`,
   ).get(eventId) as InterventionRowLite | undefined
   if (!row) return null
@@ -190,6 +199,14 @@ export function collectInterventionFact(db: DatabaseSync, eventId: string): Inte
     mde: row.mde,
     criterion: parseJson<Record<string, unknown> | null>(row.criterion_json ?? '', null),
     lineId: row.line_id || channelLineId(db, row.channel_id) || undefined,
+    nodeId: row.node_id,
+    targetNodeId: row.target_node_id ?? undefined,
+    productId: row.product_id || undefined,
+    recipeId: row.recipe_id || undefined,
+    recipeRevision: row.recipe_revision || undefined,
+    attemptId: row.attempt_id || undefined,
+    taskId: row.task_id || undefined,
+    sessionId: row.session_id || undefined,
   }
 }
 

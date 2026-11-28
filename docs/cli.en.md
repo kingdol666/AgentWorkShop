@@ -167,7 +167,7 @@ are never overwritten:
 - Precedence (the CLI, the web settings page and the dev/prod launch scripts all share one engine,
   `shared/config/engine.mjs`):
   `config.yml defaults < runtime-settings.json runtime overrides < environment variables / explicit CLI flags`.
-- There are **144 setting descriptors across 19 groups** (`aw config list` prints exactly 144 rows):
+- There are **145 setting descriptors across 19 groups** (`aw config list` prints exactly 145 rows):
 
 | Group | Count | Group | Count | Group | Count | Group | Count |
 |---|---:|---|---:|---|---:|---|---:|
@@ -177,7 +177,7 @@ are never overwritten:
 | `workshop` | 19 | `backup` | 3 | `retention` | 8 | `log` | 1 |
 | `aml` | 19 | `mcp` | 1 | `optimizer` | 4 | | |
 
-  47 of them are `live` (effective as soon as they are saved) and 97 are `restart` (effective after
+  48 of them are `live` (effective as soon as they are saved) and 97 are `restart` (effective after
   restarting the corresponding mode); `aw config list` marks every row with `live` or `restart`.
 - Environment-variable mapping: `AW_<KEY uppercased, dots turned into underscores>`
   (for example `AW_SERVER_DEV_PORT`), plus the legacy `aliases` a descriptor declares explicitly
@@ -258,7 +258,7 @@ the CLI's `--json`.
 aw config set server.prod.port 8080     # change the production port (effective after restart)
 aw config set theme.primaryColor '#41c8f4'
 aw config get server.dev.port           # value + source
-aw config list                          # 144 settings (19 groups) + source + when they apply
+aw config list                          # 145 settings (19 groups) + source + when they apply
 aw config validate                      # validate config.yml and the runtime overrides
 aw start --port 3002                    # CLI flags win; the output marks 端口来源: CLI
 aw doctor                               # health check: Node/pnpm/AW Home/Docker/MQTT/ports/secrets/build

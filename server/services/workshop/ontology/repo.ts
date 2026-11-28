@@ -11,6 +11,7 @@ import { AppError } from '../../../utils/errors'
 import { getAmlRuntime } from '../aml/runtime'
 import { withTransaction } from '../db/transaction'
 import type { ControlGuard, OntologyDraftDoc, OntologyEntity, OntologyRelation, OntologyRule, OntologyRuleTrace, BindingDraft } from './contracts'
+import { evidenceLevelRank } from './contracts'
 
 export type VersionStatus = 'draft' | 'published' | 'retired'
 
@@ -21,6 +22,7 @@ export interface DraftRow {
   rev: number
   draftJson: string
   ownerUserId: string
+  productId: string
   createdAt: string
   updatedAt: string
 }
@@ -30,6 +32,8 @@ export interface VersionRow {
   version: number
   name: string
   lineId: string
+  /** 产品域（批次 C）：'' = 产线通用；非空 = 产品独立版本 */
+  productId: string
   parentVersion: number | null
   contentHash: string
   compiledJson: string
@@ -88,9 +92,9 @@ export interface BindingRow {
 }
 
 const DRAFT_COLS = `id, ontology_id AS ontologyId, base_version AS baseVersion, rev,
-  draft_json AS draftJson, owner_user_id AS ownerUserId, created_at AS createdAt, updated_at AS updatedAt`
+  draft_json AS draftJson, owner_user_id AS ownerUserId, product_id AS productId, created_at AS createdAt, updated_at AS updatedAt`
 
-const VERSION_COLS = `id, version, name, line_id AS lineId, parent_version AS parentVersion,
+const VERSION_COLS = `id, version, name, line_id AS lineId, product_id AS productId, parent_version AS parentVersion,
   content_hash AS contentHash, compiled_json AS compiledJson, changelog_json AS changelogJson,
   status, owner_user_id AS ownerUserId, published_by AS publishedBy,
   created_at AS createdAt, updated_at AS updatedAt`
@@ -98,7 +102,7 @@ const VERSION_COLS = `id, version, name, line_id AS lineId, parent_version AS pa
 export function createOntologyRepo(db: DatabaseSync) {
   const repo = {
     // ===== 草稿 =====
-    insertDraft(input: { id: string, ontologyId: string, baseVersion: number | null, draftJson: string, ownerUserId: string }): DraftRow {
+    insertDraft(input: { id: string, ontologyId: string, baseVersion: number | null, draftJson: string, ownerUserId: string, productId?: string }): DraftRow {
       const now = new Date().toISOString()
       const existing = db.prepare(`SELECT ${DRAFT_COLS} FROM ontology_drafts WHERE ontology_id = ? AND owner_user_id = ?`)
         .get(input.ontologyId, input.ownerUserId) as DraftRow | undefined
@@ -106,9 +110,9 @@ export function createOntologyRepo(db: DatabaseSync) {
         throw new AppError(409, 'DRAFT_ALREADY_ACTIVE',
           `本体 ${input.ontologyId} 已存在活跃草稿(${existing.id}, rev=${existing.rev});请继续编辑或先删除该草稿`)
       }
-      db.prepare(`INSERT INTO ontology_drafts (id, ontology_id, base_version, rev, draft_json, owner_user_id, created_at, updated_at)
-        VALUES (?, ?, ?, 1, ?, ?, ?, ?)`)
-        .run(input.id, input.ontologyId, input.baseVersion, input.draftJson, input.ownerUserId, now, now)
+      db.prepare(`INSERT INTO ontology_drafts (id, ontology_id, base_version, rev, draft_json, owner_user_id, product_id, created_at, updated_at)
+        VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)`)
+        .run(input.id, input.ontologyId, input.baseVersion, input.draftJson, input.ownerUserId, input.productId ?? '', now, now)
       return repo.getDraft(input.id)!
     },
 
@@ -185,18 +189,42 @@ export function createOntologyRepo(db: DatabaseSync) {
       return (row?.maxVersion ?? 0) + 1
     },
 
-    /** 某产线当前生效的已发布版本(该线最新的 published;退役版本自然被跳过) */
-    latestPublishedForLine(lineId: string): VersionRow | undefined {
+    /**
+     * 某产线/产品当前生效的已发布版本（批次 C）。
+     * 严格按 productId 等值：`productId=''` 只取产线通用版本；产品版本不回退到产线版本。
+     */
+    latestPublishedForLine(lineId: string, productId = ''): VersionRow | undefined {
       return db.prepare(`SELECT ${VERSION_COLS} FROM ontology_versions
-        WHERE line_id = ? AND status = 'published' ORDER BY version DESC, updated_at DESC LIMIT 1`)
-        .get(lineId) as VersionRow | undefined
+        WHERE line_id = ? AND product_id = ? AND status = 'published' ORDER BY version DESC, updated_at DESC LIMIT 1`)
+        .get(lineId, productId) as VersionRow | undefined
     },
 
-    listAllOntologyIds(lineId?: string): Array<{ id: string, lineId: string, versions: number, latest: number, status: string }> {
-      const sql = `SELECT v.id AS id, MAX(v.line_id) AS lineId, COUNT(*) AS versions, MAX(v.version) AS latest,
+    /** 指定作用域的最近版本（草稿克隆/父版本）；productId 严格等值 */
+    latestVersionForScope(ontologyId: string, lineId: string, productId = '', status?: VersionStatus): VersionRow | undefined {
+      const sql = status
+        ? `SELECT ${VERSION_COLS} FROM ontology_versions WHERE id = ? AND line_id = ? AND product_id = ? AND status = ? ORDER BY version DESC LIMIT 1`
+        : `SELECT ${VERSION_COLS} FROM ontology_versions WHERE id = ? AND line_id = ? AND product_id = ? ORDER BY version DESC LIMIT 1`
+      const row = status
+        ? db.prepare(sql).get(ontologyId, lineId, productId, status)
+        : db.prepare(sql).get(ontologyId, lineId, productId)
+      return row as VersionRow | undefined
+    },
+
+    listAllOntologyIds(lineId?: string, productId?: string): Array<{ id: string, lineId: string, productId: string, versions: number, latest: number, status: string }> {
+      const where: string[] = []
+      const args: string[] = []
+      if (lineId) {
+        where.push('v.line_id = ?')
+        args.push(lineId)
+      }
+      if (productId !== undefined) {
+        where.push('v.product_id = ?')
+        args.push(productId)
+      }
+      const sql = `SELECT v.id AS id, MAX(v.line_id) AS lineId, MAX(v.product_id) AS productId, COUNT(*) AS versions, MAX(v.version) AS latest,
         (SELECT status FROM ontology_versions v2 WHERE v2.id = v.id ORDER BY v2.version DESC LIMIT 1) AS status
-        FROM ontology_versions v ${lineId ? 'WHERE v.line_id = ?' : ''} GROUP BY v.id ORDER BY MAX(v.updated_at) DESC LIMIT 200`
-      return (lineId ? db.prepare(sql).all(lineId) : db.prepare(sql).all()) as Array<{ id: string, lineId: string, versions: number, latest: number, status: string }>
+        FROM ontology_versions v ${where.length ? `WHERE ${where.join(' AND ')}` : ''} GROUP BY v.id ORDER BY MAX(v.updated_at) DESC LIMIT 200`
+      return db.prepare(sql).all(...args) as Array<{ id: string, lineId: string, productId: string, versions: number, latest: number, status: string }>
     },
 
     /** 发布快照:版本行 + 实体/关系/规则/绑定 + 溯源,单事务原子落库 */
@@ -213,11 +241,11 @@ export function createOntologyRepo(db: DatabaseSync) {
       return withTransaction(db, () => {
         const now = new Date().toISOString()
         db.prepare(`INSERT INTO ontology_versions
-          (id, version, name, line_id, parent_version, content_hash, compiled_json, changelog_json,
+          (id, version, name, line_id, product_id, parent_version, content_hash, compiled_json, changelog_json,
            status, owner_user_id, published_by, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
           .run(input.version.id, input.version.version, input.version.name, input.version.lineId,
-            input.version.parentVersion, input.version.contentHash, input.version.compiledJson,
+            input.version.productId ?? '', input.version.parentVersion, input.version.contentHash, input.version.compiledJson,
             input.version.changelogJson, input.version.status, input.version.ownerUserId,
             input.version.publishedBy, now, now)
 
@@ -355,6 +383,10 @@ export function createOntologyRepo(db: DatabaseSync) {
 
     // ===== 证据 =====
     appendEvidence(row: EvidenceRow): void {
+      // 只接受合法证据等级：历史 observed/observed_weak 会让 rank=-1，规则永远过不了 validated
+      if (evidenceLevelRank(row.level as never) < 0) {
+        throw new AppError(422, 'INVALID_EVIDENCE_LEVEL', `非法证据等级：${String(row.level)}`)
+      }
       db.prepare(`INSERT INTO ontology_evidence
         (id, ontology_id, target_kind, target_key, level, source_type, source_ref, source_ref_hash, detail_json, created_by, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)

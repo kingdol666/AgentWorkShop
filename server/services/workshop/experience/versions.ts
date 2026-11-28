@@ -189,16 +189,27 @@ export function createExperienceVersion(
     const now = new Date().toISOString()
     const versionId = `ev-${sha256(`${draft.experienceId}|${draft.idempotencyKey}|${contentHash}|${evidenceSnapshotHash}`).slice(0, 16)}`
     const claimOriginId = `co-${sha256(`${draft.experienceId}|${draft.claim.variable}|${draft.observedAt}`).slice(0, 16)}`
+    // 证据追加专用：继承 head 的 lifecycle/deployment（默认 candidate/none 会把
+    // validated+active 经验打回不可注入态，M43 回归项）
+    let lifecycle: ExperienceVersion['lifecycle'] = 'candidate'
+    let deployment: ExperienceVersion['deployment'] = 'none'
+    if (draft.preserveHeadState && current) {
+      const head = getVersion(db, current)
+      if (head) {
+        lifecycle = head.lifecycle
+        deployment = head.deployment
+      }
+    }
     db.prepare(
       `INSERT INTO experience_versions
         (version_id, experience_id, claim_origin_id, scope_kind, scope_key, claim_json, content, content_hash,
          evidence_json, evidence_snapshot_hash, lifecycle, deployment, claim_origin_time, beta_ancestors_json,
          idempotency_key, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'candidate', 'none', ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       versionId, draft.experienceId, claimOriginId, draft.scope.kind, draft.scope.key,
       canonical(draft.claim), draft.content, contentHash, evidenceSnapshot(draft.evidence), evidenceSnapshotHash,
-      draft.observedAt, JSON.stringify(betaAncestors), draft.idempotencyKey, now,
+      lifecycle, deployment, draft.observedAt, JSON.stringify(betaAncestors), draft.idempotencyKey, now,
     )
     db.prepare(
       `INSERT INTO experience_heads(experience_id, version_id, updated_at) VALUES (?, ?, ?)
@@ -210,6 +221,14 @@ export function createExperienceVersion(
     ).run(`eva-${versionId}`, draft.experienceId, versionId, 'host', now)
     return getVersion(db, versionId)!
   })
+}
+
+/**
+ * 证据追加专用包装（批次 M）：复制 claim + 追加证据 + 继承 head 状态。
+ * 与 createExperienceVersion 的默认语义严格区分，避免把 validated/active 降级。
+ */
+export function appendEvidenceVersion(db: DatabaseSync, draft: VersionDraft): ExperienceVersion {
+  return createExperienceVersion(db, { ...draft, preserveHeadState: true }, headVersionId(db, draft.experienceId))
 }
 
 /** 生命周期/部署推进一律走审计写入(版本正文不改) */

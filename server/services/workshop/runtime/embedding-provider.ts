@@ -1,22 +1,46 @@
 /**
- * Embedding provider — OpenAI 兼容 /embeddings 端点(配置驱动,原生 fetch 零 SDK)。
- * 未配置(memory.embed_base_url/embed_model 均空)→ 返回 null(向量分支整体关闭,记忆系统纯 FTS 降级)。
+ * Embedding provider — 三种来源（配置驱动，原生 fetch / 本地 ONNX 零外部服务）：
+ *  1) 本地模型（memory.embed_local_model 指向已下载的 ONNX，见 memory/local-embedding）
+ *  2) OpenAI 兼容 /embeddings 端点（memory.embed_base_url + embed_model）
+ *  3) 均未配置 → null（向量分支整体关闭，记忆系统纯 FTS 降级）
  * 覆盖链:config.yml < runtime-settings < env(AW_MEMORY_EMBED_*);原生 fetch 零 SDK。
- * 熔断:连续 3 次失败禁用 10 分钟(避免每个任务都白等超时)。
- * 维度:首次成功 embed 的返回长度(不信任配置,以实测为准)。
+ * 熔断:HTTP 端点连续 3 次失败禁用 10 分钟(避免每个任务都白等超时)。
+ * 维度:HTTP 首次成功 embed 的返回长度(不信任配置,以实测为准);本地模型维度由注册表声明。
+ *
+ * 活性：getEmbeddingProvider() 按配置指纹缓存,模型启用/删除/设置变更后由
+ * invalidateEmbeddingProvider() 重建 —— 记忆中心"启用模型"无需重启进程。
  */
 import { memorySettings } from '../settings'
 import { allowPrivateOutbound, assertSafeHttpUrl } from '../net/ssrf'
+import { installedModel } from '../memory/local-embedding/registry'
+import { embedWithLocalModel } from '../memory/local-embedding/onnx'
 
 export interface EmbeddingProvider {
   embed(texts: string[]): Promise<Float32Array[]>
-  /** 已知维度(首次成功 embed 前 null) */
+  /** 检索查询向量(可带模型的检索指令/前缀);缺省回落 embed */
+  embedQuery?(texts: string[]): Promise<Float32Array[]>
+  /** 已知维度(HTTP 首次成功 embed 前 null) */
   dims(): number | null
+  /** 来源描述(健康面板/记忆中心展示) */
+  describe?(): { kind: 'local' | 'http', model: string }
 }
 
 const FAIL_THRESHOLD = 3
 const COOLDOWN_MS = 10 * 60_000
 const REQUEST_TIMEOUT_MS = 10_000
+
+/** 本地 ONNX 模型 provider：维度静态已知，查询/文档走不同前缀 */
+export function createLocalEmbeddingProvider(modelId: string): EmbeddingProvider | null {
+  const info = installedModel(modelId)
+  if (!info) return null
+  const def = info.def
+  return {
+    dims: () => def.dims,
+    describe: () => ({ kind: 'local', model: def.id }),
+    embed: texts => embedWithLocalModel(def.id, texts, 'passage'),
+    embedQuery: texts => embedWithLocalModel(def.id, texts, 'query'),
+  }
+}
 
 export function createEnvEmbeddingProvider(): EmbeddingProvider | null {
   const memoryCfg = memorySettings()
@@ -34,6 +58,7 @@ export function createEnvEmbeddingProvider(): EmbeddingProvider | null {
 
   return {
     dims: () => dims,
+    describe: () => ({ kind: 'http', model }),
     async embed(texts: string[]): Promise<Float32Array[]> {
       if (Date.now() < disabledUntil) throw new Error('embedding provider 冷却中')
       if (!urlChecked) {
@@ -97,4 +122,69 @@ export function createHashEmbeddingProvider(dims: number): EmbeddingProvider {
       })
     },
   }
+}
+
+// ===== 进程级 provider 解析（按配置指纹缓存；模型启用/删除后热切换）=====
+
+interface ResolvedProvider {
+  fingerprint: string
+  provider: EmbeddingProvider | null
+}
+
+let resolved: ResolvedProvider | null = null
+
+function currentFingerprint(): string {
+  const cfg = memorySettings()
+  return [cfg.embed_local_model ?? '', cfg.embed_base_url ?? '', cfg.embed_model ?? '', cfg.embed_api_key ? 'k' : ''].join('|')
+}
+
+/**
+ * 当前生效的向量 provider（本地模型优先于 HTTP 端点：本地模型是用户在记忆中心
+ * 显式"启用"的选择，HTTP 端点是运维级兜底）。
+ * 配置或已安装状态变化时自动重建——所以"下载→启用→回填"全流程无需重启。
+ */
+export function getEmbeddingProvider(): EmbeddingProvider | null {
+  const fingerprint = currentFingerprint()
+  const localId = (memorySettings().embed_local_model ?? '').trim()
+  // 已安装状态参与指纹：模型被删除/重下后必须换实例（旧会话持有已删文件的句柄）
+  const localReady = localId ? installedModel(localId) !== null : false
+  const full = `${fingerprint}|${localReady ? 'ready' : 'missing'}`
+  if (resolved && resolved.fingerprint === full) return resolved.provider
+  let provider: EmbeddingProvider | null = null
+  if (localId && localReady) provider = createLocalEmbeddingProvider(localId)
+  if (!provider) provider = createEnvEmbeddingProvider()
+  resolved = { fingerprint: full, provider }
+  return provider
+}
+
+/** 强制重建（模型启用/删除/设置写入后调用；不改变配置时也生效） */
+export function invalidateEmbeddingProvider(): void {
+  resolved = null
+}
+
+export type EmbeddingProviderInfo
+  = | { kind: 'local', model: string, dims: number }
+    | { kind: 'http', model: string, baseUrl: string, dims: number | null, warning?: 'local_model_missing' }
+    | { kind: 'none', reason: 'not_configured' | 'local_model_missing', localModelId: string }
+
+/** 只读描述（记忆中心/健康面板展示"当前用的是什么"）；与 getEmbeddingProvider 同序 */
+export function embeddingProviderInfo(): EmbeddingProviderInfo {
+  const cfg = memorySettings()
+  const localId = (cfg.embed_local_model ?? '').trim()
+  const localMissing = localId !== '' && installedModel(localId) === null
+  if (localId && !localMissing) {
+    const info = installedModel(localId)!
+    return { kind: 'local', model: localId, dims: info.def.dims }
+  }
+  if (cfg.embed_base_url && cfg.embed_model) {
+    return {
+      kind: 'http',
+      model: cfg.embed_model,
+      baseUrl: cfg.embed_base_url,
+      dims: null,
+      ...(localMissing ? { warning: 'local_model_missing' as const } : {}),
+    }
+  }
+  if (localMissing) return { kind: 'none', reason: 'local_model_missing', localModelId: localId }
+  return { kind: 'none', reason: 'not_configured', localModelId: '' }
 }

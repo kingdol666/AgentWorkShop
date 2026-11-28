@@ -14,6 +14,8 @@
 import { createId } from './twin/contracts'
 import { getAmlRuntime } from './runtime'
 import type { IdentifiabilityVerdict } from './identifiability'
+import { captureOperationEvidence } from '../daq/provenance-evidence'
+import { attributeProposal } from '../experience/parameter-proposal'
 
 /** 机器可读判据(随干预落库;不是散文) */
 export interface InterventionCriterion {
@@ -55,6 +57,17 @@ export interface InterventionRecordInput {
   criterion?: InterventionCriterion | null
   /** 判读窗长(ms);settle 后由调用方或回填判定 */
   settleMs?: number | null
+  /** 写尝试账本 id（批次 N：accepted 操作 ↔ attempt/payload） */
+  attemptId?: string
+  taskId?: string
+  sessionId?: string
+  productId?: string
+  recipeId?: string
+  recipeRevision?: string
+  /** exact|run|time-window|unknown —— 上下文来源（读取面原样呈现） */
+  contextSource?: 'exact' | 'run' | 'time-window' | 'unknown'
+  /** 参数建议归因（批次 M） */
+  proposalId?: string
 }
 
 export interface InterventionEventRow {
@@ -84,6 +97,15 @@ export interface InterventionEventRow {
   mde: number | null
   /** 引擎判定摘要(suggestedWindowMs/postCoveragePeriods/reasons 等,回填时写入) */
   verdictDetail: Record<string, unknown> | null
+  /** 批次 N：操作上下文（unknown 表示历史行无法唯一确定，不按时间猜） */
+  attemptId: string
+  taskId: string
+  sessionId: string
+  productId: string
+  recipeId: string
+  recipeRevision: string
+  contextSource: string
+  proposalId: string
   createdAt: string
   updatedAt: string
 }
@@ -125,6 +147,14 @@ function mapRow(r: Record<string, unknown>): InterventionEventRow {
     ciHigh: num(r.ci_high),
     mde: num(r.mde),
     verdictDetail: (parse(r.verdict_json) as Record<string, unknown> | null) ?? null,
+    attemptId: String(r.attempt_id ?? ''),
+    taskId: String(r.task_id ?? ''),
+    sessionId: String(r.session_id ?? ''),
+    productId: String(r.product_id ?? ''),
+    recipeId: String(r.recipe_id ?? ''),
+    recipeRevision: String(r.recipe_revision ?? ''),
+    contextSource: String(r.context_source ?? 'unknown'),
+    proposalId: String(r.proposal_id ?? ''),
     createdAt: String(r.created_at ?? ''),
     updatedAt: String(r.updated_at ?? ''),
   }
@@ -136,13 +166,16 @@ export function recordIntervention(input: InterventionRecordInput): string | nul
     const id = createId('intv')
     const now = new Date().toISOString()
     const verdict = input.targetNodeId ? 'pending' : 'unassessed'
-    getAmlRuntime().db.prepare(`INSERT INTO intervention_events(id,ts,line_id,node_id,node_name,from_value,to_value,actual_value,ack,path,actor,actor_name,channel_id,approval_id,recipe_run_id,hypothesis,target_node_id,criterion_json,settle_ms,verdict,verdict_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    getAmlRuntime().db.prepare(`INSERT INTO intervention_events(id,ts,line_id,node_id,node_name,from_value,to_value,actual_value,ack,path,actor,actor_name,channel_id,approval_id,recipe_run_id,hypothesis,target_node_id,criterion_json,settle_ms,verdict,verdict_json,attempt_id,task_id,session_id,product_id,recipe_id,recipe_revision,context_source,proposal_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .run(
         id, now, input.lineId ?? '', input.nodeId, input.nodeName ?? '', input.fromValue, input.toValue,
         input.actualValue, input.ack ?? '', input.path, input.actor ?? '', input.actorName ?? '',
         input.channelId ?? '', input.approvalId ?? null, input.recipeRunId ?? null, input.hypothesis ?? '',
         input.targetNodeId ?? null, input.criterion ? JSON.stringify(input.criterion) : null,
-        input.settleMs ?? null, verdict, null, now, now,
+        input.settleMs ?? null, verdict, null,
+        input.attemptId ?? '', input.taskId ?? '', input.sessionId ?? '',
+        input.productId ?? '', input.recipeId ?? '', input.recipeRevision ?? '',
+        input.contextSource ?? 'unknown', input.proposalId ?? '', now, now,
       )
     return id
   }
@@ -188,6 +221,24 @@ export function attachAssessment(
       assessmentReflectHook?.(id)
     }
     catch { /* 学习环故障不影响判定回填 */ }
+    // 批次 N2：判定落地后异步采集 DAQ 前后窗证据（失败只影响快照，不改判定语义）
+    try {
+      const db = getAmlRuntime().db
+      void captureOperationEvidence(db, id).catch(() => {})
+      // 批次 M3：建议归因（只有显式挂 proposal_id 的干预）
+      const row = db.prepare('SELECT proposal_id AS proposalId FROM intervention_events WHERE id = ?').get(id) as { proposalId?: string } | undefined
+      if (row?.proposalId) {
+        attributeProposal(db, row.proposalId, {
+          verdict: assessment.verdict,
+          effect: assessment.effect ?? null,
+          ciLow: assessment.ciLow ?? null,
+          ciHigh: assessment.ciHigh ?? null,
+          mde: assessment.mde ?? null,
+          interventionId: id,
+        })
+      }
+    }
+    catch { /* 快照/归因失败静默；维护任务会补采 */ }
     return true
   }
   catch (err) {

@@ -18,7 +18,7 @@ import type { ScheduleRuntime } from '../schedule-runtime'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { TaskEngine as TaskEngineImpl } from '../task-engine'
-import { createEnvEmbeddingProvider } from '../embedding-provider'
+import { getEmbeddingProvider } from '../embedding-provider'
 import { log, buildMessage } from './helpers'
 import { toolActivityAt } from '../../agents/host-tool-bridge'
 import { settleInvocationScope } from '../permission-scope'
@@ -28,10 +28,17 @@ import { platformNoticeKey, newPlatformNoticeId, setPlatformNoticeSink, type Pla
 import { memorySettings, retentionSettings, channelMemoryDigestEnabled } from '../../settings'
 import { parseJson } from '../../db/database'
 import { reflectExperience } from '../memory/reflector'
+import { recordParameterClaim } from '../../experience/claims'
+import { backfillOperationEvidence } from '../../daq/provenance-evidence'
+import { startCuratorScheduler, type CuratorScheduler } from '../../memory/curator/scheduler'
+import { startMemoryGraphScheduler, type MemoryGraphScheduler } from '../../memory/graph/scheduler'
+import { attributeMemoryInjection, cleanupInjectionLogs } from '../../memory/effect'
 import { collectInterventionFact, collectTaskFact, listUnreflectedInterventions } from '../memory/reflect-collector'
 import { registerInterventionAssessmentHook } from '../../aml/intervention-ledger'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { verifyAllPending, verifyPendingInterventions } from '../../verify/blind-verifier'
+import { harvestTerminalTaskMemory } from './terminal-harvest'
+import { scheduleCuratorAfterTask } from '../../memory/curator/after-task'
 
 /** §7.1 事件名 → 展示标签(tasks 状态机 → 设计文档事件契约) */
 const EVENT_LABELS: Record<string, string> = {
@@ -131,11 +138,25 @@ export abstract class ManagerState extends ManagerContracts {
    */
   protected readonly deferredChannelRecycles = new Map<string, string>()
   protected memoryTimer: NodeJS.Timeout | null = null
+  /** 批次 E：Curator 定时器（单飞/可停/可配 interval；默认 30min） */
+  protected curatorScheduler: CuratorScheduler | null = null
+  /** Memory Graph：知识网络整理定时器（单飞/可停；默认 30min） */
+  protected graphScheduler: MemoryGraphScheduler | null = null
   /** §7.3 outbox 独立补偿定时器(短周期重试;与记忆维护 6h 周期解耦) */
   protected outboxTimer: NodeJS.Timeout | null = null
   protected chatDeliveryTimer: NodeJS.Timeout | null = null
-  /** 全 manager 共享的 env 向量 provider(未配置 → null 纯 FTS;熔断/维度全体实例共享) */
-  protected readonly memoryEmbedder = createEnvEmbeddingProvider()
+  /**
+   * 全 manager 共享的向量 provider（本地 ONNX 模型优先，其次 HTTP 端点；未配置 → null 纯 FTS）。
+   *
+   * 必须是 getter 而不是构造期常量（2026-11-28）：记忆中心"下载→启用"本地模型是 live 操作，
+   * 构造期快照会让已存活的 manager/runtime 永远持有旧 provider（实测：模型启用、回填成功，
+   * 但召回仍走纯 FTS —— 向量榜一次都没参与）。getEmbeddingProvider() 按配置指纹缓存，
+   * 启用/删除后自动重建。
+   */
+  protected get memoryEmbedder() {
+    return getEmbeddingProvider()
+  }
+
   /** 反思游标:每 agent 上次聚合的当月任务数(月度幂等增量判定) */
   protected readonly reflectCounts = new Map<string, number>()
   /** shared task digest 节流：channel/task/event bucket -> last write time */
@@ -223,9 +244,21 @@ export abstract class ManagerState extends ManagerContracts {
       try {
         const fact = collectInterventionFact(this.deps.db, eventId)
         if (!fact) return
-        void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch((err) => {
-          log.warn('[memory] 干预经验反射失败:', err instanceof Error ? err.message : err)
-        })
+        void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact)
+          .then((result) => {
+            // 批次 M：经验行落定后写结构化参数主张（版本继承 head 状态，证据回指干预/DAQ）
+            if (result.written && result.id) {
+              try {
+                recordParameterClaim(this.deps.db, { memoryId: result.id, fact })
+              }
+              catch (err) {
+                log.warn('[memory] 参数主张写入失败:', err instanceof Error ? err.message : err)
+              }
+            }
+          })
+          .catch((err) => {
+            log.warn('[memory] 干预经验反射失败:', err instanceof Error ? err.message : err)
+          })
         // WP-D2:显著正效应 → 产出「配方固化」改进提案(只描述,执行仍走 recipe_update HITL)
         this.maybeProposeImprovement(fact)
       }
@@ -262,6 +295,16 @@ export abstract class ManagerState extends ManagerContracts {
       catch (err) {
         log.error('[memory] 干预经验补扫异常', err)
       }
+      // 批次 N2：对已过判读窗且缺快照的干预补采 DAQ 证据（限流；raw 过期如实标）
+      try {
+        void backfillOperationEvidence(this.deps.db, { limit: 10 }).catch(() => {})
+      }
+      catch { /* 补采失败不阻断维护 */ }
+      // 批次 H：注入日志 90 天清理
+      try {
+        cleanupInjectionLogs(this.deps.db, 90)
+      }
+      catch { /* 清理失败不阻断维护 */ }
       // RSI 独立回读验证(WP-C1):对未验证的写入台账做设备侧复读(match/mismatch/inconclusive)
       try {
         verifyAllPending(this.deps.db, { perChannel: 20 })
@@ -273,6 +316,20 @@ export abstract class ManagerState extends ManagerContracts {
       this.runGroupChatMaintenance()
     }, memorySettings().maintenance_ms)
     this.memoryTimer.unref?.()
+    // 批次 E：Curator 汇整（默认 30min；单飞/可停/可配；未配置/失败只记日志）
+    try {
+      this.curatorScheduler = startCuratorScheduler(this.deps.db)
+    }
+    catch (err) {
+      log.warn('[memory] Curator 调度启动失败:', err instanceof Error ? err.message : err)
+    }
+    // Memory Graph：知识网络整理（默认 30min；单飞/可停/启动 stale run 回收）
+    try {
+      this.graphScheduler = startMemoryGraphScheduler(this.deps.db)
+    }
+    catch (err) {
+      log.warn('[memory-graph] 调度启动失败:', err instanceof Error ? err.message : err)
+    }
     // §7.3 ④ outbox 独立短周期消费:重试节奏不能被 6h 的 memory.maintenance_ms 拖住
     this.outboxTimer = setInterval(() => {
       try {
@@ -489,6 +546,25 @@ export abstract class ManagerState extends ManagerContracts {
             }
             catch { /* 项目回调失败不得影响任务状态机 */ }
           }
+          // 失败/取消终态的记忆沉淀兜底：worker 回合被中断（cancel/watchdog abort）时
+          // processMessage 的沉淀面整体被跳过，任务树取消 / ROOT_TIMEOUT / 成员裁撤收口
+          // 也根本不经过回合路径 —— 这些终态此前一条记忆行都不留，RSI 闭环里「失败
+          // 教训」一环缺失。在统一迁移钩子补齐 harvest（与 execute.ts complete 的
+          // recordTaskMemory 同语义；recordTaskOutcome 幂等 upsert，与回合落定路径
+          // 重复触发无害）。判定与运行时解析抽在 terminal-harvest.ts（可单测）。
+          if (e.task && (e.state === 'FAILED' || e.state === 'CANCELED')) {
+            harvestTerminalTaskMemory(this.channels.get(e.channelId)?.getAgents(), e.task, e.state)
+          }
+          // 知识汇整的"最佳时机"（2026-11-28）：任务成功收口后 45s 内安排一次去抖的
+          // 即时汇整 —— 默认 Curator 30 分钟一轮 + 图谱 60s 首轮延迟意味着首个真实
+          // 任务之后的下一次作业拿不到 L0.5 手册。代价有界：单频道去抖、仅当无手册或
+          // 手册超 10 分钟时才触发、单飞由 runCuratorForChannel 保证、异常全静默。
+          if (e.state === 'COMPLETED' && e.channelId) {
+            try {
+              scheduleCuratorAfterTask(this.deps.db, e.channelId)
+            }
+            catch { /* 汇整调度失败不影响任务状态机 */ }
+          }
           // 事件驱动调度:任务状态变化即唤醒该频道调度循环(空闲退避即刻恢复快节奏)。
           //
           // ⚠️ 只 wake 不够:lead 运行时因空闲被清扫卸载后 `cr.scheduler` 会被置空
@@ -537,6 +613,11 @@ export abstract class ManagerState extends ManagerContracts {
     try {
       const task = this.getTaskEngine().get(taskId)
       if (!task) return
+      // 批次 H：任务终态归因（同 task 只计一次；无注入不产生统计）
+      try {
+        attributeMemoryInjection(this.deps.db, taskId, task.state === 'COMPLETED')
+      }
+      catch { /* 归因失败不影响学习环 */ }
       const fact = collectTaskFact(this.deps.db, {
         channelId,
         taskId,
@@ -566,7 +647,16 @@ export abstract class ManagerState extends ManagerContracts {
       try {
         const fact = collectInterventionFact(this.deps.db, eventId)
         if (!fact) continue
-        void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact).catch(() => {})
+        void reflectExperience(this.deps.repos.memories, this.memoryEmbedder ?? null, fact)
+          .then((result) => {
+            if (result.written && result.id) {
+              try {
+                recordParameterClaim(this.deps.db, { memoryId: result.id, fact })
+              }
+              catch { /* 主张写入失败不影响补扫 */ }
+            }
+          })
+          .catch(() => {})
         this.maybeProposeImprovement(fact)
       }
       catch { /* 单行失败不阻断批量 */ }

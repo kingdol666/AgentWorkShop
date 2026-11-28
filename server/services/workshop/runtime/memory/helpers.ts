@@ -30,7 +30,7 @@ export const SAME_LINE_BOOST = 0.2
 /** RSI 经验作用域加分(WP-A3):同产品经验排序偏好(弱于产线:产线粒度更贴工况) */
 export const SAME_PRODUCT_BOOST = 0.1
 /** 策展层 kind(确定性 L0/按 key 直取;不进 L1 排名防双份注入,search_memory 仍可命中) */
-export const CURATED_KINDS = new Set(['brief', 'chronicle', 'reflection'])
+export const CURATED_KINDS = new Set(['brief', 'chronicle', 'reflection', 'curated'])
 /** kind 感知时近衰减半衰期(天;0 = 不衰减) */
 export const RECENCY_HALF_LIFE_DAYS: Record<string, number> = {
   'episodic-peer': 3,
@@ -77,6 +77,34 @@ export function buildMatchQuery(text: string): string | null {
   const terms = [...otherTerms, ...cjkTerms]
   // 词项一律引号包裹:残留特殊字符(FTS5 列过滤/短语语法)全部惰性化
   return terms.length > 0 ? terms.map(t => `"${t}"`).join(' OR ') : null
+}
+
+/** CJK 相邻二元短语词项上限(长查询截断,防 MATCH 串爆炸) */
+export const MAX_CJK_BIGRAMS = 8
+/** 二元短语精度榜的 RRF 榜权重(高于单字 OR 榜:命中即强信号) */
+export const BIGRAM_BOARD_WEIGHT = 1.4
+
+/**
+ * CJK 相邻二元短语查询(精度榜):从查询原文的连续汉字串提取相邻字对,
+ * 以 FTS5 短语语法 `"冷 却"` 匹配**单字切分索引**中的相邻出现。
+ *
+ * 为什么需要第二条 FTS 榜:单字 OR 榜的 bm25 对共享高频字(压/力/调/整)不设防,
+ * 新鲜过程行靠字面重叠就能把真含该词的知识行挤到 10+ 名;RRF(k=60) 又把名次差
+ * 压缩到 ~14%,叠加时近/重要度后知识行被挤出注入窗(实测:唯一中文词查询,
+ * 语义行排 11/20)。相邻字对只在「词真的出现」时命中 —— 给真实含词行一条独立的
+ * 高权重榜,把精确命中拉回前列;无需改存储/重建索引(单字索引上短语天然可用)。
+ */
+export function buildBigramQuery(text: string): string | null {
+  const runs = text.match(/[\u4e00-\u9fff]{2,}/g) ?? []
+  const pairs: string[] = []
+  for (const run of runs) {
+    for (let i = 0; i + 1 < run.length; i++) {
+      const pair = `${run[i]!} ${run[i + 1]!}`
+      if (!pairs.includes(pair)) pairs.push(pair)
+      if (pairs.length >= MAX_CJK_BIGRAMS) return pairs.map(q => `"${q}"`).join(' OR ')
+    }
+  }
+  return pairs.length > 0 ? pairs.map(q => `"${q}"`).join(' OR ') : null
 }
 
 export function estimateTokens(text: string): number {
@@ -138,16 +166,31 @@ export function runMemoryMaintenance(
   const expireMsFor = (kind: string): number =>
     (kind === 'episodic-session' ? sessionExpireDays : expireDays) * 86_400_000
 
-  /** 对一组行执行 ①过期 ②容量淘汰(仅传入选定行;调用方负责 kind 圈定) */
+  /**
+   * 对一组行执行 ①过期 ②容量淘汰(仅传入选定行;调用方负责 kind 圈定)。
+   *
+   * 保护位(2026-11-28):维护任务是唯一会**物理删除**记忆的路径,但它此前只看 kind。
+   * 记忆中心里被人工置顶 / 覆写(author_kind='human')/ 已验证 / 已退役的过程行会被
+   * 一并处决,连带留下孤儿版本与批注。人工权威必须优先于容量治理:
+   *  - pinned → 永不物理删除;
+   *  - author_kind='human' → 只允许过期判定跳过(保留人工内容);
+   *  - status ∈ {validated, retired} → 同上(退役行保留审计价值)。
+   */
+  const isProtected = (r: MemoryRow): boolean =>
+    Number(r.pinned ?? 0) === 1
+    || (r.authorKind ?? 'agent') === 'human'
+    || r.status === 'validated'
+    || r.status === 'retired'
   const expireAndEvict = (rows: Array<MemoryRow & { rowid: number }>): void => {
     for (const r of rows) {
+      if (isProtected(r)) continue
       if (now - Date.parse(r.lastAccessedAt ?? r.createdAt) > expireMsFor(r.kind)) {
         repo.vecDelete(r.rowid)
         repo.delete(r.id)
         deletedExpired++
       }
     }
-    const remaining = rows.filter(r => repo.getById(r.id) !== null)
+    const remaining = rows.filter(r => !isProtected(r) && repo.getById(r.id) !== null)
     if (remaining.length > cap) {
       const sorted = remaining
         .map(r => ({ r, s: r.importance + r.accessCount * 0.05 }))

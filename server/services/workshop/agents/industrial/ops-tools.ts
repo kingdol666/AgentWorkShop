@@ -27,6 +27,7 @@ import { currentToolInvocation } from '../governance-harness-audit'
 import { currentExecutionScope } from '../execution-scope'
 import { executionModeOfAgent } from '../execution-mode'
 import { getAmlRuntime } from '../../aml/runtime'
+import { markProposalStatus, validateProposalForDispatch } from '../../experience/parameter-proposal'
 import { markRecipeProposalsAccepted } from '../../db/improvement.repo'
 
 // ================================================================
@@ -1277,6 +1278,7 @@ export async function toolRecipeTrial(agentId: string, args: {
   params?: Array<{ node_id?: string, value?: number | string }>
   hypothesis?: string
   emergency?: boolean | string
+  proposal_id?: string
 }, sessionScope?: ChannelSessionExecutionScope): Promise<{ text: string, isError?: boolean, approval_bypassed?: true }> {
   const hypothesis = String(args.hypothesis ?? '').trim()
   const emergency = args.emergency === true || args.emergency === 'true'
@@ -1292,6 +1294,16 @@ export async function toolRecipeTrial(agentId: string, args: {
   const recipeId = recipe.id
   const sessionDenied = sessionRecipeError(sessionScope, recipe)
   if (sessionDenied) return sessionDenied
+  const proposalId = String(args.proposal_id ?? '').trim()
+  if (proposalId) {
+    const check = validateProposalForDispatch(getAmlRuntime().db, proposalId, {
+      channelId: channelIdOfAgent(agentId),
+      lineId: recipe.lineId,
+      nodeIds: list.map(p => p.nodeId),
+      recipeRevision: String(recipe.version ?? 1),
+    })
+    if (!check.ok) return { text: `参数建议校验未通过：${check.reason}`, isError: true }
+  }
   const toolInvocationId = currentToolInvocation()?.invocationId ?? randomUUID()
   // 权限模型 v2 + 2026-10-28 双轨:recipe 绑定 ∨ 本次候选覆盖集 ⊆ dcw 节点绑定面
   const gate = assertRecipeOperation(agentId, recipe, 'trial', list.map(p => p.nodeId))
@@ -1402,8 +1414,15 @@ export async function toolRecipeTrial(agentId: string, args: {
         channelId: invocation?.channelId || channelIdOfAgent(agentId),
         ...(invocation?.agentId === agentId && invocation.taskId ? { taskId: invocation.taskId } : {}),
         executionMode: executionModeOfAgent(agentId),
+        ...(proposalId ? { proposalId } : {}),
       },
     })
+    if (proposalId) {
+      markProposalStatus(getAmlRuntime().db, proposalId, 'dispatched', {
+        appliedRecipeRevision: String(recipe.version ?? 1),
+        feedback: { via: 'recipe_trial', runId: run.id, at: new Date().toISOString() },
+      })
+    }
     // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent
     const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
     // 批次级留痕:试验动作入审计(逐参数写已有 write-audit;这里是"一次试验"粒度)
@@ -1461,6 +1480,7 @@ export async function toolRecipeApply(agentId: string, args: {
   line_id?: string
   reason?: string
   emergency?: boolean | string
+  proposal_id?: string
 }, sessionScope?: ChannelSessionExecutionScope): Promise<{ text: string, isError?: boolean }> {
   const emergency = args.emergency === true || args.emergency === 'true'
   const target = resolveRecipeTarget(args.recipe_id, args.line_id)
@@ -1469,6 +1489,16 @@ export async function toolRecipeApply(agentId: string, args: {
   const recipeId = recipe.id
   const sessionDenied = sessionRecipeError(sessionScope, recipe)
   if (sessionDenied) return sessionDenied
+  const proposalId = String(args.proposal_id ?? '').trim()
+  if (proposalId) {
+    const check = validateProposalForDispatch(getAmlRuntime().db, proposalId, {
+      channelId: channelIdOfAgent(agentId),
+      lineId: recipe.lineId,
+      nodeIds: recipe.params.map(p => p.nodeId),
+      recipeRevision: String(recipe.version ?? 1),
+    })
+    if (!check.ok) return { text: `参数建议校验未通过：${check.reason}`, isError: true }
+  }
   // 理由强制:下发必须让人(产线专家)看懂为什么这样调 —— 无描述的下发不得进入审批/执行
   const reason = String(args.reason ?? '').trim()
   if (!reason) return { text: 'reason 必填:整批下发必须说明依据(如数采证据/试验结论/GOAL 差距分析),产线专家要在审批卡上看懂你为什么这样调。', isError: true }
@@ -1546,8 +1576,15 @@ export async function toolRecipeApply(agentId: string, args: {
         channelId: invocation?.channelId || channelIdOfAgent(agentId),
         ...(invocation?.agentId === agentId && invocation.taskId ? { taskId: invocation.taskId } : {}),
         executionMode: executionModeOfAgent(agentId),
+        ...(proposalId ? { proposalId } : {}),
       },
     })
+    if (proposalId) {
+      markProposalStatus(getAmlRuntime().db, proposalId, 'dispatched', {
+        appliedRecipeRevision: String(recipe.version ?? 1),
+        feedback: { via: 'recipe_apply', runId: run.id, at: new Date().toISOString() },
+      })
+    }
     // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent
     const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
     // 逐参数标注:被跳过/失败的参数(节点停用/已删除/限界拒绝)必须透出给 Agent,

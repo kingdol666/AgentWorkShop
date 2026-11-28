@@ -144,3 +144,39 @@ test('concurrent different session payloads deterministically reject the loser w
     f.db.close()
   }
 })
+
+test('human session message is ROLE_USER (recordDialog gate); agent immediate stays ROLE_AGENT', async () => {
+  const f = fixture()
+  try {
+    // 人类会话消息：actor 盖章 + 无 agent 身份 → 必须是 ROLE_USER，
+    // 否则回合落定的 recordDialog（只认 ROLE_USER）永不触发——
+    // 实机曾因此整条"人类↔Agent 对话沉淀"在会话路径静默失效。
+    await f.manager.sendSessionMessage({
+      channelId: f.channel.id,
+      sessionId: f.session.id,
+      actor: { id: 'user-1', role: 'user' },
+      text: '记住暗号 dialog-role-probe',
+    } as never)
+    const human = f.messages.listRecentByChannel(f.channel.id, 20)
+      .filter(row => row.sessionId === f.session.id && row.actorUserId === 'user-1')
+    assert.ok(human.length >= 1, '会话消息必须落 mailbox')
+    assert.equal(human[0]!.role, 'ROLE_USER', `人工会话消息必须是 ROLE_USER,实际 ${human[0]!.role}`)
+
+    // agent 直发（fromAgentId）保持 ROLE_AGENT：peer 语义不受影响
+    f.manager.sendImmediateMessage({
+      channelId: f.channel.id,
+      fromAgentId: f.clone.id,
+      toAgentId: f.clone.id,
+      parts: [{ text: 'peer probe' }],
+      requireReply: false,
+    })
+    const peer = f.messages.listRecentByChannel(f.channel.id, 20)
+      .filter(row => row.sessionId !== f.session.id && row.role === 'ROLE_AGENT')
+    assert.ok(peer.length >= 1, 'agent 直发消息必须落 mailbox')
+    assert.equal(peer[0]!.role, 'ROLE_AGENT', 'agent 直发必须保持 ROLE_AGENT')
+  }
+  finally {
+    await f.manager.shutdown()
+    f.db.close()
+  }
+})

@@ -16,7 +16,7 @@ export default defineApiHandler(async (event) => {
     const res = purgeMemory(getAmlRuntime().db, id)
     if (res.ok) {
       recordOps({
-        actor: user.id, actorName: user.name, actorKind: 'agent',
+        actor: user.id, actorName: user.name, actorKind: 'user',
         action: 'memory.purge', kind: 'system', targetKind: 'memory', targetId: id,
         summary: `硬删记忆 ${id.slice(0, 8)}（FTS/向量已清理）`,
       })

@@ -22,7 +22,7 @@ export default defineApiHandler(async (event) => {
       actor,
     })
     recordOps({
-      actor: user.id, actorName: user.name, actorKind: 'agent',
+      actor: user.id, actorName: user.name, actorKind: 'user',
       action: 'memory.rollback', kind: 'system', targetKind: 'memory', targetId: id,
       summary: `回滚记忆 ${id.slice(0, 8)} 到 r${Number(body.revision)} → r${res.revision}`,
     })

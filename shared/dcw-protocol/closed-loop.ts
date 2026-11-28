@@ -25,6 +25,12 @@ export interface DcwWriteMeta {
   approvalId?: string
   /** 触发写入的 Channel(v34 干预台账归因;manual/recipe 等无频道路径缺省为空) */
   channelId?: string
+  /** 触发写入的会话（批次 N：操作追溯的 session 维度；非授权依据） */
+  sessionId?: string
+  /** 参数建议归因（批次 M；只记录，不改变治理链） */
+  proposalId?: string
+  /** 参数建议涉及的节点集（共变/混杂判定用） */
+  proposalNodeIds?: string[]
   /** 写入发生时频道的生效执行模式(observe/manual/auto;2026-10-28 三模式台账口径,事后审计用) */
   executionMode?: 'observe' | 'manual' | 'auto'
   /** D8 基准消融臂(仅 AW_BENCH_MODE=1 时被 write() 识别;生产模式恒忽略) */

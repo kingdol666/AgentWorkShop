@@ -183,6 +183,8 @@ export interface AgentWorkspace {
     sessionId?: string | null
     /** RSI 作用域上下文(WP-A3):缺省按频道产线绑定自动解析 */
     scopeContext?: { lineId?: string | null, productId?: string | null }
+    /** 批次 K：as-of 回看（ISO；缺省=当前） */
+    asOf?: string | null
   }): Promise<Array<{
     id: string
     kind: string

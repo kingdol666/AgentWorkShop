@@ -115,6 +115,7 @@ export const appConfigSchema = z.object({
     embed_base_url: z.string().default(''),
     embed_model: z.string().default(''),
     embed_api_key: z.string().default(''),
+    embed_local_model: z.string().default(''),
   }).default({}),
   omp: z.object({
     compact_enabled: z.boolean().default(true),

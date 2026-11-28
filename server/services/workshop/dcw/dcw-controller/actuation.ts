@@ -19,6 +19,7 @@ import { writeTolerance } from '../dcw-runtime'
 import { getTsdb } from '../../daq/storage'
 import { getAmlRuntime } from '../../aml/runtime'
 import { markWriteDispatched, payloadHashOf, recordWriteIntent, settleWriteAttempt } from '../write-attempt-ledger'
+import { getActiveLineRun } from '../line-run'
 
 /** 驱动未显式上报 ack 时的旧口径归一(ok+回读→设备证实;ok 无回读→链路受理;失败→未证实) */
 function normalizeAck(outcome: { ok: boolean, readback: number | null, ack?: WriteAckLevel }): WriteAckLevel {
@@ -30,17 +31,41 @@ function normalizeAck(outcome: { ok: boolean, readback: number | null, ack?: Wri
 /** Task 8:治理库可用时登记写尝试;不可用(单测/降级)跳过,不阻断既有写路径 */
 function beginWriteAttemptLedger(
   node: DcwNode,
-  refs: { taskId?: string, executionLeaseId?: string },
+  refs: { taskId?: string, executionLeaseId?: string, channelId?: string, agentId?: string, sessionId?: string },
   payload: unknown,
+  request: { eng: number, plcTolerance: number, recipeRunId: string | null },
 ): { attemptId: string, db: import('node:sqlite').DatabaseSync } | null {
   try {
     const db = getAmlRuntime().db
+    // 上下文优先级：活动批次 → recipe run → 空（读取面按 unknown 如实呈现，不猜）
+    const run = getActiveLineRun(node.lineId)
+    const recipeRun = request.recipeRunId ? getDcwRecipeRepo().runById(request.recipeRunId) : undefined
+    const productId = run?.productId ?? recipeRun?.productId ?? ''
+    const recipeId = run?.recipeId ?? recipeRun?.recipeId ?? ''
+    const recipeRevision = run?.recipeVersion != null
+      ? String(run.recipeVersion)
+      : (recipeRun?.recipeVersion != null ? String(recipeRun.recipeVersion) : '')
     const attemptId = recordWriteIntent(db, {
       nodeId: node.id,
       lineId: node.lineId ?? '',
       taskId: refs.taskId,
       executionLeaseId: refs.executionLeaseId,
+      channelId: refs.channelId,
+      agentId: refs.agentId,
+      sessionId: refs.sessionId,
+      productId,
+      recipeId,
+      recipeRevision,
+      runId: run?.runId ?? request.recipeRunId ?? '',
       payloadHash: payloadHashOf(payload),
+      payload: {
+        ...(payload as Record<string, unknown>),
+        eng: request.eng,
+        lineId: node.lineId ?? '',
+        productId,
+        recipeId,
+        recipeRevision,
+      },
     })
     markWriteDispatched(db, attemptId)
     return { attemptId, db }
@@ -107,7 +132,10 @@ export abstract class DcwControllerActuation extends DcwControllerState {
     const attemptLedger = beginWriteAttemptLedger(node, {
       taskId: executionScope?.taskId ?? undefined,
       executionLeaseId: executionScope?.executionLeaseId ?? undefined,
-    }, { eng, tolerance: plcTolerance, min: node.min, max: node.max })
+      channelId: executionScope?.channelId,
+      agentId: executionScope?.agentId,
+      sessionId: executionScope?.sessionId,
+    }, { eng, tolerance: plcTolerance, min: node.min, max: node.max }, { eng, plcTolerance, recipeRunId })
     try {
       outcome = await driver.write({
         eng: plcValue,
@@ -130,6 +158,7 @@ export abstract class DcwControllerActuation extends DcwControllerState {
     catch {
       reported = { ...outcome, ok: false, ack: 'unverified', message: `执行租约失效:写入已进入驱动,设备状态不确定,须核实。驱动返回:${outcome.message}`, driverOutcome: { ...outcome } }
     }
+    if (attemptLedger) reported = { ...reported, attemptId: attemptLedger.attemptId }
     // 结果落账:readback-verified 才是「已验证」;transport-ack 只代表链路受理(未知),
     // 失败明确为 rejected —— 三者分开,避免把受理当设备生效。
     settleWriteAttemptLedger(attemptLedger, outcome.ok

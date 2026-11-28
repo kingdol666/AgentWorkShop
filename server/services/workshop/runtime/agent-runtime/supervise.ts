@@ -99,7 +99,13 @@ export abstract class AgentRuntimeSupervise extends AgentRuntimeLifecycle {
         ...snapshot.tasks.filter(t => t.state === 'SUBMITTED' || t.state === 'FAILED' || t.state === 'WAITING').map(t => t.title),
         ...snapshot.members.map(m => m.name),
       ].join(' ')
-      const recall = this.deps.memory?.recall(query, { touch: false, signal: controller.signal })
+      const recall = this.deps.memory?.recall(query, {
+        touch: false,
+        // 与下方 ctx 同一会话解析：根任务带会话时，成员没有 trustedSessionId 也必须召回该会话记忆。
+        sessionId: this.deps.trustedSessionId ?? root?.sessionId ?? null,
+        signal: controller.signal,
+        trace: { taskId: rootId ?? null },
+      })
       if (recall) {
         let onAbort!: () => void
         const aborted = new Promise<undefined>((resolve) => {

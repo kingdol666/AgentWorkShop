@@ -8,6 +8,11 @@ import { randomUUID } from 'node:crypto'
 import type { DatabaseSync, StatementSync } from 'node:sqlite'
 import { AppError } from '../../../utils/errors'
 import type { MemoryKind, MemoryOutcome, MemoryRow, MemoryScopeKind, MemoryStatus } from './database'
+import { recordMemoryInjection, type InjectionTraceInput } from '../memory/effect'
+import { listBlocks, type MemoryBlock } from '../memory/blocks'
+import { documentIndex } from '../memory/documents'
+import { loadWorkingMemory, upsertWorkingMemory, type WorkingMemoryRow } from '../memory/working'
+import { createMemoryGraphRepo } from '../memory/graph/repo'
 
 /** 团队共享记忆域 sentinel(单 channel 内全员可读) */
 export const TEAM_AGENT_ID = '__team__'
@@ -142,7 +147,8 @@ const COLS = `m.id, m.channel_id AS channelId, m.agent_id AS agentId, m.kind, m.
   m.owner_user_id AS ownerUserId, m.author_kind AS authorKind, m.author_id AS authorId,
   m.revision, m.pinned, m.updated_at AS updatedAt,
   m.deleted_at AS deletedAt, m.deleted_by AS deletedBy, m.delete_reason AS deleteReason,
-  m.origin_ref AS originRef`
+  m.origin_ref AS originRef, m.valid_from AS validFrom, m.valid_to AS validTo,
+  m.recorded_at AS recordedAt, m.superseded_by AS supersededBy`
 
 export function createMemoryRepo(db: DatabaseSync) {
   const upsertStmt = db.prepare(
@@ -368,6 +374,7 @@ export function createMemoryRepo(db: DatabaseSync) {
   }
 
   return {
+    graph: createMemoryGraphRepo(db),
     upsert(input: MemoryUpsertInput, actor?: MemoryActor): { outcome: MemoryWriteOutcome, id: string } {
       const existing = stateByKeyStmt.get(input.agentId, input.dedupKey, input.channelId) as {
         id: string
@@ -546,6 +553,27 @@ export function createMemoryRepo(db: DatabaseSync) {
       ) > 0
     },
 
+    /** 设置过期时间（对话摘要 = 30 天；维护任务 expireSweep 到期转 retired，不硬删） */
+    setExpiresAt(id: string, expiresAt: string | null): boolean {
+      return Number(
+        db.prepare('UPDATE agent_memories SET expires_at = ?, updated_at = ? WHERE id = ?')
+          .run(expiresAt, new Date().toISOString(), id).changes ?? 0,
+      ) > 0
+    },
+
+    /**
+     * 写入路径补作用域（repo.upsert 不负责 scope 列；session/channel 必须显式落库）。
+     * session 档同步 session_id：检索会话过滤与图谱 session 分区的来源 SQL 都读该列，
+     * 只写 scope_key 会让 session 记忆在检索/整理两侧都不可见。
+     */
+    setScope(id: string, scopeKind: MemoryScopeKind, scopeKey = ''): boolean {
+      return Number(
+        db.prepare(`UPDATE agent_memories SET scope_kind = ?, scope_key = ?,
+            session_id = CASE WHEN ? = 'session' THEN ? ELSE session_id END, updated_at = ? WHERE id = ?`)
+          .run(scopeKind, scopeKey, scopeKind, scopeKey, new Date().toISOString(), id).changes ?? 0,
+      ) > 0
+    },
+
     /**
      * 按作用域取**经验行**（跨 Channel 共享检索 / 晋升门 / 看板的数据面）。
      * 恒过滤 kind='experience' —— 普通记忆（episodic/semantic）也有 scope_kind 默认值，
@@ -658,8 +686,11 @@ export function createMemoryRepo(db: DatabaseSync) {
      * 注入门槛：人工行恒可见；经验需 validated + 已部署（无版本头 = none，fail-closed）；
      * 普通语义行按 active/validated 放行。排序：pin 优先 → bm25。
      */
-    searchWorkspaceShared(matchQuery: string, ownerUserId: string, limit: number): Array<MemoryRow & { bm25: number }> {
+    searchWorkspaceShared(matchQuery: string, ownerUserId: string, limit: number, at?: string | null): Array<MemoryRow & { bm25: number }> {
       if (!ownerUserId) return []
+      // 生命周期窗口（2026-11-28 审核轮）：L2 直接拼进提示，之前不过 valid_from/valid_to，
+      // 已失效的 global 经验仍会被自动注入。asOf 缺省取当前时刻，与 inScope 同口径。
+      const asOf = at ?? new Date().toISOString()
       return db.prepare(
         `SELECT ${COLS}, f.rank AS bm25
            FROM agent_memories_fts f
@@ -669,6 +700,8 @@ export function createMemoryRepo(db: DatabaseSync) {
             AND m.owner_user_id = ?
             AND m.deleted_at IS NULL
             AND m.status != 'retired'
+            AND (m.valid_from IS NULL OR m.valid_from = '' OR m.valid_from <= ?)
+            AND (m.valid_to IS NULL OR m.valid_to = '' OR m.valid_to > ?)
             AND (
               m.author_kind = 'human'
               OR (m.kind = 'experience' AND m.status = 'validated' AND COALESCE((
@@ -677,7 +710,7 @@ export function createMemoryRepo(db: DatabaseSync) {
               OR (m.kind != 'experience' AND m.status IN ('active', 'validated'))
             )
           ORDER BY m.pinned DESC, f.rank LIMIT ?`,
-      ).all(matchQuery, ownerUserId, limit) as unknown as Array<MemoryRow & { bm25: number }>
+      ).all(matchQuery, ownerUserId, asOf, asOf, limit) as unknown as Array<MemoryRow & { bm25: number }>
     },
 
     /** bm25 检索(恒含 team 共享行;matchQuery 为 OR 连接切分词;sessionId 给定→仅该 session 作用域行) */
@@ -698,9 +731,12 @@ export function createMemoryRepo(db: DatabaseSync) {
      * 跨团队共享域检索(hardening 后的协作扩展;只读):仅 __team__ 行,
      * 限定目标 channel 集合(调用方保证同主/启用),按 bm25 排序。
      * matchQuery 为 OR 连接的切分词(与 search 同规约)。
+     * ownerUserId（2026-11-28 审核轮）：行级 owner 严格匹配 —— 频道所有权转移后，
+     * 老行仍挂着前任 owner，只靠频道列表会把前任 owner 的共享行读给新 owner。
+     * 不传 owner 一律空集（fail-closed）。
      */
-    searchTeamSharedAcross(matchQuery: string, channelIds: string[], limit: number): Array<MemoryRow & { bm25: number }> {
-      if (channelIds.length === 0) return []
+    searchTeamSharedAcross(matchQuery: string, channelIds: string[], limit: number, ownerUserId?: string): Array<MemoryRow & { bm25: number }> {
+      if (channelIds.length === 0 || !ownerUserId) return []
       const placeholders = channelIds.map(() => '?').join(', ')
       const stmt = db.prepare(
         `SELECT ${COLS}, f.rank AS bm25
@@ -708,9 +744,11 @@ export function createMemoryRepo(db: DatabaseSync) {
          JOIN agent_memories m ON m.rowid = f.memory_rowid
          WHERE agent_memories_fts MATCH ? AND m.agent_id = ? AND m.channel_id IN (${placeholders})
            AND m.deleted_at IS NULL
+           AND m.status != 'retired'
+           AND m.owner_user_id = ?
          ORDER BY f.rank LIMIT ?`,
       )
-      return stmt.all(matchQuery, TEAM_AGENT_ID, ...channelIds, limit) as unknown as Array<MemoryRow & { bm25: number }>
+      return stmt.all(matchQuery, TEAM_AGENT_ID, ...channelIds, ownerUserId, limit) as unknown as Array<MemoryRow & { bm25: number }>
     },
 
     /** 某 channel 团队共享域的行数(跨团队概览的"知识量"指标) */
@@ -731,18 +769,23 @@ export function createMemoryRepo(db: DatabaseSync) {
     searchExperienceAcross(
       matchQuery: string,
       channelIds: string[],
-      opts: { scopeKinds: MemoryScopeKind[], scopeKey?: string, limit?: number },
+      opts: { scopeKinds: MemoryScopeKind[], scopeKey?: string, limit?: number, ownerUserId?: string },
     ): Array<MemoryRow & { bm25: number }> {
       if (channelIds.length === 0 || opts.scopeKinds.length === 0) return []
+      // owner 严格匹配（2026-11-28 审核轮）：频道列表由调用方按「同 owner」给出，但行的
+      // owner 在频道所有权转移后会与频道当前 owner 不一致 —— 只靠频道列表，新 owner 能
+      // 读到前任 owner 的 global/line 经验正文。缺 owner 一律空集（fail-closed）。
+      if (!opts.ownerUserId) return []
       const where: string[] = [
         `agent_memories_fts MATCH ?`,
         `m.kind = 'experience'`,
         `m.status IN ('active', 'validated')`,
         `m.deleted_at IS NULL`,
+        `m.owner_user_id = ?`,
         `m.scope_kind IN (${opts.scopeKinds.map(() => '?').join(', ')})`,
         `m.channel_id IN (${channelIds.map(() => '?').join(', ')})`,
       ]
-      const args: Array<string | number> = [matchQuery, ...opts.scopeKinds, ...channelIds]
+      const args: Array<string | number> = [matchQuery, opts.ownerUserId, ...opts.scopeKinds, ...channelIds]
       // line/product 是带锚点的作用域:无锚点即无命中(global 不需要 key)
       const keyedScopes = opts.scopeKinds.filter(s => s === 'line' || s === 'product')
       if (keyedScopes.length > 0) {
@@ -781,6 +824,69 @@ export function createMemoryRepo(db: DatabaseSync) {
       return (opts.channelId
         ? listRecentInChannelStmt.all(agentId, opts.channelId, limit)
         : listRecentStmt.all(agentId, limit)) as unknown as MemoryRow[]
+    },
+
+    /** Memory Fabric 访问策略：session 覆盖 channel（inherit = 沿用默认） */
+    memoryAccessMode(channelId: string, sessionId?: string | null): 'inherit' | 'isolated' | 'disabled' | 'readonly' {
+      try {
+        const sessionMode = sessionId
+          ? (db.prepare('SELECT memory_access_mode AS mode FROM channel_sessions WHERE id = ?').get(sessionId) as { mode?: string } | undefined)?.mode
+          : undefined
+        if (sessionMode && sessionMode !== 'inherit') return sessionMode as 'isolated' | 'disabled' | 'readonly'
+        const channelMode = (db.prepare('SELECT memory_access_mode AS mode FROM channels WHERE id = ?').get(channelId) as { mode?: string } | undefined)?.mode
+        return (channelMode === 'isolated' || channelMode === 'disabled' || channelMode === 'readonly') ? channelMode : 'inherit'
+      }
+      catch {
+        return 'inherit'
+      }
+    },
+
+    /** 批次 J：核心块 / 文件索引 / 工作记忆（Fabric 注入面） */
+    listMemoryBlocks(scopeIds: string[]): MemoryBlock[] {
+      return listBlocks(db, scopeIds)
+    },
+    documentIndex(scopeIds: string[], limit = 20): Array<{ path: string, size: number, revision: number }> {
+      return documentIndex(db, scopeIds, limit)
+    },
+    loadWorkingMemory(runtimeId: string, sessionId?: string | null, taskId?: string | null): WorkingMemoryRow[] {
+      return loadWorkingMemory(db, runtimeId, sessionId, taskId)
+    },
+    writeWorkingMemory(input: Parameters<typeof upsertWorkingMemory>[1]): void {
+      upsertWorkingMemory(db, input)
+    },
+
+    /** 批次 H：注入留痕（refs 只记 id/kind/source；正文不入日志） */
+    logInjection(input: InjectionTraceInput): string | null {
+      return recordMemoryInjection(db, input)
+    },
+
+    /** Curator 文档注入面（L0.5）：本频道 + 本产线/产品作用域，pin/新近优先 */
+    listCuratedForInjection(
+      channelId: string,
+      opts: { lineId?: string | null, productId?: string | null, limit?: number } = {},
+    ): MemoryRow[] {
+      const where = [
+        `m.channel_id = ?`,
+        `m.kind = 'curated'`,
+        `m.deleted_at IS NULL`,
+        `m.status NOT IN ('retired')`,
+      ]
+      const args: Array<string | number> = [channelId]
+      const scopes: string[] = [`(m.scope_kind = 'channel')`]
+      if (opts.lineId) {
+        scopes.push(`(m.scope_kind = 'line' AND m.scope_key = ?)`)
+        args.push(opts.lineId)
+      }
+      if (opts.productId) {
+        scopes.push(`(m.scope_kind = 'product' AND m.scope_key = ?)`)
+        args.push(opts.productId)
+      }
+      where.push(`(${scopes.join(' OR ')})`)
+      const limit = Math.min(Math.max(opts.limit ?? 2, 1), 5)
+      return db.prepare(
+        `SELECT ${COLS} FROM agent_memories m WHERE ${where.join(' AND ')}
+          ORDER BY m.pinned DESC, m.updated_at DESC LIMIT ?`,
+      ).all(...args, limit) as unknown as MemoryRow[]
     },
 
     listByAgent(agentId: string, limit: number): MemoryRow[] {
@@ -902,6 +1008,29 @@ export function createMemoryRepo(db: DatabaseSync) {
       if (!vecEnsureTable(dims)) return false
       vecDims = dims
       return true
+    },
+
+    /**
+     * 换模型重建向量层(2026-11-28):维度不符时丢弃旧表按新维度重建。
+     * 语义边界:向量是派生索引(事实源是 agent_memories 正文),切换 embedding 模型
+     * 后旧向量与新空间不可比 —— 只能全量重算,不能混用。调用方负责随后回填。
+     */
+    vecReset(dims: number): boolean {
+      if (vecDims === dims) return true
+      try {
+        db.exec('DROP TABLE IF EXISTS agent_memories_vec')
+      }
+      catch { /* 表不存在/被占用:下面 vecEnsureTable 会再试一次 */ }
+      vecFindRowStmt = vecDeleteRowStmt = vecInsertStmt = vecSearchStmt = null
+      vecDims = null
+      if (!vecEnsureTable(dims)) return false
+      vecDims = dims
+      return true
+    },
+
+    /** 当前向量维度(未建表 → null) */
+    get vecDims(): number | null {
+      return vecDims
     },
 
     /** 向量层是否可用(建表成功即 true) */

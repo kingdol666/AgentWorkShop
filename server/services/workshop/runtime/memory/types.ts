@@ -32,6 +32,10 @@ export interface RecallOptions {
   sessionId?: string | null
   /** 任务关联集(自身+父+兄弟 ≤20):命中行终分 +RELATED_TASK_BOOST(任务需求驱动的相关性) */
   relatedTaskIds?: string[]
+  /** 批次 H：注入留痕（只记 refs，不复制正文；taskId 用于结果归因） */
+  trace?: { taskId?: string | null }
+  /** 批次 K：as-of 回看（缺省=当前；失效事实默认不返回） */
+  asOf?: string | null
   /**
    * 作用域上下文(WP-A3):经验行 scopeKey 命中时加分(同产线 +0.2 / 同产品 +0.1)。
    * 缺省由 repo.channelScope(channelId) 自动解析 lineId(channels.line_id)。

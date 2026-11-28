@@ -81,3 +81,16 @@ export async function assertSafeHttpUrl(rawUrl: string, opts: SafeUrlOptions = {
   }
   return u
 }
+
+/**
+ * 受 SSRF 护栏保护的出站请求：调用方只传原始 URL 与 init，
+ * 协议/私网判定与 DNS 解析全部收敛在本模块（不把原始 URL 直接送进 fetch）。
+ */
+export async function safeFetch(
+  rawUrl: string,
+  init: RequestInit | undefined,
+  opts: SafeUrlOptions = {},
+): Promise<Response> {
+  const u = await assertSafeHttpUrl(rawUrl, opts)
+  return fetch(u.toString(), init)
+}

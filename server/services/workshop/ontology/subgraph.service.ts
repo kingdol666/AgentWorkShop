@@ -69,7 +69,7 @@ export function subgraphAroundForLine(
   entityKey: string,
   opts: SubgraphOptions = {},
 ): SubgraphAround | null {
-  const active = resolveActiveOntology(lineId)
+  const active = resolveActiveOntology(lineId, opts.productId ?? '')
   if (!active) return null
   return subgraphAroundForVersion(versionRefOf(active, lineId), entityKey, opts)
 }

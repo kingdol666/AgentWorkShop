@@ -16,6 +16,7 @@ import { createMemoryRepo } from '../db/memory.repo'
 import { withTransaction } from '../db/transaction'
 import { recordOps } from '../ops/ops'
 import { ensureLegacyVersion, getVersion, headVersionId, setVersionState } from './versions'
+import { invalidateHarnessOverlayCache } from './overlay'
 
 export type DeployTarget = 'active' | 'withdrawn'
 
@@ -91,6 +92,9 @@ export function deployExperience(
     })
   }
   catch { /* 审计失败不影响部署 */ }
+
+  // 部署/撤下立即生效（不等 overlay 60s TTL）：同进程下一回合重新装配
+  invalidateHarnessOverlayCache(input.channelId)
 
   return {
     ok: true,

@@ -21,6 +21,16 @@ export interface WriteAttemptIntent {
   executionLeaseId?: string
   /** 本次写入的载荷指纹(值+目标+约束),用于对账比对 */
   payloadHash: string
+  /** 想写什么值(含单位/量程/容差);拒绝/未知尝试必须能回看,不只留哈希 */
+  payload?: unknown
+  /** 操作上下文(批次 N):产品/配方/版本/批次/频道/Agent/会话 */
+  productId?: string
+  recipeId?: string
+  recipeRevision?: string
+  runId?: string
+  channelId?: string
+  agentId?: string
+  sessionId?: string
 }
 
 export const payloadHashOf = (input: unknown): string =>
@@ -31,11 +41,21 @@ export function recordWriteIntent(db: DatabaseSync, intent: WriteAttemptIntent):
   const now = new Date().toISOString()
   db.prepare(
     `INSERT INTO dcw_write_attempts
-      (id, node_id, line_id, approval_id, task_id, execution_lease_id, payload_hash, state, detail, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'prepared', '', ?, ?)`,
+      (id, node_id, line_id, approval_id, task_id, execution_lease_id, payload_hash, payload_json,
+       product_id, recipe_id, recipe_revision, run_id, channel_id, agent_id, session_id, state, detail, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'prepared', '', ?, ?)`,
   ).run(id, intent.nodeId, intent.lineId ?? '', intent.approvalId ?? '', intent.taskId ?? '',
-    intent.executionLeaseId ?? '', intent.payloadHash, now, now)
+    intent.executionLeaseId ?? '', intent.payloadHash, JSON.stringify(intent.payload ?? {}),
+    intent.productId ?? '', intent.recipeId ?? '', intent.recipeRevision ?? '', intent.runId ?? '',
+    intent.channelId ?? '', intent.agentId ?? '', intent.sessionId ?? '', now, now)
   return id
+}
+
+/** 写尝试闭环到干预台账（已受理写才有 intervention_id；拒绝/未知保持空） */
+export function linkWriteAttemptIntervention(db: DatabaseSync, attemptId: string, interventionId: string): void {
+  if (!attemptId || !interventionId) return
+  db.prepare('UPDATE dcw_write_attempts SET intervention_id = ?, updated_at = ? WHERE id = ? AND intervention_id = \'\'')
+    .run(interventionId, new Date().toISOString(), attemptId)
 }
 
 export function markWriteDispatched(db: DatabaseSync, attemptId: string): void {

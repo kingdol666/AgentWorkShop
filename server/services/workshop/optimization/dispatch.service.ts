@@ -396,7 +396,7 @@ export async function createDispatchCard(initiator: ResolvedUser, recommendation
   const { recipe } = loadRec(recommendationId)
   // 本体运行时守卫(ONT):已发布本体的 block 级守卫对本次下发意图求值。
   // 只增拒不放行;无本体/无守卫时零开销。批准时刻 D13 仍全量重验。
-  const ontologyGuard = evaluateOntologyGuardsForNodes(spec.lineId, paramRows.map(p => ({ nodeId: p.nodeId, from: p.from, to: p.to })))
+  const ontologyGuard = evaluateOntologyGuardsForNodes(spec.lineId, paramRows.map(p => ({ nodeId: p.nodeId, from: p.from, to: p.to })), { productId: recipe.productId })
   if (ontologyGuard.blocked) {
     const violation = ontologyGuard.violations[0]!
     throw new AppError(409, 'ONTOLOGY_GUARD_BLOCKED',

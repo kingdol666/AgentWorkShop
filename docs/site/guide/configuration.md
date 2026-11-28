@@ -22,7 +22,7 @@ config.yml(默认值)  <  .AgentWorkShop/runtime-settings.json(运行时)  <  �
 ## CLI 操作
 
 ```bash
-aw config list                       # 144 个设置项(19 组):47 live / 97 restart · 有效值 + 来源 + 生效方式
+aw config list                       # 145 个设置项(19 组):48 live / 97 restart · 有效值 + 来源 + 生效方式
 aw config get server.prod.port       # 单键(值 + 来源)
 aw config set server.prod.port 8080  # schema 校验 + 原子写盘
 aw config set theme.primaryColor '#41c8f4'
@@ -33,7 +33,7 @@ aw config validate                   # 校验 config.yml 与覆盖合法性
 
 ## 生效方式
 
-描述符共 **144 个**,按生效方式分为 **47 个 `live`** 与 **97 个 `restart`**:
+描述符共 **145 个**,按生效方式分为 **48 个 `live`** 与 **97 个 `restart`**:
 
 - `live` 键:**保存即生效**(主题、标题、超时、DAQ 采集节拍、AML 门禁阈值等,经服务端事件流推送);
 - `restart` 键(端口、监听地址、AML Python 路径等):落盘持久化,下一次对应模式启动时生效

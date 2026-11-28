@@ -8,6 +8,8 @@ export interface ExecutionScope {
   readonly taskId?: string
   readonly agentId: string
   readonly channelId: string
+  /** 当前会话（批次 N：写尝试/干预台账的 session 归因；非授权依据） */
+  readonly sessionId?: string
   readonly assignmentGeneration?: number
   readonly executionLeaseId?: string
   readonly signal: AbortSignal

@@ -29,7 +29,7 @@ export default defineApiHandler(async (event) => {
     version: {
       id: result.version.id, version: result.version.version, status: result.version.status,
       contentHash: result.version.contentHash, parentVersion: result.version.parentVersion,
-      lineId: result.version.lineId, createdAt: result.version.createdAt,
+      lineId: result.version.lineId, productId: result.version.productId, createdAt: result.version.createdAt,
     },
     packHash: result.packHash,
     counts: {

@@ -24,7 +24,7 @@ export default defineApiHandler(async (event) => {
       actor,
     })
     recordOps({
-      actor: user.id, actorName: user.name, actorKind: 'agent',
+      actor: user.id, actorName: user.name, actorKind: 'user',
       action: 'memory.update', kind: 'system', targetKind: 'memory', targetId: id,
       summary: `人工覆写记忆 ${id.slice(0, 8)} → r${res.revision}（原文已留版本）`,
     })

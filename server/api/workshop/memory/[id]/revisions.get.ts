@@ -10,6 +10,11 @@ export default defineApiHandler(async (event) => {
   const { user } = requireMemoryUser(event)
   const id = getRouterParam(event, 'id')
   if (!id) throw new AppError(422, 'ID_REQUIRED', 'id 必填')
-  assertMemoryWritable(user, id)
+  // 读口径与 GET /memory/:id 对齐（2026-11-28 审核轮）：版本链含历史正文，
+  // 非 admin 还必须行 owner 本人 —— 否则频道 owner 能读到"正文读不到"的历史正文。
+  const { ownerUserId } = assertMemoryWritable(user, id)
+  if (user.role !== 'admin' && (ownerUserId ?? null) !== user.id) {
+    throw new AppError(403, 'FORBIDDEN', '无权查看该记忆的版本链')
+  }
   return { revisions: createMemoryRepo(getAmlRuntime().db).listRevisions(id) }
 })

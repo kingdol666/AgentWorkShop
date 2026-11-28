@@ -206,7 +206,7 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
       }
       // 运维日志 + 插件钩子:所有下发路径(manual/recipe/agent/rollback)单点入册(write-audit)
       try {
-        recordDcwWriteOps({ id, node, eng, prevValue, outcome: driverOutcome, src: srcForLock as DcwWriteMeta['source'], meta, recipeRunId })
+        recordDcwWriteOps({ id, node, eng, prevValue, outcome: driverOutcome, src: srcForLock as DcwWriteMeta['source'], meta, recipeRunId, attemptId: outcome.attemptId })
       }
       catch (err) {
         // 仍不改变写结果语义,但必须留痕:静默吞掉会让"设备已变、台账无行"无从排查

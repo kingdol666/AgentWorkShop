@@ -4,12 +4,15 @@
  *  - 插件写控 ACK 钩子(与运维入册同点同去重节流)。
  * 与调控闭环入册(afterWrite)分离;调用方保证吞掉本模块异常 —— 日志失败不影响写结果。
  */
-import type { DcwWriteMeta, DcwWriteSource } from '../../../../../shared/dcw-protocol'
+import type { DcwWriteMeta, DcwWriteSource, RecipeRunView } from '../../../../../shared/dcw-protocol'
 import { emitDcwWrite } from '@/server/services/workshop/plugins/host.mjs'
 import { getActiveLineRun } from '../line-run'
 import { opsActorKindOf } from './helpers'
 import { recordOps } from '../../ops/ops'
 import { recordIntervention } from '../../aml/intervention-ledger'
+import { getAmlRuntime } from '../../aml/runtime'
+import { getDcwRecipeRepo } from '../dcw-recipe.repo'
+import { linkWriteAttemptIntervention } from '../write-attempt-ledger'
 
 /** 同节点写入去重节流表(10s 窗内同签名视为同一次下发的重试回执) */
 export const opsWriteMemo = new Map<string, { eng: number, sig: string, at: number }>()
@@ -23,6 +26,8 @@ export function recordDcwWriteOps(args: {
   src: DcwWriteSource
   meta?: DcwWriteMeta
   recipeRunId: string | null
+  /** 写尝试账本 id（批次 N：accepted 干预 ↔ attempt/payload 闭环） */
+  attemptId?: string
 }): void {
   const memo = opsWriteMemo.get(args.id)
   const now = Date.now()
@@ -54,7 +59,20 @@ export function recordDcwWriteOps(args: {
   // v34 干预台账(科学探索计划 P2):全路径单点入册(与运维日志同点同去重节流)。
   // 只记已受理下发;拒绝路径沿上方 recordOps 的 dcw.write.rejected 审计,不入台账。
   // recordIntervention 内部自吞异常(台账失败绝不改变写结果语义)。
-  recordIntervention({
+  let recipeRun: RecipeRunView | undefined
+  try {
+    recipeRun = args.recipeRunId ? getDcwRecipeRepo().runById(args.recipeRunId) : undefined
+  }
+  catch { recipeRun = undefined }
+  const productId = runNow?.productId ?? recipeRun?.productId ?? ''
+  const recipeId = runNow?.recipeId ?? recipeRun?.recipeId ?? ''
+  const recipeRevision = runNow?.recipeVersion != null
+    ? String(runNow.recipeVersion)
+    : (recipeRun?.recipeVersion != null ? String(recipeRun.recipeVersion) : '')
+  const contextSource = productId && recipeId
+    ? 'exact'
+    : (args.recipeRunId ? 'run' : 'unknown')
+  const interventionId = recordIntervention({
     nodeId: args.id,
     nodeName: args.node.name,
     lineId: args.node.lineId ?? '',
@@ -69,5 +87,21 @@ export function recordDcwWriteOps(args: {
     approvalId: args.meta?.approvalId ?? null,
     recipeRunId: args.recipeRunId,
     hypothesis: args.meta?.hypothesis ?? '',
+    // 批次 N：上下文随 accepted 写一次落库；读取面按 context_source 如实展示
+    attemptId: args.attemptId ?? '',
+    taskId: args.meta?.taskId ?? '',
+    sessionId: args.meta?.sessionId ?? '',
+    productId,
+    recipeId,
+    recipeRevision,
+    contextSource,
+    proposalId: args.meta?.proposalId ?? '',
   })
+  // 写尝试 → 干预台账闭环；拒绝/未知尝试没有 intervention 行（intervention_id 保持空）
+  if (interventionId && args.attemptId) {
+    try {
+      linkWriteAttemptIntervention(getAmlRuntime().db, args.attemptId, interventionId)
+    }
+    catch { /* 关联失败不影响台账 */ }
+  }
 }

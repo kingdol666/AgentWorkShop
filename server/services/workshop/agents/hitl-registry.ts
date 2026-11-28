@@ -28,8 +28,43 @@ import type { AepHitlItem, AepHitlQuestion, AepHitlRequestType, AepHitlResolved,
 import type { ChannelRow } from '../db/database'
 import type { HitlPolicySnapshot, HitlRequestRepo } from '../db/hitl-request.repo'
 import type { ChannelMemberRepo } from '../db/channel-member.repo'
+import { getAmlRuntime } from '../aml/runtime'
+import { createMemoryRepo } from '../db/memory.repo'
+import { unsegmentCJK } from '../runtime/memory/helpers'
 
 const log = createLogger('workshop.hitl-registry')
+
+/**
+ * 批次 F：决策点经验线索（只读、≤150 tok、最多 3 条 validated+active 频道经验）。
+ * 无部署经验 → 空串（卡片与旧行为逐字节一致）。
+ */
+function decisionExperienceClues(channelId: string): string {
+  if (!channelId) return ''
+  try {
+    const db = getAmlRuntime().db
+    const repo = createMemoryRepo(db)
+    const rows = repo.listByScope({ scopeKind: 'channel', channelIds: [channelId], statuses: ['validated'], limit: 10 })
+      .filter((row) => {
+        const dep = repo.experienceDeployment(row.id)
+        return dep === 'active' || dep === 'canary'
+      })
+      .slice(0, 3)
+    if (rows.length === 0) return ''
+    let used = 0
+    const lines: string[] = ['', '经验线索（自动注入，只读；判定仍由人做）：']
+    for (const row of rows) {
+      const text = `- ${row.title}：${unsegmentCJK(String(row.content ?? '')).slice(0, 100)}`
+      const cost = Math.ceil(text.length)
+      if (used + cost > 140) break
+      used += cost
+      lines.push(text)
+    }
+    return lines.length > 1 ? lines.join('\n') : ''
+  }
+  catch {
+    return ''
+  }
+}
 
 export type HitlKind = AepHitlItem['kind']
 export type HitlOutcome = AepHitlResolved['outcome']
@@ -333,6 +368,8 @@ class HitlRegistryService {
       }
     }
     const requestType = requestTypeOf(input)
+    // 批次 F：决策卡附同域已部署经验线索（≤150 tok；无经验时不改变 detail）
+    const detail = `${input.detail ?? ''}${decisionExperienceClues(channelId)}`
     const item: AepHitlItem = {
       kind: input.kind,
       id: input.id,
@@ -342,7 +379,7 @@ class HitlRegistryService {
       pid: input.pid,
       method: input.method,
       title: input.title,
-      detail: input.detail,
+      detail,
       options: input.options,
       message: input.message,
       createdAt: input.createdAt ?? new Date().toISOString(),

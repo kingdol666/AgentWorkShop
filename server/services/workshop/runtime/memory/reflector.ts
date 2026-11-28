@@ -82,6 +82,15 @@ export interface InterventionFact {
   criterion?: Record<string, unknown> | null
   lineId?: string
   productId?: string
+  /** 批次 M/N：结构化参数主张所需的操作上下文 */
+  nodeId?: string
+  targetNodeId?: string
+  recipeId?: string
+  recipeRevision?: string
+  attemptId?: string
+  taskId?: string
+  sessionId?: string
+  unit?: string
 }
 
 export type ExperienceFact = TaskFact | ReviewFact | InterventionFact
@@ -307,6 +316,12 @@ export async function reflectExperience(
   fact: ExperienceFact,
   options: { industrialScopeEnabled?: boolean } = {},
 ): Promise<ReflectResult> {
+  const factSession = (fact as { sessionId?: string }).sessionId ?? null
+  const accessMode = typeof repo.memoryAccessMode === 'function'
+    ? repo.memoryAccessMode(fact.channelId, factSession)
+    : 'inherit'
+  // incognito/只读策略下后台学习环同样不得写入。
+  if (accessMode === 'disabled' || accessMode === 'readonly') return { written: false, reason: 'access-mode' }
   const distilled = distillExperience(fact)
   if (!distilled) return { written: false, reason: 'nothing-to-distill' }
   const industrialEnabled = options.industrialScopeEnabled ?? (channelModeOf(fact.channelId) === 'production_line_integrated')
@@ -325,6 +340,7 @@ export async function reflectExperience(
         return { written: false, reason: 'industrial experience requires production_line_integrated mode' }
       }
     }
+    const expSessionId = ['line', 'product', 'global'].includes(distilled.scopeKind) ? '' : distilled.sessionId
     const { id, outcome } = repo.upsertExperience({
       channelId: fact.channelId,
       agentId: fact.agentId,
@@ -334,7 +350,7 @@ export async function reflectExperience(
       content: distilled.content,
       importance: distilled.importance,
       taskId: fact.source === 'task' ? fact.taskId : (fact.source === 'review' ? fact.taskId ?? null : null),
-      sessionId: distilled.sessionId,
+      sessionId: expSessionId,
       dedupKey: distilled.dedupKey,
       outcome: distilled.outcome,
       evidence: distilled.evidence,
