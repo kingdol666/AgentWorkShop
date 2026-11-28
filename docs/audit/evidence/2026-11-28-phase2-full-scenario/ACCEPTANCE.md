@@ -136,6 +136,26 @@ S2 generic worker 显式 scope=global 读到 owner 共享区(跨频道「B3吹�
 
 **桌面派发任务升级**:桌面 UI 下发的「四协议接入验收总结」**COMPLETED**(200 条 history,22:21:04 complete_task)——deepseek 经 bash/daq_query/ops_log 真实取证后产出汇总;此前两例 FAILED 为 omp 上游断连,本例 COMPLETED 证明链路本身可达终态。桌面 sidecar 曾掉线一次(60794→重启 57982,home 持久化无损失,任务恢复)。
 
+## v0.22.1 发布与安装版端到端验收(2026-11-28/29)
+
+**45.4.1 根因与修复**:源码直启(`electron desktop/main.mjs`)时 `app.getVersion()` 返回 Electron 运行时自身版本(45.4.1)而非应用版本,`currentVersion()` 的 `!== '0.0.0'` 护栏拦不住 → 托盘/更新面显示 45.4.1。修复:源码模式(`!app.isPackaged`)直接读取 backend package.json;打包版行为不变。用户截图中的托盘项即源码直启实例(其已安装版为 0.22.0,`D:\tmp\aw-desktop-install-v0174\AgentWorkShop.exe`,ProductVersion 0.22.0.0)。
+
+**发布全链(全部完成)**:
+- 门禁:lint / typecheck / i18n 3358 parity / cssvars 162 / build / **boot-smoke 6/6** / **unit 2550 pass 0 fail**;
+- 提交 `aff9e673 chore(release): v0.22.1` + tag `v0.22.1` + push main/tags;
+- **npm:`+ agentworkshop@0.22.1` 官方源发布,dist-tags latest=0.22.1**(官方 tarball 47,190,897B 下载验证);
+- 桌面同源打包:`npm i -g agentworkshop@0.22.1 --prefix`(隔离 prefix)→ `desktop/build.mjs --backend <prefix 安装目录>` → **AgentWorkShop-Setup-0.22.1-win-x64.exe(422,953,567B)**,win-unpacked ProductVersion 0.22.1.0,**SHA256 D4CA6BB5C583F8D73553A9E9D0F9EA89E8152E884BE58D4C4809A2DF54C7751A**;
+- **GitHub Release v0.22.1**:https://github.com/kingdol666/AgentWorkShop/releases/tag/v0.22.1(发布说明 + 安装包资产 state=uploaded,**GitHub 记录 digest 与本地计算一致**)。
+
+**本地同步**:已安装桌面静默升级 0.17.4 时期目录(`D:\tmp\aw-desktop-install-v0174\`)→ **exe ProductVersion 0.22.1.0 / FileVersion 0.22.1,注册表 DisplayName "AgentWorkShop 0.22.1"**;`home/electron/desktop-status.json` 实机快照:`version 0.22.1 / phase ready / service online / trayCreated true / port 61233`。
+
+**0.22.1 安装版端到端实机验收**(挂验收 home,CDP 9333,端口 61233):
+- 仪表盘实拍:运行产线、控制节点 5/5、**写命令成功率 100%**、14/14 执行引擎就绪、P5 告警队列,页脚 **v0.22.1 / dev**(版本修复安装版视觉证实);
+- 多协议产线详情在安装版**现场刷新 PLC 读数(23:58:05):S10 设定 45.5 = Modbus 读数 45.5;S20 设定 64.0 = OPC-UA 读数 64.0**;
+- **从 0.22.1 安装版桌面 UI 下发两个真实任务**(REST 面 + UI composer 各一)→ **双双 COMPLETED**(56/53 条 history)——安装版端到端(派发→执行→交付)全通。
+
+**如实边界**:安装版桌面冷启动后首批任务有分钟级唤醒延迟(频道消息唤醒后立即恢复;另发现实例继承的 HTTPS_PROXY 代理环境可能拉长模型回合,生产建议在桌面启动器对模型流量设置 NO_PROXY 直连规则);tasklist 中 `AgentWorkShop-Setup` 静默安装进程正常退出。
+
 ## 结论
 
 **全场景真实作业验收通过**(约 57 项独立断言,其中 2 项 FAIL 为探针自身缺陷、已被其他证据面证实覆盖,见「过程中发现与处置」#5):
